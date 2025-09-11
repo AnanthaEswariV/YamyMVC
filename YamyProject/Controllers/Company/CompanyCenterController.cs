@@ -29,7 +29,7 @@ namespace YamyProject.Controllers.Company
             if (company is null)
                 return NotFound();
 
-            var viewModel = _mapper.Map<Core.ViewModel.CompanyViewModel>(company);
+            var viewModel = _mapper.Map<Core.ViewModel.CompanyViewModels>(company);
             return PartialView("CompanyList", viewModel);
         }
         [HttpPost]

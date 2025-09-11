@@ -1,6 +1,6 @@
 ﻿namespace YamyProject.Core.ViewModel
 {
-    public class CompanyViewModel
+    public class CompanyViewModels
     {
         public int Id { get; set; }
 

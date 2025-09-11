@@ -6,7 +6,7 @@ namespace YamyProject.Core.Consts.Mapping
     {
         public MappingProfile()
         {
-            CreateMap<CompanyViewModel,TblCompany>().ReverseMap();
+            CreateMap<CompanyViewModels,TblCompany>().ReverseMap();
         }            
     }
 }
