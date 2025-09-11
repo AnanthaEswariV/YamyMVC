@@ -1,4 +1,5 @@
-﻿namespace YamyProject.Data
+﻿
+namespace YamyProject.Data
 {
     public class ApplicationDbContext : DbContext
     {
@@ -6,7 +7,7 @@
             : base(options)
         {
         }
-      //  public DbSet<>{get;set;};
+        public DbSet<TblCompany> TblCompanys { get;set;}
 
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Controllers
+﻿using YamyProject.Core.Models;
+
+namespace YamyProject.Controllers
 {
     public class ListsController : Controller
     {
