@@ -1,0 +1,111 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YAMY Enterprise - Select Company</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body class="h-screen w-screen flex items-center justify-center bg-[#0b1d36]">
+
+    <!-- Bigger Card -->
+    <div class="w-[650px] h-[600px] bg-[#0e2545]/90 border border-gray-700 rounded-2xl shadow-2xl p-8 text-white flex flex-col">
+
+        <!-- Logo -->
+        <div class="flex justify-center items-center mb-6">
+            <span class="text-3xl font-bold">YAMY <span class="text-gray-300 font-light">Enterprise</span></span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-center gap-8 mb-6">
+            <button id="openCompanyBtn"
+                    class="px-8 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg shadow-md font-semibold text-lg disabled:opacity-50"
+                    disabled>
+                Open Company
+            </button>
+            <a href="@Url.Action("Register", "Account")"
+               class="px-8 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg shadow-md font-semibold text-lg">
+                Create Company
+            </a>
+        </div>
+
+        <!-- Company Table -->
+        <div class="flex-grow overflow-y-auto rounded-lg border border-gray-600 bg-[#1a2f4d]">
+            <table id="companyTable" class="w-full text-sm text-left text-white">
+                <thead class="bg-gray-700 text-gray-300 uppercase text-xs">
+                    <tr>
+                        <th scope="col" class="px-4 py-2">Code</th>
+                        <th scope="col" class="px-4 py-2">Name</th>
+                        <th scope="col" class="px-4 py-2">Descriptions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="3" class="text-center py-4 text-gray-400">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-xs text-gray-400 mt-6">
+            © YAMY CO. 2025 ALL Rights Reserved.
+        </div>
+    </div>
+
+    <script>
+        let selectedDb = null; // will hold db name
+
+        $(document).ready(function () {
+            $.ajax({
+                url: '@Url.Action("GetCompanyList", "Account")',
+                type: 'GET',
+                success: function (response) {
+                    let table = $("#companyTable tbody");
+                    table.empty();
+
+                    if (response.status && response.data.length > 0) {
+                        $.each(response.data, function (i, company) {
+                            let row = `<tr class="hover:bg-gray-700 cursor-pointer"
+                                         data-db="${company.databaseName || company.DatabaseName}">
+                                <td class="px-4 py-2">${company.code || company.Code}</td>
+                                <td class="px-4 py-2">${company.name || company.Name}</td>
+                                <td class="px-4 py-2">${company.descriptions || company.Descriptions || ""}</td>
+                            </tr>`;
+                            table.append(row);
+                        });
+
+                        // ✅ select row
+                        $("#companyTable tbody tr").on("click", function () {
+                            $("#companyTable tbody tr").removeClass("bg-blue-700");
+                            $(this).addClass("bg-blue-700");
+
+                            selectedDb = $(this).data("db");
+                            $("#openCompanyBtn").prop("disabled", false);
+                        });
+                    } else {
+                        table.append(`<tr><td colspan="3" class="text-center py-4 text-gray-400">${response.message || "No companies found"}</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    $("#companyTable tbody").html(
+                        `<tr><td colspan="3" class="text-center py-4 text-red-400">Error: ${xhr.statusText}</td></tr>`
+                    );
+                }
+            });
+
+            // ✅ Open company
+            $("#openCompanyBtn").on("click", function () {
+                if (selectedDb) {
+                    sessionStorage.setItem("selectedDatabase", selectedDb);
+                    window.location.href = '@Url.Action("Login", "Account")';
+                } else {
+                    alert("Please select a company first!");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,605 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+ 
+    <div class="content">
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="Search accounts..." id="searchInput">
+            <div class="search-icon">🔍</div>
+        </div>
+        <div class="tree" id="coaTree">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading accounts...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap Edit Modal -->
+<div class="modal fade" id="editAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editAccountId">
+                <div class="mb-3">
+                    <label class="form-label">Account Name</label>
+                    <input type="text" class="form-control" id="editAccountName">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveAccountBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <!-- Load jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: -24px auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            margin-left: -69px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .header::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -20%;
+                width: 200px;
+                height: 200px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 50%;
+                animation: float 6s ease-in-out infinite;
+            }
+
+        keyframes float {
+            0%, 100%
+
+        {
+            transform: translateY(0px) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-20px) rotate(180deg);
+        }
+
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            font-size: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: #f9fafb;
+            transition: all 0.3s ease;
+        }
+
+            .search-input:focus {
+                outline: none;
+                border-color: #4f46e5;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            }
+
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 20px;
+        }
+
+        .tree {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+            .tree ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: none;
+            }
+
+            .tree > ul {
+                display: block;
+            }
+
+            .tree li {
+                position: relative;
+                transition: all 0.3s ease;
+            }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f3f4f6;
+            position: relative;
+        }
+
+            .tree-node:hover {
+                background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+                transform: translateX(5px);
+            }
+
+
+            .tree-node.level-1 {
+                background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
+                font-weight: 600;
+                color: #0369a1;
+                border-left: 4px solid #0ea5e9;
+            }
+
+                .tree-node.level-1:hover {
+                    background: linear-gradient(90deg, #e0f2fe 0%, #bae6fd 100%);
+                }
+
+        .toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            margin-right: 15px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .tree-node.level-0 .toggle {
+            background: rgba(255, 255, 255, 0.2);
+            color: gray;
+        }
+
+        .tree-node:not(.level-0) .toggle {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
+        .toggle:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .account-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .level-0 .account-icon {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .level-1 .account-icon {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .level-2 .account-icon, .level-3 .account-icon {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .account-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .account-code {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .account-name {
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .tree-node.level-0 .account-code,
+        .tree-node.level-0 .account-name {
+            color: #3657bb;
+        }
+
+        .tree li ul {
+            margin-left: 0;
+            border-left: 2px solid #e5e7eb;
+            margin-left: 50px;
+        }
+
+        .tree li.level-0 > ul {
+            border-left: none;
+            margin-left: 0;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        keyframes spin {
+            0%
+
+        {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+            .empty-state svg {
+                width: 80px;
+                height: 80px;
+                margin: 0 auto 20px;
+                opacity: 0.5;
+            }
+
+        .dot-indicator {
+            color: #9ca3af;
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        media (max-width: 768px) {
+            .container
+
+        {
+            margin: 10px;
+            border-radius: 15px;
+        }
+
+        .header {
+            padding: 20px 25px;
+        }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+        .content {
+            padding: 25px;
+        }
+
+        .tree-node {
+            padding: 12px 15px;
+        }
+
+            .tree-node.level-0 {
+                background: #2563eb; /* blue background */
+                color: #fff; /* white text */
+                font-weight: bold;
+                font-size: 16px;
+                border-radius: 6px;
+                padding: 10px 14px;
+                margin-bottom: 6px;
+            }
+
+            .tree-node.level-0 {
+                color: #1e3a8a; /* dark blue text */
+                font-weight: bold;
+                font-size: 16px;
+            }
+
+
+
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            // Icons for different account types
+            const accountIcons = {
+                '1': '💰', // Assets
+                '2': '📋', // Liabilities
+                '3': '🏛️', // Equity
+                '4': '📈', // Income
+                '5': '💸', // Cost
+                '6': '📊'  // Expenses
+            };
+
+            // Your existing API call
+            $.getJSON("/Lists/GetCOA", function (data) {
+                if (data.status === false) {
+                    $("#coaTree").html(`
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <h3>Unable to Load Accounts</h3>
+                            <p>${data.message}</p>
+                        </div>
+                    `);
+                } else {
+                    buildTree(data, $("#coaTree"));
+                    setupSearch();
+                }
+            }).fail(function() {
+                $("#coaTree").html(`
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <h3>Connection Error</h3>
+                        <p>Unable to load Chart of Accounts. Please try again.</p>
+                    </div>
+                `);
+            });
+
+            function buildTree(nodes, container, level = 0) {
+                container.empty();
+                var ul = $("<ul></ul>");
+
+                nodes.forEach(function (node) {
+                    var li = $("<li></li>").addClass(`level-${level}`);
+                    var nodeDiv = $("<div></div>").addClass(`tree-node level-${level}`);
+
+                    // Toggle button for nodes with children
+                    if (node.children && node.children.length > 0) {
+                        var toggle = $("<div class='toggle'>▶</div>");
+                        toggle.on("click", function (e) {
+                            e.stopPropagation();
+                            var $childUl = $(this).closest('.tree-node').next("ul");
+                            if ($childUl.is(":visible")) {
+                                $childUl.slideUp(300);
+                                $(this).removeClass('expanded').text("▶");
+                            } else {
+                                $childUl.slideDown(300);
+                                $(this).addClass('expanded').text("▼");
+                            }
+                        });
+                        nodeDiv.append(toggle);
+                    } else {
+                        // For leaf nodes, show a dot indicator
+                        nodeDiv.append("<div class='dot-indicator'>•</div>");
+                    }
+
+                    // Account icon
+                    const icon = accountIcons[node.code.charAt(0)] || '📁';
+                    var iconDiv = $(`<div class='account-icon'>${icon}</div>`);
+                    nodeDiv.append(iconDiv);
+
+                    // Account info - using your existing data structure
+                    var infoDiv = $("<div class='account-info'></div>");
+                    infoDiv.append(`<div class='account-code'>${node.code}</div>`);
+                    infoDiv.append(`<div class='account-name'>${node.name}</div>`);
+                    nodeDiv.append(infoDiv);
+
+                    li.append(nodeDiv);
+
+                    // Build children recursively - your existing logic
+                    if (node.children && node.children.length > 0) {
+                        var childUl = $("<ul></ul>").hide();
+                        buildTreeNodes(node.children, childUl, level + 1);
+                        li.append(childUl);
+                    }
+
+                    ul.append(li);
+                });
+
+                container.append(ul);
+                ul.show(); // top level visible
+            }
+
+            function buildTreeNodes(nodes, container, level) {
+            nodes.forEach(function (node) {
+                var li = $("<li></li>").addClass(`level-${level}`);
+                var nodeDiv = $("<div></div>").addClass(`tree-node level-${level}`);
+
+                if (node.children && node.children.length > 0) {
+                    var toggle = $("<div class='toggle'>▶</div>");
+                    toggle.on("click", function (e) {
+                        e.stopPropagation();
+                        var $childUl = $(this).closest('.tree-node').next("ul");
+                        if ($childUl.is(":visible")) {
+                            $childUl.slideUp(300);
+                            $(this).removeClass('expanded').text("▶");
+                        } else {
+                            $childUl.slideDown(300);
+                            $(this).addClass('expanded').text("▼");
+                        }
+                    });
+                    nodeDiv.append(toggle);
+                } else {
+                    nodeDiv.append("<div class='dot-indicator'>•</div>");
+                }
+
+                const icon = level <= 1 ? (accountIcons[node.code.charAt(0)] || '📁') : '📄';
+                var iconDiv = $(`<div class='account-icon'>${icon}</div>`);
+                nodeDiv.append(iconDiv);
+
+                var infoDiv = $("<div class='account-info'></div>");
+                infoDiv.append(`<div class='account-code'>${node.code}</div>`);
+                infoDiv.append(`<div class='account-name'>${node.name}</div>`);
+                nodeDiv.append(infoDiv);
+
+                li.append(nodeDiv);
+
+                // ✅ Double-click only for level 3
+                if (level === 3) {
+                    nodeDiv.on("dblclick", function (e) {
+                        e.stopPropagation();
+                        openEditModal(node.id, node.name);
+                    });
+                }
+
+                if (node.children && node.children.length > 0) {
+                    var childUl = $("<ul></ul>").hide();
+                    buildTreeNodes(node.children, childUl, level + 1);
+                    li.append(childUl);
+                }
+
+                container.append(li);
+            });
+        }
+
+
+
+
+
+
+            function setupSearch() {
+                $('#searchInput').on('input', function() {
+                    const searchTerm = $(this).val().toLowerCase();
+
+                    if (searchTerm === '') {
+                        $('.tree li').show();
+                        $('.tree ul').hide();
+                        $('.tree > ul').show();
+                        $('.toggle').text('▶').removeClass('expanded');
+                        return;
+                    }
+
+                    $('.tree li').each(function() {
+                        const $li = $(this);
+                        const code = $li.find('.account-code').text().toLowerCase();
+                        const name = $li.find('.account-name').text().toLowerCase();
+
+                        if (code.includes(searchTerm) || name.includes(searchTerm)) {
+                            $li.show();
+                            // Show all parent nodes
+                            $li.parents('li').show();
+                            $li.parents('ul').show();
+                            // Expand parent toggles
+                            $li.parents('li').find('> .tree-node .toggle').text('▼').addClass('expanded');
+                        } else {
+                            $li.hide();
+                        }
+                    });
+                });
+            }
+
+                    if (level === 3) {
+            nodeDiv.on("dblclick", function (e) {
+                e.stopPropagation();
+
+                const accountId = node.id;   // make sure API returns `id`
+                const accountName = node.name;
+
+                const newName = prompt("Edit Account Name:", accountName);
+                if (newName && newName.trim() !== "") {
+                    $.ajax({
+                        url: "/api/COA/EditAccount",
+                        type: "PUT",
+                        contentType: "application/json",
+                        data: JSON.stringify({ Id: accountId, Name: newName }),
+                        success: function (res) {
+                            if (res.success) {
+                                alert("Account updated successfully!");
+                                nodeDiv.find(".account-name").text(newName); // update UI without reload
+                            } else {
+                                alert("Error: " + res.message);
+                            }
+                        },
+                        error: function () {
+                            alert("Failed to update account.");
+                        }
+                    });
+                }
+            });
+        }
+
+        });
+    </script>
+}

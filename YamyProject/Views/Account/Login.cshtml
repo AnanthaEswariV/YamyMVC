@@ -1,0 +1,129 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YAMY Enterprise - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+</head>
+<body class="h-screen w-screen flex items-center justify-center bg-[#0b1d36]">
+
+    <!-- Outer Card -->
+    <div class="w-[450px] bg-[#0e2545]/90 rounded-2xl shadow-2xl border border-gray-700 p-8 text-white">
+
+        <!-- Logo -->
+        <div class="flex justify-center items-center mb-6">
+            @* <img src="/images/yamy-logo.png" alt="YAMY Logo" class="h-10 mr-2"> *@
+            <span class="text-2xl font-bold">YAMY <span class="text-gray-300 font-light">Enterprise</span></span>
+        </div>
+
+        <!-- Title -->
+        <h2 class="text-center text-lg font-semibold mb-6">Login to Continue</h2>
+
+        <!-- Form -->
+        <form id="loginForm">
+            <input type="hidden" id="database" name="database" />
+            <!-- Username -->
+            <div class="mb-4">
+                <label for="username" class="block text-sm mb-1">Username</label>
+                <input type="text" id="username" name="username"
+                       class="w-full px-4 py-2 rounded-md bg-[#1a2f4d] border border-gray-600 text-white
+                              focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Enter username">
+            </div>
+
+            <!-- Password -->
+            <div class="mb-6">
+                <label for="password" class="block text-sm mb-1">Password</label>
+                <input type="password" id="password" name="password"
+                       class="w-full px-4 py-2 rounded-md bg-[#1a2f4d] border border-gray-600 text-white
+                              focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Enter password">
+            </div>
+
+        
+
+            <!-- Login Button -->
+            <button type="submit"
+                    class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded-lg font-semibold shadow-md transition">
+                Login
+            </button>
+        </form>
+
+        <!-- Register link -->
+        <p class="text-center text-sm text-gray-300 mt-6">
+            Don’t have an account?
+            <a href="@Url.Action("Register", "Account")" class="text-blue-400 hover:underline">Register</a>
+        </p>
+
+        <!-- Footer -->
+        <div class="text-center text-xs text-gray-500 mt-8">
+            © YAMY CO. 2025 ALL Rights Reserved.
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+        $(document).ready(function () {
+
+               // Configure Toastr options
+            toastr.options = {
+                "closeButton": true,
+                "debug": false,
+                "newestOnTop": false,
+                "progressBar": true,
+                "positionClass": "toast-top-right",
+                "preventDuplicates": false,
+                "onclick": null,
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "5000", // Adjust to desired display duration
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            };
+
+            let selectedDb = sessionStorage.getItem("selectedDatabase");
+            $("#database").val(selectedDb);
+
+            $("#loginForm").submit(function (e) {
+                e.preventDefault();
+
+                var data = {
+                    username: $("#username").val(),
+                    password: $("#password").val(),
+                    database: $("#database").val()
+                };
+
+                $.ajax({
+                    url: "/Account/LoginUser",
+                    type: "POST",
+                    data: data,
+                    success: function (res) {
+                        if (res.status) {
+                            toastr.success('Login successful!');
+                             // Redirect to dashboard after a short delay
+                            setTimeout(function () {
+                                window.location.href = '@Url.Action("Index", "Home")';
+                            }, 1500); // Optional delay before redirect
+                        } else {
+                            toastr.error(res.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error('An error occurred: ' + xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

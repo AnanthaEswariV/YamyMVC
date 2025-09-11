@@ -1,0 +1,261 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="page-heading">
+    <div class="row">
+        <div class="col-6">
+            <h3>Item Category</h3>
+        </div>
+        <div class="col-6 text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="bi bi-plus-lg"></i> Add Category
+            </button>
+        </div>
+    </div>
+</div>
+
+<section class="section">
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped" id="table1">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Category Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ✅ Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCategoryLabel">Add New Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCategoryForm">
+                    <div class="mb-3">
+                        <label for="categoryName" class="col-form-label">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName" name="categoryName" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveCategory()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCategoryLabel">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCategoryForm">
+                    <input type="hidden" id="editCategoryId" />
+                    <div class="mb-3">
+                        <label for="editCategoryName" class="col-form-label">Category Name</label>
+                        <input type="text" class="form-control" id="editCategoryName" name="categoryName" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="updateCategory()">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <script>
+        let dataTable;
+                // Configure Toastr options
+             toastr.options = {
+                 "closeButton": true,
+                 "debug": false,
+                 "newestOnTop": false,
+                 "progressBar": true,
+                 "positionClass": "toast-top-right",
+                 "preventDuplicates": false,
+                 "onclick": null,
+                 "showDuration": "300",
+                 "hideDuration": "1000",
+                 "timeOut": "5000", // Adjust to desired display duration
+                 "extendedTimeOut": "1000",
+                 "showEasing": "swing",
+                 "hideEasing": "linear",
+                 "showMethod": "fadeIn",
+                 "hideMethod": "fadeOut"
+             };
+        async function loadCategories() {
+            const response = await fetch('/Lists/GetItemCategory');
+            const result = await response.json();
+
+            if (result.status) {
+                if (dataTable) {
+                    dataTable.destroy(); // 🔥 fully reset
+                    document.querySelector("#table1 tbody").innerHTML = "";
+                }
+
+                dataTable = new simpleDatatables.DataTable("#table1", {
+                    data: {
+                        headings: ["ID", "Category Name", "Actions"],
+                        data: result.data.map(cat => [
+                            cat.id,
+                            cat.categoryName,
+                            `
+                                <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
+                            `
+                        ])
+                    }
+                });
+            } else {
+                alert(result.message);
+            }
+        }
+
+        function saveCategory() {
+            var categoryName = $("#categoryName").val();
+
+            if (!categoryName.trim()) {
+                alert("Please enter a category name.");
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/AddCategory',
+                type: 'POST',
+                data: { categoryName: categoryName },
+                success: function (result) {
+                       if (result.status) {
+                            var modalEl = document.getElementById("addCategoryModal");
+                         var modal = bootstrap.Modal.getInstance(modalEl);
+                         modal.hide();
+
+                         $("#addCategoryForm")[0].reset();
+                             toastr.success('Category Added Successfully!');
+                              // Redirect to dashboard after a short delay
+                             setTimeout(function () {
+                                location.reload();
+                             }, 1500); // Optional delay before redirect
+                         } else {
+                              toastr.error(result.message);
+                         }
+
+                },
+                error: function (xhr, status, error) {
+                    alert("Error: " + error);
+                }
+            });
+        }
+
+        // ✅ Edit category (fixed version)
+        function editCategory(id) {
+            // Grab table row by matching first cell text
+            let rows = document.querySelectorAll("#table1 tbody tr");
+            let targetRow = Array.from(rows).find(r => r.cells[0].innerText == id);
+
+            if (!targetRow) {
+                alert("Category not found!");
+                return;
+            }
+
+            let catId = targetRow.cells[0].innerText;
+            let catName = targetRow.cells[1].innerText;
+
+            $("#editCategoryId").val(catId);
+            $("#editCategoryName").val(catName);
+
+            var modalEl = document.getElementById("editCategoryModal");
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        // ✅ Update category
+        function updateCategory() {
+            var id = $("#editCategoryId").val();
+            var categoryName = $("#editCategoryName").val();
+
+            if (!categoryName.trim()) {
+                alert("Please enter a category name.");
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/EditCategory',
+                type: 'POST',
+                data: { id: id, categoryName: categoryName },
+                success: function (result) {
+                      if (result.status) {
+                              var modalEl = document.getElementById("editCategoryModal");
+                          var modal = bootstrap.Modal.getInstance(modalEl);
+                          modal.hide();
+
+                           $("#editCategoryForm")[0].reset();
+                              toastr.success('Category Updated Successfully!');
+                               // Redirect to dashboard after a short delay
+                              setTimeout(function () {
+                                 location.reload();
+                              }, 1500); // Optional delay before redirect
+                          } else {
+                               toastr.error(result.message);
+                          }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error: " + error);
+                }
+            });
+        }
+
+       function deleteCategory(id) {
+            if (!confirm("Are you sure you want to delete category ID " + id + "?")) {
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/DeleteCategory',
+                type: 'POST',   // MVC action
+                data: { id: id },
+                success: function (result) {
+                       if (result.status) {
+                               toastr.success('Category Deleted Successfully!');
+                               setTimeout(function () {
+                                  location.reload();
+                               }, 1500); // Optional delay before redirect
+                           } else {
+                                toastr.error(result.message);
+                           }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error: " + error);
+                }
+            });
+        }
+
+
+        document.addEventListener("DOMContentLoaded", loadCategories);
+    </script>
+}
+

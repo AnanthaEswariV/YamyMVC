@@ -1,0 +1,223 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="page-heading">
+    <div class="row">
+        <div class="col-6">
+            <h3>Unit List</h3>
+        </div>
+        <div class="col-6 text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUnitModal">
+                <i class="bi bi-plus-lg"></i> Add Unit
+            </button>
+        </div>
+    </div>
+</div>
+
+<section class="section">
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped" id="unitTable">
+                <thead>
+                    <tr>
+                        <th>Unit Name</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ✅ Add Unit Modal -->
+<div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUnitLabel">Add New Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUnitForm">
+                    <div class="mb-3">
+                        <label for="addUnitName" class="col-form-label">Unit Name</label>
+                        <input type="text" class="form-control" id="addUnitName" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveUnit()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ✏️ Edit Unit Modal -->
+<div class="modal fade" id="editUnitModal" tabindex="-1" aria-labelledby="editUnitLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUnitLabel">Edit Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUnitForm">
+                    <input type="hidden" id="editUnitId" />
+                    <div class="mb-3">
+                        <label for="editUnitName" class="col-form-label">Unit Name</label>
+                        <input type="text" class="form-control" id="editUnitName" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="updateUnit()">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+        let unitTable;
+                // Configure Toastr options
+             toastr.options = {
+                 "closeButton": true,
+                 "debug": false,
+                 "newestOnTop": false,
+                 "progressBar": true,
+                 "positionClass": "toast-top-right",
+                 "preventDuplicates": false,
+                 "onclick": null,
+                 "showDuration": "300",
+                 "hideDuration": "1000",
+                 "timeOut": "5000", // Adjust to desired display duration
+                 "extendedTimeOut": "1000",
+                 "showEasing": "swing",
+                 "hideEasing": "linear",
+                 "showMethod": "fadeIn",
+                 "hideMethod": "fadeOut"
+             };
+              function loadUnits() {
+            $.get('/Lists/GetUnit', function (res) {
+                if (res && res.length > 0) {
+                          const rows = res.map(u => [
+            u.id,
+            u.unitName,
+            `
+            <button class="btn btn-sm btn-primary" onclick="openEditModal(${u.id}, '${u.unitName}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteUnit(${u.id})">Delete</button>
+            `
+        ]);
+
+
+                    if (unitTable) {
+                        unitTable.rows().remove();
+                        unitTable.rows().add(rows);
+                        unitTable.update();
+                    } else {
+                        unitTable = new simpleDatatables.DataTable("#unitTable", {
+                            searchable: true,
+                            fixedHeight: true,
+                            perPage: 5,
+                            data: {
+                                headings: ["ID", "Unit Name", "Action"],
+                                data: rows
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+
+        function saveUnit() {
+            const name = $("#addUnitName").val();
+            if (!name.trim()) {
+                alert("Please enter a unit name.");
+                return;
+            }
+
+            $.post('/Lists/AddUnit', { name: name }, function (res) {
+                     if (res.status) {
+                            const modalEl = document.getElementById("addUnitModal");
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    $("#addUnitForm")[0].reset();
+                             toastr.success('Unit Added Successfully!');
+                              // Redirect to dashboard after a short delay
+                             setTimeout(function () {
+                                location.reload();
+                             }, 1500); // Optional delay before redirect
+                         } else {
+                              toastr.error(result.message);
+                         }
+            }).fail(function (xhr) {
+                alert("Error: " + xhr.statusText);
+            });
+        }
+
+
+                function openEditModal(id, name) {
+            $("#editUnitId").val(id);
+            $("#editUnitName").val(name);
+            const modal = new bootstrap.Modal(document.getElementById("editUnitModal"));
+            modal.show();
+        }
+
+        function updateUnit() {
+            const id = $("#editUnitId").val();
+            const name = $("#editUnitName").val();
+
+            if (!name.trim()) {
+                alert("Please enter a unit name.");
+                return;
+            }
+
+            $.post('/Lists/EditUnit', { id: id, name: name }, function (res) {
+                     if (res.status) {
+                           const modalEl = document.getElementById("editUnitModal");
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                             toastr.success('Unit Edited Successfully!');
+                              // Redirect to dashboard after a short delay
+                             setTimeout(function () {
+                                location.reload();
+                             }, 1500); // Optional delay before redirect
+                         } else {
+                              toastr.error(res.message);
+                         }
+            });
+        }
+
+
+                function deleteUnit(id) {
+            if (!confirm("Are you sure you want to delete this unit?")) return;
+
+            $.post('/Lists/DeleteUnit', { id: id }, function (res) {
+                if (res.status) {
+                   toastr.success('Unit Deleted Successfully!');
+                              // Redirect to dashboard after a short delay
+                             setTimeout(function () {
+                                location.reload();
+                             }, 1500); // Optional delay before redirect
+                } else {
+                    toastr.error(result.message);
+                }
+            });
+        }
+
+
+
+        document.addEventListener("DOMContentLoaded", loadUnits);
+    </script>
+}

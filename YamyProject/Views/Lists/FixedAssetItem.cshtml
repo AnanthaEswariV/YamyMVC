@@ -1,0 +1,127 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+@* <div class="page-heading">
+    <center><h3>Fixed Assets Item List</h3></center>
+</div> *@
+
+<div class="container mt-4">
+    <div class="card p-3 shadow-sm">
+        <div class="row mb-3">
+            @* Date filters commented out *@
+            <div class="col-md-6">
+                <input type="text" id="txtSearch" class="form-control" placeholder="Search Item" />
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-secondary me-2" id="btnPrint">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+                <button class="btn btn-success" id="btnExcel">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </button>
+            </div>
+        </div>
+
+        <table class="table table-bordered table-striped" id="fixedAssetTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Sn</th>
+                    <th>Date</th>
+                    <th>Ref Id</th>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Item Id</th>
+                    <th>Account</th>
+                    <th>Cost Price</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+    <style>
+        .form-control{
+            width: 53%;
+        }
+
+        mt-4 {
+            margin-left: -75px;
+            margin-top: -6.5rem !important;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            loadFixedAssets();
+
+            function loadFixedAssets() {
+                let from = $("#dateFrom").val();
+                let to = $("#dateTo").val();
+                let ignoreDate = $("#chkAll").is(":checked");
+
+                $.get("/Lists/GetFixedAssetItem",
+                    { dateFrom: from, dateTo: to, ignoreDate: ignoreDate },
+                    function (res) {
+                        if (!res.status) {
+                            alert(res.message);
+                            return;
+                        }
+
+                        let rows = "";
+                        $.each(res.data, function (i, item) {
+                            rows += `<tr>
+                                <td>${item.sn}</td>
+                                <td>${item.date}</td>
+                                <td>${item.refId}</td>
+                                <td>${item.name}</td>
+                                <td>${item.code}</td>
+                                <td>${item.itemId}</td>
+                                <td>${item.account}</td>
+                                <td>${item.costPrice}</td>
+                                <td>${item.description}</td>
+                            </tr>`;
+                        });
+
+                        $("#fixedAssetTable tbody").html(rows);
+
+                        // Destroy existing DataTable if already initialized
+                        if ($.fn.DataTable.isDataTable("#fixedAssetTable")) {
+                            $("#fixedAssetTable").DataTable().destroy();
+                        }
+
+                         let table = $("#fixedAssetTable").DataTable({
+            dom: 'rtip', // remove the Bfr (Buttons UI) so DataTable doesn't render its toolbar
+            buttons: [
+                { extend: 'excelHtml5', title: 'FixedAssetsItemList' },
+                { extend: 'print', title: 'Fixed Assets Item List' }
+            ]
+        });
+
+
+                        // Hook your existing buttons to DataTable exports
+                        $("#btnExcel").off("click").on("click", function () {
+                            table.button(0).trigger(); // Excel
+                        });
+
+                        $("#btnPrint").off("click").on("click", function () {
+                            table.button(1).trigger(); // Print
+                        });
+                    });
+            }
+        });
+    </script>
+
+}
