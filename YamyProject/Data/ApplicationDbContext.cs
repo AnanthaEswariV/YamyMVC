@@ -6,7 +6,6 @@
             : base(options)
         {
         }
-        public  DbSet<Sample> Samples { get; set; }    
 
     }
 }
