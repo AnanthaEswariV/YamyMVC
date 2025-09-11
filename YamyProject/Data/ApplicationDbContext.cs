@@ -6,6 +6,7 @@
             : base(options)
         {
         }
+      //  public DbSet<>{get;set;};
 
     }
 }

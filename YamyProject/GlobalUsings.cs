@@ -7,3 +7,4 @@ global using Microsoft.EntityFrameworkCore;
 global using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 global using System.Security.Cryptography;
 global using MySqlConnector;
+global using YamyProject.Data;
