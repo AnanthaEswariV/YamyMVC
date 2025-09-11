@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using YamyProject.Models;
 
 namespace YamyProject.Controllers
 {
