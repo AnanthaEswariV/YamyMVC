@@ -1,5 +1,6 @@
 ﻿
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using YamyProject.Core.Models;
 
 namespace YamyProject.Controllers
 {
