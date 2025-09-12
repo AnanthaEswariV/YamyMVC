@@ -127,11 +127,11 @@
         .top-navbar li {
             position: relative;
         }
-
-        /* Dropdown submenu styles */
+        /* Base submenu (hidden by default) */
         .dropdown .submenu {
             position: absolute;
             top: 100%;
+            left: 0;
             background-color: #fff;
             color: #333;
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
@@ -143,13 +143,14 @@
             z-index: 1002;
             border-radius: 4px;
             border: 1px solid #ddd;
-            cursor: pointer;
         }
 
-        .dropdown:hover .submenu {
+        /* Show submenu only when hovering the parent LI */
+        .dropdown:hover > .submenu {
             display: block;
         }
 
+        /* Style submenu items */
         .dropdown .submenu li {
             padding: 10px 15px;
             border-bottom: 1px solid #eee;
@@ -163,24 +164,32 @@
 
             .dropdown .submenu li:hover {
                 background-color: #f8f9fa;
-                text-decoration: none;
             }
 
-        .submenu .dropdown {
-            position: relative;
-        }
-
+        /* Nested submenu */
         .submenu .submenu {
             top: 0;
             left: 100%;
         }
 
+        /* Arrow for submenus */
         .has-submenu > a::after {
             content: '▶';
             float: right;
             font-size: 10px;
             color: #666;
+            transition: transform 0.2s ease;
         }
+
+        .has-submenu:hover > a::after {
+            transform: translateX(2px);
+        }
+
+        /* Only show nested submenu when its parent is hovered */
+        .submenu .has-submenu:hover > .submenu {
+            display: block;
+        }
+
     </style>
 </head>
 <body>
@@ -196,6 +205,12 @@
                         File
                         <ul class="submenu">
                             <li><a href="/Account/CompanyList">Company List</a></li>
+                            <li class="dropdown has-submenu">
+                                <a href="">Company Profile</a>
+                                <ul class="submenu">
+                                    <li><a href="">Company Center</a></li>
+                                    <li><a href="">Reminders</a></li>
+                                </ul></li>
                             <li><a href="">Restore Company</a></li>
                             <li><a href="">Backup Company</a></li>
                             <li><a href="#" onclick="window.close(); return false;">Exit</a></li>
@@ -212,6 +227,7 @@
                             <li><a href="/Lists/FixedAssetItem">Fixed Asset Item List</a></li>
                         </ul>
                     </li>
+
                     <li class="dropdown">
                         Accountant
                         <ul class="submenu">
@@ -227,14 +243,19 @@
                             <li><a href="">Voucher</a></li>
                             <li><a href="">Prepaid Expense List</a></li>
                             <li><a href="">Petty Cash List</a></li>
+                            <li class="dropdown has-submenu">
+                                <a href="">Banking</a>
+                                <ul class="submenu">
+                                    <li><a href="">Bank Center</a></li>
+                                    <li><a href="">Open Bank Card</a></li>
+                                    <li><a href="">Cheques</a></li>
+                                    <li><a href="">PDC</a></li>
+                                    <li><a href="">Reconciliation</a></li>
+                                </ul>
+                            </li>
                         </ul>
                     </li>
-                    <li class="dropdown">Company Profile
-                        <ul class="submenu">
-                            <li><a href="">Company Center</a></li>
-                            <li><a href="">Reminders</a></li>
-                        </ul>
-                    </li>
+                  
                     <li class="dropdown">Inventory Doc
                         <ul class="submenu">
                             <li class="dropdown has-submenu">
@@ -296,15 +317,7 @@
                             <li><a href="">Payment Voucher</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">Banking
-                        <ul class="submenu">
-                            <li><a href="">Bank Center</a></li>
-                            <li><a href="">Open Bank Card</a></li>
-                            <li><a href="">Cheques</a></li>
-                            <li><a href="">PDC</a></li>
-                            <li><a href="">Reconciliation</a></li>
-                        </ul>
-                    </li>
+                   
                     <li class="dropdown">Construction
                         <ul class="submenu">
                             <li><a href="">Project Setup</a></li>
