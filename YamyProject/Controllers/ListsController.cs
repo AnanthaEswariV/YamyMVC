@@ -451,6 +451,8 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Cost Center
+
         public IActionResult CostCenter()
         {
             return View();
@@ -623,6 +625,8 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        #endregion
 
     }
 
