@@ -165,6 +165,22 @@
                 background-color: #f8f9fa;
                 text-decoration: none;
             }
+
+        .submenu .dropdown {
+            position: relative;
+        }
+
+        .submenu .submenu {
+            top: 0;
+            left: 100%;
+        }
+
+        .has-submenu > a::after {
+            content: '▶';
+            float: right;
+            font-size: 10px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -196,9 +212,16 @@
                             <li><a href="/Lists/FixedAssetItem">Fixed Asset Item List</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">Accountant
+                    <li class="dropdown">
+                        Accountant
                         <ul class="submenu">
-                            <li><a href="">Account Center</a></li>
+                            <li class="dropdown has-submenu">
+                                <a href="">Account Center</a>
+                                <ul class="submenu">
+                                    <li><a href="/Lists/ChartOfAccount">Chart Of Account</a></li>
+                                    <li><a href="">Cost Center</a></li>
+                                </ul>
+                            </li>
                             <li><a href="">Transactions Journal</a></li>
                             <li><a href="">Fixed Assets List</a></li>
                             <li><a href="">Voucher</a></li>
@@ -419,7 +442,6 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> <!-- fixed ApexCharts -->
     <script src="~/assets/js/pages/dashboard.js"></script>
     <script src="~/assets/js/main.js"></script>
-
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
