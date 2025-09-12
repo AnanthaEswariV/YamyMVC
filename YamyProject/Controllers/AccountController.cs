@@ -1,5 +1,6 @@
 ﻿namespace YamyProject.Controllers
 {
+
     public class AccountController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -9,24 +10,26 @@
         }
 
         #region Register
+      
+
         public IActionResult Register()
         {
             return View();
         }
 
         [HttpPost]
-        public async Task<ActionResult> Register(CompanyViewModel companyViewModel)
+        public async Task<ActionResult> Register([FromBody] CompanyViewModel companyViewModel)
         {
             try
             {
                 var client = _httpClientFactory.CreateClient("ApiClient");
 
-                // ✅ call correct endpoint with JSON body
                 var response = await client.PostAsJsonAsync("api/Account/create", companyViewModel);
+
+                var data = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var data = await response.Content.ReadAsStringAsync();
                     var apiResponse = JsonConvert.DeserializeObject<dynamic>(data);
 
                     return Json(new
@@ -38,13 +41,28 @@
                 }
                 else
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    return Json(new { status = false, message = error });
+                    // 👇 Try to parse a friendly message from the API
+                    string errorMessage = "Something went wrong while creating the company.";
+
+                    try
+                    {
+                        var errorObj = JsonConvert.DeserializeObject<dynamic>(data);
+                        if (errorObj != null && errorObj.Message != null)
+                        {
+                            errorMessage = errorObj.Message.ToString();
+                        }
+                    }
+                    catch
+                    {
+                        // fallback → don’t expose raw technical error
+                    }
+
+                    return Json(new { status = false, message = errorMessage });
                 }
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = "An error occurred: " + ex.Message });
+                return Json(new { status = false, message = "An unexpected error occurred. Please try again." });
             }
         }
 

@@ -3,7 +3,6 @@
 }
 
 <div class="container">
- 
     <div class="content">
         <div class="search-box">
             <input type="text" class="search-input" placeholder="Search accounts..." id="searchInput">
@@ -40,7 +39,6 @@
         </div>
     </div>
 </div>
-
 
 @section Scripts {
     <!-- Load jQuery -->
@@ -184,6 +182,21 @@
                 transform: translateX(5px);
             }
 
+            .tree-node.level-0 {
+               color : #2563eb;
+                background: blue;
+                font-weight: bold;
+                font-size: 16px;
+                border-radius: 6px;
+                padding: 10px 14px;
+                margin-bottom: 6px;
+                font-color: blue;
+            }
+
+                .tree-node.level-0:hover {
+                    background: gray;
+                    transform: translateX(0);
+                }
 
             .tree-node.level-1 {
                 background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
@@ -212,7 +225,7 @@
 
         .tree-node.level-0 .toggle {
             background: rgba(255, 255, 255, 0.2);
-            color: gray;
+            color: white;
         }
 
         .tree-node:not(.level-0) .toggle {
@@ -275,7 +288,7 @@
 
         .tree-node.level-0 .account-code,
         .tree-node.level-0 .account-name {
-            color: #3657bb;
+            color: white;
         }
 
         .tree li ul {
@@ -363,24 +376,6 @@
             padding: 12px 15px;
         }
 
-            .tree-node.level-0 {
-                background: #2563eb; /* blue background */
-                color: #fff; /* white text */
-                font-weight: bold;
-                font-size: 16px;
-                border-radius: 6px;
-                padding: 10px 14px;
-                margin-bottom: 6px;
-            }
-
-            .tree-node.level-0 {
-                color: #1e3a8a; /* dark blue text */
-                font-weight: bold;
-                font-size: 16px;
-            }
-
-
-
         }
     </style>
     <script>
@@ -397,6 +392,8 @@
 
             // Your existing API call
             $.getJSON("/Lists/GetCOA", function (data) {
+                console.log("API Response:", data); // Debug log
+
                 if (data.status === false) {
                     $("#coaTree").html(`
                         <div class="empty-state">
@@ -410,10 +407,26 @@
                         </div>
                     `);
                 } else {
-                    buildTree(data, $("#coaTree"));
+                    // Handle different data structures
+                    let nodes = data;
+                    if (data.data && Array.isArray(data.data)) {
+                        nodes = data.data;
+                    } else if (!Array.isArray(data)) {
+                        console.error("Expected array but got:", typeof data);
+                        $("#coaTree").html(`
+                            <div class="empty-state">
+                                <h3>Data Format Error</h3>
+                                <p>Unexpected data format received from server.</p>
+                            </div>
+                        `);
+                        return;
+                    }
+
+                    buildTree(nodes, $("#coaTree"));
                     setupSearch();
                 }
-            }).fail(function() {
+            }).fail(function(xhr, status, error) {
+                console.error("API Error:", error);
                 $("#coaTree").html(`
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -428,15 +441,27 @@
             });
 
             function buildTree(nodes, container, level = 0) {
+                if (!Array.isArray(nodes)) {
+                    console.error("buildTree: nodes is not an array", nodes);
+                    return;
+                }
+
                 container.empty();
                 var ul = $("<ul></ul>");
 
                 nodes.forEach(function (node) {
+                    if (!node) return; // Skip null/undefined nodes
+
                     var li = $("<li></li>").addClass(`level-${level}`);
                     var nodeDiv = $("<div></div>").addClass(`tree-node level-${level}`);
 
+                    // Add data attributes for easier access
+                    nodeDiv.attr('data-id', node.id || '');
+                    nodeDiv.attr('data-code', node.code || '');
+                    nodeDiv.attr('data-name', node.name || '');
+
                     // Toggle button for nodes with children
-                    if (node.children && node.children.length > 0) {
+                    if (node.children && Array.isArray(node.children) && node.children.length > 0) {
                         var toggle = $("<div class='toggle'>▶</div>");
                         toggle.on("click", function (e) {
                             e.stopPropagation();
@@ -456,20 +481,30 @@
                     }
 
                     // Account icon
-                    const icon = accountIcons[node.code.charAt(0)] || '📁';
+                    const icon = accountIcons[node.code ? node.code.charAt(0) : ''] || '📁';
                     var iconDiv = $(`<div class='account-icon'>${icon}</div>`);
                     nodeDiv.append(iconDiv);
 
                     // Account info - using your existing data structure
                     var infoDiv = $("<div class='account-info'></div>");
-                    infoDiv.append(`<div class='account-code'>${node.code}</div>`);
-                    infoDiv.append(`<div class='account-name'>${node.name}</div>`);
+                    infoDiv.append(`<div class='account-code'>${node.code || ''}</div>`);
+                    infoDiv.append(`<div class='account-name'>${node.name || ''}</div>`);
                     nodeDiv.append(infoDiv);
+
+                    // Add double-click handler for level 3 nodes
+                    if (level === 3) {
+                        nodeDiv.on("dblclick", function (e) {
+                            e.stopPropagation();
+                            openEditModal(node.id, node.name);
+                        });
+                        nodeDiv.css('cursor', 'pointer');
+                        nodeDiv.attr('title', 'Double-click to edit');
+                    }
 
                     li.append(nodeDiv);
 
-                    // Build children recursively - your existing logic
-                    if (node.children && node.children.length > 0) {
+                    // Build children recursively
+                    if (node.children && Array.isArray(node.children) && node.children.length > 0) {
                         var childUl = $("<ul></ul>").hide();
                         buildTreeNodes(node.children, childUl, level + 1);
                         li.append(childUl);
@@ -483,61 +518,70 @@
             }
 
             function buildTreeNodes(nodes, container, level) {
-            nodes.forEach(function (node) {
-                var li = $("<li></li>").addClass(`level-${level}`);
-                var nodeDiv = $("<div></div>").addClass(`tree-node level-${level}`);
-
-                if (node.children && node.children.length > 0) {
-                    var toggle = $("<div class='toggle'>▶</div>");
-                    toggle.on("click", function (e) {
-                        e.stopPropagation();
-                        var $childUl = $(this).closest('.tree-node').next("ul");
-                        if ($childUl.is(":visible")) {
-                            $childUl.slideUp(300);
-                            $(this).removeClass('expanded').text("▶");
-                        } else {
-                            $childUl.slideDown(300);
-                            $(this).addClass('expanded').text("▼");
-                        }
-                    });
-                    nodeDiv.append(toggle);
-                } else {
-                    nodeDiv.append("<div class='dot-indicator'>•</div>");
+                if (!Array.isArray(nodes)) {
+                    console.error("buildTreeNodes: nodes is not an array", nodes);
+                    return;
                 }
 
-                const icon = level <= 1 ? (accountIcons[node.code.charAt(0)] || '📁') : '📄';
-                var iconDiv = $(`<div class='account-icon'>${icon}</div>`);
-                nodeDiv.append(iconDiv);
+                nodes.forEach(function (node) {
+                    if (!node) return; // Skip null/undefined nodes
 
-                var infoDiv = $("<div class='account-info'></div>");
-                infoDiv.append(`<div class='account-code'>${node.code}</div>`);
-                infoDiv.append(`<div class='account-name'>${node.name}</div>`);
-                nodeDiv.append(infoDiv);
+                    var li = $("<li></li>").addClass(`level-${level}`);
+                    var nodeDiv = $("<div></div>").addClass(`tree-node level-${level}`);
 
-                li.append(nodeDiv);
+                    // Add data attributes
+                    nodeDiv.attr('data-id', node.id || '');
+                    nodeDiv.attr('data-code', node.code || '');
+                    nodeDiv.attr('data-name', node.name || '');
 
-                // ✅ Double-click only for level 3
-                if (level === 3) {
-                    nodeDiv.on("dblclick", function (e) {
-                        e.stopPropagation();
-                        openEditModal(node.id, node.name);
-                    });
-                }
+                    if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+                        var toggle = $("<div class='toggle'>▶</div>");
+                        toggle.on("click", function (e) {
+                            e.stopPropagation();
+                            var $childUl = $(this).closest('.tree-node').next("ul");
+                            if ($childUl.is(":visible")) {
+                                $childUl.slideUp(300);
+                                $(this).removeClass('expanded').text("▶");
+                            } else {
+                                $childUl.slideDown(300);
+                                $(this).addClass('expanded').text("▼");
+                            }
+                        });
+                        nodeDiv.append(toggle);
+                    } else {
+                        nodeDiv.append("<div class='dot-indicator'>•</div>");
+                    }
 
-                if (node.children && node.children.length > 0) {
-                    var childUl = $("<ul></ul>").hide();
-                    buildTreeNodes(node.children, childUl, level + 1);
-                    li.append(childUl);
-                }
+                    const icon = level <= 1 ? (accountIcons[node.code ? node.code.charAt(0) : ''] || '📁') : '📄';
+                    var iconDiv = $(`<div class='account-icon'>${icon}</div>`);
+                    nodeDiv.append(iconDiv);
 
-                container.append(li);
-            });
-        }
+                    var infoDiv = $("<div class='account-info'></div>");
+                    infoDiv.append(`<div class='account-code'>${node.code || ''}</div>`);
+                    infoDiv.append(`<div class='account-name'>${node.name || ''}</div>`);
+                    nodeDiv.append(infoDiv);
 
+                    // Add double-click handler for level 3 nodes
+                    if (level === 3) {
+                        nodeDiv.on("dblclick", function (e) {
+                            e.stopPropagation();
+                            openEditModal(node.id, node.name);
+                        });
+                        nodeDiv.css('cursor', 'pointer');
+                        nodeDiv.attr('title', 'Double-click to edit');
+                    }
 
+                    li.append(nodeDiv);
 
+                    if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+                        var childUl = $("<ul></ul>").hide();
+                        buildTreeNodes(node.children, childUl, level + 1);
+                        li.append(childUl);
+                    }
 
-
+                    container.append(li);
+                });
+            }
 
             function setupSearch() {
                 $('#searchInput').on('input', function() {
@@ -570,36 +614,52 @@
                 });
             }
 
-                    if (level === 3) {
-            nodeDiv.on("dblclick", function (e) {
-                e.stopPropagation();
-
-                const accountId = node.id;   // make sure API returns `id`
-                const accountName = node.name;
-
-                const newName = prompt("Edit Account Name:", accountName);
-                if (newName && newName.trim() !== "") {
-                    $.ajax({
-                        url: "/api/COA/EditAccount",
-                        type: "PUT",
-                        contentType: "application/json",
-                        data: JSON.stringify({ Id: accountId, Name: newName }),
-                        success: function (res) {
-                            if (res.success) {
-                                alert("Account updated successfully!");
-                                nodeDiv.find(".account-name").text(newName); // update UI without reload
-                            } else {
-                                alert("Error: " + res.message);
-                            }
-                        },
-                        error: function () {
-                            alert("Failed to update account.");
-                        }
-                    });
+            // Edit Modal Functions
+            function openEditModal(accountId, accountName) {
+                if (!accountId) {
+                    alert('Account ID not found');
+                    return;
                 }
-            });
-        }
 
+                $('#editAccountId').val(accountId);
+                $('#editAccountName').val(accountName);
+                $('#editAccountModal').modal('show');
+            }
+
+            // Save account changes
+            $('#saveAccountBtn').on('click', function() {
+                const accountId = $('#editAccountId').val();
+                const newName = $('#editAccountName').val().trim();
+
+                if (!newName) {
+                    alert('Please enter an account name');
+                    return;
+                }
+
+                $.ajax({
+                    url: "/api/COA/EditAccount",
+                    type: "PUT",
+                    contentType: "application/json",
+                    data: JSON.stringify({ Id: accountId, Name: newName }),
+                    success: function (res) {
+                        if (res.success) {
+                            alert("Account updated successfully!");
+                            // Update UI without reload
+                            $(`.tree-node[data-id="${accountId}"] .account-name`).text(newName);
+                            $('#editAccountModal').modal('hide');
+                        } else {
+                            alert("Error: " + (res.message || 'Unknown error'));
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Ajax error:', error);
+                        alert("Failed to update account. Please try again.");
+                    }
+                });
+            });
+
+            // Make openEditModal globally available for debugging
+            window.openEditModal = openEditModal;
         });
     </script>
 }

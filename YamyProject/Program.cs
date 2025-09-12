@@ -9,10 +9,10 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("ApiClient", client =>
 {
     client.BaseAddress = new Uri("https://localhost:7280/");
-    //client.BaseAddress = new Uri("https://api.parentengagementtracker.com");
     client.DefaultRequestHeaders.Accept.Clear();
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
+
 // ? Register Session services
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

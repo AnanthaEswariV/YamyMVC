@@ -60,7 +60,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
 
     <script>
-        $('#registerForm').submit(function (e) {
+
+
+             $('#registerForm').submit(function (e) {
             e.preventDefault();
 
             var formData = {
@@ -74,17 +76,14 @@
             };
 
             $.ajax({
-                url: '@Url.Action("Register", "Account")', 
+                url: '@Url.Action("Register", "Account")',
                 type: 'POST',
-                contentType: 'application/x-www-form-urlencoded',
-                data: formData,
+                contentType: 'application/json',
+                data: JSON.stringify(formData),  // 👈 must stringify
                 success: function (response) {
-                    console.log("Response:", response);
-
                     if (response.status) {
                         toastr.success(response.message || 'Company created successfully!');
 
-                        // Redirect after short delay
                         setTimeout(function () {
                             window.location.href = '@Url.Action("CompanyList", "Account")';
                         }, 1500);
@@ -97,6 +96,8 @@
                 }
             });
         });
+
+
     </script>
 
 </body>
