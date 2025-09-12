@@ -1,13 +1,19 @@
 ﻿using YamyProject.Core.Models;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace YamyProject.Controllers
 {
+    [Route("Lists/[action]")]
     public class ListsController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;
-        public ListsController(IHttpClientFactory httpClientFactory)
+        private readonly IConfiguration _config;
+        private readonly MySqlConnection _connection;
+        public ListsController(IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _httpClientFactory = httpClientFactory;
+            _config = config;
+            _connection = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
         }
 
         #region Item Category
@@ -444,6 +450,179 @@ namespace YamyProject.Controllers
         }
 
         #endregion
+
+        public IActionResult CostCenter()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetCostCenters()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var costCenters = new List<CostCenterRequest>();
+
+                // Get main cost centers
+                var mainQuery = "SELECT id, code, name FROM tbl_cost_center ORDER BY code";
+                using (var cmd = new MySqlCommand(mainQuery, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        costCenters.Add(new CostCenterRequest
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            IsMain = true,
+                            IsSub = false,
+                            //MainId = null
+                        });
+                    }
+                }
+
+                // Get sub cost centers
+                var subQuery = "SELECT id, code, name, main_id FROM tbl_sub_cost_center ORDER BY code";
+                using (var cmd = new MySqlCommand(subQuery, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        costCenters.Add(new CostCenterRequest
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            IsMain = false,
+                            IsSub = true,
+                            MainId = Convert.ToInt32(reader["main_id"])
+                        });
+                    }
+                }
+
+                return Ok(costCenters);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [IgnoreAntiforgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> SaveCostCenter([FromBody] CostCenterRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (!model.IsMain && !model.IsSub)
+                return BadRequest(new { status = false, message = "Choose one Account type first" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter account name" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if name already exists
+                var checkQuery = "SELECT COUNT(*) FROM tbl_cost_center WHERE name = @name";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name);
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                    if (exists)
+                        return BadRequest(new { status = false, message = "Account name already exists. Enter another name." });
+                }
+
+                if (model.IsMain)
+                {
+                    // Get last main code
+                    int mainCode = 101;
+                    var getCodeQuery = @"SELECT code FROM tbl_cost_center ORDER BY CAST(SUBSTRING_INDEX(code, '-', -1) AS UNSIGNED) DESC LIMIT 1";
+                    using (var codeCmd = new MySqlCommand(getCodeQuery, conn))
+                    using (var reader = await codeCmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync() && reader["code"] != DBNull.Value)
+                            mainCode = Convert.ToInt32(reader["code"]) + 1;
+                    }
+
+                    var insertQuery = @"INSERT INTO tbl_cost_center (name, code, project_id) 
+                                    VALUES (@name, @code, @project_id)";
+                    using (var insertCmd = new MySqlCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@name", model.Name);
+                        insertCmd.Parameters.AddWithValue("@code", mainCode);
+                        insertCmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new { status = true, message = "Main Cost Center inserted successfully", code = mainCode });
+                }
+                else if (model.IsSub)
+                {
+                    // Get main code
+                    string mainCode = "";
+                    var getMainQuery = "SELECT code FROM tbl_cost_center WHERE id = @id";
+                    using (var mainCmd = new MySqlCommand(getMainQuery, conn))
+                    {
+                        mainCmd.Parameters.AddWithValue("@id", model.MainId);
+                        using var reader = await mainCmd.ExecuteReaderAsync();
+                        if (await reader.ReadAsync())
+                            mainCode = reader["code"].ToString();
+                        else
+                            return BadRequest(new { status = false, message = "Main cost center not found" });
+                    }
+
+                    int newSubCode = 1;
+                    var getSubQuery = "SELECT MAX(code) FROM tbl_sub_cost_center WHERE code LIKE @mainCode";
+                    using (var subCmd = new MySqlCommand(getSubQuery, conn))
+                    {
+                        subCmd.Parameters.AddWithValue("@mainCode", mainCode + "%");
+                        var result = await subCmd.ExecuteScalarAsync();
+                        if (result != DBNull.Value && result != null)
+                            newSubCode = int.Parse(result.ToString().Substring(mainCode.Length)) + 1;
+                    }
+
+                    string formattedSubCode = mainCode + newSubCode.ToString("D3");
+
+                    var insertSubQuery = @"INSERT INTO tbl_sub_cost_center (code, name, main_id, project_id) 
+                                       VALUES (@code, @name, @main_id, @project_id)";
+                    using (var insertSubCmd = new MySqlCommand(insertSubQuery, conn))
+                    {
+                        insertSubCmd.Parameters.AddWithValue("@code", formattedSubCode);
+                        insertSubCmd.Parameters.AddWithValue("@name", model.Name);
+                        insertSubCmd.Parameters.AddWithValue("@main_id", model.MainId);
+                        insertSubCmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+
+                        await insertSubCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new { status = true, message = "Sub Cost Center inserted successfully", code = formattedSubCode });
+                }
+
+                return BadRequest(new { status = false, message = "Invalid request" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
     }
 

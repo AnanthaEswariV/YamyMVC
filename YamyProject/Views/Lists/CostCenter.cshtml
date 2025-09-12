@@ -1,0 +1,496 @@
+﻿@{
+  
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .tree-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .tree-node {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        margin: 2px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+        .tree-node:hover {
+            background-color: #f5f7fa;
+        }
+
+        .tree-node.selected {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+        }
+
+    .expand-toggle {
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+        color: #666;
+        transition: transform 0.2s ease;
+    }
+
+        .expand-toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .expand-toggle.no-children {
+            visibility: hidden;
+        }
+
+    .node-icon {
+        margin-right: 10px;
+        font-size: 16px;
+        width: 20px;
+        text-align: center;
+    }
+
+    .main-node .node-icon {
+        color: #2196f3;
+    }
+
+    .sub-node .node-icon {
+        color: #ff9800;
+    }
+
+    .node-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .node-label {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .node-code {
+        margin-left: 10px;
+        padding: 2px 6px;
+        background: #f0f0f0;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #666;
+    }
+
+    .main-node .node-label {
+        font-weight: 600;
+        color: #1976d2;
+    }
+
+    .sub-node {
+        margin-left: 30px;
+        background: #fafafa;
+    }
+
+        .sub-node .node-label {
+            color: #555;
+        }
+
+    .children-container {
+        margin-left: 30px;
+        border-left: 2px solid #e0e0e0;
+        padding-left: 10px;
+        display: none;
+    }
+
+        .children-container.expanded {
+            display: block;
+        }
+
+    .node-actions {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        margin-left: 10px;
+    }
+
+    .tree-node:hover .node-actions {
+        opacity: 1;
+    }
+
+    .action-btn {
+        background: none;
+        border: none;
+        padding: 4px 8px;
+        margin: 0 2px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        color: #666;
+        transition: all 0.2s ease;
+    }
+
+        .action-btn:hover {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+
+ /*    .page-heading {
+        margin: -61px 0 2rem;
+    } */
+</style>
+<div class="page-heading">
+<div class="row">
+    <div class="col-6">
+        <h3>Cost Center</h3>
+    </div>
+    <div class="col-6 text-end">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCostCenterModal">
+            <i class="bi bi-plus-lg"></i> Add Cost Center
+        </button>
+    </div>
+</div>
+</div>
+
+
+<section class="section">
+    <div class="card">
+        <div class="card-body">
+            <div class="tree-container">
+                <div id="costCenterTree">
+                    <div class="loading">
+                        <i class="bi bi-arrow-clockwise spin"></i> Loading cost centers...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal -->
+<div class="modal fade" id="addCostCenterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Cost Center</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="costCenterForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Cost Center Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label><br />
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="type" id="radioMain" value="main" />
+                            <label class="form-check-label" for="radioMain">Main Cost Center</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="type" id="radioSub" value="sub" />
+                            <label class="form-check-label" for="radioSub">Sub Cost Center</label>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="mainSelectDiv" style="display:none;">
+                        <label for="mainId" class="form-label">Select Main Cost Center</label>
+                        <select id="mainId" name="mainId" class="form-select">
+                            <option value="">Choose main cost center...</option>
+                        </select>
+                    </div>
+                    <input type="hidden" id="editId" name="editId" value="" />
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveCostCenterBtn">
+                    <span id="saveButtonText">Save</span>
+                    <span id="saveButtonSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        let costCenterData = [];
+
+        // Load cost centers from server
+        function loadCostCenters() {
+            const treeContainer = $('#costCenterTree');
+            treeContainer.html('<div class="loading"><i class="bi bi-arrow-clockwise"></i> Loading cost centers...</div>');
+
+          
+            $.ajax({
+                url: '/Lists/GetCostCenters', 
+                type: 'GET',
+                success: function(response) {
+                    console.log('Loaded cost centers:', response);
+                    if (response && Array.isArray(response)) {
+                        costCenterData = response;
+                        renderTree();
+                    } else {
+                        showError('Invalid data format received');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading cost centers:', xhr.responseText);
+                    showError('Failed to load cost centers: ' + error);
+                }
+            });
+        }
+
+               function renderTree() {
+            const container = $('#costCenterTree');
+            container.empty();
+
+            if (!costCenterData || costCenterData.length === 0) {
+                container.html('<div class="empty-state">No cost centers found</div>');
+                return;
+            }
+
+            const mainNodes = costCenterData.filter(x => x.isMain);
+            const subNodes = costCenterData.filter(x => x.isSub);
+
+            mainNodes.forEach(main => {
+                const children = subNodes.filter(sub => sub.mainId === main.id);
+                container.append(createNode(main, children, true));
+            });
+        }
+
+               function createNode(node, children = [], isMain = false) {
+            const hasChildren = children && children.length > 0;
+            const childrenId = `children-${node.id}`;
+
+            let html = `
+            <div class="tree-item" data-id="${node.id}">
+                <div class="tree-node ${isMain ? 'main-node' : 'sub-node'}" data-id="${node.id}">
+                    <div class="expand-toggle ${hasChildren ? '' : 'no-children'}" onclick="toggleChildren('${childrenId}', this)">
+                        ${hasChildren ? '<i class="bi bi-chevron-right"></i>' : ''}
+                    </div>
+                    <div class="node-icon">${isMain ? '<i class="bi bi-folder"></i>' : '<i class="bi bi-file-text"></i>'}</div>
+                    <div class="node-content">
+                        <span class="node-label">${node.code || ''} - ${node.name}</span>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            if (hasChildren) {
+                html += `<div class="children-container" id="${childrenId}">`;
+                children.forEach(child => {
+                    html += createNode(child, [], false);
+                });
+                html += `</div>`;
+            }
+
+            return html;
+        }
+
+
+
+        // Toggle children visibility
+        function toggleChildren(childrenId, toggleElement) {
+            const childrenDiv = $(`#${childrenId}`);
+            const icon = $(toggleElement).find('i');
+
+            if (childrenDiv.hasClass('expanded')) {
+                childrenDiv.removeClass('expanded').slideUp(200);
+                icon.removeClass('bi-chevron-down').addClass('bi-chevron-right');
+                $(toggleElement).removeClass('expanded');
+            } else {
+                childrenDiv.addClass('expanded').slideDown(200);
+                icon.removeClass('bi-chevron-right').addClass('bi-chevron-down');
+                $(toggleElement).addClass('expanded');
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            $('#costCenterTree').html(`
+                <div class="empty-state">
+                    <i class="bi bi-exclamation-triangle text-warning"></i><br>
+                    ${message}
+                    <br><br>
+                    <button class="btn btn-sm btn-primary" onclick="loadCostCenters()">
+                        <i class="bi bi-arrow-clockwise"></i> Retry
+                    </button>
+                </div>
+            `);
+        }
+
+        // Edit cost center
+        function editCostCenter(id) {
+            const costCenter = costCenterData.find(cc => cc.Id === id);
+            if (!costCenter) return;
+
+            $('#editId').val(costCenter.Id);
+            $('#name').val(costCenter.Name);
+
+            if (costCenter.IsMain) {
+                $('#radioMain').prop('checked', true);
+                $('#mainSelectDiv').hide();
+            } else {
+                $('#radioSub').prop('checked', true);
+                loadMainCostCentersForSelect();
+                $('#mainSelectDiv').show();
+                $('#mainId').val(costCenter.MainId);
+            }
+
+            $('.modal-title').text('Edit Cost Center');
+            $('#saveButtonText').text('Update');
+            $('#addCostCenterModal').modal('show');
+        }
+
+        // Delete cost center
+        function deleteCostCenter(id, name) {
+            Swal.fire({
+                title: 'Delete Cost Center',
+                text: `Are you sure you want to delete "${name}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Add your delete AJAX call here
+                    Swal.fire('Deleted!', 'Cost center has been deleted.', 'success');
+                    loadCostCenters(); // Reload the tree
+                }
+            });
+        }
+
+        // Load main cost centers for dropdown
+        function loadMainCostCentersForSelect() {
+            const mainNodes = costCenterData.filter(x => x.IsMain);
+            const select = $('#mainId');
+            select.empty().append('<option value="">Choose main cost center...</option>');
+
+            mainNodes.forEach(main => {
+                select.append(`<option value="${main.Id}">${main.Name}</option>`);
+            });
+        }
+
+        // Document ready
+        $(document).ready(function() {
+            loadCostCenters();
+
+            // Handle type selection
+            $('input[name="type"]').change(function() {
+                if ($(this).val() === 'sub') {
+                    loadMainCostCentersForSelect();
+                    $('#mainSelectDiv').show();
+                } else {
+                    $('#mainSelectDiv').hide();
+                }
+            });
+
+            // Handle modal reset
+            $('#addCostCenterModal').on('hidden.bs.modal', function() {
+                $('#costCenterForm')[0].reset();
+                $('#editId').val('');
+                $('.modal-title').text('Add Cost Center');
+                $('#saveButtonText').text('Save');
+                $('#mainSelectDiv').hide();
+            });
+
+            // Save cost center
+            $('#saveCostCenterBtn').click(function() {
+                const $btn = $(this);
+                const $spinner = $('#saveButtonSpinner');
+                const $text = $('#saveButtonText');
+
+                // Validation
+                if (!$('#name').val().trim()) {
+                    Swal.fire('Validation Error', 'Please enter a cost center name.', 'warning');
+                    return;
+                }
+
+                if (!$('input[name="type"]:checked').val()) {
+                    Swal.fire('Validation Error', 'Please select a type.', 'warning');
+                    return;
+                }
+
+                if ($('#radioSub').is(':checked') && !$('#mainId').val()) {
+                    Swal.fire('Validation Error', 'Please select a main cost center.', 'warning');
+                    return;
+                }
+
+                // Show loading
+                $btn.prop('disabled', true);
+                $spinner.removeClass('d-none');
+                $text.text('Saving...');
+
+                const formData = {
+                    Id: parseInt($('#editId').val()) || 0,
+                    Name: $('#name').val().trim(),
+                    IsMain: $('#radioMain').is(':checked'),
+                    IsSub: $('#radioSub').is(':checked'),
+                    MainId: $('#radioSub').is(':checked') ? parseInt($('#mainId').val()) : null
+                };
+
+                console.log('Saving cost center:', formData);
+
+                $.ajax({
+                    url: '/Lists/SaveCostCenter', 
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        console.log('Save response:', response);
+                        if (response && response.status) {
+                            Swal.fire('Success', response.message || 'Cost center saved successfully!', 'success');
+                            $('#addCostCenterModal').modal('hide');
+                            loadCostCenters();
+                        } else {
+                            Swal.fire('Error', response.message || 'Failed to save cost center', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Save error:', xhr.responseText);
+                        Swal.fire('Error', 'Failed to save cost center: ' + error, 'error');
+                    },
+                    complete: function() {
+                        // Hide loading
+                        $btn.prop('disabled', false);
+                        $spinner.addClass('d-none');
+                        $text.text($('#editId').val() ? 'Update' : 'Save');
+                    }
+                });
+            });
+
+            // Handle tree node selection
+            $(document).on('click', '.tree-node', function(e) {
+                // Don't select if clicking on actions or expand toggle
+                if ($(e.target).closest('.expand-toggle, .node-actions').length) {
+                    return;
+                }
+
+                $('.tree-node').removeClass('selected');
+                $(this).addClass('selected');
+            });
+        });
+    </script>
+}

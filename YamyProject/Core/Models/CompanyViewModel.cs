@@ -31,4 +31,15 @@
         public string NewPassword { get; set; } = "";
         public string ConfirmPassword { get; set; } = "";
     }
+    public class CostCenterRequest
+    {
+        public int Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public bool IsMain { get; set; }
+        public bool IsSub { get; set; }
+        public int ProjectId { get; set; }
+        public int MainId { get; set; } 
+        public int UserId { get; set; } // For audit log
+    }
 }
