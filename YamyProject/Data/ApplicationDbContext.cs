@@ -8,6 +8,7 @@ namespace YamyProject.Data
         {
         }
         public DbSet<TblCompany> TblCompanys { get;set;}
+        public DbSet<TblWarehouse> tbl_warehouse { get; set; }
 
     }
 }

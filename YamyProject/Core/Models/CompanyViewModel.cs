@@ -40,6 +40,17 @@
         public bool IsSub { get; set; }
         public int ProjectId { get; set; }
         public int MainId { get; set; } 
-        public int UserId { get; set; } // For audit log
+        public int UserId { get; set; } 
     }
+    public class WarehouseRequest
+    {
+        public int Id { get; set; } 
+        public string Name { get; set; }
+        public int? EmpId { get; set; }
+        public string City { get; set; }
+        public string BuildingName { get; set; }
+        public int? AccountId { get; set; }
+        public int CreatedBy { get; set; }
+    }
+
 }

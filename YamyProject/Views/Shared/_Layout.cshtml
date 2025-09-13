@@ -108,8 +108,6 @@
 
 
 
-        /* Add these styles to your existing CSS */
-
         /* Fix the top navbar */
         .top-navbar {
             position: fixed;
@@ -122,6 +120,7 @@
         /* Add padding to main content */
         #main {
             padding-top: 60px;
+            padding-left: 0px;
         }
 
         /* Add position relative to navbar items */
@@ -202,7 +201,7 @@
 
         <!-- ✅ Top Navbar -->
         <div class="top-navbar">
-            <div class="d-flex align-items-center justify-content-between w-100">
+            <div class="d-flex align-items-center  w-100">
 
                 <!-- Left: Navigation Menu -->
                 <ul class="navbar-links">
@@ -274,7 +273,7 @@
                             <li><a href="">Add New Item</a></li>
                             <li><a href="">Stock Management</a></li>
                             <li><a href="">Inventory Center</a></li>
-                            <li><a href="">Warehouse Center</a></li>
+                            <li><a href="/Inventory/WareHouse">Warehouse Center</a></li>
                             <li><a href="">Item Warehouse Transfter</a></li>
                         </ul>
                     </li>
@@ -364,11 +363,11 @@
                     </li>
                 </ul>
 
-                <!-- Right: User Profile -->
-                <div class="navbar-user d-flex align-items-center">
+              @*   <!-- Right: User Profile -->
+                <div class="navbar-user d-flex align-items-right">
                     <i class="bi bi-person-circle me-2"></i>
                     <span>yamy1 ▾</span>
-                </div>
+                </div> *@
             </div>
         </div>
 
@@ -429,17 +428,8 @@
 
         <!-- ✅ Main -->
         <div id="main">
-            <header class="mb-3">
-                <a href="#" class="burger-btn d-block d-xl-none">
-                    <i class="bi bi-justify fs-3"></i>
-                </a>
-            </header>
-
-            <div class="page-heading">
-                <h3>@ViewData["Title"]</h3>
-            </div>
-
-            <div class="page-content">
+     
+               <div class="page-content">
                 <section class="row">
                     <div class="col-12">
                         @RenderBody()

@@ -1,0 +1,123 @@
+﻿@{
+    ViewData["Title"] = "WareHouse";
+}
+
+<div class="container">
+
+    <!-- Top Controls -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <ul class="nav nav-pills">
+                <li class="nav-item dropdown me-2">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                        Warehouse Operations
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" id="btnNew">New Warehouse</a></li>
+                        <li><a class="dropdown-item" href="#" id="btnEdit">Edit Warehouse</a></li>
+                        <li><a class="dropdown-item" href="#" id="btnDelete">Delete Warehouse</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item me-2">
+                    <a class="nav-link" href="#" id="btnTransfer">Transfer Items</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="btnHistory">Transfer History</a>
+                </li>
+            </ul>
+        </div>
+        <div class="col-md-4">
+            <select id="warehouseDropdown" class="form-select">
+                <option value="">Select Warehouse</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            Warehouse Items
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered mb-0" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Barcode</th>
+                            <th>Cost Price</th>
+                            <th>Sales Price</th>
+                            <th>Quantity</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            // Load warehouses
+            function loadWarehouses() {
+                $.get("/Warehouse/GetWarehouses", function (res) {
+                    if (!res.status) return alert("Error loading warehouses");
+
+                    let dd = $("#warehouseDropdown");
+                    dd.empty().append('<option value="">Select Warehouse</option>');
+                    res.data.forEach(w => dd.append(`<option value="${w.id}">${w.code} - ${w.name}</option>`));
+
+                    if (res.data.length > 0) loadItems(res.data[0].id);
+                });
+            }
+
+            function loadItems(warehouseId) {
+                $.get(`/Warehouse/GetWarehouseItems?warehouseId=${warehouseId}`, function (res) {
+                    if (!res.status) return alert("Error loading items");
+
+                    let rows = res.data.map(item => `
+                        <tr>
+                            <td>${item.barcode}</td>
+                            <td>${item.costPrice}</td>
+                            <td>${item.salesPrice}</td>
+                            <td>${item.qty}</td>
+                            <td>${item.type}</td>
+                        </tr>`).join('');
+                    $("#itemsTable tbody").html(rows);
+                });
+            }
+
+            $("#warehouseDropdown").change(function () {
+                let id = $(this).val();
+                if (id) loadItems(id);
+            });
+
+            // Buttons
+            $("#btnNew").click(() => window.location.href = "/Warehouse/Create");
+            $("#btnEdit").click(() => {
+                let id = $("#warehouseDropdown").val();
+                if (!id) return alert("Select a warehouse first");
+                window.location.href = "/Warehouse/Edit/" + id;
+            });
+            $("#btnDelete").click(() => {
+                let id = $("#warehouseDropdown").val();
+                if (!id) return alert("Select a warehouse first");
+                if (!confirm("Are you sure?")) return;
+
+                $.post("/Warehouse/Delete", { id }, function (res) {
+                    alert(res.message);
+                    if (res.status) loadWarehouses();
+                });
+            });
+            $("#btnTransfer").click(() => window.location.href = "/Warehouse/Transfer");
+            $("#btnHistory").click(() => window.location.href = "/Warehouse/History");
+
+            loadWarehouses();
+        });
+    </script>
+}
+
