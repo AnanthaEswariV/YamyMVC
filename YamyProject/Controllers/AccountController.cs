@@ -111,7 +111,7 @@ namespace YamyProject.Controllers
         {
             return View();
         }
-      
+
         [HttpPost]
         public async Task<IActionResult> LoginUser(string username, string password, string database)
         {
@@ -123,7 +123,7 @@ namespace YamyProject.Controllers
                 {
                     UserName = username,
                     Password = password,
-                    Database = database   // ✅ important
+                    Database = database
                 };
 
                 var json = JsonConvert.SerializeObject(loginRequest);
@@ -134,11 +134,17 @@ namespace YamyProject.Controllers
                 if (!response.IsSuccessStatusCode)
                     return Json(new { status = false, message = "Login failed" });
 
-
+                var result = await response.Content.ReadAsStringAsync();
+                var obj = JsonConvert.DeserializeObject<dynamic>(result);
                 // ✅ store selected DB in session
                 HttpContext.Session.SetString("DatabaseName", database);
 
-                var result = await response.Content.ReadAsStringAsync();
+                if (obj.status == true)
+                {
+                    int userId = obj.user.id; // get userId from API response
+                    HttpContext.Session.SetInt32("UserId", userId);
+                }
+
                 return Content(result, "application/json");
             }
             catch (Exception ex)

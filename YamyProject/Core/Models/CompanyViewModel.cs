@@ -44,13 +44,13 @@
     }
     public class WarehouseRequest
     {
-        public int Id { get; set; } 
+        public int Id { get; set; }
         public string Name { get; set; }
-        public int? EmpId { get; set; }
         public string City { get; set; }
         public string BuildingName { get; set; }
+        public int? EmpId { get; set; }
         public int? AccountId { get; set; }
-        public int CreatedBy { get; set; }
+        public int CreadedBy { get; set;}
     }
 
 }

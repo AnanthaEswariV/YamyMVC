@@ -10,19 +10,35 @@
             <ul class="nav nav-pills">
                 <li class="nav-item dropdown me-2">
                     <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-                        Warehouse Operations
+                        <i class="bi bi-gear-fill me-1"></i> Warehouse Operations
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#" id="btnNew">New Warehouse</a></li>
-                        <li><a class="dropdown-item" href="#" id="btnEdit">Edit Warehouse</a></li>
-                        <li><a class="dropdown-item" href="#" id="btnDelete">Delete Warehouse</a></li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newWarehouseModal">
+                                <i class="bi bi-plus-circle me-2"></i> New Warehouse
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnEdit">
+                                <i class="bi bi-pencil-square me-2"></i> Edit Warehouse
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="btnDelete">
+                                <i class="bi bi-trash-fill me-2"></i> Delete Warehouse
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <li class="nav-item me-2">
-                    <a class="nav-link" href="#" id="btnTransfer">Transfer Items</a>
+                    <a class="nav-link" href="#" id="btnTransfer">
+                        <i class="bi bi-arrow-left-right me-1"></i> Transfer Items
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#" id="btnHistory">Transfer History</a>
+                    <a class="nav-link" href="#" id="btnHistory">
+                        <i class="bi bi-clock-history me-1"></i> Transfer History
+                    </a>
                 </li>
             </ul>
         </div>
@@ -35,14 +51,12 @@
 
     <!-- Items Table -->
     <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            Warehouse Items
-        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover table-striped table-bordered mb-0" id="itemsTable">
+                <table class="table table-striped" id="itemsTable">
                     <thead class="table-light">
                         <tr>
+                            <th>Item Name</th>
                             <th>Barcode</th>
                             <th>Cost Price</th>
                             <th>Sales Price</th>
@@ -51,7 +65,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Data loaded dynamically -->
+                        <!-- rows -->
                     </tbody>
                 </table>
             </div>
@@ -59,65 +73,628 @@
     </div>
 </div>
 
+<div class="modal fade" id="newWarehouseModal" tabindex="-1" aria-labelledby="newWarehouseLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="newWarehouseLabel">New Warehouse</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form id="newWarehouseForm">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Warehouse Code</label>
+                            <input type="text" class="form-control" id="warehouseCode" disabled placeholder="Auto">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Warehouse Name</label>
+                            <input type="text" class="form-control" id="warehouseName" placeholder="Enter warehouse name" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Manager</label>
+                            <select class="form-select" id="manager">
+                                <option value="">Select Manager</option>
+                                <option value="1">John Smith</option>
+                                <option value="2">Sarah Johnson</option>
+                                <option value="3">Mike Wilson</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">City</label>
+                            <select class="form-select" id="city">
+                                <option value="">Select City</option>
+                                <option value="Dubai" selected>Dubai</option>
+                                <option value="Abu Dhabi">Abu Dhabi</option>
+                                <option value="Sharjah">Sharjah</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label">Building Name</label>
+                            <input type="text" class="form-control" id="buildingName" placeholder="Enter building name">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label">Main Account</label>
+                            <select class="form-select" id="mainAccount">
+                                <option value="">Select Account</option>
+                                <option value="110001" selected>110001 - Bank Account</option>
+                                <option value="110002">110002 - Cash Account</option>
+                                <option value="110003">110003 - Petty Cash</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div class="container-fluid p-4">
+    <!-- Employee Modal -->
+    <div class="modal fade" id="employeeModal" tabindex="-1" aria-labelledby="employeeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <!-- scrollable added -->
+            <div class="modal-content">
+
+                <!-- Modal Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="employeeModalLabel">Employee - New Employee</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body p-0">
+
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs bg-light" id="employeeTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#employee-info" type="button" role="tab">
+                                Employee Information
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#legal-document" type="button" role="tab">
+                                Legal Document
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content p-3">
+
+                        <!-- Employee Info Tab -->
+                        <div class="tab-pane fade show active" id="employee-info" role="tabpanel">
+
+                            <!-- Basic Info -->
+                            <h6 class="text-primary fw-bold mb-3">Basic Info</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold small">Employee Code</label>
+                                    <input type="text" class="form-control form-control-sm" disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Employee Name</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold small">Country</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Albania</option>
+                                        <option>UAE</option>
+                                        <option>India</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">City</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Tirana</option>
+                                        <option>Dubai</option>
+                                        <option>Abu Dhabi</option>
+                                        <option>Sharjah</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Social Status</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Single</option>
+                                        <option>Married</option>
+                                        <option>Divorced</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Address</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+
+                            <!-- Additional Info -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Additional Info</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Phone Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Date Of Birth</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Email</label>
+                                    <input type="email" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Social Insurance No</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <!-- Salary Info -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Salary Info</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Basic Salary</label>
+                                    <input type="number" class="form-control form-control-sm" id="basicSalary">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">House Allowance</label>
+                                    <input type="number" class="form-control form-control-sm" id="houseAllowance">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Transport Allowance</label>
+                                    <input type="number" class="form-control form-control-sm" id="transportAllowance">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Others</label>
+                                    <input type="number" class="form-control form-control-sm" id="otherAllowance">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Total Salary</label>
+                                <input type="number" class="form-control form-control-sm" id="totalSalary" disabled>
+                            </div>
+
+                            <!-- Emergency Info -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Emergency Info</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Name</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Relation</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Father</option>
+                                        <option>Mother</option>
+                                        <option>Spouse</option>
+                                        <option>Brother</option>
+                                        <option>Sister</option>
+                                        <option>Friend</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Address</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Phone Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <!-- Bank Info -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Bank Info</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Bank Name</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Emirates NBD</option>
+                                        <option>ADCB</option>
+                                        <option>FAB</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Bank Code</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Bank Account Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">IBAN Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <!-- Emirates ID -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Emirates ID</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">File Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Issuing Authority</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Issue Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Expiry Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="employeeActive" checked>
+                                <label class="form-check-label fw-bold" for="employeeActive">
+                                    Employee Active
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Legal Document Tab -->
+                        <div class="tab-pane fade" id="legal-document" role="tabpanel">
+
+                            <!-- Passport -->
+                            <h6 class="text-primary fw-bold mb-3">Passport</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Passport Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Country of Issue</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Albania</option>
+                                        <option>UAE</option>
+                                        <option>India</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Passport Issue Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Passport Expiry Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <!-- Residency -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Residency</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Residency File Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Residency Issue Authority</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Residency Issue Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Residency Expiry Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <!-- Work Contract -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Work Contract</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Contract Number</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Department</label>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select form-select-sm">
+                                            <option value="">-- Select --</option>
+                                            <option>HR</option>
+                                            <option>IT</option>
+                                            <option>Finance</option>
+                                            <option>Marketing</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button">New</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Contract Type</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Position</label>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select form-select-sm">
+                                            <option value="">-- Select --</option>
+                                            <option>Manager</option>
+                                            <option>Senior</option>
+                                            <option>Junior</option>
+                                            <option>Intern</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button">New</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Work Days</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Working Hours</label>
+                                    <input type="text" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Contract Issue Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Contract Expiry Date</label>
+                                    <input type="date" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <!-- Expense Account -->
+                            <h6 class="text-primary fw-bold mb-3 mt-4">Expense Account (Chart - Account Name)</h6>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Accrued Salaries</label>
+                                    <select class="form-select form-select-sm" onchange="updateCode(this, 'code1')">
+                                        <option>2102001 - Accrued Salaries</option>
+                                        <option>2102002 - Other Salaries</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code1" value="2102001" disabled>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Employee Receivable</label>
+                                    <select class="form-select form-select-sm" onchange="updateCode(this, 'code2')">
+                                        <option>1101002 - Other Employee Receivables</option>
+                                        <option>1101001 - Employee Advances</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code2" value="1101002" disabled>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Accrual Leave Salary</label>
+                                    <select class="form-select form-select-sm" onchange="updateCode(this, 'code3')">
+                                        <option>2102003 - Accrued Leave Salary</option>
+                                        <option>2102004 - Other Leave Provisions</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code3" value="2102003" disabled>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Gratuity</label>
+                                    <select class="form-select form-select-sm" onchange="updateCode(this, 'code4')">
+                                        <option value="">-- Select --</option>
+                                        <option>2103001 - End of Service Benefits</option>
+                                        <option>2103002 - Gratuity Provisions</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code4" disabled>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmployee()">Save</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
 @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(function () {
-            // Load warehouses
-            function loadWarehouses() {
-                $.get("/Warehouse/GetWarehouses", function (res) {
-                    if (!res.status) return alert("Error loading warehouses");
-
-                    let dd = $("#warehouseDropdown");
-                    dd.empty().append('<option value="">Select Warehouse</option>');
-                    res.data.forEach(w => dd.append(`<option value="${w.id}">${w.code} - ${w.name}</option>`));
-
-                    if (res.data.length > 0) loadItems(res.data[0].id);
-                });
-            }
-
-            function loadItems(warehouseId) {
-                $.get(`/Warehouse/GetWarehouseItems?warehouseId=${warehouseId}`, function (res) {
-                    if (!res.status) return alert("Error loading items");
-
-                    let rows = res.data.map(item => `
-                        <tr>
-                            <td>${item.barcode}</td>
-                            <td>${item.costPrice}</td>
-                            <td>${item.salesPrice}</td>
-                            <td>${item.qty}</td>
-                            <td>${item.type}</td>
-                        </tr>`).join('');
-                    $("#itemsTable tbody").html(rows);
-                });
-            }
-
-            $("#warehouseDropdown").change(function () {
-                let id = $(this).val();
-                if (id) loadItems(id);
+            // Open Manager modal from Warehouse modal
+            $('.openManagerNew').on('click', function (e) {
+                e.preventDefault();
+                // hide warehouse modal then show manager modal
+                $('#newWarehouseModal').modal('hide');
+                $('#newManagerModal').modal('show');
             });
 
-            // Buttons
-            $("#btnNew").click(() => window.location.href = "/Warehouse/Create");
-            $("#btnEdit").click(() => {
-                let id = $("#warehouseDropdown").val();
-                if (!id) return alert("Select a warehouse first");
-                window.location.href = "/Warehouse/Edit/" + id;
+            // When manager modal hides, show warehouse modal back (if needed)
+            $('#newManagerModal').on('hidden.bs.modal', function () {
+                // only show warehouse if it was open before; simple approach: always show
+                $('#newWarehouseModal').modal('show');
             });
-            $("#btnDelete").click(() => {
-                let id = $("#warehouseDropdown").val();
-                if (!id) return alert("Select a warehouse first");
-                if (!confirm("Are you sure?")) return;
+                // Tab switching functionality
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
 
-                $.post("/Warehouse/Delete", { id }, function (res) {
-                    alert(res.message);
-                    if (res.status) loadWarehouses();
+                // Remove active class from all tabs and content
+                document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
                 });
-            });
-            $("#btnTransfer").click(() => window.location.href = "/Warehouse/Transfer");
-            $("#btnHistory").click(() => window.location.href = "/Warehouse/History");
 
-            loadWarehouses();
+                // Add active class to clicked tab
+                this.classList.add('active');
+
+                // Show corresponding content
+                const target = document.querySelector(this.getAttribute('data-bs-target'));
+                if (target) {
+                    target.classList.add('show', 'active');
+                }
+            });
+        });
+
+            // Handle Save Manager form submit (adds manager to select and closes)
+            $('#newManagerForm').submit(function (e) {
+                e.preventDefault();
+                const name = $('#managerName').val().trim();
+                if (!name) {
+                    alert('Please enter manager name.');
+                    return;
+                }
+                // create a temporary id for the new manager (replace with server id if you persist)
+                const newId = 'm' + Date.now();
+                $('#manager').append($('<option>', {
+                    value: newId,
+                    text: name,
+                    selected: true
+                }));
+                // reset manager form
+                $('#newManagerForm')[0].reset();
+                // close manager modal (will re-open warehouse modal because of hidden handler)
+                $('#newManagerModal').modal('hide');
+            });
+
+             $("#newWarehouseForm").submit(function (e) {
+            e.preventDefault();
+
+            let model = {
+                Id: 0,
+                Name: $("#warehouseName").val(),
+                City: $("#city").val(),
+                BuildingName: $("#buildingName").val(),
+                EmpId: parseInt($("#manager").val()) || null,
+                AccountId: parseInt($("#mainAccount").val()) || null,  
+            };
+
+            $.ajax({
+                url: "/Inventory/SaveWarehouse",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(model),
+                success: function (res) {
+                    if (res && res.status) {
+                        alert(res.message);
+                        $("#warehouseCode").val(res.code);
+                        $("#newWarehouseModal").modal("hide");
+                        $("#newWarehouseForm")[0].reset();
+                    } else {
+                        alert(res?.message || "Save failed");
+                    }
+                },
+                error: function (xhr) {
+                    alert("Error: " + (xhr.responseJSON?.message || xhr.statusText));
+                }
+            });
+        });
+
+
+
+        // Load warehouses into dropdown
+        function loadWarehouses() {
+            $.ajax({
+                url: '/Inventory/GetWarehouses', // your API route
+                type: 'GET',
+                success: function(result) {
+                    const dropdown = $('#warehouseDropdown');
+                    dropdown.empty().append('<option value="">Select Warehouse</option>');
+
+                    if (result.status) {
+                        result.data.forEach(w => {
+                            // use 'display' field from API
+                            dropdown.append(`<option value="${w.id}">${w.display}</option>`);
+                        });
+                    } else {
+                        alert(result.message);
+                    }
+                },
+                error: function(err) {
+                    console.error(err);
+                }
+            });
+        }
+
+
+        // Call on page load
+        loadWarehouses();
+
         });
     </script>
 }
-

@@ -19,7 +19,7 @@ builder.Services.AddHttpClient("ApiClient", client =>
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // session timeout
+    options.IdleTimeout = TimeSpan.FromHours(1); // session timeout
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });

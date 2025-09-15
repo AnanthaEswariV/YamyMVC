@@ -106,10 +106,11 @@
                     url: "/Account/LoginUser",
                     type: "POST",
                     data: data,
+
                     success: function (res) {
                         if (res.status) {
                             toastr.success('Login successful!');
-                             // Redirect to dashboard after a short delay
+                    // Redirect to dashboard after a short delay
                             setTimeout(function () {
                                 window.location.href = '@Url.Action("Index", "Home")';
                             }, 1500); // Optional delay before redirect
