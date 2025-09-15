@@ -2,6 +2,8 @@
     ViewData["Title"] = "WareHouse";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
 <div class="container">
 
     <!-- Top Controls -->
@@ -93,6 +95,8 @@
                             <input type="text" class="form-control" id="warehouseName" placeholder="Enter warehouse name" required>
                         </div>
                     </div>
+                    <input type="hidden" id="warehouseId" value="0" />
+
 
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -103,6 +107,8 @@
                                 <option value="2">Sarah Johnson</option>
                                 <option value="3">Mike Wilson</option>
                             </select>
+                            <a href="#" id="btnNewManager" data-bs-toggle="modal" data-bs-target="#newManagerModal"
+                               class="text-primary text-decoration-underline">New</a>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">City</label>
@@ -147,7 +153,7 @@
 
 <div class="container-fluid p-4">
     <!-- Employee Modal -->
-    <div class="modal fade" id="employeeModal" tabindex="-1" aria-labelledby="employeeModalLabel" aria-hidden="true">
+    <div class="modal fade" id="newManagerModal" tabindex="-1" aria-labelledby="employeeModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <!-- scrollable added -->
             <div class="modal-content">
@@ -574,7 +580,26 @@
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
+
+          toastr.options = {
+                 "closeButton": true,
+                 "debug": false,
+                 "newestOnTop": false,
+                 "progressBar": true,
+                 "positionClass": "toast-top-right",
+                 "preventDuplicates": false,
+                 "onclick": null,
+                 "showDuration": "300",
+                 "hideDuration": "1000",
+                 "timeOut": "5000", 
+                 "extendedTimeOut": "1000",
+                 "showEasing": "swing",
+                 "hideEasing": "linear",
+                 "showMethod": "fadeIn",
+                 "hideMethod": "fadeOut"
+             };
         $(function () {
             // Open Manager modal from Warehouse modal
             $('.openManagerNew').on('click', function (e) {
@@ -632,16 +657,16 @@
                 $('#newManagerModal').modal('hide');
             });
 
-             $("#newWarehouseForm").submit(function (e) {
+              $("#newWarehouseForm").submit(function (e) {
             e.preventDefault();
 
             let model = {
-                Id: 0,
+                Id: parseInt($("#warehouseId").val()) || 0, // 0 = add, >0 = edit
                 Name: $("#warehouseName").val(),
                 City: $("#city").val(),
                 BuildingName: $("#buildingName").val(),
                 EmpId: parseInt($("#manager").val()) || null,
-                AccountId: parseInt($("#mainAccount").val()) || null,  
+                AccountId: parseInt($("#mainAccount").val()) || null,
             };
 
             $.ajax({
@@ -651,16 +676,26 @@
                 data: JSON.stringify(model),
                 success: function (res) {
                     if (res && res.status) {
-                        alert(res.message);
-                        $("#warehouseCode").val(res.code);
+                        // Show success notification
+                        toastr.success(res.message || "Warehouse saved successfully!");
+
+                        // Update form fields if needed
+                        $("#warehouseCode").val(res.code || "");
                         $("#newWarehouseModal").modal("hide");
                         $("#newWarehouseForm")[0].reset();
+                        $("#warehouseId").val(0); // reset Id for next insert
+
+                        // Optional: reload page or table
+                        setTimeout(function () {
+                            location.reload(); // or call a function to reload table/dropdown
+                        }, 1500);
                     } else {
-                        alert(res?.message || "Save failed");
+                        // Show error notification
+                        toastr.error(res?.message || "Failed to save warehouse");
                     }
                 },
                 error: function (xhr) {
-                    alert("Error: " + (xhr.responseJSON?.message || xhr.statusText));
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
                 }
             });
         });
