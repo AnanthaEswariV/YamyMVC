@@ -8,15 +8,17 @@ namespace YamyProject.Controllers
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _config;
-        private readonly ApplicationDbContext _applicationDbContext;
+        private readonly YamyDbContext _applicationDbContext;
         private readonly MySqlConnection _connection;
-        public HRController(IHttpClientFactory httpClientFactory, IConfiguration config, ApplicationDbContext applicationDbContext)
+        public HRController(IHttpClientFactory httpClientFactory, IConfiguration config, YamyDbContext applicationDbContext)
         {
             _httpClientFactory = httpClientFactory;
             _config = config;
             _connection = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
             _applicationDbContext = applicationDbContext;
         }
+
+        #region Employee
         public IActionResult Employee()
         {
             return View();
@@ -150,6 +152,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         private async Task<string> GenerateNextEmployeeCode(MySqlConnection conn)
         {
             int code;
@@ -167,6 +170,210 @@ namespace YamyProject.Controllers
             return code.ToString("D5"); // always 5 digits
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetEmployees([FromQuery] string filter = "all")
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT 
+                            id, code, name, phone, email, active,
+                            BasicSalary, HousingAllowance, TransportationAllowance, Other
+                         FROM tbl_employee";
+
+                if (filter.Equals("active", StringComparison.OrdinalIgnoreCase))
+                    query += " WHERE Active = 1";
+                else if (filter.Equals("inactive", StringComparison.OrdinalIgnoreCase))
+                    query += " WHERE Active = 0";
+
+                query += " ORDER BY id DESC";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var employees = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    employees.Add(new
+                    {
+                        id = reader["id"],
+                        code = reader["code"],
+                        name = reader["name"],
+                        phone = reader["phone"],
+                        email = reader["email"],
+                        active = Convert.ToInt32(reader["active"]) == 1,
+                        basicSalary = reader["BasicSalary"] != DBNull.Value ? Convert.ToDecimal(reader["BasicSalary"]) : 0,
+                        housingAllowance = reader["HousingAllowance"] != DBNull.Value ? Convert.ToDecimal(reader["HousingAllowance"]) : 0,
+                        transportationAllowance = reader["TransportationAllowance"] != DBNull.Value ? Convert.ToDecimal(reader["TransportationAllowance"]) : 0,
+                        other = reader["Other"] != DBNull.Value ? Convert.ToDecimal(reader["Other"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = employees });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [IgnoreAntiforgeryToken]
+        [HttpPost("EditEmployee")]
+        public async Task<IActionResult> EditEmployee([FromBody] EmployeeRequest model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid request or missing employee Id" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter employee name" });
+
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check duplicate by Name (ignore current Id)
+                var checkQuery = "SELECT COUNT(*) FROM tbl_employee WHERE name = @name AND id != @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name);
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+
+                    if (exists)
+                        return BadRequest(new { status = false, message = "Employee name already exists. Enter another name." });
+                }
+
+                // Update query
+                var updateQuery = @"
+            UPDATE tbl_employee SET
+                Name = @name,
+                Birth_Day = @birth_day,
+                Social_Status = @social_status,
+                City_Id = @city_id,
+                Address = @address,
+                Phone = @phone,
+                Email = @email,
+                Social_Insurance_Number = @social_insurance_number,
+                EmergencyName = @emergency_name,
+                EmergencyAddress = @emergency_address,
+                EmergencyPhone = @emergency_phone,
+                Relation = @relation,
+                PassportNumber = @passport_number,
+                CountryOfIssue = @country_of_issue,
+                PassportIssueDate = @passport_issue_date,
+                PassportExpiryDate = @passport_expiry_date,
+                WorkContractNumber = @work_contract_number,
+                Position_Id = @position_id,
+                Department_Id = @department_id,
+                WorkContractType = @work_contract_type,
+                WorkDays = @work_days,
+                WorkingHours = @working_hours,
+                ContractIssueDate = @contract_issue_date,
+                ContractExpiryDate = @contract_expiry_date,
+                ResidencyFileNumber = @residency_file_number,
+                ResidencyIssuingAuthority = @residency_issuing_authority,
+                ResidencyIssueDate = @residency_issue_date,
+                ResidencyExpiryDate = @residency_expiry_date,
+                EmiratesIDFileNumber = @emirates_id_file_number,
+                EmiratesIDIssuingAuthority = @emirates_id_issuing_authority,
+                EmiratesIDIssueDate = @emirates_id_issue_date,
+                EmiratesIDExpiryDate = @emirates_id_expiry_date,
+                BasicSalary = @basic_salary,
+                HousingAllowance = @housing_allowance,
+                TransportationAllowance = @transportation_allowance,
+                Other = @other,
+                Account_Id = @account_id,
+                Bank_Id = @bank_id,
+                Iban_Number = @iban_number,
+                Bank_Account_Number = @bank_account_number,
+                Employee_Recivable_Id = @employee_recivable_id,
+                Accrued_Salaries_Id = @accrued_salaries_id,
+                Acroal_Leave_Salary_Id = @acroal_leave_salary_id,
+                Gratuit_Id = @gratuit_id,
+                Petty_Cash_Id = @petty_cash_id,
+                Active = @active
+            WHERE Id = @id";
+
+                using var updateCmd = new MySqlCommand(updateQuery, conn);
+
+                // Map parameters
+                updateCmd.Parameters.AddWithValue("@id", model.Id);
+                updateCmd.Parameters.AddWithValue("@name", model.Name ?? "");
+                updateCmd.Parameters.AddWithValue("@birth_day", model.BirthDay);
+                updateCmd.Parameters.AddWithValue("@social_status", model.SocialStatus ?? "");
+                updateCmd.Parameters.AddWithValue("@city_id", model.CityId ?? 0);
+                updateCmd.Parameters.AddWithValue("@address", model.Address ?? "");
+                updateCmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+                updateCmd.Parameters.AddWithValue("@email", model.Email ?? "");
+                updateCmd.Parameters.AddWithValue("@social_insurance_number", model.SocialInsuranceNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@emergency_name", model.EmergencyName ?? "");
+                updateCmd.Parameters.AddWithValue("@emergency_address", model.EmergencyAddress ?? "");
+                updateCmd.Parameters.AddWithValue("@emergency_phone", model.EmergencyPhone ?? "");
+                updateCmd.Parameters.AddWithValue("@relation", model.Relation ?? "");
+                updateCmd.Parameters.AddWithValue("@passport_number", model.PassportNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@country_of_issue", model.CountryOfIssue ?? "");
+                updateCmd.Parameters.AddWithValue("@passport_issue_date", model.PassportIssueDate);
+                updateCmd.Parameters.AddWithValue("@passport_expiry_date", model.PassportExpiryDate);
+                updateCmd.Parameters.AddWithValue("@work_contract_number", model.WorkContractNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@position_id", model.PositionId ?? 0);
+                updateCmd.Parameters.AddWithValue("@department_id", model.DepartmentId ?? 0);
+                updateCmd.Parameters.AddWithValue("@work_contract_type", model.WorkContractType ?? "");
+                updateCmd.Parameters.AddWithValue("@work_days", model.WorkDays ?? 0);
+                updateCmd.Parameters.AddWithValue("@working_hours", model.Workinghours ?? 0);
+                updateCmd.Parameters.AddWithValue("@contract_issue_date", model.ContractIssueDate);
+                updateCmd.Parameters.AddWithValue("@contract_expiry_date", model.ContractExpiryDate);
+                updateCmd.Parameters.AddWithValue("@residency_file_number", model.ResidencyFileNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@residency_issuing_authority", model.ResidencyIssuingAuthority ?? "");
+                updateCmd.Parameters.AddWithValue("@residency_issue_date", model.ResidencyIssueDate);
+                updateCmd.Parameters.AddWithValue("@residency_expiry_date", model.ResidencyExpiryDate);
+                updateCmd.Parameters.AddWithValue("@emirates_id_file_number", model.EmiratesIdfileNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@emirates_id_issuing_authority", model.EmiratesIdissuingAuthority ?? "");
+                updateCmd.Parameters.AddWithValue("@emirates_id_issue_date", model.EmiratesIdissueDate);
+                updateCmd.Parameters.AddWithValue("@emirates_id_expiry_date", model.EmiratesIdexpiryDate);
+                updateCmd.Parameters.AddWithValue("@basic_salary", model.BasicSalary ?? 0);
+                updateCmd.Parameters.AddWithValue("@housing_allowance", model.HousingAllowance ?? 0);
+                updateCmd.Parameters.AddWithValue("@transportation_allowance", model.TransportationAllowance ?? 0);
+                updateCmd.Parameters.AddWithValue("@other", model.Other ?? 0);
+                updateCmd.Parameters.AddWithValue("@account_id", model.AccountId ?? 0);
+                updateCmd.Parameters.AddWithValue("@bank_id", model.BankId ?? 0);
+                updateCmd.Parameters.AddWithValue("@iban_number", model.IbanNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@bank_account_number", model.BankAccountNumber ?? "");
+                updateCmd.Parameters.AddWithValue("@employee_recivable_id", model.EmployeeRecivableId ?? 0);
+                updateCmd.Parameters.AddWithValue("@accrued_salaries_id", model.AccruedSalariesId ?? 0);
+                updateCmd.Parameters.AddWithValue("@acroal_leave_salary_id", model.AcroalLeaveSalaryId ?? 0);
+                updateCmd.Parameters.AddWithValue("@gratuit_id", model.GratuitId ?? 0);
+                updateCmd.Parameters.AddWithValue("@petty_cash_id", model.PettyCashId ?? 0);
+                updateCmd.Parameters.AddWithValue("@active", model.Active != 0 ? 1 : 0);
+
+                await updateCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Employee updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
 
     }
 }

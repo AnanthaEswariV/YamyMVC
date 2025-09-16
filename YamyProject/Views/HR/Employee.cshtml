@@ -3,6 +3,8 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
 <style>
     .employee-header {
         background: #4472c4;
@@ -34,7 +36,7 @@
     }
 
     .employee-sidebar {
-        width: 300px;
+        width: 380px;
         background: white;
         border-right: 1px solid #ddd;
         display: flex;
@@ -211,31 +213,33 @@
 </div>
 
 <div class="employee-main">
-    <div class="employee-sidebar">
-        <div class="sidebar-controls">
-            <select class="form-select form-select-sm mb-2">
-                <option selected>Active Employee</option>
-                <option>All Employees</option>
-                <option>Inactive Employee</option>
+
+    <div class="employee-sidebar p-3 border rounded">
+        <!-- Controls -->
+        <div class="sidebar-controls mb-3">
+            <select id="employeeFilter" class="form-select form-select-sm mb-2">
+                <option value="active" selected>Active Employee</option>
+                <option value="all">All Employees</option>
+                <option value="inactive">Inactive Employee</option>
             </select>
-            <input type="text" class="form-control form-control-sm" id="searchEmployee" placeholder="Search By Name, Code">
+            <input type="text" id="searchEmployee" class="form-control form-control-sm" placeholder="Search By Name or Code">
         </div>
 
+        <!-- Employee Table -->
         <div class="employee-list">
-            <div class="employee-list-header">
-                <div class="table-responsive">
-                    <table class="table table-striped" id="employee-list-header">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Name</th>
-                                <th>Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- rows -->
-                        </tbody>
-                    </table>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-sm" id="employeeTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Total Salary</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Employee rows injected here -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -274,15 +278,13 @@
     </div>
 </div>
 
-
-
-
 <!-- 🔽 Modal Partial View goes here -->
 @Html.Partial("_Employee")
 
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <script>
     $(document).ready(function() {
 
@@ -295,8 +297,8 @@
                     event.preventDefault();
                     event.stopPropagation();
                 } else {
-                    event.preventDefault(); // stop normal submit
-                    saveEmployee(); // your AJAX function
+                    event.preventDefault(); 
+                    saveEmployee(); 
                 }
 
         // Employee selection
@@ -350,23 +352,6 @@
             });
         });
 
-        // Function to calculate total salary automatically
-        function calculateTotalSalary() {
-            let basic = parseFloat(document.getElementById("basicSalary").value) || 0;
-            let house = parseFloat(document.getElementById("houseAllowance").value) || 0;
-            let transport = parseFloat(document.getElementById("transportAllowance").value) || 0;
-            let other = parseFloat(document.getElementById("otherAllowance").value) || 0;
-
-            document.getElementById("totalSalary").value = basic + house + transport + other;
-        }
-
-        // Add event listeners for salary inputs
-        ["basicSalary", "houseAllowance", "transportAllowance", "otherAllowance"].forEach(id => {
-            document.getElementById(id).addEventListener("input", calculateTotalSalary);
-        });
-
-     
-
         // --- Account Code Update ---
         window.updateCode = function(dropdown, inputId){
             let code = $(dropdown).val().split(" - ")[0];
@@ -376,11 +361,40 @@
 
     });
 
+    $(document).ready(function () {
 
-            $(document).ready(function () {
+         toastr.options = {
+                     "closeButton": true,
+                     "debug": false,
+                     "newestOnTop": false,
+                     "progressBar": true,
+                     "positionClass": "toast-top-right",
+                     "preventDuplicates": false,
+                     "onclick": null,
+                     "showDuration": "300",
+                     "hideDuration": "1000",
+                     "timeOut": "5000",
+                     "extendedTimeOut": "1000",
+                     "showEasing": "swing",
+                     "hideEasing": "linear",
+                     "showMethod": "fadeIn",
+                     "hideMethod": "fadeOut"
+                 };
 
-            // Form submit handler
-            $('#newEmployeeForm').on('submit', function (e) {
+         function calculateTotalSalary() {
+            let basic = parseFloat($("#basicSalary").val()) || 0;
+            let house = parseFloat($("#houseAllowance").val()) || 0;
+            let transport = parseFloat($("#transportAllowance").val()) || 0;
+            let other = parseFloat($("#otherAllowance").val()) || 0;
+
+            let total = basic + house + transport + other;
+            $("#totalSalary").val(total.toFixed(2));
+        }
+      
+         $("#basicSalary, #houseAllowance, #transportAllowance, #otherAllowance")
+         .on("input", calculateTotalSalary);
+         // Form submit handler
+         $('#newEmployeeForm').on('submit', function (e) {
                 e.preventDefault();
 
                 let form = this;
@@ -449,27 +463,107 @@
                     data: JSON.stringify(employeeData),
                     success: function (response) {
                         if (response.status) {
-                            alert("Employee added successfully. Code: " + response.code);
+                                toastr.success(response.message || "Employee added successfully!");
                             $("#newEmployeeModal").modal('hide');
                             // Optional: refresh employee list here
                         } else {
-                            alert(response.message);
+                                      toastr.error(response?.message || "Failed to save employee");
                         }
                     },
-                    error: function (xhr) {
-                        alert("Error: " + (xhr.responseJSON?.message || "Something went wrong"));
+                        error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
                     }
                 });
 
             });
 
-            // Optional: remove validation styles on modal hide
-            $('#newEmployeeModal').on('hidden.bs.modal', function () {
-                let form = $('#newEmployeeForm')[0];
-                form.classList.remove('was-validated');
-                form.reset();
+         // Optional: remove validation styles on modal hide
+         $('#newEmployeeModal').on('hidden.bs.modal', function () {
+             let form = $('#newEmployeeForm')[0];
+             form.classList.remove('was-validated');
+             form.reset();
+         });
+
+         // Render employee table
+        function renderEmployeeTable(employees){
+            let tbody = $("#employeeTable tbody");
+            tbody.empty();
+
+            if(employees.length === 0){
+                tbody.append('<tr><td colspan="3" class="text-center">No employees found</td></tr>');
+                return;
+            }
+
+            employees.forEach(emp => {
+                let totalSalary =
+                    (emp.basicSalary || 0) +
+                    (emp.housingAllowance || 0) +
+                    (emp.transportationAllowance || 0) +
+                    (emp.other || 0);
+
+                tbody.append(`
+                    <tr data-id="${emp.id}">
+                        <td>${emp.name || ""}</td>
+                        <td>${totalSalary.toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary edit-btn">Edit</button>
+                            <button class="btn btn-sm btn-danger delete-btn">Delete</button>
+                        </td>
+                    </tr>
+                `);
             });
+        }
+
+        // Fetch employees from API
+        function fetchEmployees(filter = "active", search = ""){
+            $.ajax({
+                url: `/HR/GetEmployees?filter=${filter}`,
+                method: "GET",
+                success: function(res){
+                    if(res.status){
+                        let data = res.data;
+                        console.log("Fetched Employees:", data);
+
+                        // Apply search filter
+                        if(search){
+                            data = data.filter(emp =>
+                                (emp.name && emp.name.toLowerCase().includes(search.toLowerCase())) ||
+                                (emp.code && emp.code.toString().includes(search))
+                            );
+                            console.log("Filtered Employees:", data);
+                        }
+
+                        renderEmployeeTable(data);
+                    } else {
+                        console.log("API Error:", res.message);
+                    }
+                },
+                error: function(xhr){
+                    console.log("AJAX Error:", xhr);
+                }
+            });
+        }
+
+        // Dropdown change event
+        $("#employeeFilter").on("change", function(){
+            let filter = $(this).val();
+            let search = $("#searchEmployee").val();
+            fetchEmployees(filter, search);
         });
+
+        // Search input event
+        $("#searchEmployee").on("input", function(){
+            let filter = $("#employeeFilter").val();
+            let search = $(this).val();
+            fetchEmployees(filter, search);
+        });
+
+        // Initial load
+        fetchEmployees();
+
+
+
+    });
 
 </script>
 }

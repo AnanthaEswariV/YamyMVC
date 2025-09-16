@@ -7,7 +7,7 @@ namespace YamyProject.Data
             : base(options)
         {
         }
-        public DbSet<TblCompany> TblCompanys { get;set;}
+        public DbSet<TblCompany> TblCompanies { get;set;}
         public DbSet<TblWarehouse> tbl_warehouse { get; set; }
 
     }
