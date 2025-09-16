@@ -166,6 +166,44 @@ namespace YamyProject.Controllers
         }
 
 
+        [HttpGet]
+        public async Task<IActionResult> GetAllEmployees()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = "SELECT Id, Name FROM tbl_employee ORDER BY Name";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var employees = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    employees.Add(new
+                    {
+                        id = reader.GetInt32("Id"),
+                        name = reader["Name"]?.ToString()
+                    });
+                }
+
+                return Ok(employees);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
         #endregion
 
     }

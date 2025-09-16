@@ -103,12 +103,11 @@
                             <label class="form-label">Manager</label>
                             <select class="form-select" id="manager">
                                 <option value="">Select Manager</option>
-                                <option value="1">John Smith</option>
-                                <option value="2">Sarah Johnson</option>
-                                <option value="3">Mike Wilson</option>
+                                <!-- Employees will be appended here -->
                             </select>
                             <a href="#" class="openEmployeeNew text-primary text-decoration-underline">New</a>
                         </div>
+
                         <div class="col-md-6">
                             <label class="form-label">City</label>
                             <select class="form-select" id="city">
@@ -268,5 +267,128 @@
         });
 
         });
+
+
+                function loadManagersDropdown(selectedId = null) {
+            $.getJSON('/Inventory/GetAllEmployees', function(employees) {
+                const $manager = $('#manager');
+                $manager.empty().append('<option value="">Select Manager</option>');
+
+                employees.forEach(emp => {
+                    const selected = selectedId && emp.id === selectedId ? 'selected' : '';
+                    $manager.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
+                });
+            });
+        }
+
+        // Call this on page load
+        $(document).ready(function() {
+            loadManagersDropdown();
+        });
+
+
+                $(document).on('click', '.openEmployeeNew', function(e) {
+            e.preventDefault();
+
+            // Reset form for adding new employee
+            $('#newEmployeeForm')[0].reset();
+            $('#EmployeeId').val(''); // clear ID for Add mode
+            $('#cityDropdown').html('<option value="">-- Select --</option>'); // reset city dropdown
+            $('#saveOrUpdateBtn').data('action', 'save').text('Save'); // set save mode
+
+            // Show the modal
+            $('#newEmployeeModal').modal('show');
+        });
+
+          // Form submit handler
+        $('#newEmployeeForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;                      // <<--- fix for "form is not defined"
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            // Decide create vs update by EmployeeId presence (robust)
+            const idVal = $('#EmployeeId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+            const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
+
+            // Build payload - prefer explicit IDs. Keep this list in sync with your modal IDs.
+            const employeeData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: $('input[name="EmployeeName"]').val() || '',
+                BirthDay: $('#BirthDay').val() || null,
+                SocialStatus: $('#SocialStatus').val() || '',
+                CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
+                CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
+                Address: $('#Address').val() || '',
+                Phone: $('#Phone').val() || '',
+                Email: $('#Email').val() || '',
+                SocialInsuranceNumber: $('#SocialInsuranceNumber').val() || '',
+                EmergencyName: $('#EmergencyName').val() || '',
+                EmergencyAddress: $('#EmergencyAddress').val() || '',
+                EmergencyPhone: $('#EmergencyPhone').val() || '',
+                Relation: $('#Relation').val() || '',
+                PassportNumber: $('#PassportNumber').val() || '',
+                PassportIssueDate: $('#PassportIssueDate').val() || null,
+                PassportExpiryDate: $('#PassportExpiryDate').val() || null,
+                WorkContractNumber: $('#ContractNumber').val() || '',
+                PositionId: $('#PositionId').val() ? parseInt($('#PositionId').val()) : null,
+                DepartmentId: $('#DepartmentId').val() ? parseInt($('#DepartmentId').val()) : null,
+                WorkContractType: $('#ContractType').val() || '',
+                WorkDays: $('input[name="WorkDays"]').val() || '',
+                WorkingHours: $('input[name="WorkingHours"]').val() || '',
+                ContractIssueDate: $('#ContractIssueDate').val() || null,
+                ContractExpiryDate: $('#ContractExpiryDate').val() || null,
+                ResidencyFileNumber: $('#ResidencyFileNumber').val() || '',
+                ResidencyIssuingAuthority: $('#ResidencyIssuingAuthority').val() || '',
+                ResidencyIssueDate: $('#ResidencyIssueDate').val() || null,
+                ResidencyExpiryDate: $('#ResidencyExpiryDate').val() || null,
+                EmiratesIdfileNumber: $('#EmiratesIdFileNumber').val() || '',
+                EmiratesIdissuingAuthority: $('#EmiratesIdIssuingAuthority').val() || '',
+                EmiratesIdissueDate: $('#EmiratesIdIssueDate').val() || null,
+                EmiratesIdexpiryDate: $('#EmiratesIdExpiryDate').val() || null,
+                BasicSalary: parseFloat($('#basicSalary').val()) || 0,
+                HousingAllowance: parseFloat($('#houseAllowance').val()) || 0,
+                TransportationAllowance: parseFloat($('#transportAllowance').val()) || 0,
+                Other: parseFloat($('#otherAllowance').val()) || 0,
+                AccountId: $('#code1').val() ? parseInt($('#code1').val()) : null,
+                BankId: $('#BankId').val() ? parseInt($('#BankId').val()) : null,
+                IbanNumber: $('#IbanNumber').val() || '',
+                BankAccountNumber: $('#BankAccountNumber').val() || '',
+                EmployeeRecivableId: $('#code2').val() ? parseInt($('#code2').val()) : null,
+                AccruedSalariesId: $('#code1').val() ? parseInt($('#code1').val()) : null,
+                AcroalLeaveSalaryId: $('#code3').val() ? parseInt($('#code3').val()) : null,
+                GratuitId: $('#code4').val() ? parseInt($('#code4').val()) : null,
+                PettyCashId: 0,
+                Active: $('#employeeActive').is(':checked') ? 1 : 0
+            };
+
+            console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(employeeData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
+                            $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
+                            setTimeout(function () {
+                                location.reload(); // or call a function to reload table/dropdown
+                            }, 1500);
+                    } else {
+                        toastr.error(res.message || 'Operation failed');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
+                }
+            });
+        });
+
     </script>
 }

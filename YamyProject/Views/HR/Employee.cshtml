@@ -387,7 +387,6 @@
 
 
           // Form submit handler
-               // Form submit handler - single handler for Save and Update
         $('#newEmployeeForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -425,8 +424,8 @@
                 PositionId: $('#PositionId').val() ? parseInt($('#PositionId').val()) : null,
                 DepartmentId: $('#DepartmentId').val() ? parseInt($('#DepartmentId').val()) : null,
                 WorkContractType: $('#ContractType').val() || '',
-                WorkDays: $('#WorkDays').val() ? parseInt($('#WorkDays').val()) : null,
-                WorkingHours: $('#WorkingHours').val() ? parseInt($('#WorkingHours').val()) : null,
+                WorkDays: $('input[name="WorkDays"]').val() || '',
+                WorkingHours: $('input[name="WorkingHours"]').val() || '',
                 ContractIssueDate: $('#ContractIssueDate').val() || null,
                 ContractExpiryDate: $('#ContractExpiryDate').val() || null,
                 ResidencyFileNumber: $('#ResidencyFileNumber').val() || '',
@@ -462,7 +461,7 @@
                 data: JSON.stringify(employeeData),
                 success: function (res) {
                     if (res.status) {
-                        toastr.success(isEdit ? 'Employee updated' : 'Employee saved');
+                        toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
                             $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
                             setTimeout(function () {
                                 location.reload(); // or call a function to reload table/dropdown
@@ -505,10 +504,18 @@
                     <tr data-id="${emp.id}">
                         <td>${emp.name || ""}</td>
                         <td>${totalSalary.toFixed(2)}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary edit-btn" data-id="${emp.id}">Edit</button>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="${emp.id}">Delete</button>
-                        </td>
+                                <td>
+            <!-- Edit Icon -->
+            <a href="javascript:void(0)" class="edit-btn text-primary me-2" data-id="${emp.id}" title="Edit">
+                <i class="bi bi-pencil-square"></i>
+            </a>
+
+            <!-- Delete Icon -->
+            <a href="javascript:void(0)" class="delete-btn text-danger" data-id="${emp.id}" title="Delete">
+                <i class="bi bi-trash"></i>
+            </a>
+        </td>
+
                     </tr>
                 `);
             });
@@ -638,6 +645,9 @@
                 $('#ContractType').val(emp.contractType);
                 $('#ContractIssueDate').val(emp.contractIssueDate || "");
                 $('#ContractExpiryDate').val(emp.contractExpiryDate || "");
+
+            $('input[name="WorkDays"]').val(emp.workDays);        
+            $('input[name="WorkingHours"]').val(emp.workingHours); 
 
                 // Salary Info
                 $('#basicSalary').val(emp.basicSalary || 0);
