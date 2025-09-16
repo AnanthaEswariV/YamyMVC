@@ -8,9 +8,9 @@ namespace YamyProject.Controllers
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _config;
-        private readonly ApplicationDbContext _applicationDbContext;
+        private readonly YamyDbContext _applicationDbContext;
         private readonly MySqlConnection _connection;
-        public InventoryController(IHttpClientFactory httpClientFactory, IConfiguration config, ApplicationDbContext applicationDbContext)
+        public InventoryController(IHttpClientFactory httpClientFactory, IConfiguration config, YamyDbContext applicationDbContext)
         {
             _httpClientFactory = httpClientFactory;
             _config = config;

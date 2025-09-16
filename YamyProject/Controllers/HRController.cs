@@ -225,9 +225,8 @@ namespace YamyProject.Controllers
             }
         }
 
-
         [IgnoreAntiforgeryToken]
-        [HttpPost("EditEmployee")]
+        [HttpPost]
         public async Task<IActionResult> EditEmployee([FromBody] EmployeeRequest model)
         {
             if (model == null || model.Id <= 0)
@@ -371,7 +370,150 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetCountryCities()
+        {
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+                           ?? _config["ConnectionStrings:DefaultDatabase"]
+            };
 
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            // 1️⃣ Get countries
+            var countries = new List<(int Id, string Name)>();
+            using (var cmd = new MySqlCommand("SELECT id, name FROM tbl_country ORDER BY name", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    countries.Add((reader.GetInt32("id"), reader.GetString("name")));
+                }
+            }
+
+            // 2️⃣ Get cities
+            var cities = new List<(int Id, string Name, int CountryId)>();
+            using (var cmd = new MySqlCommand("SELECT id, name, country_id FROM tbl_city ORDER BY name", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    cities.Add((reader.GetInt32("id"), reader.GetString("name"), reader.GetInt32("country_id")));
+                }
+            }
+
+            // 3️⃣ Combine countries with their cities
+            var data = countries.Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+                cities = cities.Where(city => city.CountryId == c.Id)
+                               .Select(city => new { id = city.Id, name = city.Name })
+                               .ToList()
+            }).ToList();
+
+            return Json(data);
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeeById(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid employee ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT * FROM tbl_employee WHERE Id = @id";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (!reader.Read())
+                    return NotFound(new { status = false, message = "Employee not found" });
+
+                var emp = new
+                {
+                    Id = reader.GetInt32("Id"),
+                    Name = reader["Name"]?.ToString(),
+                    CityId = reader["City_Id"] as int? ?? 0,
+                    SocialStatus = reader["Social_Status"]?.ToString(),
+                    Address = reader["Address"]?.ToString(),
+                    Phone = reader["Phone"]?.ToString(),
+                    Email = reader["Email"]?.ToString(),
+                    BirthDay = reader["Birth_Day"] as DateTime? != null
+                   ? ((DateTime)reader["Birth_Day"]).ToString("yyyy-MM-dd")
+                   : null,
+                    SocialInsuranceNumber = reader["Social_Insurance_Number"]?.ToString(),
+                    BasicSalary = reader["BasicSalary"] as decimal? ?? 0,
+                    HousingAllowance = reader["HousingAllowance"] as decimal? ?? 0,
+                    TransportationAllowance = reader["TransportationAllowance"] as decimal? ?? 0,
+                    Other = reader["Other"] as decimal? ?? 0,
+                    EmergencyName = reader["EmergencyName"]?.ToString(),
+                    EmergencyAddress = reader["EmergencyAddress"]?.ToString(),
+                    EmergencyPhone = reader["EmergencyPhone"]?.ToString(),
+                    Relation = reader["Relation"]?.ToString(),
+
+                    PassportNumber = reader["PassportNumber"]?.ToString(),
+                    CountryOfIssue = reader["CountryOfIssue"]?.ToString(),
+                    PassportIssueDate = reader["PassportIssueDate"] as DateTime? != null
+                           ? ((DateTime)reader["PassportIssueDate"]).ToString("yyyy-MM-dd")
+                           : null,
+                    PassportExpiryDate = reader["PassportExpiryDate"] as DateTime? != null
+                           ? ((DateTime)reader["PassportExpiryDate"]).ToString("yyyy-MM-dd")
+                           : null,
+
+                    ResidencyFileNumber = reader["ResidencyFileNumber"]?.ToString(),
+                    ResidencyIssuingAuthority = reader["ResidencyIssuingAuthority"]?.ToString(),
+                    ResidencyIssueDate = reader["ResidencyIssueDate"] as DateTime? != null
+                           ? ((DateTime)reader["ResidencyIssueDate"]).ToString("yyyy-MM-dd")
+                           : null,
+                    ResidencyExpiryDate = reader["ResidencyExpiryDate"] as DateTime? != null
+                           ? ((DateTime)reader["ResidencyExpiryDate"]).ToString("yyyy-MM-dd")
+                           : null,
+
+                    ContractNumber = reader["WorkContractNumber"]?.ToString(),
+                    DepartmentId = reader["Department_Id"] as int? ?? 0,
+                    ContractType = reader["WorkContractType"]?.ToString(),
+                    PositionId = reader["Position_Id"] as int? ?? 0,
+                    WorkDays = reader["WorkDays"] as int? ?? 0,
+                    WorkingHours = reader["WorkingHours"] as int? ?? 0,
+
+                    ContractIssueDate = reader["ContractIssueDate"] as DateTime? != null
+                           ? ((DateTime)reader["ContractIssueDate"]).ToString("yyyy-MM-dd")
+                           : null,
+                    ContractExpiryDate = reader["ContractExpiryDate"] as DateTime? != null
+                           ? ((DateTime)reader["ContractExpiryDate"]).ToString("yyyy-MM-dd")
+                           : null,
+
+                    AccruedSalariesId = reader["Accrued_Salaries_Id"] as int? ?? 0,
+                    EmployeeRecivableId = reader["Employee_Recivable_Id"] as int? ?? 0,
+                    AcroalLeaveSalaryId = reader["Acroal_Leave_Salary_Id"] as int? ?? 0,
+                    GratuitId = reader["Gratuit_Id"] as int? ?? 0,
+                    Active = reader["Active"] as int? ?? 1
+                };
+
+
+                return Ok(emp);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 

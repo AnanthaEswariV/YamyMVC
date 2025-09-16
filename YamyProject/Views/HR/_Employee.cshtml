@@ -1,7 +1,7 @@
 ﻿<style>
     /* Force scroll inside modal */
     .modal-dialog-scrollable .modal-body {
-        max-height: calc(100vh - 200px); /* adjust 200px for header + footer */
+        max-height: calc(100vh - 200px); 
         overflow-y: auto;
     }
 </style>
@@ -24,6 +24,7 @@
             <!-- Modal Body -->
             <div class="modal-body p-0">
 
+                    <input type="hidden" id="EmployeeId" />
                 <!-- Tabs -->
                 <ul class="nav nav-tabs bg-light" id="employeeTabs" role="tablist">
                     <li class="nav-item">
@@ -53,30 +54,23 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Employee Name</label>
-                                <input type="text" class="form-control form-control-sm" name="EmployeeName" required>
+                                <input type="text" class="form-control form-control-sm" name="EmployeeName"  id="EmployeeName" required>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold small">Country</label>
-                                <select class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                    <option>Albania</option>
-                                    <option>UAE</option>
-                                    <option>India</option>
-                                </select>
-                            </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold small">Country</label>
+                                    <select id="countryDropdown" class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
                         </div>
 
                         <div class="row g-2 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">City</label>
-                                <select class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                    <option>Tirana</option>
-                                    <option>Dubai</option>
-                                    <option>Abu Dhabi</option>
-                                    <option>Sharjah</option>
-                                </select>
-                            </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">City</label>
+                                    <select id="cityDropdown" class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Social Status</label>
                                 <select class="form-select form-select-sm">
@@ -90,7 +84,7 @@
 
                         <div class="mb-3">
                             <label class="form-label fw-bold small">Address</label>
-                            <input type="text" class="form-control form-control-sm">
+                                <input type="text" id="Address"  class="form-control form-control-sm">
                         </div>
 
                         <!-- Additional Info -->
@@ -98,22 +92,22 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Phone Number</label>
-                                <input type="text" class="form-control form-control-sm" name="Phone" required>
+                                    <input type="text" id="Phone"  class="form-control form-control-sm" name="Phone" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Date Of Birth</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="BirthDay" name="BirthDay"  class="form-control form-control-sm">
                             </div>
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Email</label>
-                                <input type="email" class="form-control form-control-sm">
+                                    <input type="email" id="Email" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Social Insurance No</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="SocialInsuranceNumber" class="form-control form-control-sm">
                             </div>
                         </div>
 
@@ -151,7 +145,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Name</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" class="form-control form-control-sm" id="EmergencyName">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Relation</label>
@@ -170,11 +164,11 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Address</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="EmergencyAddress" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Phone Number</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="EmergencyPhone" class="form-control form-control-sm">
                             </div>
                         </div>
 
@@ -247,7 +241,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Passport Number</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="PassportNumber" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Country of Issue</label>
@@ -263,11 +257,11 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Passport Issue Date</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="PassportIssueDate"  class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Passport Expiry Date</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="PassportExpiryDate" class="form-control form-control-sm">
                             </div>
                         </div>
 
@@ -276,22 +270,22 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Residency File Number</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="ResidencyFileNumber" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Residency Issue Authority</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="ResidencyIssuingAuthority" class="form-control form-control-sm">
                             </div>
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Residency Issue Date</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="ResidencyIssueDate" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Residency Expiry Date</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="ResidencyExpiryDate" class="form-control form-control-sm">
                             </div>
                         </div>
 
@@ -300,7 +294,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Contract Number</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="ContractNumber" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Department</label>
@@ -320,7 +314,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Contract Type</label>
-                                <input type="text" class="form-control form-control-sm">
+                                    <input type="text" id="ContractType" class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Position</label>
@@ -340,22 +334,22 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Work Days</label>
-                                <input type="text" class="form-control form-control-sm" name="WorkDays" required>
+                                    <input type="text" class="form-control form-control-sm"  name="WorkDays" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Working Hours</label>
-                                <input type="text" class="form-control form-control-sm" name="WorkingHours" required>
+                                    <input type="text" class="form-control form-control-sm" name="WorkingHours" required>
                             </div>
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Contract Issue Date</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="ContractIssueDate"  class="form-control form-control-sm">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Contract Expiry Date</label>
-                                <input type="date" class="form-control form-control-sm">
+                                    <input type="date" id="ContractExpiryDate" class="form-control form-control-sm">
                             </div>
                         </div>
 
@@ -426,7 +420,7 @@
             <!-- Modal Footer -->
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" id="saveOrUpdateBtn" class="btn btn-primary">Save</button>
                 </div>
 
 
