@@ -1,14 +1,12 @@
-﻿
-using YamyProject.Core.ViewModel;
-
-namespace YamyProject.Controllers.Company
+﻿namespace YamyProject.Controllers.Company
 {
     public class CompanyCenterController : Controller
     {
-        private readonly ApplicationDbContext _context;
+
+       private readonly YamyDbContext _context;
        private readonly IMapper _mapper;
 
-        public CompanyCenterController(ApplicationDbContext context,IMapper mapper)
+        public CompanyCenterController(YamyDbContext context,IMapper mapper)
         {
             _context = context;
             _mapper = mapper;
@@ -16,40 +14,95 @@ namespace YamyProject.Controllers.Company
         [HttpGet]
         public IActionResult Index()
         {
-            var company=_context.TblCompanys.AsNoTracking().ToList();
-            var viewModel = "";//_mapper,Map<<>> (company);
-            return PartialView("CompanyList", viewModel);
-        }
-        [HttpGet]
-        [AjaxOnly]
-        public IActionResult Edit(int id)
-        {
-            var company = _context.TblCompanys.Find(id);
+            var company = _context.TblCompanies.FirstOrDefault();
+            //var viewModel = _mapper.Map<CompanyViewModels>(company);
+          //  return PartialView("CompanyList", viewModel);
+          //  var company = _context.TblCompanies.ToList();
 
             if (company is null)
                 return NotFound();
 
-            var viewModel = _mapper.Map<Core.ViewModel.CompanyViewModels>(company);
-            return PartialView("CompanyList", viewModel);
+            var viewModel = _mapper.Map<CompanyViewModels>(company);
+            return View("Index", viewModel);
+          //  return View();
         }
+        [HttpGet]
+        [AjaxOnly]
+        //public IActionResult Edit(int id)
+        //{
+        //    var company = _context.TblCompanies.Find(id);
+
+        //    if (company is null)
+        //        return NotFound();
+
+        //    var viewModel = _mapper.Map<CompanyViewModels>(company);
+        //    return PartialView("CompanyList", viewModel);
+        //}
         [HttpPost]
         public IActionResult Edit(CompanyViewModel model)
         { 
             if (!ModelState.IsValid)
-     return BadRequest();
-
- var company = _context.TblCompanys.Find(model.Id);
-
- if (company is null)
-     return NotFound();
-
- company = _mapper.Map(model, company);
- //company.LastUpdatedOn = DateTime.Now;
-            _context.SaveChanges();
-
+                 return BadRequest();
+            
+             var company = _context.TblCompanies.Find(model.Id);
+            
+             if (company is null)
+                 return NotFound();
+            
+             company = _mapper.Map(model, company);
+             //company.LastUpdatedOn = DateTime.Now;
+                        _context.SaveChanges();
+            
             var viewModel = _mapper.Map<CompanyViewModel>(company);
 
             return PartialView("CompanyList", viewModel);
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveVat(VatConfigurationViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Message = "Please correct the validation errors.";
+                return View("Index", model); // Replace 'VatForm' with your actual View name
+            }
+
+            try
+            {
+                // Validation (Optional - Business rule checks)
+                if (string.IsNullOrWhiteSpace(model.Vat.RegistrationNo))
+                {
+                    ModelState.AddModelError("Vat.RegistrationNo", "Please enter TAX Registration No.");
+                    return View("Index", model);
+                }
+
+                if (string.IsNullOrWhiteSpace(model.CorporateTax.CorporateTaxNo))
+                {
+                    ModelState.AddModelError("CorporateTax.CorporateTaxNo", "Please enter Corporate Tax No.");
+                    return View("Index", model);
+                }
+
+                // Save VAT Configuration
+                _context.TblVatConfigrations.Add(model.Vat);
+
+                // Save Corporate Tax Configuration
+                _context.TblCorporateTaxConfigrations.Add(model.CorporateTax);
+
+                await _context.SaveChangesAsync();
+
+                TempData["Message"] = "VAT and Corporate Tax information saved successfully!";
+                return RedirectToAction("Index"); // Or wherever your list or confirmation page is
+            }
+            catch (Exception ex)
+            {
+                // Log the error in real applications
+                ViewBag.Message = $"An error occurred: {ex.Message}";
+                return View("VatForm", model);
+            }
+        }
+
+
+
     }
 }

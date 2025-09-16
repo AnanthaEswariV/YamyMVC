@@ -289,7 +289,7 @@ public partial class YamyDbContext : DbContext
     public virtual DbSet<TblWarehouse> TblWarehouses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseMySql("name=YamyDb", ServerVersion.Parse("8.0.30-mysql"));
+        => optionsBuilder.UseMySql("name=YamyDb1", ServerVersion.Parse("8.0.30-mysql"));
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -799,7 +799,9 @@ public partial class YamyDbContext : DbContext
                 .HasMaxLength(100)
                 .HasDefaultValueSql("''")
                 .HasColumnName("address");
-            entity.Property(e => e.CountryId).HasColumnName("country_id");
+           // entity.Property(e => e.CountryId).HasColumnName("country_id");
+            //  entity.Ignore(e => e.CountryId);
+
             entity.Property(e => e.Descriptions)
                 .HasMaxLength(200)
                 .HasDefaultValueSql("''")

@@ -1,6 +1,4 @@
-﻿using YamyProject.Core.ViewModel;
-
-namespace YamyProject.Core.Consts.Mapping
+﻿namespace YamyProject.Core.Consts.Mapping
 {
     public class MappingProfile : Profile
     {

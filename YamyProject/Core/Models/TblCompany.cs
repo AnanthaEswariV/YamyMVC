@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace YamyProject.Core.Models;
 
@@ -25,7 +26,10 @@ public partial class TblCompany
 
     public string? TrnNo { get; set; }
 
-    public int CountryId { get; set; }
+    //public int CountryId { get; set; }
+    //[ForeignKey("CountryId")]
+    //public TblCountry? Country { get; set; }
 
     public byte[]? LogoComp { get; set; }
+
 }

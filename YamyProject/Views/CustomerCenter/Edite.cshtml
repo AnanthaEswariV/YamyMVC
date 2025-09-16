@@ -1,0 +1,122 @@
+﻿@model CustomerViewModel
+<div class="container">
+    <h3>Customers - Edit Customer</h3>
+
+    <form asp-action="Edit">
+        <fieldset>
+            <legend>Customer Information</legend>
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Customer Name</label>
+                    <input asp-for="Customer.Name" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label>Code</label>
+                    <input asp-for="Customer.Code" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label>Customer Category</label>
+                    <select asp-for="Customer.CatId" class="form-control"
+                            asp-items="@(new SelectList(Model.Categories, "Id", "CategoryName"))"></select>
+                </div>
+                <div class="col-md-2">
+                    <a href="#">Add New</a>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-4">
+                    <label>Opening Balance</label>
+                    <input  class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label>Date</label>
+                    <input type="date" class="form-control" />
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="mt-3">
+            <legend>Contact & Address Data</legend>
+            <div class="row">
+                <div class="col-md-4"><input asp-for="Customer.MainPhone" placeholder="Main Phone" class="form-control" /></div>
+                <div class="col-md-4"><input asp-for="Customer.WorkPhone" placeholder="Work Phone" class="form-control" /></div>
+                <div class="col-md-4"><input asp-for="Customer.Mobile" placeholder="Mobile/Fax" class="form-control" /></div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-6"><input asp-for="Customer.Email" placeholder="Email" class="form-control" /></div>
+                <div class="col-md-6"><input asp-for="Customer.Ccemail" placeholder="CC Email" class="form-control" /></div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-6"><input asp-for="Customer.Website" placeholder="Website" class="form-control" /></div>
+            </div>
+            <div class="row mt-2">
+              @*   <div class="col-md-6">
+                    <label>Country</label>
+                    <select asp-for="Customer.Country" class="form-control"
+                            asp-items="@(new SelectList(Model.Customer.Countrys.Name, "Id", "CountryName"))"></select>
+                </div> *@
+                <div class="col-md-6">
+                    <label>City</label>
+                    <select asp-for="Customer.City" class="form-control"
+                            asp-items="@(new SelectList(Model.Customer.Citys.Name, "Id", "CityName"))"></select>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="mt-3">
+            <legend>Account Settings & Other</legend>
+            <div class="row">
+                <div class="col-md-6">
+                    <label>Account</label>
+                    <select asp-for="Customer.AccountId" class="form-control"
+                            asp-items="@(new SelectList(Model.Accounts, "Id", "AccountName"))"></select>
+                </div>
+                <div class="col-md-3"><input asp-for="Customer.Trn" placeholder="TRN" class="form-control" /></div>
+                <div class="col-md-3"><input asp-for="Customer.FaciltyName" placeholder="Facility Name" class="form-control" /></div>
+            </div>
+            <div class="form-check mt-2">
+                <input asp-for="Customer.Active" class="form-check-input" type="checkbox" />
+                <label class="form-check-label">Active</label>
+            </div>
+            <div class="mt-2">
+                <label>Project</label>
+                <textarea asp-for="Customer.ProjectSite" class="form-control"></textarea>
+            </div>
+        </fieldset>
+
+        <button type="submit" class="btn btn-primary mt-3">Save</button>
+        <a asp-action="Index" class="btn btn-secondary mt-3">Close</a>
+    </form>
+
+    <hr />
+    <h4>Transactions</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>SN</th>
+                <th>Date</th>
+                <th>Voucher</th>
+                <th>Type</th>
+                <th>Account</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model.Transactions)
+            {
+                <tr>
+                    <td>@t.Id</td>
+                    <td>@t.Date</td>
+                    <td>@t.VoucherNo</td>
+                    <td>@t.Type</td>
+                    @* <td>@t.Account.Name</td> *@
+                    <td>@t.Debit</td>
+                    <td>@t.Credit</td>
+                    @* <td>@t.Balance</td> *@
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
