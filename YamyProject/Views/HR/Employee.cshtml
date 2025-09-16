@@ -1,0 +1,475 @@
+﻿@{
+    ViewData["Title"] = "Employee";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .employee-header {
+        background: #4472c4;
+        color: white;
+        margin: -15px -15px 0 -15px;
+        padding: 8px 15px;
+        font-weight: bold;
+    }
+
+    .employee-toolbar {
+        background: #e7e6e6;
+        margin: 0 -15px;
+        padding: 5px 15px;
+        border-bottom: 1px solid #ccc;
+        font-size: 12px;
+    }
+
+        .employee-toolbar .nav-link {
+            color: #333;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+
+    .employee-main {
+        margin: 0 -15px -15px -15px;
+        display: flex;
+        height: calc(100vh - 200px);
+        background: #f8f9fa;
+    }
+
+    .employee-sidebar {
+        width: 300px;
+        background: white;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar-controls {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+
+        .sidebar-controls select,
+        .sidebar-controls input {
+            font-size: 11px;
+            padding: 3px 6px;
+            border: 1px solid #ccc;
+        }
+
+    .employee-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .employee-list-header {
+        background: #f8f9fa;
+        padding: 6px 12px;
+        border-bottom: 1px solid #ddd;
+        font-weight: bold;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .employee-item {
+        padding: 6px 12px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+        .employee-item:hover {
+            background: #f5f5f5;
+        }
+
+        .employee-item.active {
+            background: #c8e6c9;
+        }
+
+    .employee-content {
+        flex: 1;
+        padding: 15px;
+        background: white;
+        position: relative;
+    }
+
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .content-title {
+        font-size: 18px;
+        color: #666;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    .note-section {
+        text-align: right;
+        font-size: 11px;
+        color: #666;
+    }
+
+    .note-icons {
+        margin-bottom: 8px;
+    }
+
+    .employee-code {
+        font-size: 12px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .transactions-header {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+    }
+
+    .transactions-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+        .transactions-table th {
+            background: #f8f9fa;
+            padding: 6px 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+            font-weight: normal;
+            color: #666;
+        }
+
+        .transactions-table td {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+        }
+
+    #main {
+        margin-left: 250px;
+    }
+</style>
+
+<div class="employee-header">
+    <center> Employee Center</center>
+</div>
+
+<div class="employee-toolbar">
+    <ul class="nav nav-pills mb-0">
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-gear-fill me-1"></i> Employee Operations
+            </a>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newEmployeeModal">
+                        <i class="bi bi-plus-circle me-2"></i> New Employee
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="#" id="btnEdit">
+                        <i class="bi bi-pencil-square me-2"></i> Edit Employee
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="#" id="btnDelete">
+                        <i class="bi bi-trash-fill me-2"></i> Delete Employee
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-printer me-1"></i> Print
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Print List</a></li>
+                <li><a class="dropdown-item" href="#">Print Details</a></li>
+            </ul>
+        </li>
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Export to Excel</a></li>
+            </ul>
+        </li>
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-file-earmark-word me-1"></i> Word
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Export to Word</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+
+<div class="employee-main">
+    <div class="employee-sidebar">
+        <div class="sidebar-controls">
+            <select class="form-select form-select-sm mb-2">
+                <option selected>Active Employee</option>
+                <option>All Employees</option>
+                <option>Inactive Employee</option>
+            </select>
+            <input type="text" class="form-control form-control-sm" id="searchEmployee" placeholder="Search By Name, Code">
+        </div>
+
+        <div class="employee-list">
+            <div class="employee-list-header">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="employee-list-header">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="employee-content">
+        <div class="content-header">
+            <h2 class="content-title">Employee Information</h2>
+            <div class="note-section">
+            </div>
+        </div>
+
+
+        <div>
+            <div class="transactions-header">Transactions</div>
+
+            <div class="table-responsive">
+                <table class="table table-striped" id="transactionsBody">
+                    <thead class="table-light">
+                        <tr>
+                            <th>SN#</th>
+                            <th>No</th>
+                            <th>Date</th>
+                            <th>Account Name</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Paid Amt</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- 🔽 Modal Partial View goes here -->
+@Html.Partial("_Employee")
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+
+                $('#saveEmployeeBtn').click(function() {
+            saveEmployee();
+        });
+
+
+                           if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                } else {
+                    event.preventDefault(); // stop normal submit
+                    saveEmployee(); // your AJAX function
+                }
+
+        // Employee selection
+        $('.employee-item').click(function() {
+            $('.employee-item').removeClass('active');
+            $(this).addClass('active');
+
+            var employeeCode = $(this).data('employee-code');
+            $('#selectedEmployeeCode').text(employeeCode);
+
+            // Load employee transactions here
+            loadEmployeeTransactions(employeeCode);
+      
+                     });
+        // Search functionality
+        $('#searchEmployee').on('input', function() {
+            var searchTerm = $(this).val().toLowerCase();
+
+            $('.employee-item').each(function() {
+                var employeeName = $(this).find('span:first').text().toLowerCase();
+                var employeeCode = $(this).data('employee-code').toLowerCase();
+
+                if (employeeName.includes(searchTerm) || employeeCode.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+              // AJAX form submit
+        $('#newEmployeeForm').on('submit', function (e) {
+            e.preventDefault();
+
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function (res) {
+                    if (res.status) {
+                        alert(res.message);
+                        $('#newEmployeeModal').modal('hide');
+                        // TODO: reload employee list dynamically instead of full reload
+                        location.reload();
+                    } else {
+                        alert(res.message);
+                    }
+                },
+                error: function () {
+                    alert("Error while saving employee.");
+                }
+            });
+        });
+
+        // Function to calculate total salary automatically
+        function calculateTotalSalary() {
+            let basic = parseFloat(document.getElementById("basicSalary").value) || 0;
+            let house = parseFloat(document.getElementById("houseAllowance").value) || 0;
+            let transport = parseFloat(document.getElementById("transportAllowance").value) || 0;
+            let other = parseFloat(document.getElementById("otherAllowance").value) || 0;
+
+            document.getElementById("totalSalary").value = basic + house + transport + other;
+        }
+
+        // Add event listeners for salary inputs
+        ["basicSalary", "houseAllowance", "transportAllowance", "otherAllowance"].forEach(id => {
+            document.getElementById(id).addEventListener("input", calculateTotalSalary);
+        });
+
+     
+
+        // --- Account Code Update ---
+        window.updateCode = function(dropdown, inputId){
+            let code = $(dropdown).val().split(" - ")[0];
+            $('#'+inputId).val(code);
+        };
+   
+
+    });
+
+
+            $(document).ready(function () {
+
+            // Form submit handler
+            $('#newEmployeeForm').on('submit', function (e) {
+                e.preventDefault();
+
+                let form = this;
+
+                // Perform HTML5 validation
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return; // stop submission if invalid
+                }
+
+                   let employeeData = {
+            Name: $("#newEmployeeModal input[name='EmployeeName']").val(),
+            BirthDay: $("#newEmployeeModal input[type='date']").eq(0).val() || null,
+            SocialStatus: $("#newEmployeeModal select").eq(1).val(),
+            CityId: parseInt($("#newEmployeeModal select").eq(0).val()) || null,
+            Address: $("#newEmployeeModal input[type='text']").eq(2).val(),
+            Phone: $("#newEmployeeModal input[type='text']").eq(3).val(),
+            Email: $("#newEmployeeModal input[type='email']").val(),
+            SocialInsuranceNumber: $("#newEmployeeModal input[type='text']").eq(4).val(),
+            EmergencyName: $("#newEmployeeModal input[type='text']").eq(5).val(),
+            EmergencyAddress: $("#newEmployeeModal input[type='text']").eq(6).val(),
+            EmergencyPhone: $("#newEmployeeModal input[type='text']").eq(7).val(),
+            Relation: $("#newEmployeeModal select").eq(2).val(),
+            PassportNumber: $("#newEmployeeModal input[type='text']").eq(8).val(),
+            CountryOfIssue: $("#newEmployeeModal select").eq(3).val(),
+            PassportIssueDate: $("#newEmployeeModal input[type='date']").eq(1).val() || null,
+            PassportExpiryDate: $("#newEmployeeModal input[type='date']").eq(2).val() || null,
+            WorkContractNumber: $("#newEmployeeModal input[type='text']").eq(9).val(),
+            PositionId: parseInt($("#newEmployeeModal select").eq(4).val()) || null,
+            DepartmentId: parseInt($("#newEmployeeModal select").eq(5).val()) || null,
+            WorkContractType: $("#newEmployeeModal input[type='text']").eq(10).val(),
+            WorkDays: parseInt($("#newEmployeeModal input[type='text']").eq(11).val()) || null,
+            Workinghours: parseInt($("#newEmployeeModal input[type='text']").eq(12).val()) || null,
+            ContractIssueDate: $("#newEmployeeModal input[type='date']").eq(3).val() || null,
+            ContractExpiryDate: $("#newEmployeeModal input[type='date']").eq(4).val() || null,
+            ResidencyFileNumber: $("#newEmployeeModal input[type='text']").eq(13).val(),
+            ResidencyIssuingAuthority: $("#newEmployeeModal input[type='text']").eq(14).val(),
+            ResidencyIssueDate: $("#newEmployeeModal input[type='date']").eq(5).val() || null,
+            ResidencyExpiryDate: $("#newEmployeeModal input[type='date']").eq(6).val() || null,
+            EmiratesIdfileNumber: $("#newEmployeeModal input[type='text']").eq(15).val(),
+            EmiratesIdissuingAuthority: $("#newEmployeeModal input[type='text']").eq(16).val(),
+            EmiratesIdissueDate: $("#newEmployeeModal input[type='date']").eq(7).val() || null,
+            EmiratesIdexpiryDate: $("#newEmployeeModal input[type='date']").eq(8).val() || null,
+            BasicSalary: parseFloat($("#basicSalary").val()) || 0,
+            HousingAllowance: parseFloat($("#houseAllowance").val()) || 0,
+            TransportationAllowance: parseFloat($("#transportAllowance").val()) || 0,
+            Other: parseFloat($("#otherAllowance").val()) || 0,
+            AccountId: parseInt($("#code1").val()) || null,
+            BankId: parseInt($("#newEmployeeModal select").eq(6).val()) || null,
+            IbanNumber: $("#newEmployeeModal input[type='text']").eq(17).val(),
+            BankAccountNumber: $("#newEmployeeModal input[type='text']").eq(18).val(),
+            EmployeeRecivableId: parseInt($("#code2").val()) || null,
+            AccruedSalariesId: parseInt($("#code1").val()) || null,
+            AcroalLeaveSalaryId: parseInt($("#code3").val()) || null,
+            GratuitId: parseInt($("#code4").val()) || null,
+            PettyCashId: 0,
+            Active: $("#employeeActive").is(":checked") ? 1 : 0 // int, not bool
+        };
+
+
+                // AJAX POST
+                $.ajax({
+                    url: '/HR/SaveEmployee',
+                    type: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    data: JSON.stringify(employeeData),
+                    success: function (response) {
+                        if (response.status) {
+                            alert("Employee added successfully. Code: " + response.code);
+                            $("#newEmployeeModal").modal('hide');
+                            // Optional: refresh employee list here
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        alert("Error: " + (xhr.responseJSON?.message || "Something went wrong"));
+                    }
+                });
+
+            });
+
+            // Optional: remove validation styles on modal hide
+            $('#newEmployeeModal').on('hidden.bs.modal', function () {
+                let form = $('#newEmployeeForm')[0];
+                form.classList.remove('was-validated');
+                form.reset();
+            });
+        });
+
+</script>
+}

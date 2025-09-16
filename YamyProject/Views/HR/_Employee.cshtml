@@ -1,0 +1,436 @@
+﻿<style>
+    /* Force scroll inside modal */
+    .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px); /* adjust 200px for header + footer */
+        overflow-y: auto;
+    }
+</style>
+
+
+<!-- Employee Modal -->
+<div class="modal fade" id="newEmployeeModal" tabindex="-1" aria-labelledby="employeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <!-- scrollable added -->
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="employeeModalLabel">Employee - New Employee</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+           
+              <!-- Form -->
+            <form id="newEmployeeForm" class="needs-validation" novalidate>
+            <!-- Modal Body -->
+            <div class="modal-body p-0">
+
+                <!-- Tabs -->
+                <ul class="nav nav-tabs bg-light" id="employeeTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#employee-info" type="button" role="tab">
+                            Employee Information
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#legal-document" type="button" role="tab">
+                            Legal Document
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content p-3">
+
+                    <!-- Employee Info Tab -->
+                    <div class="tab-pane fade show active" id="employee-info" role="tabpanel">
+
+                        <!-- Basic Info -->
+                        <h6 class="text-primary fw-bold mb-3">Basic Info</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small">Employee Code</label>
+                                <input type="text" class="form-control form-control-sm" disabled>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Employee Name</label>
+                                <input type="text" class="form-control form-control-sm" name="EmployeeName" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small">Country</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    <option>Albania</option>
+                                    <option>UAE</option>
+                                    <option>India</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">City</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    <option>Tirana</option>
+                                    <option>Dubai</option>
+                                    <option>Abu Dhabi</option>
+                                    <option>Sharjah</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Social Status</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    <option>Single</option>
+                                    <option>Married</option>
+                                    <option>Divorced</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Address</label>
+                            <input type="text" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- Additional Info -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Additional Info</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Phone Number</label>
+                                <input type="text" class="form-control form-control-sm" name="Phone" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Date Of Birth</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Email</label>
+                                <input type="email" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Social Insurance No</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <!-- Salary Info -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Salary Info</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Basic Salary</label>
+                                <input type="number" class="form-control form-control-sm" id="basicSalary" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">House Allowance</label>
+                                <input type="number" class="form-control form-control-sm" id="houseAllowance">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Transport Allowance</label>
+                                <input type="number" class="form-control form-control-sm" id="transportAllowance">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Others</label>
+                                <input type="number" class="form-control form-control-sm" id="otherAllowance">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Total Salary</label>
+                            <input type="number" class="form-control form-control-sm" id="totalSalary" disabled>
+                        </div>
+
+                        <!-- Emergency Info -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Emergency Info</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Name</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Relation</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    <option>Father</option>
+                                    <option>Mother</option>
+                                    <option>Spouse</option>
+                                    <option>Brother</option>
+                                    <option>Sister</option>
+                                    <option>Friend</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Address</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Phone Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <!-- Bank Info -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Bank Info</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small">Bank Name</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    <option>Emirates NBD</option>
+                                    <option>ADCB</option>
+                                    <option>FAB</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">Bank Code</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Bank Account Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">IBAN Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <!-- Emirates ID -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Emirates ID</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">File Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Issuing Authority</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Issue Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Expiry Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="employeeActive" checked>
+                            <label class="form-check-label fw-bold" for="employeeActive">
+                                Employee Active
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Legal Document Tab -->
+                    <div class="tab-pane fade" id="legal-document" role="tabpanel">
+
+                        <!-- Passport -->
+                        <h6 class="text-primary fw-bold mb-3">Passport</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Passport Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Country of Issue</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    <option>Albania</option>
+                                    <option>UAE</option>
+                                    <option>India</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Passport Issue Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Passport Expiry Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <!-- Residency -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Residency</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Residency File Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Residency Issue Authority</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Residency Issue Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Residency Expiry Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <!-- Work Contract -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Work Contract</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Contract Number</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Department</label>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>HR</option>
+                                        <option>IT</option>
+                                        <option>Finance</option>
+                                        <option>Marketing</option>
+                                    </select>
+                                    <button class="btn btn-outline-secondary btn-sm" type="button">New</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Contract Type</label>
+                                <input type="text" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Position</label>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                        <option>Manager</option>
+                                        <option>Senior</option>
+                                        <option>Junior</option>
+                                        <option>Intern</option>
+                                    </select>
+                                    <button class="btn btn-outline-secondary btn-sm" type="button">New</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Work Days</label>
+                                <input type="text" class="form-control form-control-sm" name="WorkDays" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Working Hours</label>
+                                <input type="text" class="form-control form-control-sm" name="WorkingHours" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Contract Issue Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Contract Expiry Date</label>
+                                <input type="date" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <!-- Expense Account -->
+                        <h6 class="text-primary fw-bold mb-3 mt-4">Expense Account (Chart - Account Name)</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small">Accrued Salaries</label>
+                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code1')">
+                                    <option>2102001 - Accrued Salaries</option>
+                                    <option>2102002 - Other Salaries</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">AC / Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code1" value="2102001" disabled>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small">Employee Receivable</label>
+                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code2')">
+                                    <option>1101002 - Other Employee Receivables</option>
+                                    <option>1101001 - Employee Advances</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">AC / Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code2" value="1101002" disabled>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small">Accrual Leave Salary</label>
+                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code3')">
+                                    <option>2102003 - Accrued Leave Salary</option>
+                                    <option>2102004 - Other Leave Provisions</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">AC / Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code3" value="2102003" disabled>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small">Gratuity</label>
+                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code4')">
+                                    <option value="">-- Select --</option>
+                                    <option>2103001 - End of Service Benefits</option>
+                                    <option>2103002 - Gratuity Provisions</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small">AC / Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code4" disabled>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+
+
+            </form>
+        </div>
+    </div>
+</div>
