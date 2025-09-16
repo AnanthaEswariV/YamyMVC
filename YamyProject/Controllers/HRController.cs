@@ -417,7 +417,6 @@ namespace YamyProject.Controllers
             return Json(data);
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetEmployeeById(int id)
         {
@@ -514,6 +513,43 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteEmployee([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid employee ID" });
+
+            try
+            {
+                // Build connection string dynamically based on session or default
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Delete query
+                var query = "DELETE FROM tbl_employee WHERE Id = @Id";
+
+                // Execute query
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@Id", id);
+                int affectedRows = await cmd.ExecuteNonQueryAsync();
+
+                if (affectedRows > 0)
+                    return Ok(new { status = true, message = "Employee deleted successfully" });
+                else
+                    return NotFound(new { status = false, message = "Employee not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

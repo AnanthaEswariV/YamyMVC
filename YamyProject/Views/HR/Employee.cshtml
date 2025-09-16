@@ -463,8 +463,10 @@
                 success: function (res) {
                     if (res.status) {
                         toastr.success(isEdit ? 'Employee updated' : 'Employee saved');
-                        $('#newEmployeeModal').modal('hide');
-                        if (typeof loadEmployees === 'function') loadEmployees();
+                            $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
+                            setTimeout(function () {
+                                location.reload(); // or call a function to reload table/dropdown
+                            }, 1500);
                     } else {
                         toastr.error(res.message || 'Operation failed');
                     }
@@ -661,6 +663,35 @@
             $('#saveOrUpdateBtn').text("Update").data("action", "update");
 
             $('#newEmployeeModal').modal('show');
+            });
+        });
+
+
+                // Delete Employee
+        $(document).on('click', '.delete-btn', function () {
+            const empId = $(this).data('id');
+            if (!empId) return toastr.error('Invalid employee id');
+
+            if (!confirm('Are you sure you want to delete this employee?')) return;
+
+            $.ajax({
+                url: '/HR/DeleteEmployee',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(empId),
+                success: function (res) {
+                    if (res.status) {
+                            toastr.success('Employee deleted successfully'); // Optional: reload page or table
+                            setTimeout(function () {
+                                location.reload(); // or call a function to reload table/dropdown
+                            }, 1500);
+                    } else {
+                        toastr.error(res.message || 'Failed to delete employee');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
+                }
             });
         });
 
