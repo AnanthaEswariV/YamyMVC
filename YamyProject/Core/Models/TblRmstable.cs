@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace YamyProject.Core.Models;
 
+
 public partial class TblRmstable
 {
     public int Tid { get; set; }

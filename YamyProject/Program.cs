@@ -1,4 +1,9 @@
 
+using YamyProject.Core.Consts.Mapping;
+using YamyProject.Services;
+using YamyProject.Services.Implementations;
+using YamyProject.Services.Interfaces;
+
 var builder = WebApplication.CreateBuilder(args);
 var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -7,6 +12,10 @@ var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnect
 //    options.UseSqlServer(ConnectionString));
 
 // Add services to the container.
+
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("ApiClient", client =>
 {
@@ -15,21 +24,23 @@ builder.Services.AddHttpClient("ApiClient", client =>
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
+
+
 // ? Register Session services
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromHours(1); // session timeout
+    options.IdleTimeout = TimeSpan.FromMinutes(1); // session timeout
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
 // Add DbContext with SQL Server
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<YamyDbContext>(options =>
     options.UseMySql(ConnectionString,
         ServerVersion.AutoDetect(ConnectionString)
     )
 );
-
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -39,6 +50,7 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

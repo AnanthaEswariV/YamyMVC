@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿namespace YamyProject.Core.Models;
 
-namespace YamyProject.Core.Models;
-
+[Keyless]
 public partial class TblRmsmain
 {
     public int MainId { get; set; }

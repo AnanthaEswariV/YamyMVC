@@ -1,0 +1,202 @@
+﻿@model IEnumerable<TblCustomer>
+@{
+    ViewBag.Title = "Customer Center";
+  //  Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid mt-3">
+    <!-- Top Menu -->
+    <div class="d-flex justify-content-between align-items-center bg-light p-2 border rounded">
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+                Customer Operations
+            </button>
+            <ul class="dropdown-menu">
+                 <li><a class="dropdown-item" >New Customer</a></li>
+                <li><a class="dropdown-item" >Edit Customer</a></li>
+                <li><a class="dropdown-item" >Delete Customer</a></li>
+           
+       </ul>
+        </div>
+
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+                New Transactions
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" >Create Invoice</a></li> 
+                <li><a class="dropdown-item" >Receive Payment</a></li> 
+            </ul>
+        </div>
+
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                Print
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Customer List</a></li>
+                <li class="dropdown-submenu">
+                    <a class="dropdown-item dropdown-toggle" href="#">Transaction List</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Credit & Payment</a></li>
+                        <li><a class="dropdown-item" href="#">Cash</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div>
+            <input type="text" class="form-control form-control-sm" placeholder="Search by Name, Code" />
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <!-- Left Panel: Customer List -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-light">
+                    Active Customer
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                    @*     @foreach (var customer in Model.Customers)
+                        {
+                            <li class="list-group-item">
+                                <a href="@Url.Action("Details", "Customer", new { id = customer.Id })">
+                                    @customer.Name (@customer.Code)
+                                </a>
+                            </li>
+                        } *@
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Customer Info -->
+        <div class="col-md-9">
+            <div class="card mb-3">
+                <div class="card-header">
+                    Customer Information
+                </div>
+                <div class="card-body">
+                    @foreach (var customer in Model)
+                    {<div>
+                        <tr>
+                                <label>Customer Code     : @customer.Code</label>
+                            <td>Customer Name     : @customer.Name</td>
+                            <td>TRN               : @customer.Trn</td>
+                            <td>Email             : @customer.Email</td>
+                            <td>Work Phone        : @customer.WorkPhone</td>
+                            <td>Customer Category : @customer.CatIdNavigation.Name</td>
+                            <td>Main Phone        : @customer.MainPhone</td>
+                            <td>Address           : @customer.Balance</td>
+                          @*   <td>
+                                <a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-sm btn-primary">Details</a>
+                                <a asp-action="Edit" asp-route-id="@customer.Id" class="btn btn-sm btn-warning">Edit</a>
+                                <form asp-action="Delete" asp-route-id="@customer.Id" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </td> *@
+                        </tr>
+                        </div>
+                    }
+                   @*  <p><strong>Customer Code:</strong> @Model.SelectedCustomer.Code</p>
+                    <p><strong>Name:</strong> @Model.SelectedCustomer.Name</p>
+                    <p><strong>TRN:</strong> @Model.SelectedCustomer.TRN</p>
+                    <p><strong>Email:</strong> @Model.SelectedCustomer.Email</p>
+                    <p><strong>Work Phone:</strong> @Model.SelectedCustomer.WorkPhone</p>
+                    <p><strong>Category:</strong> @Model.SelectedCustomer.Category</p>
+                    <p><strong>Address:</strong> @Model.SelectedCustomer.Address</p>
+                   <p><strong>Main Phone:</strong> @Model.SelectedCustomer.MainPhone</p>
+                *@  </div>
+            </div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="customerTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#transactions">Transactions</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#cashInvoice">Cash Invoice</a>
+                </li>
+            </ul>
+
+            <div class="tab-content border p-3">
+                <!-- Transactions -->
+                <div class="tab-pane fade show active" id="transactions">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>SN#</th>
+                                <th>Date</th>
+                                <th>Voucher No</th>
+                                <th>Voucher Type</th>
+                                <th>Description</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                           @*  @foreach (var txn in Model.Transactions)
+                            {
+                                <tr>
+                                    <td>@txn.SerialNumber</td>
+                                    <td>@txn.Date.ToShortDateString()</td>
+                                    <td>@txn.VoucherNo</td>
+                                    <td>@txn.VoucherType</td>
+                                    <td>@txn.Description</td>
+                                    <td>@txn.Debit</td>
+                                    <td>@txn.Credit</td>
+                                    <td>@txn.Balance</td>
+                                </tr>
+                            } *@
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Cash Invoice -->
+                <div class="tab-pane fade" id="cashInvoice">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>SN#</th>
+                                <th>Date</th>
+                                <th>Invoice No</th>
+                                <th>Description</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                          @*   @foreach (var invoice in Model.CashInvoices)
+                            {
+                                <tr>
+                                    <td>@invoice.SerialNumber</td>
+                                    <td>@invoice.Date.ToShortDateString()</td>
+                                    <td>@invoice.InvoiceNo</td>
+                                    <td>@invoice.Description</td>
+                                    <td>@invoice.Total</td>
+                                </tr> 
+                            }*@
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notes & Reports -->
+            <div class="card mt-3">
+                <div class="card-header">Notes</div>
+                <div class="card-body">
+                   @*  <textarea class="form-control" rows="2">@Model.SelectedCustomer.Notes</textarea>
+                   *@  <hr />
+                    <h6>Reports for this Customer</h6>
+                    <ul>
+                        <li><a href="#">QuickReport</a></li>
+                        <li><a href="#">Open Balance</a></li>
+                        <li><a href="#">Customer Snapshot</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

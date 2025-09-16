@@ -5,6 +5,7 @@ namespace YamyProject.Core.Models;
 
 public partial class TblLedger
 {
+
     public int LedgerId { get; set; }
 
     public int Code { get; set; }

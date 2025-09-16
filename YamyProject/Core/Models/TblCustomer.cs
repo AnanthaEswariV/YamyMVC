@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
+﻿
 namespace YamyProject.Core.Models;
 
 public partial class TblCustomer
@@ -12,6 +10,9 @@ public partial class TblCustomer
     public string? Name { get; set; }
 
     public int? CatId { get; set; }
+
+    [ForeignKey("CatId")]
+    public virtual TblCustomerCategory? CatIdNavigation { get; set; }
 
     public decimal? Balance { get; set; }
 
@@ -31,7 +32,20 @@ public partial class TblCustomer
 
     public string? Country { get; set; }
 
+
+    //[Column("Country")]
+    //public int? CountryId { get; set; }
+
+    //[ForeignKey(nameof(CountryId))]
+    //public virtual TblCountry? Countrys { get; set; }
+
     public string? City { get; set; }
+
+    //[Column("City")]
+    //public int? CityId { get; set; }
+
+    //[ForeignKey(nameof(CityId))]
+    public virtual TblCity? Citys { get; set; }
 
     public string? Region { get; set; }
 
