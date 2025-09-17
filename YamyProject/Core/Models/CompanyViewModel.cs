@@ -102,7 +102,7 @@ namespace YamyProject.Core.Models
 
         public string? PassportNumber { get; set; }
 
-        public string? CountryOfIssue { get; set; }
+        public int? CountryOfIssue { get; set; }
 
         public string? WorkContractNumber { get; set; }
 
@@ -151,5 +151,18 @@ namespace YamyProject.Core.Models
 
         public int ProjectId { get; set; }
     }
+    public class DepartmentRequest
+    {
+        public int Id { get; set; } 
+        public string Name { get; set; }
+    }
+
+    public class PositionRequest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public int DepartmentId { get; set; }
+    }
+
 
 }

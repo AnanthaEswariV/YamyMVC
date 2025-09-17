@@ -275,438 +275,506 @@
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-<script>
+    <script>
 
-    $(document).ready(function() {
+        $(document).ready(function() {
 
-                $('#saveEmployeeBtn').click(function() {
-            saveEmployee();
-        });
-
-
-                           if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                } else {
-                    event.preventDefault(); 
-                    saveEmployee(); 
-                }
-
-        // Employee selection
-        $('.employee-item').click(function() {
-            $('.employee-item').removeClass('active');
-            $(this).addClass('active');
-
-            var employeeCode = $(this).data('employee-code');
-            $('#selectedEmployeeCode').text(employeeCode);
-
-            // Load employee transactions here
-            loadEmployeeTransactions(employeeCode);
-      
-                     });
-        // Search functionality
-        $('#searchEmployee').on('input', function() {
-            var searchTerm = $(this).val().toLowerCase();
-
-            $('.employee-item').each(function() {
-                var employeeName = $(this).find('span:first').text().toLowerCase();
-                var employeeCode = $(this).data('employee-code').toLowerCase();
-
-                if (employeeName.includes(searchTerm) || employeeCode.includes(searchTerm)) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
+                    $('#saveEmployeeBtn').click(function() {
+                saveEmployee();
             });
-        });
-              // AJAX form submit
-        $('#newEmployeeForm').on('submit', function (e) {
-            e.preventDefault();
 
-            $.ajax({
-                url: $(this).attr('action'),
-                type: 'POST',
-                data: $(this).serialize(),
-                success: function (res) {
-                    if (res.status) {
-                        alert(res.message);
-                        $('#newEmployeeModal').modal('hide');
-                        // TODO: reload employee list dynamically instead of full reload
-                        location.reload();
+
+                               if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
                     } else {
-                        alert(res.message);
+                        event.preventDefault();
+                        saveEmployee();
                     }
-                },
-                error: function () {
-                    alert("Error while saving employee.");
-                }
+
+            // Employee selection
+            $('.employee-item').click(function() {
+                $('.employee-item').removeClass('active');
+                $(this).addClass('active');
+
+                var employeeCode = $(this).data('employee-code');
+                $('#selectedEmployeeCode').text(employeeCode);
+
+                // Load employee transactions here
+                loadEmployeeTransactions(employeeCode);
+
+                         });
+            // Search functionality
+            $('#searchEmployee').on('input', function() {
+                var searchTerm = $(this).val().toLowerCase();
+
+                $('.employee-item').each(function() {
+                    var employeeName = $(this).find('span:first').text().toLowerCase();
+                    var employeeCode = $(this).data('employee-code').toLowerCase();
+
+                    if (employeeName.includes(searchTerm) || employeeCode.includes(searchTerm)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
             });
-        });
+                  // AJAX form submit
+            $('#newEmployeeForm').on('submit', function (e) {
+                e.preventDefault();
 
-        // --- Account Code Update ---
-        window.updateCode = function(dropdown, inputId){
-            let code = $(dropdown).val().split(" - ")[0];
-            $('#'+inputId).val(code);
-        };
-   
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: function (res) {
+                        if (res.status) {
+                            alert(res.message);
+                            $('#newEmployeeModal').modal('hide');
+                            // TODO: reload employee list dynamically instead of full reload
+                            location.reload();
+                        } else {
+                            alert(res.message);
+                        }
+                    },
+                    error: function () {
+                        alert("Error while saving employee.");
+                    }
+                });
+            });
 
-    });
-
-    $(document).ready(function () {
-
-         toastr.options = {
-                     "closeButton": true,
-                     "debug": false,
-                     "newestOnTop": false,
-                     "progressBar": true,
-                     "positionClass": "toast-top-right",
-                     "preventDuplicates": false,
-                     "onclick": null,
-                     "showDuration": "300",
-                     "hideDuration": "1000",
-                     "timeOut": "5000",
-                     "extendedTimeOut": "1000",
-                     "showEasing": "swing",
-                     "hideEasing": "linear",
-                     "showMethod": "fadeIn",
-                     "hideMethod": "fadeOut"
-                 };
-
-         function calculateTotalSalary() {
-            let basic = parseFloat($("#basicSalary").val()) || 0;
-            let house = parseFloat($("#houseAllowance").val()) || 0;
-            let transport = parseFloat($("#transportAllowance").val()) || 0;
-            let other = parseFloat($("#otherAllowance").val()) || 0;
-
-            let total = basic + house + transport + other;
-            $("#totalSalary").val(total.toFixed(2));
-        }
-      
-         $("#basicSalary, #houseAllowance, #transportAllowance, #otherAllowance")
-         .on("input", calculateTotalSalary);
-
-
-          // Form submit handler
-        $('#newEmployeeForm').on('submit', function (e) {
-            e.preventDefault();
-
-            const form = this;                      // <<--- fix for "form is not defined"
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-                return;
-            }
-
-            // Decide create vs update by EmployeeId presence (robust)
-            const idVal = $('#EmployeeId').val();
-            const isEdit = idVal && parseInt(idVal) > 0;
-            const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
-
-            // Build payload - prefer explicit IDs. Keep this list in sync with your modal IDs.
-            const employeeData = {
-                Id: isEdit ? parseInt(idVal) : 0,
-                Name: $('input[name="EmployeeName"]').val() || '',
-                BirthDay: $('#BirthDay').val() || null,
-                SocialStatus: $('#SocialStatus').val() || '',
-                CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
-                CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
-                Address: $('#Address').val() || '',
-                Phone: $('#Phone').val() || '',
-                Email: $('#Email').val() || '',
-                SocialInsuranceNumber: $('#SocialInsuranceNumber').val() || '',
-                EmergencyName: $('#EmergencyName').val() || '',
-                EmergencyAddress: $('#EmergencyAddress').val() || '',
-                EmergencyPhone: $('#EmergencyPhone').val() || '',
-                Relation: $('#Relation').val() || '',
-                PassportNumber: $('#PassportNumber').val() || '',
-                PassportIssueDate: $('#PassportIssueDate').val() || null,
-                PassportExpiryDate: $('#PassportExpiryDate').val() || null,
-                WorkContractNumber: $('#ContractNumber').val() || '',
-                PositionId: $('#PositionId').val() ? parseInt($('#PositionId').val()) : null,
-                DepartmentId: $('#DepartmentId').val() ? parseInt($('#DepartmentId').val()) : null,
-                WorkContractType: $('#ContractType').val() || '',
-                WorkDays: $('input[name="WorkDays"]').val() || '',
-                WorkingHours: $('input[name="WorkingHours"]').val() || '',
-                ContractIssueDate: $('#ContractIssueDate').val() || null,
-                ContractExpiryDate: $('#ContractExpiryDate').val() || null,
-                ResidencyFileNumber: $('#ResidencyFileNumber').val() || '',
-                ResidencyIssuingAuthority: $('#ResidencyIssuingAuthority').val() || '',
-                ResidencyIssueDate: $('#ResidencyIssueDate').val() || null,
-                ResidencyExpiryDate: $('#ResidencyExpiryDate').val() || null,
-                EmiratesIdfileNumber: $('#EmiratesIdFileNumber').val() || '',
-                EmiratesIdissuingAuthority: $('#EmiratesIdIssuingAuthority').val() || '',
-                EmiratesIdissueDate: $('#EmiratesIdIssueDate').val() || null,
-                EmiratesIdexpiryDate: $('#EmiratesIdExpiryDate').val() || null,
-                BasicSalary: parseFloat($('#basicSalary').val()) || 0,
-                HousingAllowance: parseFloat($('#houseAllowance').val()) || 0,
-                TransportationAllowance: parseFloat($('#transportAllowance').val()) || 0,
-                Other: parseFloat($('#otherAllowance').val()) || 0,
-                AccountId: $('#code1').val() ? parseInt($('#code1').val()) : null,
-                BankId: $('#BankId').val() ? parseInt($('#BankId').val()) : null,
-                IbanNumber: $('#IbanNumber').val() || '',
-                BankAccountNumber: $('#BankAccountNumber').val() || '',
-                EmployeeRecivableId: $('#code2').val() ? parseInt($('#code2').val()) : null,
-                AccruedSalariesId: $('#code1').val() ? parseInt($('#code1').val()) : null,
-                AcroalLeaveSalaryId: $('#code3').val() ? parseInt($('#code3').val()) : null,
-                GratuitId: $('#code4').val() ? parseInt($('#code4').val()) : null,
-                PettyCashId: 0,
-                Active: $('#employeeActive').is(':checked') ? 1 : 0
+            // --- Account Code Update ---
+            window.updateCode = function(dropdown, inputId){
+                let code = $(dropdown).val().split(" - ")[0];
+                $('#'+inputId).val(code);
             };
 
-            console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
 
-            $.ajax({
-                url: url,
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(employeeData),
-                success: function (res) {
-                    if (res.status) {
-                        toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
-                            $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
-                            setTimeout(function () {
-                                location.reload(); // or call a function to reload table/dropdown
-                            }, 1500);
-                    } else {
-                        toastr.error(res.message || 'Operation failed');
-                    }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
-                }
-            });
         });
 
-         // Optional: remove validation styles on modal hide
-         $('#newEmployeeModal').on('hidden.bs.modal', function () {
-             let form = $('#newEmployeeForm')[0];
-             form.classList.remove('was-validated');
-             form.reset();
-         });
+        $(document).ready(function () {
 
-         // Render employee table
-        function renderEmployeeTable(employees){
-            let tbody = $("#employeeTable tbody");
-            tbody.empty();
+             toastr.options = {
+                         "closeButton": true,
+                         "debug": false,
+                         "newestOnTop": false,
+                         "progressBar": true,
+                         "positionClass": "toast-top-right",
+                         "preventDuplicates": false,
+                         "onclick": null,
+                         "showDuration": "300",
+                         "hideDuration": "1000",
+                         "timeOut": "5000",
+                         "extendedTimeOut": "1000",
+                         "showEasing": "swing",
+                         "hideEasing": "linear",
+                         "showMethod": "fadeIn",
+                         "hideMethod": "fadeOut"
+                     };
 
-            if(employees.length === 0){
-                tbody.append('<tr><td colspan="3" class="text-center">No employees found</td></tr>');
-                return;
+             function calculateTotalSalary() {
+                let basic = parseFloat($("#basicSalary").val()) || 0;
+                let house = parseFloat($("#houseAllowance").val()) || 0;
+                let transport = parseFloat($("#transportAllowance").val()) || 0;
+                let other = parseFloat($("#otherAllowance").val()) || 0;
+
+                let total = basic + house + transport + other;
+                $("#totalSalary").val(total.toFixed(2));
             }
 
-            employees.forEach(emp => {
-                let totalSalary =
-                    (emp.basicSalary || 0) +
-                    (emp.housingAllowance || 0) +
-                    (emp.transportationAllowance || 0) +
-                    (emp.other || 0);
+             $("#basicSalary, #houseAllowance, #transportAllowance, #otherAllowance")
+             .on("input", calculateTotalSalary);
 
-                tbody.append(`
-                    <tr data-id="${emp.id}">
-                        <td>${emp.name || ""}</td>
-                        <td>${totalSalary.toFixed(2)}</td>
-                                <td>
-            <!-- Edit Icon -->
-            <a href="javascript:void(0)" class="edit-btn text-primary me-2" data-id="${emp.id}" title="Edit">
-                <i class="bi bi-pencil-square"></i>
-            </a>
 
-            <!-- Delete Icon -->
-            <a href="javascript:void(0)" class="delete-btn text-danger" data-id="${emp.id}" title="Delete">
-                <i class="bi bi-trash"></i>
-            </a>
-        </td>
+              // Form submit handler
+            $('#newEmployeeForm').on('submit', function (e) {
+                e.preventDefault();
 
-                    </tr>
-                `);
-            });
-        }
+                const form = this;                      // <<--- fix for "form is not defined"
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return;
+                }
 
-        // Fetch employees from API
-        function fetchEmployees(filter = "active", search = ""){
-            $.ajax({
-                url: `/HR/GetEmployees?filter=${filter}`,
-                method: "GET",
-                success: function(res){
-                    if(res.status){
-                        let data = res.data;
-                        console.log("Fetched Employees:", data);
+                // Decide create vs update by EmployeeId presence (robust)
+                const idVal = $('#EmployeeId').val();
+                const isEdit = idVal && parseInt(idVal) > 0;
+                const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
 
-                        // Apply search filter
-                        if(search){
-                            data = data.filter(emp =>
-                                (emp.name && emp.name.toLowerCase().includes(search.toLowerCase())) ||
-                                (emp.code && emp.code.toString().includes(search))
-                            );
-                            console.log("Filtered Employees:", data);
+                // Build payload - prefer explicit IDs. Keep this list in sync with your modal IDs.
+                const employeeData = {
+                    Id: isEdit ? parseInt(idVal) : 0,
+                    Name: $('input[name="EmployeeName"]').val() || '',
+                    BirthDay: $('#BirthDay').val() || null,
+                    SocialStatus: $('#SocialStatus').val() || '',
+                    CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
+                    CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
+                    CountryOfIssue: $('#countryOfIssue').val() ? parseInt($('#countryOfIssue').val()) : null,
+                    Address: $('#Address').val() || '',
+                    Phone: $('#Phone').val() || '',
+                    Email: $('#Email').val() || '',
+                    SocialInsuranceNumber: $('#SocialInsuranceNumber').val() || '',
+                    EmergencyName: $('#EmergencyName').val() || '',
+                    EmergencyAddress: $('#EmergencyAddress').val() || '',
+                    EmergencyPhone: $('#EmergencyPhone').val() || '',
+                    Relation: $('#Relation').val() || '',
+                    PassportNumber: $('#PassportNumber').val() || '',
+                    PassportIssueDate: $('#PassportIssueDate').val() || null,
+                    PassportExpiryDate: $('#PassportExpiryDate').val() || null,
+                    WorkContractNumber: $('#ContractNumber').val() || '',
+                    PositionId: $('#PositionId').val() ? parseInt($('#PositionId').val()) : null,
+                    DepartmentId: $('#DepartmentId').val() ? parseInt($('#DepartmentId').val()) : null,
+                    WorkContractType: $('#ContractType').val() || '',
+                    WorkDays: $('input[name="WorkDays"]').val() || '',
+                    WorkingHours: $('input[name="WorkingHours"]').val() || '',
+                    ContractIssueDate: $('#ContractIssueDate').val() || null,
+                    ContractExpiryDate: $('#ContractExpiryDate').val() || null,
+                    ResidencyFileNumber: $('#ResidencyFileNumber').val() || '',
+                    ResidencyIssuingAuthority: $('#ResidencyIssuingAuthority').val() || '',
+                    ResidencyIssueDate: $('#ResidencyIssueDate').val() || null,
+                    ResidencyExpiryDate: $('#ResidencyExpiryDate').val() || null,
+                    EmiratesIdfileNumber: $('#EmiratesIdFileNumber').val() || '',
+                    EmiratesIdissuingAuthority: $('#EmiratesIdIssuingAuthority').val() || '',
+                    EmiratesIdissueDate: $('#EmiratesIdIssueDate').val() || null,
+                    EmiratesIdexpiryDate: $('#EmiratesIdExpiryDate').val() || null,
+                    BasicSalary: parseFloat($('#basicSalary').val()) || 0,
+                    HousingAllowance: parseFloat($('#houseAllowance').val()) || 0,
+                    TransportationAllowance: parseFloat($('#transportAllowance').val()) || 0,
+                    Other: parseFloat($('#otherAllowance').val()) || 0,
+                    AccountId: $('#code1').val() ? parseInt($('#code1').val()) : null,
+                    BankId: $('#BankId').val() ? parseInt($('#BankId').val()) : null,
+                    IbanNumber: $('#IbanNumber').val() || '',
+                    BankAccountNumber: $('#BankAccountNumber').val() || '',
+                    EmployeeRecivableId: $('#code2').val() ? parseInt($('#code2').val()) : null,
+                    AccruedSalariesId: $('#code1').val() ? parseInt($('#code1').val()) : null,
+                    AcroalLeaveSalaryId: $('#code3').val() ? parseInt($('#code3').val()) : null,
+                    GratuitId: $('#code4').val() ? parseInt($('#code4').val()) : null,
+                    PettyCashId: 0,
+                    Active: $('#employeeActive').is(':checked') ? 1 : 0
+                };
+
+                console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(employeeData),
+                    success: function (res) {
+                        if (res.status) {
+                            toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
+                                $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
+                                setTimeout(function () {
+                                    location.reload(); // or call a function to reload table/dropdown
+                                }, 1500);
+                        } else {
+                            toastr.error(res.message || 'Operation failed');
                         }
-
-                        renderEmployeeTable(data);
-                    } else {
-                        console.log("API Error:", res.message);
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
                     }
-                },
-                error: function(xhr){
-                    console.log("AJAX Error:", xhr);
+                });
+            });
+
+             // Optional: remove validation styles on modal hide
+             $('#newEmployeeModal').on('hidden.bs.modal', function () {
+                 let form = $('#newEmployeeForm')[0];
+                 form.classList.remove('was-validated');
+                 form.reset();
+             });
+
+             // Render employee table
+            function renderEmployeeTable(employees){
+                let tbody = $("#employeeTable tbody");
+                tbody.empty();
+
+                if(employees.length === 0){
+                    tbody.append('<tr><td colspan="3" class="text-center">No employees found</td></tr>');
+                    return;
                 }
-            });
-        }
 
-        // Dropdown change event
-        $("#employeeFilter").on("change", function(){
-            let filter = $(this).val();
-            let search = $("#searchEmployee").val();
-            fetchEmployees(filter, search);
-        });
+                employees.forEach(emp => {
+                    let totalSalary =
+                        (emp.basicSalary || 0) +
+                        (emp.housingAllowance || 0) +
+                        (emp.transportationAllowance || 0) +
+                        (emp.other || 0);
 
-        // Search input event
-        $("#searchEmployee").on("input", function(){
-            let filter = $("#employeeFilter").val();
-            let search = $(this).val();
-            fetchEmployees(filter, search);
-        });
+                    tbody.append(`
+                        <tr data-id="${emp.id}">
+                            <td>${emp.name || ""}</td>
+                            <td>${totalSalary.toFixed(2)}</td>
+                                    <td>
+                <!-- Edit Icon -->
+                <a href="javascript:void(0)" class="edit-btn text-primary me-2" data-id="${emp.id}" title="Edit">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
 
-        // Initial load
-        fetchEmployees();
+                <!-- Delete Icon -->
+                <a href="javascript:void(0)" class="delete-btn text-danger" data-id="${emp.id}" title="Delete">
+                    <i class="bi bi-trash"></i>
+                </a>
+            </td>
 
+                        </tr>
+                    `);
+                });
+            }
 
-          let countryCities = []; // global storage for countries and cities
+            // Fetch employees from API
+            function fetchEmployees(filter = "active", search = ""){
+                $.ajax({
+                    url: `/HR/GetEmployees?filter=${filter}`,
+                    method: "GET",
+                    success: function(res){
+                        if(res.status){
+                            let data = res.data;
+                            console.log("Fetched Employees:", data);
 
-        // Function to load country & city dropdowns
-        function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
-            const $country = $(countryIdSelector);
-            const $city = $(cityIdSelector);
+                            // Apply search filter
+                            if(search){
+                                data = data.filter(emp =>
+                                    (emp.name && emp.name.toLowerCase().includes(search.toLowerCase())) ||
+                                    (emp.code && emp.code.toString().includes(search))
+                                );
+                                console.log("Filtered Employees:", data);
+                            }
 
-            $.getJSON(apiUrl, function (data) {
-                countryCities = data; // store globally
-
-                // Populate country dropdown
-                $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
-            });
-
-            // Event: When country changes, populate cities
-            $country.on('change', function () {
-                const selectedCountryId = $(this).val();
-
-                // Reset city dropdown
-                $city.html('<option value="">-- Select --</option>');
-
-                if (selectedCountryId) {
-                    const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
-                    $city.append(cities.map(city => `<option value="${city.id}">${city.name}</option>`));
-                }
-            });
-        }
-
-
-         loadCountryCityDropdowns('/HR/GetCountryCities', '#countryDropdown', '#cityDropdown');
-
-
-                  $('#btnNew').on('click', function () {
-            $('#newEmployeeForm')[0].reset();
-            $('#EmployeeId').val('');                     // no id => create mode
-            $('#cityDropdown').html('<option value="">-- Select --</option>');
-            $('#saveOrUpdateBtn').text('Save');          // optional visual cue
-            $('#newEmployeeModal').modal('show');
-        });
-
-              $(document).on('click', '.edit-btn', function () {
-            const empId = $(this).data('id');
-
-            $.getJSON(`/HR/GetEmployeeById?id=${empId}`, function (emp) {
-                if (!emp) return toastr.error("Employee not found");
-
-                console.log("Employee Data:", emp);
-
-                // Employee Info
-                $('#EmployeeId').val(emp.id);
-                $('#EmployeeName').val(emp.name);
-                $('#BirthDay').val(emp.birthDay || "");
-                $('#SocialStatus').val(emp.socialStatus);
-                $('#Address').val(emp.address);
-                $('#Phone').val(emp.phone);
-                $('#Email').val(emp.email);
-                $('#SocialInsuranceNumber').val(emp.socialInsuranceNumber);
-
-                // Emergency Info
-                $('#EmergencyName').val(emp.emergencyName);
-                $('#EmergencyAddress').val(emp.emergencyAddress);
-                $('#EmergencyPhone').val(emp.emergencyPhone);
-                $('#Relation').val(emp.relation);
-
-                // Legal Documents
-                $('#PassportNumber').val(emp.passportNumber);
-                $('#PassportIssueDate').val(emp.passportIssueDate || "");
-                $('#PassportExpiryDate').val(emp.passportExpiryDate || "");
-                $('#ResidencyFileNumber').val(emp.residencyFileNumber);
-                $('#ResidencyIssuingAuthority').val(emp.residencyIssuingAuthority);
-                $('#ResidencyIssueDate').val(emp.residencyIssueDate || "");
-                $('#ResidencyExpiryDate').val(emp.residencyExpiryDate || "");
-                $('#ContractNumber').val(emp.contractNumber);
-                $('#ContractType').val(emp.contractType);
-                $('#ContractIssueDate').val(emp.contractIssueDate || "");
-                $('#ContractExpiryDate').val(emp.contractExpiryDate || "");
-
-            $('input[name="WorkDays"]').val(emp.workDays);        
-            $('input[name="WorkingHours"]').val(emp.workingHours); 
-
-                // Salary Info
-                $('#basicSalary').val(emp.basicSalary || 0);
-                $('#houseAllowance').val(emp.housingAllowance || 0);
-                $('#transportAllowance').val(emp.transportationAllowance || 0);
-                $('#otherAllowance').val(emp.other || 0);
-                $('#totalSalary').val(
-                    (emp.basicSalary || 0) +
-                    (emp.housingAllowance || 0) +
-                    (emp.transportationAllowance || 0) +
-                    (emp.other || 0)
-                );
-
-                // Expense Accounts
-                $('#code1').val(emp.accruedSalariesId);
-                $('#code2').val(emp.employeeRecivableId);
-                $('#code3').val(emp.acroalLeaveSalaryId);
-                $('#code4').val(emp.gratuitId);
-
-                // Active
-                $('#employeeActive').prop('checked', emp.active == 1);
-                       // Change button to Update mode
-            $('#saveOrUpdateBtn').text("Update").data("action", "update");
-
-            $('#newEmployeeModal').modal('show');
-            });
-        });
-
-
-                // Delete Employee
-        $(document).on('click', '.delete-btn', function () {
-            const empId = $(this).data('id');
-            if (!empId) return toastr.error('Invalid employee id');
-
-            if (!confirm('Are you sure you want to delete this employee?')) return;
-
-            $.ajax({
-                url: '/HR/DeleteEmployee',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(empId),
-                success: function (res) {
-                    if (res.status) {
-                            toastr.success('Employee deleted successfully'); // Optional: reload page or table
-                            setTimeout(function () {
-                                location.reload(); // or call a function to reload table/dropdown
-                            }, 1500);
-                    } else {
-                        toastr.error(res.message || 'Failed to delete employee');
+                            renderEmployeeTable(data);
+                        } else {
+                            console.log("API Error:", res.message);
+                        }
+                    },
+                    error: function(xhr){
+                        console.log("AJAX Error:", xhr);
                     }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
-                }
+                });
+            }
+
+            // Dropdown change event
+            $("#employeeFilter").on("change", function(){
+                let filter = $(this).val();
+                let search = $("#searchEmployee").val();
+                fetchEmployees(filter, search);
             });
+
+            // Search input event
+            $("#searchEmployee").on("input", function(){
+                let filter = $("#employeeFilter").val();
+                let search = $(this).val();
+                fetchEmployees(filter, search);
+            });
+
+            // Initial load
+            fetchEmployees();
+
+
+              let countryCities = []; // global storage for countries and cities
+
+            // Function to load country & city dropdowns
+            function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+                const $country = $(countryIdSelector);
+                const $city = $(cityIdSelector);
+
+                $.getJSON(apiUrl, function (data) {
+                    countryCities = data; // store globally
+
+                    // Populate country dropdown
+                    $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
+                });
+
+                // Event: When country changes, populate cities
+                $country.on('change', function () {
+                    const selectedCountryId = $(this).val();
+
+                    // Reset city dropdown
+                    $city.html('<option value="">-- Select --</option>');
+
+                    if (selectedCountryId) {
+                        const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
+                        $city.append(cities.map(city => `<option value="${city.id}">${city.name}</option>`));
+                    }
+                });
+            }
+
+
+             loadCountryCityDropdowns('/HR/GetCountryCities', '#countryDropdown', '#cityDropdown');
+
+
+                      $('#btnNew').on('click', function () {
+                $('#newEmployeeForm')[0].reset();
+                $('#EmployeeId').val('');                     // no id => create mode
+                $('#cityDropdown').html('<option value="">-- Select --</option>');
+                $('#saveOrUpdateBtn').text('Save');          // optional visual cue
+                $('#newEmployeeModal').modal('show');
+            });
+
+                  $(document).on('click', '.edit-btn', function () {
+                const empId = $(this).data('id');
+
+                $.getJSON(`/HR/GetEmployeeById?id=${empId}`, function (emp) {
+                    if (!emp) return toastr.error("Employee not found");
+
+                    console.log("Employee Data:", emp);
+
+                    // Employee Info
+                    $('#EmployeeId').val(emp.id);
+                    $('#EmployeeName').val(emp.name);
+                    $('#BirthDay').val(emp.birthDay || "");
+                    $('#SocialStatus').val(emp.socialStatus);
+                    $('#Address').val(emp.address);
+                    $('#Phone').val(emp.phone);
+                    $('#Email').val(emp.email);
+                    $('#SocialInsuranceNumber').val(emp.socialInsuranceNumber);
+
+                    // Emergency Info
+                    $('#EmergencyName').val(emp.emergencyName);
+                    $('#EmergencyAddress').val(emp.emergencyAddress);
+                    $('#EmergencyPhone').val(emp.emergencyPhone);
+                    $('#Relation').val(emp.relation);
+
+                    // Legal Documents
+                    $('#PassportNumber').val(emp.passportNumber);
+                    $('#PassportIssueDate').val(emp.passportIssueDate || "");
+                    $('#PassportExpiryDate').val(emp.passportExpiryDate || "");
+                    $('#ResidencyFileNumber').val(emp.residencyFileNumber);
+                    $('#ResidencyIssuingAuthority').val(emp.residencyIssuingAuthority);
+                    $('#ResidencyIssueDate').val(emp.residencyIssueDate || "");
+                    $('#ResidencyExpiryDate').val(emp.residencyExpiryDate || "");
+                    $('#ContractNumber').val(emp.contractNumber);
+                    $('#ContractType').val(emp.contractType);
+                    $('#ContractIssueDate').val(emp.contractIssueDate || "");
+                    $('#ContractExpiryDate').val(emp.contractExpiryDate || "");
+
+                $('input[name="WorkDays"]').val(emp.workDays);
+                $('input[name="WorkingHours"]').val(emp.workingHours);
+
+                    // Salary Info
+                    $('#basicSalary').val(emp.basicSalary || 0);
+                    $('#houseAllowance').val(emp.housingAllowance || 0);
+                    $('#transportAllowance').val(emp.transportationAllowance || 0);
+                    $('#otherAllowance').val(emp.other || 0);
+                    $('#totalSalary').val(
+                        (emp.basicSalary || 0) +
+                        (emp.housingAllowance || 0) +
+                        (emp.transportationAllowance || 0) +
+                        (emp.other || 0)
+                    );
+
+                    // Expense Accounts
+                    $('#code1').val(emp.accruedSalariesId);
+                    $('#code2').val(emp.employeeRecivableId);
+                    $('#code3').val(emp.acroalLeaveSalaryId);
+                    $('#code4').val(emp.gratuitId);
+
+                    // Active
+                    $('#employeeActive').prop('checked', emp.active == 1);
+                           // Change button to Update mode
+                $('#saveOrUpdateBtn').text("Update").data("action", "update");
+
+                $('#newEmployeeModal').modal('show');
+                });
+            });
+
+
+                    // Delete Employee
+            $(document).on('click', '.delete-btn', function () {
+                const empId = $(this).data('id');
+                if (!empId) return toastr.error('Invalid employee id');
+
+                if (!confirm('Are you sure you want to delete this employee?')) return;
+
+                $.ajax({
+                    url: '/HR/DeleteEmployee',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(empId),
+                    success: function (res) {
+                        if (res.status) {
+                                toastr.success('Employee deleted successfully'); // Optional: reload page or table
+                                setTimeout(function () {
+                                    location.reload(); // or call a function to reload table/dropdown
+                                }, 1500);
+                        } else {
+                            toastr.error(res.message || 'Failed to delete employee');
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
+                    }
+                });
+            });
+
+
+              $(document).ready(function () {
+                $.ajax({
+                    url: '/HR/GetCountryOfIssue', // adjust controller name
+                    type: 'GET',
+                    success: function (data) {
+                        let $ddl = $('#countryOfIssue');
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function (i, country) {
+                            $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
+                        });
+                    },
+                    error: function () {
+                        alert("Error loading countries");
+                    }
+                });
+            });
+
+              $(document).ready(function () {
+                $.ajax({
+                    url: '/HR/GetAccruedSalaries',
+                    type: 'GET',
+                    success: function (data) {
+                        console.log("✅ API Response:", data);
+
+                        // List of dropdowns with their matching code textbox
+                        const dropdowns = [
+                            { ddl: '#accruedSalaries', codeBox: '#code1' },
+                            { ddl: '#employeeReceivable', codeBox: '#code2' },
+                            { ddl: '#accrualLeave', codeBox: '#code3' },
+                            { ddl: '#gratuity', codeBox: '#code4' }
+                        ];
+
+                        dropdowns.forEach(set => {
+                            let $ddl = $(set.ddl);
+                            console.log("Found dropdown?", set.ddl, $ddl.length);
+
+                            $ddl.empty().append('<option value="">-- Select --</option>');
+
+                            $.each(data, function (i, item) {
+                                $ddl.append(
+                                    $('<option>', {
+                                        value: item.id,
+                                        text: item.code + ' - ' + item.name,
+                                        'data-code': item.code
+                                    })
+                                );
+                            });
+
+                            console.log("Total options now for", set.ddl, ":", $ddl.find('option').length);
+
+                            // On change, update the code textbox
+                            $ddl.on('change', function () {
+                                let selected = $(this).find(':selected');
+                                let code = selected.data('code');
+                                console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
+                                $(set.codeBox).val(code || "");
+                            });
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("❌ Error loading accounts:", status, error);
+                    }
+                });
+            });
+
+
         });
 
-
-    });
-
-</script>
+    </script>
 }

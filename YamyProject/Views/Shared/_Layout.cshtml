@@ -31,7 +31,7 @@
             margin: 0 auto;
         }
 
-        
+
 
         .sidebar-wrapper {
             width: 219px;
@@ -45,9 +45,9 @@
             transition: left .5s ease-out;
         }
 
-        .sidebar-wrapper .sidebar-header img {
-            height: 9.2rem;
-        }
+            .sidebar-wrapper .sidebar-header img {
+                height: 9.2rem;
+            }
 
         #main {
             display: flex;
@@ -73,7 +73,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size:medium;
+            font-size: medium;
         }
 
             .top-navbar ul {
@@ -99,7 +99,7 @@
             margin-top: auto;
             padding: 1rem;
             border-top: 1px solid #ddd;
-            padding-left:0px;
+            padding-left: 0px;
         }
 
             .sidebar-footer .sidebar-item {
@@ -190,8 +190,14 @@
             display: block;
         }
 
-        .sidebar-menu{
+        .sidebar-menu {
             font-size: medium;
+        }
+
+        .has-submenu > .submenu {
+            max-height: 300px; /* adjust height as needed */
+            overflow-y: auto; /* enable vertical scroll */
+            overflow-x: hidden; /* prevent horizontal scroll */
         }
 
     </style>
@@ -214,14 +220,16 @@
                                 <ul class="submenu">
                                     <li><a asp-controller="CompanyCenter" asp-action="Index">Company Center</a></li>
                                     <li><a href="">Reminders</a></li>
-                                </ul></li>
+                                </ul>
+                            </li>
                             <li><a href="">Restore Company</a></li>
                             <li><a href="">Backup Company</a></li>
                             <li><a href="#" onclick="window.close(); return false;">Exit</a></li>
 
                         </ul>
                     </li>
-                    <li class="dropdown">Lists
+                    <li class="dropdown">
+                        Lists
                         <ul class="submenu">
                             <li><a href="/Lists/ChartOfAccount">Chart of Account</a></li>
                             <li><a href="">Item List</a></li>
@@ -259,16 +267,17 @@
                             </li>
                         </ul>
                     </li>
-                  
-                    <li class="dropdown">Inventory Doc
+
+                    <li class="dropdown">
+                        Inventory Doc
                         <ul class="submenu">
                             <li class="dropdown has-submenu">
                                 <a href="">Inventory Items</a>
-                                    <ul class="submenu">
-                                        <li><a href="/Lists/Unit">Add Unit</a></li>
-                                        <li><a href="/Lists/ItemCategory">Add Category</a></li>
+                                <ul class="submenu">
+                                    <li><a href="/Lists/Unit">Add Unit</a></li>
+                                    <li><a href="/Lists/ItemCategory">Add Category</a></li>
                                     <li><a href="/Lists/Tax">Add Item Tax Code</a></li>
-                                    </ul>
+                                </ul>
                             </li>
                             <li><a href="">Add New Item</a></li>
                             <li><a href="">Stock Management</a></li>
@@ -277,7 +286,8 @@
                             <li><a href="">Item Warehouse Transfter</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">Customers
+                    <li class="dropdown">
+                        Customers
                         <ul class="submenu">
                             <a asp-controller="CustomerCenter" asp-action="Index">Customer Center</a>
                             <li><a href="">Sales Center</a></li>
@@ -290,7 +300,8 @@
                             <li><a href="">Credit Note</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">Vendors
+                    <li class="dropdown">
+                        Vendors
                         <ul class="submenu">
                             <li><a href="">Vendor Center</a></li>
                             <li><a href="">Purchases Center</a></li>
@@ -301,7 +312,8 @@
                             <li><a href="">Debit Note</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">Subcontractor
+                    <li class="dropdown">
+                        Subcontractor
                         <ul class="submenu">
                             <li><a href="">Subcontractor Center</a></li>
                             <li><a href="">Purchases Center</a></li>
@@ -309,7 +321,8 @@
                             <li><a href="">Payment Voucher</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">HR
+                    <li class="dropdown">
+                        HR
                         <ul class="submenu">
                             <li><a href="/HR/Employee">Human Resource Center</a></li>
                             <li><a href="">Attendance Sheet</a></li>
@@ -321,8 +334,9 @@
                             <li><a href="">Payment Voucher</a></li>
                         </ul>
                     </li>
-                   
-                    <li class="dropdown">Construction
+
+                    <li class="dropdown">
+                        Construction
                         <ul class="submenu">
                             <li><a href="">Project Setup</a></li>
                             <li><a href="">Project Tender</a></li>
@@ -335,7 +349,8 @@
                             <li><a href="">GanttChart Sample</a></li>
                         </ul>
                     </li>
-                    <li class="dropdown">Reports
+                    <li class="dropdown">
+                        Reports
                         <ul class="submenu">
                             <li><a href="">Company</a></li>
                             <li><a href="">Customer & Receivable</a></li>
@@ -347,11 +362,41 @@
                             <li><a href="">Inventory</a></li>
                             <li><a href="">Corporate Tax</a></li>
                             <li><a href="">Bank</a></li>
-                            <li><a href="">List</a></li>
+                            <li class="dropdown has-submenu">
+                                <a href="">List</a>
+                                <ul class="submenu">
+                                    <li><a href="/Lists/ChartOfAccount">Account List</a></li>
+                                    <li><a href="">Bank List</a></li>
+                                    <li><a href="">Bank Card List</a></li>
+                                    <li><a href="">Cheque List</a></li>
+                                    <li><a href="">City List</a></li>
+                                    <li><a href="">Country List</a></li>
+                                    <li><a href="">Cost Center List</a></li>
+                                    <li><a href="">Customer List</a></li>
+                                    <li><a href="">Customer Category List</a></li>
+                                    <li><a href="/Lists/Department">Department List</a></li>
+                                    <li><a href="">Employee List</a></li>
+                                    <li><a href="">Fixed Asset List</a></li>
+                                    <li><a href="">Fixed Asset Category List</a></li>
+                                    <li><a href="">Fixed Asset Item List</a></li>
+                                    <li><a href="">Item List</a></li>
+                                    <li><a href="/Lists/ItemCategory">Item Category List</a></li>
+                                    <li><a href="/Lists/Tax">Item Tax Code List</a></li>
+                                    <li><a href="/Lists/Unit">Item Unit List</a></li>
+                                    <li><a href="/Inventory/Warehouse">Item Warehouse List</a></li>
+                                    <li><a href="">Petty Cash Category List</a></li>
+                                    <li><a href="/Lists/Position">Position List</a></li>
+                                    <li><a href="">Prepaid Expense List</a></li>
+                                    <li><a href="">Prepaid Expense Category List</a></li>
+                                    <li><a href="">Vendor List</a></li>
+                                    <li><a href="">Ventor Category List</a></li>
+                                </ul>
+                            </li>
 
                         </ul>
-                    </l>
-                    <li class="dropdown">Settings
+                    </li>
+                    <li class="dropdown">
+                        Settings
                         <ul class="submenu">
                             <li><a href="">Settings</a></li>
                             <li><a href="/Settings/ChangePassword">Change Current Password</a></li>
@@ -363,7 +408,7 @@
                     </li>
                 </ul>
 
-              @*   <!-- Right: User Profile -->
+                @*   <!-- Right: User Profile -->
                 <div class="navbar-user d-flex align-items-right">
                     <i class="bi bi-person-circle me-2"></i>
                     <span>yamy1 ▾</span>
@@ -428,8 +473,8 @@
 
         <!-- ✅ Main -->
         <div id="main">
-     
-               <div class="page-content">
+
+            <div class="page-content">
                 <section class="row">
                     <div class="col-12">
                         @RenderBody()

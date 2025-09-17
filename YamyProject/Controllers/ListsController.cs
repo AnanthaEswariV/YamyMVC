@@ -628,7 +628,349 @@ namespace YamyProject.Controllers
 
         #endregion
 
-    }
+        #region Department
+
+        public IActionResult Department()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetDepartments()
+        {
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = "SELECT Id, Name FROM tbl_departments ORDER BY Name";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var departments = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    departments.Add(new
+                    {
+                        id =reader.GetInt32("Id"),
+                        name = reader.GetString("Name"),
+                    });
+                }
+
+                return Ok(new { status = true, data = departments });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddDepartment([FromBody] DepartmentRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter department name" });
+
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check duplicate by Name
+                var checkQuery = "SELECT COUNT(*) FROM tbl_departments WHERE name = @name";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name);
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+
+                    if (exists && model.Id == 0)
+                        return BadRequest(new { status = false, message = "Department name already exists. Enter another name." });
+                }
+
+                // Generate new department code
+
+                var insertQuery = @"
+            INSERT INTO tbl_departments ( Name)
+            VALUES (@name)";
+
+                using var insertCmd = new MySqlCommand(insertQuery, conn);
+                insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+                await insertCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Department added successfully"});
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> EditDepartment([FromBody] DepartmentRequest model)
+
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Department name is required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check for duplicate name (excluding current record)
+                var checkQuery = "SELECT COUNT(*) FROM tbl_departments WHERE Name = @name AND Id != @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                    if (exists)
+                        return BadRequest(new { status = false, message = "Department name already exists." });
+                }
+
+                var updateQuery = "UPDATE tbl_departments SET Name = @name WHERE Id = @id";
+                using var updateCmd = new MySqlCommand(updateQuery, conn);
+                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                await updateCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Department updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteDepartment(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid department ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var deleteQuery = "DELETE FROM tbl_departments WHERE Id = @id";
+                using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Department deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
+
+        #region Position 
+
+        public IActionResult Position()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPositions()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT p.id AS PositionId, p.name AS PositionName, p.department_id AS DepartmentId, d.name AS DepartmentName
+            FROM tbl_position p
+            INNER JOIN tbl_departments d ON p.department_id = d.id
+            ORDER BY p.name";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var positions = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    positions.Add(new
+                    {
+                        id = reader.GetInt32("PositionId"),
+                        name = reader.GetString("PositionName"),
+                        departmentId = reader.GetInt32("DepartmentId"),
+                        departmentName = reader.GetString("DepartmentName")
+                    });
+                }
+
+                return Ok(new { status = true, data = positions });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> AddPosition([FromBody] PositionRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name) || model.DepartmentId <= 0)
+                return BadRequest(new { status = false, message = "Please enter position name and select department" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check duplicate
+                var checkQuery = "SELECT COUNT(*) FROM tbl_position WHERE Name = @name AND department_id = @department_id";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                checkCmd.Parameters.AddWithValue("@department_id", model.DepartmentId);
+                var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                if (exists) return BadRequest(new { status = false, message = "Position already exists in this department." });
+
+                var insertQuery = "INSERT INTO tbl_position (Name, department_id) VALUES (@name, @department_id)";
+                using var insertCmd = new MySqlCommand(insertQuery, conn);
+                insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                insertCmd.Parameters.AddWithValue("@department_id", model.DepartmentId);
+
+                await insertCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Position added successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> EditPosition([FromBody] PositionRequest model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name) || model.DepartmentId <= 0)
+                return BadRequest(new { status = false, message = "Position name and department are required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check duplicate excluding current record
+                var checkQuery = "SELECT COUNT(*) FROM tbl_position WHERE Name = @name AND department_id = @department_id AND Id != @id";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                checkCmd.Parameters.AddWithValue("@department_id", model.DepartmentId);
+                checkCmd.Parameters.AddWithValue("@id", model.Id);
+                var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                if (exists) return BadRequest(new { status = false, message = "Position already exists in this department." });
+
+                var updateQuery = "UPDATE tbl_position SET Name = @name, department_id = @department_id WHERE Id = @id";
+                using var updateCmd = new MySqlCommand(updateQuery, conn);
+                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                updateCmd.Parameters.AddWithValue("@department_id", model.DepartmentId);
+                updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                await updateCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Position updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePosition(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid position ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var deleteQuery = "DELETE FROM tbl_position WHERE Id = @id";
+                using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Position deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+    
+
+
+    #endregion
+
+}
 
 }
 

@@ -243,15 +243,13 @@
                                 <label class="form-label fw-bold small">Passport Number</label>
                                     <input type="text" id="PassportNumber" class="form-control form-control-sm">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Country of Issue</label>
-                                <select class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                    <option>Albania</option>
-                                    <option>UAE</option>
-                                    <option>India</option>
-                                </select>
-                            </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Country of Issue</label>
+                                    <select id="countryOfIssue" class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+
                         </div>
 
                         <div class="row g-2 mb-3">
@@ -356,60 +354,52 @@
                         <!-- Expense Account -->
                         <h6 class="text-primary fw-bold mb-3 mt-4">Expense Account (Chart - Account Name)</h6>
                         <div class="row g-2 mb-3">
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold small">Accrued Salaries</label>
-                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code1')">
-                                    <option>2102001 - Accrued Salaries</option>
-                                    <option>2102002 - Other Salaries</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold small">AC / Code</label>
-                                <input type="text" class="form-control form-control-sm" id="code1" value="2102001" disabled>
-                            </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Accrued Salaries</label>
+                                    <select id="accruedSalaries" class="form-select form-select-sm">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code1" disabled>
+                                </div>
+
+
                         </div>
 
                         <div class="row g-2 mb-3">
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold small">Employee Receivable</label>
-                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code2')">
-                                    <option>1101002 - Other Employee Receivables</option>
-                                    <option>1101001 - Employee Advances</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold small">AC / Code</label>
-                                <input type="text" class="form-control form-control-sm" id="code2" value="1101002" disabled>
-                            </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Employee Receivable</label>
+                                    <select id="employeeReceivable" class="form-select form-select-sm"></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code2" disabled>
+                                </div>
                         </div>
 
                         <div class="row g-2 mb-3">
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold small">Accrual Leave Salary</label>
-                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code3')">
-                                    <option>2102003 - Accrued Leave Salary</option>
-                                    <option>2102004 - Other Leave Provisions</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold small">AC / Code</label>
-                                <input type="text" class="form-control form-control-sm" id="code3" value="2102003" disabled>
-                            </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Accrual Leave Salary</label>
+                                    <select id="accrualLeave" class="form-select form-select-sm"></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code3" disabled>
+                                </div>
                         </div>
 
                         <div class="row g-2 mb-3">
-                            <div class="col-md-8">
-                                <label class="form-label fw-bold small">Gratuity</label>
-                                <select class="form-select form-select-sm" onchange="updateCode(this, 'code4')">
-                                    <option value="">-- Select --</option>
-                                    <option>2103001 - End of Service Benefits</option>
-                                    <option>2103002 - Gratuity Provisions</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold small">AC / Code</label>
-                                <input type="text" class="form-control form-control-sm" id="code4" disabled>
-                            </div>
+                                <div class="col-md-8">
+                                    <label class="form-label fw-bold small">Gratuity</label>
+                                    <select id="gratuity" class="form-select form-select-sm"></select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">AC / Code</label>
+                                    <input type="text" class="form-control form-control-sm" id="code4" disabled>
+                                </div>
                         </div>
 
                     </div>

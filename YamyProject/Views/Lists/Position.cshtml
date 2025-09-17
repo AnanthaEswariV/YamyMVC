@@ -1,0 +1,272 @@
+﻿@{
+    ViewData["Title"] = "Position";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="page-heading">
+    <div class="row">
+        <div class="col-6">
+            <h3>Position List</h3>
+        </div>
+        <div class="col-6 text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPositionModal">
+                <i class="bi bi-plus-lg"></i> Add Position
+            </button>
+        </div>
+    </div>
+</div>
+
+<section class="section">
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped" id="positionTable">
+                <thead>
+                    <tr>
+                        <th>Department</th>
+                        <th>Position Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- Add/Edit Position Modal -->
+<div class="modal fade" id="addPositionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add/Edit Position</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="positionId">
+                <div class="mb-3">
+                    <label for="departmentSelect" class="form-label">Department</label>
+                    <select id="departmentSelect" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label for="positionName" class="form-label">Position Name</label>
+                    <input type="text" id="positionName" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" onclick="savePosition()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+
+    <script>
+
+                $(document).ready(function() {
+            loadDepartments();
+            loadPositions();
+
+
+                          // Configure Toastr options
+             toastr.options = {
+                 "closeButton": true,
+                 "debug": false,
+                 "newestOnTop": false,
+                 "progressBar": true,
+                 "positionClass": "toast-top-right",
+                 "preventDuplicates": false,
+                 "onclick": null,
+                 "showDuration": "300",
+                 "hideDuration": "1000",
+                 "timeOut": "5000", // Adjust to desired display duration
+                 "extendedTimeOut": "1000",
+                 "showEasing": "swing",
+                 "hideEasing": "linear",
+                 "showMethod": "fadeIn",
+                 "hideMethod": "fadeOut"
+             };
+        });
+
+
+
+
+        // Load departments for dropdown
+        function loadDepartments() {
+            $.get('/Lists/GetDepartments', function(res) {
+                if (res.status) {
+                    const select = $("#departmentSelect");
+                    select.empty().append('<option value="">--Select Department--</option>');
+                    res.data.forEach(d => select.append(`<option value="${d.id}">${d.name}</option>`));
+                }
+            });
+        }
+
+            // Load positions table
+        function loadPositions() {
+            $.get('/Lists/GetPositions', function(res) {
+                if (res.status) {
+                    const tbody = $("#positionTable tbody");
+                    tbody.empty();
+
+                    res.data.forEach(pos => {
+                        const row = `<tr>
+                            <td>${pos.departmentName}</td>
+                            <td>${pos.name}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-primary edit-btn" data-id="${pos.id}" data-dept="${pos.departmentId}" data-name="${pos.name}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${pos.id}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>`;
+                        tbody.append(row);
+                    });
+
+                    // Destroy old DataTable if exists
+                    if ($.fn.DataTable.isDataTable("#positionTable")) {
+                        $("#positionTable").DataTable().destroy();
+                    }
+
+                    // Initialize DataTable with Excel & PDF export buttons
+                    $("#positionTable").DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            { extend: 'excelHtml5', title: 'Positions' },
+                            { extend: 'pdfHtml5', title: 'Positions' }
+                        ]
+                    });
+                }
+            });
+        }
+
+
+
+                function savePosition() {
+            // Get values from modal
+            const idVal = $("#positionId").val();
+            const name = $("#positionName").val().trim();
+            const deptVal = $("#departmentSelect").val();
+
+            if (!name || !deptVal) {
+                toastr.warning("Please fill all fields");
+                return;
+            }
+
+            // Convert to integers
+            const data = {
+                Id: idVal ? parseInt(idVal) : 0,
+                Name: name,
+                DepartmentId: parseInt(deptVal)
+            };
+
+            // Log to console for debugging
+            console.log("Sending data to API:", data);
+
+            // Determine URL and method
+            const isUpdate = data.Id > 0;
+            const url = isUpdate ? '/Lists/EditPosition' : '/Lists/AddPosition';
+            const type = isUpdate ? 'PUT' : 'POST';
+
+            // Send AJAX request
+            $.ajax({
+                url: url,
+                type: type,
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    console.log("API response:", res);
+                    if (res.status) {
+                        $("#addPositionModal").modal('hide');
+                        $("#positionId").val('');
+                        $("#positionName").val('');
+                        loadPositions();
+
+                        // Show Toastr message based on action
+                        if (isUpdate) {
+                            toastr.success("Position updated successfully!");
+                              // Optional: reload page after short delay
+                        setTimeout(() => location.reload(), 1500);
+                        } else {
+                            toastr.success("Position added successfully!");
+                              // Optional: reload page after short delay
+                        setTimeout(() => location.reload(), 1500);
+                        }
+
+                    } else {
+                        toastr.error(res.message || "Error saving position");
+                    }
+                },
+                error: function(err) {
+                    console.error("AJAX error:", err);
+                    toastr.error("Server error occurred while saving position");
+                }
+            });
+        }
+
+
+        // Open Edit modal
+        $(document).on("click", ".edit-btn", function() {
+            $("#positionId").val($(this).data("id"));
+            $("#departmentSelect").val($(this).data("dept"));
+            $("#positionName").val($(this).data("name"));
+            $("#addPositionModal").modal('show');
+        });
+
+        // Delete position
+        $(document).on("click", ".delete-btn", function() {
+            const id = $(this).data("id");
+            if (!confirm("Are you sure you want to delete this position?")) return;
+
+            $.ajax({
+                url: `/Lists/DeletePosition/${id}`,
+                type: 'DELETE',
+                success: function(res) {
+                    if (res.status) {
+                        loadPositions();
+                        toastr.success("Position deleted successfully!");
+                          // Optional: reload page after short delay
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message || "Error deleting position");
+                    }
+                },
+                error: function(err) {
+                    console.error("AJAX error:", err);
+                    toastr.error("Server error occurred while deleting position");
+                }
+            });
+        });
+
+
+
+    </script>
+
+
+
+}
+

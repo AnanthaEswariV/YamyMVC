@@ -109,7 +109,7 @@ namespace YamyProject.Controllers
                 insertCmd.Parameters.AddWithValue("@emergency_phone", model.EmergencyPhone ?? "");
                 insertCmd.Parameters.AddWithValue("@relation", model.Relation ?? "");
                 insertCmd.Parameters.AddWithValue("@passport_number", model.PassportNumber ?? "");
-                insertCmd.Parameters.AddWithValue("@country_of_issue", model.CountryOfIssue ?? "");
+                insertCmd.Parameters.AddWithValue("@country_of_issue", model.CountryOfIssue ?? 0);
                 insertCmd.Parameters.AddWithValue("@passport_issue_date", model.PassportIssueDate);
                 insertCmd.Parameters.AddWithValue("@passport_expiry_date", model.PassportExpiryDate);
                 insertCmd.Parameters.AddWithValue("@work_contract_number", model.WorkContractNumber ?? "");
@@ -326,7 +326,7 @@ namespace YamyProject.Controllers
                 updateCmd.Parameters.AddWithValue("@emergency_phone", model.EmergencyPhone ?? "");
                 updateCmd.Parameters.AddWithValue("@relation", model.Relation ?? "");
                 updateCmd.Parameters.AddWithValue("@passport_number", model.PassportNumber ?? "");
-                updateCmd.Parameters.AddWithValue("@country_of_issue", model.CountryOfIssue ?? "");
+                updateCmd.Parameters.AddWithValue("@country_of_issue", model.CountryOfIssue ?? 0);
                 updateCmd.Parameters.AddWithValue("@passport_issue_date", model.PassportIssueDate);
                 updateCmd.Parameters.AddWithValue("@passport_expiry_date", model.PassportExpiryDate);
                 updateCmd.Parameters.AddWithValue("@work_contract_number", model.WorkContractNumber ?? "");
@@ -550,6 +550,78 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetCountryOfIssue()
+        {
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+                           ?? _config["ConnectionStrings:DefaultDatabase"]
+            };
+
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            // 1️⃣ Get countries
+            var countries = new List<(int Id, string Name)>();
+            using (var cmd = new MySqlCommand("SELECT id, name FROM tbl_country ORDER BY name", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    countries.Add((reader.GetInt32("id"), reader.GetString("name")));
+                }
+            }
+
+
+            // 3️⃣ Combine countries with their cities
+            var data = countries.Select(c => new
+            {
+                id = c.Id,
+                name = c.Name,
+            }).ToList();
+
+            return Json(data);
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetAccruedSalaries()
+        {
+            try
+            {
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var items = new List<object>();
+                using (var cmd = new MySqlCommand("SELECT id, code, name FROM tbl_coa_level_4 ORDER BY code", conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new
+                        {
+                            Id = reader.GetInt32("id"),
+                            Code = reader.GetInt32("code"),
+                            Name = reader.GetString("name")
+                        });
+                    }
+                }
+
+                return Json(items);
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
 
         #endregion
 
