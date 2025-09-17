@@ -15,6 +15,12 @@ var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<ISalesServices, SalesServices>();
+builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
+builder.Services.AddScoped<ISalesServices, SalesServices>();
+
+builder.Services.AddScoped<ISalesClientService, SalesClientService>();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("ApiClient", client =>

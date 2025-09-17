@@ -9,6 +9,7 @@ public partial class TblSalesDetail
 
     public int? SalesId { get; set; }
 
+    public TblSale Sales { get; set; }
     public int? ItemId { get; set; }
 
     public decimal? Qty { get; set; }

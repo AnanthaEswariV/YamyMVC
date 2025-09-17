@@ -1,0 +1,115 @@
+﻿@model SaleDetailViewModel
+
+@{
+    ViewData["Title"] = "Sales Center";
+}
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Sales Center</h3>
+
+    <!-- Filter Section -->
+    <form method="get" asp-action="Index" class="row g-3 mb-3 align-items-end">
+
+        <!-- Customer Dropdown -->
+        <div class="col-md-3">
+            <label class="form-label">Customer Name</label>
+         @*    <select asp-for="CustomerId" asp-items="ViewBag.Customers" class="form-select">
+                <option value="">All</option>
+            </select> *@
+        </div>
+
+        <!-- Date From -->
+        <div class="col-md-2">
+            <label class="form-label">From</label>
+            <input type="date" class="form-control" name="FromDate" value="@ViewBag.FromDate" />
+        </div>
+
+        <!-- Date To -->
+        <div class="col-md-2">
+            <label class="form-label">To</label>
+            <input type="date" class="form-control" name="ToDate" value="@ViewBag.ToDate" />
+        </div>
+
+        <!-- Selection Method -->
+        <div class="col-md-2">
+            <label class="form-label">Selection Method</label>
+            <select class="form-select" name="SelectionMethod">
+                <option value="Default">Default</option>
+                <option value="ItemWise">Item Wise</option>
+            </select>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="col-md-2">
+            <label class="form-label">Payment Method</label>
+            <select class="form-select" name="PaymentMethod">
+                <option value="">All</option>
+                <option value="Cash">Cash</option>
+                <option value="Credit">Credit</option>
+            </select>
+        </div>
+
+        <div class="col-md-1 text-end">
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+    </form>
+
+    <!-- Invoice Table -->
+    <div class="table-responsive mb-3">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Sn</th>
+                    <th>Date</th>
+                    <th>INV NO</th>
+                    <th>JV No</th>
+                    <th>Customer Name</th>
+                    <th>Payment Method</th>
+                    <th>Total</th>
+                    <th>VAT</th>
+                    <th>Net</th>
+                </tr>
+            </thead>
+            <tbody>
+              @*   @if (Model != null && Model.Any())
+                {
+                    int i = 1;
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@i</td>
+                            <td>@item.Date.ToShortDateString()</td>
+                            <td>@item.InvoiceNo</td>
+                            <td>@item.JvNo</td>
+                            <td>@item.CustomerName</td>
+                            <td>@item.PaymentMethod</td>
+                            <td>@item.Total.ToString("C")</td>
+                            <td>@item.Vat.ToString("C")</td>
+                            <td>@item.Net.ToString("C")</td>
+                        </tr>
+                        i++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center">No invoices found</td>
+                    </tr>
+                }
+   *@
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between">
+        <div>
+            <a asp-action="Create" class="btn btn-success">New Invoice</a>
+            <a asp-action="Edit" class="btn btn-warning">Edit Invoice</a>
+        </div>
+        <div>
+            <button type="button" class="btn btn-danger">Delete</button>
+            <button type="button" class="btn btn-secondary">Recycle</button>
+        </div>
+    </div>
+</div>

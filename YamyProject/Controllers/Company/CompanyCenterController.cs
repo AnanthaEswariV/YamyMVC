@@ -58,7 +58,6 @@
             return PartialView("CompanyList", viewModel);
         }
 
-
         [HttpPost]
         public async Task<IActionResult> SaveVat(VatConfigurationViewModel model)
         {
@@ -102,7 +101,15 @@
             }
         }
 
+        public IActionResult Reminder()
+        {
+            return PartialView("Reminder");
 
+        }
+        //public IActionResult Reminder()
+        //{
+        //    return PartialView("Reminder");
 
+        //}
     }
 }

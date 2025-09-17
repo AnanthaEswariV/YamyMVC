@@ -1,0 +1,159 @@
+﻿@model SalesInvoiceViewModel
+
+@{
+    ViewData["Title"] = "Tax Invoice";
+}
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Tax Invoice</h3>
+
+    <form asp-action="SaveInvoice" method="post">
+        <!-- Header Section -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label class="form-label">Customer Code</label>
+                <input asp-for="CustomerCode" class="form-control" />
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Customer</label>
+                <select asp-for="CustomerId" class="form-select" asp-items="Model.CustomerList"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Date</label>
+                <input asp-for="InvoiceDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Invoice #</label>
+                <input asp-for="InvoiceNumber" class="form-control" readonly />
+            </div>
+        </div>
+
+        <!-- Bill / Ship -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Bill To</label>
+                <input asp-for="BillTo" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Ship To</label>
+                <input asp-for="ShipTo" class="form-control" />
+            </div>
+        </div>
+
+        <!-- Invoice Details -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-2">
+                <label class="form-label">Invoice Type</label>
+                <select asp-for="InvoiceType" class="form-select">
+                    <option>Cash</option>
+                    <option>Credit</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Emirates</label>
+                <select asp-for="Emirates" class="form-select">
+                    <option>Abu Dhabi</option>
+                    <option>Dubai</option>
+                    <option>Sharjah</option>
+                    <option>Ajman</option>
+                    <option>Fujairah</option>
+                    <option>Ras Al Khaimah</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Warehouse</label>
+                <select asp-for="WarehouseId" class="form-select" asp-items="Model.WarehouseList"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Payment Terms</label>
+                <select asp-for="PaymentTerms" class="form-select">
+                    <option>30</option>
+                    <option>60</option>
+                    <option>90</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Due To</label>
+                <input asp-for="DueDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ship Date</label>
+                <input asp-for="ShipDate" type="date" class="form-control" />
+            </div>
+        </div>
+
+        <!-- Items Grid -->
+        <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle">
+                <thead class="table-secondary text-center">
+                    <tr>
+                        <th>#</th>
+                        <th>Item Code</th>
+                        <th>Item Name</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Disc</th>
+                        <th>Net Price</th>
+                        <th>Vat</th>
+                        <th>Amount</th>
+                        <th>Cost Center</th>
+                        <th>DEL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Items.Count; i++)
+                    {
+                        <tr>
+                            <td>@(i + 1)</td>
+                            <td><input asp-for="Items[i].ItemCode" class="form-control" /></td>
+                            <td><input asp-for="Items[i].ItemName" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Quantity" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Price" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Discount" class="form-control" /></td>
+                            <td><input asp-for="Items[i].NetPrice" class="form-control" readonly /></td>
+                            <td>
+                                <select asp-for="Items[i].Vat" class="form-select">
+                                    <option>0%</option>
+                                    <option>5%</option>
+                                </select>
+                            </td>
+                            <td><input asp-for="Items[i].Amount" class="form-control" readonly /></td>
+                            <td><input asp-for="Items[i].CostCenter" class="form-control" /></td>
+                            <td><button type="button" class="btn btn-danger btn-sm">x</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Notes & Totals -->
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Notes</label>
+                <textarea asp-for="Notes" class="form-control" rows="4"></textarea>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 bg-white">
+                    <div class="mb-2 d-flex justify-content-between">
+                        <span>Total Before VAT</span>
+                        <strong>@Model.TotalBeforeVat</strong>
+                    </div>
+                    <div class="mb-2 d-flex justify-content-between">
+                        <span>Total VAT</span>
+                        <strong>@Model.TotalVat</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Net Amount</span>
+                        <strong>@Model.NetAmount</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mt-3 text-end">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a asp-action="Index" class="btn btn-secondary">Close</a>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,92 @@
+﻿@* @model YamyProject.Models.CreditNoteCenterViewModel
+
+@{
+    ViewData["Title"] = "Credit Note Center";
+} *@
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Credit Note Center</h3>
+
+    <!-- Filters -->
+    <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
+        <div class="col-md-3">
+            <label class="form-label">From</label>
+            <input@*  asp-for="FromDate"  *@type="date" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">To</label>
+            <input@*   asp-for="ToDate"  *@type="date" class="form-control" />
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+            <div class="form-check mt-4">
+                <input type="checkbox" @* asp-for="AllDates" *@ class="form-check-input" />
+                <label  class="form-check-label">All</label>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+            <div class="form-check mt-4">
+                <input type="checkbox" @*asp-for="AllRecords" *@ class="form-check-input" />
+                <label   class="form-check-label">All</label>
+            </div>
+        </div>
+        <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+
+    <!-- Grid -->
+    <div class="table-responsive mb-3">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-secondary text-center">
+                <tr>
+                    <th>Sn</th>
+                    <th>Date</th>
+                    <th>JV No</th>
+                    <th>INV No</th>
+                    <th>Amount</th>
+                    <th>VAT</th>
+                    <th>Credit Account</th>
+                    <th>Debit Account</th>
+                </tr>
+            </thead>
+            <tbody>
+          @*        @if (Model.CreditNotes != null && Model.CreditNotes.Any())
+                {
+                    int sn = 1;
+                    foreach (var note in Model.CreditNotes)
+                    {
+                        <tr>
+                            <td>@sn</td>
+                            <td>@note.Date.ToShortDateString()</td>
+                            <td>@note.JVNo</td>
+                            <td>@note.InvoiceNo</td>
+                            <td>@note.Amount</td>
+                            <td>@note.Vat</td>
+                            <td>@note.CreditAccount</td>
+                            <td>@note.DebitAccount</td>
+                        </tr>
+                        sn++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8" class="text-center">No records found</td>
+                    </tr>
+                }*@
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div class="d-flex justify-content-between">
+        <div>
+            <a @*   asp-action="Create" *@ class="btn btn-primary">New</a>
+                <a@*   asp-action="Edit" *@ class="btn btn-secondary">Edit</a>
+        </div>
+        <div>
+        <a@*   asp-action="Delete"  *@ class="btn btn-danger">Delete</a>
+            <a@*   asp-action="Recycle"  *@ class="btn btn-outline-primary">Recycle</a>
+        </div>
+    </div>
+</div>
