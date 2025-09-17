@@ -268,9 +268,64 @@
     </div>
 </div>
 
+
+
+
 <!-- 🔽 Modal Partial View goes here -->
 @Html.Partial("_Employee")
 
+
+<!-- Add/Edit Position Modal -->
+<div class="modal fade" id="addPositionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Position</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="positionId">
+                <div class="mb-3">
+                    <label for="departmentSelectforpos" class="form-label">Department</label>
+                    <select id="departmentSelectforpos" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label for="positionName" class="form-label">Position Name</label>
+                    <input type="text" id="positionName" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" onclick="savePosition()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Department Modal -->
+<div class="modal fade" id="addDepartmentModal" tabindex="-1" aria-labelledby="addDepartmentLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addDepartmentLabel">Add New Department</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDepartmentForm">
+                    <div class="mb-3">
+                        <label for="addDepartmentName" class="col-form-label">Department Name</label>
+                        <input type="text" class="form-control" id="addDepartmentName" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveDepartment()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -422,8 +477,8 @@
                     PassportIssueDate: $('#PassportIssueDate').val() || null,
                     PassportExpiryDate: $('#PassportExpiryDate').val() || null,
                     WorkContractNumber: $('#ContractNumber').val() || '',
-                    PositionId: $('#PositionId').val() ? parseInt($('#PositionId').val()) : null,
-                    DepartmentId: $('#DepartmentId').val() ? parseInt($('#DepartmentId').val()) : null,
+                    PositionId: $('#positionSelect').val() ? parseInt($('#positionSelect').val()) : null,
+                    DepartmentId: $('#departmentSelect').val() ? parseInt($('#departmentSelect').val()) : null,
                     WorkContractType: $('#ContractType').val() || '',
                     WorkDays: $('input[name="WorkDays"]').val() || '',
                     WorkingHours: $('input[name="WorkingHours"]').val() || '',
@@ -774,7 +829,174 @@
             });
 
 
+                    // Load departments for dropdown
+        function loadDepartments() {
+            $.get('/Lists/GetDepartments', function(res) {
+                if (res.status) {
+                    const select = $("#departmentSelect");
+                    select.empty(); // Clear existing options
+                    select.append('<option value="">-- Select --</option>'); // Default option
+
+                    res.data.forEach(dept => {
+                        select.append(`<option value="${dept.id}">${dept.name}</option>`);
+                    });
+
+                    console.log("Departments loaded:", res.data);
+                } else {
+                    console.error("Failed to load departments:", res.message);
+                    toastr.error("Failed to load departments");
+                }
+            }).fail(function(err) {
+                console.error("AJAX error loading departments:", err);
+                toastr.error("Server error while loading departments");
+            });
+        }
+
+        // Call this on page load
+        $(document).ready(function() {
+            loadDepartments();
+            loadDepartmentsforpos();
         });
+
+                // Load positions for dropdown
+        function loadPositionsDropdown() {
+            $.get('/Lists/GetPositions', function(res) {
+                if (res.status) {
+                    const select = $("#positionSelect");
+                    select.empty(); // Clear existing options
+                    select.append('<option value="">-- Select --</option>'); // Default option
+
+                    res.data.forEach(pos => {
+                        select.append(`<option value="${pos.id}" data-dept="${pos.departmentId}">${pos.name}</option>`);
+                    });
+
+                    console.log("Positions loaded:", res.data);
+                } else {
+                    console.error("Failed to load positions:", res.message);
+                    toastr.error("Failed to load positions");
+                }
+            }).fail(function(err) {
+                console.error("AJAX error loading positions:", err);
+                toastr.error("Server error while loading positions");
+            });
+        }
+
+        // Call on page load or when modal opens
+        $(document).ready(function() {
+            loadPositionsDropdown();
+            loadDepartments();
+            loadDepartmentsforpos();
+        });
+
+
+                    // Load departments for dropdown
+        function loadDepartmentsforpos() {
+            $.get('/Lists/GetDepartments', function(res) {
+                if (res.status) {
+                    const select = $("#departmentSelectforpos");
+                    select.empty(); // Clear existing options
+                    select.append('<option value="">-- Select --</option>'); // Default option
+
+                    res.data.forEach(dept => {
+                        select.append(`<option value="${dept.id}">${dept.name}</option>`);
+                    });
+
+                    console.log("Departments loaded:", res.data);
+                } else {
+                    console.error("Failed to load departments:", res.message);
+                    toastr.error("Failed to load departments");
+                }
+            }).fail(function(err) {
+                console.error("AJAX error loading departments:", err);
+                toastr.error("Server error while loading departments");
+            });
+        }
+
+
+
+        });
+
+
+          function saveDepartment() {
+            const name = $("#addDepartmentName").val().trim();
+
+            if (!name) {
+                toastr.warning("Please enter Department Name");
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/AddDepartment',
+                type: 'POST',
+                contentType: 'application/json', // important
+                data: JSON.stringify({ name: name }), // send JSON body
+                success: function(res) {
+                    if (res.status) {
+                        // Hide modal
+                        const modalEl = document.getElementById("addDepartmentModal");
+                        bootstrap.Modal.getInstance(modalEl)?.hide();
+
+                        // Reset form
+                        $("#addDepartmentForm")[0].reset();
+
+
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message || "Error saving department");
+                    }
+                },
+                error: function(err) {
+                    console.error(err);
+                    toastr.error("Server error occurred while saving department");
+                }
+            });
+        }
+                function savePosition() {
+            // Get values from modal
+            const name = $("#positionName").val().trim();
+            const deptVal = $("#departmentSelectforpos").val(); // new dropdown
+
+            if (!name || !deptVal) {
+                toastr.warning("Please fill all fields");
+                return;
+            }
+
+            // Prepare data
+            const data = {
+                Id: 0, // always new add
+                Name: name,
+                DepartmentId: parseInt(deptVal)
+            };
+
+            console.log("Sending data to API (Add):", data);
+
+            // Always POST for Add
+            $.ajax({
+                url: '/Lists/AddPosition',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    console.log("API response:", res);
+                    if (res.status) {
+                        $("#addPositionModal").modal('hide');
+                        $("#positionName").val('');
+                        $("#departmentSelectforpos").val('');
+
+                    } else {
+                        toastr.error(res.message || "Error saving position");
+                    }
+                },
+                error: function(err) {
+                    console.error("AJAX error:", err);
+                    toastr.error("Server error occurred while saving position");
+                }
+            });
+        }
+
+
+
+
 
     </script>
 }

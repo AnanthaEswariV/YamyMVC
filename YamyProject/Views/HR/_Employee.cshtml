@@ -294,39 +294,33 @@
                                 <label class="form-label fw-bold small">Contract Number</label>
                                     <input type="text" id="ContractNumber" class="form-control form-control-sm">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Department</label>
-                                <div class="input-group input-group-sm">
-                                    <select class="form-select form-select-sm">
-                                        <option value="">-- Select --</option>
-                                        <option>HR</option>
-                                        <option>IT</option>
-                                        <option>Finance</option>
-                                        <option>Marketing</option>
-                                    </select>
-                                    <button class="btn btn-outline-secondary btn-sm" type="button">New</button>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Department</label>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select form-select-sm" id="departmentSelect">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addDepartmentModal">New</button>
+                                    </div>
                                 </div>
-                            </div>
+
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small">Contract Type</label>
                                     <input type="text" id="ContractType" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Position</label>
-                                <div class="input-group input-group-sm">
-                                    <select class="form-select form-select-sm">
-                                        <option value="">-- Select --</option>
-                                        <option>Manager</option>
-                                        <option>Senior</option>
-                                        <option>Junior</option>
-                                        <option>Intern</option>
-                                    </select>
-                                    <button class="btn btn-outline-secondary btn-sm" type="button">New</button>
                                 </div>
-                            </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small">Position</label>
+                                    <div class="input-group input-group-sm">
+                                        <select class="form-select form-select-sm" id="positionSelect">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addPositionModal">New</button>
+                                    </div>
+                                </div>
+
                         </div>
 
                         <div class="row g-2 mb-3">
