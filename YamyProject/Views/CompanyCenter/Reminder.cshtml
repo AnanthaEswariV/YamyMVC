@@ -1,0 +1,58 @@
+﻿@* @model YamyProject.Models.ReminderViewModel
+
+@{
+    ViewData["Title"] = "Reminders";
+} *@
+
+<div class="container-fluid bg-light p-4 rounded shadow-sm">
+    <h3 class="mb-3">Reminders</h3>
+
+    <div class="row">
+        <!-- Left side reminders -->
+        <div class="col-md-6">
+@*<h5>@Model.Today.ToString("dddd, dd MMMM yyyy")</h5>*@ 
+            <ul class="list-group mt-3">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Money to Deposit</span>
+                    <span class="badge bg-primary rounded-pill">@* @Model.MoneyToDeposit *@ </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Overdue Invoices</span>
+                    <span class="badge bg-danger rounded-pill">
+                        @* @Model.OverdueInvoices *@ 
+                    </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Checks to Print</span>
+                    <span class="badge bg-warning text-dark rounded-pill">@* @Model.ChecksToPrint *@ </span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Invoices/Credit Memos to Print</span>
+                    <span class="badge bg-info text-dark rounded-pill">
+                        @* @Model.InvoicesToPrint *@ 
+                    </span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Right side upcoming -->
+        <div class="col-md-6">
+            <h5>Upcoming</h5>
+         @*   @if (Model.Upcoming.Any())
+            {
+                <ul class="list-group mt-3">
+                    @foreach (var upcoming in Model.Upcoming)
+                    {
+                        <li class="list-group-item">
+                            <strong>@upcoming.Title</strong> - @upcoming.Date.ToString("dd MMM yyyy")
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="text-muted mt-3">No upcoming reminders</p>
+            }*@ 
+        </div>
+    </div>
+</div>

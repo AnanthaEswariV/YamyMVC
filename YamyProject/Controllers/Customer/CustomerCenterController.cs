@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using YamyProject.Core.Models;
-using YamyProject.Services;
-using YamyProject.Services.Interfaces;
+﻿using YamyProject.Services;
 
 namespace YamyProject.Controllers
 {
@@ -61,6 +58,8 @@ namespace YamyProject.Controllers
             await _service.SaveCustomerAsync(vm.Customer);
             return RedirectToAction("Index"); // back to list
         }
+       
+
 
     }
 }

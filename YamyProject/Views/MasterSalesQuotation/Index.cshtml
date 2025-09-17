@@ -1,0 +1,131 @@
+﻿@model YamyProject.Controllers.Customer.MasterSalesQuotationController
+
+@{
+    ViewData["Title"] = "Sales Quotation Center";
+}
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Sales Quotation Center</h3>
+
+    <!-- Filters -->
+    <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Customer Name</label>
+            @* <select asp-for="CustomerId" class="form-select" asp-items="Model.CustomerList"></select> *@
+            <div class="form-check mt-1">
+                @* <input type="checkbox" asp-for="AllCustomers" class="form-check-input" /> *@
+                <label class="form-check-label">All</label>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">From</label>
+            @* <input asp-for="FromDate" type="date" class="form-control" /> *@
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">To</label>
+            @* <input asp-for="ToDate" type="date" class="form-control" /> *@
+            <div class="form-check mt-1">
+                @* <input type="checkbox" asp-for="AllDates" class="form-check-input" /> *@
+                <label class="form-check-label">All</label>
+            </div>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Selection Method</label>
+            @* <select asp-for="SelectionMethod" class="form-select"> *@
+                <option>Default</option>
+                <option>Item Wise</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Payment Method</label>
+            @* <select asp-for="PaymentMethod" class="form-select"> *@
+                <option>Cash</option>
+                <option>Credit</option>
+            </select>
+            <div class="form-check mt-1">
+                @* <input type="checkbox" asp-for="AllPayments" class="form-check-input" /> *@
+                <label class="form-check-label">All</label>
+            </div>
+        </div>
+
+        <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+
+    <!-- Quotations Grid -->
+    <div class="table-responsive mb-3">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-secondary text-center">
+                <tr>
+                    <th>Quotation #</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+             @*    @foreach (var q in Model.Quotations)
+                {
+                    <tr>
+                        <td>@q.QuotationNo</td>
+                        <td>@q.Date.ToShortDateString()</td>
+                        <td>@q.CustomerName</td>
+                        <td>@q.Amount</td>
+                        <td>@q.Status</td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@q.Id" class="btn btn-sm btn-warning">Edit</a>
+                            <a asp-action="Details" asp-route-id="@q.Id" class="btn btn-sm btn-info">View</a>
+                        </td>
+                    </tr>
+                } *@
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Items Grid -->
+    <div class="table-responsive mb-3">
+        <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light text-center">
+                <tr>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+               @*  @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td>@item.ItemCode</td>
+                        <td>@item.ItemName</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.Price</td>
+                        <td>@item.Total</td>
+                    </tr >
+                }*@
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div class="d-flex justify-content-between">
+        <div>
+            <a asp-action="Create" class="btn btn-primary">New Quotation</a>
+            <a asp-action="Edit" class="btn btn-secondary">Edit Quotation</a>
+            <a asp-action="CreateInvoice" class="btn btn-success">Create Invoice</a>
+        </div>
+        <div>
+            <a asp-action="Delete" class="btn btn-danger">Delete</a>
+            <a asp-action="Recycle" class="btn btn-outline-primary">Recycle</a>
+        </div>
+    </div>
+</div>

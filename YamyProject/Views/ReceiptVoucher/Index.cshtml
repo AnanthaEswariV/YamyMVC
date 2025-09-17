@@ -1,0 +1,138 @@
+﻿@* @model YamyProject.Models.ReceiptVoucherViewModel
+
+@{
+    ViewData["Title"] = "Receipt Voucher";
+}
+ *@
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Receipt Voucher - New</h3>
+
+    <form asp-action="Create" method="post">
+        <!-- Header -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-2">
+                <label class="form-label">Voucher No</label>
+                <input @* asp-for="VoucherNo"*@ class="form-control" readonly />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Date</label>
+                <input @* asp-for="Date"*@ type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Payment Type</label>
+                <select @* asp-for="PaymentType"*@ class="form-select">
+                    <option>Customer</option>
+                    <option>Supplier</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Payment Method</label>
+                   <select  @* asp-for="PaymentMethod"*@ class="form-select">
+                    <option>Cash</option>
+                    <option>Cheque</option>
+                    <option>Bank Transfer</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Amount</label>
+                <input @* asp-for="Amount"*@ class="form-control" />
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-12">
+                <label class="form-label">Amount in Words</label>
+                <input @* asp-for="AmountInWords"*@ class="form-control" readonly />
+            </div>
+        </div>
+
+        <!-- Received From - Credit -->
+        <div class="border rounded p-3 mb-3 bg-white">
+            <h5>Received From - Credit</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Account Code</label>
+                    <input @* asp-for="CreditAccountCode" *@ class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Account Name</label>
+                    <input @* asp-for="CreditAccountName" *@ class="form-control" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Cost Center</label>
+                    <select @* asp-for="CreditCostCenter" *@ class="form-select" asp-items="Model.CostCenters"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Customer Code</label>
+                    <input @* asp-for="CustomerCode"*@ class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Customer Name</label>
+                    <select @* asp-for="CustomerId"*@ class="form-select" asp-items="Model.Customers"></select>
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">Note</label>
+                    <textarea @* asp-for="Note" *@ class="form-control"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Received To - Debit -->
+        <div class="border rounded p-3 mb-3 bg-white">
+            <h5>Received To - Debit</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Account Code</label>
+                    <input @* asp-for="DebitAccountCode" *@ class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Account Name</label>
+                    <input @* asp-for="DebitAccountName" *@ class="form-control" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Cost Center</label>
+                 @*   <select asp-for="DebitCostCenter" class="form-select" asp-items="Model.CostCenters"></select>*@
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid -->
+        <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle">
+                <thead class="table-secondary text-center">
+                    <tr>
+                        <th>SN#</th>
+                        <th>Date</th>
+                        <th>INV NO</th>
+                        <th>Amount</th>
+                        <th>Pay</th>
+                        <th>Payment</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                 @*   @for (int i = 0; i < Model.Items.Count; i++)
+                    {
+                        <tr>
+                            <td>@(i + 1)</td>
+                            <td><input asp-for="Items[i].Date" type="date" class="form-control" /></td>
+                            <td><input asp-for="Items[i].InvoiceNo" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Amount" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Pay" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Payment" class="form-control" /></td>
+                            <td><input asp-for="Items[i].Description" class="form-control" /></td>
+                        </tr>
+                    }*@
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="text-end">
+            <button type="submit" class="btn btn-success">Save</button>
+            <button type="submit" formaction="@Url.Action("SaveAndClose")" class="btn btn-primary">Save & Close</button>
+            <a  asp-action="Index" class="btn btn-secondary">Close</a>
+        </div>
+    </form>
+</div>

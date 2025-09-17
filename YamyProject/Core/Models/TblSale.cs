@@ -62,4 +62,7 @@ public partial class TblSale
     public decimal CostCenterId { get; set; }
 
     public int ProjectId { get; set; }
+
+    public ICollection<TblSalesDetail> TblSalesDetails { get; set; }
+
 }
