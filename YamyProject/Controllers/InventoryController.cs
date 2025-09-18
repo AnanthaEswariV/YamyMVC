@@ -372,7 +372,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         #endregion
 
         #region Warehouse Trasnfer
@@ -380,6 +379,286 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+        [HttpGet]
+        public async Task<IActionResult> GetWarehouseItemsFrom(int warehouseId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT 
+                i.id AS item_id,
+                CONCAT(i.code, ' - ', i.name) AS ItemName,
+                IFNULL(SUM(t.qty_in - t.qty_out), 0) AS QTY
+            FROM tbl_item_transaction t
+            INNER JOIN tbl_items i ON t.item_id = i.id
+            WHERE i.active = 0
+              AND t.warehouse_id = @id
+            GROUP BY i.id, i.code, i.name
+            HAVING QTY > 0";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", warehouseId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var items = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        item_id = reader.GetInt32("item_id"),
+                        itemName = reader.GetString("ItemName"),
+                        qty = reader.GetDecimal("QTY")
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetWarehouseItemsTo(int warehouseId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT 
+                i.id AS item_id,
+                CONCAT(i.code, ' - ', i.name) AS ItemName,
+                w.qty AS QTY
+            FROM tbl_items_warehouse w
+            INNER JOIN tbl_items i ON w.item_id = i.id
+            WHERE i.active = 0
+              AND w.warehouse_id = @id";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", warehouseId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var items = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        item_id = reader.GetInt32("item_id"),
+                        itemName = reader.GetString("ItemName"),
+                        qty = reader.GetDecimal("QTY")
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> TransferItem([FromBody] TransferRequest request)
+        {
+            if (request == null || request.SourceWarehouseId <= 0 || request.TargetWarehouseId <= 0
+                || request.ItemId <= 0 || request.Qty <= 0)
+            {
+                return BadRequest(new { status = false, message = "Invalid request data" });
+            }
+
+            if (request.SourceWarehouseId == request.TargetWarehouseId)
+                return BadRequest(new { status = false, message = "Source and Target warehouses cannot be the same" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                using var transaction = await conn.BeginTransactionAsync();
+
+                try
+                {
+                    // 1️⃣ Check available stock in source warehouse
+                    var checkQtyCmd = new MySqlCommand(@"
+                SELECT qty FROM tbl_items_warehouse 
+                WHERE warehouse_id = @warehouse_id AND item_id = @item_id", conn, (MySqlTransaction)transaction);
+                    checkQtyCmd.Parameters.AddWithValue("@warehouse_id", request.SourceWarehouseId);
+                    checkQtyCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+
+                    var availableQtyObj = await checkQtyCmd.ExecuteScalarAsync();
+                    decimal availableQty = availableQtyObj == DBNull.Value ? 0 : Convert.ToDecimal(availableQtyObj);
+
+                    if (availableQty < request.Qty)
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new { status = false, message = "Quantity entered is greater than available stock" });
+                    }
+
+                    int invId = 0;
+
+                    // 2️⃣ Insert/update target warehouse stock
+                    var checkDestCmd = new MySqlCommand(@"
+                SELECT id FROM tbl_items_warehouse 
+                WHERE warehouse_id = @warehouse_id AND item_id = @item_id", conn, (MySqlTransaction)transaction);
+                    checkDestCmd.Parameters.AddWithValue("@warehouse_id", request.TargetWarehouseId);
+                    checkDestCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+
+                    var destIdObj = await checkDestCmd.ExecuteScalarAsync();
+                    if (destIdObj != null)
+                    {
+                        invId = Convert.ToInt32(destIdObj);
+                        var updateDestCmd = new MySqlCommand(@"
+                    UPDATE tbl_items_warehouse SET qty = qty + @qty WHERE id = @id", conn, (MySqlTransaction)transaction);
+                        updateDestCmd.Parameters.AddWithValue("@qty", request.Qty);
+                        updateDestCmd.Parameters.AddWithValue("@id", invId);
+                        await updateDestCmd.ExecuteNonQueryAsync();
+                    }
+                    else
+                    {
+                        var insertDestCmd = new MySqlCommand(@"
+                    INSERT INTO tbl_items_warehouse (warehouse_id, item_id, qty) 
+                    VALUES (@warehouse_id, @item_id, @qty); SELECT LAST_INSERT_ID();", conn, (MySqlTransaction)transaction);
+                        insertDestCmd.Parameters.AddWithValue("@warehouse_id", request.TargetWarehouseId);
+                        insertDestCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+                        insertDestCmd.Parameters.AddWithValue("@qty", request.Qty);
+                        invId = Convert.ToInt32(await insertDestCmd.ExecuteScalarAsync());
+                    }
+
+                    // 3️⃣ Deduct stock from source warehouse
+                    var deductSourceCmd = new MySqlCommand(@"
+                UPDATE tbl_items_warehouse SET qty = qty - @qty 
+                WHERE warehouse_id = @warehouse_id AND item_id = @item_id", conn, (MySqlTransaction)transaction);
+                    deductSourceCmd.Parameters.AddWithValue("@qty", request.Qty);
+                    deductSourceCmd.Parameters.AddWithValue("@warehouse_id", request.SourceWarehouseId);
+                    deductSourceCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+                    await deductSourceCmd.ExecuteNonQueryAsync();
+
+                    // 4️⃣ Insert warehouse transaction log
+                    var insertTransCmd = new MySqlCommand(@"
+                INSERT INTO tbl_item_warehouse_transaction 
+                (`date`, `warehouse_from`, `warehouse_to`, `item_id`, `qty`, `description`, `created_by`, `created_date`)
+                VALUES (@date, @warehouse_from, @warehouse_to, @item_id, @qty, @description, @created_by, @created_date)", conn, (MySqlTransaction)transaction);
+                    insertTransCmd.Parameters.AddWithValue("@date", DateTime.Now);
+                    insertTransCmd.Parameters.AddWithValue("@warehouse_from", request.SourceWarehouseId);
+                    insertTransCmd.Parameters.AddWithValue("@warehouse_to", request.TargetWarehouseId);
+                    insertTransCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+                    insertTransCmd.Parameters.AddWithValue("@qty", request.Qty);
+                    insertTransCmd.Parameters.AddWithValue("@description", "Item Transfer");
+                    insertTransCmd.Parameters.AddWithValue("@created_by", request.UserId);
+                    insertTransCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    await insertTransCmd.ExecuteNonQueryAsync();
+
+                    // 5️⃣ Add cost_price & sales_price transactions (like addItemTransaction)
+                    // Get last transaction prices
+                    decimal costPrice = 0, salesPrice = 0;
+                    var getPriceCmd = new MySqlCommand(@"
+                SELECT cost_price, sales_price FROM tbl_item_transaction 
+                WHERE warehouse_id = @warehouse_id AND item_id = @item_id 
+                ORDER BY date DESC LIMIT 1", conn, (MySqlTransaction)transaction);
+                    getPriceCmd.Parameters.AddWithValue("@warehouse_id", request.SourceWarehouseId);
+                    getPriceCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+
+                    using var reader = await getPriceCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        costPrice = reader["cost_price"] != DBNull.Value ? Convert.ToDecimal(reader["cost_price"]) : 0;
+                        salesPrice = reader["sales_price"] != DBNull.Value ? Convert.ToDecimal(reader["sales_price"]) : 0;
+                    }
+                    reader.Close();
+
+                    // Fallback to items table if 0
+                    if (costPrice == 0 || salesPrice == 0)
+                    {
+                        var getItemPriceCmd = new MySqlCommand(@"
+                    SELECT cost_price, sales_price FROM tbl_items WHERE id = @item_id", conn, (MySqlTransaction)transaction);
+                        getItemPriceCmd.Parameters.AddWithValue("@item_id", request.ItemId);
+                        using var reader2 = await getItemPriceCmd.ExecuteReaderAsync();
+                        if (await reader2.ReadAsync())
+                        {
+                            if (costPrice == 0 && reader2["cost_price"] != DBNull.Value)
+                                costPrice = Convert.ToDecimal(reader2["cost_price"]);
+                            if (salesPrice == 0 && reader2["sales_price"] != DBNull.Value)
+                                salesPrice = Convert.ToDecimal(reader2["sales_price"]);
+                        }
+                        reader2.Close();
+                    }
+
+                    // Add OUT transaction
+                    await AddItemTransaction(conn, transaction, DateTime.Now, invId, request.ItemId, costPrice, salesPrice,
+                        0, request.Qty, $"Transferred to warehouse {request.TargetWarehouseId}", request.SourceWarehouseId);
+
+                    // Add IN transaction
+                    await AddItemTransaction(conn, transaction, DateTime.Now, invId, request.ItemId, costPrice, salesPrice,
+                        request.Qty, 0, $"Received from warehouse {request.SourceWarehouseId}", request.TargetWarehouseId);
+
+                    await transaction.CommitAsync();
+
+                    return Ok(new { status = true, message = "Transfer completed successfully" });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        private async Task AddItemTransaction(MySqlConnection conn, MySqlTransaction transaction,
+            DateTime date, int invId, int itemId, decimal costPrice, decimal salesPrice,
+            decimal qtyIn, decimal qtyOut, string description, int warehouseId)
+        {
+            var cmd = new MySqlCommand(@"
+        INSERT INTO tbl_item_transaction
+        (`date`, `type`, `inv_id`, `item_id`, `cost_price`, `qty_in`, `sales_price`, `qty_out`, `tax`, `description`, `warehouse_id`)
+        VALUES
+        (@date, @type, @inv_id, @item_id, @cost_price, @qty_in, @sales_price, @qty_out, @tax, @description, @warehouse_id)", conn, transaction);
+
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@type", "Warehouse Transfer");
+            cmd.Parameters.AddWithValue("@inv_id", invId);
+            cmd.Parameters.AddWithValue("@item_id", itemId);
+            cmd.Parameters.AddWithValue("@cost_price", costPrice.ToString("N2"));
+            cmd.Parameters.AddWithValue("@qty_in", qtyIn.ToString("N2"));
+            cmd.Parameters.AddWithValue("@sales_price", salesPrice.ToString("N2"));
+            cmd.Parameters.AddWithValue("@qty_out", qtyOut.ToString("N2"));
+            cmd.Parameters.AddWithValue("@tax", "0");
+            cmd.Parameters.AddWithValue("@description", "Warehouse Transfer No. " + invId + " " + description);
+            cmd.Parameters.AddWithValue("@warehouse_id", warehouseId);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+
+
 
         #endregion
 

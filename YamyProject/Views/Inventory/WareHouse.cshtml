@@ -52,7 +52,7 @@
                         </ul>
                     </li>
                     <li class="nav-item me-2">
-                        <a class="nav-link" href="#" id="btnTransfer">
+                        <a class="nav-link" href="/Inventory/WarehouseTransfer" id="btnTransfer">
                             <i class="bi bi-arrow-left-right me-1"></i> Transfer Items
                         </a>
                     </li>
@@ -329,11 +329,11 @@
                         $("#warehouseCode").val(res.code || "");
                         $("#newWarehouseModal").modal("hide");
                         $("#newWarehouseForm")[0].reset();
-                        $("#warehouseId").val(0); // reset Id for next insert
+                        $("#warehouseId").val(0);
 
                         // Optional: reload page or table
                         setTimeout(function () {
-                            location.reload(); // or call a function to reload table/dropdown
+                            location.reload(); 
                         }, 1500);
                     } else {
                         // Show error notification

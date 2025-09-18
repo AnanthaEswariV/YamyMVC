@@ -163,6 +163,14 @@ namespace YamyProject.Core.Models
         public string Name { get; set; }
         public int DepartmentId { get; set; }
     }
+    public class TransferRequest
+    {
+        public int SourceWarehouseId { get; set; }   // from warehouse
+        public int TargetWarehouseId { get; set; }   // to warehouse
+        public int ItemId { get; set; }              // which item
+        public decimal Qty { get; set; }             // transfer quantity
+        public int UserId { get; set; }              // logged-in user
+    }
 
 
 }
