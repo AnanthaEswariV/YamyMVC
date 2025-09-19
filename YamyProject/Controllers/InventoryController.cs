@@ -675,7 +675,7 @@ namespace YamyProject.Controllers
             (`date`, `type`, `item_id`, `cost_price`, `qty_in`, `qty_out`, `qty_inc`, `sales_price`, `description`, `reference`, `warehouse_id`)
             VALUES
             (@date, @type, @item_id, @cost_price, @qty_in, @qty_out, @qty_inc, @sales_price, @description, @reference, @warehouse_id)", conn, transaction);
-
+                
                 cmd.Parameters.AddWithValue("@date", date);
                 cmd.Parameters.AddWithValue("@type", "Warehouse Transfer");
                 cmd.Parameters.AddWithValue("@item_id", itemId);
@@ -697,6 +697,82 @@ namespace YamyProject.Controllers
             
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetWarehouseTransfers(int? id = null, int? itemId = null /*, int? warehouseId = null*/)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT 
+                wt.Date,
+                CONCAT(w1.code,' - ',w1.name) AS WarehouseFrom,
+                CONCAT(w2.code,' - ',w2.name) AS WarehouseTo,
+                CONCAT(i.code,' - ',i.name) AS ItemName,
+                wt.qty,
+                wt.description
+            FROM tbl_item_warehouse_transaction wt
+            INNER JOIN tbl_warehouse w1 ON wt.warehouse_from = w1.id
+            INNER JOIN tbl_warehouse w2 ON wt.warehouse_to = w2.id
+            INNER JOIN tbl_items i ON wt.item_id = i.id
+            WHERE 1=1";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (id.HasValue && id > 0)
+                {
+                    query += " AND wt.id = @id";
+                    parameters.Add(new MySqlParameter("@id", id.Value));
+                }
+
+                if (itemId.HasValue && itemId > 0)
+                {
+                    query += " AND i.id = @itemId";
+                    parameters.Add(new MySqlParameter("@itemId", itemId.Value));
+                }
+
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var transfers = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    transfers.Add(new
+                    {
+                        Date = reader["Date"],
+                        WarehouseFrom = reader["WarehouseFrom"],
+                        WarehouseTo = reader["WarehouseTo"],
+                        ItemName = reader["ItemName"],
+                        Qty = reader["qty"],
+                        Description = reader["description"]
+                    });
+                }
+
+                if (transfers.Count == 0)
+                    return Ok(new { status = false, message = "No transfers available", data = new List<object>() });
+
+                return Ok(new { status = true, data = transfers });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
 
 
@@ -704,3 +780,5 @@ namespace YamyProject.Controllers
 
     }
 }
+
+
