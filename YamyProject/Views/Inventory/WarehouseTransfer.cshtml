@@ -13,19 +13,13 @@
     }
 
     .employee-toolbar {
-        background-color: #fff;
+        background: #fff;
         margin: 0 -15px;
         padding: 15px;
         border-bottom: 1px solid #ccc;
         font-size: 14px;
         height: 400px;
     }
-
-        .employee-toolbar .nav-link {
-            color: #333;
-            padding: 2px 8px;
-            font-size: 12px;
-        }
 
     .transfer-container {
         display: flex;
@@ -42,7 +36,6 @@
         overflow-y: auto;
     }
 
-        /* Add spacing between label, dropdown, search, and table */
         .transfer-panel label {
             display: block;
             margin-bottom: 10px;
@@ -53,7 +46,7 @@
         .transfer-panel input[type="text"] {
             width: 100%;
             padding: 7px;
-            margin-bottom: 15px; /* increased spacing */
+            margin-bottom: 15px;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
@@ -78,11 +71,7 @@
         align-items: center;
     }
 
-        .transfer-buttons input {
-            width: 80px;
-            padding: 5px;
-        }
-
+        .transfer-buttons input,
         .transfer-buttons button {
             width: 80px;
             padding: 5px;
@@ -90,15 +79,21 @@
 
     .bottom-buttons {
         text-align: right;
-        margin-top: 20px; /* increased spacing */
+        margin-top: 20px;
     }
 
         .bottom-buttons button {
             margin-left: 10px;
             padding: 7px 20px;
         }
-</style>
 
+    tr.selected {
+        background-color: #d0ebff !important;
+    }
+
+
+
+</style>
 
 <div class="warehouse-header">Warehouse - Transfer Items Through Warehouse</div>
 
@@ -119,16 +114,13 @@
                             <th>QTY</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- rows -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
-
         </div>
 
         <div class="transfer-buttons">
-            <input type="number" id="transferQty" placeholder="QTY" min="0" step="1" />
+            <input type="number" id="transferQty" placeholder="QTY" min="1" step="1" />
             <button id="btnTransferTo">&raquo;</button>
             <button id="btnTransferFrom">&laquo;</button>
         </div>
@@ -148,9 +140,7 @@
                             <th>QTY</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- rows -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </div>
@@ -162,191 +152,146 @@
     </div>
 </div>
 
-
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
     <script>
         $(document).ready(function () {
 
             // Load warehouses into both dropdowns
             function loadWarehouses() {
-                $.ajax({
-                    url: '/Inventory/GetWarehouses', // ✅ your API route
-                    type: 'GET',
-                    success: function (result) {
-                        const dropdownFrom = $('#warehouseDropdown');
-                        const dropdownTo = $('#warehouseDropdowns');
+                $.get('/Inventory/GetWarehouses', function (result) {
+                    const dropdownFrom = $('#warehouseDropdown');
+                    const dropdownTo = $('#warehouseDropdowns');
 
-                        dropdownFrom.empty().append('<option value="">Select Warehouse</option>');
-                        dropdownTo.empty().append('<option value="">Select Warehouse</option>');
+                    dropdownFrom.empty().append('<option value="">Select Warehouse</option>');
+                    dropdownTo.empty().append('<option value="">Select Warehouse</option>');
 
-                        if (result.status && result.data.length) {
-                            result.data.forEach(w => {
-                                // use 'display' field from API
-                                dropdownFrom.append(`<option value="${w.id}">${w.display}</option>`);
-                                dropdownTo.append(`<option value="${w.id}">${w.display}</option>`);
-                            });
-                        } else {
-                            alert(result.message || "No warehouses found");
-                        }
-                    },
-                    error: function (err) {
-                        console.error('Error loading warehouses:', err);
-                    }
-                });
-            }
-
-            // Load items for "From Warehouse"
-            function loadWarehouseItemsFrom(warehouseId) {
-                var tbody = $('#transactionsBody tbody');
-                tbody.empty();
-
-                if (!warehouseId) return;
-
-                $.ajax({
-                    url: '/Inventory/GetWarehouseItemsFrom',
-                    type: 'GET',
-                    data: { warehouseId: warehouseId },
-                    success: function (result) {
-                        if (result.status && result.data.length) {
-                            $.each(result.data, function (i, item) {
-                                tbody.append(`
-                                    <tr>
-                                        <td>${item.itemName}</td>
-                                        <td class="text-end">${parseFloat(item.qty).toFixed(2)}</td>
-                                    </tr>
-                                `);
-                            });
-                        } else {
-                            tbody.append('<tr><td colspan="2" class="text-center">No items found</td></tr>');
-                        }
-                    },
-                    error: function (err) {
-                        console.error('Error loading warehouse items (From):', err);
-                    }
-                });
-            }
-
-            // Load items for "To Warehouse"
-            function loadWarehouseItemsTo(warehouseId) {
-                var tbody = $('#transactionsBodyTO tbody');
-                tbody.empty();
-
-                if (!warehouseId) return;
-
-                $.ajax({
-                    url: '/Inventory/GetWarehouseItemsTo',
-                    type: 'GET',
-                    data: { warehouseId: warehouseId },
-                    success: function (result) {
-                        if (result.status && result.data.length) {
-                            $.each(result.data, function (i, item) {
-                                tbody.append(`
-                                    <tr>
-                                        <td>${item.itemName}</td>
-                                        <td class="text-end">${parseFloat(item.qty).toFixed(2)}</td>
-                                    </tr>
-                                `);
-                            });
-                        } else {
-                            tbody.append('<tr><td colspan="2" class="text-center">No items found</td></tr>');
-                        }
-                    },
-                    error: function (err) {
-                        console.error('Error loading warehouse items (To):', err);
-                    }
-                });
-            }
-
-            // On change events
-            $('#warehouseDropdown').on('change', function () {
-                var warehouseId = $(this).val();
-                loadWarehouseItemsFrom(warehouseId);
-            });
-
-            $('#warehouseDropdowns').on('change', function () {
-                var warehouseId = $(this).val();
-                loadWarehouseItemsTo(warehouseId);
-            });
-
-            // Init
-            loadWarehouses();
-                    function transferItem(sourceTable, reverse = false) {
-            const selectedRow = $(sourceTable + ' tbody tr.selected');
-            const qtyInput = $('#transferQty').val().trim();
-            const qty = parseInt(qtyInput, 10);
-
-            if (!selectedRow.length) {
-                alert('Please select an item.');
-                return;
-            }
-
-            if (isNaN(qty) || qty <= 0) {
-                alert('Enter a valid quantity (1 or more).');
-                return;
-            }
-
-            const availableQty = parseInt(selectedRow.data('qty'), 10);
-            if (qty > availableQty) {
-                alert('Entered quantity is greater than available stock.');
-                return;
-            }
-
-            const itemId = selectedRow.data('item-id');
-            const sourceWarehouseId = reverse ? $('#warehouseDropdowns').val() : $('#warehouseDropdown').val();
-            const targetWarehouseId = reverse ? $('#warehouseDropdown').val() : $('#warehouseDropdowns').val();
-
-            if (!sourceWarehouseId || !targetWarehouseId || sourceWarehouseId === targetWarehouseId) {
-                alert('Select valid source and target warehouses.');
-                return;
-            }
-
-            $.ajax({
-                url: '/Inventory/TransferItem',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    SourceWarehouseId: parseInt(sourceWarehouseId),
-                    TargetWarehouseId: parseInt(targetWarehouseId),
-                    ItemId: parseInt(itemId),
-                    Qty: qty,
-                    UserId: 1 // replace with logged-in user
-                }),
-                success: function (result) {
-                    if (result.status) {
-                        toastr.success('✅ Transfer completed');
-                        // Refresh tables
-                        loadWarehouseItemsFrom($('#warehouseDropdown').val());
-                        loadWarehouseItemsTo($('#warehouseDropdowns').val());
-                        $('#transferQty').val('');
+                    if (result.status && result.data.length) {
+                        result.data.forEach(w => {
+                            dropdownFrom.append(`<option value="${w.id}">${w.display}</option>`);
+                            dropdownTo.append(`<option value="${w.id}">${w.display}</option>`);
+                        });
                     } else {
-                        toastr.error(result.message || 'Transfer failed');
+                        toastr.warning(result.message || "No warehouses found");
                     }
-                },
-                error: function (err) {
-                    console.error('Transfer error:', err);
-                    toastr.error('Transfer failed');
-                }
+                });
+            }
+
+            // Load items into table
+            function loadItems(tableSelector, warehouseId) {
+                const tbody = $(`${tableSelector} tbody`);
+                tbody.empty();
+                if (!warehouseId) return;
+
+                let url = tableSelector === '#transactionsBody'
+                    ? '/Inventory/GetWarehouseItemsFrom'
+                    : '/Inventory/GetWarehouseItemsTo';
+
+                $.get(url, { warehouseId }, function(result) {
+                    if (result.status && result.data.length) {
+                        result.data.forEach(item => {
+                            tbody.append(`
+                                <tr data-item-id="${item.item_id}" data-qty="${item.qty}">
+                                    <td>${item.itemName}</td>
+                                    <td class="text-end">${parseFloat(item.qty).toFixed(2)}</td>
+                                </tr>
+                            `);
+                        });
+                        // Auto-select first row
+                        tbody.find('tr:first').addClass('selected');
+                    } else {
+                        tbody.append('<tr><td colspan="2" class="text-center">No items found</td></tr>');
+                    }
+                });
+            }
+
+            // Warehouse dropdown change events
+            $('#warehouseDropdown').on('change', function() {
+                loadItems('#transactionsBody', $(this).val());
             });
-        }
 
-                $('#btnTransferTo').click(() => transferItem('#transactionsBodyFrom', false));
-        $('#btnTransferFrom').click(() => transferItem('#transactionsBodyTO', true));
+            $('#warehouseDropdowns').on('change', function() {
+                loadItems('#transactionsBodyTO', $(this).val());
+            });
 
-                // Row selection
-        $(document).on('click', '#transactionsBodyFrom tbody tr, #transactionsBodyTO tbody tr', function () {
-            $(this).siblings().removeClass('selected');
-            $(this).addClass('selected'); // only one selected at a time
-        });
+            // Row click selection (delegated to tbody only)
+            $(document).on("click", "#transactionsBody tbody tr, #transactionsBodyTO tbody tr", function () {
+                $(this).siblings().removeClass("selected");
+                $(this).addClass("selected");
+            });
 
+            // Transfer function
+            function transferItem(reverse) {
+                let sourceTable = reverse ? '#transactionsBodyTO' : '#transactionsBody';
+                let targetTable = reverse ? '#transactionsBody' : '#transactionsBodyTO';
 
+                let $row = $(`${sourceTable} tbody tr.selected`);
 
+                if ($row.length === 0) {
+                    toastr.error("Please select an item.");
+                    return;
+                }
+
+                let qty = parseFloat($("#transferQty").val());
+                if (!qty || qty <= 0) {
+                    toastr.error("Enter a valid quantity.");
+                    return;
+                }
+
+                let availableQty = parseFloat($row.find("td:last").text());
+                if (qty > availableQty) {
+                    toastr.error("Not enough stock in source warehouse.");
+                    return;
+                }
+
+                let itemId = $row.data("item-id");
+
+                let sourceWarehouseId = reverse ? $('#warehouseDropdowns').val() : $('#warehouseDropdown').val();
+                let targetWarehouseId = reverse ? $('#warehouseDropdown').val() : $('#warehouseDropdowns').val();
+
+                if (!sourceWarehouseId || !targetWarehouseId) {
+                    toastr.error("Please select both source and target warehouses.");
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Inventory/TransferItem',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        SourceWarehouseId: parseInt(sourceWarehouseId),
+                        TargetWarehouseId: parseInt(targetWarehouseId),
+                        ItemId: parseInt(itemId),
+                        Qty: qty,
+                        UserId: 1
+                    }),
+                    success: function(result) {
+                        if (result.status) {
+                            toastr.success('✅ Transfer completed');
+                            // reload both tables
+                            loadItems('#transactionsBody', $('#warehouseDropdown').val());
+                            loadItems('#transactionsBodyTO', $('#warehouseDropdowns').val());
+                            $('#transferQty').val('');
+                        } else {
+                            toastr.error(result.message || 'Transfer failed');
+                        }
+                    },
+                    error: function(err) {
+                        toastr.error(err.responseJSON?.message || 'Transfer failed');
+                    }
+                });
+            }
+
+            // Button click events
+            $("#btnTransferTo").click(() => transferItem(false));
+            $("#btnTransferFrom").click(() => transferItem(true));
+
+            // Initial load
+            loadWarehouses();
         });
     </script>
-
-
-
 }
+

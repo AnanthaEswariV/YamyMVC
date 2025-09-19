@@ -965,12 +965,21 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-    
 
 
-    #endregion
 
-}
+        #endregion
+
+        #region Item List
+
+        public IActionResult Item()
+        {
+            return View();
+        }
+
+        #endregion
+
+    }
 
 }
 
