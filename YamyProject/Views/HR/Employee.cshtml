@@ -887,8 +887,7 @@
             loadDepartmentsforpos();
         });
 
-
-                    // Load departments for dropdown
+         // Load departments for dropdown
         function loadDepartmentsforpos() {
             $.get('/Lists/GetDepartments', function(res) {
                 if (res.status) {
@@ -911,10 +910,7 @@
             });
         }
 
-
-
         });
-
 
           function saveDepartment() {
             const name = $("#addDepartmentName").val().trim();
@@ -993,9 +989,6 @@
                 }
             });
         }
-
-
-
 
 
     </script>

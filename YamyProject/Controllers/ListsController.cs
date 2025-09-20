@@ -1,4 +1,6 @@
-﻿using YamyProject.Core.Models;
+﻿using System.Data;
+using YamyProject.Core.Models;
+using YamyProject.Core.Models.DTOs;
 using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace YamyProject.Controllers
@@ -976,6 +978,83 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItems(string? categoryId = null, string? type = null, string state = "All")
+        {
+            try
+            {
+                // Build connection with dynamic DB from session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                var query = @"
+            SELECT id,
+                   CONCAT(code, ' - ', name) AS ItemName,
+                   barcode AS Barcode,
+                   type AS Type
+            FROM tbl_items
+            WHERE state = 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Filters
+                if (!string.IsNullOrEmpty(categoryId))
+                {
+                    query += " AND category_id = @category_id";
+                    parameters.Add(new MySqlParameter("@category_id", categoryId));
+                }
+
+                if (!string.IsNullOrEmpty(type))
+                {
+                    query += " AND type = @type";
+                    parameters.Add(new MySqlParameter("@type", type));
+                }
+
+                if (state == "Active")
+                {
+                    query += " AND active = 0";
+                }
+                else if (state != "All")
+                {
+                    query += " AND active != 0";
+                }
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                var items = new List<object>();
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        itemName = reader.GetString("ItemName"),
+                        barcode = reader.IsDBNull("Barcode") ? null : reader.GetString("Barcode"),
+                        type = reader.GetString("Type")
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult ItemList()
+        {
+            return View();
+        }
+
 
         #endregion
 

@@ -1,0 +1,771 @@
+﻿
+@{
+    ViewData["Title"] = "ItemList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+
+
+
+    .inventory-header {
+        background: #4472c4;
+        color: white;
+        padding: 8px 15px;
+        font-weight: bold;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    .mt-4 {
+        margin-top: 2.0rem !important;
+    }
+    .toolbar {
+        background: #e7e6e6;
+        padding: 5px 15px;
+        border-bottom: 1px solid #ccc;
+        font-size: 12px;
+    }
+
+        .toolbar .nav-link {
+            color: #333;
+            padding: 2px 8px;
+            font-size: 12px;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+
+            .toolbar .nav-link:hover {
+                background-color: rgba(0,0,0,0.1);
+                border-radius: 3px;
+            }
+
+    .main-container {
+        display: flex;
+        height: calc(100vh - 80px);
+        background: white;
+    }
+    /* Left Panel Styling */
+    .left-panel {
+        width: 330px;
+        background: #f8f9fa;
+        border-right: 2px solid #ddd;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-section {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .filter-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 11px;
+    }
+
+    .filter-label {
+        width: 60px;
+        font-weight: 600;
+        color: #333;
+        text-align: right;
+        margin-right: 10px;
+    }
+
+    .filter-control {
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+        .filter-control select {
+            flex: 1;
+            font-size: 11px;
+            padding: 2px 4px;
+            border: 1px solid #ccc;
+            background: white;
+        }
+
+        .filter-control input[type="text"] {
+            flex: 1;
+            font-size: 11px;
+            padding: 3px 6px;
+            border: 1px solid #ccc;
+        }
+
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        margin-left: 8px;
+        font-size: 11px;
+    }
+
+        .checkbox-container input {
+            margin-right: 4px;
+            transform: scale(0.8);
+        }
+
+    /* Items List */
+    .items-list {
+        flex: 1;
+        margin: 8px;
+        overflow: hidden;
+    }
+
+        .items-list .card {
+            height: 100%;
+        }
+
+        .items-list .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+    .custom-table {
+        font-size: 11px;
+    }
+
+        .custom-table th {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 8px;
+        }
+
+        .custom-table td {
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .custom-table tbody tr:hover {
+            background-color: #e3f2fd;
+        }
+
+        .custom-table tbody tr.selected {
+            background-color: #b3d9ff !important;
+        }
+
+    .item-code {
+        font-weight: 600;
+        color: #000;
+    }
+
+    .item-type {
+        color: #666;
+    }
+
+    /* Right Panel */
+    .right-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: white;
+    }
+
+    .right-header {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-bottom: 1px solid #ddd;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+        .header-info span {
+            font-size: 11px;
+            color: #555;
+        }
+
+    .go-to-link {
+        color: #0066cc;
+        text-decoration: none;
+        font-size: 11px;
+    }
+
+    /* Right Panel Data Grid */
+    .right-panel .card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .right-panel .card-body {
+        flex: 1;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .data-grid {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .data-grid .table-responsive {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .data-grid .custom-table {
+            font-size: 11px;
+            margin: 0;
+        }
+
+            .data-grid .custom-table th {
+                font-size: 10px;
+                font-weight: 600;
+                padding: 6px 8px;
+                white-space: nowrap;
+            }
+
+            .data-grid .custom-table td {
+                padding: 6px 8px;
+                font-size: 11px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .data-grid .custom-table tbody tr:hover {
+                background-color: #e3f2fd;
+            }
+
+</style>
+
+
+<div class="inventory-header">
+    Inventory Center
+</div>
+
+<div class="toolbar">
+    <div class="container-fluid p-0">
+        <ul class="nav nav-pills">
+            <li class="nav-item dropdown me-2">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                    <i class="bi bi-gear-fill me-1"></i> Item Operations
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#newItemModal">
+                            <i class="bi bi-plus-circle me-2"></i> New Item
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
+            <li class="nav-item me-2">
+                <a class="nav-link" href="#" id="btnPrint">
+                    <i class="bi bi-printer me-1"></i> Print
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" id="btnExcel">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="main-container">
+    <!-- Left Panel -->
+    <div class="left-panel">
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-label">State</div>
+                <div class="filter-control">
+                    <select id="stateFilter">
+                        <option value="All">All</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+        
+
+
+            <div class="filter-row">
+                <div class="filter-label">Category</div>
+                <div class="filter-control">
+                    <select id="categoryDropdown" class="form-select">
+                        <option value="">Loading...</option>
+                    </select>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="allCat" checked>
+                        <label for="allCat">All</label>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-label">Type</div>
+                <div class="filter-control">
+                    <select>
+                        <option>11 - Inventory</option>
+                        <option>12 - Service</option>
+                    </select>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="allType" checked>
+                        <label for="allType">All</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-label">Search By Item</div>
+                <div class="filter-control">
+                    <input type="text" placeholder="">
+                </div>
+            </div>
+        </div>
+
+        <div class="items-list">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <!-- Items Table -->
+                        <table id="itemsTable" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>Barcode</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+        <div class="right-header">
+            <div class="header-info">
+                <span>Item Code ↕</span>
+                <span>Item Name ↕</span>
+                <span>Cost Price ↕</span>
+                <span>Sale Price ↕</span>
+                <span>Balance Qty ↕</span>
+            </div>
+            <a href="#" class="go-to-link">Go To Item </a>
+        </div>
+
+        <div class="card shadow-sm h-100">
+            <div class="card-body p-0">
+                <div class="data-grid">
+                    <div class="table-responsive">
+                        <table class="table table-striped custom-table mb-0" id="dataTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item Name</th>
+                                    <th>Barcode</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>INV NO</th>
+                                    <th>Type</th>
+                                    <th>Qty In</th>
+                                    <th>Qty Out</th>
+                                    <th>Cost Price</th>
+                                    <th>Sales Price</th>
+                                    <th>Qty Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- New Item Modal -->
+<div class="modal fade" id="newItemModal" tabindex="-1" aria-labelledby="newItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color: #5865f2;">
+                <h5 class="modal-title" id="newItemModalLabel">
+                    <i class="fas fa-box"></i> Inventory - New Item
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form>
+                    <!-- Top Row - Warehouse and Type -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="warehouse" class="form-label fw-semibold text-muted">Warehouse</label>
+                            <div class="input-group">
+                                <select class="form-select" id="warehouseDropdown">
+                                    <option value="">Select Warehouse</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" id="btnNew" data-bs-toggle="modal" data-bs-target="#newWarehouseModal">New</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="type" class="form-label fw-semibold text-muted">Type</label>
+                            <select class="form-select" id="type">
+                                <option selected>Inventory</option>
+                                <option value="2">Fixed Assets</option>
+                                <option value="3">Expenses</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Category and Type Row -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="category" class="form-label fw-semibold text-muted">Category</label>
+                            <div class="input-group">
+                                <select id="categoryDropdowns" class="form-select">
+                                    <option value="">Loading...</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addCategoryModal">New</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="inventoryType" class="form-label fw-semibold text-muted">Type</label>
+                            <select class="form-select" id="inventoryType">
+                                <option selected>Inventory</option>
+                                <option value="2">Service</option>
+                                <option value="3">Non-Inventory</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Item Code and Item Name -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="itemCode" class="form-label fw-semibold text-muted">Item Code</label>
+                            <input type="text" disabled class="form-control bg-light" id="itemCode" placeholder="Item Code">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="itemName" class="form-label fw-semibold text-muted">Item Name</label>
+                            <input type="text" class="form-control" id="itemName" placeholder="Item Name">
+                        </div>
+                    </div>
+
+                    <!-- Gray section separator -->
+                    <div class="bg-light p-3 rounded mb-3">
+                        <!-- Opening Qty, Cost Price, Total -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="openingQty" class="form-label fw-semibold text-muted">Opening Qty</label>
+                                <input type="text" class="form-control" id="openingQty" placeholder="On Hand">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="costPrice" class="form-label fw-semibold text-muted">Cost Price</label>
+                                <input type="text" class="form-control" id="costPrice" placeholder="Cost Price">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="total" class="form-label fw-semibold text-muted">Total</label>
+                                <input type="text" class="form-control bg-light" id="total" placeholder="Total Value" readonly>
+                            </div>
+                        </div>
+
+                        <!-- As Of Date -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="asOf" class="form-label fw-semibold text-muted">As Of</label>
+                                <div class="input-group">
+                                    <input type="date" class="form-control" id="asOf">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Price and Item Active -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="salesPrice" class="form-label fw-semibold text-muted">Sales Price</label>
+                            <input type="text" class="form-control" id="salesPrice" placeholder="Sales Price">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="itemActive" checked>
+                                <label class="form-check-label fw-semibold text-muted" for="itemActive">
+                                    Item Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barcode -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="barcode" class="form-label fw-semibold text-muted">Barcode</label>
+                            <input type="text" class="form-control" id="barcode" placeholder="Barcode">
+                        </div>
+                    </div>
+
+                    <!-- Main Unit and Costing Method -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="mainUnit" class="form-label fw-semibold text-muted">Main Unit</label>
+                            <select class="form-select" id="mainUnit">
+                                <!-- Options will be loaded dynamically -->
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-primary mt-4" data-bs-toggle="modal" data-bs-target="#addUnitModal">Add More Unit</button>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-muted">Costing Method</label>
+                            <div class="d-flex gap-3 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="costingMethod" id="avg" checked>
+                                    <label class="form-check-label" for="avg">AVG</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="costingMethod" id="fifo">
+                                    <label class="form-check-label" for="fifo">FIFO</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="costingMethod" id="lifo">
+                                    <label class="form-check-label" for="lifo">LIFO</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Min Amount and Max Amount -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="minAmount" class="form-label fw-semibold text-muted">Min Amount</label>
+                            <input type="text" class="form-control" id="minAmount" placeholder="Min Amount">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="maxAmount" class="form-label fw-semibold text-muted">Max</label>
+                            <input type="text" class="form-control" id="maxAmount" placeholder="Max Amount">
+                        </div>
+                    </div>
+
+                    <!-- Bottom Section - Accounts -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="cogsAccount" class="form-label fw-semibold text-muted">COGS Account</label>
+                                <select id="cogsAccount" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="assetAccount" class="form-label fw-semibold text-muted">Asset Account</label>
+                                <select id="assetAccount" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="incomeAccount" class="form-label fw-semibold text-muted">Income Account</label>
+                                <select id="incomeAccount" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="preferredVendor" class="form-label fw-semibold text-muted">Preferred Vendor</label>
+                                <select id="preferredVendor" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> CLOSE
+                </button>
+                <button type="button" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@Html.Partial("~/Views/Inventory/_WareHouse.cshtml")
+@Html.Partial("~/Views/Lists/_ItemCategory.cshtml")
+@Html.Partial("~/Views/Lists/_Unit.cshtml")
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+        $(document).ready(function () {
+
+            // ===== Load Items Table =====
+            function loadItems() {
+                var state = $('#stateFilter').val(); // get selected state
+                $.ajax({
+                    url: '/Lists/GetItems',
+                    type: 'GET',
+                    data: { state: state },
+                    success: function (result) {
+                        var tbody = $('#itemsTable tbody');
+                        tbody.empty();
+
+                        if (result.status && result.data.length > 0) {
+                            $.each(result.data, function (i, item) {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${item.itemName}</td>
+                                        <td>${item.barcode ?? ''}</td>
+                                        <td>${item.type}</td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            tbody.append('<tr><td colspan="3" class="text-center">No items found</td></tr>');
+                        }
+                    },
+                    error: function (err) {
+                        console.error('Error loading items:', err);
+                        toastr.error('Failed to load items');
+                    }
+                });
+            }
+            loadItems(); // initial load
+            $('#stateFilter').on('change', loadItems);
+
+            // ===== Load Categories =====
+            function loadCategories(selector = "#categoryDropdown, #categoryDropdowns") {
+                $.ajax({
+                    url: '/Lists/GetItemCategory',
+                    type: 'GET',
+                    success: function (result) {
+                        var dropdowns = $(selector);
+                        dropdowns.empty();
+
+                        if (result.status && result.data.length > 0) {
+                            dropdowns.append('<option value="">-- Select Category --</option>');
+                            $.each(result.data, function (i, category) {
+                                dropdowns.append(`<option value="${category.id}">${category.categoryName}</option>`);
+                            });
+                        } else {
+                            dropdowns.append('<option value="">No categories found</option>');
+                        }
+                    },
+                    error: function (err) {
+                        console.error('Error loading categories:', err);
+                        toastr.error('Failed to load categories');
+                    }
+                });
+            }
+            loadCategories();
+
+            // Toggle category dropdown based on checkbox
+            $('#allCat').on('change', function () {
+                $('#categoryDropdown').prop('disabled', $(this).is(':checked')).val('');
+            });
+            if ($('#allCat').is(':checked')) $('#categoryDropdown').prop('disabled', true);
+
+            // ===== Load Warehouses =====
+            function loadWarehouses(selector = "#warehouse, #warehouseDropdown") {
+                $.ajax({
+                    url: '/Inventory/GetWarehouses',
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status) {
+                            const dropdowns = $(selector);
+                            dropdowns.empty().append('<option value="">Select Warehouse</option>');
+                            res.data.forEach(w => {
+                                dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
+                            });
+                        } else {
+                            alert(res.message);
+                        }
+                    },
+                    error: function (err) {
+                        console.error("Error fetching warehouses:", err);
+                    }
+                });
+            }
+            loadWarehouses();
+
+            // ===== Load Units =====
+            function loadUnitsDropdown(selector = "#mainUnit") {
+                $.get('/Lists/GetUnit', function (res) {
+                    const dropdown = $(selector);
+                    dropdown.empty().append('<option value="">-- Select Unit --</option>');
+                    if (res && res.length > 0) {
+                        res.forEach(u => dropdown.append(`<option value="${u.id}">${u.unitName}</option>`));
+                    } else {
+                        dropdown.append('<option value="">No units found</option>');
+                    }
+                }).fail(function (err) {
+                    console.error("Error loading units:", err);
+                    toastr.error("Failed to load units");
+                });
+            }
+            loadUnitsDropdown("#mainUnit");
+
+            // Reload units dropdown when modal opens
+            $(document).on('shown.bs.modal', '#newWarehouseModal', function () {
+                loadUnitsDropdown("#mainUnit");
+            });
+
+            // ===== Load Accounts =====
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function (data) {
+                    const dropdowns = [
+                        { ddl: '#cogsAccount', codeBox: '#code1' },
+                        { ddl: '#assetAccount', codeBox: '#code2' },
+                        { ddl: '#incomeAccount', codeBox: '#code3' },
+                        { ddl: '#preferredVendor', codeBox: '#code4' }
+                    ];
+
+                    dropdowns.forEach(set => {
+                        let $ddl = $(set.ddl);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function (i, item) {
+                            $ddl.append($('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code
+                            }));
+                        });
+
+                        $ddl.on('change', function () {
+                            let code = $(this).find(':selected').data('code');
+                            $(set.codeBox).val(code || "");
+                        });
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error loading accounts:", status, error);
+                }
+            });
+
+        });
+    </script>
+
+}

@@ -36,54 +36,9 @@
     </div>
 </section>
 
-<!-- ✅ Add Category Modal -->
-<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addCategoryLabel">Add New Category</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addCategoryForm">
-                    <div class="mb-3">
-                        <label for="categoryName" class="col-form-label">Category Name</label>
-                        <input type="text" class="form-control" id="categoryName" name="categoryName" required />
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="saveCategory()">Save</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- ✅ Edit Category Modal -->
-<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editCategoryLabel">Edit Category</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editCategoryForm">
-                    <input type="hidden" id="editCategoryId" />
-                    <div class="mb-3">
-                        <label for="editCategoryName" class="col-form-label">Category Name</label>
-                        <input type="text" class="form-control" id="editCategoryName" name="categoryName" required />
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="updateCategory()">Update</button>
-            </div>
-        </div>
-    </div>
-</div>
+
+@Html.Partial("_ItemCategory.cshtml")
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -109,68 +64,42 @@
                  "showMethod": "fadeIn",
                  "hideMethod": "fadeOut"
              };
-        async function loadCategories() {
-            const response = await fetch('/Lists/GetItemCategory');
-            const result = await response.json();
 
-            if (result.status) {
-                if (dataTable) {
-                    dataTable.destroy(); // 🔥 fully reset
-                    document.querySelector("#table1 tbody").innerHTML = "";
-                }
-
-                dataTable = new simpleDatatables.DataTable("#table1", {
-                    data: {
-                        headings: ["ID", "Category Name", "Actions"],
-                        data: result.data.map(cat => [
-                            cat.id,
-                            cat.categoryName,
-                            `
-                                <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
-                            `
-                        ])
-                    }
-                });
-            } else {
-                alert(result.message);
+                     $(document).ready(function () {
+            if (document.getElementById("table1")) {
+                loadCategories();
             }
-        }
+        });
 
-        function saveCategory() {
-            var categoryName = $("#categoryName").val();
+              async function loadCategories() {
+             const response = await fetch('/Lists/GetItemCategory');
+             const result = await response.json();
 
-            if (!categoryName.trim()) {
-                alert("Please enter a category name.");
-                return;
-            }
+             if (result.status) {
+                 if (dataTable) {
+                     dataTable.destroy(); // 🔥 fully reset
+                     document.querySelector("#table1 tbody").innerHTML = "";
+                 }
 
-            $.ajax({
-                url: '/Lists/AddCategory',
-                type: 'POST',
-                data: { categoryName: categoryName },
-                success: function (result) {
-                       if (result.status) {
-                            var modalEl = document.getElementById("addCategoryModal");
-                         var modal = bootstrap.Modal.getInstance(modalEl);
-                         modal.hide();
+                 dataTable = new simpleDatatables.DataTable("#table1", {
+                     data: {
+                         headings: ["ID", "Category Name", "Actions"],
+                         data: result.data.map(cat => [
+                             cat.id,
+                             cat.categoryName,
+                             `
+                                 <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
+                                 <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
+                             `
+                         ])
+                     }
+                 });
+             } else {
+                 alert(result.message);
+             }
+         }
 
-                         $("#addCategoryForm")[0].reset();
-                             toastr.success('Category Added Successfully!');
-                              // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                         } else {
-                              toastr.error(result.message);
-                         }
 
-                },
-                error: function (xhr, status, error) {
-                    alert("Error: " + error);
-                }
-            });
-        }
 
         // ✅ Edit category (fixed version)
         function editCategory(id) {
@@ -254,9 +183,6 @@
                 }
             });
         }
-
-
-        document.addEventListener("DOMContentLoaded", loadCategories);
     </script>
 }
 

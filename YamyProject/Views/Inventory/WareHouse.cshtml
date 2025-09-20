@@ -118,155 +118,7 @@
     </div>
 </div>
 
-
-<div class="modal fade" id="newWarehouseModal" tabindex="-1" aria-labelledby="newWarehouseLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="newWarehouseLabel">New Warehouse</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <form id="newWarehouseForm">
-                <div class="modal-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Warehouse Code</label>
-                            <input type="text" class="form-control" id="warehouseCode" disabled placeholder="Auto">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Warehouse Name</label>
-                            <input type="text" class="form-control" id="warehouseName" placeholder="Enter warehouse name" required>
-                        </div>
-                    </div>
-                    <input type="hidden" id="warehouseId" value="0" />
-
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Manager</label>
-                            <select class="form-select" id="manager">
-                                <option value="">Select Manager</option>
-                                <!-- Employees will be appended here -->
-                            </select>
-                            <a href="#" class="openEmployeeNew text-primary text-decoration-underline">New</a>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">City</label>
-                            <select class="form-select" id="city">
-                                <option value="">Select City</option>
-                                <option value="Dubai">Dubai</option>
-                                <option value="Abu Dhabi">Abu Dhabi</option>
-                                <option value="Sharjah">Sharjah</option>
-                                <option value="Ajman">Ajman</option>
-                                <option value="Umm Al-Quwain">Umm Al-Quwain</option>
-                                <option value="Ras Al Khaima">Ras Al Khaima</option>
-                                <option value="Fujairah">Fujairah</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <label class="form-label">Building Name</label>
-                            <input type="text" class="form-control" id="buildingName" placeholder="Enter building name">
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <label class="form-label">Main Account</label>
-                            <select id="accruedSalaries" class="form-select form-select-sm">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Warehouse Modal -->
-<div class="modal fade" id="editWarehouseModal" tabindex="-1" aria-labelledby="editWarehouseLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-white">
-                <h5 class="modal-title" id="editWarehouseLabel">Edit Warehouse</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <form id="editWarehouseForm">
-                <div class="modal-body">
-                    <input type="hidden" id="editWarehouseId" value="0" />
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Warehouse Code</label>
-                            <input type="text" class="form-control" id="editWarehouseCode" disabled placeholder="Auto">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Warehouse Name</label>
-                            <input type="text" class="form-control" id="editWarehouseName" placeholder="Enter warehouse name" required>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Manager</label>
-                            <select class="form-select" id="editManager">
-                                <option value="">Select Manager</option>
-                                <!-- Employees will be appended here -->
-                            </select>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">City</label>
-                            <select class="form-select" id="editCity">
-                                <option value="">Select City</option>
-                                <option value="Dubai">Dubai</option>
-                                <option value="Abu Dhabi">Abu Dhabi</option>
-                                <option value="Sharjah">Sharjah</option>
-                                <option value="Ajman">Ajman</option>
-                                <option value="Umm Al-Quwain">Umm Al-Quwain</option>
-                                <option value="Ras Al Khaima">Ras Al Khaima</option>
-                                <option value="Fujairah">Fujairah</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <label class="form-label">Building Name</label>
-                            <input type="text" class="form-control" id="editBuildingName" placeholder="Enter building name">
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-12">
-                            <label class="form-label">Main Account</label>
-                            <select id="editaccruedSalaries" class="form-select form-select-sm">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-warning">Update</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
+@Html.Partial("_WareHouse.cshtml")
 <!-- 🔽 Employee Modal Partial -->
 @Html.Partial("~/Views/HR/_Employee.cshtml")
 
@@ -278,7 +130,11 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 
     <script>
-
+               $(document).ready(function () {
+            if (document.getElementById("warehouseTable")) {
+                loadWarehouse();
+            }
+        });
           toastr.options = {
                  "closeButton": true,
                  "debug": false,
@@ -298,49 +154,6 @@
              };
 
         $(function () {
-
-         $("#newWarehouseForm").submit(function (e) {
-            e.preventDefault();
-
-            let model = {
-                Id: parseInt($("#warehouseId").val()) || 0, // 0 = add, >0 = edit
-                Name: $("#warehouseName").val(),
-                City: $("#city").val(),
-                BuildingName: $("#buildingName").val(),
-                EmpId: parseInt($("#manager").val()) || null,
-                AccountId: parseInt($("#accruedSalaries").val()) || null,
-            };
-
-            $.ajax({
-                url: "/Inventory/SaveWarehouse",
-                type: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(model),
-                success: function (res) {
-                    if (res && res.status) {
-                        // Show success notification
-                        toastr.success(res.message || "Warehouse saved successfully!");
-
-                        // Update form fields if needed
-                        $("#warehouseCode").val(res.code || "");
-                        $("#newWarehouseModal").modal("hide");
-                        $("#newWarehouseForm")[0].reset();
-                        $("#warehouseId").val(0);
-
-                        // Optional: reload page or table
-                        setTimeout(function () {
-                            location.reload(); 
-                        }, 1500);
-                    } else {
-                        // Show error notification
-                        toastr.error(res?.message || "Failed to save warehouse");
-                    }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
-                }
-            });
-        });
 
 
         var table = $('#itemsTable').DataTable({
@@ -545,19 +358,6 @@
 
         });
 
-        function loadManagersDropdown(selectedId = null) {
-            $.getJSON('/Inventory/GetAllEmployees', function(employees) {
-                const $manager = $('#manager');
-                $manager.empty().append('<option value="">Select Manager</option>');
-
-                employees.forEach(emp => {
-                    const selected = selectedId && emp.id === selectedId ? 'selected' : '';
-                    $manager.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
-                });
-            });
-        }
-
-
            function loadeditManagersDropdown(selectedId = null) {
             $.getJSON('/Inventory/GetAllEmployees', function(employees) {
                 const $manager = $('#editManager');
@@ -572,7 +372,6 @@
 
         // Call this on page load
         $(document).ready(function() {
-            loadManagersDropdown();
             loadeditManagersDropdown();
         });
 
@@ -681,53 +480,8 @@
 
 
 
-              $(document).ready(function () {
-                $.ajax({
-                    url: '/HR/GetAccruedSalaries',
-                    type: 'GET',
-                    success: function (data) {
-                        console.log("✅ API Response:", data);
 
-                        // List of dropdowns with their matching code textbox
-                        const dropdowns = [
-                            { ddl: '#accruedSalaries' }
-                        ];
-
-                        dropdowns.forEach(set => {
-                            let $ddl = $(set.ddl);
-                            console.log("Found dropdown?", set.ddl, $ddl.length);
-
-                            $ddl.empty().append('<option value="">-- Select --</option>');
-
-                            $.each(data, function (i, item) {
-                                $ddl.append(
-                                    $('<option>', {
-                                        value: item.id,
-                                        text: item.code + ' - ' + item.name,
-                                        'data-code': item.code
-                                    })
-                                );
-                            });
-
-                            console.log("Total options now for", set.ddl, ":", $ddl.find('option').length);
-
-                            // On change, update the code textbox
-                            $ddl.on('change', function () {
-                                let selected = $(this).find(':selected');
-                                let code = selected.data('code');
-                                console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
-                                $(set.codeBox).val(code || "");
-                            });
-                        });
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("❌ Error loading accounts:", status, error);
-                    }
-                });
-            });
-
-
-              $(document).ready(function () {
+               $(document).ready(function () {
                 $.ajax({
                     url: '/HR/GetAccruedSalaries',
                     type: 'GET',
@@ -771,6 +525,8 @@
                     }
                 });
             });
+
+        
 
 
     </script>

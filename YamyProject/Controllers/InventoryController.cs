@@ -123,6 +123,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpPut]
         public async Task<IActionResult> EditWarehouse([FromBody] WarehouseRequest model)
         {
@@ -178,6 +179,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteWarehouse(int id)
         {
@@ -232,6 +234,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetWarehouses()
         {
@@ -279,6 +282,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetAllEmployees()
         {
@@ -314,6 +318,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetWarehouseItems(int warehouseId)
         {
