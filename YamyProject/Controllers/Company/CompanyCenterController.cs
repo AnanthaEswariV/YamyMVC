@@ -13,11 +13,16 @@
         }
         [HttpGet]
         public IActionResult Index()
-        {            
-            return View();
+        {
+            var Company = _context.TblCompanies.AsNoTracking().ToList();
+
+            var viewModel = _mapper.Map<IEnumerable<CompanyViewModels>>(Company);
+
+            return View(viewModel);
+            
         }
         [HttpGet]
-        //[AjaxOnly]
+        [AjaxOnly]
         public IActionResult Edit(int id)
         {
             var company = _context.TblCompanies.Find(id);
@@ -26,7 +31,7 @@
                 return NotFound();
 
             var viewModel = _mapper.Map<CompanyViewModels>(company);
-            return View("Index", viewModel);
+            return PartialView("Edit", viewModel);
         }       
         [HttpPost]
         public IActionResult Edit(CompanyViewModel model)

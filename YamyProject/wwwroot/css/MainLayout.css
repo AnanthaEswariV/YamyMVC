@@ -1,0 +1,175 @@
+﻿
+.sidebar-wrapper .sidebar-header img {
+    max-height: 60px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+.sidebar-wrapper {
+    width: 219px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    z-index: 10;
+    overflow-y: auto;
+    background-color: #fff;
+    bottom: 0;
+    transition: left .5s ease-out;
+}
+
+    .sidebar-wrapper .sidebar-header img {
+        height: 9.2rem;
+    }
+
+#main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.page-content {
+    flex: 1;
+}
+
+.sidebar-wrapper .menu {
+    margin-top: -1rem;
+    padding: 0 2rem;
+    font-weight: 600;
+}
+
+/* ✅ Top Navbar */
+.top-navbar {
+    background-color: #3f51b5;
+    color: #fff;
+    padding: 0.4rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: medium;
+}
+
+    .top-navbar ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        padding-left: 210px;
+        gap: 1rem;
+    }
+
+    .top-navbar li {
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+        .top-navbar li:hover {
+            text-decoration: underline;
+        }
+
+/* ✅ Sidebar Footer */
+.sidebar-footer {
+    margin-top: auto;
+    padding: 1rem;
+    border-top: 1px solid #ddd;
+    padding-left: 0px;
+}
+
+    .sidebar-footer .sidebar-item {
+        margin: 0.3rem 0;
+    }
+
+
+
+/* Fix the top navbar */
+.top-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+}
+
+/* Add padding to main content */
+#main {
+    padding-top: 60px;
+    padding-left: 0px;
+}
+
+/* Add position relative to navbar items */
+.top-navbar li {
+    position: relative;
+}
+/* Base submenu (hidden by default) */
+.dropdown .submenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #fff;
+    color: #333;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    min-width: 180px;
+    display: none;
+    z-index: 1002;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+/* Show submenu only when hovering the parent LI */
+.dropdown:hover > .submenu {
+    display: block;
+}
+
+/* Style submenu items */
+.dropdown .submenu li {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+    .dropdown .submenu li:last-child {
+        border-bottom: none;
+    }
+
+    .dropdown .submenu li:hover {
+        background-color: #f8f9fa;
+    }
+
+/* Nested submenu */
+.submenu .submenu {
+    top: 0;
+    left: 100%;
+}
+
+/* Arrow for submenus */
+.has-submenu > a::after {
+    content: '▶';
+    float: right;
+    font-size: 10px;
+    color: #666;
+    transition: transform 0.2s ease;
+}
+
+.has-submenu:hover > a::after {
+    transform: translateX(2px);
+}
+
+/* Only show nested submenu when its parent is hovered */
+.submenu .has-submenu:hover > .submenu {
+    display: block;
+}
+
+.sidebar-menu {
+    font-size: medium;
+}
+
+.has-submenu > .submenu {
+    max-height: 300px; /* adjust height as needed */
+    overflow-y: auto; /* enable vertical scroll */
+    overflow-x: hidden; /* prevent horizontal scroll */
+}
+

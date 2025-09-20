@@ -1,4 +1,4 @@
-﻿@model IEnumerable<TblCustomer>
+﻿@model IEnumerable<VendorIndexViewModel>
 @{
     ViewData["Title"] = "Vendor Center";
  }
@@ -8,12 +8,12 @@
     <div class="d-flex justify-content-between align-items-center bg-light p-2 border rounded">
         <div class="dropdown">
             <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
-                Customer Operations
+                Vender Operations
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item">New Customer</a></li>
-                <li><a class="dropdown-item">Edit Customer</a></li>
-                <li><a class="dropdown-item">Delete Customer</a></li>
+                <li><a class="dropdown-item">New Vender</a></li>
+                <li><a class="dropdown-item">Edit Vender</a></li>
+                <li><a class="dropdown-item">Delete Vender</a></li>
 
             </ul>
         </div>
@@ -33,7 +33,7 @@
                 Print
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Customer List</a></li>
+                <li><a class="dropdown-item" href="#">Vender List</a></li>
                 <li class="dropdown-submenu">
                     <a class="dropdown-item dropdown-toggle" href="#">Transaction List</a>
                     <ul class="dropdown-menu">
@@ -50,69 +50,69 @@
     </div>
 
     <div class="row mt-3">
-        <!-- Left Panel: Customer List -->
+        <!-- Left Panel: Vender List -->
         <div class="col-md-3">
             <div class="card">
                 <div class="card-header bg-light">
-                    Active Customer
+                    Active Vender
                 </div>
                 <div class="card-body p-0">
                     <ul class="list-group list-group-flush">
-                        @*     @foreach (var customer in Model.Customers)
+                        @foreach (var Vender in Model)
                         {
                             <li class="list-group-item">
-                                <a href="@Url.Action("Details", "Customer", new { id = customer.Id })">
-                                    @customer.Name (@customer.Code)
+                                <a href="@Url.Action("Details", "Vender", new { id = Vender.Id })">
+                                    @Vender.Name (@Vender.Code)
                                 </a>
                             </li>
-                        } *@
+                        }
                     </ul>
                 </div>
             </div>
         </div>
 
-        <!-- Right Panel: Customer Info -->
+        <!-- Right Panel: Vender Info -->
         <div class="col-md-9">
             <div class="card mb-3">
                 <div class="card-header">
-                    Customer Information
+                    Vender Information
                 </div>
                 <div class="card-body">
-                    @foreach (var customer in Model)
+                    @foreach (var Vender in Model)
                     {
-                        <div>
+                        @* <div>
                             <tr>
-                                <label>Customer Code     : @customer.Code</label>
-                                <td>Customer Name     : @customer.Name</td>
-                                <td>TRN               : @customer.Trn</td>
-                                <td>Email             : @customer.Email</td>
-                                <td>Work Phone        : @customer.WorkPhone</td>
-                                <td>Customer Category : @customer.CatIdNavigation.Name</td>
-                                <td>Main Phone        : @customer.MainPhone</td>
-                                <td>Address           : @customer.Balance</td>
-                                @*   <td>
-                                <a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-sm btn-primary">Details</a>
-                                <a asp-action="Edit" asp-route-id="@customer.Id" class="btn btn-sm btn-warning">Edit</a>
-                                <form asp-action="Delete" asp-route-id="@customer.Id" method="post" style="display:inline;">
+                                <label>Vender Code     : @Vender.Code</label>
+                                <td>Vender Name     : @Vender.Name</td>
+                                <td>TRN               : @Vender.</td>
+                                <td>Email             : @Vender.Email</td>
+                                <td>Work Phone        : @Vender.WorkPhone</td>
+                                <td>Vender Category : @Vender.CatIdNavigation.Name</td>
+                                <td>Main Phone        : @Vender.MainPhone</td>
+                                 <td>Address           : @Vender.Balance</td>
+                                  <td>
+                                <a asp-action="Details" asp-route-id="@Vender.Id" class="btn btn-sm btn-primary">Details</a>
+                                <a asp-action="Edit" asp-route-id="@Vender.Id" class="btn btn-sm btn-warning">Edit</a>
+                                <form asp-action="Delete" asp-route-id="@Vender.Id" method="post" style="display:inline;">
                                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                 </form>
-                            </td> *@
-                            </tr>
-                        </div>
+                            </td> 
+                             </tr>
+                        </div> *@
                     }
-                    @*  <p><strong>Customer Code:</strong> @Model.SelectedCustomer.Code</p>
-                    <p><strong>Name:</strong> @Model.SelectedCustomer.Name</p>
-                    <p><strong>TRN:</strong> @Model.SelectedCustomer.TRN</p>
-                    <p><strong>Email:</strong> @Model.SelectedCustomer.Email</p>
-                    <p><strong>Work Phone:</strong> @Model.SelectedCustomer.WorkPhone</p>
-                    <p><strong>Category:</strong> @Model.SelectedCustomer.Category</p>
-                    <p><strong>Address:</strong> @Model.SelectedCustomer.Address</p>
-                   <p><strong>Main Phone:</strong> @Model.SelectedCustomer.MainPhone</p>
-                *@  </div>
+                @*      <p><strong>Vender Code:</strong> @Model.SelectedVender.Code</p>
+                    <p><strong>Name:</strong> @Model.SelectedVender.Name</p>
+                    <p><strong>TRN:</strong> @Model.SelectedVender.TRN</p>
+                    <p><strong>Email:</strong> @Model.SelectedVender.Email</p>
+                    <p><strong>Work Phone:</strong> @Model.SelectedVender.WorkPhone</p>
+                    <p><strong>Category:</strong> @Model.SelectedVender.Category</p>
+                    <p><strong>Address:</strong> @Model.SelectedVender.Address</p>
+                   <p><strong>Main Phone:</strong> @Model.SelectedVender.MainPhone</p> *@
+                 </div>
             </div>
 
             <!-- Tabs -->
-            <ul class="nav nav-tabs" id="customerTabs" role="tablist">
+            <ul class="nav nav-tabs" id="VenderTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" data-bs-toggle="tab" href="#transactions">Transactions</a>
                 </li>
@@ -183,20 +183,6 @@
                 </div>
             </div>
 
-            <!-- Notes & Reports -->
-            <div class="card mt-3">
-                <div class="card-header">Notes</div>
-                <div class="card-body">
-                    @*  <textarea class="form-control" rows="2">@Model.SelectedCustomer.Notes</textarea>
-                   *@  <hr />
-                    <h6>Reports for this Customer</h6>
-                    <ul>
-                        <li><a href="#">QuickReport</a></li>
-                        <li><a href="#">Open Balance</a></li>
-                        <li><a href="#">Customer Snapshot</a></li>
-                    </ul>
-                </div>
-            </div>
         </div>
     </div>
 </div>

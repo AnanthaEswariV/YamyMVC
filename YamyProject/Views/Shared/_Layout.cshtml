@@ -4,15 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YamyProject | @ViewData["Title"] </title>
-
     <!-- Fonts & Bootstrap -->
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/assets/css/bootstrap.css" />
-
     <!-- Bootstrap Icons (latest version for piggy-bank icon) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-
     <!-- Vendors -->
     <link rel="stylesheet" href="~/assets/vendors/iconly/bold.css" />
     <link rel="stylesheet" href="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.css" />
@@ -23,400 +20,57 @@
     <!-- Favicon -->
     <link rel="icon" href="~/assets/images/logo/yamy.png" type="image/png" />
 
-    <style>
-        .sidebar-wrapper .sidebar-header img {
-            max-height: 60px;
-            width: auto;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .sidebar-wrapper {
-            width: 219px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            z-index: 10;
-            overflow-y: auto;
-            background-color: #fff;
-            bottom: 0;
-            transition: left .5s ease-out;
-        }
-
-            .sidebar-wrapper .sidebar-header img {
-                height: 9.2rem;
-            }
-
-        #main {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        .page-content {
-            flex: 1;
-        }
-
-        .sidebar-wrapper .menu {
-            margin-top: -1rem;
-            padding: 0 2rem;
-            font-weight: 600;
-        }
-
-        /* ✅ Top Navbar */
-        .top-navbar {
-            background-color: #3f51b5;
-            color: #fff;
-            padding: 0.4rem 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: medium;
-        }
-
-            .top-navbar ul {
-                margin: 0;
-                padding: 0;
-                list-style: none;
-                display: flex;
-                padding-left: 210px;
-                gap: 1rem;
-            }
-
-            .top-navbar li {
-                cursor: pointer;
-                font-weight: 600;
-            }
-
-                .top-navbar li:hover {
-                    text-decoration: underline;
-                }
-
-        /* ✅ Sidebar Footer */
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 1rem;
-            border-top: 1px solid #ddd;
-            padding-left: 0px;
-        }
-
-            .sidebar-footer .sidebar-item {
-                margin: 0.3rem 0;
-            }
+    <link rel="stylesheet" href="~/css/MainLayout.css" />
 
 
-
-        /* Fix the top navbar */
-        .top-navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1001;
-        }
-
-        /* Add padding to main content */
-        #main {
-            padding-top: 60px;
-            padding-left: 0px;
-        }
-
-        /* Add position relative to navbar items */
-        .top-navbar li {
-            position: relative;
-        }
-        /* Base submenu (hidden by default) */
-        .dropdown .submenu {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background-color: #fff;
-            color: #333;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            min-width: 180px;
-            display: none;
-            z-index: 1002;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-
-        /* Show submenu only when hovering the parent LI */
-        .dropdown:hover > .submenu {
-            display: block;
-        }
-
-        /* Style submenu items */
-        .dropdown .submenu li {
-            padding: 10px 15px;
-            border-bottom: 1px solid #eee;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-
-            .dropdown .submenu li:last-child {
-                border-bottom: none;
-            }
-
-            .dropdown .submenu li:hover {
-                background-color: #f8f9fa;
-            }
-
-        /* Nested submenu */
-        .submenu .submenu {
-            top: 0;
-            left: 100%;
-        }
-
-        /* Arrow for submenus */
-        .has-submenu > a::after {
-            content: '▶';
-            float: right;
-            font-size: 10px;
-            color: #666;
-            transition: transform 0.2s ease;
-        }
-
-        .has-submenu:hover > a::after {
-            transform: translateX(2px);
-        }
-
-        /* Only show nested submenu when its parent is hovered */
-        .submenu .has-submenu:hover > .submenu {
-            display: block;
-        }
-
-        .sidebar-menu {
-            font-size: medium;
-        }
-
-        .has-submenu > .submenu {
-            max-height: 300px; /* adjust height as needed */
-            overflow-y: auto; /* enable vertical scroll */
-            overflow-x: hidden; /* prevent horizontal scroll */
-        }
-
-    </style>
-</head>
+  </head>
 <body>
     <div id="app">
-
         <!-- ✅ Top Navbar -->
-        <div class="top-navbar">
-            <div class="d-flex align-items-center  w-100">
-
-                <!-- Left: Navigation Menu -->
-                <ul class="navbar-links">
-                    <li class="dropdown">
-                        File
-                        <ul class="submenu">
-                            <li><a href="/Account/CompanyList">Company List</a></li>
-                            <li class="dropdown has-submenu">
-                                <a href="">Company Profile</a>
-                                <ul class="submenu">
-                                    <li><a asp-controller="CompanyCenter" asp-action="Index">Company Center</a></li>
-                                    @* <li><a asp-controller="Reminders" asp-action="Index">Reminders</a></li> *@
-                                    <li>Reminders</li>
-                                </ul>
-                            </li>
-                            <li><a href="">Restore Company</a></li>
-                            <li><a href="">Backup Company</a></li>
-                            <li><a href="#" onclick="window.close(); return false;">Exit</a></li>
-
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        Lists
-                        <ul class="submenu">
-                            <li><a href="/Lists/ChartOfAccount">Chart of Account</a></li>
-                            <li><a href="/Lists/ItemList">Item List</a></li>
-                            <li><a href="/Lists/ItemCategory">Item Category List</a></li>
-                            <li><a href="/Lists/Tax">Item Tax Code List</a></li>
-                            <li><a href="/Lists/Unit">Item Unit List</a></li>
-                            <li><a href="/Lists/FixedAssetItem">Fixed Asset Item List</a></li>
-                        </ul>
-                    </li>
-
-                    <li class="dropdown">
-                        Accountant
-                        <ul class="submenu">
-                            <li class="dropdown has-submenu">
-                                <a href="">Account Center</a>
-                                <ul class="submenu">
-                                    <li><a href="/Lists/ChartOfAccount">Chart Of Account</a></li>
-                                    <li><a href="/Lists/CostCenter">Cost Center</a></li>
-                                </ul>
-                            </li>
-                            <li><a href="">Transactions Journal</a></li>
-                            <li><a href="">Fixed Assets List</a></li>
-                            <li><a href="">Voucher</a></li>
-                            <li><a href="">Prepaid Expense List</a></li>
-                            <li><a href="">Petty Cash List</a></li>
-                            <li class="dropdown has-submenu">
-                                <a href="">Banking</a>
-                                <ul class="submenu">
-                                    <li><a href="">Bank Center</a></li>
-                                    <li><a href="">Open Bank Card</a></li>
-                                    <li><a href="">Cheques</a></li>
-                                    <li><a href="">PDC</a></li>
-                                    <li><a href="">Reconciliation</a></li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <li class="dropdown">
-                        Inventory Doc
-                        <ul class="submenu">
-                            <li class="dropdown has-submenu">
-                                <a href="">Inventory Items</a>
-                                <ul class="submenu">
-                                    <li><a href="/Lists/Unit">Add Unit</a></li>
-                                    <li><a href="/Lists/ItemCategory">Add Category</a></li>
-                                    <li><a href="/Lists/Tax">Add Item Tax Code</a></li>
-                                </ul>
-                            </li>
-                            <li><a href="/Lists/ItemList">Add New Item</a></li>
-                            <li><a href="">Stock Management</a></li>
-                            <li><a href="">Inventory Center</a></li>
-                            <li><a href="/Inventory/WareHouse">Warehouse Center</a></li>
-                            <li><a href="/Inventory/WarehouseTransfer">Item Warehouse Transfter</a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        Customers
-                        <ul class="submenu">
-                            <li><a asp-controller="CustomerCenter" asp-action="Index">Customer Center</a></li>
-                            <li><a href="">Sales Center</a></li>
-                            <li><a href="">Sales Quotation</a></li>
-                            <li><a href="">Sales Order</a></li>
-                            <li><a href="">Sales Proforma</a></li>
-                            <li><a href="">Sales Return</a></li>
-                            <li><a href="">Create Invoice</a></li>
-                            <li><a href="">Receive Voucher</a></li>
-                            <li><a href="">Credit Note</a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        Vendors
-                        <ul class="submenu">
-                            <li><a href="">Vendor Center</a></li>
-                            <li><a href="">Purchases Center</a></li>
-                            <li><a href="">Purchase Order</a></li>
-                            <li><a href="">Purchase Return</a></li>
-                            <li><a href="">Create Purchase</a></li>
-                            <li><a href="">Payment Voucher</a></li>
-                            <li><a href="">Debit Note</a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        Subcontractor
-                        <ul class="submenu">
-                            <li><a href="">Subcontractor Center</a></li>
-                            <li><a href="">Purchases Center</a></li>
-                            <li><a href="">Create Purchase</a></li>
-                            <li><a href="">Payment Voucher</a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        HR
-                        <ul class="submenu">
-                            <li><a href="/HR/Employee">Human Resource Center</a></li>
-                            <li><a href="">Attendance Sheet</a></li>
-                            <li><a href="">Salary Sheet</a></li>
-                            <li><a href="">Leave Salary</a></li>
-                            <li><a href="">End Of Services</a></li>
-                            <li><a href="">Loans</a></li>
-                            <li><a href="">Final Settlement</a></li>
-                            <li><a href="">Payment Voucher</a></li>
-                        </ul>
-                    </li>
-
-                    <li class="dropdown">
-                        Construction
-                        <ul class="submenu">
-                            <li><a href="">Project Setup</a></li>
-                            <li><a href="">Project Tender</a></li>
-                            <li><a href="">Project Estimate</a></li>
-                            <li><a href="">Project planning</a></li>
-                            <li><a href="">Project Work Done</a></li>
-                            <li><a href="">Project Management</a></li>
-                            <li><a href="">Project Dashboard & Reports</a></li>
-                            <li><a href="">Project Time Line</a></li>
-                            <li><a href="">GanttChart Sample</a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        Reports
-                        <ul class="submenu">
-                            <li><a href="">Company</a></li>
-                            <li><a href="">Customer & Receivable</a></li>
-                            <li><a href="">Sales</a></li>
-                            <li><a href="">Vendor & Payable</a></li>
-                            <li><a href="">Purchases</a></li>
-                            <li><a href="">Employees</a></li>
-                            <li><a href="">Accountant</a></li>
-                            <li><a href="">Inventory</a></li>
-                            <li><a href="">Corporate Tax</a></li>
-                            <li><a href="">Bank</a></li>
-                            <li class="dropdown has-submenu">
-                                <a href="">List</a>
-                                <ul class="submenu">
-                                    <li><a href="/Lists/ChartOfAccount">Account List</a></li>
-                                    <li><a href="">Bank List</a></li>
-                                    <li><a href="">Bank Card List</a></li>
-                                    <li><a href="">Cheque List</a></li>
-                                    <li><a href="">City List</a></li>
-                                    <li><a href="">Country List</a></li>
-                                    <li><a href="">Cost Center List</a></li>
-                                    <li><a href="">Customer List</a></li>
-                                    <li><a href="">Customer Category List</a></li>
-                                    <li><a href="/Lists/Department">Department List</a></li>
-                                    <li><a href="">Employee List</a></li>
-                                    <li><a href="">Fixed Asset List</a></li>
-                                    <li><a href="">Fixed Asset Category List</a></li>
-                                    <li><a href="">Fixed Asset Item List</a></li>
-                                    <li><a href="">Item List</a></li>
-                                    <li><a href="/Lists/ItemCategory">Item Category List</a></li>
-                                    <li><a href="/Lists/Tax">Item Tax Code List</a></li>
-                                    <li><a href="/Lists/Unit">Item Unit List</a></li>
-                                    <li><a href="/Inventory/Warehouse">Item Warehouse List</a></li>
-                                    <li><a href="">Petty Cash Category List</a></li>
-                                    <li><a href="/Lists/Position">Position List</a></li>
-                                    <li><a href="">Prepaid Expense List</a></li>
-                                    <li><a href="">Prepaid Expense Category List</a></li>
-                                    <li><a href="">Vendor List</a></li>
-                                    <li><a href="">Ventor Category List</a></li>
-                                </ul>
-                            </li>
-
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        Settings
-                        <ul class="submenu">
-                            <li><a href="">Settings</a></li>
-                            <li><a href="/Settings/ChangePassword">Change Current Password</a></li>
-                            <li><a href="">Clear Data</a></li>
-                            <li><a href="">Users</a></li>
-                            <li><a href="">Update</a></li>
-                            <li><a href="">License Activation</a></li>
-                        </ul>
-                    </li>
-                </ul>
-
-                @*   <!-- Right: User Profile -->
-                <div class="navbar-user d-flex align-items-right">
-                    <i class="bi bi-person-circle me-2"></i>
-                    <span>yamy1 ▾</span>
-                </div> *@
-            </div>
-        </div>
-
-
+        <partial name="_Header" />
         <!-- ✅ Sidebar -->
+        <partial name="_Aside" />
+
+        <!-- ✅ Main -->
+         <div id="main">
+            <div class="d-flex flex-column flex-column-fluid container-fluid">
+                <div class="content flex-column-fluid" id="kt_content">
+                    @RenderBody()
+                </div>
+            </div>
+            @*  <div class="page-content">
+                <section class="row">
+                    <div class="col-12">
+                        @RenderBody()
+                    </div>
+                </section>
+            </div> *@
+
+            <!-- ✅ Footer -->
+            <footer>
+                <partial name="_footer" />
+
+            </footer>
+        </div>
+    </div>
+
+    <!-- ✅ Scripts -->
+    <script src="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
+    <script src="~/assets/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> <!-- fixed ApexCharts -->
+    <script src="~/assets/js/pages/dashboard.js"></script>
+    <script src="~/assets/js/main.js"></script>
+    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+    <script src="~/js/MainJs.js"></script>
+
+  </body>
+</html>
+
+
+
+@* 
         <div id="sidebar" class="active">
             <div class="sidebar-wrapper active">
                 <div class="sidebar-header">
@@ -467,232 +121,4 @@
                 <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
             </div>
         </div>
-
-        <!-- ✅ Main -->
-        <div id="main">
-
-            <div class="page-content">
-                <section class="row">
-                    <div class="col-12">
-                        @RenderBody()
-                    </div>
-                </section>
-            </div>
-
-            <!-- ✅ Footer -->
-            <footer>
-                <div class="footer clearfix mb-0 text-muted">
-                    <div class="float-start">
-                        <p>2025 &copy; YamyProject</p>
-                    </div>
-                    <div class="float-end">
-                        <p>Crafted with <span class="text-danger"><i class="bi bi-heart"></i></span> by Yamy</p>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    </div>
-
-    <!-- ✅ Scripts -->
-    <script src="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
-    <script src="~/assets/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> <!-- fixed ApexCharts -->
-    <script src="~/assets/js/pages/dashboard.js"></script>
-    <script src="~/assets/js/main.js"></script>
-    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-    <script>
-         let dataTable;
-
-
-
-             
-
-             // Define saveCategory globally
-            function saveCategory() {
-                var categoryName = $("#categoryName").val();
-
-                if (!categoryName.trim()) {
-                    alert("Please enter a category name.");
-                    return;
-                }
-
-                $.ajax({
-                    url: '/Lists/AddCategory',
-                    type: 'POST',
-                    data: { categoryName: categoryName },
-                    success: function (result) {
-                        if (result.status) {
-                            var modalEl = document.getElementById("addCategoryModal");
-                            var modal = bootstrap.Modal.getInstance(modalEl);
-                            modal.hide();
-
-                            $("#addCategoryForm")[0].reset();
-                            toastr.success('Category Added Successfully!');
-                               // ✅ Refresh the category table/grid
-                if (typeof loadCategories === "function") {
-                    loadCategories();
-                }
-                            // setTimeout(function () {
-                            //     location.reload();
-                            // }, 1500);
-                        } else {
-                            toastr.error(result.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        alert("Error: " + error);
-                    }
-                });
-            }
-
-                 
-
-              function saveUnit() {
-            const name = $("#addUnitName").val();
-            if (!name.trim()) {
-                alert("Please enter a unit name.");
-                return;
-            }
-
-            $.post('/Lists/AddUnit', { name: name }, function (res) {
-                     if (res.status) {
-                            const modalEl = document.getElementById("addUnitModal");
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    modal.hide();
-                    $("#addUnitForm")[0].reset();
-                             toastr.success('Unit Added Successfully!');
-                              // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                         } else {
-                              toastr.error(result.message);
-                         }
-            }).fail(function (xhr) {
-                alert("Error: " + xhr.statusText);
-            });
-        }
-
-
-
-        function loadManagersDropdown(selectedId = null) {
-            $.getJSON('/Inventory/GetAllEmployees', function(employees) {
-                const $manager = $('#manager');
-                $manager.empty().append('<option value="">Select Manager</option>');
-
-                employees.forEach(emp => {
-                    const selected = selectedId && emp.id === selectedId ? 'selected' : '';
-                    $manager.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
-                });
-            });
-        }
-
-
-      
-
-                  $(document).ready(function () {
-                $.ajax({
-                    url: '/HR/GetAccruedSalaries',
-                    type: 'GET',
-                    success: function (data) {
-                        console.log("✅ API Response:", data);
-
-                        // List of dropdowns with their matching code textbox
-                        const dropdowns = [
-                            { ddl: '#accruedSalaries' }
-                        ];
-
-                        dropdowns.forEach(set => {
-                            let $ddl = $(set.ddl);
-                            console.log("Found dropdown?", set.ddl, $ddl.length);
-
-                            $ddl.empty().append('<option value="">-- Select --</option>');
-
-                            $.each(data, function (i, item) {
-                                $ddl.append(
-                                    $('<option>', {
-                                        value: item.id,
-                                        text: item.code + ' - ' + item.name,
-                                        'data-code': item.code
-                                    })
-                                );
-                            });
-
-                            console.log("Total options now for", set.ddl, ":", $ddl.find('option').length);
-
-                            // On change, update the code textbox
-                            $ddl.on('change', function () {
-                                let selected = $(this).find(':selected');
-                                let code = selected.data('code');
-                                console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
-                                $(set.codeBox).val(code || "");
-                            });
-                        });
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("❌ Error loading accounts:", status, error);
-                    }
-                });
-            });
-
-
-
-           
-        $(document).ready(function () {
-            loadManagersDropdown();
-
-       
-
-            $("#newWarehouseForm").submit(function (e) {
-                e.preventDefault();
-
-                let model = {
-                    Id: parseInt($("#warehouseId").val()) || 0,
-                    Name: $("#warehouseName").val(),
-                    City: $("#city").val(),
-                    BuildingName: $("#buildingName").val(),
-                    EmpId: parseInt($("#manager").val()) || null,
-                    AccountId: parseInt($("#accruedSalaries").val()) || null,
-                };
-
-                $.ajax({
-                    url: "/Inventory/SaveWarehouse",
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify(model),
-                    success: function (res) {
-                        if (res && res.status) {
-                            toastr.success(res.message || "Warehouse saved successfully!");
-                            $("#warehouseCode").val(res.code || "");
-                            $("#newWarehouseModal").modal("hide");
-                            $("#newWarehouseForm")[0].reset();
-                            $("#warehouseId").val(0);
-
-                //      // ✅ Refresh warehouse table and dropdown
-                // if (typeof loadWarehouse === "function") {
-                //     loadWarehouse();
-                // }
-                // if (typeof loadWarehouses === "function") {
-                //     loadWarehouses();
-               // }
-                            setTimeout(function () {
-                                location.reload();
-                            }, 1500);
-                        } else {
-                            toastr.error(res?.message || "Failed to save warehouse");
-                        }
-                    },
-                    error: function (xhr) {
-                        toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
-                    }
-                });
-            }); 
-
-        });
-
-     
-  
-    </script>
-</body>
-</html>
+ *@

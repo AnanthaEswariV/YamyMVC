@@ -1,0 +1,210 @@
+﻿<div class="top-navbar">
+    <div class="d-flex align-items-center  w-100">
+
+        <!-- Left: Navigation Menu -->
+        <ul class="navbar-links">
+            <li class="dropdown">
+                File
+                <ul class="submenu">
+                    <li><a href="/Account/CompanyList">Company List</a></li>
+                    <li class="dropdown has-submenu">
+                        <a href="">Company Profile</a>
+                        <ul class="submenu">
+                            <li><a asp-controller="CompanyCenter" asp-action="Index">Company Center</a></li>
+                            @* <li><a asp-controller="Reminders" asp-action="Index">Reminders</a></li> *@
+                            <li>Reminders</li>
+                        </ul>
+                    </li>
+                    <li><a href="">Restore Company</a></li>
+                    <li><a href="">Backup Company</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Exit</a></li>
+
+                </ul>
+            </li>
+            <li class="dropdown">
+                Lists
+                <ul class="submenu">
+                    <li><a href="/Lists/ChartOfAccount">Chart of Account</a></li>
+                    <li><a href="/Lists/ItemList">Item List</a></li>
+                    <li><a href="/Lists/ItemCategory">Item Category List</a></li>
+                    <li><a href="/Lists/Tax">Item Tax Code List</a></li>
+                    <li><a href="/Lists/Unit">Item Unit List</a></li>
+                    <li><a href="/Lists/FixedAssetItem">Fixed Asset Item List</a></li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                Accountant
+                <ul class="submenu">
+                    <li class="dropdown has-submenu">
+                        <a href="">Account Center</a>
+                        <ul class="submenu">
+                            <li><a href="/Lists/ChartOfAccount">Chart Of Account</a></li>
+                            <li><a href="/Lists/CostCenter">Cost Center</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="">Transactions Journal</a></li>
+                    <li><a href="">Fixed Assets List</a></li>
+                    <li><a href="">Voucher</a></li>
+                    <li><a href="">Prepaid Expense List</a></li>
+                    <li><a href="">Petty Cash List</a></li>
+                    <li class="dropdown has-submenu">
+                        <a href="">Banking</a>
+                        <ul class="submenu">
+                            <li><a href="">Bank Center</a></li>
+                            <li><a href="">Open Bank Card</a></li>
+                            <li><a href="">Cheques</a></li>
+                            <li><a href="">PDC</a></li>
+                            <li><a href="">Reconciliation</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                Inventory Doc
+                <ul class="submenu">
+                    <li class="dropdown has-submenu">
+                        <a href="">Inventory Items</a>
+                        <ul class="submenu">
+                            <li><a href="/Lists/Unit">Add Unit</a></li>
+                            <li><a href="/Lists/ItemCategory">Add Category</a></li>
+                            <li><a href="/Lists/Tax">Add Item Tax Code</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="/Lists/ItemList">Add New Item</a></li>
+                    <li><a href="">Stock Management</a></li>
+                    <li><a href="">Inventory Center</a></li>
+                    <li><a href="/Inventory/WareHouse">Warehouse Center</a></li>
+                    <li><a href="/Inventory/WarehouseTransfer">Item Warehouse Transfter</a></li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                Customers
+                <ul class="submenu">
+                    <li><a asp-controller="CustomerCenter" asp-action="Index">Customer Center</a></li>
+                    <li><a href="">Sales Center</a></li>
+                    <li><a href="">Sales Quotation</a></li>
+                    <li><a href="">Sales Order</a></li>
+                    <li><a href="">Sales Proforma</a></li>
+                    <li><a href="">Sales Return</a></li>
+                    <li><a href="">Create Invoice</a></li>
+                    <li><a href="">Receive Voucher</a></li>
+                    <li><a href="">Credit Note</a></li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                Vendors
+                <ul class="submenu">
+                    <li><a href="">Vendor Center</a></li>
+                    <li><a href="">Purchases Center</a></li>
+                    <li><a href="">Purchase Order</a></li>
+                    <li><a href="">Purchase Return</a></li>
+                    <li><a href="">Create Purchase</a></li>
+                    <li><a href="">Payment Voucher</a></li>
+                    <li><a href="">Debit Note</a></li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                Subcontractor
+                <ul class="submenu">
+                    <li><a href="">Subcontractor Center</a></li>
+                    <li><a href="">Purchases Center</a></li>
+                    <li><a href="">Create Purchase</a></li>
+                    <li><a href="">Payment Voucher</a></li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                HR
+                <ul class="submenu">
+                    <li><a href="/HR/Employee">Human Resource Center</a></li>
+                    <li><a href="">Attendance Sheet</a></li>
+                    <li><a href="">Salary Sheet</a></li>
+                    <li><a href="">Leave Salary</a></li>
+                    <li><a href="">End Of Services</a></li>
+                    <li><a href="">Loans</a></li>
+                    <li><a href="">Final Settlement</a></li>
+                    <li><a href="">Payment Voucher</a></li>
+                </ul>
+            </li>
+
+            <li class="dropdown">
+                Construction
+                <ul class="submenu">
+                    <li><a href="">Project Setup</a></li>
+                    <li><a href="">Project Tender</a></li>
+                    <li><a href="">Project Estimate</a></li>
+                    <li><a href="">Project planning</a></li>
+                    <li><a href="">Project Work Done</a></li>
+                    <li><a href="">Project Management</a></li>
+                    <li><a href="">Project Dashboard & Reports</a></li>
+                    <li><a href="">Project Time Line</a></li>
+                    <li><a href="">GanttChart Sample</a></li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                Reports
+                <ul class="submenu">
+                    <li><a href="">Company</a></li>
+                    <li><a href="">Customer & Receivable</a></li>
+                    <li><a href="">Sales</a></li>
+                    <li><a href="">Vendor & Payable</a></li>
+                    <li><a href="">Purchases</a></li>
+                    <li><a href="">Employees</a></li>
+                    <li><a href="">Accountant</a></li>
+                    <li><a href="">Inventory</a></li>
+                    <li><a href="">Corporate Tax</a></li>
+                    <li><a href="">Bank</a></li>
+                    <li class="dropdown has-submenu">
+                        <a href="">List</a>
+                        <ul class="submenu">
+                            <li><a href="/Lists/ChartOfAccount">Account List</a></li>
+                            <li><a href="">Bank List</a></li>
+                            <li><a href="">Bank Card List</a></li>
+                            <li><a href="">Cheque List</a></li>
+                            <li><a href="">City List</a></li>
+                            <li><a href="">Country List</a></li>
+                            <li><a href="">Cost Center List</a></li>
+                            <li><a href="">Customer List</a></li>
+                            <li><a href="">Customer Category List</a></li>
+                            <li><a href="/Lists/Department">Department List</a></li>
+                            <li><a href="">Employee List</a></li>
+                            <li><a href="">Fixed Asset List</a></li>
+                            <li><a href="">Fixed Asset Category List</a></li>
+                            <li><a href="">Fixed Asset Item List</a></li>
+                            <li><a href="">Item List</a></li>
+                            <li><a href="/Lists/ItemCategory">Item Category List</a></li>
+                            <li><a href="/Lists/Tax">Item Tax Code List</a></li>
+                            <li><a href="/Lists/Unit">Item Unit List</a></li>
+                            <li><a href="/Inventory/Warehouse">Item Warehouse List</a></li>
+                            <li><a href="">Petty Cash Category List</a></li>
+                            <li><a href="/Lists/Position">Position List</a></li>
+                            <li><a href="">Prepaid Expense List</a></li>
+                            <li><a href="">Prepaid Expense Category List</a></li>
+                            <li><a href="">Vendor List</a></li>
+                            <li><a href="">Ventor Category List</a></li>
+                        </ul>
+                    </li>
+
+                </ul>
+            </li>
+            <li class="dropdown">
+                Settings
+                <ul class="submenu">
+                    <li><a href="">Settings</a></li>
+                    <li><a href="/Settings/ChangePassword">Change Current Password</a></li>
+                    <li><a href="">Clear Data</a></li>
+                    <li><a href="">Users</a></li>
+                    <li><a href="">Update</a></li>
+                    <li><a href="">License Activation</a></li>
+                </ul>
+            </li>
+        </ul>
+
+        @*   <!-- Right: User Profile -->
+                <div class="navbar-user d-flex align-items-right">
+                    <i class="bi bi-person-circle me-2"></i>
+                    <span>yamy1 ▾</span>
+                </div> *@
+    </div>
+</div>

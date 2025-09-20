@@ -1,7 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using YamyProject.Core.Models;
-
-namespace YamyProject.Services
+﻿namespace YamyProject.Services
 {
  
     public class CustomerService : ICustomerService
