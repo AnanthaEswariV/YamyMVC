@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - YamyProject</title>
+    <title>YamyProject | @ViewData["Title"] </title>
 
     <!-- Fonts & Bootstrap -->
     <link rel="preconnect" href="https://fonts.gstatic.com">
@@ -217,7 +217,8 @@
                                 <a href="">Company Profile</a>
                                 <ul class="submenu">
                                     <li><a asp-controller="CompanyCenter" asp-action="Index">Company Center</a></li>
-                                    <li><a href="">Reminders</a></li>
+                                    @* <li><a asp-controller="Reminders" asp-action="Index">Reminders</a></li> *@
+                                    <li>Reminders</li>
                                 </ul>
                             </li>
                             <li><a href="">Restore Company</a></li>
