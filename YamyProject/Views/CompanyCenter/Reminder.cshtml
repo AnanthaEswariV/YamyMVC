@@ -10,7 +10,26 @@
     <div class="row">
         <!-- Left side reminders -->
         <div class="col-md-6">
-@*<h5>@Model.Today.ToString("dddd, dd MMMM yyyy")</h5>*@ 
+            @*<h5>@Model.Today.ToString("dddd, dd MMMM yyyy")</h5>*@ 
+    
+            <div class="accordion" id="accordionReminders">
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                            Money to Deposi
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample" style="">
+                        <div class="accordion-body">
+                            @* @Model.OverdueInvoices *@ 
+                            <strong>This is the first item's accordion body.</strong> It is shown by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
             <ul class="list-group mt-3">
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <span>Money to Deposit</span>

@@ -13,31 +13,21 @@
         }
         [HttpGet]
         public IActionResult Index()
+        {            
+            return View();
+        }
+        [HttpGet]
+        //[AjaxOnly]
+        public IActionResult Edit(int id)
         {
-            var company = _context.TblCompanies.FirstOrDefault();
-            //var viewModel = _mapper.Map<CompanyViewModels>(company);
-          //  return PartialView("CompanyList", viewModel);
-          //  var company = _context.TblCompanies.ToList();
-
+            var company = _context.TblCompanies.Find(id);
+          
             if (company is null)
                 return NotFound();
 
             var viewModel = _mapper.Map<CompanyViewModels>(company);
             return View("Index", viewModel);
-          //  return View();
-        }
-        [HttpGet]
-        [AjaxOnly]
-        //public IActionResult Edit(int id)
-        //{
-        //    var company = _context.TblCompanies.Find(id);
-
-        //    if (company is null)
-        //        return NotFound();
-
-        //    var viewModel = _mapper.Map<CompanyViewModels>(company);
-        //    return PartialView("CompanyList", viewModel);
-        //}
+        }       
         [HttpPost]
         public IActionResult Edit(CompanyViewModel model)
         { 
@@ -106,10 +96,5 @@
             return PartialView("Reminder");
 
         }
-        //public IActionResult Reminder()
-        //{
-        //    return PartialView("Reminder");
-
-        //}
     }
 }

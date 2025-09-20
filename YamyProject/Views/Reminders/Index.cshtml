@@ -1,0 +1,141 @@
+﻿@* @model RemindersViewModel
+ *@
+@{
+    ViewData["Title"] = "Reminders";
+}
+
+@*
+  Expected ViewModel (example):
+
+  public class RemindersViewModel
+  {
+      public DateTime Date { get; set; }
+      public List<ReminderItem> Items { get; set; }
+      public List<string> Upcoming { get; set; }
+  }
+
+  public class ReminderItem
+  {
+      public string Id { get; set; }           // unique (can be GUID or prefixed numeric)
+      public string Title { get; set; }
+      public int Count { get; set; }
+      public decimal Amount { get; set; }
+      public string Description { get; set; }  // html or plain text for details
+      public bool IsSelected { get; set; }
+  }
+*@
+
+<style>
+    /* Small view-specific styles to match the screenshot */
+    .page-header { font-weight: 700; font-size: 28px; margin-bottom: 18px; }
+    .reminders-container { background: #f8f9fb; padding: 18px; border-radius: 6px; }
+    .list-group-item { border: none; border-bottom: 1px solid #e9ecef; padding: 12px 16px; }
+    .list-amount { min-width: 90px; text-align: right; display: inline-block; }
+    .active-reminder { background: linear-gradient(90deg,#d9ceff,#bfa7ff 80%); color: #1b0336; }
+    .list-group .chev { margin-left: 8px; font-size: 12px; color: rgba(0,0,0,0.35); }
+    .reminders-date { font-weight: 600; margin-bottom: 12px; }
+    .upcoming-card { min-height: 250px; }
+   </style>
+
+<div class="container-fluid reminders-container">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="page-header">Reminders</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left column: reminders list -->
+        <div class="col-md-8">
+            <div class="reminders-date">
+                @* @Model?.Date.ToString("dddd, d MMMM yyyy")  *@
+
+            </div>
+
+            <div class="list-group" id="reminderList" role="tablist">
+            @*     @if (Model?.Items != null && Model.Items.Any())
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        @{
+                            var itemId = "rem-" + (item.Id ?? Guid.NewGuid().ToString());
+                            var activeClass = item.IsSelected ? "active-reminder" : "";
+                        }
+
+                        <a href="#@itemId" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @activeClass" data-bs-toggle="collapse" aria-expanded="false" aria-controls="@itemId">
+                            <div>
+                                <strong>@item.Title</strong>
+                                <small class="text-muted"> (@item.Count)</small>
+                            </div>
+
+                            <div class="text-end">
+                                <span class="list-amount">@item.Amount.ToString("N2")</span>
+                                <span class="chev">▸</span>
+                            </div>
+                        </a>
+
+                        <div class="collapse" id="@itemId" data-bs-parent="#reminderList">
+                            <div class="card card-body border-0">
+                                @if(!String.IsNullOrEmpty(item.Description))
+                                {
+                                    @Html.Raw(item.Description)
+                                }
+                                else
+                                {
+                                    <div class="text-muted">No details available.</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="list-group-item">No reminders.</div>
+                }
+       *@   
+   </div>
+        </div>
+
+        <!-- Right column: upcoming -->
+        <div class="col-md-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">Upcoming</h5>
+            </div>
+
+            <div class="card upcoming-card">
+                <div class="card-body">
+                @*     @if (Model?.Upcoming != null && Model.Upcoming.Any())
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var u in Model.Upcoming)
+                            {
+                                <li class="mb-2">@u</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No upcoming items.</p>
+                    }
+       *@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Toggle active class on click so the selected row looks highlighted (matching screenshot)
+            var items = document.querySelectorAll('.list-group-item-action');
+            items.forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    // if the click target is inside a link that is already active-reminder, Bootstrap collapse will still toggle; keep active state in sync
+                    items.forEach(function (i) { i.classList.remove('active-reminder'); });
+                    btn.classList.add('active-reminder');
+                });
+            });
+        })();
+    </script>
+}

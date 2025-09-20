@@ -1,0 +1,9 @@
+﻿@model StockSettlementIndexViewModel
+
+@{
+    ViewData["Title"] = "New Stock Settlement";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+@await Html.PartialAsync("_StockSettlementPartial", Model)

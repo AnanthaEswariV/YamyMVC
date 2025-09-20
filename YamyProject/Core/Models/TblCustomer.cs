@@ -41,8 +41,8 @@ public partial class TblCustomer
 
     public string? City { get; set; }
 
-    //[Column("City")]
-    //public int? CityId { get; set; }
+    [Column("City")]
+    public int? CityId { get; set; }
 
     //[ForeignKey(nameof(CityId))]
     public virtual TblCity? Citys { get; set; }

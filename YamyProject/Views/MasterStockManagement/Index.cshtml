@@ -1,0 +1,122 @@
+﻿@model ItemStockSettlementListViewModel
+
+@{
+    ViewData["Title"] = "Inventory - Stock Management";
+}
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <a class="btn d-flex gap-2 mt-3" asp-action="Create">
+        <i class="bi bi-plus-circle-dotted"></i>
+        New Settlement
+    </a>
+    <!-- Filter Section -->
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label for="FromDate" class="form-label">From</label>
+            <input type="date" id="FromDate" name="FromDate" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label for="ToDate" class="form-label">To</label>
+            <input type="date" id="ToDate" name="ToDate" class="form-control" />
+        </div>
+
+        <div class="col-md-2 d-flex align-items-center">
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="All" name="All" checked />
+                <label class="form-check-label" for="All">All</label>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <label for="SelectionMethod" class="form-label">Selection Method</label>
+            <select id="SelectionMethod" name="SelectionMethod" class="form-select">
+                <option value="Default">Default</option>
+                <option value="ItemWise">Item Wise</option>
+            </select>
+        </div>
+
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+    </form>
+
+    <!-- Data Grid -->
+    <div class="table-responsive mt-4">
+           @if (Model.Settlements != null && Model.Settlements.Any())
+        {
+         <table class="table table-bordered table-striped table-hover text-center align-middle">
+            <thead class="table-primary">
+                <tr>
+                    <th>Sn</th>
+                    <th>Date</th>
+                    <th>JV No</th>
+                    <th>INV NO</th>
+                </tr>
+
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Settlements)
+                {
+                        <tr>
+                            <td>@item.SN</td>
+                            <td>@item.Date?.ToString("yyyy-MM-dd")</td>
+                            <td>@item.JvNo</td>
+                            <td>@item.InvNo</td>
+                        </tr>
+                   }
+                @* else
+                {
+                    <tr>
+                        <td colspan="4" class="text-muted">No records found.</td>
+                    </tr>
+                } *@
+            </tbody>
+        </table>
+  }
+     </div>
+
+    <!-- Items Section -->
+    <div class="mt-4">
+        <h5>Items</h5>
+        <table class="table table-bordered table-sm table-hover">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Item Name</th>
+                    <th>QTY</th>
+                    <th>Cost Price</th>
+                    <th>New on Hand</th>
+                </tr>
+            </thead>
+            <tbody>
+             @*    @if (Model != null && Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        foreach (var sub in item.Items)
+                        {
+                            <tr>
+                                <td>@sub.ItemName</td>
+                                <td>@sub.Quantity</td>
+                                <td>@sub.CostPrice</td>
+                                <td>@sub.NewOnHand</td>
+                            </tr>
+                        }
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="4" class="text-muted">No items found.</td>
+                    </tr>
+                } *@
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Buttons -->
+  @*   <div class="d-flex gap-2 mt-3">
+        <a asp-action="CreateSettlement" class="btn btn-primary">New Settlement</a>
+        <a asp-action="EditCurrent" class="btn btn-outline-primary">Edit Current</a>
+    </div> *@
+</div>

@@ -1706,7 +1706,7 @@ public partial class YamyDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Code)
                 .HasMaxLength(50)
-                .HasColumnName("code");
+                .HasColumnName("code").UseCollation("utf8mb4_general_ci");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CreatedDate).HasColumnName("created_date");
             entity.Property(e => e.Date).HasColumnName("date");
@@ -4575,39 +4575,30 @@ public partial class YamyDbContext : DbContext
             entity
                 .ToTable("tbl_transaction")
                 .UseCollation("utf8mb4_general_ci");
-
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.AccountId).HasColumnName("account_id");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CreatedDate).HasColumnName("created_date");
-            entity.Property(e => e.Credit)
-                .HasPrecision(20, 4)
+            entity.Property(e => e.Credit).HasPrecision(20, 4)
                 .HasColumnName("credit");
             entity.Property(e => e.Date).HasColumnName("date");
-            entity.Property(e => e.Debit)
-                .HasPrecision(20, 4)
+            entity.Property(e => e.Debit).HasPrecision(20, 4)
                 .HasColumnName("debit");
             entity.Property(e => e.Description)
-                .HasMaxLength(200)
-                .HasColumnName("description");
-            entity.Property(e => e.HumId)
-                .HasDefaultValueSql("'0'")
+                .HasMaxLength(200).HasColumnName("description");
+            entity.Property(e => e.HumId).HasDefaultValueSql("'0'")
                 .HasColumnName("hum_id");
             entity.Property(e => e.ModifiedBy).HasColumnName("modified_by");
             entity.Property(e => e.ModifiedDate).HasColumnName("modified_date");
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.State).HasColumnName("state");
-            entity.Property(e => e.TType)
-                .HasMaxLength(200)
+            entity.Property(e => e.TType).HasMaxLength(200)
                 .HasColumnName("t_type");
-            entity.Property(e => e.TransactionId)
-                .HasMaxLength(200)
+            entity.Property(e => e.TransactionId).HasMaxLength(200)
                 .HasColumnName("transaction_id");
-            entity.Property(e => e.Type)
-                .HasMaxLength(200)
+            entity.Property(e => e.Type).HasMaxLength(200)
                 .HasColumnName("type");
-            entity.Property(e => e.VoucherNo)
-                .HasMaxLength(50)
+            entity.Property(e => e.VoucherNo).HasMaxLength(50)
                 .HasDefaultValueSql("''")
                 .HasColumnName("voucher_no");
         });

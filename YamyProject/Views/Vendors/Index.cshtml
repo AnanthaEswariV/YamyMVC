@@ -1,8 +1,7 @@
 ﻿@model IEnumerable<TblCustomer>
 @{
-    ViewData["Title"] = "Customer Center";
-  //  Layout = "~/Views/Shared/_Layout.cshtml";
-}
+    ViewData["Title"] = "Vendor Center";
+ }
 
 <div class="container-fluid mt-3">
     <!-- Top Menu -->
@@ -12,11 +11,11 @@
                 Customer Operations
             </button>
             <ul class="dropdown-menu">
-                 <li><a class="dropdown-item" >New Customer</a></li>
-                <li><a class="dropdown-item" >Edit Customer</a></li>
-                <li><a class="dropdown-item" >Delete Customer</a></li>
-           
-       </ul>
+                <li><a class="dropdown-item">New Customer</a></li>
+                <li><a class="dropdown-item">Edit Customer</a></li>
+                <li><a class="dropdown-item">Delete Customer</a></li>
+
+            </ul>
         </div>
 
         <div class="dropdown">
@@ -24,8 +23,8 @@
                 New Transactions
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" >Create Invoice</a></li> 
-                <li><a class="dropdown-item" >Receive Payment</a></li> 
+                <li><a class="dropdown-item">Create Invoice</a></li>
+                <li><a class="dropdown-item">Receive Payment</a></li>
             </ul>
         </div>
 
@@ -59,7 +58,7 @@
                 </div>
                 <div class="card-body p-0">
                     <ul class="list-group list-group-flush">
-                    @*     @foreach (var customer in Model.Customers)
+                        @*     @foreach (var customer in Model.Customers)
                         {
                             <li class="list-group-item">
                                 <a href="@Url.Action("Details", "Customer", new { id = customer.Id })">
@@ -80,27 +79,28 @@
                 </div>
                 <div class="card-body">
                     @foreach (var customer in Model)
-                    {<div>
-                        <tr>
+                    {
+                        <div>
+                            <tr>
                                 <label>Customer Code     : @customer.Code</label>
-                            <td>Customer Name     : @customer.Name</td>
-                            <td>TRN               : @customer.Trn</td>
-                            <td>Email             : @customer.Email</td>
-                            <td>Work Phone        : @customer.WorkPhone</td>
-                            <td>Customer Category : @customer.CatIdNavigation.Name</td>
-                            <td>Main Phone        : @customer.MainPhone</td>
-                            <td>Address           : @customer.Balance</td>
-                          @*   <td>
+                                <td>Customer Name     : @customer.Name</td>
+                                <td>TRN               : @customer.Trn</td>
+                                <td>Email             : @customer.Email</td>
+                                <td>Work Phone        : @customer.WorkPhone</td>
+                                <td>Customer Category : @customer.CatIdNavigation.Name</td>
+                                <td>Main Phone        : @customer.MainPhone</td>
+                                <td>Address           : @customer.Balance</td>
+                                @*   <td>
                                 <a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-sm btn-primary">Details</a>
                                 <a asp-action="Edit" asp-route-id="@customer.Id" class="btn btn-sm btn-warning">Edit</a>
                                 <form asp-action="Delete" asp-route-id="@customer.Id" method="post" style="display:inline;">
                                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                 </form>
                             </td> *@
-                        </tr>
+                            </tr>
                         </div>
                     }
-                   @*  <p><strong>Customer Code:</strong> @Model.SelectedCustomer.Code</p>
+                    @*  <p><strong>Customer Code:</strong> @Model.SelectedCustomer.Code</p>
                     <p><strong>Name:</strong> @Model.SelectedCustomer.Name</p>
                     <p><strong>TRN:</strong> @Model.SelectedCustomer.TRN</p>
                     <p><strong>Email:</strong> @Model.SelectedCustomer.Email</p>
@@ -138,7 +138,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                           @*  @foreach (var txn in Model.Transactions)
+                            @*  @foreach (var txn in Model.Transactions)
                             {
                                 <tr>
                                     <td>@txn.SerialNumber</td>
@@ -168,7 +168,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                          @*   @foreach (var invoice in Model.CashInvoices)
+                            @*   @foreach (var invoice in Model.CashInvoices)
                             {
                                 <tr>
                                     <td>@invoice.SerialNumber</td>
@@ -187,7 +187,7 @@
             <div class="card mt-3">
                 <div class="card-header">Notes</div>
                 <div class="card-body">
-                   @*  <textarea class="form-control" rows="2">@Model.SelectedCustomer.Notes</textarea>
+                    @*  <textarea class="form-control" rows="2">@Model.SelectedCustomer.Notes</textarea>
                    *@  <hr />
                     <h6>Reports for this Customer</h6>
                     <ul>
