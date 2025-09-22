@@ -27,10 +27,10 @@ namespace YamyProject.Core.ViewModel
     //    public int CountryId { get; set; }
 
     //    public IEnumerable<SelectListItem>? Countrys {get;set;}
-        public bool IsDeleted {get;set;}
-        public byte[]? LogoComp { get; set; }
-        public DateTime CreatedOn { get; set; }
-        public DateTime? LastUpdatedOn { get; set; }
+        //public bool IsDeleted {get;set;}
+        //public byte[]? LogoComp { get; set; }
+        //public DateTime CreatedOn { get; set; }
+        //public DateTime? LastUpdatedOn { get; set; }
 
     }
 }
