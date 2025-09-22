@@ -1,8 +1,11 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "ItemList";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <style>
 
@@ -20,6 +23,7 @@
     .mt-4 {
         margin-top: 2.0rem !important;
     }
+
     .toolbar {
         background: #e7e6e6;
         padding: 5px 15px;
@@ -248,7 +252,6 @@
         overflow-x: hidden;
     }
 
-
 </style>
 
 
@@ -301,7 +304,7 @@
                 </div>
             </div>
 
-        
+
 
 
             <div class="filter-row">
@@ -404,245 +407,175 @@
     </div>
 </div>
 
-
 <!-- New Item Modal -->
 <div class="modal fade" id="newItemModal" tabindex="-1" aria-labelledby="newItemModalLabel" aria-hidden="true">
-    <div class="modal show d-block" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header text-white" style="background-color: #5865f2;">
-                    <h5 class="modal-title">
-                        <i class="fas fa-box"></i> Inventory - New Item
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <form>
-                        <!-- Top Row - Warehouse and Type -->
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color: #5865f2;">
+                <h5 class="modal-title">
+                    <i class="fas fa-box"></i> Inventory - New Item
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="warehouseDropdown" class="form-label fw-semibold text-muted">Warehouse</label>
+                            <select class="form-select" id="warehouseDropdown">
+                                <option value="">Select Warehouse</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="typeSelect" onchange="changeFormLayout()">
+                                <option value="inventory">11 - Inventory Part</option>
+                                <option value="service">12 - Service</option>
+                                <option value="assembly">13 - Inventory Assembly</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="categoryDropdowns" class="form-label fw-semibold text-muted">Category</label>
+                            <select id="categoryDropdowns" class="form-select">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="inventoryType">
+                                <option value="Inventory" selected>Inventory</option>
+                                <option value="Service">Service</option>
+                                <option value="Non-Inventory">Non-Inventory</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Item Code</label>
+                            <input type="text" disabled class="form-control bg-light" id="itemCodeInput" placeholder="Item Code">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Item Name</label>
+                            <input type="text" class="form-control" id="itemNameInput" placeholder="Item Name">
+                        </div>
+                    </div>
+                    <div id="inventorySection" class="inventory-section">
                         <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="warehouse" class="form-label fw-semibold text-muted">Warehouse</label>
-                                <div class="input-group">
-                                    <select class="form-select" id="warehouseDropdown">
-                                        <option value="">Select Warehouse</option>
-                                    </select>
-                                    <button class="btn btn-outline-secondary" type="button" id="btnNew" data-bs-toggle="modal" data-bs-target="#newWarehouseModal">New</button>
-                                </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Opening Qty</label>
+                                <input type="text" class="form-control" id="onHandInput" placeholder="On Hand">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Type</label>
-                                <select class="form-select" id="typeSelect" onchange="changeFormLayout()">
-                                    <option value="inventory">11 - Inventory Part</option>
-                                    <option value="service">12 - Service</option>
-                                    <option value="assembly">13 - Inventory Assembly</option>
-                                </select>
+                            <div class="col-md-4">
+                                <label class="form-label">Cost Price</label>
+                                <input type="text" class="form-control" id="costPriceInput" placeholder="Cost Price">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Total</label>
+                                <input type="text" class="form-control bg-light" id="totalValueInput" placeholder="Total Value" readonly>
                             </div>
                         </div>
-
-                        <!-- Category and Inventory Type Row -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="category" class="form-label fw-semibold text-muted">Category</label>
-                                <div class="input-group">
-                                    <select id="categoryDropdowns" class="form-select">
-                                        <option value="">Loading...</option>
-                                    </select>
-                                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addCategoryModal">New</button>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Type</label>
-                                <select class="form-select" id="inventoryType">
-                                    <option selected>Inventory</option>
-                                    <option value="2">Service</option>
-                                    <option value="3">Non-Inventory</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Item Code and Item Name -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Item Code</label>
-                                <input type="text" disabled class="form-control bg-light" placeholder="Item Code">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Item Name</label>
-                                <input type="text" class="form-control" placeholder="Item Name">
-                            </div>
-                        </div>
-
-                        <!-- Inventory Section (Hidden for Service) -->
-                        <div id="inventorySection" class="inventory-section">
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label">Opening Qty</label>
-                                    <input type="text" class="form-control" placeholder="On Hand">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Cost Price</label>
-                                    <input type="text" class="form-control" placeholder="Cost Price">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Total</label>
-                                    <input type="text" class="form-control bg-light" placeholder="Total Value" readonly>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label class="form-label">As Of</label>
-                                    <div class="input-group">
-                                        <input type="date" class="form-control" value="20/09/2025">
-                                        <button class="btn btn-outline-secondary" type="button">
-                                            <i class="fas fa-calendar-alt"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Sales Price and Item Active -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Sales Price</label>
-                                <input type="text" class="form-control" placeholder="Sales Price">
-                            </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="itemActive" checked>
-                                    <label class="form-check-label" for="itemActive">
-                                        Item Active
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Barcode (Hidden for Service) -->
-                        <div id="barcodeSection" class="row mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Barcode</label>
-                                <input type="text" class="form-control" placeholder="Barcode">
-                            </div>
-                        </div>
-
-                        <!-- Main Unit and Costing Method (Hidden for Service) -->
-                        <div id="unitCostingSection" class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="mainUnit" class="form-label fw-semibold text-muted">Main Unit</label>
-                                <select class="form-select" id="mainUnit">
-                                    <!-- Options will be loaded dynamically -->
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <button type="button" class="btn btn-outline-primary mt-4" data-bs-toggle="modal" data-bs-target="#addUnitModal">Add More Unit</button>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Costing Method</label>
-                                <div class="d-flex gap-3 mt-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="costingMethod" id="avg" checked>
-                                        <label class="form-check-label" for="avg">AVG</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="costingMethod" id="fifo">
-                                        <label class="form-check-label" for="fifo">FIFO</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="costingMethod" id="lifo">
-                                        <label class="form-check-label" for="lifo">LIFO</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Min Amount and Max Amount (Hidden for Service) -->
-                        <div id="minMaxSection" class="row mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label">Min Amount</label>
-                                <input type="text" class="form-control" placeholder="Min Amount">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Max</label>
-                                <input type="text" class="form-control" placeholder="Max Amount">
-                            </div>
-                        </div>
-
-                        <!-- Assembly Table (Only for Assembly) -->
-                        <div id="assemblyTable" class="assembly-table" style="display: none;">
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 5%">#</th>
-                                        <th style="width: 25%">Item Code</th>
-                                        <th style="width: 35%">Item Name</th>
-                                        <th style="width: 15%">Cost</th>
-                                        <th style="width: 15%">QTY</th>
-                                        <th style="width: 5%">DEL</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>1</td>
-                                        <td>
-                                            <select class="form-select form-select-sm">
-                                                <option value="">Select Item</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <select class="form-select form-select-sm">
-                                                <option value="">Select Item Name</option>
-                                            </select>
-                                        </td>
-                                        <td><input type="text" class="form-control form-control-sm"></td>
-                                        <td><input type="text" class="form-control form-control-sm"></td>
-                                        <td><button type="button" class="btn btn-sm btn-outline-danger">×</button></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Bottom Section - Accounts -->
                         <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="cogsAccount" class="form-label fw-semibold text-muted">COGS Account</label>
-                                    <select id="cogsAccount" class="form-select form-select-sm">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="assetAccount" class="form-label fw-semibold text-muted">Asset Account</label>
-                                    <select id="assetAccount" class="form-select form-select-sm">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </div>
+                            <div class="col-md-4">
+                                <label class="form-label">As Of</label>
+                                <input type="date" class="form-control" id="asOfDateInput">
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Income Account</label>
-                                    <label for="incomeAccount" class="form-label fw-semibold text-muted">Income Account</label>
-                                    <select id="incomeAccount" class="form-select form-select-sm">
-                                        <option value="">-- Select --</option>
-                                    </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Sales Price</label>
+                            <input type="text" class="form-control" id="salesPriceInput" placeholder="Sales Price">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="itemActive" checked>
+                                <label class="form-check-label" for="itemActive">
+                                    Item Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="barcodeSection" class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Barcode</label>
+                            <input type="text" class="form-control" id="barcodeInput" placeholder="Barcode">
+                        </div>
+                    </div>
+                    <div id="unitCostingSection" class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="mainUnit" class="form-label fw-semibold text-muted">Main Unit</label>
+                            <select class="form-select" id="mainUnit"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Costing Method</label>
+                            <div class="d-flex gap-3 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="costingMethod" id="avg" checked>
+                                    <label class="form-check-label" for="avg">AVG</label>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="preferredVendor" class="form-label fw-semibold text-muted">Preferred Vendor</label>
-                                    <select id="preferredVendor" class="form-select form-select-sm">
-                                        <option value="">-- Select --</option>
-                                    </select>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="costingMethod" id="fifo">
+                                    <label class="form-check-label" for="fifo">FIFO</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="costingMethod" id="lifo">
+                                    <label class="form-check-label" for="lifo">LIFO</label>
                                 </div>
                             </div>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> CLOSE
-                    </button>
-                    <button type="button" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save
-                    </button>
-                </div>
+                    </div>
+                    <div id="minMaxSection" class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Min Amount</label>
+                            <input type="text" class="form-control" id="minAmountInput" placeholder="Min Amount">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Max</label>
+                            <input type="text" class="form-control" id="maxAmountInput" placeholder="Max Amount">
+                        </div>
+                    </div>
+                    <!-- Accounts -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="cogsAccount" class="form-label fw-semibold text-muted">COGS Account</label>
+                                <select id="cogsAccount" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="assetAccount" class="form-label fw-semibold text-muted">Asset Account</label>
+                                <select id="assetAccount" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="incomeAccount" class="form-label fw-semibold text-muted">Income Account</label>
+                                <select id="incomeAccount" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="preferredVendor" class="form-label fw-semibold text-muted">Preferred Vendor</label>
+                                <select id="preferredVendor" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> CLOSE
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveItem()">
+                    <i class="fas fa-save"></i> Save
+                </button>
             </div>
         </div>
     </div>
@@ -657,6 +590,71 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
+
+
+        function saveItem() {
+            let item = {
+                Id: 0,
+                Name: $("#itemNameInput").val(),
+                WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
+                Type: $("#typeSelect").val(),        // Use the value, not text
+                CategoryId: parseInt($("#categoryDropdowns").val()) || 0,
+                UnitId: parseInt($("#mainUnit").val()) || 0,
+                Barcode: $("#barcodeInput").val() || "",
+                CostPrice: parseFloat($("#costPriceInput").val()) || 0,
+                SalesPrice: parseFloat($("#salesPriceInput").val()) || 0,
+                CogsAccountId: parseInt($("#cogsAccount").val()) || 0,
+                IncomeAccountId: parseInt($("#incomeAccount").val()) || 0,
+                AssetAccountId: parseInt($("#assetAccount").val()) || 0,
+                VendorId: $("#preferredVendor").val() ? parseInt($("#preferredVendor").val()) : null,
+                MinAmount: parseFloat($("#minAmountInput").val()) || 0,
+                MaxAmount: parseFloat($("#maxAmountInput").val()) || 0,
+                OnHand: parseFloat($("#onHandInput").val()) || 0,
+                Method: $("input[name='costingMethod']:checked").attr("id"),
+                TotalValue: parseFloat($("#totalValueInput").val()) || 0,
+                Date: $("#asOfDateInput").val(),     // format: yyyy-MM-dd
+                Active: $("#itemActive").is(":checked"),
+                ItemType: $("#inventoryType").val(),
+                Units: [],
+                Assemblies: []
+            };
+
+            // If assembly, collect assembly rows
+            if (item.Type === "assembly") {
+                $("#assemblyTable tbody tr").each(function() {
+                    let asm = {
+                        ItemId: parseInt($(this).find("select.itemIdSelect").val()) || 0,
+                        Qty: parseFloat($(this).find("input.qtyInput").val()) || 0
+                    };
+                    if (asm.ItemId > 0) item.Assemblies.push(asm);
+                });
+            }
+
+            // Send AJAX
+            $.ajax({
+                url: '/Lists/SaveItem',
+                type: 'POST',
+                data: JSON.stringify(item),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (res) {
+                    if (res.status) {
+                        $("#newItemModal").modal("hide");
+                        toastr.success("Item Added Successfully!");
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    toastr.error("Error: " + xhr.responseText);
+                }
+            });
+        }
+
+
+
         $(document).ready(function () {
 
             // ===== Load Items Table =====
@@ -805,50 +803,60 @@
                 }
             });
 
+
+
+
+
         });
 
 
-                function changeFormLayout() {
-            const typeSelect = document.getElementById('typeSelect');
-            const selectedType = typeSelect.value;
+        toastr.options = {
+                         "closeButton": true,
+                         "debug": false,
+                         "newestOnTop": false,
+                         "progressBar": true,
+                         "positionClass": "toast-top-right",
+                         "preventDuplicates": false,
+                         "onclick": null,
+                         "showDuration": "300",
+                         "hideDuration": "1000",
+                         "timeOut": "5000",
+                         "extendedTimeOut": "1000",
+                         "showEasing": "swing",
+                         "hideEasing": "linear",
+                         "showMethod": "fadeIn",
+                         "hideMethod": "fadeOut"
+                     };
 
-            const inventorySection = document.getElementById('inventorySection');
-            const barcodeSection = document.getElementById('barcodeSection');
-            const unitCostingSection = document.getElementById('unitCostingSection');
-            const minMaxSection = document.getElementById('minMaxSection');
-            const assemblyTable = document.getElementById('assemblyTable');
+        function changeFormLayout() {
+            const type = $("#typeSelect").val(); // inventory, service, assembly
 
-            // Hide all sections first
-            inventorySection.style.display = 'none';
-            barcodeSection.style.display = 'none';
-            unitCostingSection.style.display = 'none';
-            minMaxSection.style.display = 'none';
-            assemblyTable.style.display = 'none';
-
-            // Show sections based on selected type
-            if (selectedType === 'inventory') {
-                // Show all sections for Inventory Part
-                inventorySection.style.display = 'block';
-                barcodeSection.style.display = 'block';
-                unitCostingSection.style.display = 'block';
-                minMaxSection.style.display = 'block';
-            } else if (selectedType === 'service') {
-                // Hide most sections for Service, only show basic fields
-                // Sales Price and Item Active are always shown
-            } else if (selectedType === 'assembly') {
-                // Show inventory section, barcode, units, min/max and assembly table
-                inventorySection.style.display = 'block';
-                barcodeSection.style.display = 'block';
-                unitCostingSection.style.display = 'block';
-                minMaxSection.style.display = 'block';
-                assemblyTable.style.display = 'block';
+            if (type === "inventory") {
+                $("#inventorySection").show();
+                $("#barcodeSection").show();
+                $("#unitCostingSection").show();
+                $("#minMaxSection").show();
+                $("#assemblyTable").hide();
+            } else if (type === "service") {
+                $("#inventorySection").hide();
+                $("#barcodeSection").hide();
+                $("#unitCostingSection").hide();
+                $("#minMaxSection").hide();
+                $("#assemblyTable").hide();
+            } else if (type === "assembly") {
+                $("#inventorySection").show();       // keep inventory fields if needed
+                $("#barcodeSection").show();
+                $("#unitCostingSection").show();
+                $("#minMaxSection").show();
+                $("#assemblyTable").show();         // show assembly table
             }
         }
 
-        // Initialize form on page load
-        document.addEventListener('DOMContentLoaded', function() {
+         $(document).ready(function() {
             changeFormLayout();
         });
+
+
     </script>
 
 }

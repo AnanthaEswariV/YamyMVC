@@ -1,74 +1,6 @@
-﻿let dataTable;
+﻿
+let dataTable;
 
-
-
-
-
-// Define saveCategory globally
-function saveCategory() {
-    var categoryName = $("#categoryName").val();
-
-    if (!categoryName.trim()) {
-        alert("Please enter a category name.");
-        return;
-    }
-
-    $.ajax({
-        url: '/Lists/AddCategory',
-        type: 'POST',
-        data: { categoryName: categoryName },
-        success: function (result) {
-            if (result.status) {
-                var modalEl = document.getElementById("addCategoryModal");
-                var modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
-
-                $("#addCategoryForm")[0].reset();
-                toastr.success('Category Added Successfully!');
-                // ✅ Refresh the category table/grid
-                if (typeof loadCategories === "function") {
-                    loadCategories();
-                }
-                // setTimeout(function () {
-                //     location.reload();
-                // }, 1500);
-            } else {
-                toastr.error(result.message);
-            }
-        },
-        error: function (xhr, status, error) {
-            alert("Error: " + error);
-        }
-    });
-}
-
-
-
-function saveUnit() {
-    const name = $("#addUnitName").val();
-    if (!name.trim()) {
-        alert("Please enter a unit name.");
-        return;
-    }
-
-    $.post('/Lists/AddUnit', { name: name }, function (res) {
-        if (res.status) {
-            const modalEl = document.getElementById("addUnitModal");
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
-            $("#addUnitForm")[0].reset();
-            toastr.success('Unit Added Successfully!');
-            // Redirect to dashboard after a short delay
-            setTimeout(function () {
-                location.reload();
-            }, 1500); // Optional delay before redirect
-        } else {
-            toastr.error(result.message);
-        }
-    }).fail(function (xhr) {
-        alert("Error: " + xhr.statusText);
-    });
-}
 
 
 
@@ -83,9 +15,6 @@ function loadManagersDropdown(selectedId = null) {
         });
     });
 }
-
-
-
 
 $(document).ready(function () {
     $.ajax({
@@ -131,9 +60,6 @@ $(document).ready(function () {
         }
     });
 });
-
-
-
 
 $(document).ready(function () {
     loadManagersDropdown();
@@ -184,5 +110,70 @@ $(document).ready(function () {
             }
         });
     });
+
+    // Define saveCategory globally
+    function saveCategory() {
+        var categoryName = $("#categoryName").val();
+
+        if (!categoryName.trim()) {
+            alert("Please enter a category name.");
+            return;
+        }
+
+        $.ajax({
+            url: '/Lists/AddCategory',
+            type: 'POST',
+            data: { categoryName: categoryName },
+            success: function (result) {
+                if (result.status) {
+                    var modalEl = document.getElementById("addCategoryModal");
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+
+                    $("#addCategoryForm")[0].reset();
+                    toastr.success('Category Added Successfully!');
+                    // ✅ Refresh the category table/grid
+                    if (typeof loadCategories === "function") {
+                        loadCategories();
+                    }
+                    // setTimeout(function () {
+                    //     location.reload();
+                    // }, 1500);
+                } else {
+                    toastr.error(result.message);
+                }
+            },
+            error: function (xhr, status, error) {
+                alert("Error: " + error);
+            }
+        });
+    }
+
+    function saveUnit() {
+        const name = $("#addUnitName").val();
+        if (!name.trim()) {
+            alert("Please enter a unit name.");
+            return;
+        }
+
+        $.post('/Lists/AddUnit', { name: name }, function (res) {
+            if (res.status) {
+                const modalEl = document.getElementById("addUnitModal");
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                $("#addUnitForm")[0].reset();
+                toastr.success('Unit Added Successfully!');
+                // Redirect to dashboard after a short delay
+                setTimeout(function () {
+                    location.reload();
+                }, 1500); // Optional delay before redirect
+            } else {
+                toastr.error(result.message);
+            }
+        }).fail(function (xhr) {
+            alert("Error: " + xhr.statusText);
+        });
+    }
+
 
 });

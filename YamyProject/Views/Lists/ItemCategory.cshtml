@@ -41,148 +41,149 @@
 @Html.Partial("_ItemCategory.cshtml")
 
 @section Scripts {
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/MainJs.js"></script>
     <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
-        let dataTable;
-                // Configure Toastr options
-             toastr.options = {
-                 "closeButton": true,
-                 "debug": false,
-                 "newestOnTop": false,
-                 "progressBar": true,
-                 "positionClass": "toast-top-right",
-                 "preventDuplicates": false,
-                 "onclick": null,
-                 "showDuration": "300",
-                 "hideDuration": "1000",
-                 "timeOut": "5000", // Adjust to desired display duration
-                 "extendedTimeOut": "1000",
-                 "showEasing": "swing",
-                 "hideEasing": "linear",
-                 "showMethod": "fadeIn",
-                 "hideMethod": "fadeOut"
-             };
+         let dataTable;
+                 // Configure Toastr options
+              toastr.options = {
+                  "closeButton": true,
+                  "debug": false,
+                  "newestOnTop": false,
+                  "progressBar": true,
+                  "positionClass": "toast-top-right",
+                  "preventDuplicates": false,
+                  "onclick": null,
+                  "showDuration": "300",
+                  "hideDuration": "1000",
+                  "timeOut": "5000", // Adjust to desired display duration
+                  "extendedTimeOut": "1000",
+                  "showEasing": "swing",
+                  "hideEasing": "linear",
+                  "showMethod": "fadeIn",
+                  "hideMethod": "fadeOut"
+              };
 
-                     $(document).ready(function () {
-            if (document.getElementById("table1")) {
-                loadCategories();
-            }
-        });
-
-              async function loadCategories() {
-             const response = await fetch('/Lists/GetItemCategory');
-             const result = await response.json();
-
-             if (result.status) {
-                 if (dataTable) {
-                     dataTable.destroy(); // 🔥 fully reset
-                     document.querySelector("#table1 tbody").innerHTML = "";
-                 }
-
-                 dataTable = new simpleDatatables.DataTable("#table1", {
-                     data: {
-                         headings: ["ID", "Category Name", "Actions"],
-                         data: result.data.map(cat => [
-                             cat.id,
-                             cat.categoryName,
-                             `
-                                 <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
-                                 <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
-                             `
-                         ])
-                     }
-                 });
-             } else {
-                 alert(result.message);
+                      $(document).ready(function () {
+             if (document.getElementById("table1")) {
+                 loadCategories();
              }
+         });
+
+               async function loadCategories() {
+              const response = await fetch('/Lists/GetItemCategory');
+              const result = await response.json();
+
+              if (result.status) {
+                  if (dataTable) {
+                      dataTable.destroy(); // 🔥 fully reset
+                      document.querySelector("#table1 tbody").innerHTML = "";
+                  }
+
+                  dataTable = new simpleDatatables.DataTable("#table1", {
+                      data: {
+                          headings: ["ID", "Category Name", "Actions"],
+                          data: result.data.map(cat => [
+                              cat.id,
+                              cat.categoryName,
+                              `
+                                  <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
+                                  <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
+                              `
+                          ])
+                      }
+                  });
+              } else {
+                  alert(result.message);
+              }
+          }
+
+
+
+         // ✅ Edit category (fixed version)
+         function editCategory(id) {
+             // Grab table row by matching first cell text
+             let rows = document.querySelectorAll("#table1 tbody tr");
+             let targetRow = Array.from(rows).find(r => r.cells[0].innerText == id);
+
+             if (!targetRow) {
+                 alert("Category not found!");
+                 return;
+             }
+
+             let catId = targetRow.cells[0].innerText;
+             let catName = targetRow.cells[1].innerText;
+
+             $("#editCategoryId").val(catId);
+             $("#editCategoryName").val(catName);
+
+             var modalEl = document.getElementById("editCategoryModal");
+             var modal = new bootstrap.Modal(modalEl);
+             modal.show();
          }
 
+         // ✅ Update category
+         function updateCategory() {
+             var id = $("#editCategoryId").val();
+             var categoryName = $("#editCategoryName").val();
 
+             if (!categoryName.trim()) {
+                 alert("Please enter a category name.");
+                 return;
+             }
 
-        // ✅ Edit category (fixed version)
-        function editCategory(id) {
-            // Grab table row by matching first cell text
-            let rows = document.querySelectorAll("#table1 tbody tr");
-            let targetRow = Array.from(rows).find(r => r.cells[0].innerText == id);
-
-            if (!targetRow) {
-                alert("Category not found!");
-                return;
-            }
-
-            let catId = targetRow.cells[0].innerText;
-            let catName = targetRow.cells[1].innerText;
-
-            $("#editCategoryId").val(catId);
-            $("#editCategoryName").val(catName);
-
-            var modalEl = document.getElementById("editCategoryModal");
-            var modal = new bootstrap.Modal(modalEl);
-            modal.show();
-        }
-
-        // ✅ Update category
-        function updateCategory() {
-            var id = $("#editCategoryId").val();
-            var categoryName = $("#editCategoryName").val();
-
-            if (!categoryName.trim()) {
-                alert("Please enter a category name.");
-                return;
-            }
-
-            $.ajax({
-                url: '/Lists/EditCategory',
-                type: 'POST',
-                data: { id: id, categoryName: categoryName },
-                success: function (result) {
-                      if (result.status) {
-                              var modalEl = document.getElementById("editCategoryModal");
-                          var modal = bootstrap.Modal.getInstance(modalEl);
-                          modal.hide();
-
-                           $("#editCategoryForm")[0].reset();
-                              toastr.success('Category Updated Successfully!');
-                               // Redirect to dashboard after a short delay
-                              setTimeout(function () {
-                                 location.reload();
-                              }, 1500); // Optional delay before redirect
-                          } else {
-                               toastr.error(result.message);
-                          }
-                },
-                error: function (xhr, status, error) {
-                    alert("Error: " + error);
-                }
-            });
-        }
-
-       function deleteCategory(id) {
-            if (!confirm("Are you sure you want to delete category ID " + id + "?")) {
-                return;
-            }
-
-            $.ajax({
-                url: '/Lists/DeleteCategory',
-                type: 'POST',   // MVC action
-                data: { id: id },
-                success: function (result) {
+             $.ajax({
+                 url: '/Lists/EditCategory',
+                 type: 'POST',
+                 data: { id: id, categoryName: categoryName },
+                 success: function (result) {
                        if (result.status) {
-                               toastr.success('Category Deleted Successfully!');
+                               var modalEl = document.getElementById("editCategoryModal");
+                           var modal = bootstrap.Modal.getInstance(modalEl);
+                           modal.hide();
+
+                            $("#editCategoryForm")[0].reset();
+                               toastr.success('Category Updated Successfully!');
+                                // Redirect to dashboard after a short delay
                                setTimeout(function () {
                                   location.reload();
                                }, 1500); // Optional delay before redirect
                            } else {
                                 toastr.error(result.message);
                            }
-                },
-                error: function (xhr, status, error) {
-                    alert("Error: " + error);
-                }
-            });
-        }
+                 },
+                 error: function (xhr, status, error) {
+                     alert("Error: " + error);
+                 }
+             });
+         }
+
+        function deleteCategory(id) {
+             if (!confirm("Are you sure you want to delete category ID " + id + "?")) {
+                 return;
+             }
+
+             $.ajax({
+                 url: '/Lists/DeleteCategory',
+                 type: 'POST',   // MVC action
+                 data: { id: id },
+                 success: function (result) {
+                        if (result.status) {
+                                toastr.success('Category Deleted Successfully!');
+                                setTimeout(function () {
+                                   location.reload();
+                                }, 1500); // Optional delay before redirect
+                            } else {
+                                 toastr.error(result.message);
+                            }
+                 },
+                 error: function (xhr, status, error) {
+                     alert("Error: " + error);
+                 }
+             });
+         }
     </script>
 }
 

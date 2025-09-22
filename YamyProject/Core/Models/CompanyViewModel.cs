@@ -172,5 +172,45 @@ namespace YamyProject.Core.Models
         public int UserId { get; set; }              // logged-in user
     }
 
+    public class ItemRequest
+    {
+        public int Id { get; set; }
+        public string Code { get; set; }      // Auto-generated on insert
+        public string Name { get; set; }
+        public int WarehouseId { get; set; }
+        public string Type { get; set; }
+        public int CategoryId { get; set; }
+        public int UnitId { get; set; }
+        public string Barcode { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal SalesPrice { get; set; }
+        public int CogsAccountId { get; set; }
+        public int IncomeAccountId { get; set; }
+        public int AssetAccountId { get; set; }
+        public int? VendorId { get; set; }
+        public decimal MinAmount { get; set; }
+        public decimal MaxAmount { get; set; }
+        public decimal OnHand { get; set; }
+        public string Method { get; set; } = "avg";
+        public decimal TotalValue { get; set; }
+        public DateTime Date { get; set; }
+        public bool Active { get; set; }
+        public string ItemType { get; set; }  // e.g. Service, Inventory Assembly, etc.
+
+        public List<UnitRequest> Units { get; set; } = new();
+        public List<AssemblyRequest> Assemblies { get; set; } = new();
+    }
+
+    public class UnitRequest
+    {
+        public int UnitId { get; set; }
+        public decimal Factor { get; set; }
+    }
+
+    public class AssemblyRequest
+    {
+        public int ItemId { get; set; }
+        public decimal Qty { get; set; }
+    }
 
 }
