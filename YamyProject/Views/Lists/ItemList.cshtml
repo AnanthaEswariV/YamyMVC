@@ -312,6 +312,8 @@
     <!-- Left Panel -->
     <div class="left-panel">
         <div class="filter-section">
+
+
             <div class="filter-row">
                 <div class="filter-label">State</div>
                 <div class="filter-control">
@@ -322,9 +324,6 @@
                     </select>
                 </div>
             </div>
-
-
-
 
             <div class="filter-row">
                 <div class="filter-label">Category</div>
@@ -343,9 +342,10 @@
             <div class="filter-row">
                 <div class="filter-label">Type</div>
                 <div class="filter-control">
-                    <select>
-                        <option>11 - Inventory</option>
-                        <option>12 - Service</option>
+                    <select id="typeDropdown">
+                        <option value="11">11 - Inventory Part</option>
+                        <option value="12">12 - Service</option>
+                        <option value="13">13 - Inventory Assembly</option>
                     </select>
                     <div class="checkbox-container">
                         <input type="checkbox" id="allType" checked>
@@ -354,12 +354,7 @@
                 </div>
             </div>
 
-            <div class="filter-row">
-                <div class="filter-label">Search By Item</div>
-                <div class="filter-control">
-                    <input type="text" placeholder="">
-                </div>
-            </div>
+
         </div>
 
         <div class="items-list">
@@ -371,8 +366,8 @@
                             <thead>
                                 <tr>
                                     <th>Item Name</th>
-                                    <th>Barcode</th>
                                     <th>Type</th>
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -583,14 +578,14 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Assembly Table -->
                     <div id="assemblyTable" class="mb-3" style="display:none;">
                         <h6>Assembly Items</h6>
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Item</th>
+                                    <th>Item Code</th>
+                                    <th>Item Name</th>
+                                    <th>Cost</th>
                                     <th>Qty</th>
                                     <th>Action</th>
                                 </tr>
@@ -672,6 +667,49 @@
 
 
                 let selectedItem = null;
+                        let assemblyItems = []; // store items for dropdown
+
+        // 1️⃣ Load items from API
+        function loadAssemblyItems() {
+            $.ajax({
+                url: '/Lists/GetItems', // replace with your API
+                type: 'GET',
+                success: function(res) {
+                    if (res.status && res.data.length > 0) {
+                        assemblyItems = res.data; // store for dropdown
+                    } else {
+                        assemblyItems = [];
+                    }
+                },
+                error: function(err) {
+                    console.error("Failed to load items:", err);
+                    assemblyItems = [];
+                }
+            });
+        }
+
+        
+
+
+
+
+
+
+        // 3️⃣ Update Cost and Name when dropdown changes
+        function updateAssemblyCost(select) {
+            let $row = $(select).closest('tr');
+            let selected = $(select).find('option:selected');
+            let itemName = selected.text().split(" - ").slice(1).join(" - "); // get name after code
+            let cost = selected.data("cost") ?? 0;
+
+            $row.find(".itemNameCell").text(itemName);
+            $row.find(".itemCostCell").text(parseFloat(cost).toFixed(2));
+        }
+
+        // Load items on page ready
+        $(document).ready(function() {
+            loadAssemblyItems();
+        });
 
         $(document).on("click", "#itemsTable tbody tr", function() {
             $("#itemsTable tbody tr").removeClass("table-active"); // optional: highlight selected row
@@ -688,36 +726,68 @@
         
         $(document).ready(function () {
 
-       
-            function loadItems() {
-                var state = $('#stateFilter').val();
-                $.ajax({
-                    url: '/Lists/GetItems',
-                    type: 'GET',
-                    data: { state: state },
-                    success: function (result) {
-                        var tbody = $('#itemsTable tbody');
-                        tbody.empty();
-                        if (result.status && result.data.length > 0) {
-                            $.each(result.data, function (i, item) {
-                                tbody.append(`
-                                    <tr data-id="${item.id}" data-name="${item.itemName}" data-barcode="${item.barcode ?? ''}" data-type="${item.type}">
-                                        <td>${item.itemName}</td>
-                                        <td>${item.barcode ?? ''}</td>
-                                        <td>${item.type}</td>
-                                    </tr>
-                                `);
-                            });
-                        } else {
-                            tbody.append('<tr><td colspan="3" class="text-center text-muted">No items found</td></tr>');
-                        }
-                    },
-                    error: function (err) {
-                        console.error('Error loading items:', err);
-                        toastr.error('Failed to load items');
+
+           function loadItems() {
+            var state = $('#stateFilter').val();
+
+            // Category filter
+            var categoryId = $("#allCat").is(":checked") ? "" : $("#categoryDropdown").val();
+
+            // Type filter
+            var type = $("#allType").is(":checked") ? "" : $("#typeDropdown").val();
+
+            $.ajax({
+                url: '/Lists/GetItems',
+                type: 'GET',
+                data: {
+                    state: state,
+                    categoryId: categoryId,
+                    type: type
+                },
+                success: function (result) {
+                    var tbody = $('#itemsTable tbody');
+                    tbody.empty();
+
+                    if (result.status && result.data.length > 0) {
+                        $.each(result.data, function (i, item) {
+                            tbody.append(`
+                                <tr data-id="${item.id}"
+                                    data-name="${item.itemName}"
+                                    data-barcode="${item.barcode ?? ''}"
+                                    data-type="${item.type}">
+                                    <td>${item.itemName}</td>
+                                    <td>${item.type}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-item"
+                                                data-id="${item.id}"
+                                                data-name="${item.itemName}"
+                                                data-type="${item.type}"
+                                                data-barcode="${item.barcode ?? ''}">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-item"
+                                                data-id="${item.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        tbody.append('<tr><td colspan="3" class="text-center text-muted">No items found</td></tr>');
                     }
-                });
-            }
+                },
+                error: function (err) {
+                    console.error('Error loading items:', err);
+                    toastr.error('Failed to load items');
+                }
+            });
+        }
+
+        // Trigger reload when filters change
+        $(document).on("change", "#stateFilter, #categoryDropdown, #typeDropdown, #allCat, #allType", function () {
+            loadItems();
+        });
 
             loadItems();
 
