@@ -1,9 +1,4 @@
-﻿
-let dataTable;
-
-
-
-
+﻿/*let dataTable;*/
 function loadManagersDropdown(selectedId = null) {
     $.getJSON('/Inventory/GetAllEmployees', function (employees) {
         const $manager = $('#manager');
@@ -15,14 +10,11 @@ function loadManagersDropdown(selectedId = null) {
         });
     });
 }
-
 $(document).ready(function () {
     $.ajax({
         url: '/HR/GetAccruedSalaries',
         type: 'GET',
         success: function (data) {
-            console.log("✅ API Response:", data);
-
             // List of dropdowns with their matching code textbox
             const dropdowns = [
                 { ddl: '#accruedSalaries' }
@@ -30,7 +22,6 @@ $(document).ready(function () {
 
             dropdowns.forEach(set => {
                 let $ddl = $(set.ddl);
-                console.log("Found dropdown?", set.ddl, $ddl.length);
 
                 $ddl.empty().append('<option value="">-- Select --</option>');
 
@@ -44,13 +35,11 @@ $(document).ready(function () {
                     );
                 });
 
-                console.log("Total options now for", set.ddl, ":", $ddl.find('option').length);
 
                 // On change, update the code textbox
                 $ddl.on('change', function () {
                     let selected = $(this).find(':selected');
                     let code = selected.data('code');
-                    console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
                     $(set.codeBox).val(code || "");
                 });
             });

@@ -129,6 +129,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
     <script>
                $(document).ready(function () {
             if (document.getElementById("warehouseTable")) {
@@ -241,7 +244,6 @@
                 url: '/Inventory/GetWarehouses',
                 type: 'GET',
                 success: function (res) {
-                    console.log("✅ Warehouse API Response:", res); // log full response
 
                     let tbody = $("#warehouseTable tbody");
                     tbody.empty();
@@ -260,11 +262,11 @@
                 data-city="${w.city}"
                 data-building="${w.buildingName}"
                 data-accountid="${w.accountId}">
-            <i class="bi bi-pencil-square"></i>
+           <i class="fas fa-pen"></i> 
         </button>
 
                                         <button class="btn btn-sm btn-outline-danger delete-warehouse" data-id="${w.id}">
-                                            <i class="bi bi-trash"></i>
+                                            <i class="fas fa-prescription-bottle-alt"></i>
                                         </button>
                                     </td>
                                 </tr>
@@ -486,7 +488,7 @@
                     url: '/HR/GetAccruedSalaries',
                     type: 'GET',
                     success: function (data) {
-                        console.log("✅ API Response:", data);
+                     
 
                         // List of dropdowns with their matching code textbox
                         const dropdowns = [
@@ -495,7 +497,7 @@
 
                         dropdowns.forEach(set => {
                             let $ddl = $(set.ddl);
-                            console.log("Found dropdown?", set.ddl, $ddl.length);
+                          
 
                             $ddl.empty().append('<option value="">-- Select --</option>');
 
@@ -509,13 +511,11 @@
                                 );
                             });
 
-                            console.log("Total options now for", set.ddl, ":", $ddl.find('option').length);
-
+                        
                             // On change, update the code textbox
                             $ddl.on('change', function () {
                                 let selected = $(this).find(':selected');
                                 let code = selected.data('code');
-                                console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
                                 $(set.codeBox).val(code || "");
                             });
                         });

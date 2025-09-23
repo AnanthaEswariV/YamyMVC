@@ -247,10 +247,29 @@
             }
 
     .modal-body {
-        max-height: calc(90vh - 120px); /* Subtract header and footer height */
+        max-height: calc(90vh - 120px); 
         overflow-y: auto;
         overflow-x: hidden;
     }
+
+    #dataTable {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        #dataTable tbody {
+            display: block;
+            max-height: 500px;
+            overflow-y: auto;
+            width: 100%;
+        }
+
+            #dataTable thead,
+            #dataTable tbody tr {
+                display: table;
+                width: 100%;
+                table-layout: fixed;
+            }
 
 </style>
 
@@ -366,17 +385,11 @@
 
     <!-- Right Panel -->
     <div class="right-panel">
-        <div class="right-header">
-            <div class="header-info">
-                <span>Item Code ↕</span>
-                <span>Item Name ↕</span>
-                <span>Cost Price ↕</span>
-                <span>Sale Price ↕</span>
-                <span>Balance Qty ↕</span>
-            </div>
-            <a href="#" class="go-to-link">Go To Item </a>
+        <div class="right-header d-flex justify-content-end mb-2">
+            <button type="button" class="btn btn-primary go-to-link">
+                <i class="fas fa-cart-plus"></i> Go To Item
+            </button>
         </div>
-
         <div class="card shadow-sm h-100">
             <div class="card-body p-0">
                 <div class="data-grid">
@@ -412,38 +425,37 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header text-white" style="background-color: #5865f2;">
-                <h5 class="modal-title">
-                    <i class="fas fa-box"></i> Inventory - New Item
-                </h5>
+                <h5 class="modal-title"><i class="fas fa-box"></i> Inventory - New Item</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form>
+                <form id="newItemForm">
+                    <!-- Warehouse & Type -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="warehouseDropdown" class="form-label fw-semibold text-muted">Warehouse</label>
-                            <select class="form-select" id="warehouseDropdown">
-                                <option value="">Select Warehouse</option>
-                            </select>
+                            <label class="form-label fw-semibold text-muted">Warehouse</label>
+                            <select class="form-select" id="warehouseDropdown"><option value="">Select Warehouse</option></select>
+                            <button class="btn btn-outline-secondary" type="button" id="btnNew" data-bs-toggle="modal" data-bs-target="#newWarehouseModal">New</button>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Type</label>
+                            <label class="form-label">Item Type</label>
                             <select class="form-select" id="typeSelect" onchange="changeFormLayout()">
-                                <option value="inventory">11 - Inventory Part</option>
-                                <option value="service">12 - Service</option>
-                                <option value="assembly">13 - Inventory Assembly</option>
+                                <option value="11 - Inventory Part">11 - Inventory Part</option>
+                                <option value="12 - Service">12 - Service</option>
+                                <option value="13 - Inventory Assembly">13 - Inventory Assembly</option>
                             </select>
                         </div>
                     </div>
+
+                    <!-- Category & Inventory Type -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="categoryDropdowns" class="form-label fw-semibold text-muted">Category</label>
-                            <select id="categoryDropdowns" class="form-select">
-                                <option value="">Loading...</option>
-                            </select>
+                            <label class="form-label fw-semibold text-muted">Category</label>
+                            <select id="categoryDropdowns" class="form-select"><option value="">Loading...</option></select>
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#addCategoryModal">New</button>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Type</label>
+                            <label class="form-label">Inventory Type</label>
                             <select class="form-select" id="inventoryType">
                                 <option value="Inventory" selected>Inventory</option>
                                 <option value="Service">Service</option>
@@ -451,6 +463,8 @@
                             </select>
                         </div>
                     </div>
+
+                    <!-- Item Code & Name -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Item Code</label>
@@ -461,52 +475,59 @@
                             <input type="text" class="form-control" id="itemNameInput" placeholder="Item Name">
                         </div>
                     </div>
-                    <div id="inventorySection" class="inventory-section">
+
+                    <!-- Inventory Section -->
+                    <div id="inventorySection">
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Opening Qty</label>
-                                <input type="text" class="form-control" id="onHandInput" placeholder="On Hand">
+                                <input type="number" class="form-control" id="onHandInput" placeholder="On Hand">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Cost Price</label>
-                                <input type="text" class="form-control" id="costPriceInput" placeholder="Cost Price">
+                                <input type="number" class="form-control" id="costPriceInput" placeholder="Cost Price">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Total</label>
-                                <input type="text" class="form-control bg-light" id="totalValueInput" placeholder="Total Value" readonly>
+                                <input type="number" class="form-control bg-light" id="totalValueInput" placeholder="Total Value" readonly>
                             </div>
                         </div>
-                        <div class="row">
+                        <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">As Of</label>
                                 <input type="date" class="form-control" id="asOfDateInput">
                             </div>
                         </div>
                     </div>
+
+                    <!-- Sales & Active -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Sales Price</label>
-                            <input type="text" class="form-control" id="salesPriceInput" placeholder="Sales Price">
+                            <input type="number" class="form-control" id="salesPriceInput" placeholder="Sales Price">
                         </div>
                         <div class="col-md-6 d-flex align-items-end">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="itemActive" checked>
-                                <label class="form-check-label" for="itemActive">
-                                    Item Active
-                                </label>
+                                <label class="form-check-label" for="itemActive">Item Active</label>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Barcode Section -->
                     <div id="barcodeSection" class="row mb-3">
                         <div class="col-md-12">
                             <label class="form-label">Barcode</label>
                             <input type="text" class="form-control" id="barcodeInput" placeholder="Barcode">
                         </div>
                     </div>
+
+                    <!-- Unit & Costing -->
                     <div id="unitCostingSection" class="row mb-3">
                         <div class="col-md-6">
-                            <label for="mainUnit" class="form-label fw-semibold text-muted">Main Unit</label>
+                            <label class="form-label fw-semibold text-muted">Main Unit</label>
                             <select class="form-select" id="mainUnit"></select>
+                            <button type="button" class="btn btn-outline-primary mt-4" data-bs-toggle="modal" data-bs-target="#addUnitModal">Add More Unit</button>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Costing Method</label>
@@ -526,60 +547,116 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Min/Max Section -->
                     <div id="minMaxSection" class="row mb-4">
                         <div class="col-md-6">
                             <label class="form-label">Min Amount</label>
-                            <input type="text" class="form-control" id="minAmountInput" placeholder="Min Amount">
+                            <input type="number" class="form-control" id="minAmountInput" placeholder="Min Amount">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Max</label>
-                            <input type="text" class="form-control" id="maxAmountInput" placeholder="Max Amount">
+                            <label class="form-label">Max Amount</label>
+                            <input type="number" class="form-control" id="maxAmountInput" placeholder="Max Amount">
                         </div>
                     </div>
+
                     <!-- Accounts -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="cogsAccount" class="form-label fw-semibold text-muted">COGS Account</label>
-                                <select id="cogsAccount" class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                </select>
+                                <label class="form-label fw-semibold text-muted">COGS Account</label>
+                                <select id="cogsAccount" class="form-select form-select-sm"></select>
                             </div>
                             <div class="mb-3">
-                                <label for="assetAccount" class="form-label fw-semibold text-muted">Asset Account</label>
-                                <select id="assetAccount" class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                </select>
+                                <label class="form-label fw-semibold text-muted">Asset Account</label>
+                                <select id="assetAccount" class="form-select form-select-sm"></select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="incomeAccount" class="form-label fw-semibold text-muted">Income Account</label>
-                                <select id="incomeAccount" class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                </select>
+                                <label class="form-label fw-semibold text-muted">Income Account</label>
+                                <select id="incomeAccount" class="form-select form-select-sm"></select>
                             </div>
                             <div class="mb-3">
-                                <label for="preferredVendor" class="form-label fw-semibold text-muted">Preferred Vendor</label>
-                                <select id="preferredVendor" class="form-select form-select-sm">
-                                    <option value="">-- Select --</option>
-                                </select>
+                                <label class="form-label fw-semibold text-muted">Preferred Vendor</label>
+                                <select id="preferredVendor" class="form-select form-select-sm"></select>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Assembly Table -->
+                    <div id="assemblyTable" class="mb-3" style="display:none;">
+                        <h6>Assembly Items</h6>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="addAssemblyRow()">Add Item</button>
+                    </div>
+
                 </form>
             </div>
             <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> CLOSE
-                </button>
-                <button type="button" class="btn btn-primary" onclick="saveItem()">
-                    <i class="fas fa-save"></i> Save
-                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> CLOSE</button>
+                <button type="button" class="btn btn-primary" onclick="saveItem()"><i class="fas fa-save"></i> Save</button>
             </div>
         </div>
     </div>
 </div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="itemCardModal" tabindex="-1" aria-labelledby="itemCardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemCardModalLabel">Item Card Transactions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Item Info -->
+                <div class="mb-3">
+                    <strong>Item ID:</strong> <span id="modalItemCode"></span> |
+                    <strong>Method:</strong> <span id="modalItemMethod"></span> |
+                    <strong>On Hand:</strong> <span id="modalItemOnHand"></span> |
+                    <strong>Cost:</strong> <span id="modalItemCost"></span>
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered" id="modalTransactionTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Warehouse</th>
+                                <th>INV NO</th>
+                                <th>Trans No</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Price</th>
+                                <th>Qty In</th>
+                                <th>Qty Out</th>
+                                <th>Qty Balance</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 
 @Html.Partial("~/Views/Inventory/_WareHouse.cshtml")
@@ -589,77 +666,31 @@
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
 
 
-        function saveItem() {
-            let item = {
-                Id: 0,
-                Name: $("#itemNameInput").val(),
-                WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
-                Type: $("#typeSelect").val(),        // Use the value, not text
-                CategoryId: parseInt($("#categoryDropdowns").val()) || 0,
-                UnitId: parseInt($("#mainUnit").val()) || 0,
-                Barcode: $("#barcodeInput").val() || "",
-                CostPrice: parseFloat($("#costPriceInput").val()) || 0,
-                SalesPrice: parseFloat($("#salesPriceInput").val()) || 0,
-                CogsAccountId: parseInt($("#cogsAccount").val()) || 0,
-                IncomeAccountId: parseInt($("#incomeAccount").val()) || 0,
-                AssetAccountId: parseInt($("#assetAccount").val()) || 0,
-                VendorId: $("#preferredVendor").val() ? parseInt($("#preferredVendor").val()) : null,
-                MinAmount: parseFloat($("#minAmountInput").val()) || 0,
-                MaxAmount: parseFloat($("#maxAmountInput").val()) || 0,
-                OnHand: parseFloat($("#onHandInput").val()) || 0,
-                Method: $("input[name='costingMethod']:checked").attr("id"),
-                TotalValue: parseFloat($("#totalValueInput").val()) || 0,
-                Date: $("#asOfDateInput").val(),     // format: yyyy-MM-dd
-                Active: $("#itemActive").is(":checked"),
-                ItemType: $("#inventoryType").val(),
-                Units: [],
-                Assemblies: []
+                let selectedItem = null;
+
+        $(document).on("click", "#itemsTable tbody tr", function() {
+            $("#itemsTable tbody tr").removeClass("table-active"); // optional: highlight selected row
+            $(this).addClass("table-active");
+
+            selectedItem = {
+                id: $(this).data("id"),
+                name: $(this).data("name"),
+                barcode: $(this).data("barcode"),
+                type: $(this).data("type")
             };
+        });
 
-            // If assembly, collect assembly rows
-            if (item.Type === "assembly") {
-                $("#assemblyTable tbody tr").each(function() {
-                    let asm = {
-                        ItemId: parseInt($(this).find("select.itemIdSelect").val()) || 0,
-                        Qty: parseFloat($(this).find("input.qtyInput").val()) || 0
-                    };
-                    if (asm.ItemId > 0) item.Assemblies.push(asm);
-                });
-            }
-
-            // Send AJAX
-            $.ajax({
-                url: '/Lists/SaveItem',
-                type: 'POST',
-                data: JSON.stringify(item),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-                success: function (res) {
-                    if (res.status) {
-                        $("#newItemModal").modal("hide");
-                        toastr.success("Item Added Successfully!");
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        toastr.error(res.message);
-                    }
-                },
-                error: function (xhr) {
-                    console.error(xhr.responseText);
-                    toastr.error("Error: " + xhr.responseText);
-                }
-            });
-        }
-
-
-
+        
         $(document).ready(function () {
 
-            // ===== Load Items Table =====
+       
             function loadItems() {
-                var state = $('#stateFilter').val(); // get selected state
+                var state = $('#stateFilter').val();
                 $.ajax({
                     url: '/Lists/GetItems',
                     type: 'GET',
@@ -667,11 +698,10 @@
                     success: function (result) {
                         var tbody = $('#itemsTable tbody');
                         tbody.empty();
-
                         if (result.status && result.data.length > 0) {
                             $.each(result.data, function (i, item) {
                                 tbody.append(`
-                                    <tr>
+                                    <tr data-id="${item.id}" data-name="${item.itemName}" data-barcode="${item.barcode ?? ''}" data-type="${item.type}">
                                         <td>${item.itemName}</td>
                                         <td>${item.barcode ?? ''}</td>
                                         <td>${item.type}</td>
@@ -679,7 +709,7 @@
                                 `);
                             });
                         } else {
-                            tbody.append('<tr><td colspan="3" class="text-center">No items found</td></tr>');
+                            tbody.append('<tr><td colspan="3" class="text-center text-muted">No items found</td></tr>');
                         }
                     },
                     error: function (err) {
@@ -688,7 +718,124 @@
                     }
                 });
             }
-            loadItems(); // initial load
+
+            loadItems();
+
+            // -----------------------
+            // Click on #itemsTable row → load transactions in #dataTable
+            // -----------------------
+            $(document).on("click", "#itemsTable tbody tr", function () {
+                let tr = $(this);
+                let itemId = tr.data("id");
+                let itemName = tr.data("name");
+                let barcode = tr.data("barcode");
+                let type = tr.data("type");
+
+                if (!itemId) return;
+
+                $.ajax({
+                    url: '/Lists/GetItemTransactions',
+                    type: 'GET',
+                    data: { itemId: itemId },
+                    success: function (result) {
+                        let tbody = $("#dataTable tbody");
+                        tbody.empty(); // clear old data
+
+                        if (result.status && result.data.length > 0) {
+                                $.each(result.data, function(i, t) {
+            tbody.append(`
+                <tr data-id="${t.itemId}">
+                    <td>${i === 0 ? itemName : ""}</td>
+                    <td>${i === 0 ? barcode : ""}</td>
+                    <td>${i === 0 ? type : ""}</td>
+                    <td>${t.date}</td>
+                    <td>${t.reference}</td>
+                    <td>${t.type}</td>
+                    <td class="text-end">${t.qtyIn}</td>
+                    <td class="text-end">${t.qtyOut}</td>
+                    <td class="text-end">${t.costPrice}</td>
+                    <td class="text-end">${t.salesPrice}</td>
+                    <td class="text-end">${t.qtyBalance}</td>
+                </tr>
+            `);
+        });
+
+                        } else {
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="11" class="text-center text-muted">No transactions found</td>
+                                </tr>
+                            `);
+                        }
+                    },
+                    error: function (err) {
+                        console.error("Error loading transactions:", err);
+                        toastr.error("Failed to load transactions.");
+                    }
+                });
+            });
+
+
+
+
+                $(document).on("click", ".go-to-link", function() {
+            if (!selectedItem || !selectedItem.id) {
+                toastr.warning("Please select an item first.");
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/GetItemCardTransactions',
+                type: 'GET',
+                data: { itemId: selectedItem.id },
+                success: function(res) {
+                    if (res.status) {
+                        // Populate modal header info
+                        $("#modalItemCode").text(selectedItem.name);
+                        $("#modalItemMethod").text(res.item.method);
+                        $("#modalItemOnHand").text(res.item.onHand);
+                        $("#modalItemCost").text(res.item.currentCostPrice);
+
+                        // Populate modal transactions table
+                        let tbody = $("#modalTransactionTable tbody");
+                        tbody.empty();
+
+                        if (res.transactions.length > 0) {
+                            $.each(res.transactions, function(i, t) {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${t.date}</td>
+                                        <td>${t.warehouseName}</td>
+                                        <td>${t.invNo}</td>
+                                        <td>${t.transNo}</td>
+                                        <td>${t.transType}</td>
+                                        <td>${t.description}</td>
+                                        <td class="text-end">${t.price}</td>
+                                        <td class="text-end">${t.qtyIn}</td>
+                                        <td class="text-end">${t.qtyOut}</td>
+                                        <td class="text-end">${t.qtyBalance}</td>
+                                        <td class="text-end">${t.debit}</td>
+                                        <td class="text-end">${t.credit}</td>
+                                        <td class="text-end">${t.balance}</td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="15" class="text-center text-muted">No transactions found</td></tr>`);
+                        }
+
+                        $("#itemCardModal").modal("show");
+                    }
+                },
+                error: function(err) {
+                    toastr.error("Failed to load item transactions.");
+                    console.error(err);
+                }
+            });
+        });
+
+
+
             $('#stateFilter').on('change', loadItems);
 
             // ===== Load Categories =====
@@ -804,13 +951,7 @@
             });
 
 
-
-
-
-        });
-
-
-        toastr.options = {
+               toastr.options = {
                          "closeButton": true,
                          "debug": false,
                          "newestOnTop": false,
@@ -828,33 +969,113 @@
                          "hideMethod": "fadeOut"
                      };
 
-        function changeFormLayout() {
-            const type = $("#typeSelect").val(); // inventory, service, assembly
 
-            if (type === "inventory") {
-                $("#inventorySection").show();
-                $("#barcodeSection").show();
-                $("#unitCostingSection").show();
-                $("#minMaxSection").show();
-                $("#assemblyTable").hide();
-            } else if (type === "service") {
-                $("#inventorySection").hide();
-                $("#barcodeSection").hide();
-                $("#unitCostingSection").hide();
-                $("#minMaxSection").hide();
-                $("#assemblyTable").hide();
-            } else if (type === "assembly") {
-                $("#inventorySection").show();       // keep inventory fields if needed
-                $("#barcodeSection").show();
-                $("#unitCostingSection").show();
-                $("#minMaxSection").show();
-                $("#assemblyTable").show();         // show assembly table
+        });
+
+                $(document).ready(function () {
+            changeFormLayout();
+            loadDropdowns();
+
+
+        });
+
+               $(document).ready(function () {
+            // Recalculate total when cost or qty changes
+            $("#costPriceInput, #onHandInput").on("input", function () {
+                recalcTotal();
+            });
+
+            function recalcTotal() {
+                let cost = parseFloat($("#costPriceInput").val()) || 0;
+                let qty = parseFloat($("#onHandInput").val()) || 0;
+                let total = cost * qty;
+                $("#totalValueInput").val(total.toFixed(2));
             }
+        });
+
+
+
+
+        function changeFormLayout() {
+            const type = $("#typeSelect").val().toLowerCase();
+
+            if (type.includes("service")) {
+                $("#inventorySection, #barcodeSection, #unitCostingSection, #minMaxSection").hide();
+            } else {
+                $("#inventorySection, #barcodeSection, #unitCostingSection, #minMaxSection").show();
+            }
+
+            if (type.includes("assembly")) {
+                $("#assemblyTable").show();
+            } else {
+                $("#assemblyTable").hide();
+            }
+
+            recalcTotal(); // keep total updated on type change
         }
 
-         $(document).ready(function() {
-            changeFormLayout();
-        });
+        function addAssemblyRow() {
+            const row = `<tr>
+                <td><select class="form-select itemIdSelect"><option value="1">Item A</option></select></td>
+                <td><input type="number" class="form-control qtyInput" value="1"></td>
+                <td><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()">Remove</button></td>
+            </tr>`;
+            $("#assemblyTable tbody").append(row);
+        }
+
+        function saveItem() {
+            let item = {
+                Id: 0,
+                Name: $("#itemNameInput").val(),
+                WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
+                Type: $("#typeSelect").val(),
+                CategoryId: parseInt($("#categoryDropdowns").val()) || 0,
+                UnitId: parseInt($("#mainUnit").val()) || 0,
+                Barcode: $("#barcodeInput").val() || "",
+                CostPrice: parseFloat($("#costPriceInput").val()) || 0,
+                SalesPrice: parseFloat($("#salesPriceInput").val()) || 0,
+                CogsAccountId: parseInt($("#cogsAccount").val()) || 0,
+                IncomeAccountId: parseInt($("#incomeAccount").val()) || 0,
+                AssetAccountId: parseInt($("#assetAccount").val()) || 0,
+                VendorId: parseInt($("#preferredVendor").val()) || null,
+                MinAmount: parseFloat($("#minAmountInput").val()) || 0,
+                MaxAmount: parseFloat($("#maxAmountInput").val()) || 0,
+                OnHand: parseFloat($("#onHandInput").val()) || 0,
+                Method: $("input[name='costingMethod']:checked").attr("id"),
+                TotalValue: parseFloat($("#totalValueInput").val()) || 0,
+                Date: $("#asOfDateInput").val(),
+                Active: $("#itemActive").is(":checked"),
+                ItemType: $("#inventoryType").val(),
+                Units: [{ UnitId: parseInt($("#mainUnit").val()), Factor: 1 }],
+                Assemblies: []
+            };
+
+            // collect assembly rows only for "Inventory Assembly"
+            if (item.Type.includes("Assembly")) {
+                $("#assemblyTable tbody tr").each(function () {
+                    let asm = {
+                        ItemId: parseInt($(this).find(".itemIdSelect").val()) || 0,
+                        Qty: parseFloat($(this).find(".qtyInput").val()) || 0
+                    };
+                    if (asm.ItemId > 0) item.Assemblies.push(asm);
+                });
+            }
+
+            $.ajax({
+                url: '/Lists/SaveItem',
+                type: 'POST',
+                data: JSON.stringify(item),
+                contentType: "application/json",
+                success: function (res) {
+                    if (res.status) {
+                        $("#newItemModal").modal("hide");
+                        toastr.success("Item Added Successfully!");
+                        setTimeout(() => location.reload(), 1500);
+                    } else toastr.error(res.message);
+                },
+                error: function (xhr) { toastr.error(xhr.responseText); }
+            });
+        }
 
 
     </script>
