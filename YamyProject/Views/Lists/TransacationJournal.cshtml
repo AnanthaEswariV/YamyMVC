@@ -1,0 +1,168 @@
+﻿
+@{
+    ViewData["Title"] = "TransacationJournal";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Transaction Journal</strong>
+    </div>
+
+    <div class="card-body">
+        <!-- Center the dropdown -->
+        <div class="d-flex justify-content-center mb-4">
+            <div style="min-width: 300px;">
+                <h6 class="text-center fw-bold">Selection Method</h6>
+                <select class="form-select text-center" id="transactionSelect">
+                    <option>Default</option>
+                    <option>General Ledger</option>
+                    <option>General Ledger Opening Balance</option>
+                    <option>Customer Opening Balance</option>
+                    <option>Vendor Opening Balance</option>
+                    <option>Subcontractor Opening Balance</option>
+                    <option>Sales Invoice</option>
+                    <option>SalesReturn Invoice</option>
+                    <option>Purchase Invoice</option>
+                    <option>Customer Receipt</option>
+                    <option>Vendor Payment</option>
+                    <option>Petty Cash</option>
+                    <option>Employee Salary</option>
+                    <option>Leave Salary</option>
+                    <option>End Of Service</option>
+                    <option>Petty Cash Submition Approval</option>
+                    <option>Purchase Return Invoice</option>
+                    <option>Employee Petty Cash Payment</option>
+                    <option>Opening Qty</option>
+                    <option>Prepaid Expense</option>
+                    <option>Fixed Assets</option>
+                    <option>Fixed Assets Depreciation</option>
+                    <option>PDC Payable</option>
+                    <option>PDC Receivable</option>
+                    <option>Debit Note</option>
+                    <option>Credit Note</option>
+                    <option>Employee Salary Payment</option>
+                    <option>Loan Request</option>
+                    <option>Vendor Advance Payment</option>
+                    <option>Customer Advance Payment</option>
+                    <option>RMS Bill</option>
+                    <option>Manufacturing</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Ref_Id</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>A/C Code</th>
+                    <th>A/C Name</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+
+
+<!-- Your script -->
+<script>
+      $(document).ready(function () {
+        let journalTable;
+
+        function loadJournal(selectionMethod) {
+            $.ajax({
+                url: "/Lists/GetJournal",
+                type: "GET",
+                data: { selectionMethod: selectionMethod },
+                success: function (res) {
+                    if (res.status) {
+                        // Destroy old DataTable if exists
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        // Populate tbody
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                        if (res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn ?? ""}</td>
+                                        <td>${row.refId ?? ""}</td>
+                                        <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
+                                        <td>${row.type ?? ""}</td>
+                                        <td>${row.acCode ?? ""}</td>
+                                        <td>${row.acName ?? ""}</td>
+                                        <td>${row.debit ?? 0}</td>
+                                        <td>${row.credit ?? 0}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="7" style="text-align:center;">No records found</td></tr>`);
+                        }
+
+                        // Initialize DataTable with buttons
+                        journalTable = $("#table1").DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', title: 'Transaction Journal' },
+                                { extend: 'pdfHtml5', title: 'Transaction Journal' }
+                            ],
+                            order: [[0, 'asc']],
+                            paging: true,
+                            searching: true
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error loading journal:", error);
+                }
+            });
+        }
+
+        // Load default on page load
+        loadJournal("Default");
+
+        // Change event
+        $("#transactionSelect").on("change", function () {
+            loadJournal($(this).val());
+        });
+    });
+
+</script>
+
+
+
+
+}

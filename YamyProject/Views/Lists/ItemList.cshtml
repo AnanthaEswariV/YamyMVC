@@ -664,36 +664,27 @@
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
-
-
-                let selectedItem = null;
-                        let assemblyItems = []; // store items for dropdown
+        let selectedItem = null;
+        let assemblyItems = []; // store items for dropdown
 
         // 1️⃣ Load items from API
         function loadAssemblyItems() {
             $.ajax({
                 url: '/Lists/GetItems', // replace with your API
                 type: 'GET',
-                success: function(res) {
+                success: function (res) {
                     if (res.status && res.data.length > 0) {
                         assemblyItems = res.data; // store for dropdown
                     } else {
                         assemblyItems = [];
                     }
                 },
-                error: function(err) {
+                error: function (err) {
                     console.error("Failed to load items:", err);
                     assemblyItems = [];
                 }
             });
         }
-
-        
-
-
-
-
-
 
         // 3️⃣ Update Cost and Name when dropdown changes
         function updateAssemblyCost(select) {
@@ -706,44 +697,16 @@
             $row.find(".itemCostCell").text(parseFloat(cost).toFixed(2));
         }
 
-        // Load items on page ready
-        $(document).ready(function() {
-            loadAssemblyItems();
-        });
-
-        $(document).on("click", "#itemsTable tbody tr", function() {
-            $("#itemsTable tbody tr").removeClass("table-active"); // optional: highlight selected row
-            $(this).addClass("table-active");
-
-            selectedItem = {
-                id: $(this).data("id"),
-                name: $(this).data("name"),
-                barcode: $(this).data("barcode"),
-                type: $(this).data("type")
-            };
-        });
-
-        
-        $(document).ready(function () {
-
-
-           function loadItems() {
+        // ===== Load Items =====
+        function loadItems() {
             var state = $('#stateFilter').val();
-
-            // Category filter
             var categoryId = $("#allCat").is(":checked") ? "" : $("#categoryDropdown").val();
-
-            // Type filter
             var type = $("#allType").is(":checked") ? "" : $("#typeDropdown").val();
 
             $.ajax({
                 url: '/Lists/GetItems',
                 type: 'GET',
-                data: {
-                    state: state,
-                    categoryId: categoryId,
-                    type: type
-                },
+                data: { state, categoryId, type },
                 success: function (result) {
                     var tbody = $('#itemsTable tbody');
                     tbody.empty();
@@ -784,288 +747,124 @@
             });
         }
 
-        // Trigger reload when filters change
-        $(document).on("change", "#stateFilter, #categoryDropdown, #typeDropdown, #allCat, #allType", function () {
-            loadItems();
-        });
-
-            loadItems();
-
-            // -----------------------
-            // Click on #itemsTable row → load transactions in #dataTable
-            // -----------------------
-            $(document).on("click", "#itemsTable tbody tr", function () {
-                let tr = $(this);
-                let itemId = tr.data("id");
-                let itemName = tr.data("name");
-                let barcode = tr.data("barcode");
-                let type = tr.data("type");
-
-                if (!itemId) return;
-
-                $.ajax({
-                    url: '/Lists/GetItemTransactions',
-                    type: 'GET',
-                    data: { itemId: itemId },
-                    success: function (result) {
-                        let tbody = $("#dataTable tbody");
-                        tbody.empty(); // clear old data
-
-                        if (result.status && result.data.length > 0) {
-                                $.each(result.data, function(i, t) {
-            tbody.append(`
-                <tr data-id="${t.itemId}">
-                    <td>${i === 0 ? itemName : ""}</td>
-                    <td>${i === 0 ? barcode : ""}</td>
-                    <td>${i === 0 ? type : ""}</td>
-                    <td>${t.date}</td>
-                    <td>${t.reference}</td>
-                    <td>${t.type}</td>
-                    <td class="text-end">${t.qtyIn}</td>
-                    <td class="text-end">${t.qtyOut}</td>
-                    <td class="text-end">${t.costPrice}</td>
-                    <td class="text-end">${t.salesPrice}</td>
-                    <td class="text-end">${t.qtyBalance}</td>
-                </tr>
-            `);
-        });
-
-                        } else {
-                            tbody.append(`
-                                <tr>
-                                    <td colspan="11" class="text-center text-muted">No transactions found</td>
-                                </tr>
-                            `);
-                        }
-                    },
-                    error: function (err) {
-                        console.error("Error loading transactions:", err);
-                        toastr.error("Failed to load transactions.");
-                    }
-                });
-            });
-
-
-
-
-                $(document).on("click", ".go-to-link", function() {
-            if (!selectedItem || !selectedItem.id) {
-                toastr.warning("Please select an item first.");
-                return;
-            }
-
+        // ===== Load Categories =====
+        function loadCategories(selector = "#categoryDropdown, #categoryDropdowns") {
             $.ajax({
-                url: '/Lists/GetItemCardTransactions',
+                url: '/Lists/GetItemCategory',
                 type: 'GET',
-                data: { itemId: selectedItem.id },
-                success: function(res) {
-                    if (res.status) {
-                        // Populate modal header info
-                        $("#modalItemCode").text(selectedItem.name);
-                        $("#modalItemMethod").text(res.item.method);
-                        $("#modalItemOnHand").text(res.item.onHand);
-                        $("#modalItemCost").text(res.item.currentCostPrice);
+                success: function (result) {
+                    var dropdowns = $(selector);
+                    dropdowns.empty();
 
-                        // Populate modal transactions table
-                        let tbody = $("#modalTransactionTable tbody");
-                        tbody.empty();
-
-                        if (res.transactions.length > 0) {
-                            $.each(res.transactions, function(i, t) {
-                                tbody.append(`
-                                    <tr>
-                                        <td>${t.date}</td>
-                                        <td>${t.warehouseName}</td>
-                                        <td>${t.invNo}</td>
-                                        <td>${t.transNo}</td>
-                                        <td>${t.transType}</td>
-                                        <td>${t.description}</td>
-                                        <td class="text-end">${t.price}</td>
-                                        <td class="text-end">${t.qtyIn}</td>
-                                        <td class="text-end">${t.qtyOut}</td>
-                                        <td class="text-end">${t.qtyBalance}</td>
-                                        <td class="text-end">${t.debit}</td>
-                                        <td class="text-end">${t.credit}</td>
-                                        <td class="text-end">${t.balance}</td>
-                                    </tr>
-                                `);
-                            });
-                        } else {
-                            tbody.append(`<tr><td colspan="15" class="text-center text-muted">No transactions found</td></tr>`);
-                        }
-
-                        $("#itemCardModal").modal("show");
+                    if (result.status && result.data.length > 0) {
+                        dropdowns.append('<option value="">-- Select Category --</option>');
+                        $.each(result.data, function (i, category) {
+                            dropdowns.append(`<option value="${category.id}">${category.categoryName}</option>`);
+                        });
+                    } else {
+                        dropdowns.append('<option value="">No categories found</option>');
                     }
                 },
-                error: function(err) {
-                    toastr.error("Failed to load item transactions.");
-                    console.error(err);
+                error: function (err) {
+                    console.error('Error loading categories:', err);
+                    toastr.error('Failed to load categories');
                 }
             });
-        });
+        }
 
-
-
-            $('#stateFilter').on('change', loadItems);
-
-            // ===== Load Categories =====
-            function loadCategories(selector = "#categoryDropdown, #categoryDropdowns") {
-                $.ajax({
-                    url: '/Lists/GetItemCategory',
-                    type: 'GET',
-                    success: function (result) {
-                        var dropdowns = $(selector);
-                        dropdowns.empty();
-
-                        if (result.status && result.data.length > 0) {
-                            dropdowns.append('<option value="">-- Select Category --</option>');
-                            $.each(result.data, function (i, category) {
-                                dropdowns.append(`<option value="${category.id}">${category.categoryName}</option>`);
-                            });
-                        } else {
-                            dropdowns.append('<option value="">No categories found</option>');
-                        }
-                    },
-                    error: function (err) {
-                        console.error('Error loading categories:', err);
-                        toastr.error('Failed to load categories');
-                    }
-                });
-            }
-            loadCategories();
-
-            // Toggle category dropdown based on checkbox
+           // Toggle category dropdown based on checkbox
             $('#allCat').on('change', function () {
                 $('#categoryDropdown').prop('disabled', $(this).is(':checked')).val('');
             });
             if ($('#allCat').is(':checked')) $('#categoryDropdown').prop('disabled', true);
 
-            // ===== Load Warehouses =====
-            function loadWarehouses(selector = "#warehouse, #warehouseDropdown") {
-                $.ajax({
-                    url: '/Inventory/GetWarehouses',
-                    type: 'GET',
-                    success: function (res) {
-                        if (res.status) {
-                            const dropdowns = $(selector);
-                            dropdowns.empty().append('<option value="">Select Warehouse</option>');
-                            res.data.forEach(w => {
-                                dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
-                            });
-                        } else {
-                            alert(res.message);
-                        }
-                    },
-                    error: function (err) {
-                        console.error("Error fetching warehouses:", err);
-                    }
-                });
-            }
-            loadWarehouses();
 
-            // ===== Load Units =====
-            function loadUnitsDropdown(selector = "#mainUnit") {
-                $.get('/Lists/GetUnit', function (res) {
-                    const dropdown = $(selector);
-                    dropdown.empty().append('<option value="">-- Select Unit --</option>');
-                    if (res && res.length > 0) {
-                        res.forEach(u => dropdown.append(`<option value="${u.id}">${u.unitName}</option>`));
-                    } else {
-                        dropdown.append('<option value="">No units found</option>');
-                    }
-                }).fail(function (err) {
-                    console.error("Error loading units:", err);
-                    toastr.error("Failed to load units");
-                });
-            }
-            loadUnitsDropdown("#mainUnit");
-
-            // Reload units dropdown when modal opens
-            $(document).on('shown.bs.modal', '#newWarehouseModal', function () {
-                loadUnitsDropdown("#mainUnit");
-            });
-
-            // ===== Load Accounts =====
+        // ===== Load Warehouses =====
+        function loadWarehouses(selector = "#warehouse, #warehouseDropdown") {
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+                url: '/Inventory/GetWarehouses',
                 type: 'GET',
-                success: function (data) {
-                    const dropdowns = [
-                        { ddl: '#cogsAccount', codeBox: '#code1' },
-                        { ddl: '#assetAccount', codeBox: '#code2' },
-                        { ddl: '#incomeAccount', codeBox: '#code3' },
-                        { ddl: '#preferredVendor', codeBox: '#code4' }
-                    ];
-
-                    dropdowns.forEach(set => {
-                        let $ddl = $(set.ddl);
-                        $ddl.empty().append('<option value="">-- Select --</option>');
-
-                        $.each(data, function (i, item) {
-                            $ddl.append($('<option>', {
-                                value: item.id,
-                                text: item.code + ' - ' + item.name,
-                                'data-code': item.code
-                            }));
+                success: function (res) {
+                    if (res.status) {
+                        const dropdowns = $(selector);
+                        dropdowns.empty().append('<option value="">Select Warehouse</option>');
+                        res.data.forEach(w => {
+                            dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
                         });
-
-                        $ddl.on('change', function () {
-                            let code = $(this).find(':selected').data('code');
-                            $(set.codeBox).val(code || "");
-                        });
-                    });
+                    } else {
+                        alert(res.message);
+                    }
                 },
-                error: function (xhr, status, error) {
-                    console.error("Error loading accounts:", status, error);
+                error: function (err) {
+                    console.error("Error fetching warehouses:", err);
                 }
             });
+        }
 
-
-               toastr.options = {
-                         "closeButton": true,
-                         "debug": false,
-                         "newestOnTop": false,
-                         "progressBar": true,
-                         "positionClass": "toast-top-right",
-                         "preventDuplicates": false,
-                         "onclick": null,
-                         "showDuration": "300",
-                         "hideDuration": "1000",
-                         "timeOut": "5000",
-                         "extendedTimeOut": "1000",
-                         "showEasing": "swing",
-                         "hideEasing": "linear",
-                         "showMethod": "fadeIn",
-                         "hideMethod": "fadeOut"
-                     };
-
-
-        });
-
-                $(document).ready(function () {
-            changeFormLayout();
-            loadDropdowns();
-
-
-        });
-
-               $(document).ready(function () {
-            // Recalculate total when cost or qty changes
-            $("#costPriceInput, #onHandInput").on("input", function () {
-                recalcTotal();
+        // ===== Load Units =====
+        function loadUnitsDropdown(selector = "#mainUnit") {
+            $.get('/Lists/GetUnit', function (res) {
+                const dropdown = $(selector);
+                dropdown.empty().append('<option value="">-- Select Unit --</option>');
+                if (res && res.length > 0) {
+                    res.forEach(u => dropdown.append(`<option value="${u.id}">${u.unitName}</option>`));
+                } else {
+                    dropdown.append('<option value="">No units found</option>');
+                }
+            }).fail(function (err) {
+                console.error("Error loading units:", err);
+                toastr.error("Failed to load units");
             });
+        }
 
-            function recalcTotal() {
-                let cost = parseFloat($("#costPriceInput").val()) || 0;
-                let qty = parseFloat($("#onHandInput").val()) || 0;
-                let total = cost * qty;
-                $("#totalValueInput").val(total.toFixed(2));
+                $(document).on('shown.bs.modal', '#newWarehouseModal', function () {
+            loadUnitsDropdown("#mainUnit");
+        });
+
+        // ===== Load Accounts =====
+        $.ajax({
+            url: '/HR/GetAccruedSalaries',
+            type: 'GET',
+            success: function (data) {
+                const dropdowns = [
+                    { ddl: '#cogsAccount', codeBox: '#code1' },
+                    { ddl: '#assetAccount', codeBox: '#code2' },
+                    { ddl: '#incomeAccount', codeBox: '#code3' },
+                    { ddl: '#preferredVendor', codeBox: '#code4' }
+                ];
+
+                dropdowns.forEach(set => {
+                    let $ddl = $(set.ddl);
+                    $ddl.empty().append('<option value="">-- Select --</option>');
+
+                    $.each(data, function (i, item) {
+                        $ddl.append($('<option>', {
+                            value: item.id,
+                            text: item.code + ' - ' + item.name,
+                            'data-code': item.code
+                        }));
+                    });
+
+                    $ddl.on('change', function () {
+                        let code = $(this).find(':selected').data('code');
+                        $(set.codeBox).val(code || "");
+                    });
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error("Error loading accounts:", status, error);
             }
         });
 
+        // ===== Recalculate Total =====
+        function recalcTotal() {
+            let cost = parseFloat($("#costPriceInput").val()) || 0;
+            let qty = parseFloat($("#onHandInput").val()) || 0;
+            let total = cost * qty;
+            $("#totalValueInput").val(total.toFixed(2));
+        }
 
-
-
+        // ===== Change Form Layout =====
         function changeFormLayout() {
             const type = $("#typeSelect").val().toLowerCase();
 
@@ -1081,9 +880,10 @@
                 $("#assemblyTable").hide();
             }
 
-            recalcTotal(); // keep total updated on type change
+            recalcTotal();
         }
 
+        // ===== Add Assembly Row =====
         function addAssemblyRow() {
             const row = `<tr>
                 <td><select class="form-select itemIdSelect"><option value="1">Item A</option></select></td>
@@ -1093,6 +893,7 @@
             $("#assemblyTable tbody").append(row);
         }
 
+        // ===== Save Item =====
         function saveItem() {
             let item = {
                 Id: 0,
@@ -1120,7 +921,6 @@
                 Assemblies: []
             };
 
-            // collect assembly rows only for "Inventory Assembly"
             if (item.Type.includes("Assembly")) {
                 $("#assemblyTable tbody tr").each(function () {
                     let asm = {
@@ -1143,11 +943,164 @@
                         setTimeout(() => location.reload(), 1500);
                     } else toastr.error(res.message);
                 },
-                error: function (xhr) { toastr.error(xhr.responseText); }
+                error: function (xhr) {
+                    toastr.error(xhr.responseText);
+                }
             });
         }
 
+        // ==================
+        // INIT ON PAGE LOAD
+        // ==================
+        $(document).ready(function () {
+            // Load data
+            loadAssemblyItems();
+            loadItems();
+            loadCategories();
+            loadWarehouses();
+            loadUnitsDropdown("#mainUnit");
 
+            // Event bindings
+            $("#costPriceInput, #onHandInput").on("input", recalcTotal);
+            $("#stateFilter, #categoryDropdown, #typeDropdown, #allCat, #allType").on("change", loadItems);
+            $("#allCat").on("change", function () {
+                $('#categoryDropdown').prop('disabled', $(this).is(':checked')).val('');
+            });
+
+            // Row selection
+            $(document).on("click", "#itemsTable tbody tr", function () {
+                $("#itemsTable tbody tr").removeClass("table-active");
+                $(this).addClass("table-active");
+
+                selectedItem = {
+                    id: $(this).data("id"),
+                    name: $(this).data("name"),
+                    barcode: $(this).data("barcode"),
+                    type: $(this).data("type")
+                };
+            });
+
+            // Load transactions for row
+            $(document).on("click", "#itemsTable tbody tr", function () {
+                let tr = $(this);
+                let itemId = tr.data("id");
+                let itemName = tr.data("name");
+                let barcode = tr.data("barcode");
+                let type = tr.data("type");
+
+                if (!itemId) return;
+
+                $.ajax({
+                    url: '/Lists/GetItemTransactions',
+                    type: 'GET',
+                    data: { itemId: itemId },
+                    success: function (result) {
+                        let tbody = $("#dataTable tbody");
+                        tbody.empty();
+
+                        if (result.status && result.data.length > 0) {
+                            $.each(result.data, function (i, t) {
+                                tbody.append(`
+                                    <tr data-id="${t.itemId}">
+                                        <td>${i === 0 ? itemName : ""}</td>
+                                        <td>${i === 0 ? barcode : ""}</td>
+                                        <td>${i === 0 ? type : ""}</td>
+                                        <td>${t.date}</td>
+                                        <td>${t.reference}</td>
+                                        <td>${t.type}</td>
+                                        <td class="text-end">${t.qtyIn}</td>
+                                        <td class="text-end">${t.qtyOut}</td>
+                                        <td class="text-end">${t.costPrice}</td>
+                                        <td class="text-end">${t.salesPrice}</td>
+                                        <td class="text-end">${t.qtyBalance}</td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="11" class="text-center text-muted">No transactions found</td></tr>`);
+                        }
+                    },
+                    error: function (err) {
+                        console.error("Error loading transactions:", err);
+                        toastr.error("Failed to load transactions.");
+                    }
+                });
+            });
+
+            // Go-to-link → item card modal
+            $(document).on("click", ".go-to-link", function () {
+                if (!selectedItem || !selectedItem.id) {
+                    toastr.warning("Please select an item first.");
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Lists/GetItemCardTransactions',
+                    type: 'GET',
+                    data: { itemId: selectedItem.id },
+                    success: function (res) {
+                        if (res.status) {
+                            $("#modalItemCode").text(selectedItem.name);
+                            $("#modalItemMethod").text(res.item.method);
+                            $("#modalItemOnHand").text(res.item.onHand);
+                            $("#modalItemCost").text(res.item.currentCostPrice);
+
+                            let tbody = $("#modalTransactionTable tbody");
+                            tbody.empty();
+
+                            if (res.transactions.length > 0) {
+                                $.each(res.transactions, function (i, t) {
+                                    tbody.append(`
+                                        <tr>
+                                            <td>${t.date}</td>
+                                            <td>${t.warehouseName}</td>
+                                            <td>${t.invNo}</td>
+                                            <td>${t.transNo}</td>
+                                            <td>${t.transType}</td>
+                                            <td>${t.description}</td>
+                                            <td class="text-end">${t.price}</td>
+                                            <td class="text-end">${t.qtyIn}</td>
+                                            <td class="text-end">${t.qtyOut}</td>
+                                            <td class="text-end">${t.qtyBalance}</td>
+                                            <td class="text-end">${t.debit}</td>
+                                            <td class="text-end">${t.credit}</td>
+                                            <td class="text-end">${t.balance}</td>
+                                        </tr>
+                                    `);
+                                });
+                            } else {
+                                tbody.append(`<tr><td colspan="15" class="text-center text-muted">No transactions found</td></tr>`);
+                            }
+
+                            $("#itemCardModal").modal("show");
+                        }
+                    },
+                    error: function (err) {
+                        toastr.error("Failed to load item transactions.");
+                        console.error(err);
+                    }
+                });
+            });
+
+            // Toastr config
+            toastr.options = {
+                "closeButton": true,
+                "debug": false,
+                "newestOnTop": false,
+                "progressBar": true,
+                "positionClass": "toast-top-right",
+                "preventDuplicates": false,
+                "showDuration": "300",
+                "hideDuration": "1000",
+                "timeOut": "5000",
+                "extendedTimeOut": "1000",
+                "showEasing": "swing",
+                "hideEasing": "linear",
+                "showMethod": "fadeIn",
+                "hideMethod": "fadeOut"
+            };
+        });
     </script>
+
 
 }
