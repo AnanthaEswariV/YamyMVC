@@ -4,6 +4,16 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<style>
+    #table1 .text-right {
+        text-align: right !important;
+    }
+
+    #table1 tbody tr:last-child {
+        border-top: 2px solid #dee2e6;
+    }
+</style>
+
 
 
 <div class="card">
@@ -94,10 +104,7 @@
 
 <!-- Your script -->
 <script>
-      $(document).ready(function () {
-        let journalTable;
-
-        function loadJournal(selectionMethod) {
+            function loadJournal(selectionMethod) {
             $.ajax({
                 url: "/Lists/GetJournal",
                 type: "GET",
@@ -113,52 +120,141 @@
                         let tbody = $("#table1 tbody");
                         tbody.empty();
 
-                        if (res.data.length > 0) {
+                        if (res.data && res.data.length > 0) {
                             $.each(res.data, function (i, row) {
+                                // Handle the TOTAL row differently (it has null/empty SN)
+                                let isTotal = !row.sn || row.acName === "TOTAL";
+
                                 let tr = `
-                                    <tr>
+                                    <tr ${isTotal ? 'style="font-weight: bold; background-color: #f8f9fa;"' : ''}>
                                         <td>${row.sn ?? ""}</td>
                                         <td>${row.refId ?? ""}</td>
                                         <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
                                         <td>${row.type ?? ""}</td>
                                         <td>${row.acCode ?? ""}</td>
                                         <td>${row.acName ?? ""}</td>
-                                        <td>${row.debit ?? 0}</td>
-                                        <td>${row.credit ?? 0}</td>
+                                        <td style="text-align: right;">${formatCurrency(row.debit ?? 0)}</td>
+                                        <td style="text-align: right;">${formatCurrency(row.credit ?? 0)}</td>
                                     </tr>`;
                                 tbody.append(tr);
                             });
+
+                            // Initialize DataTable ONLY when there is data
+                            journalTable = $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'pdfHtml5',
+                                        title: 'Transaction Journal',
+                                        customize: function(doc) {
+                                            doc.defaultStyle.fontSize = 9;
+                                            doc.styles.tableHeader.fontSize = 10;
+                                            doc.styles.tableHeader.bold = true;
+                                        }
+                                    },
+                                    {
+                                        extend: 'excelHtml5',
+                                        title: 'Transaction Journal'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                paging: true,
+                                searching: true,
+                                pageLength: 25,
+                                columnDefs: [
+                                    {
+                                        targets: [6, 7], // Debit and Credit columns
+                                        className: 'text-right'
+                                    }
+                                ]
+                            });
+
                         } else {
-                            tbody.append(`<tr><td colspan="7" style="text-align:center;">No records found</td></tr>`);
+                            // When no data, don't initialize DataTable
+                            // Just show the message in a simple table structure
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="8" style="text-align:center; padding: 40px; color: #6c757d; font-style: italic;">
+                                        No records found for the selected criteria
+                                    </td>
+                                </tr>
+                            `);
+
+                            // Hide DataTable buttons container if it exists
+                            $('.dt-buttons').hide();
                         }
 
-                        // Initialize DataTable with buttons
-                        journalTable = $("#table1").DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                { extend: 'excelHtml5', title: 'Transaction Journal' },
-                                { extend: 'pdfHtml5', title: 'Transaction Journal' }
-                            ],
-                            order: [[0, 'asc']],
-                            paging: true,
-                            searching: true
-                        });
+                    } else {
+                        console.error("API returned error:", res.message);
+                        $("#table1 tbody").html(`
+                            <tr>
+                                <td colspan="8" style="text-align:center; color: red; padding: 40px;">
+                                    Error: ${res.message || 'Failed to load data'}
+                                </td>
+                            </tr>
+                        `);
+                        $('.dt-buttons').hide();
                     }
                 },
                 error: function (xhr, status, error) {
                     console.error("Error loading journal:", error);
+
+                    // Destroy DataTable if exists
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+
+                    $("#table1 tbody").html(`
+                        <tr>
+                            <td colspan="8" style="text-align:center; color: red; padding: 40px;">
+                                Error loading data: ${error}
+                            </td>
+                        </tr>
+                    `);
+                    $('.dt-buttons').hide();
                 }
             });
         }
 
-        // Load default on page load
-        loadJournal("Default");
+        // Helper function to format currency
+        function formatCurrency(amount) {
+            if (amount === 0 || amount === "0" || !amount) {
+                return "0.00";
+            }
+            return parseFloat(amount).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 4
+            });
+        }
 
-        // Change event
-        $("#transactionSelect").on("change", function () {
-            loadJournal($(this).val());
+        // Enhanced initialization
+        $(document).ready(function () {
+            let journalTable;
+
+            // Load default on page load
+            loadJournal("Default");
+
+            // Change event with loading state
+            $("#transactionSelect").on("change", function () {
+                let selectedValue = $(this).val();
+
+                // Destroy existing DataTable first
+                if ($.fn.DataTable.isDataTable("#table1")) {
+                    $("#table1").DataTable().destroy();
+                }
+
+                // Show loading state
+                $("#table1 tbody").html(`
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding: 40px;">
+                            <i class="fa fa-spinner fa-spin"></i> Loading...
+                        </td>
+                    </tr>
+                `);
+
+                loadJournal(selectedValue);
+            });
         });
-    });
 
 </script>
 

@@ -1524,7 +1524,7 @@ namespace YamyProject.Controllers
                         Type = reader["Type"]?.ToString() ?? "",
                         ACCode = reader["ACCode"]?.ToString() ?? "",
                         ACName = reader["ACName"]?.ToString() ?? "",
-                        Description = reader["Description"]?.ToString(),
+                        //Description = reader["Description"]?.ToString(),
                         Debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0,
                         Credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0
                     });
@@ -1542,11 +1542,11 @@ namespace YamyProject.Controllers
                         SN = (int?)null,
                         RefId = "",
                         Date = (DateTime?)null,
-                        TransactionId = (int?)null,
+                        //TransactionId = (int?)null,
                         Type = "",
                         ACCode = "",
                         ACName = "TOTAL",
-                        Description = "",
+                        //Description = "",
                         Debit = totalDebit,
                         Credit = totalCredit
                     });
