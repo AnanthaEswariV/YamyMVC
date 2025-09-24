@@ -81,6 +81,8 @@
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
 
     <script>
@@ -135,10 +137,10 @@
                             <td>${pos.name}</td>
                             <td class="text-center">
                                 <button class="btn btn-sm btn-primary edit-btn" data-id="${pos.id}" data-dept="${pos.departmentId}" data-name="${pos.name}">
-                                    <i class="bi bi-pencil"></i>
+                                   <i class="fas fa-pen"></i>
                                 </button>
                                 <button class="btn btn-sm btn-danger delete-btn" data-id="${pos.id}">
-                                    <i class="bi bi-trash"></i>
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </td>
                         </tr>`;

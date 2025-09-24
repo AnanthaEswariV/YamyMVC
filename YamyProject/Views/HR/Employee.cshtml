@@ -329,6 +329,8 @@
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
 
         $(document).ready(function() {
@@ -560,15 +562,15 @@
                             <td>${emp.name || ""}</td>
                             <td>${totalSalary.toFixed(2)}</td>
                                     <td>
-                <!-- Edit Icon -->
-                <a href="javascript:void(0)" class="edit-btn text-primary me-2" data-id="${emp.id}" title="Edit">
-                    <i class="bi bi-pencil-square"></i>
-                </a>
-
-                <!-- Delete Icon -->
-                <a href="javascript:void(0)" class="delete-btn text-danger" data-id="${emp.id}" title="Delete">
-                    <i class="bi bi-trash"></i>
-                </a>
+             <button type="button" class="btn btn-sm btn-primary edit-btn me-2"
+                            data-id="${emp.id}" title="Edit Employee">
+                             <i class="fas fa-pen"></i>
+                    </button>
+                    <!-- Delete Button with fallback styling -->
+                    <button type="button" class="btn btn-sm btn-danger delete-btn"
+                            data-id="${emp.id}" title="Delete Employee">
+                         <i class="fas fa-trash"></i>
+                    </button>
             </td>
 
                         </tr>
