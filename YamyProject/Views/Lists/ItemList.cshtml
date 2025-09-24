@@ -425,6 +425,7 @@
             </div>
             <div class="modal-body p-4">
                 <form id="newItemForm">
+           
                     <!-- Warehouse & Type -->
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -467,7 +468,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Item Name</label>
-                            <input type="text" class="form-control" id="itemNameInput" placeholder="Item Name">
+                            <input type="text" class="form-control" id="itemNameInput" placeholder="Item Name" required>
                         </div>
                     </div>
 
@@ -476,11 +477,11 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Opening Qty</label>
-                                <input type="number" class="form-control" id="onHandInput" placeholder="On Hand">
+                                <input type="number" class="form-control" id="onHandInput" placeholder="On Hand" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Cost Price</label>
-                                <input type="number" class="form-control" id="costPriceInput" placeholder="Cost Price">
+                                <input type="number" class="form-control" id="costPriceInput" placeholder="Cost Price" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Total</label>
@@ -490,7 +491,7 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">As Of</label>
-                                <input type="date" class="form-control" id="asOfDateInput">
+                                <input type="date" class="form-control" id="asOfDateInput" required>
                             </div>
                         </div>
                     </div>
@@ -521,7 +522,7 @@
                     <div id="unitCostingSection" class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-muted">Main Unit</label>
-                            <select class="form-select" id="mainUnit"></select>
+                            <select class="form-select" id="mainUnit" required></select>
                             <button type="button" class="btn btn-outline-primary mt-4" data-bs-toggle="modal" data-bs-target="#addUnitModal">Add More Unit</button>
                         </div>
                         <div class="col-md-6">
@@ -583,7 +584,6 @@
                         <table class="table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>Item Code</th>
                                     <th>Item Name</th>
                                     <th>Cost</th>
                                     <th>Qty</th>
@@ -592,15 +592,19 @@
                             </thead>
                             <tbody></tbody>
                         </table>
-                        <button type="button" class="btn btn-sm btn-primary" onclick="addAssemblyRow()">Add Item</button>
+                        <button type="button" onclick="addAssemblyRow()">Add Assembly Item</button>
                     </div>
-
                 </form>
+         
             </div>
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times"></i> CLOSE</button>
                 <button type="button" class="btn btn-primary" onclick="saveItem()"><i class="fas fa-save"></i> Save</button>
             </div>
+
+
+
+        
         </div>
     </div>
 </div>
@@ -665,16 +669,16 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
         let selectedItem = null;
-        let assemblyItems = []; // store items for dropdown
+        let assemblyItems = []; // loaded from API
 
-        // 1️⃣ Load items from API
         function loadAssemblyItems() {
             $.ajax({
-                url: '/Lists/GetItems', // replace with your API
+                url: '/Lists/GetItems',
                 type: 'GET',
                 success: function (res) {
                     if (res.status && res.data.length > 0) {
-                        assemblyItems = res.data; // store for dropdown
+                        assemblyItems = res.data; 
+                        console.log(res.data);
                     } else {
                         assemblyItems = [];
                     }
@@ -686,16 +690,98 @@
             });
         }
 
-        // 3️⃣ Update Cost and Name when dropdown changes
-        function updateAssemblyCost(select) {
-            let $row = $(select).closest('tr');
-            let selected = $(select).find('option:selected');
-            let itemName = selected.text().split(" - ").slice(1).join(" - "); // get name after code
-            let cost = selected.data("cost") ?? 0;
+           // Add a new row to assembly table
+        function addAssemblyRow() {
+            if (assemblyItems.length === 0) return;
 
-            $row.find(".itemNameCell").text(itemName);
-            $row.find(".itemCostCell").text(parseFloat(cost).toFixed(2));
+            const tableBody = $("#assemblyTable tbody");
+            const row = $("<tr></tr>");
+
+            // Item Name (Dropdown)
+            const nameTd = $('<td></td>');
+            const select = $('<select class="form-control item-select"><option value="">Select Item</option></select>');
+            assemblyItems.forEach(item => {
+                select.append(`<option value="${item.id}" data-cost="${item.cost_price}">${item.itemName}</option>`);
+            });
+            nameTd.append(select);
+
+            // Cost
+            const costTd = $('<td><input type="number" class="form-control item-cost" readonly /></td>');
+
+            // Qty
+            const qtyTd = $('<td><input type="number" class="form-control item-qty" value="1" min="1" /></td>');
+
+            // Action
+            const actionTd = $('<td><button type="button" class="btn btn-danger btn-sm remove-row">Remove</button></td>');
+
+            row.append(nameTd, costTd, qtyTd, actionTd);
+            tableBody.append(row);
+
+            $("#assemblyTable").show();
+
+            // On change, update cost
+            select.on("change", function () {
+                const selectedOption = $(this).find("option:selected");
+                const cost = selectedOption.data("cost") || 0;
+                row.find(".item-cost").val(cost);
+            });
+
+            // Remove row
+            actionTd.find(".remove-row").on("click", function () {
+                row.remove();
+                if ($("#assemblyTable tbody tr").length === 0) {
+                    $("#assemblyTable").hide();
+                }
+            });
         }
+
+
+                function validateForm() {
+            let itemName = $("#itemNameInput").val().trim();
+            let warehouse = $("#warehouseDropdown").val();
+            let category = $("#categoryDropdowns").val();
+            let mainUnit = $("#mainUnit").val();
+            let onHand = $("#onHandInput").val();
+            let costPrice = $("#costPriceInput").val();
+
+            if (!itemName) {
+                alert("Item Name is required");
+                $("#itemNameInput").focus();
+                return false;
+            }
+            if (!warehouse) {
+                alert("Please select a Warehouse");
+                $("#warehouseDropdown").focus();
+                return false;
+            }
+            if (!category) {
+                alert("Please select a Category");
+                $("#categoryDropdowns").focus();
+                return false;
+            }
+            if (!mainUnit) {
+                alert("Please select a Main Unit");
+                $("#mainUnit").focus();
+                return false;
+            }
+            if (onHand === "" || parseFloat(onHand) < 0) {
+                alert("Opening Qty must be 0 or more");
+                $("#onHandInput").focus();
+                return false;
+            }
+            if (costPrice === "" || parseFloat(costPrice) < 0) {
+                alert("Cost Price must be 0 or more");
+                $("#costPriceInput").focus();
+                return false;
+            }
+                if (!$("#asOfDateInput").val()) {
+            toastr.error("As Of Date is required");
+            return false;
+        }
+            return true; // All checks passed
+        }
+
+
 
         // ===== Load Items =====
         function loadItems() {
@@ -883,18 +969,13 @@
             recalcTotal();
         }
 
-        // ===== Add Assembly Row =====
-        function addAssemblyRow() {
-            const row = `<tr>
-                <td><select class="form-select itemIdSelect"><option value="1">Item A</option></select></td>
-                <td><input type="number" class="form-control qtyInput" value="1"></td>
-                <td><button type="button" class="btn btn-sm btn-danger" onclick="$(this).closest('tr').remove()">Remove</button></td>
-            </tr>`;
-            $("#assemblyTable tbody").append(row);
-        }
 
-        // ===== Save Item =====
-        function saveItem() {
+
+
+
+              function saveItem() {
+            if (!validateForm()) return;
+
             let item = {
                 Id: 0,
                 Name: $("#itemNameInput").val(),
@@ -908,11 +989,11 @@
                 CogsAccountId: parseInt($("#cogsAccount").val()) || 0,
                 IncomeAccountId: parseInt($("#incomeAccount").val()) || 0,
                 AssetAccountId: parseInt($("#assetAccount").val()) || 0,
-                VendorId: parseInt($("#preferredVendor").val()) || null,
+                VendorId: $("#preferredVendor").val() ? parseInt($("#preferredVendor").val()) : null,
                 MinAmount: parseFloat($("#minAmountInput").val()) || 0,
                 MaxAmount: parseFloat($("#maxAmountInput").val()) || 0,
                 OnHand: parseFloat($("#onHandInput").val()) || 0,
-                Method: $("input[name='costingMethod']:checked").attr("id"),
+                Method: $("input[name='costingMethod']:checked").attr("id") || "avg",
                 TotalValue: parseFloat($("#totalValueInput").val()) || 0,
                 Date: $("#asOfDateInput").val(),
                 Active: $("#itemActive").is(":checked"),
@@ -921,15 +1002,20 @@
                 Assemblies: []
             };
 
-            if (item.Type.includes("Assembly")) {
+            if (item.Type && item.Type.includes("Assembly")) {
                 $("#assemblyTable tbody tr").each(function () {
-                    let asm = {
-                        ItemId: parseInt($(this).find(".itemIdSelect").val()) || 0,
-                        Qty: parseFloat($(this).find(".qtyInput").val()) || 0
-                    };
-                    if (asm.ItemId > 0) item.Assemblies.push(asm);
+                    const itemId = $(this).find(".item-select").val();
+                    const qty = $(this).find(".item-qty").val();
+                    if (itemId && qty) {
+                        item.Assemblies.push({
+                            ItemId: parseInt(itemId),
+                            Qty: parseFloat(qty)
+                        });
+                    }
                 });
             }
+
+            console.log("Payload:", item);
 
             $.ajax({
                 url: '/Lists/SaveItem',
@@ -948,6 +1034,8 @@
                 }
             });
         }
+
+
 
         // ==================
         // INIT ON PAGE LOAD
