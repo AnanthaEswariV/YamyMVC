@@ -1,0 +1,190 @@
+﻿    <!-- Fixed Asset Modal -->
+<div class="modal fade" id="newFixedAssetModal" tabindex="-1" aria-labelledby="fixedAssetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="fixedAssetModalLabel">Fixed Asset - New</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Form -->
+            <form id="newFixedAssetForm" class="needs-validation" novalidate>
+                <!-- Modal Body -->
+                <div class="modal-body p-3">
+                    <input type="hidden" id="FixedAssetId" />
+
+                    <!-- Basic Information -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Code</label>
+                            <input type="text" class="form-control form-control-sm" id="assetCode" value="00002" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Date</label>
+                            <input type="date" class="form-control form-control-sm" id="assetDate" value="2025-09-25" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Category</label>
+                            <select class="form-select form-select-sm" id="assetCategory" required>
+                                <option value="">-- Select --</option>
+                                <option value="rgui" selected>rgui</option>
+                                <option value="equipment">Equipment</option>
+                                <option value="furniture">Furniture</option>
+                                <option value="vehicle">Vehicle</option>
+                                <option value="building">Building</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-4">New</button>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Asset Name</label>
+                            <input type="text" class="form-control form-control-sm" id="assetName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Asset Brand</label>
+                            <input type="text" class="form-control form-control-sm" id="assetBrand">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Model / ENG No</label>
+                            <input type="text" class="form-control form-control-sm" id="modelEngNo">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Supplier Name</label>
+                            <input type="text" class="form-control form-control-sm" id="supplierName">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Status</label>
+                            <select class="form-select form-select-sm" id="assetStatus">
+                                <option value="">-- Select --</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="maintenance">Under Maintenance</option>
+                                <option value="disposed">Disposed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Information -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Invoice Number</label>
+                            <input type="text" class="form-control form-control-sm" id="invoiceNumber">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Total Invoice</label>
+                            <input type="number" class="form-control form-control-sm" id="totalInvoice" step="0.01">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Purchase Date</label>
+                            <input type="date" class="form-control form-control-sm" id="purchaseDate" value="2025-09-25">
+                        </div>
+                    </div>
+
+                    <!-- Depreciation Information -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Depreciation Life (Years)</label>
+                            <input type="number" class="form-control form-control-sm" id="depreciationLife" min="1" max="50">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Depreciation Value (IN %)</label>
+                            <input type="number" class="form-control form-control-sm" id="depreciationValue" min="0" max="100" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">End Date</label>
+                            <input type="date" class="form-control form-control-sm" id="endDate" value="2025-09-25">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold small">Total Days</label>
+                            <input type="number" class="form-control form-control-sm" id="totalDays" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Account Information -->
+                    <h6 class="text-primary fw-bold mb-3 mt-4">Account Information</h6>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Fixed Assets Account</label>
+                            <select class="form-select form-select-sm" id="fixedAssetsAccount">
+                                <option value="">-- Select --</option>
+                                <option value="1201001">1201001 - Fixed Assets Net</option>
+                                <option value="1201002">1201002 - Equipment</option>
+                                <option value="1201003">1201003 - Furniture & Fixtures</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="fixedAssetAccountCode" readonly>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Accumulated Depreciation</label>
+                            <select class="form-select form-select-sm" id="accumulatedDepreciation">
+                                <option value="">-- Select --</option>
+                                <option value="1201001" selected>1201001 - Fixed Assets Net</option>
+                                <option value="1202001">1202001 - Accumulated Depreciation - Equipment</option>
+                                <option value="1202002">1202002 - Accumulated Depreciation - Furniture</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="accDepreciationCode" value="1201001" readonly>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Depreciation Expense</label>
+                            <select class="form-select form-select-sm" id="depreciationExpense">
+                                <option value="">-- Select --</option>
+                                <option value="1101001" selected>1101001 - Bank Account</option>
+                                <option value="5101001">5101001 - Depreciation Expense</option>
+                                <option value="5101002">5101002 - Equipment Depreciation</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="depExpenseCode" value="1101001" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Make Journal Checkbox -->
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="makeJournal" checked>
+                        <label class="form-check-label fw-bold" for="makeJournal">
+                            Make Journal
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+                    <button type="submit" id="saveBtn" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

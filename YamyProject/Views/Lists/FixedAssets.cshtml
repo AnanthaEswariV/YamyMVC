@@ -1,0 +1,213 @@
+﻿
+@{
+    ViewData["Title"] = "FixedAssets";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .fixed-header {
+        background: #4472c4;
+        color: white;
+        margin: -15px -15px 0 -15px;
+        padding: 8px 15px;
+        font-weight: bold;
+    }
+
+
+
+    .fixed-toolbar {
+        background: #e7e6e6;
+        margin: 0 -15px;
+        padding: 5px 15px;
+        border-bottom: 1px solid #ccc;
+        font-size: 12px;
+    }
+
+        .fixed-toolbar .nav-link {
+            color: #333;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+
+    .fixed-main {
+        margin: 0 -15px -15px -15px;
+        display: flex;
+        height: calc(100vh - 200px);
+        background: #f8f9fa;
+    }
+
+    .fixed-sidebar {
+        width: 380px;
+        background: white;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar-controls {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+
+        .sidebar-controls select,
+        .sidebar-controls input {
+            font-size: 11px;
+            padding: 3px 6px;
+            border: 1px solid #ccc;
+        }
+
+    .employee-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .employee-list-header {
+        background: #f8f9fa;
+        padding: 6px 12px;
+        border-bottom: 1px solid #ddd;
+        font-weight: bold;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .employee-item {
+        padding: 6px 12px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+        .employee-item:hover {
+            background: #f5f5f5;
+        }
+
+        .employee-item.active {
+            background: #c8e6c9;
+        }
+
+    .employee-content {
+        flex: 1;
+        padding: 15px;
+        background: white;
+        position: relative;
+    }
+
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+}
+
+
+</style>
+
+<div class="fixed-header">
+    <center> Fixed Assets Center</center>
+</div>
+
+
+<div class="fixed-toolbar">
+    <ul class="nav nav-pills mb-0">
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-gear-fill me-1"></i> Fixed Assets Operations
+            </a>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newFixedAssetModal">
+                        <i class="bi bi-plus-circle me-2"></i> New Fixed Assets
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newEmployeeModal">
+                        <i class="bi bi-plus-circle me-2"></i> New Fixed Assets Category
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-printer me-1"></i> Print
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Print List</a></li>
+                <li><a class="dropdown-item" href="#">Print Details</a></li>
+            </ul>
+        </li>
+        <li class="nav-item dropdown me-3">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Export to Excel</a></li>
+            </ul>
+        </li>
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                <i class="bi bi-file-earmark-word me-1"></i> Word
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Export to Word</a></li>
+            </ul>
+        </li>
+    </ul>
+</div>
+
+<div class="fixed-main">
+
+    <div class="fixed-sidebar p-3 border rounded">
+
+        <!-- Employee Table -->
+        <div class="employee-list">
+            <div class="table-responsive">
+                <table class="table table-striped" id="fixedassetTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>S.No</th>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Total</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Employee rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="employee-content">
+
+        <div>
+            <div class="table-responsive">
+                <table class="table table-striped" id="fixedTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>S.No</th>
+                            <th>Date</th>
+                            <th>Days</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 🔽 Modal Partial View goes here -->
+@Html.Partial("_FixedAssets")

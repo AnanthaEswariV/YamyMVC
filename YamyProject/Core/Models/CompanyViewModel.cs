@@ -212,5 +212,14 @@ namespace YamyProject.Core.Models
         public int? ItemId { get; set; }
         public decimal? Qty { get; set; }
     }
+    public class FixedAssetsCategoryRequest
+    {
+        public int Id { get; set; }
+        public string CategoryName { get; set; }
+        public int AssetsAccountId { get; set; }
+        public int DepreciationAccountId { get; set; }
+        public int ExpenceAccountId { get; set; }
+    }
+
 
 }

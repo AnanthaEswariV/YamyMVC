@@ -425,7 +425,8 @@
             </div>
             <div class="modal-body p-4">
                 <form id="newItemForm">
-           
+                    <input type="hidden" id="itemId" value="0" />
+
                     <!-- Warehouse & Type -->
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -940,7 +941,7 @@
             error: function (xhr, status, error) {
                 console.error("Error loading accounts:", status, error);
             }
-        });
+         
 
         // ===== Recalculate Total =====
         function recalcTotal() {
@@ -969,15 +970,67 @@
             recalcTotal();
         }
 
+                // 🔹 Open modal for NEW item
+        $("#addNewItemBtn").on("click", function () {
+            $("#itemForm")[0].reset();      // clear form
+            $("#itemId").val(0);            // reset hidden ID
+            $("#newItemModalLabel").text("New Item");
+            $("#newItemModal").modal("show");
+        });
+
+                // 🔹 Edit button click (fill all fields into modal)
+        $(document).on("click", ".edit-item", function () {
+            $("#itemId").val($(this).data("id"));   // hidden input for Id
+            $("#itemNameInput").val($(this).data("name"));
+            $("#warehouseDropdown").val($(this).data("warehouseid"));
+            $("#typeSelect").val($(this).data("type"));
+            $("#categoryDropdowns").val($(this).data("categoryid"));
+            $("#mainUnit").val($(this).data("unitid"));
+            $("#barcodeInput").val($(this).data("barcode"));
+            $("#costPriceInput").val($(this).data("costprice"));
+            $("#salesPriceInput").val($(this).data("salesprice"));
+            $("#cogsAccount").val($(this).data("cogsaccountid"));
+            $("#incomeAccount").val($(this).data("incomeaccountid"));
+            $("#assetAccount").val($(this).data("assetaccountid"));
+            $("#preferredVendor").val($(this).data("vendorid"));
+            $("#minAmountInput").val($(this).data("minamount"));
+            $("#maxAmountInput").val($(this).data("maxamount"));
+            $("#onHandInput").val($(this).data("onhand"));
+            $("input[name='costingMethod'][id='" + $(this).data("method") + "']").prop("checked", true);
+            $("#totalValueInput").val($(this).data("totalvalue"));
+            $("#asOfDateInput").val($(this).data("date"));
+            $("#itemActive").prop("checked", $(this).data("active") == 1);
+            $("#inventoryType").val($(this).data("itemtype"));
+
+            // If assembly items exist (optional)
+            if ($(this).data("assemblies")) {
+                const assemblies = JSON.parse($(this).data("assemblies")); // pass from server
+                $("#assemblyTable tbody").empty();
+                assemblies.forEach(asm => {
+                    $("#assemblyTable tbody").append(`
+                        <tr>
+                            <td><select class="form-control item-select" value="${asm.itemId}"></select></td>
+                            <td><input type="number" class="form-control item-qty" value="${asm.qty}"></td>
+                            <td><button class="btn btn-sm btn-danger remove-assembly">X</button></td>
+                        </tr>
+                    `);
+                });
+                $("#assemblyTable").show();
+            } else {
+                $("#assemblyTable").hide();
+            }
+
+            $("#newItemModalLabel").text("Edit Item");
+            $("#newItemModal").modal("show");
+        });
 
 
-
-
-              function saveItem() {
+        // 🔹 Save function (your base, with insert/update logic)
+        function saveItem() {
             if (!validateForm()) return;
 
             let item = {
-                Id: 0,
+                Id: parseInt($("#itemId").val()) || 0,   // 👈 determines Add vs Update
                 Name: $("#itemNameInput").val(),
                 WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
                 Type: $("#typeSelect").val(),
@@ -1025,16 +1078,21 @@
                 success: function (res) {
                     if (res.status) {
                         $("#newItemModal").modal("hide");
-                        toastr.success("Item Added Successfully!");
+                        toastr.success(item.Id > 0 ? "Item Updated Successfully!" : "Item Added Successfully!");
                         setTimeout(() => location.reload(), 1500);
-                    } else toastr.error(res.message);
+                    } else {
+                        toastr.error(res.message || "Something went wrong!");
+                    }
                 },
                 error: function (xhr) {
-                    toastr.error(xhr.responseText);
+                    let msg = "An unexpected error occurred.";
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    toastr.error(msg);
                 }
             });
         }
-
 
 
         // ==================

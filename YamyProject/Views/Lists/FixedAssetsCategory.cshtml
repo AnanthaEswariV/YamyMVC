@@ -1,0 +1,440 @@
+﻿@{
+    ViewData["Title"] = "FixedAssetsCategory";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="page-heading">
+    <div class="row">
+        <div class="col-6">
+            <h3>Fixed Assets Category List</h3>
+        </div>
+        <div class="col-6 text-end">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFixedAssetsCategoryModal">
+                <i class="bi bi-plus-lg"></i> Add Fixed Assets Category
+            </button>
+        </div>
+    </div>
+</div>
+
+<section class="section">
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped" id="fixedAssetCategoryTable">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+
+
+<!-- Fixed Assets Category Modal -->
+<div class="modal fade" id="addFixedAssetsCategoryModal" tabindex="-1" aria-labelledby="addFixedAssetsCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addFixedAssetsCategoryModalLabel">Fixed Asset - New Fixed Asset</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFixedAssetsCategoryForm">
+                    <input type="hidden" id="categoryId" />
+                    <!-- Category Name -->
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label fw-bold small">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName" required />
+                    </div>
+
+                    <!-- Fixed Assets Account -->
+                    <div class="account-row">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label for="fixedAssetsAccount" class="form-label fw-bold small">Fixed Assets Account</label>
+                                <select class="form-select form-select-sm" id="fixedAssetsAccount" required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="fixedAssetsAccountCode" class="form-label fw-bold small">Account Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code2" disabled>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accumulated Depreciation -->
+                    <div class="account-row">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label for="accumulatedDepreciation" class="form-label fw-bold small">Accumulated Depreciation</label>
+                                <select class="form-select form-select-sm" id="accumulatedDepreciation" required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="accumulatedDepreciationCode" class="form-label fw-bold small">Account Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code3" disabled>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Depreciation Expense -->
+                    <div class="account-row">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label for="depreciationExpense" class="form-label fw-bold small">Depreciation Expense</label>
+                                <select class="form-select form-select-sm" id="depreciationExpense" required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="depreciationExpenseCode" class="form-label fw-bold small">Account Code</label>
+                                <input type="text" class="form-control" id="code4" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="saveBtn" onclick="addFixedAssetsCategory()">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CLOSE</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Fixed Assets Category Modal -->
+<div class="modal fade" id="editFixedAssetsCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Edit Fixed Asset Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editFixedAssetsCategoryForm">
+                    <!-- Hidden field for ID -->
+                    <input type="hidden" id="editCategoryId" />
+
+                    <!-- Category Name -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Category Name</label>
+                        <input type="text" class="form-control" id="editCategoryName" required />
+                    </div>
+
+                    <!-- Fixed Assets Account -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Fixed Assets Account</label>
+                            <select class="form-select form-select-sm" id="editFixedAssetsAccount" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                       @*  <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="editCode2" disabled>
+                        </div> *@
+                    </div>
+
+                    <!-- Accumulated Depreciation -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Accumulated Depreciation</label>
+                            <select class="form-select form-select-sm" id="editAccumulatedDepreciation" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        @* <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="editCode3" disabled>
+                        </div> *@
+                    </div>
+
+                    <!-- Depreciation Expense -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Depreciation Expense</label>
+                            <select class="form-select form-select-sm" id="editDepreciationExpence" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                      @*   <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="editCode4" disabled>
+                        </div> *@
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="updateBtn">Update</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+
+
+           function loadFixedAssetCategories() {
+                $.ajax({
+                        url: "/Lists/GetFixedAssetsCategory",
+                    type: "GET",
+                    success: function (res) {
+                        if (res.status) {
+                            let rows = "";
+                            res.data.forEach(cat => {
+                                rows += `
+                                    <tr>
+                                            <td>${cat.category_name}</td>
+                                        <td>
+                                                    <button class="btn btn-sm btn-warning edit-btn"
+            data-id="${cat.id}"
+            data-name="${cat.category_name}"
+            data-assets="${cat.assets_account_id}"
+            data-assets-code="${cat.assets_account_id}"
+            data-depreciation="${cat.depreciation_account_id}"
+            data-depreciation-code="${cat.depreciation_account_id}"
+            data-expence="${cat.expence_account_id}"      
+            data-expence-code="${cat.expence_account_id}"> 
+            Edit
+        </button>
+
+
+                                            <button class="btn btn-sm btn-danger delete-btn" data-id="${cat.id}">Delete</button>
+                                        </td>
+                                    </tr>`;
+                            });
+                            $("#fixedAssetCategoryTable tbody").html(rows);
+                        }
+                    },
+                    error: function (err) {
+                        console.error("Error loading categories", err);
+                    }
+                });
+            }
+
+           function addFixedAssetsCategory() {
+                    let model = {
+                        CategoryName: $("#categoryName").val(),
+                        AssetsAccountId: $("#fixedAssetsAccount").val(),
+                        DepreciationAccountId: $("#accumulatedDepreciation").val(),
+                        ExpenceAccountId: $("#depreciationExpense").val()
+                    };
+
+                    if (!model.CategoryName) {
+                        alert("Please enter Category Name");
+                        return;
+                    }
+
+                    $.ajax({
+                            url: "/Lists/AddFixedAssetsCategory",
+                        method: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify(model),
+                        success: function (res) {
+                            if (res.status) {
+                                $("#addFixedAssetsCategoryModal").modal("hide");
+                                $("#addFixedAssetsCategoryForm")[0].reset();
+                                       // Show success message
+                                toastr.success("Category Added Successfully!");
+
+                                // Optional: reload page after short delay
+                                setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+
+                            } else {
+                                    toastr.error(res.message || "Error saving department");
+                            }
+                        },
+                        error: function (xhr) {
+                               console.error(err);
+                            toastr.error("Server error occurred while saving department");
+                        }
+                    });
+                }
+
+
+           $(document).ready(function () {
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function (data) {
+
+                    // List of dropdowns with their matching code textbox
+                    const dropdowns = [
+                            { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
+                            { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
+                            { ddl: '#depreciationExpense', codeBox: '#code4' }
+                    ];
+
+                    dropdowns.forEach(set => {
+                        let $ddl = $(set.ddl);
+
+
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function (i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
+                        });
+
+
+
+                        // On change, update the code textbox
+                        $ddl.on('change', function () {
+                            let selected = $(this).find(':selected');
+                            let code = selected.data('code');
+                            console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
+                            $(set.codeBox).val(code || "");
+                        });
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                }
+            });
+
+             loadFixedAssetCategories();
+        });
+
+
+           $(document).ready(function() {
+                       function loadEditDropdowns(selectedAssets, selectedDepreciation, selectedExpence, codes = {}) {
+                $.ajax({
+                    url: '/HR/GetAccruedSalaries',
+                    type: 'GET',
+                    success: function (data) {
+                        const dropdowns = [
+                            { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2', selected: selectedAssets, code: codes.assetsCode },
+                            { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3', selected: selectedDepreciation, code: codes.depreciationCode },
+                            { ddl: '#editDepreciationExpence', codeBox: '#editCode4', selected: selectedExpence, code: codes.expenceCode }
+                        ];
+
+                        dropdowns.forEach(set => {
+                            let $ddl = $(set.ddl);
+                            $ddl.empty().append('<option value="">-- Select --</option>');
+
+                            $.each(data, function (i, item) {
+                                $ddl.append(
+                                    $('<option>', {
+                                        value: item.id,
+                                        text: item.code + ' - ' + item.name,
+                                        'data-code': item.code
+                                    })
+                                );
+                            });
+
+                            // Set selected value AFTER options are added
+                            $ddl.val(set.selected);
+
+                            // Set code textbox
+                            $(set.codeBox).val(set.code || '');
+
+                            // On change, update code box
+                            $ddl.off("change").on('change', function () {
+                                let selectedOption = $(this).find(':selected');
+                                $(set.codeBox).val(selectedOption.data('code') || '');
+                            });
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("❌ Error loading accounts:", status, error);
+                    }
+                });
+            }
+
+
+                       $(document).on("click", ".edit-btn", function () {
+                const id = $(this).data("id");
+                const name = $(this).data("name");
+                const assets = $(this).data("assets");
+                const assetsCode = $(this).data("assets-code");
+                const depreciation = $(this).data("depreciation");
+                const depreciationCode = $(this).data("depreciation-code");
+                const expence = $(this).data("expence");
+                const expenceCode = $(this).data("expence-code");
+
+                      console.log("Depreciation:", depreciation, "Code:", depreciationCode);
+        console.log("Expence:", expence, "Code:", expenceCode); 
+
+                $("#editCategoryId").val(id);
+                $("#editCategoryName").val(name);
+
+                loadEditDropdowns(assets, depreciation, expence, {
+                    assetsCode: assetsCode,
+                    depreciationCode: depreciationCode,
+                    expenceCode: expenceCode
+                });
+
+                $("#editFixedAssetsCategoryModal").modal("show");
+            });
+
+
+                             $("#updateBtn").on("click", function () {
+                const model = {
+                    Id: parseInt($("#editCategoryId").val()),
+                    CategoryName: $("#editCategoryName").val().trim(),
+                    AssetsAccountId: parseInt($("#editFixedAssetsAccount").val()) || 0,
+                    DepreciationAccountId: parseInt($("#editAccumulatedDepreciation").val()) || 0,
+                    ExpenceAccountId: parseInt($("#editDepreciationExpence").val()) || 0
+
+                };
+
+                $.ajax({
+                    url: "/Lists/EditFixedAssetsCategory",
+                    type: "PUT",
+                    contentType: "application/json",
+                    data: JSON.stringify(model),
+                    success: function (res) {
+                        if (res.status) {
+                            $("#editFixedAssetsCategoryModal").modal("hide");
+                            toastr.success(res.message);
+                            loadFixedAssetCategories();
+                        } else {
+                            toastr.error(res.message);
+                        }
+                    },
+                    error: function (err) {
+                        console.error(err);
+                        toastr.error("Server error occurred while updating category");
+                    }
+                });
+            });
+
+
+            });
+
+
+
+    </script>
+}
