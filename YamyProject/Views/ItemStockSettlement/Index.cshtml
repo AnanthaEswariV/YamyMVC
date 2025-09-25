@@ -1,0 +1,194 @@
+﻿@model IEnumerable<ItemStockSettlementListVm>
+
+@{
+    ViewData["Title"] = "Inventory - Stock Management";
+}
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+
+    <a  class="btn btn-sm btn-primary js-render-modal"  asp-action="Create">
+        <i class="bi bi-plus-circle-dotted"></i>
+        New Settlement
+    </a>
+
+@*     <a href="javascript:;" class="btn btn-sm btn-primary js-render-modal"
+       data-title="Add Company" data-url="/CompanyCenter/Create">
+        <i class="bi bi-plus-square-dotted"></i>
+        Add
+    </a> *@
+    @*  <a href="javascript:;" class="btn btn-sm btn-primary js-render-modal"
+       data-title="New Settlement" asp-action="List">
+        <i class="bi bi-plus-square-dotted"></i>
+
+        Stock ManagementNew
+    </a> *@
+
+    <!-- Filter Section -->
+    <form asp-action="Index" asp-action="SubmitData" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label for="FromDate" class="form-label">Start Date</label>
+            <input type="date" id="FromDate"  name="FromDate" class="form-control" />
+        </div>
+
+        <div class="col-md-3">
+            <label for="ToDate" class="form-label">End Date</label>
+            <input type="date" id="ToDate" name="ToDate" class="form-control" />
+        </div>
+
+        <div class="col-md-2 d-flex align-items-center">
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="All" name="All" checked />
+                <label class="form-check-label" for="All">All</label>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <label for="SelectionMethod" class="form-label">Selection Method</label>
+            <select id="SelectionMethod" name="SelectionMethod" class="form-select">
+                <option value="Default">Default</option>
+                <option value="ItemWise">Item Wise</option>
+            </select>
+        </div>
+
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100" asp-action="List">Filter</button>
+        </div>
+    </form>
+
+    <!-- Data Grid -->
+    <div class="table-responsive mt-4">
+        @if (Model != null)
+        {
+            <table class="table table-bordered table-striped table-hover text-center align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Sn</th>
+                        <th>Date</th>
+                        <th>JV No</th>
+                        <th>INV NO</th>
+                        <th class="text-end js-no-export">Edit </th>
+
+                    </tr>
+
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Id </td>
+                            <td>@item.Date</td>
+                            <td>@item.JvNo</td>
+                            <td>@item.Code</td>
+                            <td>
+                                @* <a href="javascript:void(0)" onclick="loadInvoiceItems(@item.Id)">View Items</a> *@
+
+                            </td>
+                            @* <div class="menu-item px-3">
+                                <a href="javascript:;" class="menu-link px-3 js-render-modal"
+                                   data-title="Edit Company" data-url="/CompanyCenter/Edit/Model.Id"
+                                   data-update="true">
+                                    Edit
+                                </a>
+                            </div> *@
+                        </tr>
+                    }
+                    @* else
+                {
+                    <tr>
+                        <td colspan="4" class="text-muted">No records found.</td>
+                    </tr>
+                } *@
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <!-- Items Section -->
+    <div class="mt-4">
+        <h5>Items</h5>
+        <table class="table table-bordered table-sm table-hover">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Item Name</th>
+                    <th>QTY</th>
+                    <th>Cost Price</th>
+                    <th>New on Hand</th>
+                  @*   <div class="menu-item px-3">
+                        <a href="javascript:;" class="menu-link px-3 js-render-modal"
+                           data-title="Edit Company" data-url="/CompanyCenter/Edit/@Model.Id"
+                           data-update="true">
+                            Edit
+                        </a>
+                    </div> *@
+                </tr>
+            </thead>
+            <tbody>
+                @*    @if (Model != null)
+                {
+                    foreach (var item in Model.Item2)
+                    {
+                         foreach (var sub in item.)
+                        {
+                            <tr>
+                                <td>@sub.ItemName</td>
+                                <td>@sub.Quantity</td>
+                                <td>@sub.CostPrice</td>
+                                <td>@sub.NewOnHand</td>
+                                 <div class="menu-item px-3">
+                <a href="javascript:;" class="menu-link px-3 js-render-modal"
+                   data-title="Edit Company" data-url="/CompanyCenter/Edit/@Model.Id"
+                   data-update="true">
+                    Edit
+                </a>
+            </div>
+                            </tr>
+                        } 
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="4" class="text-muted">No items found.</td>
+                    </tr>
+                } *@
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Buttons -->
+    @*   <div class="d-flex gap-2 mt-3">
+        <a asp-action="CreateSettlement" class="btn btn-primary">New Settlement</a>
+        <a asp-action="EditCurrent" class="btn btn-outline-primary">Edit Current</a>
+    </div> *@
+</div>
+
+@section Scripts {
+    <script>
+        function loadInvoiceItems(id) {
+            $.get('/Stock/InvoiceItems/' + id, function (data) {
+                $('#invoiceItems').html(data);
+            });
+        }
+
+
+
+    $("#submitButton").click(function() {
+    var data = {
+        StartDate: $("#StartDate").val(),
+        EndDate: $("#EndDate").val(),
+        SelectedItems: $("#SelectedItems").val()
+    };
+
+    $.ajax({
+        url: '/YourController/List',
+        type: 'GET',
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        success: function(response) {
+            alert("Data submitted!");
+        }
+    });
+});
+    </script>
+
+}

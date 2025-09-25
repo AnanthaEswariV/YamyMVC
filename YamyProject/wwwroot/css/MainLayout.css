@@ -91,10 +91,10 @@
 }
 
 /* Add padding to main content */
-#main {
+/*#main {
     padding-top: 60px;
     padding-left: 0px;
-}
+}*/
 
 /* Add position relative to navbar items */
 .top-navbar li {

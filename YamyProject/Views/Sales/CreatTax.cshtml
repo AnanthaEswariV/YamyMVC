@@ -1,0 +1,143 @@
+﻿@* @model TaxInvoiceViewModel *@
+
+@{
+    ViewBag.Title = "Tax Invoice";
+}
+
+ <div class="form-horizontal">
+        <hr />
+            <form asp-action="@(Model?.Id > 0 ? "Edit" : "Create")">
+
+        <!-- Top Section -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="tab-pane fade show active" id="general" role="tabpanel">
+                    <div class="form-group">
+                        <label class="form-label">Customer Code.</label>
+                        <input  class="form-control" />
+                        <label class="form-label">Customer.</label>
+                        <input class="form-control" />
+                    </div>
+                    <hr />
+                    <div class="mb-3">
+                        <label class="form-label">Bill To.</label>
+                        <input class="form-control" />
+                    </div>
+                    <div class="form-group">
+                            <label class="form-label">Invoice Type.</label>
+                            <input class="form-control" />
+                            <label class="form-label">Emirates.</label>
+                            <input class="form-control" />                        
+                    </div>
+                    <div class="form-group">
+                            <label class="form-label">Ship.</label>
+                            <input class="form-control" />
+                            <label class="form-label">Ship Date.</label>
+                            <input class="form-control" />
+                    </div>
+                    <div class="form-group">
+                            <label class="form-label">Warehouse.</label>
+                            <input class="form-control" />
+                            <label class="form-label">Payment Terms.</label>
+                            <input class="form-control" />
+                            <label class="form-label">Due To.</label>
+                            <input class="form-control" />
+                    </div>
+                    <div class="form-group">
+                            <label class="form-label">Via.</label>
+                            <input class="form-control" />
+                            <label class="form-label">Sales Mane.</label>
+                            <input class="form-control" />
+                            <label class="form-label">Account Name.</label>
+                            <input class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date.</label>
+                        <input class="form-control" />
+                        <label class="form-label">Invoice #.</label>
+                        <input class="form-control" />
+                        <label class="form-label">P.O NO.</label>
+                        <input class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Performa Invoice NO.</label>
+                        <input class="form-control" />
+                        <label class="form-label">Quotation No.</label>
+                        <input class="form-control" />
+                    </div>
+
+                    @*  <div class="mb-4">
+                <label asp-for="CountryId" class="form-label">Country</label>
+                <select asp-for="CountryId" class="form-select" data-placeholder="Select Country" asp-item="">
+                    <option value="">Select Country</option>
+
+                </select>
+            </div> *@
+                </div>
+
+             </div>
+        </div>
+
+        <br />
+
+        <!-- Items Table -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>QTY</th>
+                    <th>Price</th>
+                    <th>Disc</th>
+                    <th>Net Price</th>
+                    <th>VAT</th>
+                    <th>Amount</th>
+                    <th>Cost Center</th>
+                </tr>
+            </thead>
+            <tbody>
+               @*  @for (int i = 0; i < Model.InvoiceItems.Count; i++)
+                {
+                    <tr>
+                        <td>@(i + 1)</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].ItemCode, new { @class = "form-control" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].ItemName, new { @class = "form-control" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].Quantity, new { @class = "form-control", type = "number" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].Price, new { @class = "form-control", type = "number", step = "0.01" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].Discount, new { @class = "form-control", type = "number" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].NetPrice, new { @class = "form-control", type = "number" })</td>
+                        <td>@Html.DropDownListFor(m => m.InvoiceItems[i].VatRate, Model.VatRates, "-- Select VAT --", new { @class = "form-control" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].Amount, new { @class = "form-control", type = "number" })</td>
+                        <td>@Html.TextBoxFor(m => m.InvoiceItems[i].CostCenter, new { @class = "form-control" })</td>
+                    </tr>
+                } *@
+            </tbody>
+        </table>
+
+        <!-- Notes -->
+        <div class="form-group">
+        @*     @Html.LabelFor(m => m.Notes)
+            @Html.TextAreaFor(m => m.Notes, new { @class = "form-control", rows = 3 })
+        *@ </div>
+
+        <!-- Totals -->
+        <div class="row text-right">
+            <div class="col-md-4 col-md-offset-8">
+              @*   <p>Total Before VAT: @Html.DisplayFor(m => m.TotalBeforeVat)</p>
+                <p>Total VAT: @Html.DisplayFor(m => m.TotalVat)</p>
+                <p><strong>Net Amount: @Html.DisplayFor(m => m.NetAmount)</strong></p> *@
+            </div>
+        </div>
+
+        <br />
+
+        <!-- Buttons -->
+        <div class="form-group text-right">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" name="saveClose" value="true" class="btn btn-success">Save & Close</button>
+            <a href="@Url.Action("Index", "Invoice")" class="btn btn-default">Close</a>
+        </div>
+</form>
+
+</div>

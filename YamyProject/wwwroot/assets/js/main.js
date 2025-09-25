@@ -5,7 +5,7 @@ function slideToggle(t,e,o){0===t.clientHeight?j(t,e,o,!0):j(t,e,o)}function sli
 //    let sidebarItem = sidebarItems[i];
 //	sidebarItems[i].querySelector('.sidebar-link').addEventListener('click', function(e) {
 //        e.preventDefault();
-        
+
 //        let submenu = sidebarItem.querySelector('.submenu');
 //        if( submenu.classList.contains('active') ) submenu.style.display = "block"
 
@@ -14,6 +14,7 @@ function slideToggle(t,e,o){0===t.clientHeight?j(t,e,o,!0):j(t,e,o)}function sli
 //        slideToggle(submenu, 300)
 //    })
 //}
+
 
 //window.addEventListener('DOMContentLoaded', (event) => {
 //    var w = window.innerWidth;

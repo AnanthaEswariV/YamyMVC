@@ -24,9 +24,8 @@ namespace YamyProject.Core.ViewModel
 
         public string? TrnNo { get; set; }
 
-    //    public int CountryId { get; set; }
-
-    //    public IEnumerable<SelectListItem>? Countrys {get;set;}
+        //public int CountryId { get; set; }
+        //public IEnumerable<SelectListItem>? Countrys {get;set;}
         //public bool IsDeleted {get;set;}
         //public byte[]? LogoComp { get; set; }
         //public DateTime CreatedOn { get; set; }

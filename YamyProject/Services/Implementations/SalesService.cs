@@ -214,7 +214,7 @@
             await _db.SaveChangesAsync(ct);
 
             // Also mark transactions
-            var txs = _db.TblTransactions.Where(t => t.TransactionId == id.ToString() && t.TType == "SALES");
+            var txs = _db.TblTransactions.Where(t => t.TransactionId == id).ToList();
             foreach (var t in txs) t.State = -1;
             await _db.SaveChangesAsync(ct);
 

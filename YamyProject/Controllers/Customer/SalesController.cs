@@ -101,5 +101,14 @@ namespace YamyProject.Controllers.Customer
                 return StatusCode(500, "An error occurred while deleting the sale.");
             }
         }
+
+
+
+
+
+        public async Task<IActionResult> CreatTax()
+        { return View(); 
+        }
+
     }
 }

@@ -12,7 +12,6 @@ global using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 global using System.Security.Cryptography;
 global using AutoMapper;
 global using System.ComponentModel.DataAnnotations.Schema;
-global using YamyProject.Core.ViewModel.YourApp.ViewModels;
 global using YamyProject.Services.Interfaces;
 global using System.ComponentModel.DataAnnotations;
 global using Microsoft.AspNetCore.Mvc.Rendering;

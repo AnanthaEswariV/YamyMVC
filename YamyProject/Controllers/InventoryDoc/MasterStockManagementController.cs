@@ -42,11 +42,13 @@
                             Id = s.Id,
                             Date = s.Date.HasValue ? s.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
                             InvNo = EF.Functions.Collate(s.Code, "utf8mb4_general_ci"),
-                            JvNo = _context.TblTransactions
-                                           .Where(t => EF.Functions.Collate(t.TransactionId, "utf8mb4_general_ci") == s.Id.ToString())
-                                           .OrderByDescending(t => t.Id)
-                                           .Select(t => t.TransactionId)
-                                           .FirstOrDefault()
+                            JvNo ="3" 
+                            //_context.TblTransactions
+                            //                .Where(t => t.TransactionId = s.Id)
+                            //                .ToList()
+                            //               .OrderByDescending(t => t.Id)
+                            //               .Select(t => t.TransactionId)
+                            //               .FirstOrDefault()
                         })
                         .ToListAsync();
 
@@ -87,17 +89,17 @@
                                          .OrderBy(d => d.Date)
                                          .ToListAsync();
 
-                    for (var i = 0; i < details.Count; i++) details[i].SN = i + 1;
+                    //for (var i = 0; i < details.Count; i++) details[i].SN = i + 1;
 
-                    var vm = new ItemStockSettlementDetailsListViewModel
-                    {
-                        SelectionMethod = selectionMethod,
-                        Details = details
-                    };
+                    //var vm = new ItemStockSettlementDetailsListViewModel
+                    //{
+                    //    SelectionMethod = selectionMethod,
+                    //    Details = details
+                    //};
 
                     // You can either return the same Index view and render different sections
                     // or use a dedicated view name like "IndexDetails" — I return Index (view can branch)
-                    return View("Index", vm);
+                    return View("Index", details);
                 }
             }
             catch (Exception ex)

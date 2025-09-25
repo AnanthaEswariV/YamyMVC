@@ -1,0 +1,150 @@
+﻿
+@model CreateUpdateSettlementVm
+
+@{
+    
+    var isEdit = Model?.Id > 0;  // example logic
+    ViewData["Title"] = $" Stock Settlement - {(Model?.Id > 0 ? "Edit" : "Create")}";
+}
+<div class="container-fluid ">
+    <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>@ViewData["Title"]</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label asp-for="Date" class="form-label">Date</label>
+                        <input asp-for="Date" type="date" class="form-control" />
+                        <span asp-validation-for="Date" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-5">
+                        <label asp-for="WarehouseId" class="form-label">Warehouse</label>
+                     @*    <select asp-for="WarehouseId" asp-items="Model.Warehouses" class="form-select"></select>*@
+                     <span asp-validation-for="WarehouseId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end justify-content-end">
+                        @* <label>Previous</label> *@
+                        <div class="btn-group"> 
+                            <button type="button" class="btn btn-outline-primary">&lt;&lt;</button>
+                            <input type="text" value="@Model.Code" readonly class="form-control text-center" style="max-width:120px" />
+                            <button type="button" class="btn btn-outline-primary">&gt;&gt;</button>
+                        </div>
+                        @* <label>Next</label> *@
+                    </div>
+                </div>
+
+                <table class="table table-bordered table-sm align-middle" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Item Code</th>
+                            <th>Item Name</th>
+                            <th>SYS QTY</th>
+                            <th>Price</th>
+                            <th>SYS Amount</th>
+                            <th>New QTY</th>
+                            <th>QTY DIF</th>
+                            <th>Amount (-)</th>
+                            <th>Amount (+)</th>
+                            <th>DEL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Items != null && Model.Items.Any())
+                        {
+                            for (int i = 0; i < Model.Items.Count; i++)
+                            {
+                                <tr>
+                                    <td>@(i + 1)</td>
+                                    <td><input name="Items[@i].ItemId" value="@Model.Items[i].ItemId" readonly /></td>
+                                    <td><input value="@Model.Items[i].ItemId" class="form-control"  /></td>
+                                    @* <td><input value="@Model.Items[i].NAME" class="form-control"  /></td> *@
+                                    <td><input name="Items[@i].OnHand" value="@Model.Items[i].OnHand" readonly /></td>
+                                    <td><input name="Items[@i].Price" value="@Model.Items[i].Price" readonly /></td>
+                                    <td><input name="Items[@i].SysAmount" value="@(Model.Items[i].OnHand * Model.Items[i].Price)" class="form-control" readonly /></td>
+                                    <td><input name="Items[@i].NewOnHand" value="@Model.Items[i].NewOnHand"/></td>
+                                    <td><input name="Items[@i].QtyDiff" value="@(Model.Items[i].NewOnHand - Model.Items[i].OnHand)" class="form-control" readonly /></td>
+                                    <td><input name="Items[@i].MinusAmount" value="@Model.Items[i].MinusAmount" readonly /></td>
+                                    <td><input name="Items[@i].PlusAmount" value="@Model.Items[i].PlusAmount" readonly /></td>
+                                    <td class="text-center"><button type="button">REMOVE</button></td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td>1</td>
+                                <td><input name="Items[0].ItemId" readonly /></td>
+                                <td><input class="form-control"  /></td>
+                                <td><input name="Items[0].OnHand" readonly /></td>
+                                <td><input name="Items[0].Price" readonly /></td>
+                                <td><input name="Items[0].SysAmount" readonly /></td>
+                                <td><input name="Items[0].NewOnHand" /></td>
+                                <td><input name="Items[0].QtyDiff" readonly /></td>
+                                <td><input name="Items[0].MinusAmount" readonly /></td>
+                                <td><input name="Items[0].PlusAmount" readonly /></td>
+                                <td class="text-center"><button type="button">REMOVE</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="row justify-content-end">
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Amount (-)</span>
+                            <input type="text" class="form-control" value="@Model.Items.Sum(x => x.MinusAmount)" readonly />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Amount (+)</span>
+                            <input type="text" class="form-control" value="@Model.Items.Sum(x => x.PlusAmount)" readonly />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="submit" class="btn btn-primary" formaction="@(Url.Action(isEdit ? "Edit" : "Create"))">Save &amp; New</button>
+                    <a asp-action="Index" class="btn btn-secondary">Close</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/assets/Asid/jquery-3.7.1.min.js"></script>
+    <script src="~/assets/Asid/bootstrap.min.js"></script>
+    <script>
+        $(function () {
+            $('#itemsTable').on('click', '.remove-row', function () {
+                $(this).closest('tr').remove();
+            });
+
+            // Auto calculate QTY DIF and amounts
+            $('#itemsTable').on('input', '.number-input', function () {
+                var $row = $(this).closest('tr');
+                var onHand = parseFloat($row.find('input[name$=".OnHand"]').val()) || 0;
+                var price = parseFloat($row.find('input[name$=".Price"]').val()) || 0;
+                var newQty = parseFloat($row.find('input[name$=".NewOnHand"]').val()) || 0;
+
+                var sysAmt = onHand * price;
+                var diff = newQty - onHand;
+                var minusAmt = diff < 0 ? Math.abs(diff) * price : 0;
+                var plusAmt = diff > 0 ? diff * price : 0;
+
+                $row.find('input[name$=".SysAmount"]').val(sysAmt.toFixed(2));
+                $row.find('input[name$=".QtyDiff"]').val(diff.toFixed(2));
+                $row.find('input[name$=".MinusAmount"]').val(minusAmt.toFixed(2));
+                $row.find('input[name$=".PlusAmount"]').val(plusAmt.toFixed(2));
+            });
+        });
+    </script>
+}

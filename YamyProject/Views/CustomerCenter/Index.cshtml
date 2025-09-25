@@ -1,7 +1,6 @@
 ﻿@model IEnumerable<TblCustomer>
 @{
     ViewData["Title"] = "Customer Center";
-  //  Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="container-fluid mt-3">
@@ -79,8 +78,8 @@
                     Customer Information
                 </div>
                 <div class="card-body">
-                    @foreach (var customer in Model)
-                    {<div>
+                    @* @foreach (var customer in Model) *@
+                 @*    {<div>
                         <tr>
                             <label>Customer Code  : @customer.Code</label>
                             <td>Customer Name     : @customer.Name</td>
@@ -99,7 +98,7 @@
                             </td> *@
                         </tr>
                         </div>
-                    }
+                  @*   } *@
                    @*  <p><strong>Customer Code:</strong> @Model.SelectedCustomer.Code</p>
                     <p><strong>Name:</strong> @Model.SelectedCustomer.Name</p>
                     <p><strong>TRN:</strong> @Model.SelectedCustomer.TRN</p>
@@ -108,9 +107,8 @@
                     <p><strong>Category:</strong> @Model.SelectedCustomer.Category</p>
                     <p><strong>Address:</strong> @Model.SelectedCustomer.Address</p>
                    <p><strong>Main Phone:</strong> @Model.SelectedCustomer.MainPhone</p>
-                *@  </div>
+                      *@ 
             </div>
-
             <!-- Tabs -->
             <ul class="nav nav-tabs" id="customerTabs" role="tablist">
                 <li class="nav-item">
@@ -138,7 +136,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                           @*  @foreach (var txn in Model.Transactions)
+                            @*  @foreach (var txn in Model.Transactions)
                             {
                                 <tr>
                                     <td>@txn.SerialNumber</td>
@@ -168,7 +166,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                          @*   @foreach (var invoice in Model.CashInvoices)
+                            @*   @foreach (var invoice in Model.CashInvoices)
                             {
                                 <tr>
                                     <td>@invoice.SerialNumber</td>
@@ -183,20 +181,8 @@
                 </div>
             </div>
 
-            <!-- Notes & Reports -->
-            <div class="card mt-3">
-                <div class="card-header">Notes</div>
-                <div class="card-body">
-                   @*  <textarea class="form-control" rows="2">@Model.SelectedCustomer.Notes</textarea>
-                   *@  <hr />
-                    <h6>Reports for this Customer</h6>
-                    <ul>
-                        <li><a href="#">QuickReport</a></li>
-                        <li><a href="#">Open Balance</a></li>
-                        <li><a href="#">Customer Snapshot</a></li>
-                    </ul>
-                </div>
-            </div>
+        </div>
+
         </div>
     </div>
 </div>

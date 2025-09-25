@@ -1,10 +1,4 @@
-﻿@* @model YamyProject.Models.ReminderViewModel
-
-@{
-    ViewData["Title"] = "Reminders";
-} *@
-
-<div class="container-fluid bg-light p-4 rounded shadow-sm">
+﻿<div class="container-fluid bg-light  rounded shadow-sm">
     <h3 class="mb-3">Reminders</h3>
 
     <div class="row">
@@ -52,26 +46,6 @@
                     </span>
                 </li>
             </ul>
-        </div>
-
-        <!-- Right side upcoming -->
-        <div class="col-md-6">
-            <h5>Upcoming</h5>
-         @*   @if (Model.Upcoming.Any())
-            {
-                <ul class="list-group mt-3">
-                    @foreach (var upcoming in Model.Upcoming)
-                    {
-                        <li class="list-group-item">
-                            <strong>@upcoming.Title</strong> - @upcoming.Date.ToString("dd MMM yyyy")
-                        </li>
-                    }
-                </ul>
-            }
-            else
-            {
-                <p class="text-muted mt-3">No upcoming reminders</p>
-            }*@ 
-        </div>
+        </div>    
     </div>
 </div>

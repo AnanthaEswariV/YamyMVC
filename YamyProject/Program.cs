@@ -1,8 +1,8 @@
 
 using YamyProject.Core.Consts.Mapping;
+using YamyProject.Core.Models;
 using YamyProject.Services;
 using YamyProject.Services.Implementations;
-using YamyProject.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -17,10 +17,22 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<ISalesServices, SalesServices>();
+
 builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
-builder.Services.AddScoped<ISalesServices, SalesServices>();
+builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
+
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
+
+
+
+builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
+// Microservice HTTP client
+//builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>(client =>
+//{
+//    client.BaseAddress = new Uri(builder.Configuration["Microservices:SettlementApi"]);
+//    client.Timeout = TimeSpan.FromSeconds(10);
+//});
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("ApiClient", client =>

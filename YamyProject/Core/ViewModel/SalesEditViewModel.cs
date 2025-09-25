@@ -1,9 +1,6 @@
 ﻿namespace YamyProject.Core.ViewModel
 {
-    // ViewModels/SalesViewModels.cs
-
-    namespace YourApp.ViewModels
-    {
+  
         // Top-level VM used for Create and Edit pages
         public class SalesEditViewModel
         {
@@ -62,5 +59,3 @@
         // Lightweight DTO returned to UI lists
        
     }
-
-}

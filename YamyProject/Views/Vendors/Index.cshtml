@@ -58,14 +58,14 @@
                 </div>
                 <div class="card-body p-0">
                     <ul class="list-group list-group-flush">
-                        @foreach (var Vender in Model)
+                       @*  @foreach (var Vender in Model)
                         {
                             <li class="list-group-item">
                                 <a href="@Url.Action("Details", "Vender", new { id = Vender.Id })">
                                     @Vender.Name (@Vender.Code)
                                 </a>
                             </li>
-                        }
+                        } *@
                     </ul>
                 </div>
             </div>
@@ -78,9 +78,9 @@
                     Vender Information
                 </div>
                 <div class="card-body">
-                    @foreach (var Vender in Model)
+                  @*   @foreach (var Vender in Model)
                     {
-                        @* <div>
+                        <div>
                             <tr>
                                 <label>Vender Code     : @Vender.Code</label>
                                 <td>Vender Name     : @Vender.Name</td>
@@ -98,8 +98,8 @@
                                 </form>
                             </td> 
                              </tr>
-                        </div> *@
-                    }
+                        </div> 
+                    } *@
                 @*      <p><strong>Vender Code:</strong> @Model.SelectedVender.Code</p>
                     <p><strong>Name:</strong> @Model.SelectedVender.Name</p>
                     <p><strong>TRN:</strong> @Model.SelectedVender.TRN</p>

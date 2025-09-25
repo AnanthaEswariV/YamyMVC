@@ -1,5 +1,4 @@
-﻿using YamyProject.Core.ViewModel.YourApp.ViewModels;
-
+﻿
 namespace YamyProject.Services.Interfaces
 {
     public interface ISalesServices

@@ -16,7 +16,8 @@ namespace YamyProject.Controllers
         public async Task<IActionResult> Index(string state = "Active")
         {
             var customers = await _customerService.GetAllAsync(state);
-            return View(customers);
+            //return View(customers);
+            return View();
         }
 
         public async Task<IActionResult> Details(int id)
