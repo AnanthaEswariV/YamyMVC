@@ -205,8 +205,6 @@
 
 <!-- 🔽 Modal Partial View goes here -->
 @Html.Partial("_FixedAssets")
-@Html.Partial("_FixedAssetsCategory")
-
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -216,6 +214,155 @@
     <link href="~/assets/vendors/fontawesome/all.min.css" rel="stylesheet" />
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
+
+
+                $(document).ready(function () {
+
+            // 🔹 Load Categories into Add + Edit dropdowns
+            function loadFixedAssetCategories() {
+                $.ajax({
+                    url: '/Lists/GetFixedAssetsCategoryList',
+                    type: 'GET',
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error(res.message || "Failed to load categories");
+                            return;
+                        }
+
+                        const $ddlMain = $('#assetCategory');
+                        const $ddlEdit = $('#editAssetCategory');
+
+                        $ddlMain.empty().append('<option value="">-- Select --</option>');
+                        $ddlEdit.empty().append('<option value="">-- Select --</option>');
+
+                        res.data.forEach(cat => {
+                            const option = $('<option>', {
+                                value: cat.id,
+                                text: cat.category_Name, // match backend casing
+                                'data-assets-account': cat.assetsAccountId,
+                                'data-depreciation-account': cat.depreciationAccountId,
+                                'data-expense-account': cat.expenceAccountId
+                            });
+                            $ddlMain.append(option.clone());
+                            $ddlEdit.append(option.clone());
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("❌ Error fetching categories:", status, error);
+                        toastr.error("Server error while loading categories");
+                    }
+                });
+            }
+
+            // 🔹 Handle Category Change → Auto-assign linked accounts
+            function bindCategoryChangeHandlers() {
+                // Add form
+                $('#assetCategory').on('change', function () {
+                    const selected = $(this).find(':selected');
+                    if (!selected.val()) return;
+
+                    $('#fixedAssetsAccount').val(selected.data('assets-account')).trigger("change");
+                    $('#accumulatedDepreciation').val(selected.data('depreciation-account')).trigger("change");
+                    $('#depreciationExpense').val(selected.data('expense-account')).trigger("change");
+                });
+
+                // Edit form
+                $('#editAssetCategory').on('change', function () {
+                    const selected = $(this).find(':selected');
+                    if (!selected.val()) return;
+
+                    $('#editFixedAssetsAccount').val(selected.data('assets-account')).trigger("change");
+                    $('#editAccumulatedDepreciation').val(selected.data('depreciation-account')).trigger("change");
+                    $('#editDepreciationExpense').val(selected.data('expense-account')).trigger("change");
+                });
+            }
+
+            // 🔹 Load Accounts into dropdowns + bind to code boxes
+            function loadAccounts() {
+                $.ajax({
+                    url: '/HR/GetAccruedSalaries', // make sure this is your accounts API
+                    type: 'GET',
+                    success: function (data) {
+                        const dropdowns = [
+                            { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
+                            { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
+                            { ddl: '#depreciationExpense', codeBox: '#code4' },
+                            { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
+                            { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
+                            { ddl: '#editDepreciationExpense', codeBox: '#editCode4' }
+                        ];
+
+                        dropdowns.forEach(set => {
+                            const $ddl = $(set.ddl);
+                            $ddl.empty().append('<option value="">-- Select --</option>');
+
+                            data.forEach(item => {
+                                $ddl.append(
+                                    $('<option>', {
+                                        value: item.id,
+                                        text: item.code + ' - ' + item.name,
+                                        'data-code': item.code
+                                    })
+                                );
+                            });
+
+                            // 🔹 Update account code textbox on change
+                            $ddl.off('change').on('change', function () {
+                                const selected = $(this).find(':selected');
+                                $(set.codeBox).val(selected.data('code') || "");
+                            });
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("❌ Error loading accounts:", status, error);
+                        toastr.error("Server error while loading accounts");
+                    }
+                });
+            }
+
+            // ✅ Init on page load
+            loadFixedAssetCategories();
+            loadAccounts();
+            bindCategoryChangeHandlers();
+
+        });
+
+         function addFixedAssetsCategory() {
+                    let model = {
+                        CategoryName: $("#categoryName").val(),
+                        AssetsAccountId: $("#fixedAssetsAccount1").val(),
+                        DepreciationAccountId: $("#accumulatedDepreciation1").val(),
+                        ExpenceAccountId: $("#depreciationExpense1").val()
+                    };
+
+                    if (!model.CategoryName) {
+                        alert("Please enter Category Name");
+                        return;
+                    }
+
+                    $.ajax({
+                            url: "/Lists/AddFixedAssetsCategory",
+                        method: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify(model),
+                        success: function (res) {
+                            if (res.status) {
+                                $("#addFixedAssetsCategoryModal").modal("hide");
+                                $("#addFixedAssetsCategoryForm")[0].reset();
+                                       // Show success message
+                                // Optional: reload page after short delay
+                                setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+
+                            } else {
+                                    toastr.error(res.message || "Error saving category");
+                            }
+                        },
+                        error: function (xhr) {
+                               console.error(err);
+                            toastr.error("Server error occurred while saving category");
+                        }
+                    });
+                }
 
             function loadAllFixedAssets() {
         $.ajax({
@@ -265,8 +412,9 @@
 
             $(document).ready(function () {
 
+
             // ===== Load Fixed Assets Categories into dropdown =====
-                  $.ajax({
+            $.ajax({
             url: '/Lists/GetFixedAssetsCategory',
             type: 'GET',
             success: function (res) {
@@ -300,7 +448,7 @@
         });
 
             // ===== Load Accounts for Add Modal dropdowns =====
-                    $.ajax({
+            $.ajax({
             url: '/HR/GetAccruedSalaries',
             type: 'GET',
             success: function (data) {
@@ -311,7 +459,10 @@
                     { ddl: '#depreciationExpense', codeBox: '#code4' },
                     { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
                     { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
-                    { ddl: '#editDepreciationExpense', codeBox: '#editCode4' }
+                    { ddl: '#editDepreciationExpense', codeBox: '#editCode4' },
+                     { ddl: '#fixedAssetsAccount1', codeBox: '#code5' },
+                    { ddl: '#accumulatedDepreciation1', codeBox: '#code6' },
+                    { ddl: '#depreciationExpense1', codeBox: '#code7' }
                 ];
 
                 dropdowns.forEach(set => {
@@ -340,7 +491,6 @@
                 console.error("❌ Error loading accounts:", status, error);
             }
         });
-
 
             function calculateDepreciation(lifeSelector, purchaseSelector, endDateSelector, depValueSelector, totalDaysSelector) {
             const lifeYears = parseInt($(lifeSelector).val());
@@ -536,7 +686,7 @@
             updateFixedAsset();
         });
 
-                    // ✅ Update Function
+         // ✅ Update Function
         function updateFixedAsset() {
             let payload = {
                 Id: $("#editFixedAssetId").val(),
@@ -580,12 +730,9 @@
         }
             
 
-       
-
-
         });
 
-                let fixedTable;
+         let fixedTable;
 
         $(document).on("click", "#fixedassetTable tbody tr", function () {
             // Highlight selected row

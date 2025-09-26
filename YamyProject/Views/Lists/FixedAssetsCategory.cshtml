@@ -126,12 +126,12 @@
                                 setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
 
                             } else {
-                                    toastr.error(res.message || "Error saving department");
+                                    toastr.error(res.message || "Error saving category");
                             }
                         },
                         error: function (xhr) {
                                console.error(err);
-                            toastr.error("Server error occurred while saving department");
+                            toastr.error("Server error occurred while saving category");
                         }
                     });
                 }

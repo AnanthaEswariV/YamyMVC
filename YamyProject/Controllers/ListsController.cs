@@ -2303,6 +2303,47 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetFixedAssetsCategoryList()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, category_name, assets_account_id, depreciation_account_id, expence_account_id
+                         FROM tbl_fixed_assets_category
+                        ;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var categories = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    categories.Add(new
+                    {
+                        Id = reader["id"],
+                        Category_Name = reader["category_name"].ToString(),
+                        AssetsAccountId = reader["assets_account_id"] != DBNull.Value ? Convert.ToInt32(reader["assets_account_id"]) : 0,
+                        DepreciationAccountId = reader["depreciation_account_id"] != DBNull.Value ? Convert.ToInt32(reader["depreciation_account_id"]) : 0,
+                        ExpenceAccountId = reader["expence_account_id"] != DBNull.Value ? Convert.ToInt32(reader["expence_account_id"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = categories });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
 
 
