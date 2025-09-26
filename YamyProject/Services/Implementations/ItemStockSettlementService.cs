@@ -169,15 +169,38 @@ namespace YamyProject.Services.Implementations
                 return vm;
             }
 
-            public async Task<int> CreateSettlementAsync(CreateUpdateSettlementVm model, int currentUserId)
+        public async Task<CreateUpdateSettlementVm> GetCreateUpdateSettlementVmAsync()
+        {
+            var warehousesEntity = await _db.TblWarehouses
+                .AsNoTracking()
+                .ToListAsync();
+
+            var warehousesVm = warehousesEntity
+                .Select(w => new WarehouseViewModel
+                {
+                    Id = w.Id,
+                    Name = w.Code + " - " + w.Name
+                })
+                .ToList();
+
+            return new CreateUpdateSettlementVm
+            {
+                warehouse = warehousesEntity,   // raw entity list
+                WarehousesVm = warehousesVm,    // formatted list
+            };
+        }
+
+        public async Task<int> CreateSettlementAsync(CreateUpdateSettlementVm model, int currentUserId)
             {
                 using var tx = await _db.Database.BeginTransactionAsync();
                 try
                 {
+                    // main entity
+
                     var entity = new TblItemStockSettlement
                     {
                         Code = model.Code,
-                        Date = DateOnly.FromDateTime(model.Date),
+                        Date = model.Date,
                         WarehouseId = model.WarehouseId,
                         CreatedBy = currentUserId,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
@@ -228,7 +251,7 @@ namespace YamyProject.Services.Implementations
                     if (entity == null) throw new KeyNotFoundException("Settlement not found");
 
                     entity.Code = model.Code;
-                    entity.Date = DateOnly.FromDateTime(model.Date);
+                    entity.Date = model.Date;
                     entity.ModifiedBy = currentUserId;
                     entity.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
 

@@ -1,8 +1,7 @@
 ﻿
 @model CreateUpdateSettlementVm
 
-@{
-    
+@{    
     var isEdit = Model?.Id > 0;  // example logic
     ViewData["Title"] = $" Stock Settlement - {(Model?.Id > 0 ? "Edit" : "Create")}";
 }
@@ -22,12 +21,25 @@
                         <input asp-for="Date" type="date" class="form-control" />
                         <span asp-validation-for="Date" class="text-danger"></span>
                     </div>
-                    <div class="col-md-5">
-                        <label asp-for="WarehouseId" class="form-label">Warehouse</label>
-                     @*    <select asp-for="WarehouseId" asp-items="Model.Warehouses" class="form-select"></select>*@
-                     <span asp-validation-for="WarehouseId" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end justify-content-end">
+                    <div class="col-md-3">
+                        <label asp-for="WarehouseId"></label>
+                                <div class="form-floating mb-2">
+                                    <select class="form-select form-select-solid js-select2"
+                                            data-placeholder="Select an author"
+                                            asp-for="WarehouseId"
+                                            asp-items="@(new SelectList(Model.WarehousesVm, "Id", "Name"))">
+                                        <option value="">Select an author</option>
+                                    </select>
+                                </div>
+                                <span asp-validation-for="WarehouseId" class="text-danger d-block"></span>
+                            </div>
+                    <div class="col mb-3 ">
+                    <div class="row mb-1 ">
+
+                        <label >Previous</label>
+                        <label class="text-end">Next</label>
+                       </div>
+                        <div class="col-md-4 d-flex align-items-end justify-content-end">
                         @* <label>Previous</label> *@
                         <div class="btn-group"> 
                             <button type="button" class="btn btn-outline-primary">&lt;&lt;</button>
@@ -36,7 +48,9 @@
                         </div>
                         @* <label>Next</label> *@
                     </div>
+                    </div>
                 </div>
+                <div class="table-responsive mt-4">
 
                 <table class="table table-bordered table-sm align-middle" id="itemsTable">
                     <thead class="table-light">
@@ -57,43 +71,49 @@
                     <tbody>
                         @if (Model.Items != null && Model.Items.Any())
                         {
-                            for (int i = 0; i < Model.Items.Count; i++)
-                            {
-                                <tr>
-                                    <td>@(i + 1)</td>
-                                    <td><input name="Items[@i].ItemId" value="@Model.Items[i].ItemId" readonly /></td>
-                                    <td><input value="@Model.Items[i].ItemId" class="form-control"  /></td>
-                                    @* <td><input value="@Model.Items[i].NAME" class="form-control"  /></td> *@
-                                    <td><input name="Items[@i].OnHand" value="@Model.Items[i].OnHand" readonly /></td>
-                                    <td><input name="Items[@i].Price" value="@Model.Items[i].Price" readonly /></td>
-                                    <td><input name="Items[@i].SysAmount" value="@(Model.Items[i].OnHand * Model.Items[i].Price)" class="form-control" readonly /></td>
-                                    <td><input name="Items[@i].NewOnHand" value="@Model.Items[i].NewOnHand"/></td>
-                                    <td><input name="Items[@i].QtyDiff" value="@(Model.Items[i].NewOnHand - Model.Items[i].OnHand)" class="form-control" readonly /></td>
-                                    <td><input name="Items[@i].MinusAmount" value="@Model.Items[i].MinusAmount" readonly /></td>
-                                    <td><input name="Items[@i].PlusAmount" value="@Model.Items[i].PlusAmount" readonly /></td>
-                                    <td class="text-center"><button type="button">REMOVE</button></td>
-                                </tr>
-                            }
+                                int index = 1;
+                                foreach (var item in Model.Items)
+                                {
+                                    <tr>
+                                        <td>@index</td>
+                                        <td>@item.ItemId</td>
+                                        <td>@item.ItemId</td>
+                                        @* Example for item name if needed:
+                                        <td><input type="text" value="@item.Name" class="form-control" /></td> *@
+                                        <td>@item.OnHand</td>
+                                        <td>@item.Price</td>
+                                        <td>@(item.OnHand* item.Price)</td>
+                                        <td>@item.NewOnHand</td>
+                                        <td>@(item.NewOnHand - item.OnHand)</td>
+                                        <td>@item.MinusAmount</td>
+                                        <td>@item.PlusAmount</td>
+                                        <td class="text-center">
+                                        <td class="text-center"><a calss=" btn btn-danger">REMOVE</a></td>
+
+                                        </td>
+                                    </tr>
+                                    index++;
+                                }
                         }
                         else
                         {
                             <tr>
                                 <td>1</td>
-                                <td><input name="Items[0].ItemId" readonly /></td>
-                                <td><input class="form-control"  /></td>
-                                <td><input name="Items[0].OnHand" readonly /></td>
-                                <td><input name="Items[0].Price" readonly /></td>
-                                <td><input name="Items[0].SysAmount" readonly /></td>
-                                <td><input name="Items[0].NewOnHand" /></td>
-                                <td><input name="Items[0].QtyDiff" readonly /></td>
-                                <td><input name="Items[0].MinusAmount" readonly /></td>
-                                <td><input name="Items[0].PlusAmount" readonly /></td>
-                                <td class="text-center"><button type="button">REMOVE</button></td>
+                                <td><input type="text" name="Items[0].NewOnHand" class="form-control" /></td>
+                                <td><input type="text" name="Items[0].NewOnHand" class="form-control" /></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td><input type="text" name="Items[0].NewOnHand" class="form-control" /> </td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                    <td class="text-center"><a calss=" btn btn-danger">REMOVE</a></td>
                             </tr>
                         }
                     </tbody>
                 </table>
-
+                </div>
                 <div class="row justify-content-end">
                     <div class="col-md-3">
                         <div class="input-group input-group-sm">

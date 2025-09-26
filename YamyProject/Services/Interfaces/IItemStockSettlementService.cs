@@ -8,6 +8,8 @@
 
         Task<ItemStockSettlementDetailsVm?> GetSettlementDetailsAsync(int id);
 
+        public  Task<CreateUpdateSettlementVm> GetCreateUpdateSettlementVmAsync();
+
         Task<int> CreateSettlementAsync(CreateUpdateSettlementVm model, int currentUserId);
 
         Task UpdateSettlementAsync(int id, CreateUpdateSettlementVm model, int currentUserId);

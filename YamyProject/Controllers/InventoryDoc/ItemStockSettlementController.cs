@@ -37,10 +37,11 @@ namespace YamyProject.Controllers.InventoryDoc
 
         // GET create (view)
         [HttpGet("create")]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
 
-            var model = new CreateUpdateSettlementVm();
+            var model = await _svc.GetCreateUpdateSettlementVmAsync();
+
             return View("StockSettelment", model);
         }
 
@@ -80,7 +81,7 @@ namespace YamyProject.Controllers.InventoryDoc
             {
                 Id = data.Id,
                 Code = data.Code ?? "",
-                Date = data.Date ?? DateTime.UtcNow,
+                Date = DateOnly.FromDateTime(data.Date ?? DateTime.UtcNow),
                 WarehouseId = data.WarehouseId,
                 Items = data.Items.Select(i => new CreateUpdateSettlementItemVm
                 {
