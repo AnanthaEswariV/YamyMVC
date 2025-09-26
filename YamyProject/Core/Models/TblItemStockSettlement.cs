@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblItemStockSettlement
 {
     public int Id { get; set; }
@@ -26,4 +22,9 @@ public partial class TblItemStockSettlement
     public DateOnly? ModifiedDate { get; set; }
 
     public int? State { get; set; }
+
+    public virtual ICollection<TblItemStockSettlementDetail> Details { get; set; } = new List<TblItemStockSettlementDetail>();
+
+    public virtual ICollection<TblTransaction> Transactions { get; set; } = new List<TblTransaction>();
+
 }

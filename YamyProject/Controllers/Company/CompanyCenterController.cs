@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Controllers.Company
+﻿using System.Security.Claims;
+
+namespace YamyProject.Controllers.Company
 {
     public class CompanyCenterController : Controller
     {
@@ -22,7 +24,28 @@
             
         }
         [HttpGet]
-        [AjaxOnly]
+        public IActionResult Create()
+        {
+            return PartialView("_Form");
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(CompanyViewModels model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest();
+
+            var company = _mapper.Map<TblCompany>(model);
+           // company. = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+
+            _context.Add(company);
+            _context.SaveChanges();
+
+            var viewModel = _mapper.Map<CompanyViewModels>(company);
+
+            return PartialView("_CompanyRow", viewModel);
+        }
+        [HttpGet]
         public IActionResult Edit(int id)
         {
             var company = _context.TblCompanies.Find(id);
@@ -31,7 +54,7 @@
                 return NotFound();
 
             var viewModel = _mapper.Map<CompanyViewModels>(company);
-            return PartialView("Edit", viewModel);
+            return PartialView("_Form", viewModel);
         }       
         [HttpPost]
         public IActionResult Edit(CompanyViewModel model)

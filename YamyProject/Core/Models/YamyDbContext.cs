@@ -4594,8 +4594,7 @@ public partial class YamyDbContext : DbContext
             entity.Property(e => e.State).HasColumnName("state");
             entity.Property(e => e.TType).HasMaxLength(200)
                 .HasColumnName("t_type");
-            entity.Property(e => e.TransactionId).HasMaxLength(200)
-                .HasColumnName("transaction_id");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
             entity.Property(e => e.Type).HasMaxLength(200)
                 .HasColumnName("type");
             entity.Property(e => e.VoucherNo).HasMaxLength(50)

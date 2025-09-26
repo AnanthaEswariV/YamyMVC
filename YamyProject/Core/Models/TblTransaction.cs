@@ -17,7 +17,9 @@ public partial class TblTransaction
 
     public decimal? Credit { get; set; }
 
-    public string? TransactionId { get; set; }
+    public int? TransactionId { get; set; }
+    [ForeignKey("TransactionId")]
+    public virtual TblItemStockSettlement? lItemStockSettlement { get; set; }
 
     public int? HumId { get; set; }
 
