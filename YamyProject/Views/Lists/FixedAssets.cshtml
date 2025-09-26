@@ -185,12 +185,12 @@
                 <table class="table table-striped" id="fixedTable">
                     <thead class="table-light">
                         <tr>
-                            <th>S.No</th>
+                           @*  <th>S.No</th>
                             <th>Date</th>
                             <th>Days</th>
                             <th>Description</th>
                             <th>Amount</th>
-                            <th>Note</th>
+                            <th>Note</th> *@
                         </tr>
                     </thead>
                     <tbody>
@@ -442,8 +442,8 @@
                 Code: $('#assetCode').val(),
                 Date: $('#assetDate').val(),
                 CategoryId: $('#assetCategory').val(),
-                AssetName: $('#assetName').val(),
-                AssetBrand: $('#assetBrand').val(),
+                Name: $('#assetName').val(),
+                Brand: $('#assetBrand').val(),
                 Model: $('#modelEngNo').val(),
                 Supplier: $('#supplierName').val(),
                 Status: $('#assetStatus').val(),
@@ -455,14 +455,14 @@
                 DepreciationValue: parseFloat($('#depreciationValue').val()) || 0,
                 EndDate: $('#endDate').val(),
                 TotalDays: parseInt($('#totalDays').val()) || 0,
-                FixedAssetsAccountId: $('#fixedAssetsAccount').val(),
-                AccumulatedDepreciationId: $('#accumulatedDepreciation').val(),
-                DepreciationExpenseId: $('#depreciationExpense').val(),
+                DebitAccountId: $('#fixedAssetsAccount').val(),
+                CreditAccountId: $('#accumulatedDepreciation').val(),
+                ExpenceAccountId: $('#depreciationExpense').val(),
                 MakeJournal: $('#makeJournal').is(':checked')
             };
 
             // Basic validation
-            if (!payload.CategoryId || !payload.AssetName || !payload.PurchaseDate || !payload.DepreciationLife) {
+            if (!payload.CategoryId || !payload.Name || !payload.PurchaseDate || !payload.DepreciationLife) {
                 alert('Please fill all required fields.');
                 return;
             }
@@ -488,7 +488,7 @@
                     }
                 },
                 error: function (xhr, status, error) {
-                               console.error(err);
+                               console.error(error);
                             toastr.error("Server error occurred while saving fixedassets");
                 }
             });

@@ -1,4 +1,74 @@
-﻿        <!-- ✅ Sidebar -->
+﻿   
+
+<div id="sidebar" class="active">
+            <div class="sidebar-wrapper active">
+                <div class="sidebar-header">
+                    <div class="d-flex justify-content-between">
+                        <div class="logo text-center">
+                            <a asp-area="" asp-controller="Home" asp-action="Index">
+                                <img src="~/assets/images/logo/yamy.png" alt="Logo">
+                            </a>
+                        </div>
+                        <div class="toggler">
+                            <a href="#" class="sidebar-hide d-xl-none d-block">
+                                <i class="bi bi-x bi-middle"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ✅ Sidebar Menu -->
+                <div class="sidebar-menu">
+                    <ul class="menu">
+                        <li class="sidebar-item active">
+                            <a asp-controller="Home" asp-action="Index" class="sidebar-link">
+                                <i class="bi bi-grid-fill"></i><span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-calculator"></i><span>Accountant</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-house"></i><span>Home</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-building"></i><span>My Company</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-people"></i><span>Customers</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-person-lines-fill"></i><span>Vendors</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-person-badge"></i><span>HR</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-box-seam"></i><span>Inventory</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-graph-up"></i><span>CRM</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-egg-fried"></i><span>Restaurant System</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-gear"></i><span>Manufacture System</span></a></li>
+                    </ul>
+                </div>
+
+                <!-- ✅ Sidebar Footer -->
+                <div class="sidebar-footer">
+                    <ul class="menu">
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-gear"></i><span>Settings</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-globe"></i><span>Yamy Technology</span></a></li>
+                        <li class="sidebar-item"><a href="#" class="sidebar-link"><i class="bi bi-translate"></i><span>Language: EN</span></a></li>
+                    </ul>
+                </div>
+
+                <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
+            </div>
+        </div>
+
+
+        @section Scripts {
+
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="~/assets/vendors/fontawesome/all.min.css" rel="stylesheet" />
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+        }
+
+
+
+
+
+
+
+@*         <!-- ✅ Sidebar -->
  <div id="sidenav-collapse-main" class="active">
     <div class="sidebar-wrapper active">
         <div class="sidebar-header sidebar-logo">
@@ -20,7 +90,7 @@
             </div>
             <button class="topbar-toggler more">
                 <i class="gg-more-vertical-alt"></i>
-            </button> *@
+            </button> 
 
         </div>
         <hr class="horizontal dark mt-0">
@@ -29,7 +99,7 @@
 
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    @* <a data-bs-toggle="collapse" href="#dashboards" class="nav-link active" aria-controls="dashboards" role="button" aria-expanded="false" asp-controller="Home" asp-action="Index"> *@
+                    <a data-bs-toggle="collapse" href="#dashboards" class="nav-link active" aria-controls="dashboards" role="button" aria-expanded="false" asp-controller="Home" asp-action="Index"> 
                        <div class="icon icon-shape icon-sm text-center d-flex align-items-center justify-content-center" >
                             <i class="ni ni-shop text-dark text-sm opacity-10"></i>
                         </div>
@@ -461,4 +531,4 @@
     <script src="~/assets/Asid/jsvectormap.min.js"></script>
     <script src="~/assets/Asid/world.js"></script>
     <!-- Sweet Alert -->
-    <script src="~/assets/Asid/sweetalert.min.js"></script> *@
+    <script src="~/assets/Asid/sweetalert.min.js"></script> *@ 
