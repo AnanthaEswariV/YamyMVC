@@ -1,0 +1,143 @@
+﻿<!-- Fixed Assets Category Modal -->
+<div class="modal fade" id="addFixedAssetsCategoryModal" tabindex="-1" aria-labelledby="addFixedAssetsCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addFixedAssetsCategoryModalLabel">Fixed Asset - New Fixed Asset</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFixedAssetsCategoryForm">
+                    <input type="hidden" id="categoryId" />
+                    <!-- Category Name -->
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label fw-bold small">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName" required />
+                    </div>
+
+                    <!-- Fixed Assets Account -->
+                    <div class="account-row">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label for="fixedAssetsAccount" class="form-label fw-bold small">Fixed Assets Account</label>
+                                <select class="form-select form-select-sm" id="fixedAssetsAccount" required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="fixedAssetsAccountCode" class="form-label fw-bold small">Account Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code2" disabled>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accumulated Depreciation -->
+                    <div class="account-row">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label for="accumulatedDepreciation" class="form-label fw-bold small">Accumulated Depreciation</label>
+                                <select class="form-select form-select-sm" id="accumulatedDepreciation" required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="accumulatedDepreciationCode" class="form-label fw-bold small">Account Code</label>
+                                <input type="text" class="form-control form-control-sm" id="code3" disabled>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Depreciation Expense -->
+                    <div class="account-row">
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label for="depreciationExpense" class="form-label fw-bold small">Depreciation Expense</label>
+                                <select class="form-select form-select-sm" id="depreciationExpense" required>
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="depreciationExpenseCode" class="form-label fw-bold small">Account Code</label>
+                                <input type="text" class="form-control" id="code4" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="saveBtn" onclick="addFixedAssetsCategory()">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">CLOSE</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Fixed Assets Category Modal -->
+<div class="modal fade" id="editFixedAssetsCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Edit Fixed Asset Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editFixedAssetsCategoryForm">
+                    <!-- Hidden field for ID -->
+                    <input type="hidden" id="editCategoryId" />
+
+                    <!-- Category Name -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Category Name</label>
+                        <input type="text" class="form-control" id="editCategoryName" required />
+                    </div>
+
+                    <!-- Fixed Assets Account -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Fixed Assets Account</label>
+                            <select class="form-select form-select-sm" id="editFixedAssetsAccount" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        @*  <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="editCode2" disabled>
+                        </div> *@
+                    </div>
+
+                    <!-- Accumulated Depreciation -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Accumulated Depreciation</label>
+                            <select class="form-select form-select-sm" id="editAccumulatedDepreciation" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        @* <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="editCode3" disabled>
+                        </div> *@
+                    </div>
+
+                    <!-- Depreciation Expense -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold small">Depreciation Expense</label>
+                            <select class="form-select form-select-sm" id="editDepreciationExpence" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        @*   <div class="col-md-4">
+                            <label class="form-label fw-bold small">Account Code</label>
+                            <input type="text" class="form-control form-control-sm" id="editCode4" disabled>
+                        </div> *@
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="updateBtn">Update</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

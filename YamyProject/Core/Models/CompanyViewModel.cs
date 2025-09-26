@@ -221,5 +221,26 @@ namespace YamyProject.Core.Models
         public int ExpenceAccountId { get; set; }
     }
 
+    public class FixedAssetRequest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Brand { get; set; }
+        public int CategoryId { get; set; }
+        public string Model { get; set; }
+        public string Supplier { get; set; }
+        public string Status { get; set; }
+        public string InvoiceNumber { get; set; }
+        public DateTime PurchaseDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public int DepreciationLife { get; set; }
+        public decimal PurchasePrice { get; set; }
+        public int DebitAccountId { get; set; }
+        public int CreditAccountId { get; set; }
+        public int ExpenceAccountId { get; set; }
+        public bool CreateJournal { get; set; }
+        public int CreatedBy { get; set; }
+        public int ManufactureId { get; set; }
+    }
 
 }

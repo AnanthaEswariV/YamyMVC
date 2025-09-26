@@ -4,6 +4,8 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <style>
     .fixed-header {
         background: #4472c4;
@@ -123,7 +125,7 @@
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newEmployeeModal">
+                    <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#addFixedAssetsCategoryModal">
                         <i class="bi bi-plus-circle me-2"></i> New Fixed Assets Category
                     </a>
                 </li>
@@ -160,27 +162,24 @@
 <div class="fixed-main">
 
     <div class="fixed-sidebar p-3 border rounded">
-
         <!-- Employee Table -->
         <div class="employee-list">
-            <div class="table-responsive">
-                <table class="table table-striped" id="fixedassetTable">
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-striped custom-table mb-0" id="fixedassetTable" style="font-size: 12px;">
                     <thead class="table-light">
                         <tr>
-                            <th>S.No</th>
-                            <th>Code</th>
-                            <th>Name</th>
-                            <th>From</th>
-                            <th>To</th>
-                            <th>Total</th>
-                            <th>Action</th>
+                            <th style="font-size: 13px;">Name</th>
+                            <th style="font-size: 13px;">From</th>
+                            <th style="font-size: 13px;">To</th>
+                            <th style="font-size: 13px;">Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody style="font-size: 12px;">
                         <!-- Employee rows injected here -->
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 
@@ -211,3 +210,474 @@
 
 <!-- 🔽 Modal Partial View goes here -->
 @Html.Partial("_FixedAssets")
+@Html.Partial("_FixedAssetsCategory")
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link href="~/assets/vendors/fontawesome/all.min.css" rel="stylesheet" />
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script>
+
+            function loadAllFixedAssets() {
+        $.ajax({
+            url: '/Lists/GetAllFixedAssets', 
+            type: 'GET',
+            success: function(res) {
+                if (!res.status) {
+                    alert(res.message || "Failed to load assets");
+                    return;
+                }
+
+                const assets = res.data;
+                const $tableBody = $('#fixedassetTable tbody');
+                $tableBody.empty();
+
+                assets.forEach(asset => {
+                    // const PurchasePrice = asset.purchasePrice ? parseFloat(asset.purchasePrice).toFixed(2) : '0.00';
+                    const PurchaseDate = asset.purchaseDate ? formatDate(asset.purchaseDate) : '';
+                    const EndDate = asset.endDate ? formatDate(asset.endDate) : '';
+
+                    const row = `<tr data-id="${asset.id}">
+                        <td>${asset.name}</td>
+                        <td>${PurchaseDate}</td>
+                        <td>${EndDate}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary editAsset"  data-asset='${JSON.stringify(asset).replace(/'/g, "&apos;")}' style="font-size: 10px; padding: 2px 6px;"> <i class="fas fa-pen"></i>
+        </button>
+                            <button class="btn btn-sm btn-danger deleteAsset" data-id="${asset.id}" style="font-size: 10px; padding: 2px 6px;">   <i class="fas fa-prescription-bottle-alt"</button>
+                        </td>
+                    </tr>`;
+                    $tableBody.append(row);
+                });
+                },
+                error: function(err) {
+                    console.error("Failed to fetch assets", err);
+                }
+            });
+        }
+
+            // Helper to format Date for table display
+            function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            const month = ('0' + (d.getMonth() + 1)).slice(-2);
+            const day = ('0' + d.getDate()).slice(-2);
+            return d.getFullYear() + '-' + month + '-' + day;
+        }
+
+            $(document).ready(function () {
+
+            // ===== Load Fixed Assets Categories into dropdown =====
+                  $.ajax({
+            url: '/Lists/GetFixedAssetsCategory',
+            type: 'GET',
+            success: function (res) {
+                if (res.status) {
+                    // Main dropdown
+                    const $ddlMain = $('#assetCategory');
+                    $ddlMain.empty().append('<option value="">-- Select --</option>');
+
+                    // Edit modal dropdown
+                    const $ddlEdit = $('#editAssetCategory');
+                    $ddlEdit.empty().append('<option value="">-- Select --</option>');
+
+                    res.data.forEach(cat => {
+                        const option = $('<option>', {
+                            value: cat.id,
+                            text: cat.category_name
+                        });
+
+                        // Append to both dropdowns
+                        $ddlMain.append(option.clone());
+                        $ddlEdit.append(option.clone());
+                    });
+
+                } else {
+                    console.error('Error fetching categories:', res.message);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('API call failed:', status, error);
+            }
+        });
+
+            // ===== Load Accounts for Add Modal dropdowns =====
+                    $.ajax({
+            url: '/HR/GetAccruedSalaries',
+            type: 'GET',
+            success: function (data) {
+                // Map of dropdowns and their corresponding code boxes
+                const dropdowns = [
+                    { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
+                    { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
+                    { ddl: '#depreciationExpense', codeBox: '#code4' },
+                    { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
+                    { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
+                    { ddl: '#editDepreciationExpense', codeBox: '#editCode4' }
+                ];
+
+                dropdowns.forEach(set => {
+                    const $ddl = $(set.ddl);
+                    $ddl.empty().append('<option value="">-- Select --</option>');
+
+                    data.forEach(item => {
+                        $ddl.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code
+                            })
+                        );
+                    });
+
+                    // On change, update the code textbox
+                    $ddl.off('change').on('change', function () {
+                        const selected = $(this).find(':selected');
+                        const code = selected.data('code');
+                        $(set.codeBox).val(code || "");
+                    });
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error("❌ Error loading accounts:", status, error);
+            }
+        });
+
+
+            function calculateDepreciation(lifeSelector, purchaseSelector, endDateSelector, depValueSelector, totalDaysSelector) {
+            const lifeYears = parseInt($(lifeSelector).val());
+            const purchaseDateInput = $(purchaseSelector);
+            const endDateInput = $(endDateSelector);
+            const depreciationValueInput = $(depValueSelector);
+            const totalDaysInput = $(totalDaysSelector);
+
+            const purchaseDate = new Date(purchaseDateInput.val());
+            if (!lifeYears || lifeYears <= 0 || isNaN(purchaseDate.getTime())) {
+                depreciationValueInput.val('');
+                totalDaysInput.val('');
+                endDateInput.val('');
+                return;
+            }
+
+            // Depreciation value (%)
+            depreciationValueInput.val((100 / lifeYears).toFixed(2));
+
+            // End date = purchase date + lifeYears - 1 day
+            const endDate = new Date(purchaseDate);
+            endDate.setFullYear(endDate.getFullYear() + lifeYears);
+            endDate.setDate(endDate.getDate() - 1);
+
+            // Format yyyy-mm-dd
+            const yyyy = endDate.getFullYear();
+            const mm = String(endDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(endDate.getDate()).padStart(2, '0');
+            endDateInput.val(`${yyyy}-${mm}-${dd}`);
+
+            // Total days
+            const totalDays = Math.round((endDate - purchaseDate) / (1000 * 60 * 60 * 24)) + 1;
+            totalDaysInput.val(totalDays);
+        }
+            // ✅ Call for main depreciation input
+            $('#depreciationLife').on('input', function () {
+            calculateDepreciation(
+                '#depreciationLife',
+                '#purchaseDate',
+                '#endDate',
+                '#depreciationValue',
+                '#totalDays'
+            );
+        });
+
+              $(document).on("click", ".editAsset", function () {
+            let asset = $(this).data("asset"); // make sure data-asset contains full JSON object
+
+            if (!asset) return;
+
+            // Fill modal fields
+            $("#editFixedAssetId").val(asset.id);
+            $("#editAssetCode").val(asset.code);
+            $("#editAssetDate").val(asset.date?.split("T")[0]);
+            $("#editAssetCategory").val(asset.categoryId);
+            $("#editAssetName").val(asset.name);
+            $("#editAssetBrand").val(asset.brand);
+            $("#editModelEngNo").val(asset.model);
+            $("#editSupplierName").val(asset.supplier);
+            $("#editAssetStatus").val(asset.status);
+            $("#editInvoiceNumber").val(asset.invoiceNumber);
+            $("#editTotalInvoice").val(asset.purchasePrice);
+            $("#editPurchaseDate").val(asset.purchaseDate?.split("T")[0]);
+            $("#editDepreciationLife").val(asset.depreciationLife);
+
+            // ✅ Call depreciation calculation immediately
+            calculateDepreciation(
+                '#editDepreciationLife',
+                '#editPurchaseDate',
+                '#editEndDate',
+                '#editDepreciationValue',
+                '#editTotalDays'
+            );
+
+            $("#editFixedAssetsAccount").val(asset.debitAccountId);
+            $("#editAccumulatedDepreciation").val(asset.creditAccountId);
+            $("#editDepreciationExpense").val(asset.expenceAccountId);
+            $("#editMakeJournal").prop("checked", asset.makeJournal ?? true);
+
+            $("#editFixedAssetModal").modal("show");
+        });
+
+              $('#editDepreciationLife').on('input', function () {
+            calculateDepreciation(
+                '#editDepreciationLife',
+                '#editPurchaseDate',
+                '#editEndDate',
+                '#editDepreciationValue',
+                '#editTotalDays'
+            );
+        });
+
+               // Submit Fixed Asset Form via AJAX
+            $('#newFixedAssetForm').on('submit', function (e) {
+            e.preventDefault();
+
+            let payload = {
+                Id: $('#FixedAssetId').val() || 0,
+                Code: $('#assetCode').val(),
+                Date: $('#assetDate').val(),
+                CategoryId: $('#assetCategory').val(),
+                AssetName: $('#assetName').val(),
+                AssetBrand: $('#assetBrand').val(),
+                Model: $('#modelEngNo').val(),
+                Supplier: $('#supplierName').val(),
+                Status: $('#assetStatus').val(),
+                InvoiceNumber: $('#invoiceNumber').val(),
+                TotalInvoice: parseFloat($('#totalInvoice').val()) || 0,
+                PurchasePrice: parseFloat($('#totalInvoice').val()) || 0,
+                PurchaseDate: $('#purchaseDate').val(),
+                DepreciationLife: parseInt($('#depreciationLife').val()) || 0,
+                DepreciationValue: parseFloat($('#depreciationValue').val()) || 0,
+                EndDate: $('#endDate').val(),
+                TotalDays: parseInt($('#totalDays').val()) || 0,
+                FixedAssetsAccountId: $('#fixedAssetsAccount').val(),
+                AccumulatedDepreciationId: $('#accumulatedDepreciation').val(),
+                DepreciationExpenseId: $('#depreciationExpense').val(),
+                MakeJournal: $('#makeJournal').is(':checked')
+            };
+
+            // Basic validation
+            if (!payload.CategoryId || !payload.AssetName || !payload.PurchaseDate || !payload.DepreciationLife) {
+                alert('Please fill all required fields.');
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/AddFixedAsset', 
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        $('#newFixedAssetModal').modal('hide');
+                        $('#newFixedAssetForm')[0].reset();
+                        $('#depreciationValue, #totalDays, #endDate').val('');
+
+                                toastr.success("FixedAssets Added Successfully!");
+
+                                // Optional: reload page after short delay
+                                setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+                    } else {
+                      toastr.error("Something went wrong!");
+
+                    }
+                },
+                error: function (xhr, status, error) {
+                               console.error(err);
+                            toastr.error("Server error occurred while saving fixedassets");
+                }
+            });
+        });
+
+            loadAllFixedAssets();
+            $(document).on("click", ".editAsset", function () {
+            let asset = $(this).data("asset");
+            console.log("Editing asset:", asset);
+            $("#editFixedAssetId").val(asset.id);
+            $("#editAssetCode").val(asset.code);
+            $("#editAssetDate").val(asset.date?.split("T")[0]);
+            $("#editAssetCategory").val(asset.categoryId);
+            $("#editAssetName").val(asset.name);
+            $("#editAssetBrand").val(asset.brand);
+            $("#editModelEngNo").val(asset.model);
+            $("#editSupplierName").val(asset.supplier);
+            $("#editAssetStatus").val(asset.status);
+            $("#editInvoiceNumber").val(asset.invoiceNumber);
+            $("#editTotalInvoice").val(asset.purchasePrice);
+            $("#editPurchaseDate").val(asset.purchaseDate?.split("T")[0]);
+
+
+                  // ✅ Call depreciation calculation immediately
+        calculateDepreciation(
+            '#editDepreciationLife',
+            '#editPurchaseDate',
+            '#editEndDate',
+            '#editDepreciationValue',
+            '#editTotalDays'
+        );
+
+            $("#editFixedAssetsAccount").val(asset.debitAccountId);
+            $("#editAccumulatedDepreciation").val(asset.creditAccountId);
+            $("#editDepreciationExpense").val(asset.expenceAccountId);
+            $("#editMakeJournal").prop("checked", asset.makeJournal ?? true);
+
+            $("#editFixedAssetModal").modal("show");
+        });
+
+
+                // Update submit
+           $("#editFixedAssetForm").on("submit", function (e) {
+            e.preventDefault();
+            updateFixedAsset();
+        });
+
+                    // ✅ Update Function
+        function updateFixedAsset() {
+            let payload = {
+                Id: $("#editFixedAssetId").val(),
+                Code: $("#editAssetCode").val(),
+                Date: $("#editAssetDate").val(),
+                CategoryId: $("#editAssetCategory").val(),
+                Name: $("#editAssetName").val(),
+                Brand: $("#editAssetBrand").val(),
+                Model: $("#editModelEngNo").val(),
+                Supplier: $("#editSupplierName").val(),
+                Status: $("#editAssetStatus").val(),
+                InvoiceNumber: $("#editInvoiceNumber").val(),
+                PurchasePrice: parseFloat($("#editTotalInvoice").val()) || 0,
+                PurchaseDate: $("#editPurchaseDate").val(),
+                DepreciationLife: parseInt($("#editDepreciationLife").val()) || 0,
+                DepreciationValue: parseFloat($("#editDepreciationValue").val()) || 0,
+                EndDate: $("#editEndDate").val(),
+                TotalDays: parseInt($("#editTotalDays").val()) || 0,
+                DebitAccountId: $("#editFixedAssetsAccount").val(),
+                CreditAccountId: $("#editAccumulatedDepreciation").val(),
+                ExpenceAccountId: $("#editDepreciationExpense").val(),
+                MakeJournal: $("#editMakeJournal").is(":checked")
+            };
+            console.log(payload);
+
+            $.ajax({
+                url: "/Lists/UpdateFixedAsset",
+                type: "POST",
+                data: JSON.stringify(payload),
+                contentType: "application/json",
+                success: function(res) {
+                    if (res.status) {
+                        $("#editFixedAssetModal").modal("hide");
+                        toastr.success("FixedAssets updated Successfully!");
+                        setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+                    } else {
+                        toastr.error(res.message || "Failed to update asset");
+                    }
+                }
+            });
+        }
+            
+
+       
+
+
+        });
+
+                let fixedTable;
+
+        $(document).on("click", "#fixedassetTable tbody tr", function () {
+            // Highlight selected row
+            $("#fixedassetTable tbody tr").removeClass("table-active");
+            $(this).addClass("table-active");
+
+            const assetId = $(this).data("id");
+            if (!assetId) return;
+
+            $.ajax({
+                url: '/Lists/GetFixedAssetsForGrid',
+                type: 'GET',
+                data: { assetId: assetId },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error("Failed to load asset details.");
+                        return;
+                    }
+
+                    const rows = res.data.map(d => [
+                        d.sn,
+                        d.date,
+                        d.days,
+                        d.description,
+                        d.amount,
+                        d.note,
+                        ""
+                    ]);
+
+                    if (fixedTable) {
+                        // Clear old data and add new data
+                        fixedTable.destroy();  // destroy old instance
+                        fixedTable = null;
+                    }
+
+                    // Initialize (or re-initialize) the table
+                    fixedTable = new simpleDatatables.DataTable("#fixedTable", {
+                        searchable: true,
+                        fixedHeight: true,
+                        perPage: 10,
+                        data: {
+                            headings: ["S.No", "Date", "Days", "Description", "Amount", "Note", ""],
+                            data: rows
+                        }
+                    });
+                },
+                error: function (err) {
+                    console.error("Failed to load fixed asset details:", err);
+                    toastr.error("Failed to load asset details.");
+                }
+            });
+        });
+
+
+
+                // Delete Fixed Asset
+        $(document).on("click", ".deleteAsset", function () {
+            const assetId = $(this).data("id");
+
+            if (!assetId) return;
+
+            // Confirm deletion
+            if (!confirm("Are you sure you want to delete this Fixed Asset?")) return;
+
+            $.ajax({
+                url: `/Lists/DeleteFixedAsset?assetId=${assetId}`,
+                type: "DELETE",
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Asset deleted successfully");
+
+
+                                // Optional: reload page after short delay
+                                setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+                    } else {
+                        toastr.error(res.message || "Failed to delete asset");
+                    }
+                },
+                error: function (err) {
+                    console.error("Error deleting asset:", err);
+                    toastr.error("Server error occurred while deleting asset");
+                }
+            });
+        });
+
+
+
+
+    </script>
+}
