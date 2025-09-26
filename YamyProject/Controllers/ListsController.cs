@@ -1818,15 +1818,493 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpDelete]
+        public async Task<IActionResult> DeleteFixedAssetCategory(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid category id" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 1️⃣ Check if category is used in tbl_fixed_assets
+                string checkQuery = "SELECT COUNT(*) FROM tbl_fixed_assets WHERE category_id = @categoryId";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@categoryId", id);
+
+                var count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                if (count > 0)
+                {
+                    return BadRequest(new { status = false, message = "Cannot delete category. It is used by existing fixed assets." });
+                }
+
+                // 2️⃣ Delete category
+                string deleteQuery = "DELETE FROM tbl_fixed_assets_category WHERE Id = @categoryId";
+                using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+                deleteCmd.Parameters.AddWithValue("@categoryId", id);
+
+                int rowsAffected = await deleteCmd.ExecuteNonQueryAsync();
+                if (rowsAffected > 0)
+                    return Ok(new { status = true, message = "Category deleted successfully" });
+                else
+                    return NotFound(new { status = false, message = "Category not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 
-        #region
+        #region Fixed Assets
 
         public IActionResult FixedAssets()
         {
             return View();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllFixedAssets()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = "SELECT * FROM tbl_fixed_assets WHERE state = 0 ORDER BY id DESC; ";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var assets = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    assets.Add(new
+                    {
+                        Id = reader["id"],
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        Brand = reader["brand"].ToString(),
+                        CategoryId = reader["category_id"].ToString(),
+                        Model = reader["model"].ToString(),
+                        Supplier = reader["supplier"].ToString(),
+                        Status = reader["status"].ToString(),
+                        InvoiceNumber = reader["invoice_number"].ToString(),
+                        PurchaseDate = reader["purchase_date"] != DBNull.Value ? DateTime.Parse(reader["purchase_date"].ToString()) : (DateTime?)null,
+                        EndDate = reader["end_date"] != DBNull.Value ? DateTime.Parse(reader["end_date"].ToString()) : (DateTime?)null,
+                        DepreciationLife = reader["depreciation_life"] != DBNull.Value ? int.Parse(reader["depreciation_life"].ToString()) : 0,
+                        PurchasePrice = reader["purchase_price"] != DBNull.Value ? Convert.ToDecimal(reader["purchase_price"]) : 0,
+                        DebitAccountId = reader["debit_account_id"].ToString(),
+                        CreditAccountId = reader["credit_account_id"].ToString(),
+                        ExpenceAccountId = reader["expence_account_id"].ToString(),
+                        Date = reader["date"] != DBNull.Value ? DateTime.Parse(reader["date"].ToString()) : (DateTime?)null,
+                        Manufacture = reader["manufacture"] != DBNull.Value && int.Parse(reader["manufacture"].ToString()) == 1,
+                        ManufactureStatus = reader["manufactureStatus"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = assets });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddFixedAsset([FromBody] FixedAssetRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter asset name" });
+
+            if (model.CategoryId == 0)
+                return BadRequest(new { status = false, message = "Select category first" });
+
+            if (model.PurchasePrice <= 0)
+                return BadRequest(new { status = false, message = "Enter purchase price" });
+
+            if (model.DepreciationLife <= 0)
+                return BadRequest(new { status = false, message = "Enter depreciation life" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Generate next code
+                string code;
+                using (var cmdCode = new MySqlCommand("SELECT MAX(CAST(code AS UNSIGNED)) AS lastCode FROM tbl_fixed_assets", conn))
+                {
+                    var lastCode = await cmdCode.ExecuteScalarAsync();
+                    int nextCode = lastCode != DBNull.Value ? Convert.ToInt32(lastCode) + 1 : 1;
+                    code = nextCode.ToString("D5");
+                }
+
+                // Insert Fixed Asset
+                var insertQuery = @"
+            INSERT INTO tbl_fixed_assets
+                (date, code, name, brand, category_id, model, supplier, status, invoice_number, purchase_date, end_date, depreciation_life, purchase_price, debit_account_id, credit_account_id, expence_account_id, created_by, created_date, state, manufacture, manufactureStatus)
+            VALUES
+                (@date, @code, @name, @brand, @category_id, @model, @supplier, @status, @invoice_number, @purchase_date, @end_date, @depreciation_life, @purchase_price, @debit_account_id, @credit_account_id, @expence_account_id, @created_by, @created_date, 0, @manufacture, 'Draft');
+            SELECT LAST_INSERT_ID();";
+
+                int assetId;
+                using (var cmd = new MySqlCommand(insertQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@brand", model.Brand);
+                    cmd.Parameters.AddWithValue("@category_id", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@model", model.Model);
+                    cmd.Parameters.AddWithValue("@supplier", model.Supplier);
+                    cmd.Parameters.AddWithValue("@status", model.Status);
+                    cmd.Parameters.AddWithValue("@invoice_number", model.InvoiceNumber);
+                    cmd.Parameters.AddWithValue("@purchase_date", model.PurchaseDate);
+                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+                    cmd.Parameters.AddWithValue("@depreciation_life", model.DepreciationLife);
+                    cmd.Parameters.AddWithValue("@purchase_price", model.PurchasePrice);
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@expence_account_id", model.ExpenceAccountId);
+                    cmd.Parameters.AddWithValue("@created_by", model.CreatedBy);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@manufacture", model.ManufactureId);
+
+                    assetId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                // Insert Journal if required
+                if (model.CreateJournal)
+                {
+                    await InsertJournalAsync(conn, assetId, model);
+                }
+
+                return Ok(new { status = true, message = "Asset added successfully", assetId });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task InsertJournalAsync(MySqlConnection conn, int assetId, FixedAssetRequest model)
+        {
+            DateTime startDate = model.PurchaseDate;
+            DateTime endDate = model.EndDate;
+            decimal totalAmount = model.PurchasePrice;
+            int totalDays = (endDate - startDate).Days + 1;
+            string expenseAccountId = model.ExpenceAccountId.ToString();
+            decimal actualTotal = 0;
+
+            // Debit & Credit entry at purchase
+            if (!string.IsNullOrEmpty(model.Supplier))
+            {
+                await CommonInsertTransactionAsync(conn, startDate, model.DebitAccountId.ToString(), totalAmount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
+                await CommonInsertTransactionAsync(conn, startDate, model.CreditAccountId.ToString(), 0, totalAmount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
+            }
+
+            DateTime currentMonthStart = startDate;
+
+            while (currentMonthStart <= endDate)
+            {
+                DateTime currentMonthEnd = new DateTime(currentMonthStart.Year, currentMonthStart.Month, DateTime.DaysInMonth(currentMonthStart.Year, currentMonthStart.Month));
+                if (currentMonthEnd > endDate)
+                    currentMonthEnd = endDate;
+
+                DateTime periodStart = currentMonthStart < startDate ? startDate : currentMonthStart;
+                DateTime periodEnd = currentMonthEnd > endDate ? endDate : currentMonthEnd;
+
+                int daysInPeriod = (periodEnd - periodStart).Days + 1;
+                decimal amount = Math.Round((totalAmount / totalDays) * daysInPeriod, 2);
+
+                if (periodEnd == endDate)
+                    amount = totalAmount - actualTotal;
+
+                actualTotal += amount;
+
+                await CommonInsertTransactionAsync(conn, periodEnd, expenseAccountId, amount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
+                await CommonInsertTransactionAsync(conn, periodEnd, model.CreditAccountId.ToString(), 0, amount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
+
+                currentMonthStart = currentMonthStart.AddMonths(1);
+                currentMonthStart = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 1);
+            }
+        }
+
+        private async Task CommonInsertTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit,
+                                                         string transactionId, int humId, string type, string description, int createdBy)
+        {
+            var query = @"INSERT INTO tbl_transaction 
+                  (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state) 
+                  VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, '', @type, @description, @createdBy, @createdDate, 0);";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@humId", humId);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@createdBy", createdBy);
+            cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateFixedAsset([FromBody] FixedAssetRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid asset ID" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter asset name" });
+
+            if (model.CategoryId == 0)
+                return BadRequest(new { status = false, message = "Select category first" });
+
+            if (model.PurchasePrice <= 0)
+                return BadRequest(new { status = false, message = "Enter purchase price" });
+
+            if (model.DepreciationLife <= 0)
+                return BadRequest(new { status = false, message = "Enter depreciation life" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Update Fixed Asset
+                var updateQuery = @"
+            UPDATE tbl_fixed_assets SET
+                date=@date,
+                name=@name,
+                brand=@brand,
+                category_id=@category_id,
+                model=@model,
+                supplier=@supplier,
+                status=@status,
+                invoice_number=@invoice_number,
+                purchase_date=@purchase_date,
+                end_date=@end_date,
+                depreciation_life=@depreciation_life,
+                purchase_price=@purchase_price,
+                debit_account_id=@debit_account_id,
+                credit_account_id=@credit_account_id,
+                expence_account_id=@expence_account_id,
+                modified_by=@modified_by,
+                modified_date=@modified_date,
+                manufacture=@manufacture,
+                manufactureStatus='Draft'
+            WHERE id=@id;";
+
+                using (var cmd = new MySqlCommand(updateQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@date", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@brand", model.Brand);
+                    cmd.Parameters.AddWithValue("@category_id", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@model", model.Model);
+                    cmd.Parameters.AddWithValue("@supplier", model.Supplier);
+                    cmd.Parameters.AddWithValue("@status", model.Status);
+                    cmd.Parameters.AddWithValue("@invoice_number", model.InvoiceNumber);
+                    cmd.Parameters.AddWithValue("@purchase_date", model.PurchaseDate);
+                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+                    cmd.Parameters.AddWithValue("@depreciation_life", model.DepreciationLife);
+                    cmd.Parameters.AddWithValue("@purchase_price", model.PurchasePrice);
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@expence_account_id", model.ExpenceAccountId);
+                    cmd.Parameters.AddWithValue("@modified_by", model.CreatedBy); // or ModifiedBy field
+                    cmd.Parameters.AddWithValue("@modified_date", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@manufacture", model.ManufactureId);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Delete old journal entries
+                using (var cmdDelete = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND type='Fixed Assets';", conn))
+                {
+                    cmdDelete.Parameters.AddWithValue("@id", model.Id);
+                    await cmdDelete.ExecuteNonQueryAsync();
+                }
+
+                // Insert new journal if required
+                if (model.CreateJournal)
+                {
+                    await InsertJournalAsync(conn, model.Id, model);
+                }
+
+                return Ok(new { status = true, message = "Asset updated successfully", assetId = model.Id });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetFixedAssetsForGrid(int assetId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 1️⃣ Get the fixed asset details
+                var assetQuery = @"
+            SELECT id, name, purchase_date, end_date, purchase_price
+            FROM tbl_fixed_assets
+            WHERE id = @assetId AND state = 0";
+
+                using var assetCmd = new MySqlCommand(assetQuery, conn);
+                assetCmd.Parameters.AddWithValue("@assetId", assetId);
+
+                using var reader = await assetCmd.ExecuteReaderAsync();
+
+                if (!await reader.ReadAsync())
+                    return NotFound(new { status = false, message = "Asset not found" });
+
+                var assetName = reader["name"].ToString();
+                var startDate = reader["purchase_date"] != DBNull.Value ? DateTime.Parse(reader["purchase_date"].ToString()) : (DateTime?)null;
+                var endDate = reader["end_date"] != DBNull.Value ? DateTime.Parse(reader["end_date"].ToString()) : (DateTime?)null;
+                var totalAmount = reader["purchase_price"] != DBNull.Value ? Convert.ToDecimal(reader["purchase_price"]) : 0;
+
+                if (startDate == null || endDate == null)
+                    return BadRequest(new { status = false, message = "Invalid purchase or end date" });
+
+                // 2️⃣ Calculate schedule
+                var totalDays = (endDate.Value - startDate.Value).Days + 1;
+                var actualTotal = 0m;
+                var currentMonthStart = startDate.Value;
+                int serialNumber = 1;
+
+                var schedule = new List<object>();
+
+                while (currentMonthStart <= endDate.Value)
+                {
+                    var currentMonthEnd = new DateTime(currentMonthStart.Year, currentMonthStart.Month, DateTime.DaysInMonth(currentMonthStart.Year, currentMonthStart.Month));
+                    if (currentMonthEnd > endDate.Value)
+                        currentMonthEnd = endDate.Value;
+
+                    var periodStart = currentMonthStart < startDate.Value ? startDate.Value : currentMonthStart;
+                    var periodEnd = currentMonthEnd > endDate.Value ? endDate.Value : currentMonthEnd;
+
+                    var daysInPeriod = (periodEnd - periodStart).Days + 1;
+                    decimal amount = Math.Round((totalAmount / totalDays) * daysInPeriod, 2);
+
+                    if (periodEnd == endDate.Value)
+                        amount = totalAmount - actualTotal;
+
+                    actualTotal += amount;
+
+                    schedule.Add(new
+                    {
+                        SN = serialNumber,
+                        Date = periodEnd.ToString("yyyy-MM-dd"),
+                        Days = daysInPeriod,
+                        Description = assetName,
+                        Amount = amount.ToString("N2"),
+                        Note = "Fixed Asset REGISTER"
+                    });
+
+                    serialNumber++;
+                    currentMonthStart = currentMonthStart.AddMonths(1);
+                    currentMonthStart = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 1);
+                }
+
+                // Add summary row
+                schedule.Add(new
+                {
+                    SN = serialNumber,
+                    Date = "",
+                    Days = totalDays,
+                    Description = "",
+                    Amount = actualTotal.ToString("N2"),
+                    Note = ""
+                });
+
+                return Ok(new { status = true, data = schedule });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteFixedAsset(int assetId)
+        {
+            if (assetId==null)
+                return BadRequest(new { status = false, message = "Invalid Asset ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Soft delete: set state = -1
+                var query = "UPDATE tbl_fixed_assets SET state = -1 WHERE id = @id";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", assetId);
+
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+                if (rowsAffected == 0)
+                    return NotFound(new { status = false, message = "Asset not found" });
+
+                return Ok(new { status = true, message = "Fixed Asset deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
 
         #endregion
 
