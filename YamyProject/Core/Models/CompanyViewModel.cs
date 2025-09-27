@@ -243,4 +243,16 @@ namespace YamyProject.Core.Models
         public int ManufactureId { get; set; }
     }
 
+
+    public class BankRequest
+    {
+        public int Id { get; set; }
+        public string AbbName { get; set; }
+        public string EntId { get; set; }
+        public string RouteNum { get; set; }
+        public string BankName { get; set; }
+        public int? CountryId { get; set; }
+    }
+
+
 }

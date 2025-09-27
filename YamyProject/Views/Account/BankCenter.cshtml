@@ -1,0 +1,380 @@
+﻿
+@{
+    ViewData["Title"] = "BankCenter";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Bank Center</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- Left side - Filter -->
+            <div style="min-width: 300px;">
+                <h6 class="fw-bold mb-2">Selection Method</h6>
+                <select class="form-select" id="bankSelect">
+                    <option>Register Bank</option>
+                    <option>UnRegister Bank</option>
+                </select>
+            </div>
+
+            <!-- Right side - Add Bank Button -->
+            <div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankModal">
+                    <i class="bi bi-plus-circle me-2"></i>Add Bank
+                </button>
+            </div>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Bank Name</th>
+                    <th>Abbreviation Name</th>
+                    <th>End Id</th>
+                    <th>Route No</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Add/Edit Bank Modal -->
+<div class="modal fade" id="bankModal" tabindex="-1" aria-labelledby="bankModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="bankForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="bankModalLabel">Register Bank</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="bankId" value="0" />
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bankCode" class="form-label text-muted">Bank Code</label>
+                            <input type="text" class="form-control" id="bankCode" placeholder="Bank Code" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label text-muted">Bank Name</label>
+                            <input type="text" class="form-control" id="bankName" name="BankName" placeholder="Bank Name" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="abbreviationName" class="form-label text-muted">Abbreviation Name</label>
+                            <input type="text" class="form-control" id="abbreviationName" name="AbbName" placeholder="Abbreviation Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="entId" class="form-label text-muted">Ent Id</label>
+                            <input type="text" class="form-control" id="entId" name="EntId" placeholder="Ent Id" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="routeNo" class="form-label text-muted">Route No.</label>
+                            <input type="text" class="form-control" id="routeNo" name="RouteNum" placeholder="Route No." required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="country" class="form-label text-muted">Country</label>
+                            <select class="form-select" id="country" name="CountryId" required>
+                                <option value="">-- Select Country --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        // ===== Load Banks Table =====
+           function loadBanks(selectionMethod) {
+            $.ajax({
+                url: "/Account/GetBanks",
+                type: "GET",
+                data: { selectionMethod: selectionMethod },
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                               let isRegister = (selectionMethod?.trim().toLowerCase() === "register bank");
+                                let isUnregister = (selectionMethod?.trim().toLowerCase() === "unregister bank");
+
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let rowData = JSON.stringify(row);
+
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.code ?? ""}</td>
+                                        <td>${row.bankName ?? ""}</td>
+                                        <td>${row.abbName ?? ""}</td>
+                                        <td>${row.entId ?? ""}</td>
+                                        <td>${row.routeNo ?? ""}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editBankBtn"
+                                                    data-bank='${rowData}' ${!isRegister ? "disabled" : ""}>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger deleteBankBtn"
+                                                    data-id='${row.id}' ${!isRegister ? "disabled" : ""}>
+                                                <i class="fas fa-prescription-bottle-alt"></i>
+                                            </button>
+                                          <button class="btn btn-sm btn-success recycleBankBtn"
+        data-id='${row.id}' ${!isUnregister ? "disabled" : ""}><i class="fas fa-recycle"></i></button>
+
+                                        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="7" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+                    } else {
+                        $("#table1 tbody").html(`<tr><td colspan="7" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+                    $("#table1 tbody").html(`<tr><td colspan="7" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+        // ===== Filter banks on selection =====
+        $("#bankSelect").on("change", function () {
+            let selectionMethod = $(this).val();
+            loadBanks(selectionMethod);
+        });
+
+
+               // ===== Edit Bank Button Click =====
+        $(document).on("click", ".editBankBtn", function () {
+            const bank = $(this).data("bank");
+            if (!bank) return;
+            console.log(bank);
+            $("#bankId").val(bank.id);
+            $("#bankCode").val(bank.code);
+            $("#bankName").val(bank.bankName);
+            $("#abbreviationName").val(bank.abbName);
+            $("#entId").val(bank.entId);
+            $("#routeNo").val(bank.routeNo);
+         
+
+            // ✅ Set country select after ensuring options are loaded
+            let $country = $("#country");
+            if ($country.find(`option[value='${bank.countryId}']`).length) {
+                $country.val(bank.countryId);
+            } else {
+                // Option not found, load the country name dynamically
+                $.ajax({
+                    url: `/Account/GetCountryById/${bank.countryId}`, 
+                    type: 'GET',
+                    success: function(country) {
+                        if (country) {
+                            $country.append(`<option value="${country.id}" selected>${country.name}</option>`);
+                            $country.val(country.id);
+                        }
+                    },
+                    error: function() {
+                        console.warn("Failed to load country for editing.");
+                    }
+                });
+            }
+
+            $("#bankModalLabel").text("Edit Bank");
+            $("#bankModal").modal("show");
+        });
+
+
+        // ===== Submit Bank Form (Create / Update) =====
+        $('#bankForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#bankId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const bankData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                BankName: $('#bankName').val().trim(),
+                AbbName: $('#abbreviationName').val().trim(),
+                EntId: $('#entId').val().trim(),
+                RouteNum: $('#routeNo').val().trim(),
+                CountryId: $('#country').val() ? parseInt($('#country').val()) : null
+            };
+
+            $.ajax({
+                url: '/Account/SaveBank',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(bankData),
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success(isEdit ? 'Bank updated successfully' : 'Bank added successfully');
+                        $('#bankModal').modal('hide');
+
+                        const selectionMethod = $('#bankSelect').val();
+                        loadBanks(selectionMethod);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+                // Soft Delete / Deactivate Bank
+        $(document).on("click", ".deleteBankBtn", function () {
+               const bankId = $(this).attr("data-id"); // Use .attr() to reliably get ID
+        if (!bankId) return;
+
+            if (!confirm("Are you sure you want to deactivate this bank?")) return;
+
+            $.ajax({
+                url: '/Account/DeactivateBank',
+                type: 'POST',
+                contentType: 'application/json',
+                data: bankId, // Send just the integer
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success("Bank has been deactivated.");
+                        const selectionMethod = $('#bankSelect').val();
+                        loadBanks(selectionMethod); // reload table
+                    } else {
+                        toastr.error(res.message || "Operation failed.");
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+                }
+            });
+        });
+
+
+        // ===== Recycle / Activate Bank =====
+        $(document).on("click", ".recycleBankBtn", function () {
+            const bankId = $(this).attr("data-id");
+            if (!bankId) return;
+            if (!confirm("Are you sure you want to reactivate this bank?")) return;
+
+            $.ajax({
+                url: '/Account/ReactivateBank', 
+                type: 'POST',
+                contentType: 'application/json',
+                data: bankId,
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success("Bank has been activated.");
+                        loadBanks($('#bankSelect').val());
+                    } else {
+                        toastr.error(res.message || "Operation failed.");
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+                }
+            });
+        });
+
+        // ===== Load Countries on Page Ready =====
+        $(document).ready(function () {
+            $.ajax({
+                url: '/Account/GetCountries',
+                type: 'GET',
+                success: function (countries) {
+                    let $country = $("#country");
+                    $country.empty();
+                    $country.append(`<option value="">-- Select Country --</option>`);
+
+                    $.each(countries, function (i, country) {
+                        $country.append(`<option value="${country.id}">${country.name}</option>`);
+                    });
+                },
+                error: function () {
+                    alert("Failed to load countries.");
+                }
+            });
+
+            loadBanks($("#bankSelect").val());
+        });
+    </script>
+
+
+
+
+
+
+
+}
