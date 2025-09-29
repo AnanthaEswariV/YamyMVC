@@ -726,6 +726,7 @@ namespace YamyProject.Controllers
                 ROW_NUMBER() OVER (ORDER BY bc.id) AS SN,
                 CONCAT(b.code, '-', b.name) AS BankName,
                 bc.id,
+                bc.bank_id AS BankId,
                 bc.account_name AS AcName,
                 bc.account_type AS AcType,
                 bc.account_no AS AcNo,
@@ -764,8 +765,8 @@ namespace YamyProject.Controllers
                         AccountManager= reader.GetString("AccountManager"),
                         AccountSign=reader.GetString("AccountSign"),
                         AccountMob=reader.GetString("AccountMob"),
-                        AccountId=reader.GetInt32("AccountId")
-
+                        AccountId=reader.GetInt32("AccountId"),
+                        BankId = reader.GetInt32("BankId")
                     });
                 }
 

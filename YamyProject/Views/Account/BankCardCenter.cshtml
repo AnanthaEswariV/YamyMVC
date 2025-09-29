@@ -248,7 +248,7 @@
 
     <script>
 
-                function loadBankCards() {
+        function loadBankCards() {
             $.ajax({
                 url: "/Account/GetBankCards",
                 type: "GET",
@@ -318,14 +318,12 @@
                 }
             });
         }
-
-     
-
         
         $(document).ready(function () {
-            let bankList = []; // Store banks globally
 
-            function loadBankDropdown(selectedId = null) {
+        let bankList = []; // Store banks globally
+
+        function loadBankDropdown(selectedId = null) {
                 $.ajax({
                     url: '/Account/GetBanksforDropdown',
                     type: 'GET',
@@ -356,23 +354,23 @@
                 });
             }
 
-            // Update Bank Code input whenever dropdown changes
-            $("#bankName").on("change", function() {
+        // Update Bank Code input whenever dropdown changes
+        $("#bankName").on("change", function() {
                 const selectedId = $(this).val();
                 updateBankCode(selectedId);
             });
 
 
-            function updateBankCode(bankId) {
+        function updateBankCode(bankId) {
                 const bank = bankList.find(b => b.id == bankId);
                 $("#bankCode").val(bank ? bank.code : "");
             }
 
-            // Load dropdown on page ready
-            loadBankDropdown();
+        // Load dropdown on page ready
+        loadBankDropdown();
 
 
-              var loggedInUsername = ""; // Global variable
+        var loggedInUsername = ""; // Global variable
 
         // Fetch logged-in username from server
         $.get("/Account/GetLoggedInUser", function(res) {
@@ -389,7 +387,7 @@
             }
         });
 
-             $.ajax({
+        $.ajax({
             url: '/HR/GetAccruedSalaries',
             type: 'GET',
             success: function (data) {
@@ -425,8 +423,6 @@
                 console.error("❌ Error loading accounts:", status, error);
             }
         });
-
-
                      
         $(document).on("click", ".editCardBtn", function () {
             const card = $(this).data("card"); // matches data-card
@@ -446,7 +442,7 @@
             $("#managerMob").val(card.accountMob || '');
 
             // Dropdowns
-            $("#bankName").val(card.bankName || '');
+            $("#bankName").val(card.bankId  || '');
             $("#chartAccount").val(card.accountId || '');
 
             // Checkbox
@@ -509,7 +505,7 @@
         });
 
 
-                    $(document).on("click", ".deleteCardBtn", function () {
+         $(document).on("click", ".deleteCardBtn", function () {
             const cardId = parseInt($(this).attr("data-id")); // make sure it's an integer
             if (!cardId) return;
 
@@ -534,7 +530,7 @@
             });
         });
 
-                    $(document).on("click", ".recycleCardBtn", function () {
+         $(document).on("click", ".recycleCardBtn", function () {
             const cardId = parseInt($(this).attr("data-id"));
             if (!cardId) return;
 
