@@ -254,5 +254,24 @@ namespace YamyProject.Core.Models
         public int? CountryId { get; set; }
     }
 
+    public class BankCardRequest
+    {
+        public int Id { get; set; } 
+        public int BankId { get; set; }
+        public string AccountName { get; set; }
+        public string AccountType { get; set; }
+        public string AccountNo { get; set; }
+        public string Swift { get; set; }
+        public string IBANNo { get; set; }
+        public string BranchName { get; set; }
+        public string Emirates { get; set; }
+        public string Currency { get; set; }
+        public string AccountManager { get; set; }
+        public string AccountSign { get; set; }
+        public string AccountMob { get; set; }
+        public int AccountId { get; set; }
+        public bool CompanyAc { get; set; }
+    }
+
 
 }

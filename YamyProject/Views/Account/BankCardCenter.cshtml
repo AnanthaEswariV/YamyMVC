@@ -1,0 +1,651 @@
+﻿
+@{
+    ViewData["Title"] = "BankCardCenter";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Bank Card Center</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankCardModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Bank Card
+            </button>
+
+            <button type="button" class="btn btn-success recycleCardBtn ms-2" data-bs-toggle="modal" data-bs-target="#recycleBankCardModal">
+                <i class="fas fa-recycle me-2"></i>Recycle
+            </button>
+
+     </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Bank Name</th>
+                    <th>AC Name</th>
+                    <th>AC Type</th>
+                    <th>AC No</th>
+                    <th>Swift</th>
+                    <th>IBAN No</th>
+                    <th>Branch Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Bank Card Modal -->
+<div class="modal fade" id="bankCardModal" tabindex="-1" aria-labelledby="bankCardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="bankCardForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="bankCardModalLabel">Bank Card - New Bank Card</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="bankCardId" value="0" />
+
+                    <!-- Bank Information Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label text-muted">Bank Name</label>
+                            <select class="form-select" id="bankName" name="BankName" required>
+                                <option value="">-- Select Bank --</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select a bank.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bankCode" class="form-label text-muted">Bank Code</label>
+                            <input type="text" class="form-control" id="bankCode" name="BankCode" disabled>
+                        </div>
+                    </div>
+
+                    <!-- Account Details Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="accountName" class="form-label text-muted">Account Name</label>
+                            <input type="text" class="form-control" id="accountName" name="AccountName" placeholder="Account Name" required>
+                            <div class="invalid-feedback">
+                                Please provide an account name.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="accountType" class="form-label text-muted">Account Type</label>
+                            <input type="text" class="form-control" id="accountType" name="AccountType" placeholder="Account Type" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="swift" class="form-label text-muted">Swift</label>
+                            <input type="text" class="form-control" id="swift" name="Swift" placeholder="Swift Code">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="ibanNo" class="form-label text-muted">IBAN No</label>
+                            <input type="text" class="form-control" id="ibanNo" name="IbanNo" placeholder="IBAN Number" required> 
+                            <div class="invalid-feedback">
+                                Please provide an IBAN number.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="emirates" class="form-label text-muted">Emirates</label>
+                            <select class="form-select" id="emirates" name="Emirates">
+                                <option value="">-- Select Emirate --</option>
+                                <option value="abu-dhabi">Abu Dhabi</option>
+                                <option value="dubai">Dubai</option>
+                                <option value="sharjah">Sharjah</option>
+                                <option value="ajman">Ajman</option>
+                                <option value="fujairah">Fujairah</option>
+                                <option value="ras-al-khaimah">Ras Al Khaimah</option>
+                                <option value="umm-al-quwain">Umm Al Quwain</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="currency" class="form-label text-muted">Currency</label>
+                            <input type="text" class="form-control" id="currency" name="currency" placeholder="Currency" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="accountNo" class="form-label text-muted">Account No</label>
+                            <input type="text" class="form-control" id="accountNo" name="AccountNo" placeholder="Account Number" required>
+                            <div class="invalid-feedback">
+                                Please provide an account number.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="branchName" class="form-label text-muted">Branch Name</label>
+                            <input type="text" class="form-control" id="branchName" name="BranchName" placeholder="Branch Name">
+                        </div>
+                    </div>
+
+                    <!-- Management Information Section -->
+                    <div class="section-divider">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="relationshipManager" class="form-label text-muted">Account Relationship Manager</label>
+                                <input type="text" class="form-control" id="relationshipManager" name="RelationshipManager" placeholder="Manager Name">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="signatureAuthority" class="form-label text-muted">Account Signature Authority Name</label>
+                                <input type="text" class="form-control" id="signatureAuthority" name="SignatureAuthority" placeholder="Authority Name">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="managerMob" class="form-label text-muted">Account Relationship Manager MOB</label>
+                                <input type="tel" class="form-control" id="managerMob" name="ManagerMob" placeholder="Mobile Number">
+                            </div>
+                        </div>
+
+                        <div class="checkbox-wrapper">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="companyAccount" name="IsCompanyAccount">
+                                <label class="form-check-label text-muted" for="companyAccount">
+                                    As Company Bank Account
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart of Account Section -->
+                    <div class="section-divider">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="chartAccount" class="form-label text-muted">Account Name - Chart Of Account</label>
+                                <select class="form-select" id="chartAccount" name="ChartAccount" required>
+                                    <option value="">-- Select Chart Account --</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Please select chart account.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="accountCode" class="form-label text-muted">Account Code</label>
+                                <input type="text" class="form-control" id="accountCode" name="AccountCode" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- ♻️ Recycle Bin Modal -->
+<div class="modal fade" id="recycleBankCardModal" tabindex="-1" aria-labelledby="recycleBankCardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="recycleTaxLabel">Recycle Bin - Deleted Bank Card</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped" id="recycleTaxTable">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Bank Name</th>
+                            <th>AC Name</th>
+                            <th>AC Type</th>
+                            <th>AC No</th>
+                            <th>Swift</th>
+                            <th>IBAN No</th>
+                            <th>Branch Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+
+                function loadBankCards() {
+            $.ajax({
+                url: "/Account/GetBankCards",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let rowData = JSON.stringify(row);
+
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.bankName ?? ""}</td>
+                                        <td>${row.acName ?? ""}</td>
+                                        <td>${row.acType ?? ""}</td>
+                                        <td>${row.acNo ?? ""}</td>
+                                        <td>${row.swift ?? ""}</td>
+                                        <td>${row.ibanNo ?? ""}</td>
+                                        <td>${row.branchName ?? ""}</td>
+                                             <td>
+                    <button class="btn btn-sm btn-primary editCardBtn"
+                data-card='${JSON.stringify(row)}'>
+             <i class="fas fa-pen"></i>
+        </button>
+
+            <button class="btn btn-sm btn-danger deleteCardBtn"
+                    data-id='${row.id}'>
+                <i class="fas fa-prescription-bottle-alt"></i>
+            </button>
+           
+        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="9" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+                    } else {
+                        $("#table1 tbody").html(`<tr><td colspan="9" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+                    $("#table1 tbody").html(`<tr><td colspan="9" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+     
+
+        
+        $(document).ready(function () {
+            let bankList = []; // Store banks globally
+
+            function loadBankDropdown(selectedId = null) {
+                $.ajax({
+                    url: '/Account/GetBanksforDropdown',
+                    type: 'GET',
+                    success: function(res) {
+                        if (res.status) {
+                            const $bank = $("#bankName");
+                            $bank.empty();
+                            $bank.append('<option value="">-- Select Bank --</option>');
+
+                            bankList = res.data; // save the full list for lookup
+
+                            // Populate dropdown
+                            res.data.forEach(bank => {
+                                const selected = selectedId && selectedId == bank.Id ? "selected" : "";
+                                $bank.append(`<option value="${bank.id}" ${selected}>${bank.name}</option>`);
+                            });
+
+                            // Update code if a bank is pre-selected (for editing)
+                            if (selectedId) updateBankCode(selectedId);
+
+                        } else {
+                            alert(res.message || "Failed to load banks.");
+                        }
+                    },
+                    error: function() {
+                        alert("Error loading banks.");
+                    }
+                });
+            }
+
+            // Update Bank Code input whenever dropdown changes
+            $("#bankName").on("change", function() {
+                const selectedId = $(this).val();
+                updateBankCode(selectedId);
+            });
+
+
+            function updateBankCode(bankId) {
+                const bank = bankList.find(b => b.id == bankId);
+                $("#bankCode").val(bank ? bank.code : "");
+            }
+
+            // Load dropdown on page ready
+            loadBankDropdown();
+
+
+              var loggedInUsername = ""; // Global variable
+
+        // Fetch logged-in username from server
+        $.get("/Account/GetLoggedInUser", function(res) {
+            loggedInUsername = res.username || "";
+        });
+
+        // ===== Modal Show Event =====
+        $("#bankCardModal").on("show.bs.modal", function() {
+            const $accountName = $("#accountName");
+
+            // Only set if empty
+            if (!$accountName.val()) {
+                $accountName.val(loggedInUsername);
+            }
+        });
+
+             $.ajax({
+            url: '/HR/GetAccruedSalaries',
+            type: 'GET',
+            success: function (data) {
+                // Map of dropdowns and their corresponding code boxes
+                const dropdowns = [
+                    { ddl: '#chartAccount', codeBox: '#accountCode' },
+                   
+                ];
+
+                dropdowns.forEach(set => {
+                    const $ddl = $(set.ddl);
+                    $ddl.empty().append('<option value="">-- Select --</option>');
+
+                    data.forEach(item => {
+                        $ddl.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code
+                            })
+                        );
+                    });
+
+                    // On change, update the code textbox
+                    $ddl.off('change').on('change', function () {
+                        const selected = $(this).find(':selected');
+                        const code = selected.data('code');
+                        $(set.codeBox).val(code || "");
+                    });
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error("❌ Error loading accounts:", status, error);
+            }
+        });
+
+
+                     
+        $(document).on("click", ".editCardBtn", function () {
+            const card = $(this).data("card"); // matches data-card
+            if (!card) return;
+            console.log(card);
+            // Set modal fields
+            $("#bankCardId").val(card.id || 0);
+            $("#accountName").val(card.acName || '');
+            $("#accountNo").val(card.acNo || '');
+            $("#ibanNo").val(card.ibanNo || '');
+            $("#swift").val(card.swift || '');
+            $("#branchName").val(card.branchName || '');
+            $("#emirates").val(card.emirates || '');
+            $("#currency").val(card.currency || '');
+            $("#relationshipManager").val(card.accountManager || '');
+            $("#signatureAuthority").val(card.accountSign || '');
+            $("#managerMob").val(card.accountMob || '');
+
+            // Dropdowns
+            $("#bankName").val(card.bankName || '');
+            $("#chartAccount").val(card.accountId || '');
+
+            // Checkbox
+            $("#companyAccount").prop("checked", card.companyAc == 1);
+
+            // Update modal title
+            $("#bankCardModalLabel").text("Edit Bank Card");
+            $("#bankCardModal").modal("show");
+        });
+
+         $('#bankCardForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#bankCardId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+           const cardData = {
+            Id: isEdit ? parseInt($('#bankCardId').val()) : 0,
+            AccountName: ($('#accountName').val() || '').trim(),
+            AccountNo: ($('#accountNo').val() || '').trim(),
+            IBANNo: ($('#ibanNo').val() || '').trim(),
+            Swift: ($('#swift').val() || '').trim(),
+            BranchName: ($('#branchName').val() || '').trim(),
+            Emirates: ($('#emirates').val() || '').trim(),
+            Currency: ($('#currency').val() || '').trim(),
+            AccountManager: ($('#relationshipManager').val() || '').trim(),
+            AccountSign: ($('#signatureAuthority').val() || '').trim(),
+            AccountMob: ($('#managerMob').val() || '').trim(),
+            AccountId: parseInt($('#chartAccount').val()) || 0, // Chart of Account
+            BankId: parseInt($('#bankName').val()) || 0,       // Bank dropdown
+            CompanyAc: $("#companyAccount").is(":checked")
+        };
+
+
+                    $.ajax({
+            url: '/Account/SaveBankCard',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(cardData),
+            success: function(res) {
+                if(res.status) {
+                    toastr.success(isEdit ? 'Bank card updated successfully' : 'Bank card added successfully');
+                    $('#bankCardModal').modal('hide');
+                    loadBankCards(); // reload table
+                } else {
+                    toastr.error(res.message);
+                }
+            },
+            error: function(xhr) {
+                toastr.error(xhr.responseJSON?.message || xhr.statusText);
+            }
+        });
+
+        });
+
+
+                    $(document).on("click", ".deleteCardBtn", function () {
+            const cardId = parseInt($(this).attr("data-id")); // make sure it's an integer
+            if (!cardId) return;
+
+            if (!confirm("Are you sure you want to delete this bank card?")) return;
+
+            $.ajax({
+                url: '/Account/DeleteBankCard',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(cardId),  // ⚡ Important: stringify the number
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success("Bank card deleted successfully");
+                        loadBankCards(); // reload table
+                    } else {
+                        toastr.error(res.message || "Operation failed.");
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+                }
+            });
+        });
+
+                    $(document).on("click", ".recycleCardBtn", function () {
+            const cardId = parseInt($(this).attr("data-id"));
+            if (!cardId) return;
+
+            if (!confirm("Are you sure you want to delete this bank card?")) return;
+
+            $.ajax({
+                url: '/Account/RestoreBankCard',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(cardId),  // ⚡ Important: stringify the number
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success("Bank card has been activated");
+                        loadBankCards(); // reload table
+                    } else {
+                        toastr.error(res.message || "Operation failed.");
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+                }
+            });
+        });
+
+                // ♻️ Recycle Modal - Load Deleted Bank Cards
+        $(document).on("click", ".recycleCardBtn", function () {
+            $.ajax({
+                url: '/Account/GetDeletedBankCards',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        let rows = "";
+                        $.each(res.data, function (i, card) {
+                            rows += `
+                                <tr>
+                                    <td>${card.sn}</td>
+                                    <td>${card.bankName}</td>
+                                    <td>${card.acName}</td>
+                                    <td>${card.acType}</td>
+                                    <td>${card.acNo}</td>
+                                    <td>${card.swift}</td>
+                                    <td>${card.ibanNo}</td>
+                                    <td>${card.branchName}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-success restoreCardBtn" data-id="${card.id}">
+                                            <i class="fas fa-undo"></i> Restore
+                                        </button>
+                                    </td>
+                                </tr>`;
+                        });
+
+                        $("#recycleTaxTable tbody").html(rows);
+                    } else {
+                        $("#recycleTaxTable tbody").html(
+                            `<tr><td colspan="9" class="text-center text-danger">${res.message || "No deleted records found"}</td></tr>`
+                        );
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+                }
+            });
+        });
+
+                // ♻️ Restore Deleted Bank Card
+        $(document).on("click", ".restoreCardBtn", function () {
+            const cardId = $(this).data("id");
+            if (!cardId) return;
+
+            if (!confirm("Are you sure you want to restore this bank card?")) return;
+
+            $.ajax({
+                url: '/Account/RestoreBankCard',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(cardId),  
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Bank card restored successfully");
+
+                        // reload recycle bin table
+                        $(".recycleCardBtn").trigger("click");
+
+                        // reload active cards table (if you have one)
+                        if (typeof loadBankCards === "function") {
+                            loadBankCards();
+                        }
+                    } else {
+                        toastr.error(res.message || "Restore failed.");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+                }
+            });
+        });
+
+
+          loadBankCards();
+        });
+
+
+
+
+    </script>
+
+
+
+
+
+
+
+
+}

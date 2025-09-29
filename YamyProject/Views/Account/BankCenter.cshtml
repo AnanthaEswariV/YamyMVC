@@ -297,7 +297,7 @@
 
                 // Soft Delete / Deactivate Bank
         $(document).on("click", ".deleteBankBtn", function () {
-               const bankId = $(this).attr("data-id"); // Use .attr() to reliably get ID
+               const bankId = $(this).attr("data-id"); 
         if (!bankId) return;
 
             if (!confirm("Are you sure you want to deactivate this bank?")) return;

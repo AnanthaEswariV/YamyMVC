@@ -15,7 +15,7 @@ namespace YamyProject.Controllers
         }
 
         #region Register
-      
+
 
         public IActionResult Register()
         {
@@ -141,7 +141,7 @@ namespace YamyProject.Controllers
                 var obj = JsonConvert.DeserializeObject<dynamic>(result);
                 // ✅ store selected DB in session
                 HttpContext.Session.SetString("DatabaseName", database);
-
+                HttpContext.Session.SetString("UserName", username);
                 if (obj.status == true)
                 {
                     int userId = obj.user.id; // get userId from API response
@@ -158,11 +158,12 @@ namespace YamyProject.Controllers
 
         #endregion
 
-
+        #region Dashboard
         public IActionResult Dashboard()
         {
             return View();
         }
+        #endregion
 
         #region Bank Center
 
@@ -473,7 +474,419 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Bank Card Center
 
+        public IActionResult BankCardCenter()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetBanksforDropdown()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = "SELECT id, name,code FROM tbl_bank WHERE state = 0 ORDER BY name";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var banks = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    banks.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Name = reader.GetString("name"),
+                        Code =reader.GetString("code")
+                    });
+                }
+
+                return Ok(new { status = true, data = banks });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetLoggedInUser()
+        {
+            var username = HttpContext.Session.GetString("UserName") ?? "";
+            return Ok(new { username });
+        }
+        [HttpPost]
+        public async Task<IActionResult> SaveBankCard([FromBody] BankCardRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validation
+            if (string.IsNullOrWhiteSpace(model.AccountName))
+                return BadRequest(new { status = false, message = "Please enter account name" });
+
+            if (string.IsNullOrWhiteSpace(model.AccountNo))
+                return BadRequest(new { status = false, message = "Please enter account number" });
+
+            if (string.IsNullOrWhiteSpace(model.IBANNo))
+                return BadRequest(new { status = false, message = "Please enter IBAN number" });
+
+            if (model.AccountId <= 0)
+                return BadRequest(new { status = false, message = "Please select an account" });
+
+            if (model.BankId <= 0)
+                return BadRequest(new { status = false, message = "Please select a bank" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔎 Company bank account rule
+                if (model.CompanyAc)
+                {
+                    var checkQuery = "SELECT COUNT(*) FROM tbl_bank_card WHERE company_ac = 1 AND id <> @id";
+                    using var checkCmd = new MySqlCommand(checkQuery, conn);
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (exists > 0)
+                        return BadRequest(new { status = false, message = "Only one company bank account is allowed" });
+                }
+
+                if (model.Id == 0) // ➝ INSERT
+                {
+                    var insertQuery = @"
+                INSERT INTO tbl_bank_card 
+                (bank_id, account_name, account_type, account_no, swift, iban_no, branch_name, emirates, currency,
+                 account_manager, account_sign, account_mob, account_id, state, created_by, created_date, company_ac)
+                VALUES
+                (@bank_id, @account_name, @account_type, @account_no, @swift, @iban_no, @branch_name, @emirates, @currency,
+                 @account_manager, @account_sign, @account_mob, @account_id, 0, @created_by, @created_date, @companyAc)";
+
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@bank_id", model.BankId);
+                    insertCmd.Parameters.AddWithValue("@account_name", model.AccountName.Trim());
+                    insertCmd.Parameters.AddWithValue("@account_type", model.AccountType?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_no", model.AccountNo.Trim());
+                    insertCmd.Parameters.AddWithValue("@swift", model.Swift?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@iban_no", model.IBANNo.Trim());
+                    insertCmd.Parameters.AddWithValue("@branch_name", model.BranchName?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@emirates", model.Emirates?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@currency", model.Currency?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_manager", model.AccountManager?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_sign", model.AccountSign?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_mob", model.AccountMob?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_id", model.AccountId);
+                    insertCmd.Parameters.AddWithValue("@created_by", userId);
+                    insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    insertCmd.Parameters.AddWithValue("@companyAc", model.CompanyAc ? 1 : 0);
+
+                    await insertCmd.ExecuteNonQueryAsync();
+                    return Ok(new { status = true, message = "Bank card added successfully" });
+                }
+                else // ➝ UPDATE
+                {
+                    var updateQuery = @"
+                UPDATE tbl_bank_card 
+                SET bank_id=@bank_id, account_name=@account_name, account_type=@account_type, account_no=@account_no,
+                    swift=@swift, iban_no=@iban_no, branch_name=@branch_name, emirates=@emirates, currency=@currency,
+                    account_manager=@account_manager, account_sign=@account_sign, account_mob=@account_mob,
+                    account_id=@account_id, company_ac=@companyAc, state=0
+                WHERE id=@id";
+
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@bank_id", model.BankId);
+                    updateCmd.Parameters.AddWithValue("@account_name", model.AccountName.Trim());
+                    updateCmd.Parameters.AddWithValue("@account_type", model.AccountType?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_no", model.AccountNo.Trim());
+                    updateCmd.Parameters.AddWithValue("@swift", model.Swift?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@iban_no", model.IBANNo.Trim());
+                    updateCmd.Parameters.AddWithValue("@branch_name", model.BranchName?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@emirates", model.Emirates?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@currency", model.Currency?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_manager", model.AccountManager?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_sign", model.AccountSign?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_mob", model.AccountMob?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_id", model.AccountId);
+                    updateCmd.Parameters.AddWithValue("@companyAc", model.CompanyAc ? 1 : 0);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Bank card not found" });
+
+                    return Ok(new { status = true, message = "Bank card updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeactivateBankCard([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid bank card ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var updateQuery = "UPDATE tbl_bank_card SET state = -1 WHERE id = @id";
+                using var cmd = new MySqlCommand(updateQuery, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Bank card not found" });
+
+                return Ok(new { status = true, message = "Bank card deactivated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> DeleteBankCard([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Soft delete: mark as inactive (state=1)
+                var deleteQuery = "UPDATE tbl_bank_card SET state=1 WHERE id=@id";
+                using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Bank card not found" });
+
+                return Ok(new { status = true, message = "Bank card deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBankCards()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY bc.id) AS SN,
+                CONCAT(b.code, '-', b.name) AS BankName,
+                bc.id,
+                bc.account_name AS AcName,
+                bc.account_type AS AcType,
+                bc.account_no AS AcNo,
+                bc.swift AS Swift,
+                bc.iban_no AS IbanNo,
+                bc.branch_name AS BranchName,
+                bc.emirates As Emirates,
+                bc.currency As Currency,
+                bc.account_manager As AccountManager,
+                bc.account_sign As AccountSign,
+                bc.account_mob As AccountMob, 
+                bc.account_id As AccountId
+            FROM tbl_bank_card bc
+            INNER JOIN tbl_bank b ON bc.bank_id = b.id
+            WHERE bc.state = 0";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var cards = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    cards.Add(new
+                    {
+                        Sn = reader.GetInt32("SN"),
+                        Id = reader.GetInt32("id"),
+                        BankName = reader.GetString("BankName"),
+                        AcName = reader.GetString("AcName"),
+                        AcType = reader.GetString("AcType"),
+                        AcNo = reader.GetString("AcNo"),
+                        Swift = reader.GetString("Swift"),
+                        IbanNo = reader.GetString("IbanNo"),
+                        BranchName = reader.GetString("BranchName"),
+                        Emirates = reader.GetString("Emirates"),
+                        Currency = reader.GetString("Currency"),
+                        AccountManager= reader.GetString("AccountManager"),
+                        AccountSign=reader.GetString("AccountSign"),
+                        AccountMob=reader.GetString("AccountMob"),
+                        AccountId=reader.GetInt32("AccountId")
+
+                    });
+                }
+
+                return Ok(new { status = true, data = cards });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RestoreBankCard([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Soft delete: mark as inactive (state=1)
+                var deleteQuery = "UPDATE tbl_bank_card SET state=0 WHERE id=@id";
+                using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Bank card not found" });
+
+                return Ok(new { status = true, message = "Bank card has been activated" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetDeletedBankCards()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY bc.id) AS SN,
+                CONCAT(b.code, '-', b.name) AS BankName,
+                bc.id,
+                bc.account_name AS AcName,
+                bc.account_type AS AcType,
+                bc.account_no AS AcNo,
+                bc.swift AS Swift,
+                bc.iban_no AS IbanNo,
+                bc.branch_name AS BranchName,
+                bc.emirates As Emirates,
+                bc.currency As Currency,
+                bc.account_manager As AccountManager,
+                bc.account_sign As AccountSign,
+                bc.account_mob As AccountMob, 
+                bc.account_id As AccountId
+            FROM tbl_bank_card bc
+            INNER JOIN tbl_bank b ON bc.bank_id = b.id
+            WHERE bc.state = 1";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var cards = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    cards.Add(new
+                    {
+                        Sn = reader.GetInt32("SN"),
+                        Id = reader.GetInt32("id"),
+                        BankName = reader.GetString("BankName"),
+                        AcName = reader.GetString("AcName"),
+                        AcType = reader.GetString("AcType"),
+                        AcNo = reader.GetString("AcNo"),
+                        Swift = reader.GetString("Swift"),
+                        IbanNo = reader.GetString("IbanNo"),
+                        BranchName = reader.GetString("BranchName"),
+                        Emirates = reader.GetString("Emirates"),
+                        Currency = reader.GetString("Currency"),
+                        AccountManager = reader.GetString("AccountManager"),
+                        AccountSign = reader.GetString("AccountSign"),
+                        AccountMob = reader.GetString("AccountMob"),
+                        AccountId = reader.GetInt32("AccountId")
+
+                    });
+                }
+
+                return Ok(new { status = true, data = cards });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
 
     }
 }
