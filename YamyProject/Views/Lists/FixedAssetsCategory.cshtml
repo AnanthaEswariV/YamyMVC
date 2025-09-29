@@ -55,47 +55,71 @@
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
 
+                function loadFixedAssetCategories() {
+            $.ajax({
+                url: "/Lists/GetFixedAssetsCategory",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#fixedAssetCategoryTable")) {
+                            $("#fixedAssetCategoryTable").DataTable().destroy();
+                        }
 
-           function loadFixedAssetCategories() {
-                $.ajax({
-                        url: "/Lists/GetFixedAssetsCategory",
-                    type: "GET",
-                    success: function (res) {
-                        if (res.status) {
-                            let rows = "";
-                            res.data.forEach(cat => {
-                                rows += `
+                        let tbody = $("#fixedAssetCategoryTable tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, cat) {
+                                let rowData = JSON.stringify(cat);
+
+                                let tr = `
                                     <tr>
-                                            <td>${cat.category_name}</td>
+                                        <td>${cat.category_name ?? ""}</td>
                                         <td>
-                                                    <button class="btn btn-sm btn-warning edit-btn"
-            data-id="${cat.id}"
-            data-name="${cat.category_name}"
-            data-assets="${cat.assets_account_id}"
-            data-assets-code="${cat.assets_account_id}"
-            data-depreciation="${cat.depreciation_account_id}"
-            data-depreciation-code="${cat.depreciation_account_id}"
-            data-expence="${cat.expence_account_id}"      
-            data-expence-code="${cat.expence_account_id}"> 
-            Edit
-        </button>
-
-
-                                            <button class="btn btn-sm btn-danger delete-btn" data-id="${cat.id}">Delete</button>
+                                           <button class="btn btn-sm btn-primary edit-btn" data-id="${cat.id}" data-name="${cat.category_name}" 
+                                           data-assets="${cat.assets_account_id}" data-assets-code="${cat.assets_account_id}" 
+                                           data-depreciation="${cat.depreciation_account_id}" data-depreciation-code="${cat.depreciation_account_id}" 
+                                           data-expence="${cat.expence_account_id}" data-expence-code="${cat.expence_account_id}"> <i class="fas fa-pen"></i> 
+                                           </button>
+                                           <button class="btn btn-sm btn-danger delete-btn" data-id="${cat.id}"><i class="fas fa-prescription-bottle-alt"></i></button>
                                         </td>
                                     </tr>`;
+                                tbody.append(tr);
                             });
-                            $("#fixedAssetCategoryTable tbody").html(rows);
+
+                            $("#fixedAssetCategoryTable").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="2" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
                         }
-                    },
-                    error: function (err) {
-                        console.error("Error loading categories", err);
+                    } else {
+                        $("#fixedAssetCategoryTable tbody").html(`<tr><td colspan="2" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
                     }
-                });
-            }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#fixedAssetCategoryTable")) {
+                        $("#fixedAssetCategoryTable").DataTable().destroy();
+                    }
+                    $("#fixedAssetCategoryTable tbody").html(`<tr><td colspan="2" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
 
            function addFixedAssetsCategory() {
                     let model = {
