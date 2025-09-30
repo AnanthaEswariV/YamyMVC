@@ -427,7 +427,6 @@
         $(document).on("click", ".editCardBtn", function () {
             const card = $(this).data("card"); // matches data-card
             if (!card) return;
-            console.log(card);
             // Set modal fields
             $("#bankCardId").val(card.id || 0);
             $("#accountName").val(card.acName || '');

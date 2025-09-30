@@ -1,0 +1,371 @@
+﻿@{
+    ViewData["Title"] = "BankCheque";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Bank Cheque</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankChequeModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Bank Cheque
+            </button>
+
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Bank Name</th>
+                    <th>AC Name</th>
+                    <th>Check Book No</th>
+                    <th>Check Book QTY</th>
+                    <th>Start From</th>
+                    <th>End In</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="bankChequeModal" tabindex="-1" aria-labelledby="bankChequeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="checkBookForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="bankChequeModalLabel">New Check Book</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="chequeBookId" value="0" />
+
+                    <!-- Bank and Account Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label text-muted">Bank Name</label>
+                            <select class="form-select" id="bankName" name="BankName" required>
+                            </select>
+                            <div class="invalid-feedback">Please select a bank.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="accountName" class="form-label text-muted">Account Name</label>
+                            <input type="text" class="form-control" name="accountName" id="accountName" placeholder="Enter account name" disabled />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="chqBookNo" class="form-label text-muted">CHQ Book NO</label>
+                            <input type="text" class="form-control" id="chqBookNo" name="ChqBookNo" placeholder="Auto-generated" disabled />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="chqBookQty" class="form-label text-muted">CHQ Book QTY</label>
+                            <input type="number" class="form-control" id="chqBookQty" name="ChqBookQty" placeholder="Enter quantity" min="1" required />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="startingFrom" class="form-label text-muted">Starting From</label>
+                            <input type="text" class="form-control" id="startingFrom" name="StartingFrom" placeholder="Auto-calculated" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="to" class="form-label text-muted">To</label>
+                            <input type="text" class="form-control" id="to" name="To" placeholder="Auto-calculated" disabled>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+        let lastChequeNumberByBank = {};
+
+        $(document).ready(function () {
+
+
+               function loadChequeBooks() {
+            $.ajax({
+                url: "/Account/GetChequeBooks",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        // Destroy existing DataTable if exists
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let rowData = JSON.stringify(row);
+
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.bankName ?? ""}</td>
+                                        <td>${row.acName ?? ""}</td>
+                                        <td>${row.chqBookNo ?? ""}</td>
+                                        <td>${row.chqBookQty ?? ""}</td>
+                                        <td>${row.startFrom ?? ""}</td>
+                                        <td>${row.endIn ?? ""}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editChequeBtn" data-cheque='${rowData}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger deleteChequeBtn" data-id='${row.Id}' disabled>
+                                                <i class="fas fa-prescription-bottle-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            // Initialize DataTable
+                            $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="8" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+                    } else {
+                        $("#table1 tbody").html(`<tr><td colspan="8" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+                    $("#table1 tbody").html(`<tr><td colspan="8" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+               loadChequeBooks();
+
+               function loadBankDropdown(selectedId = null) {
+                $.ajax({
+                    url: '/Account/GetBanksforDropdown',
+                    type: 'GET',
+                    success: function(res) {
+                        if (res.status) {
+                            const $bank = $("#bankName");
+                            $bank.empty();
+                            $bank.append('<option value="">-- Select Bank --</option>');
+
+                            bankList = res.data; // save the full list for lookup
+
+                            // Populate dropdown
+                            res.data.forEach(bank => {
+                                const selected = selectedId && selectedId == bank.Id ? "selected" : "";
+                                $bank.append(`<option value="${bank.id}" ${selected}>${bank.name}</option>`);
+                            });
+
+                           
+
+                        } else {
+                            alert(res.message || "Failed to load banks.");
+                        }
+                    },
+                    error: function() {
+                        alert("Error loading banks.");
+                    }
+                });
+            }
+
+               // Load dropdown on page ready
+               loadBankDropdown();
+
+                var loggedInUsername = ""; // Global variable
+
+                // Fetch logged-in username from server
+                $.get("/Account/GetLoggedInUser", function(res) {
+                    loggedInUsername = res.username || "";
+                });
+
+                // ===== Modal Show Event =====
+                $("#bankChequeModal").on("show.bs.modal", function() {
+                    const $accountName = $("#accountName");
+
+                    // Only set if empty
+                    if (!$accountName.val()) {
+                        $accountName.val(loggedInUsername);
+                    }
+                });
+
+
+
+                 let lastChequeNumber = 0;
+
+                  // When bank changes
+                 $('#bankName').on('change', function() {
+                     const bankId = $(this).val();
+                     if(!bankId) return;
+
+                     // Fetch last cheque number for this bank
+                     $.ajax({
+                 url: `/Account/GetLastChequeNumber?bankId=${bankId}`,
+                type: 'GET',
+                success: function(res) {
+                    if(res.status) {
+                        lastChequeNumberByBank[bankId] = res.lastChequeNo || 0;
+                        // Auto-set CHQ Book No after qty is entered
+                        $('#chqBookNo').val(lastChequeNumberByBank[bankId] + 1);
+                    }
+                }
+            });
+
+                        // When qty is entered
+                 $('#chqBookQty').on('input', function() {
+            const bankId = $('#bankName').val();
+            const qty = parseInt($(this).val()) || 0;
+            if(!bankId || qty <= 0) return;
+
+            const lastNo = lastChequeNumberByBank[bankId] || 0;
+            const start = lastNo + 1;
+            const end = lastNo + qty;
+
+            $('#startingFrom').val(start).prop('disabled', false);
+            $('#to').val(end).prop('disabled', false);
+
+        });
+
+
+                       
+                 });
+
+         $('#bankName').on('change', function () {
+    const bankCardId = $(this).val();   // This dropdown should give bank_card_id
+    if (!bankCardId) return;
+
+    $.ajax({
+        url: `/Account/GetLastLeafNumber?bankCardId=${bankCardId}`, // ✅ match C# param name
+        type: 'GET',
+        success: function (res) {
+            if (res.status) {
+                const lastLeafNo = res.lastChequeNo || 0;
+
+                // Auto-fill startingFrom with lastLeafNo + 1
+                const nextStart = lastLeafNo + 1;
+                $('#startingFrom').val(nextStart);
+
+                // When qty entered, calculate ending automatically
+                $('#chqBookQty').off('input').on('input', function () {
+                    const qty = parseInt($(this).val()) || 0;
+                    if (qty > 0) {
+                        const start = nextStart;
+                        const end = start + qty - 1;
+                        $('#startingFrom').val(start);
+                        $('#to').val(end);
+                    }
+                });
+            }
+        }
+    });
+});
+
+
+
+
+                 // Update Starting From and To based on quantity
+                 $('#chqBookQty').on('input', function() {
+            const qty = parseInt($(this).val()) || 0;
+            if(qty <= 0) return;
+
+            const start = lastChequeNumber + 1;
+            const end = lastChequeNumber + qty;
+            $('#startingFrom').val(start);
+            $('#to').val(end);
+        });
+
+                 //submit form
+                        // Submit form
+                 $('#checkBookForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const data = {
+                BankCardId: parseInt($('#bankName').val()) || 0,
+                ChqBookNo: parseInt($('#chqBookNo').val()) || 0,
+                ChqBookQty: parseInt($('#chqBookQty').val()) || 0,
+                LeavesStartFrom: parseInt($('#startingFrom').val()) || 0,
+                LeavesEndIn: parseInt($('#to').val()) || 0
+            };
+
+            if(!data.BankCardId || !data.ChqBookQty) {
+                toastr.error('Please select bank and enter quantity.');
+                return;
+            }
+
+            $.ajax({
+                url: '/Account/SaveCheque',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success(res.message);
+                        $('#bankChequeModal').modal('hide');
+                        $('#checkBookForm')[0].reset();
+                        loadChequeBooks(); // reload table
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+
+         });
+
+    </script>
+}

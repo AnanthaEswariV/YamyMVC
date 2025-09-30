@@ -385,6 +385,24 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
+                // ✅ Check if the bank is used in tbl_bank_card
+                var checkQuery = "SELECT COUNT(*) FROM tbl_bank_card WHERE Bank_Id = @id AND state = 0";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+
+                    if (count > 0)
+                    {
+                        return BadRequest(new
+                        {
+                            status = false,
+                            message = "Cannot deactivate bank. It is referenced in bank cards."
+                        });
+                    }
+                }
+
+                // ✅ Proceed with deactivation if not used
                 var updateQuery = "UPDATE tbl_bank SET state = -1 WHERE id = @id";
                 using var cmd = new MySqlCommand(updateQuery, conn);
                 cmd.Parameters.AddWithValue("@id", id);
@@ -815,8 +833,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
-
         [HttpGet]
         public async Task<IActionResult> GetDeletedBankCards()
         {
@@ -886,6 +902,248 @@ namespace YamyProject.Controllers
             }
         }
 
+
+        #endregion
+
+        #region Bank Cheque
+
+        public IActionResult BankCheque()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetChequeBooks()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+     SELECT 
+    ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
+    c.id,
+    c.bank_card_id AS BankCardId,
+    CONCAT(b.code, '-', b.name) AS BankName,   -- Bank linked to this bank_card
+    bc.account_name AS AcName,
+    bc.account_type AS AcType,
+    c.chq_book_no AS ChqBookNo,
+    c.chq_book_qty AS ChqBookQty,
+    c.leaves_start_from AS StartFrom,
+    c.leaves_end_in AS EndIn
+FROM tbl_cheque c
+INNER JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
+INNER JOIN tbl_bank b ON b.id = c.bank_card_id
+;
+"; // Optional order
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var chequeBooks = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    chequeBooks.Add(new
+                    {
+                        Sn = reader.GetInt32("SN"),
+                        Id = reader.GetInt32("id"),
+                        BankName = reader.GetString("BankName"),
+                        AcName = reader.GetString("AcName"),
+                        AcType = reader.IsDBNull(reader.GetOrdinal("AcType")) ? "" : reader.GetString("AcType"),
+                        ChqBookNo = reader.GetInt32("ChqBookNo"),
+                        ChqBookQty = reader.GetInt32("ChqBookQty"),
+                        StartFrom = reader.GetString("StartFrom"),
+                        EndIn = reader.GetString("EndIn")
+                    });
+                }
+
+                return Ok(new { status = true, data = chequeBooks });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLastChequeNumber(int bankId)
+        {
+                if (bankId <= 0)
+                return BadRequest(new { status = false, lastChequeNo = 0 });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = "SELECT MAX(chq_book_no) FROM tbl_cheque WHERE bank_card_id=@bankCardId";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@bankCardId", bankId);
+
+                var last = await cmd.ExecuteScalarAsync();
+                int lastNo = last != DBNull.Value ? Convert.ToInt32(last) : 0;
+
+                return Ok(new { status = true, lastChequeNo = lastNo });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetLastLeafNumber(int bankCardId)
+        {
+            if (bankCardId <= 0)
+                return BadRequest(new { status = false, lastChequeNo = 0 });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT MAX(leaves_end_in) AS LastEndIn 
+                         FROM tbl_cheque 
+                         WHERE bank_card_id = @bankCardId";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@bankCardId", bankCardId);
+
+                var last = await cmd.ExecuteScalarAsync();
+                int lastLeafNo = last != DBNull.Value ? Convert.ToInt32(last) : 0;
+
+                return Ok(new { status = true, lastChequeNo = lastLeafNo });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveCheque([FromBody] ChequeRequest model)
+        {
+            // 🔹 Basic validation
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.BankCardId <= 0)
+                return BadRequest(new { status = false, message = "Please select a bank card" });
+
+            if (model.ChqBookNo <=0)
+                return BadRequest(new { status = false, message = "Please enter cheque book number" });
+
+            if (model.ChqBookQty <= 0)
+                return BadRequest(new { status = false, message = "Please enter a valid book quantity" });
+
+            if (model.LeavesStartFrom <= 0 || model.LeavesEndIn <= 0)
+                return BadRequest(new { status = false, message = "Please provide valid start and end leaves" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Insert into tbl_cheque
+                var insertQuery = @"
+            INSERT INTO tbl_cheque 
+            (bank_card_id, chq_book_no, chq_book_qty, leaves_start_from, leaves_end_in, created_by, created_date) 
+            VALUES (@bankCardId, @chqBookNo, @chqBookQty, @leavesStartFrom, @leavesEndIn, @createdBy, @createdDate)";
+
+                using var cmd = new MySqlCommand(insertQuery, conn);
+                cmd.Parameters.AddWithValue("@bankCardId", model.BankCardId);
+                cmd.Parameters.AddWithValue("@chqBookNo", model.ChqBookNo);
+                cmd.Parameters.AddWithValue("@chqBookQty", model.ChqBookQty);
+                cmd.Parameters.AddWithValue("@leavesStartFrom", model.LeavesStartFrom);
+                cmd.Parameters.AddWithValue("@leavesEndIn", model.LeavesEndIn);
+                cmd.Parameters.AddWithValue("@createdBy", userId);
+                cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Cheque book added successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetNextChequeCode(int bankCardId)
+        {
+            if (bankCardId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Bank Card ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                MAX(leaves_end_in) AS LastCode, 
+                MAX(chq_book_no) AS LastBookNo
+            FROM tbl_cheque
+            WHERE bank_card_id = @bankCardId";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@bankCardId", bankCardId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                int nextStart = 1;
+                int nextBookNo = 1;
+
+                if (await reader.ReadAsync())
+                {
+                    if (!reader.IsDBNull(reader.GetOrdinal("LastCode")))
+                        nextStart = reader.GetInt32("LastCode") + 1;
+
+                    if (!reader.IsDBNull(reader.GetOrdinal("LastBookNo")))
+                        nextBookNo = reader.GetInt32("LastBookNo") + 1;
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    nextStartFrom = nextStart,
+                    nextChqBookNo = nextBookNo
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 

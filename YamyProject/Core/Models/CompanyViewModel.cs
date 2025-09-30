@@ -272,6 +272,15 @@ namespace YamyProject.Core.Models
         public int AccountId { get; set; }
         public bool CompanyAc { get; set; }
     }
+    public class ChequeRequest
+    {
+        public int BankCardId { get; set; }
+        public int ChqBookNo { get; set; }
+        public int ChqBookQty { get; set; }
+        public int LeavesStartFrom { get; set; }
+        public int LeavesEndIn { get; set; }
+    }
+
 
 
 }
