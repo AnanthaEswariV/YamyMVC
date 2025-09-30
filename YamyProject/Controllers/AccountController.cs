@@ -1016,9 +1016,11 @@ INNER JOIN tbl_bank b ON b.id = c.bank_card_id
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                string query = @"SELECT MAX(leaves_end_in) AS LastEndIn 
-                         FROM tbl_cheque 
-                         WHERE bank_card_id = @bankCardId";
+                string query = @"SELECT leaves_end_in
+FROM tbl_cheque
+WHERE bank_card_id = @bankCardId
+ORDER BY id DESC   -- or ORDER BY created_date DESC
+LIMIT 1";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@bankCardId", bankCardId);
