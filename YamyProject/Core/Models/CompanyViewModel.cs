@@ -283,5 +283,12 @@ namespace YamyProject.Core.Models
     }
 
 
+    public class ChequeActionRequest
+    {
+        public int CheckDetailId { get; set; }
+        public string Action { get; set; }  // "Pass", "Return", "Hold", "Cancel"
+        public DateTime SelectedDate { get; set; }
+        public bool IsPayable { get; set; } // true=Payable, false=Receivable
+    }
 
 }

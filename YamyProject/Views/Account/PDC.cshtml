@@ -1,0 +1,202 @@
+﻿@{
+    ViewData["Title"] = "PDC";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Post Date Cheque (PDC)</strong>
+    </div>
+
+    <div class="card-body">
+        <!-- Dropdown -->
+        <div class="d-flex justify-content-center mb-4">
+            <div style="min-width: 300px;">
+                <h6 class="text-center fw-bold">Selection Method</h6>
+                <select class="form-select text-center" id="transactionSelect">
+                    <option>Payable</option>
+                    <option>Receivable</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>TRS Date</th>
+                    <th>Cheque Date</th>
+                    <th>TRF REF</th>
+                    <th>Cheque No</th>
+                    <th>Cheque Name</th>
+                    <th>Bank Name</th>
+                    <th>Amount</th>
+                    <th>State</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Bootstrap Modal -->
+<div class="modal fade" id="pdcModal" tabindex="-1" aria-labelledby="pdcModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="pdcModalLabel">Cheque Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="checkForm">
+                    <input type="hidden" id="actionType" />
+                    <input type="hidden" id="rowId" />
+
+                    <div class="mb-3">
+                        <label for="chequeDate" class="form-label">Cheque Date</label>
+                        <input type="date" id="chequeDate" class="form-control" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="actionDate" class="form-label" id="actionDateLabel">Action Date</label>
+                        <input type="date" id="actionDate" class="form-control">
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            // Load table based on selection
+            function loadChecks(type) {
+                $.ajax({
+                    url: `/Account/GetChecks?type=${type}`,
+                    type: "GET",
+                    success: function (res) {
+                        if ($.fn.DataTable.isDataTable("#table1")) $("#table1").DataTable().destroy();
+                        let tbody = $("#table1 tbody").empty();
+
+                        if (res.status && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.trsDate ? new Date(row.trsDate).toLocaleDateString() : ''}</td>
+                                        <td>${row.checkDate ? new Date(row.checkDate).toLocaleDateString() : ''}</td>
+                                        <td>${row.trsRef ?? ''}</td>
+                                        <td>${row.checkNo ?? ''}</td>
+                                        <td>${row.checkName ?? ''}</td>
+                                        <td>${row.bankName ?? ''}</td>
+                                        <td>${row.amount?.toFixed(3) ?? ''}</td>
+                                        <td>${row.state ?? ''}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-success passBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Pass"><i class="fas fa-check"></i></button>
+                                            <button class="btn btn-sm btn-warning returnBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Return"><i class="fas fa-undo"></i></button>
+                                            <button class="btn btn-sm btn-info holdBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Hold"><i class="fas fa-pause"></i></button>
+                                            <button class="btn btn-sm btn-danger cancelBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Cancel"><i class="fas fa-times"></i></button>
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+
+                            $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="10" class="text-center">No records found</td></tr>`);
+                        }
+                    },
+                    error: function () { toastr.error("Error loading data"); }
+                });
+            }
+
+            // Initial load
+            loadChecks($("#transactionSelect").val());
+
+            $("#transactionSelect").on("change", function () {
+                loadChecks($(this).val());
+            });
+
+            // Open modal for actions
+            $(document).on('click', '.passBtn, .returnBtn, .holdBtn, .cancelBtn', function () {
+                let id = $(this).data("id");
+                let chequeDate = $(this).data("date");
+                let action = "";
+
+                if ($(this).hasClass("passBtn")) action = "Pass";
+                else if ($(this).hasClass("returnBtn")) action = "Return";
+                else if ($(this).hasClass("holdBtn")) action = "Hold";
+                else if ($(this).hasClass("cancelBtn")) action = "Cancel";
+
+                $("#rowId").val(id);
+                $("#actionType").val(action);
+                $("#actionDateLabel").text(action + " Date");
+
+                $("#chequeDate").val(chequeDate ? new Date(chequeDate).toISOString().split("T")[0] : "");
+                $("#actionDate").val("");
+
+                new bootstrap.Modal(document.getElementById('pdcModal')).show();
+            });
+
+            // Save action
+            $("#saveBtn").on("click", function () {
+                let payload = {
+                    CheckDetailId: $("#rowId").val(),
+                    Action: $("#actionType").val(),
+                    SelectedDate: $("#actionDate").val()
+                };
+
+                $.ajax({
+                    url: "/Account/UpdateChequeState",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function () {
+                        toastr.success("Saved successfully");
+                        $("#pdcModal").modal("hide");
+                        loadChecks($("#transactionSelect").val());
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message ?? "Error saving action");
+                    }
+                });
+            });
+
+        });
+    </script>
+}

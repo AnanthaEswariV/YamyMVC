@@ -1236,8 +1236,148 @@ LIMIT 1";
             }
         }
 
+        #endregion
+
+        #region Post Date Cheque(PDC)
+
+        public IActionResult PDC()
+        {
+            return View();
+        }
 
 
+        [HttpGet]
+        public async Task<IActionResult> GetChecks([FromQuery] string type = "Receivable", [FromQuery] bool filterByDate = false,
+                                              [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query;
+                if (type.Equals("Receivable", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = filterByDate
+                        ? @"SELECT ROW_NUMBER() OVER (ORDER BY cd.date) AS SN,
+                           pv.date AS TRSDate,
+                           cd.check_date AS CheckDate,
+                           cd.id,
+                           cd.pass_date, cd.return_date, cd.hold_date, cd.cancel_date,
+                           pv.code AS TRSRef,
+                           cd.check_no AS CheckNo,
+                           cd.check_name AS CheckName,
+                           '' AS BankName,
+                           pv.id AS RefId,
+                           CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
+                           cd.State
+                  FROM tbl_check_details cd
+                  INNER JOIN tbl_receipt_voucher pv ON cd.pvc_no = pv.id
+                  WHERE cd.check_type = @checkType
+                    AND cd.date BETWEEN @startDate AND @endDate"
+                        : @"SELECT ROW_NUMBER() OVER (ORDER BY cd.date) AS SN,
+                           pv.date AS TRSDate,
+                           cd.check_date AS CheckDate,
+                           cd.id,
+                           cd.pass_date, cd.return_date, cd.hold_date, cd.cancel_date,
+                           pv.code AS TRSRef,
+                           cd.check_no AS CheckNo,
+                           cd.check_name AS CheckName,
+                           '' AS BankName,
+                           pv.id AS RefId,
+                           CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
+                           cd.State
+                  FROM tbl_check_details cd
+                  INNER JOIN tbl_receipt_voucher pv ON cd.pvc_no = pv.id
+                  WHERE cd.check_type = @checkType";
+                }
+                else // Payable
+                {
+                    query = filterByDate
+                        ? @"SELECT ROW_NUMBER() OVER (ORDER BY cd.date) AS SN,
+                           pv.date AS TRSDate,
+                           cd.check_date AS CheckDate,
+                           cd.id,
+                           cd.pass_date, cd.return_date, cd.hold_date, cd.cancel_date,
+                           pv.code AS TRSRef,
+                           cd.check_no AS CheckNo,
+                           cd.check_name AS CheckName,
+                           b.name AS BankName,
+                           CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
+                           cd.State
+                  FROM tbl_check_details cd
+                  INNER JOIN tbl_payment_voucher pv ON cd.pvc_no = pv.id
+                  INNER JOIN tbl_cheque chq ON cd.check_id = chq.id
+                  INNER JOIN tbl_bank_card bc ON chq.bank_card_id = bc.id
+                  INNER JOIN tbl_bank b ON bc.bank_id = b.id
+                  WHERE cd.check_type = @checkType
+                    AND cd.date BETWEEN @startDate AND @endDate"
+                        : @"SELECT ROW_NUMBER() OVER (ORDER BY cd.date) AS SN,
+                           pv.date AS TRSDate,
+                           cd.check_date AS CheckDate,
+                           cd.id,
+                           cd.pass_date, cd.return_date, cd.hold_date, cd.cancel_date,
+                           pv.code AS TRSRef,
+                           cd.check_no AS CheckNo,
+                           cd.check_name AS CheckName,
+                           b.name AS BankName,
+                           CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
+                           cd.State
+                  FROM tbl_check_details cd
+                  INNER JOIN tbl_payment_voucher pv ON cd.pvc_no = pv.id
+                  INNER JOIN tbl_cheque chq ON cd.check_id = chq.id
+                  INNER JOIN tbl_bank_card bc ON chq.bank_card_id = bc.id
+                  INNER JOIN tbl_bank b ON bc.bank_id = b.id
+                  WHERE cd.check_type = @checkType";
+                }
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@checkType", type.Equals("Payable", StringComparison.OrdinalIgnoreCase) ? "Payment" : "Receipt");
+
+                if (filterByDate)
+                {
+                    cmd.Parameters.AddWithValue("@startDate", startDate?.Date ?? DateTime.MinValue);
+                    cmd.Parameters.AddWithValue("@endDate", endDate?.Date ?? DateTime.MaxValue);
+                }
+
+                var checks = new List<object>();
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    checks.Add(new
+                    {
+                        sn = reader["SN"] != DBNull.Value ? Convert.ToInt32(reader["SN"]) : 0,
+                        id = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0,
+                        trsDate = reader["TRSDate"] != DBNull.Value ? Convert.ToDateTime(reader["TRSDate"]) : (DateTime?)null,
+                        checkDate = reader["CheckDate"] != DBNull.Value ? Convert.ToDateTime(reader["CheckDate"]) : (DateTime?)null,
+                        passDate = reader["pass_date"] as DateTime?,
+                        returnDate = reader["return_date"] as DateTime?,
+                        holdDate = reader["hold_date"] as DateTime?,
+                        cancelDate = reader["cancel_date"] as DateTime?,
+                        trsRef = reader["TRSRef"] != DBNull.Value ? reader["TRSRef"].ToString() : null,
+                        checkNo = reader["CheckNo"] != DBNull.Value ? reader["CheckNo"].ToString() : null,
+                        checkName = reader["CheckName"] != DBNull.Value ? reader["CheckName"].ToString() : null,
+                        bankName = reader["BankName"] != DBNull.Value ? reader["BankName"].ToString() : null,
+                        amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0,
+                        state = reader["State"] != DBNull.Value ? reader["State"].ToString() : null
+
+                    });
+
+
+                }
+
+                return Ok(new { status = true, data = checks });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
 
 
