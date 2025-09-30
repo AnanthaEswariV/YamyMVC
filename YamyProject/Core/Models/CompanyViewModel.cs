@@ -274,6 +274,7 @@ namespace YamyProject.Core.Models
     }
     public class ChequeRequest
     {
+        public int Id { get; set; }
         public int BankCardId { get; set; }
         public int ChqBookNo { get; set; }
         public int ChqBookQty { get; set; }

@@ -924,23 +924,51 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                string query = @"
-     SELECT 
-    ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
-    c.id,
-    c.bank_card_id AS BankCardId,
-    CONCAT(b.code, '-', b.name) AS BankName,   -- Bank linked to this bank_card
-    bc.account_name AS AcName,
-    bc.account_type AS AcType,
-    c.chq_book_no AS ChqBookNo,
-    c.chq_book_qty AS ChqBookQty,
-    c.leaves_start_from AS StartFrom,
-    c.leaves_end_in AS EndIn
-FROM tbl_cheque c
-INNER JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
-INNER JOIN tbl_bank b ON b.id = c.bank_card_id
-;
-"; // Optional order
+                //                string query = @"
+                //     SELECT 
+                //    ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
+                //    c.id,
+                //    c.bank_card_id AS BankCardId,
+                //    CONCAT(b.code, '-', b.name) AS BankName,   -- Bank linked to this bank_card
+                //    bc.account_name AS AcName,
+                //    bc.account_type AS AcType,
+                //    c.chq_book_no AS ChqBookNo,
+                //    c.chq_book_qty AS ChqBookQty,
+                //    c.leaves_start_from AS StartFrom,
+                //    c.leaves_end_in AS EndIn
+                //FROM tbl_cheque c
+                //INNER JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
+                //INNER JOIN tbl_bank b ON b.id = c.bank_card_id
+                //;
+                //"; // Optional order
+
+
+                string query = @"SELECT
+                                    ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
+                                    c.id,
+                                    c.bank_card_id,
+                                    b.id AS BankId,
+                                    CONCAT(b.code, '-', b.name) AS BankName,
+                                    bc.account_name AS AcName,
+                                    bc.account_type AS AcType,
+                                    c.chq_book_no AS ChqBookNo,
+                                    c.chq_book_qty AS ChqBookQty,
+                                    c.leaves_start_from AS StartFrom,
+                                    c.leaves_end_in AS EndIn,
+                                    CASE 
+                                        WHEN c.id = (
+                                            SELECT id 
+                                            FROM tbl_cheque 
+                                            WHERE bank_card_id = c.bank_card_id 
+                                            ORDER BY id DESC 
+                                            LIMIT 1
+                                        ) THEN 1 
+                                        ELSE 0 
+                                    END AS IsLast
+                                    FROM tbl_cheque c
+                                    INNER JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
+                                    INNER JOIN tbl_bank b ON b.id = c.bank_card_id;
+                                    ";
 
                 using var cmd = new MySqlCommand(query, conn);
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -953,12 +981,14 @@ INNER JOIN tbl_bank b ON b.id = c.bank_card_id
                         Sn = reader.GetInt32("SN"),
                         Id = reader.GetInt32("id"),
                         BankName = reader.GetString("BankName"),
+                        bank_card_id = reader.GetInt32("bank_card_id"),
                         AcName = reader.GetString("AcName"),
                         AcType = reader.IsDBNull(reader.GetOrdinal("AcType")) ? "" : reader.GetString("AcType"),
                         ChqBookNo = reader.GetInt32("ChqBookNo"),
                         ChqBookQty = reader.GetInt32("ChqBookQty"),
                         StartFrom = reader.GetString("StartFrom"),
-                        EndIn = reader.GetString("EndIn")
+                        EndIn = reader.GetString("EndIn"),
+                        IsLast = reader.GetInt32("IsLast") == 1
                     });
                 }
 
@@ -1035,7 +1065,6 @@ LIMIT 1";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         [HttpPost]
         public async Task<IActionResult> SaveCheque([FromBody] ChequeRequest model)
@@ -1146,6 +1175,71 @@ LIMIT 1";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateCheque([FromBody] ChequeRequest model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid cheque ID" });
+
+            if (model.BankCardId <= 0)
+                return BadRequest(new { status = false, message = "Please select a bank card" });
+
+            if (model.ChqBookNo <= 0)
+                return BadRequest(new { status = false, message = "Please enter cheque book number" });
+
+            if (model.ChqBookQty <= 0)
+                return BadRequest(new { status = false, message = "Please enter a valid book quantity" });
+
+            if (model.LeavesStartFrom <= 0 || model.LeavesEndIn <= 0)
+                return BadRequest(new { status = false, message = "Please provide valid start and end leaves" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            UPDATE tbl_cheque
+            SET bank_card_id = @bankCardId,
+                chq_book_no = @chqBookNo,
+                chq_book_qty = @chqBookQty,
+                leaves_start_from = @leavesStartFrom,
+                leaves_end_in = @leavesEndIn
+            WHERE id = @id";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@bankCardId", model.BankCardId);
+                cmd.Parameters.AddWithValue("@chqBookNo", model.ChqBookNo);
+                cmd.Parameters.AddWithValue("@chqBookQty", model.ChqBookQty);
+                cmd.Parameters.AddWithValue("@leavesStartFrom", model.LeavesStartFrom);
+                cmd.Parameters.AddWithValue("@leavesEndIn", model.LeavesEndIn);
+                cmd.Parameters.AddWithValue("@id", model.Id);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Cheque book updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+
+
 
         #endregion
 

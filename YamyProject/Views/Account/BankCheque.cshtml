@@ -119,7 +119,7 @@
         $(document).ready(function () {
 
 
-               function loadChequeBooks() {
+            function loadChequeBooks() {
             $.ajax({
                 url: "/Account/GetChequeBooks",
                 type: "GET",
@@ -147,12 +147,14 @@
                                         <td>${row.startFrom ?? ""}</td>
                                         <td>${row.endIn ?? ""}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-primary editChequeBtn" data-cheque='${rowData}'>
-                                                <i class="fas fa-pen"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger deleteChequeBtn" data-id='${row.Id}' disabled>
-                                                <i class="fas fa-prescription-bottle-alt"></i>
-                                            </button>
+                                                     <button class="btn btn-sm btn-primary editChequeBtn"
+                        data-cheque='${rowData}'
+                        ${row.isLast ? "" : "disabled"}>
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button class="btn btn-sm btn-danger deleteChequeBtn" data-id='${row.Id}' disabled>
+                    <i class="fas fa-prescription-bottle-alt"></i>
+                </button>
                                         </td>
                                     </tr>`;
                                 tbody.append(tr);
@@ -187,9 +189,9 @@
             });
         }
 
-               loadChequeBooks();
+            loadChequeBooks();
 
-               function loadBankDropdown(selectedId = null) {
+            function loadBankDropdown(selectedId = null) {
                 $.ajax({
                     url: '/Account/GetBanksforDropdown',
                     type: 'GET',
@@ -219,18 +221,18 @@
                 });
             }
 
-               // Load dropdown on page ready
-               loadBankDropdown();
+            // Load dropdown on page ready
+            loadBankDropdown();
 
-                var loggedInUsername = ""; // Global variable
+             var loggedInUsername = ""; // Global variable
 
-                // Fetch logged-in username from server
-                $.get("/Account/GetLoggedInUser", function(res) {
+             // Fetch logged-in username from server
+             $.get("/Account/GetLoggedInUser", function(res) {
                     loggedInUsername = res.username || "";
                 });
 
-                // ===== Modal Show Event =====
-                $("#bankChequeModal").on("show.bs.modal", function() {
+             // ===== Modal Show Event =====
+             $("#bankChequeModal").on("show.bs.modal", function() {
                     const $accountName = $("#accountName");
 
                     // Only set if empty
@@ -239,12 +241,10 @@
                     }
                 });
 
+              let lastChequeNumber = 0;
 
-
-                 let lastChequeNumber = 0;
-
-                  // When bank changes
-                 $('#bankName').on('change', function() {
+               // When bank changes
+              $('#bankName').on('change', function() {
                      const bankId = $(this).val();
                      if(!bankId) return;
 
@@ -280,12 +280,12 @@
                        
                  });
 
-         $('#bankName').on('change', function () {
-    const bankCardId = $(this).val();   // This dropdown should give bank_card_id
+             $('#bankName').on('change', function () {
+    const bankCardId = $(this).val();   
     if (!bankCardId) return;
 
     $.ajax({
-        url: `/Account/GetLastLeafNumber?bankCardId=${bankCardId}`, // ✅ match C# param name
+        url: `/Account/GetLastLeafNumber?bankCardId=${bankCardId}`, 
         type: 'GET',
         success: function (res) {
             if (res.status) {
@@ -310,11 +310,8 @@
     });
 });
 
-
-
-
-                 // Update Starting From and To based on quantity
-                 $('#chqBookQty').on('input', function() {
+              // Update Starting From and To based on quantity
+              $('#chqBookQty').on('input', function() {
             const qty = parseInt($(this).val()) || 0;
             if(qty <= 0) return;
 
@@ -324,35 +321,79 @@
             $('#to').val(end);
         });
 
-                 //submit form
-                        // Submit form
-                 $('#checkBookForm').on('submit', function(e) {
+            
+
+              $(document).on("click", ".editChequeBtn", function () {
+            const cheque = $(this).data("cheque");
+            if (!cheque) return;
+            console.log(cheque);
+            $("#chequeBookId").val(cheque.id);
+            $("#bankName").val(cheque.bank_card_id).prop("disabled", true);
+            $("#accountName").val(cheque.acName).prop("disabled", true);
+            $("#chqBookNo").val(cheque.chqBookNo).prop("disabled", true);
+
+            // Use current leaves_start_from as base
+            const baseStart = parseInt(cheque.startFrom);
+            $("#startingFrom").val(baseStart).prop("disabled", true);
+            $("#chqBookQty").val(cheque.chqBookQty).prop("disabled", false);
+            $("#to").val(cheque.endIn).prop("disabled", true);
+
+            $("#bankChequeModalLabel").text("Edit Check Book");
+            $("#bankChequeModal").modal("show");
+
+            // Only qty change affects To field
+            $('#chqBookQty').off('input').on('input', function() {
+                const qty = parseInt($(this).val()) || 0;
+                if (qty <= 0) return;
+
+                const end = baseStart + qty - 1;
+                $("#to").val(end);
+            });
+        });
+
+                   // ===== Single Submit Handler for Add / Edit =====
+        $('#checkBookForm').on('submit', function(e) {
             e.preventDefault();
 
-            const data = {
-                BankCardId: parseInt($('#bankName').val()) || 0,
-                ChqBookNo: parseInt($('#chqBookNo').val()) || 0,
-                ChqBookQty: parseInt($('#chqBookQty').val()) || 0,
-                LeavesStartFrom: parseInt($('#startingFrom').val()) || 0,
-                LeavesEndIn: parseInt($('#to').val()) || 0
-            };
+            const chequeId = parseInt($('#chequeBookId').val()) || 0; // 0 = new, >0 = edit
+            const bankCardId = parseInt($('#bankName').val()) || 0;
+            const chqBookNo = parseInt($('#chqBookNo').val()) || 0;
+            const chqBookQty = parseInt($('#chqBookQty').val()) || 0;
+            const leavesStartFrom = parseInt($('#startingFrom').val()) || 0;
+            const leavesEndIn = parseInt($('#to').val()) || 0;
 
-            if(!data.BankCardId || !data.ChqBookQty) {
-                toastr.error('Please select bank and enter quantity.');
+            if (!bankCardId || chqBookQty <= 0) {
+                toastr.error("Please select bank and enter valid quantity.");
                 return;
             }
 
+            const data = {
+                Id: chequeId,
+                BankCardId: bankCardId,
+                ChqBookNo: chqBookNo,
+                ChqBookQty: chqBookQty,
+                LeavesStartFrom: leavesStartFrom,
+                LeavesEndIn: leavesEndIn
+            };
+
+            const url = chequeId > 0 ? '/Account/UpdateCheque' : '/Account/SaveCheque';
+
             $.ajax({
-                url: '/Account/SaveCheque',
+                url: url,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
                 success: function(res) {
                     if(res.status) {
-                        toastr.success(res.message);
+                        toastr.success(chequeId > 0 ? 'Cheque updated successfully' : 'Cheque added successfully');
                         $('#bankChequeModal').modal('hide');
                         $('#checkBookForm')[0].reset();
-                        loadChequeBooks(); // reload table
+                        $('#bankName').prop('disabled', false);
+                        $('#accountName').prop('disabled', false);
+                        $('#chqBookNo').prop('disabled', false);
+                        $('#startingFrom').prop('disabled', false);
+                        $('#to').prop('disabled', false);
+                        loadChequeBooks();
                     } else {
                         toastr.error(res.message);
                     }
