@@ -522,7 +522,7 @@ namespace YamyProject.Controllers
                     {
                         Id = reader.GetInt32("id"),
                         Name = reader.GetString("name"),
-                        Code =reader.GetString("code")
+                        Code = reader.GetString("code")
                     });
                 }
 
@@ -780,10 +780,10 @@ namespace YamyProject.Controllers
                         BranchName = reader.GetString("BranchName"),
                         Emirates = reader.GetString("Emirates"),
                         Currency = reader.GetString("Currency"),
-                        AccountManager= reader.GetString("AccountManager"),
-                        AccountSign=reader.GetString("AccountSign"),
-                        AccountMob=reader.GetString("AccountMob"),
-                        AccountId=reader.GetInt32("AccountId"),
+                        AccountManager = reader.GetString("AccountManager"),
+                        AccountSign = reader.GetString("AccountSign"),
+                        AccountMob = reader.GetString("AccountMob"),
+                        AccountId = reader.GetInt32("AccountId"),
                         BankId = reader.GetInt32("BankId")
                     });
                 }
@@ -1003,7 +1003,7 @@ namespace YamyProject.Controllers
         [HttpGet]
         public async Task<IActionResult> GetLastChequeNumber(int bankId)
         {
-                if (bankId <= 0)
+            if (bankId <= 0)
                 return BadRequest(new { status = false, lastChequeNo = 0 });
 
             try
@@ -1076,7 +1076,7 @@ LIMIT 1";
             if (model.BankCardId <= 0)
                 return BadRequest(new { status = false, message = "Please select a bank card" });
 
-            if (model.ChqBookNo <=0)
+            if (model.ChqBookNo <= 0)
                 return BadRequest(new { status = false, message = "Please enter cheque book number" });
 
             if (model.ChqBookQty <= 0)
@@ -1379,6 +1379,272 @@ LIMIT 1";
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> UpdateChequeState([FromBody] ChequeActionRequest model)
+        {
+            try
+            {
+                if (model == null)
+                    return BadRequest(new { status = false, message = "Invalid request" });
+
+                if (model.CheckDetailId <= 0)
+                    return BadRequest(new { status = false, message = "Invalid cheque ID" });
+
+                if (string.IsNullOrEmpty(model.Action))
+                    return BadRequest(new { status = false, message = "Action is required" });
+
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Get cheque details
+                string query = @"
+SELECT 
+    cd.id AS check_detail_id,
+    cd.amount AS check_amount,
+    cd.check_date,
+    cd.pass_date,
+    cd.check_no,
+    cd.check_name,
+    cd.check_type,
+    cd.state AS check_state,
+    pv.id AS payment_voucher_id,
+    pv.code AS voucher_code,
+    pv.date AS voucher_date,
+    pv.debit_account_id,
+    pv.credit_account_id,
+    pv.trans_name,
+    pv.trans_ref,
+    pv.bank_id,
+    b.name AS bank_name,
+    pvd.id AS voucher_detail_id,
+    pvd.hum_id,
+    pvd.inv_id,
+    pvd.inv_code,
+    pvd.payment,
+    pvd.voucher_type
+FROM tbl_check_details cd
+INNER JOIN tbl_payment_voucher pv ON cd.pvc_no = pv.id
+INNER JOIN tbl_bank b ON pv.bank_id = b.id
+INNER JOIN tbl_payment_voucher_details pvd ON pvd.payment_id = pv.id
+WHERE cd.id = @checkId";
+
+                // Choose correct tables for Payable vs Receivable
+                query = string.Format(query,
+                    model.IsPayable ? "tbl_payment_voucher" : "tbl_receipt_voucher",
+                    model.IsPayable ? "tbl_payment_voucher_details" : "tbl_receipt_voucher_details");
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@checkId", model.CheckDetailId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                    return NotFound(new { status = false, message = "Cheque not found" });
+
+                // 🔹 Extract fields
+                string currentState = reader["check_state"].ToString();
+                decimal amount = Convert.ToDecimal(reader["payment"]);
+                string checkType = reader["check_type"].ToString();
+                string voucherCode = reader["voucher_code"].ToString();
+                string humId = reader["hum_id"].ToString();
+                int debitAccountId = Convert.ToInt32(reader["debit_account_id"]);
+                int creditAccountId = Convert.ToInt32(reader["credit_account_id"]);
+                int bankId = Convert.ToInt32(reader["bank_id"]);
+                reader.Close();
+
+                // 🔹 Validation
+                if (model.Action == "Pass" && currentState == "Cancel")
+                    return BadRequest(new { status = false, message = "Can't Pass Cancelled Check" });
+
+                if (model.Action == "Return" && currentState != "Pass")
+                    return BadRequest(new { status = false, message = "Can't Return Check Before Passing" });
+
+                if (model.Action == "Hold" && currentState != "New")
+                    return BadRequest(new { status = false, message = "Only New Check Can Be Hold" });
+
+                if (model.Action == "Cancel" && currentState == "Pass")
+                    return BadRequest(new { status = false, message = "Can't Cancel Passed Check" });
+
+                // 🔹 Insert journal entry
+                if (model.IsPayable)
+                    await InsertJournalEntriesPayable(conn, model.Action, debitAccountId, creditAccountId, bankId, model.SelectedDate, amount, model.CheckDetailId, humId, checkType, voucherCode, userId);
+                else
+                    await InsertJournalEntriesReceivable(conn, model.Action, debitAccountId, creditAccountId, bankId, model.SelectedDate, amount, model.CheckDetailId, humId, checkType, voucherCode, userId);
+
+                // 🔹 Update cheque state
+                string updateSql = "UPDATE tbl_check_details SET state = @state WHERE id = @id";
+                await using var updateCmd = new MySqlCommand(updateSql, conn);
+                updateCmd.Parameters.AddWithValue("@state", model.Action);
+                updateCmd.Parameters.AddWithValue("@id", model.CheckDetailId);
+                await updateCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = $"Cheque {model.Action} successfully" });
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+
+        }
+
+        // ===================== PAYABLE =====================
+        private async Task InsertJournalEntriesPayable(MySqlConnection conn, string action, int debitAccountId, int creditAccountId, int bankId, DateTime selectedDate, decimal amount, int checkDetailId, string humId, string checkType, string voucherCode, int userId)
+        {
+            try
+            {
+                string debit, credit;
+
+                switch (action)
+                {
+                    case "Pass":
+                        debit = bankId.ToString();
+                        credit = debitAccountId.ToString();
+                        break;
+                    case "Return":
+                        debit = debitAccountId.ToString();
+                        credit = bankId.ToString();
+                        break;
+                    case "Hold":
+                        debit = debitAccountId.ToString();
+                        credit = "9999"; // Hold Account
+                        break;
+                    case "Cancel":
+                        debit = debitAccountId.ToString();
+                        credit = "8888"; // Cancel Account
+                        break;
+                    default:
+                        return;
+                }
+
+                string insert = @"
+INSERT INTO tbl_transaction 
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
+VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC Payable', @desc, @userId, @createdDate, 0, @voucherCode)";
+
+                // Debit Entry
+                await using (var cmd = new MySqlCommand(insert, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", selectedDate);
+                    cmd.Parameters.AddWithValue("@account", debit);
+                    cmd.Parameters.AddWithValue("@debit", amount);
+                    cmd.Parameters.AddWithValue("@credit", 0);
+                    cmd.Parameters.AddWithValue("@checkDetailId", checkDetailId);
+                    cmd.Parameters.AddWithValue("@humId", humId);
+                    cmd.Parameters.AddWithValue("@tType", checkType);
+                    cmd.Parameters.AddWithValue("@desc", $"PDC Payable {action} Check");
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@voucherCode", voucherCode);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Credit Entry
+                await using (var cmd = new MySqlCommand(insert, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", selectedDate);
+                    cmd.Parameters.AddWithValue("@account", credit);
+                    cmd.Parameters.AddWithValue("@debit", 0);
+                    cmd.Parameters.AddWithValue("@credit", amount);
+                    cmd.Parameters.AddWithValue("@checkDetailId", checkDetailId);
+                    cmd.Parameters.AddWithValue("@humId", humId);
+                    cmd.Parameters.AddWithValue("@tType", checkType);
+                    cmd.Parameters.AddWithValue("@desc", $"PDC Payable {action} Check");
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@voucherCode", voucherCode);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Error inserting journal entries for payable cheque: " + ex.Message, ex);
+            }
+        }
+
+        // ===================== RECEIVABLE =====================
+        private async Task InsertJournalEntriesReceivable(MySqlConnection conn, string action, int debitAccountId, int creditAccountId, int bankId, DateTime selectedDate, decimal amount, int checkDetailId, string humId, string checkType, string voucherCode, int userId)
+        {
+            try
+            {
+                string debit, credit;
+
+                switch (action)
+                {
+                    case "Pass":
+                        debit = bankId.ToString();
+                        credit = creditAccountId.ToString();
+                        break;
+                    case "Return":
+                        debit = debitAccountId.ToString();
+                        credit = bankId.ToString();
+                        break;
+                    case "Hold":
+                        debit = debitAccountId.ToString();
+                        credit = "9999"; // Hold Account
+                        break;
+                    case "Cancel":
+                        debit = debitAccountId.ToString();
+                        credit = "8888"; // Cancel Account
+                        break;
+                    default:
+                        return;
+                }
+
+                string insert = @"
+INSERT INTO tbl_transaction 
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
+VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC Receivable', @desc, @userId, @createdDate, 0, @voucherCode)";
+
+                // Debit Entry
+                await using (var cmd = new MySqlCommand(insert, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", selectedDate);
+                    cmd.Parameters.AddWithValue("@account", debit);
+                    cmd.Parameters.AddWithValue("@debit", amount);
+                    cmd.Parameters.AddWithValue("@credit", 0);
+                    cmd.Parameters.AddWithValue("@checkDetailId", checkDetailId);
+                    cmd.Parameters.AddWithValue("@humId", humId);
+                    cmd.Parameters.AddWithValue("@tType", checkType);
+                    cmd.Parameters.AddWithValue("@desc", $"PDC Receivable {action} Check");
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@voucherCode", voucherCode);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Credit Entry
+                await using (var cmd = new MySqlCommand(insert, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", selectedDate);
+                    cmd.Parameters.AddWithValue("@account", credit);
+                    cmd.Parameters.AddWithValue("@debit", 0);
+                    cmd.Parameters.AddWithValue("@credit", amount);
+                    cmd.Parameters.AddWithValue("@checkDetailId", checkDetailId);
+                    cmd.Parameters.AddWithValue("@humId", humId);
+                    cmd.Parameters.AddWithValue("@tType", checkType);
+                    cmd.Parameters.AddWithValue("@desc", $"PDC Receivable {action} Check");
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@voucherCode", voucherCode);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it as needed
+                throw new Exception("Error inserting journal entries for receivable cheque: " + ex.Message, ex);
+            }
+
+        }
 
 
         #endregion

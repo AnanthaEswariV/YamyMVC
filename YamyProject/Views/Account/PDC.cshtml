@@ -104,7 +104,7 @@
                     success: function (res) {
                         if ($.fn.DataTable.isDataTable("#table1")) $("#table1").DataTable().destroy();
                         let tbody = $("#table1 tbody").empty();
-
+                        console.log(res);
                         if (res.status && res.data.length > 0) {
                             $.each(res.data, function (i, row) {
                                 tbody.append(`
@@ -152,12 +152,36 @@
                 loadChecks($(this).val());
             });
 
+                    // helper: produce a YYYY-MM-DD string safe for <input type="date">
+        function formatForInputDate(d) {
+            if (!d) return "";
+            // If already "YYYY-MM-DD"
+            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+
+            // common ISO-like: "YYYY-MM-DDTHH:mm:ss" or "...T...Z"
+            if (typeof d === "string" && d.indexOf("T") !== -1) {
+                return d.split("T")[0];
+            }
+
+            // Microsoft JSON format: "/Date(169xx...)/"
+            const msMatch = /\/Date\((\d+)(?:[+-]\d+)?\)\//.exec(d);
+            if (msMatch) {
+                const dt = new Date(parseInt(msMatch[1], 10));
+                return dt.toISOString().split("T")[0];
+            }
+
+            // fallback: try to parse and use ISO date (may shift by timezone)
+            const dt = new Date(d);
+            if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0];
+
+            return "";
+        }
+
             // Open modal for actions
             $(document).on('click', '.passBtn, .returnBtn, .holdBtn, .cancelBtn', function () {
                 let id = $(this).data("id");
                 let chequeDate = $(this).data("date");
                 let action = "";
-
                 if ($(this).hasClass("passBtn")) action = "Pass";
                 else if ($(this).hasClass("returnBtn")) action = "Return";
                 else if ($(this).hasClass("holdBtn")) action = "Hold";
@@ -167,35 +191,53 @@
                 $("#actionType").val(action);
                 $("#actionDateLabel").text(action + " Date");
 
-                $("#chequeDate").val(chequeDate ? new Date(chequeDate).toISOString().split("T")[0] : "");
+                 $("#chequeDate").val(formatForInputDate(chequeDate));
                 $("#actionDate").val("");
 
                 new bootstrap.Modal(document.getElementById('pdcModal')).show();
             });
 
-            // Save action
-            $("#saveBtn").on("click", function () {
-                let payload = {
-                    CheckDetailId: $("#rowId").val(),
-                    Action: $("#actionType").val(),
-                    SelectedDate: $("#actionDate").val()
-                };
+           // Save button click
+        $("#saveBtn").on("click", function () {
+            let chequeDate = $("#chequeDate").val();
+            let actionDate = $("#actionDate").val();
+            let actionType = $("#actionType").val();
 
-                $.ajax({
-                    url: "/Account/UpdateChequeState",
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify(payload),
-                    success: function () {
-                        toastr.success("Saved successfully");
-                        $("#pdcModal").modal("hide");
-                        loadChecks($("#transactionSelect").val());
-                    },
-                    error: function (xhr) {
-                        toastr.error(xhr.responseJSON?.message ?? "Error saving action");
-                    }
-                });
+            // ✅ Validation
+            if (!actionDate) {
+                toastr.error("Please select " + actionType + " date.");
+                return;
+            }
+
+            if (actionDate < chequeDate) {
+                toastr.error(actionType + " date cannot be before Cheque Date.");
+                return;
+            }
+
+            // ✅ Payload
+            let payload = {
+                CheckDetailId: $("#rowId").val(),
+                Action: actionType,
+                SelectedDate: actionDate
+            };
+
+            // ✅ AJAX request
+            $.ajax({
+                url: "/Account/UpdateChequeState",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: function () {
+                    toastr.success("Saved successfully");
+                    $("#pdcModal").modal("hide");
+                    loadChecks($("#transactionSelect").val()); // refresh grid
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message ?? "Error saving action");
+                }
             });
+        });
+
 
         });
     </script>
