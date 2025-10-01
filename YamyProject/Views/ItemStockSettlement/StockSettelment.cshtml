@@ -16,39 +16,37 @@
                 <input type="hidden" asp-for="Id" />
 
                 <div class="row mb-3">
-                    <div class="col-md-3">
-                        <label asp-for="Date" class="form-label">Date</label>
-                        <input asp-for="Date" type="date" class="form-control" />
-                        <span asp-validation-for="Date" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-3">
+                        <div class="col-md-3">
+                            <label asp-for="Date" class="form-label">Date</label>
+                            <input asp-for="Date" type="date" class="form-control" />
+                            <span asp-validation-for="Date" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-3">
                         <label asp-for="WarehouseId"></label>
                                 <div class="form-floating mb-2">
                                     <select class="form-select form-select-solid js-select2"
                                             data-placeholder="Select an author"
                                             asp-for="WarehouseId"
                                             asp-items="@(new SelectList(Model.WarehousesVm, "Id", "Name"))">
-                                        <option value="">Select an author</option>
+                                <option value="">Select an Warehouse</option>
                                     </select>
                                 </div>
                                 <span asp-validation-for="WarehouseId" class="text-danger d-block"></span>
                             </div>
-                    <div class="col mb-3 ">
-                    <div class="row mb-1 ">
-
-                        <label >Previous</label>
-                        <label class="text-end">Next</label>
-                       </div>
-                        <div class="col-md-4 d-flex align-items-end justify-content-end">
-                        @* <label>Previous</label> *@
-                        <div class="btn-group"> 
-                            <button type="button" class="btn btn-outline-primary">&lt;&lt;</button>
-                            <input type="text" value="@Model.Code" readonly class="form-control text-center" style="max-width:120px" />
-                            <button type="button" class="btn btn-outline-primary">&gt;&gt;</button>
+                        <div class="col mb-3 ">
+                            @* <div class="text-center mt-2"></div> *@
+                            <div>Previous  Next</div>
+                            
+                            <div class="col-md-4 d-flex align-items-end justify-content-end">
+                                  @* <label>Previous</label> *@
+                                  <div class="btn-group"> 
+                                      <button type="button" class="btn btn-outline-primary">&lt;&lt;</button>
+                                      <input type="text" value="@Model.Code" readonly class="form-control text-center" style="max-width:120px" />
+                                      <button type="button" class="btn btn-outline-primary">&gt;&gt;</button>
+                                  </div>
+                                  @* <label>Next</label> *@
+                            </div>
                         </div>
-                        @* <label>Next</label> *@
-                    </div>
-                    </div>
                 </div>
                 <div class="table-responsive mt-4">
 
@@ -88,9 +86,9 @@
                                         <td>@item.MinusAmount</td>
                                         <td>@item.PlusAmount</td>
                                         <td class="text-center">
-                                        <td class="text-center"><a calss=" btn btn-danger">REMOVE</a></td>
-
+                                        <a calss=" btn btn-danger">REMOVE</a>
                                         </td>
+                                       
                                     </tr>
                                     index++;
                                 }
@@ -99,8 +97,18 @@
                         {
                             <tr>
                                 <td>1</td>
-                                <td><input type="text" name="Items[0].NewOnHand" class="form-control" /></td>
-                                <td><input type="text" name="Items[0].NewOnHand" class="form-control" /></td>
+                                <td>
+                                        <input list="itemOptions0" id="itemInput0" placeholder="Type or select..." class="form-control itemCode"
+                                        oninput="updateNameFromInput(this, 0)">
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
+                            @*     <td>
+                                        <input list="itemOptions1" id="itemInput1" placeholder="Type or select..." class="form-control itemName"
+                                        oninput="updateNameFromInput(this, 0)">
+                                        <datalist id="itemOptions1"></datalist>
+                                    </td> *@
+                                    @* <td><input type="text" name="Items[0].NewOnHand" class="form-control itemSearchCode" /></td> *@
+                                    <td><input type="text" name="Items[0].NewOnHand" class="form-control itemSearchName" /></td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
@@ -140,8 +148,11 @@
 </div>
 
 @section Scripts {
-    <script src="~/assets/Asid/jquery-3.7.1.min.js"></script>
-    <script src="~/assets/Asid/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+    <script src="~/assets/js/stocksettelment.js"></script>
     <script>
         $(function () {
             $('#itemsTable').on('click', '.remove-row', function () {

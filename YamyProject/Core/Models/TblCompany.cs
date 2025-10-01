@@ -30,6 +30,12 @@ public partial class TblCompany
     //[ForeignKey("CountryId")]
     //public TblCountry? Country { get; set; }
 
+    //public IEnumerable<SelectListItem>? Countrys { get; set; }
+    //public bool IsDeleted { get; set; }
+   // public byte[]? LogoComp { get; set; }
+    //public DateTime CreatedOn { get; set; }
+    //public DateTime? LastUpdatedOn { get; set; }
+
     public byte[]? LogoComp { get; set; }
 
 }

@@ -1,4 +1,6 @@
-﻿using YamyProject.Core.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Xml.Linq;
+using YamyProject.Core.Models;
 
 namespace YamyProject.Services.Implementations
 {
@@ -19,7 +21,7 @@ namespace YamyProject.Services.Implementations
             // Implements your SQL logic:
             // - defaultMode == true: group by settlement and return JV No = concat('000', MAX(transaction.transaction_id))
             // - defaultMode == false: return settlement rows with individual detail rows (items)
-            public async Task<IEnumerable<ItemStockSettlementListVm>> GetSettlementsAsync(string defaultMode = "Default")
+        public async Task<IEnumerable<ItemStockSettlementListVm>> GetSettlementsAsync(string defaultMode = "Default")
             {
                 // base query
                  var q = _db.TblItemStockSettlements 
@@ -74,67 +76,65 @@ namespace YamyProject.Services.Implementations
                     });
                 }
             }
-            public async Task<IEnumerable<ItemStockSettlementListVm>> GetSettlementsAsync(DateTime? from = null, DateTime? to = null, string defaultMode = "Default")
+        public async Task<IEnumerable<ItemStockSettlementListVm>> GetSettlementsAsync(DateTime? from = null, DateTime? to = null, string defaultMode = "Default")
             {
-                // base query
-                var q = _db.TblItemStockSettlements
-                           .Where(s => s.State == 0); // replicate WHERE tbl_item_stock_settlement.state = 0
+            // Base query: active settlements only
+            var query = _db.TblItemStockSettlements
+                           .AsNoTracking()
+                           .Where(s => s.State == 0);
 
-                if (from.HasValue && to.HasValue)
-                {
-                    // your model uses DateOnly - convert appropriately
-                    var fromDateOnly = DateOnly.FromDateTime(from.Value.Date);
-                    var toDateOnly = DateOnly.FromDateTime(to.Value.Date);
-                    q = q.Where(s => (s.Date ?? DateOnly.MinValue) >= fromDateOnly && (s.Date ?? DateOnly.MinValue) <= toDateOnly);
-                }
-
-            if (defaultMode == "Default")
-                {
-                    // Group and select: SN and JV NO (max transaction id)
-                    var list = await q
-                        .Select(s => new
-                        {
-                            s.Id,
-                            s.Code,
-                            Date = s.Date,
-                            MaxTxn = s.Transactions.OrderByDescending(t => t.TransactionId).Select(t => t.TransactionId).FirstOrDefault()
-                        })
-                        .AsNoTracking()
-                        .ToListAsync();
-
-                    return list.Select(x => new ItemStockSettlementListVm
-                    {
-                        Id = x.Id,
-                        Code = x.Code,
-                        Date = x.Date.HasValue ? x.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-                        JvNo =  $"000{x.MaxTxn}"
-                    });
-                }
-                else
-                {
-                    // Return settlements and summary fields; items count can be computed
-                    var list = await q
-                        .Select(s => new
-                        {
-                            s.Id,
-                            s.Code,
-                            Date = s.Date,
-                            ItemsCount = s.Details.Count()
-                        })
-                        .AsNoTracking()
-                        .ToListAsync();
-
-                    return list.Select(x => new ItemStockSettlementListVm
-                    {
-                        Id = x.Id,
-                        Code = x.Code,
-                        Date = x.Date.HasValue ? x.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-                        ItemsCount = x.ItemsCount
-                    });
-                }
+            // Apply optional date filtering
+            if (from.HasValue)
+            {
+                var fromDateOnly = DateOnly.FromDateTime(from.Value.Date);
+                query = query.Where(s => (s.Date ?? DateOnly.MinValue) >= fromDateOnly);
             }
 
-            public async Task<ItemStockSettlementDetailsVm?> GetSettlementDetailsAsync(int id)
+            if (to.HasValue)
+            {
+                var toDateOnly = DateOnly.FromDateTime(to.Value.Date);
+                query = query.Where(s => (s.Date ?? DateOnly.MinValue) <= toDateOnly);
+            }
+            if (defaultMode == "Default")
+            {
+                var settlements = await query
+                 .Select(s => new ItemStockSettlementListVm
+                 {
+                     Id = s.Id,
+                     Code = s.Code,
+                     Date = s.Date.HasValue ? s.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                     JvNo = "000" + s.Transactions
+                                  .OrderByDescending(t => t.TransactionId)
+                                  .Select(t => t.TransactionId)
+                                  .FirstOrDefault(),
+                     ItemsCount = s.Details.Count
+                 })
+                 .OrderBy(s => s.Date)
+                 .ToListAsync();
+
+                return settlements;
+            }          
+                // Projection for Detailed mode
+                var detailedSettlements = await query
+                    .Select(s => new ItemStockSettlementListVm
+                    {
+                        Id = s.Id,
+                        Code = s.Code,
+                        Date = s.Date.HasValue ? s.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+                        WarehouseId = s.WarehouseId,
+                        TotalPlus = s.TotalPlus,
+                        TotalMinus = s.TotalMinus,
+                        JvNo = "000" + s.Transactions
+                                     .OrderByDescending(t => t.TransactionId)
+                                     .Select(t => t.TransactionId)
+                                     .FirstOrDefault(),
+                        ItemsCount = s.Details.Count
+                    })
+                    .OrderBy(s => s.Date)
+                    .ToListAsync();
+               return detailedSettlements;
+           }
+        public async Task<ItemStockSettlementDetailsVm?> GetSettlementDetailsAsync(int id)
             {
                 var entity = await _db.TblItemStockSettlements
                     .Include(s => s.Details)
@@ -168,7 +168,6 @@ namespace YamyProject.Services.Implementations
 
                 return vm;
             }
-
         public async Task<CreateUpdateSettlementVm> GetCreateUpdateSettlementVmAsync()
         {
             var warehousesEntity = await _db.TblWarehouses
@@ -189,7 +188,6 @@ namespace YamyProject.Services.Implementations
                 WarehousesVm = warehousesVm,    // formatted list
             };
         }
-
         public async Task<int> CreateSettlementAsync(CreateUpdateSettlementVm model, int currentUserId)
             {
                 using var tx = await _db.Database.BeginTransactionAsync();
@@ -238,8 +236,7 @@ namespace YamyProject.Services.Implementations
                     throw;
                 }
             }
-
-            public async Task UpdateSettlementAsync(int id, CreateUpdateSettlementVm model, int currentUserId)
+        public async Task UpdateSettlementAsync(int id, CreateUpdateSettlementVm model, int currentUserId)
             {
                 using var tx = await _db.Database.BeginTransactionAsync();
                 try
@@ -297,8 +294,7 @@ namespace YamyProject.Services.Implementations
                     throw;
                 }
             }
-
-            public async Task DeleteSettlementAsync(int id, int currentUserId)
+        public async Task DeleteSettlementAsync(int id, int currentUserId)
             {
                 var entity = await _db.TblItemStockSettlements.FindAsync(id);
                 if (entity == null) throw new KeyNotFoundException("Settlement not found");
@@ -309,7 +305,71 @@ namespace YamyProject.Services.Implementations
                 entity.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
                 await _db.SaveChangesAsync();
             }
+        public async Task<List<TblItem>> GetItemsByCodeAsync(string code, int warehouseId)
+        {
+           
+            return await _db.TblItems
+                .Where(i => i.WarehouseId == warehouseId
+                            && i.State == 0
+                            && i.Active == 0
+                            && i.Type.Contains("Inventory Part")
+                            && i.Code.Contains(code))
+                .OrderBy(i => i.Code)
+                .Take(20)
+                .ToListAsync();
         }
+        public async Task<List<TblItem>> GetItemsByNameAsync(string name, int warehouseId)
+        {
+            return await _db.TblItems
+                .Where(i => i.WarehouseId == warehouseId
+                            && i.State == 0
+                            && i.Active == 0
+                            && i.Type.Contains("Inventory Part")
+                            && i.Name.Contains(name))
+               // .Include(t=>t.)
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToListAsync();
+        }
+        public async Task<List<ItemViewModel>> GetItemsAsync(string name, int warehouseId)
+        {
+            var query = from i in _db.TblItems
+                       where( i.Name == name || i.Code==name) && i.WarehouseId == warehouseId
+                        select new ItemViewModel
+                        {
+                            Id = i.Id,
+                            Method = i.Method,
+                            Type = i.Type,
+                            Code = i.Code,
+                            CostPrice = i.CostPrice,
+                            Name = i.Name,
+                            Qty = _db.TblItemTransactions
+                                   .Where(t => t.ItemId == i.Id && t.WarehouseId == warehouseId)
+                                   .Sum(t => (decimal?)(t.QtyIn - t.QtyOut)) ?? 0
+                        };
 
-    
+            return await query.ToListAsync();
+        }
+        public async Task<List<ItemStockSettlementListVm>> GetSettlementItemsAsync(int settleId)
+        {
+            var data = await _db.TblItemStockSettlementDetails
+               .Include(d => d.Item)          // include related item
+               .Include(d => d.Settlement)    // include settlement if you need Code, Date, etc.
+               .Where(d => d.SettleId == settleId && d.Settlement.WarehouseId==1)
+               .ToListAsync();
+
+            var result = data.Select(d => new ItemStockSettlementListVm
+            {
+                Id = d.Id,
+                ItemName = d.Item != null ? $"{d.Item.Code} - {d.Item.Name}" : "",
+                Quantity = d.Qty?.ToString() ?? "0",          // convert decimal? to string
+                CostPrice = d.Price?.ToString("0.00") ?? "0",
+                NewOnHand = d.NewOnHand?.ToString("0.00") ?? "0",
+                TotalMinus=d.Minusamount,
+                TotalPlus=d.Plusamount,
+
+              }).ToList();
+            return result;
+        }
+    }
 }

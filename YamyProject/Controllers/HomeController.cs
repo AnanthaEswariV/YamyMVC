@@ -14,6 +14,10 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+        public IActionResult DataTable()
+        {
+            return View("DataTable");
+        }
 
         public IActionResult Privacy()
         {

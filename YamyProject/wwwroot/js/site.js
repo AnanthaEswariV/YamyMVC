@@ -10,7 +10,8 @@ function showErrorMessage(message = 'Something went wrong!') {
     });
 }
 $(document).ready(function () {
-$('body').delegate('.js-render-modal', 'click', function () {
+    $('body').delegate('.js-render-modal', 'click', function () {
+    debugger
     var btn = $(this);
     var modal = $('#Modal');
     modal.find('#ModalLabel').text(btn.data('title'));
@@ -18,15 +19,13 @@ $('body').delegate('.js-render-modal', 'click', function () {
         updatedRow = btn.parents('tr');
     }
     $.get({
-        url: btn.data('url'),
-
-        success: function (form) {
+        url: btn.data('url'),success: function (form) {
             modal.find('.modal-body').html(form);
             $.validator.unobtrusive.parse(modal);
             //applySelect2();
            },
         error: function () {
-            showErrorMessage();
+          //  showErrorMessage();
         }
     });
     modal.modal('show');

@@ -1,6 +1,5 @@
 
 using YamyProject.Core.Consts.Mapping;
-using YamyProject.Core.Models;
 using YamyProject.Services;
 using YamyProject.Services.Implementations;
 
@@ -17,7 +16,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<ISalesServices, SalesServices>();
-
+builder.Services.AddScoped<IStockSettlementService, StockSettlementService>();
 builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
 builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
 
