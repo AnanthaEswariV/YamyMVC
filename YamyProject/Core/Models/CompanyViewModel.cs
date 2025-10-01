@@ -290,5 +290,11 @@ namespace YamyProject.Core.Models
         public DateTime SelectedDate { get; set; }
         public bool IsPayable { get; set; } // true=Payable, false=Receivable
     }
+    public class PettyCashCategoryRequest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string? Description { get; set; }
+    }
 
 }

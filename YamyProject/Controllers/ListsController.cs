@@ -2349,6 +2349,131 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Petty Cash Catogory
+
+        public IActionResult PettyCashCategory()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashCategories()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, name, description FROM tbl_petty_cash_category ORDER BY id ASC";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = Convert.ToInt32(reader["id"]),
+                        name = reader["name"].ToString(),
+                        description = reader["description"]?.ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        [HttpPost]
+        public async Task<IActionResult> SavePettyCashCategory([FromBody] PettyCashCategoryRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter category name" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                //  Check for duplicates
+                var checkQuery = "SELECT id FROM tbl_petty_cash_category WHERE name=@name AND id<>@id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    var exists = await checkCmd.ExecuteScalarAsync();
+                    if (exists != null)
+                        return BadRequest(new { status = false, message = "Category already exists. Enter another name." });
+                }
+
+                if (model.Id == 0) // ➝ INSERT
+                {
+                    var insertQuery = @"
+                INSERT INTO tbl_petty_cash_category (name, description) 
+                VALUES (@name, @description)";
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    insertCmd.Parameters.AddWithValue("@description", model.Description?.Trim() ?? "");
+                    //insertCmd.Parameters.AddWithValue("@created_by", userId);
+                    //insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new { status = true, message = "Petty Cash Category added successfully" });
+                }
+                else // ➝ UPDATE
+                {
+                    var updateQuery = @"
+                UPDATE tbl_petty_cash_category 
+                SET name=@name, description=@description 
+                WHERE id=@id";
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@description", model.Description?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Category not found" });
+
+                    return Ok(new { status = true, message = "Petty Cash Category updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
 
     }
 

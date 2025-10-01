@@ -1,0 +1,229 @@
+﻿
+@{
+    ViewData["Title"] = "PettyCashCategory";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <strong>P.C Category</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pcCategoryModal">
+                <i class="fas fa-plus-circle me-2"></i>Add P.C Category
+            </button>
+
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="pcCategoryTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Category Name</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<div class="modal fade" id="pcCategoryModal" tabindex="-1" aria-labelledby="pcCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="pcCategoryForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="pcCategoryModalLabel">P.C Category - New Category</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="pcCategoryId" value="0" />
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="category" class="form-label text-muted">P.C Category</label>
+                            <input type="text" class="form-control" id="category" name="Category" required />
+                            <div class="invalid-feedback">Please provide a category.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="description" class="form-label text-muted">Description</label>
+                            <input type="text" class="form-control" id="description" name="Description" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+                                
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+   <script>
+
+
+
+        $(document).ready(function () {
+
+
+
+
+               function loadPettyCashCategories() {
+            $.ajax({
+                url: "/Lists/GetPettyCashCategories",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#pcCategoryTable")) {
+                            $("#pcCategoryTable").DataTable().destroy();
+                        }
+
+                        let tbody = $("#pcCategoryTable tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.name ?? ""}</td>
+                                        <td>${row.description ?? ""}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-success editCategoryBtn"
+                                                    data-category='${JSON.stringify(row)}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            $("#pcCategoryTable").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="4" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+                    } else {
+                        $("#pcCategoryTable tbody").html(`<tr><td colspan="4" class="text-center text-danger" style="padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#pcCategoryTable")) {
+                        $("#pcCategoryTable").DataTable().destroy();
+                    }
+                    $("#pcCategoryTable tbody").html(`<tr><td colspan="4" class="text-center text-danger" style="padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+        loadPettyCashCategories();
+
+                    // Open modal for edit
+        $(document).on("click", ".editCategoryBtn", function () {
+            const cat = $(this).data("category"); // make sure you pass data-category from table row
+            if (!cat) return;
+
+            $("#pcCategoryId").val(cat.id || 0);
+            $("#category").val(cat.name || '');
+            $("#description").val(cat.description || '');
+
+            $("#pcCategoryModalLabel").text("Edit P.C Category");
+            $("#pcCategoryModal").modal("show");
+        });
+
+        // Submit form
+        $('#pcCategoryForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#pcCategoryId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const categoryData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: ($('#category').val() || '').trim(),
+                Description: ($('#description').val() || '').trim()
+            };
+
+            $.ajax({
+                url: '/Lists/SavePettyCashCategory',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(categoryData),
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Category updated successfully' : 'Category added successfully');
+                        $('#pcCategoryModal').modal('hide');
+                        $('#pcCategoryForm')[0].reset();
+                        loadPettyCashCategories(); // reload table
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+                // Reset modal on close
+        $('#pcCategoryModal').on('hidden.bs.modal', function () {
+            $('#pcCategoryForm')[0].reset();        // clear form fields
+            $('#pcCategoryForm').removeClass('was-validated'); // remove validation styles
+            $('#pcCategoryId').val(0);              // reset hidden id
+            $('#pcCategoryModalLabel').text("P.C Category - New Category"); // reset title
+        });
+
+              });
+
+
+   </script>
+   }
