@@ -1245,7 +1245,6 @@ LIMIT 1";
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetChecks([FromQuery] string type = "Receivable", [FromQuery] bool filterByDate = false,
                                               [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
@@ -1648,6 +1647,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
 
         #endregion
+
 
     }
 }
