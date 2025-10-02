@@ -413,6 +413,8 @@ namespace YamyProject.Controllers
             }
         }
 
+
+
         #endregion
 
         #region Fixed Asset Item List
@@ -974,11 +976,6 @@ namespace YamyProject.Controllers
 
         #region Item List
 
-        //public IActionResult Item()
-        //{
-        //    return View();
-        //}
-
         [HttpGet]
         public async Task<IActionResult> GetItems(string? categoryId = null, string? type = null, string state = "All")
         {
@@ -1286,7 +1283,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetItemTransactions(int itemId)
         {
@@ -1464,7 +1460,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteItem(int id)
         {
@@ -1521,7 +1516,6 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
 
         #endregion

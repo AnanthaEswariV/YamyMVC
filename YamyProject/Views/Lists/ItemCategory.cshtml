@@ -44,6 +44,8 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/js/MainJs.js"></script>
     <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
          let dataTable;
@@ -89,8 +91,8 @@
                               cat.id,
                               cat.categoryName,
                               `
-                                  <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})">Edit</button>
-                                  <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>
+                                  <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})"> <i class="fas fa-pen"></i> </button>
+                                  <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})"><i class="fas fa-prescription-bottle-alt"></i></button>
                               `
                           ])
                       }

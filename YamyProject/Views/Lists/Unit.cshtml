@@ -38,6 +38,8 @@
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
           let unitTable;
@@ -67,8 +69,8 @@
             u.id,
             u.unitName,
             `
-            <button class="btn btn-sm btn-primary" onclick="openEditModal(${u.id}, '${u.unitName}')">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteUnit(${u.id})">Delete</button>
+            <button class="btn btn-sm btn-primary" onclick="openEditModal(${u.id}, '${u.unitName}')"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="deleteUnit(${u.id})"><i class="fas fa-prescription-bottle-alt"></i></button>
             `
         ]);
 

@@ -96,7 +96,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
@@ -173,8 +174,8 @@
                             const row = `<tr>
                                 <td>${dept.name}</td>
                                 <td>
-                                    <button class="btn btn-sm btn-primary edit-btn" data-id="${dept.id}">Edit</button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${dept.id}">Delete</button>
+                                    <button class="btn btn-sm btn-primary edit-btn" data-id="${dept.id}"><i class="fas fa-pen"></i></button>
+                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${dept.id}"><i class="fas fa-prescription-bottle-alt"></i></button>
                                 </td>
                             </tr>`;
                             tbody.append(row);
