@@ -996,28 +996,45 @@ namespace YamyProject.Controllers
                 // Base query
                 var query = @"
             SELECT id,
-                   CONCAT(code, ' - ', name) AS ItemName,
+                  name as ItemName,
                    barcode AS Barcode,
                    type AS Type,
-                   cost_price as Cost_Price
+                   cost_price as Cost_Price,
+                    warehouse_id as Warehouse_id,
+                    unit_id as Unit_id,
+                    cogs_account_id as Cogs_account_id,
+                    vendor_id as Vendor_id,
+                    sales_price as Sales_price,
+                    tax_code_id as Tax_code_id,
+                    income_account_id as Income_account_id,
+                     asset_account_id as Asset_account_id,
+                    min_amount as Min_amount,
+                      max_amount as Max_amount,
+                        on_hand as On_hand,
+                        total_value as Total_value,
+                        date as Date,
+                        img as Img,
+                        ItemImg as ItemImg,
+                        active as Active,
+                        method as Method,
+                        category_id as Category_id,
+                        posItem as PosItem,
+                        item_type as Item_type
             FROM tbl_items
             WHERE state = 0";
 
                 var parameters = new List<MySqlParameter>();
-
                 // Filters
                 if (!string.IsNullOrEmpty(categoryId))
                 {
                     query += " AND category_id = @category_id";
                     parameters.Add(new MySqlParameter("@category_id", categoryId));
                 }
-
                 if (!string.IsNullOrEmpty(type))
                 {
                     query += " AND type = @type";
                     parameters.Add(new MySqlParameter("@type", type));
                 }
-
                 if (state == "Active")
                 {
                     query += " AND active = 0";
@@ -1040,8 +1057,27 @@ namespace YamyProject.Controllers
                         itemName = reader.GetString("ItemName"),
                         barcode = reader.IsDBNull("Barcode") ? null : reader.GetString("Barcode"),
                         type = reader.GetString("Type"),
-                        cost_price =reader.GetDecimal("Cost_Price")
+                        cost_price = reader.GetDecimal("Cost_Price"),
+                        warehouse_id = reader.IsDBNull("Warehouse_id") ? (int?)null : reader.GetInt32("Warehouse_id"),
+                        unit_id = reader.IsDBNull("unit_id") ? (int?)null : reader.GetInt32("unit_id"),
+                        cogs_account_id = reader.IsDBNull("cogs_account_id") ? (int?)null : reader.GetInt32("cogs_account_id"),
+                        vendor_id = reader.IsDBNull("Vendor_id") ? (int?)null : reader.GetInt32("Vendor_id"),
+                        sales_price = reader.GetDecimal("Sales_price"),
+                        tax_code_id = reader.IsDBNull("Tax_code_id") ? (int?)null : reader.GetInt32("Tax_code_id"),
+                        income_account_id = reader.IsDBNull("income_account_id") ? (int?)null : reader.GetInt32("income_account_id"),
+                        asset_account_id = reader.IsDBNull("asset_account_id") ? (int?)null : reader.GetInt32("asset_account_id"),
+                        min_amount = reader.GetDecimal("Min_amount"),
+                        max_amount = reader.GetDecimal("Max_amount"),
+                        on_hand = reader.GetDecimal("On_hand"),
+                        total_value = reader.GetDecimal("Total_value"),
+                        date = reader.GetDateOnly("Date"),
+                        active = reader.GetInt32("Active"),
+                        method = reader.GetString("Method"),
+                        category_id = reader.IsDBNull("Category_id") ? (int?)null : reader.GetInt32("Category_id"),
+                        posItem = reader.IsDBNull("PosItem") ? (int?)null : reader.GetInt32("PosItem"),
+                        item_type = reader.GetString("Item_type")
                     });
+
                 }
 
                 return Ok(new { status = true, data = items });
@@ -1429,99 +1465,61 @@ namespace YamyProject.Controllers
         }
 
 
-        [HttpPut]
-        public async Task<IActionResult> EditItem([FromBody] ItemRequest model)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteItem(int id)
         {
-            if (model == null || string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { status = false, message = "Invalid item" });
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Item ID" });
 
-            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-            if (userId == 0) return Unauthorized(new { status = false, message = "User not logged in" });
-
-            var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-            { Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase") };
-
-            using var conn = new MySqlConnection(connStr.ConnectionString);
-            await conn.OpenAsync();
-
-            // Duplicate check
-            var exists = Convert.ToInt32(await new MySqlCommand(
-                "SELECT COUNT(*) FROM tbl_items WHERE name=@name AND id<>@id", conn)
-            { Parameters = { new MySqlParameter("@name", model.Name), new MySqlParameter("@id", model.Id) } }
-                .ExecuteScalarAsync()) > 0;
-
-            if (exists) return BadRequest(new { status = false, message = "Item already exists" });
-
-            // Generate next code
-            long lastCode = 0;
-            using (var reader = await new MySqlCommand(
-                "SELECT Code FROM tbl_items WHERE LENGTH(Code)=9 ORDER BY CAST(Code AS UNSIGNED) DESC LIMIT 1", conn)
-                .ExecuteReaderAsync())
+            try
             {
-                if (await reader.ReadAsync()) lastCode = long.Parse(reader["Code"].ToString());
-            }
-            string newCode = (lastCode + 1).ToString("D9");
-
-            // Insert main item
-            var insertQuery = @"INSERT INTO tbl_items
-    (code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, min_amount, max_amount, on_hand, method, total_value, date, active, created_by, created_date, item_type)
-    VALUES (@code,@warehouseId,@type,@category,@name,@unit_id,@barcode,@cost_price,@cogs_account_id,@vendor_id,@sales_price,@income_account_id,@asset_account_id,@min_amount,@max_amount,@on_hand,@method,@total_value,@date,@active,@created_by,@created_date,@item_type);
-    SELECT LAST_INSERT_ID();";
-
-            using var cmd = new MySqlCommand(insertQuery, conn);
-            cmd.Parameters.AddWithValue("@code", newCode);
-            cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-            cmd.Parameters.AddWithValue("@type", model.Type);
-            cmd.Parameters.AddWithValue("@category", model.CategoryId);
-            cmd.Parameters.AddWithValue("@name", model.Name);
-            cmd.Parameters.AddWithValue("@unit_id", model.UnitId);
-            cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
-            cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
-            cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
-            cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
-            cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice);
-            cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
-            cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
-            cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
-            cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
-            cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
-            cmd.Parameters.AddWithValue("@method", model.Method);
-            cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
-            cmd.Parameters.AddWithValue("@date", model.Date);
-            cmd.Parameters.AddWithValue("@active", model.Active ? 1 : 0);
-            cmd.Parameters.AddWithValue("@created_by", userId);
-            cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
-            cmd.Parameters.AddWithValue("@item_type", model.ItemType);
-
-            model.Id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-            model.Code = newCode;
-
-            // Insert Units
-            foreach (var u in model.Units)
-            {
-                using var unitCmd = new MySqlCommand(
-                    @"INSERT INTO tbl_items_unit (item_id, unit_id, factor) VALUES (@id,@unit_id,@factor)", conn);
-                unitCmd.Parameters.AddWithValue("@id", model.Id);
-                unitCmd.Parameters.AddWithValue("@unit_id", u.UnitId);
-                unitCmd.Parameters.AddWithValue("@factor", u.Factor);
-                await unitCmd.ExecuteNonQueryAsync();
-            }
-
-            // Insert Assemblies only for "13 - Inventory Assembly"
-            if (model.Type.Contains("Assembly"))
-            {
-                foreach (var asm in model.Assemblies)
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    using var asmCmd = new MySqlCommand(
-                        "INSERT INTO tbl_item_assembly (assembly_id,item_id,qty) VALUES (@assembly_id,@item_id,@qty)", conn);
-                    asmCmd.Parameters.AddWithValue("@assembly_id", model.Id);
-                    asmCmd.Parameters.AddWithValue("@item_id", asm.ItemId);
-                    asmCmd.Parameters.AddWithValue("@qty", asm.Qty);
-                    await asmCmd.ExecuteNonQueryAsync();
-                }
-            }
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-            return Ok(new { status = true, message = "Item added successfully", code = model.Code, id = model.Id });
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check if item is used in transactions (except Opening Qty)
+                string checkQuery = @"
+            SELECT COUNT(1) 
+            FROM tbl_item_transaction 
+            WHERE type != 'Opening Qty' AND item_id = @id";
+
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var result = await checkCmd.ExecuteScalarAsync();
+                    int recordCount = Convert.ToInt32(result ?? 0);
+
+                    if (recordCount > 0)
+                    {
+                        return BadRequest(new
+                        {
+                            status = false,
+                            message = "Item is already used in transactions and cannot be deleted. You can inactive the item instead."
+                        });
+                    }
+                }
+
+                // 🔹 Delete item and its related transactions (optional: only if needed)
+                string deleteQuery = @"
+            DELETE FROM tbl_items WHERE id = @id;
+            DELETE FROM tbl_item_transaction WHERE item_id = @id";
+
+                using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@id", id);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "Item deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
         }
 
 
