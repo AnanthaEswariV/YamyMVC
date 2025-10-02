@@ -974,10 +974,10 @@ namespace YamyProject.Controllers
 
         #region Item List
 
-        public IActionResult Item()
-        {
-            return View();
-        }
+        //public IActionResult Item()
+        //{
+        //    return View();
+        //}
 
         [HttpGet]
         public async Task<IActionResult> GetItems(string? categoryId = null, string? type = null, string state = "All")
