@@ -34,7 +34,6 @@ namespace YamyProject.Controllers.InventoryDoc
             if (vm == null) return NotFound();
             return Json(vm);
         }
-
         // GET create (view)
         [HttpGet("create")]
         public async Task<IActionResult> Create()
@@ -44,7 +43,6 @@ namespace YamyProject.Controllers.InventoryDoc
 
             return View("StockSettelment", model);
         }
-
         // POST create
         [HttpPost("create")]
         [ValidateAntiForgeryToken]
@@ -68,7 +66,6 @@ namespace YamyProject.Controllers.InventoryDoc
 
             return RedirectToAction(nameof(Index));
         }
-
         // GET edit
         [HttpGet("edit/{id:int}")]
         public async Task<IActionResult> Edit(int id)
@@ -97,7 +94,6 @@ namespace YamyProject.Controllers.InventoryDoc
 
             return View(vm);
         }
-
         // POST edit
         [HttpPost("edit/{id:int}")]
         [ValidateAntiForgeryToken]
@@ -110,7 +106,6 @@ namespace YamyProject.Controllers.InventoryDoc
             await _svc.UpdateSettlementAsync(id, vm, userId);
             return RedirectToAction(nameof(Index));
         }
-
         // POST delete
         [HttpPost("delete/{id:int}")]
         [ValidateAntiForgeryToken]
@@ -120,7 +115,6 @@ namespace YamyProject.Controllers.InventoryDoc
             await _svc.DeleteSettlementAsync(id, userId);
             return RedirectToAction(nameof(Index));
         }
-
         // API helper method equivalent of bindInvoiceItems() in your WinForms: gets items for selected settlement
         [HttpGet("{id:int}/items")]
         public async Task<IActionResult> GetItems(int id)
@@ -128,6 +122,44 @@ namespace YamyProject.Controllers.InventoryDoc
             var vm = await _svc.GetSettlementDetailsAsync(id);
             if (vm == null) return NotFound();
             return Json(vm.Items);
+        }
+        [HttpGet]
+        public async Task<IActionResult> SearchByCode(string term, int warehouseId)
+        {
+            var items = await _svc.GetItemsByCodeAsync(term ?? "", warehouseId);
+            return Json(items.Select(i => new { i.Code, i.Name }));
+        }
+        [HttpGet]
+        public async Task<IActionResult> SearchByName(string term, int warehouseId)
+        {
+            var items = await _svc.GetItemsByNameAsync(term ?? "", warehouseId);
+            return Json(items.Select(i => new { i.Code, i.Name }));
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetItems(string term, int warehouseId)
+        {
+            var items = await _svc.GetItemsAsync(term ?? "", warehouseId);
+            return Json(items.Select(i => new { i.Code, i.Name }));
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetSettlementItems(int settleId)
+        {
+            if (settleId <= 0)
+                return BadRequest("Invalid settlement ID");
+
+            var items = await _svc.GetSettlementItemsAsync(settleId);
+
+            // Optionally, project to a view model to send only necessary fields
+            var result = items.Select(i => new
+            {
+                i.Id,
+                ItemName =  $"{i.Code} - {i.Name}" ,
+                i.Quantity ,
+                i.CostPrice ,
+                i.NewOnHand 
+            });
+
+            return Json(result);
         }
     }
 }

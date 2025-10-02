@@ -46,9 +46,9 @@ namespace YamyProject.Controllers.Company
             return PartialView("_CompanyRow", viewModel);
         }
         [HttpGet]
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
-            var company = _context.TblCompanies.Find(id);
+            var company = await _context.TblCompanies.FindAsync(id);
           
             if (company is null)
                 return NotFound();

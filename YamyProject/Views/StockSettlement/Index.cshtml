@@ -1,0 +1,266 @@
+﻿@model IEnumerable<ItemStockSettlementListVm>
+
+@{
+    ViewData["Title"] = "Inventory - Stock Management";
+
+}
+@{   
+    var selectedMode = Context.Request.Query["defaultMode"].FirstOrDefault() ?? "";
+}
+<div class="container-fluid ">
+   <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center row-md-2">
+           <h5>@ViewData["Title"]</h5>
+           <div >
+           <a class="btn btn-sm btn-primary  text-end" asp-controller="StockSettlement" asp-action="Create">
+               <i class="fa fa-plus"></i>
+               New Settlement
+           </a>
+            </div>
+       </div>
+   <div class="card-body">
+
+            <form method="get" class="row g-4 align-items-end" id="filterForm">
+                <div class="col-auto me-3">
+                    <label for="from" class="form-label">Start Date</label>
+                    <input type="date" id="from" name="from" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-auto me-3">
+                    <label for="to" class="form-label">End Date</label>
+                    <input type="date" id="to" name="to" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-auto me-3 d-flex align-items-center">
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="ignoreDates" checked />
+                        <label class="form-check-label" for="ignoreDates">
+                            Ignore Date Filter
+                        </label>
+                    </div>
+                </div>
+                <div class="col-auto me-3">
+                    <label for="defaultMode" class="form-label">Selection Method</label>
+                    <select id="defaultMode" name="defaultMode" class="form-select">
+                        <option value="Default" selected="@(selectedMode == "Default" ? "selected" : null)">Default</option>
+                        <option value="ItemWise" selected="@(selectedMode == "ItemWise" ? "selected" : null)">Item Wise</option>
+                    </select>
+
+                 </div>
+                <div class="col-auto d-flex align-items-end">
+                    <button type="submit" asp-action="List" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+
+    <!-- Data Grid -->
+    <div class="table-responsive mt-4">
+        @if (Model != null)
+        {
+                    <table class="table table-bordered table-striped table-hover text-center align-middle" id="itemsTable">
+                        <thead class="table-primary">
+                            <tr>                               
+                             <th>Sn</th>
+                             <th>Date</th>
+                             <th>JV No</th>
+                                @if (selectedMode == "ItemWise")
+                                {
+                                    <th>Item Name</th>
+                                    <th>QTY</th>
+                                    <th>Cost Price</th>
+                                    <th>New On Hand</th>
+                                    <th>Minusamount</th>
+                                    <th>Plusamount</th>
+                                }
+                                else
+                                {
+                                    <th>INV NO</th>
+
+                                }
+                                <th>Edit </th>
+                            </tr>
+
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                           <td>@item.Id </td>
+                           <td>@item.Date</td>
+                           <td>@item.JvNo</td>
+
+                            @if (selectedMode == "ItemWise")
+                              {
+                                  <th>@item.Name</th>
+                                  <th>@item.Quantity</th>
+                                  <th>@item.CostPrice</th>
+                                  <th>@item.NewOnHand</th>
+                                  <th>@item.TotalMinus</th>
+                                  <th>@item.TotalPlus</th>
+
+                              }
+                             else
+                             {
+                                 <td>@item.Code</td>
+                             }
+                                    <td>
+                                        <a class="btn btn-sm btn-primary  text-end" asp-controller="StockSettlement" asp-action="Edit" asp-route-id="@item.Id">Edit</a>
+                                    </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    <!-- Items Section -->
+            <div class="table-responsive mt-4" style="max-height: 400px; overflow-y: auto;">
+                <h5>Items</h5>
+                <table class="table table-bordered table-sm table-hover w-100" id="itemsSupTable">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th style="display:none;">ID</th>
+                            <th>#</th>
+                            <th>Item Name</th>
+                            <th>QTY</th>
+                            <th>Cost Price</th>
+                            <th>New on Hand</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                  </tbody>
+                </table>
+            </div>
+         </div>
+</div>
+</div>
+
+@section Scripts {
+
+    <script>
+               
+            document.getElementById("filterForm").addEventListener("submit", function(e) {
+            const ignore = document.getElementById("ignoreDates").checked;
+
+            if (ignore) {
+                // Remove the name attributes so dates are not sent
+                document.getElementById("from").removeAttribute("name");
+                document.getElementById("to").removeAttribute("name");
+            } else {
+                // Ensure names exist if checkbox is unchecked
+                document.getElementById("from").setAttribute("name", "from");
+                document.getElementById("to").setAttribute("name", "to");
+            }});
+         const fromInput = document.getElementById("from");
+        const toInput = document.getElementById("to");
+        const ignoreCheckbox = document.getElementById("ignoreDates");
+        // Function to enable/disable dates
+        function toggleDates() {
+            if (ignoreCheckbox.checked) {
+                fromInput.disabled = true;
+                toInput.disabled = true;
+            } else {
+                fromInput.disabled = false;
+                toInput.disabled = false;
+            }
+        }
+        // Trigger on page load in case checkbox is pre-checked
+        toggleDates();
+        // Trigger on checkbox change
+        ignoreCheckbox.addEventListener("change", toggleDates);
+
+        ////select the data by the row 
+        $(document).ready(function() {
+             // When a row in the settlements table is clicked
+            $('#itemsTable  tbody tr').click(function() {
+                var settleId = $(this).find('td:first').text().trim(); // assuming first column = ID
+                var selectionMethod = $('#defaultMode').val();
+
+                if (settleId && selectionMethod === "Default") {
+                    $.getJSON('/ItemStockSettlement/GetSettlementItems', { settleId: settleId }, function(data) {
+                       
+                        bindInvoiceItems(data);
+                    });
+                } else {
+                    clearItemsTable();
+                }
+            });
+             $("#defaultMode").on("change", function () {
+                loadJournal($(this).val());
+          });
+        });
+        // Function to populate the items table with retrieved data
+        function bindInvoiceItems(data) {
+            var tbody = $('#itemsSupTable tbody');
+            tbody.empty();
+              if (data.length > 0) {
+            var index = 1;
+            $.each(data, function(i, item) {
+               
+                var row = `<tr>
+                    <td style="display:none;">${item.Id}</td>
+                    <td>${index}</td>
+                    <td>${item.itemName}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.costPrice}</td>
+                    <td>${item.newOnHand}</td>
+                </tr>`;
+                tbody.append(row);
+                index++;
+            });
+            $('#itemsTableContainer').show(); // show the table
+        } else {
+            tbody.append('<tr><td colspan="6" class="text-center text-muted">No items found.</td></tr>');
+            $('#itemsTableContainer').show(); // show empty table
+        } }
+        // Function to clear all rows from the items table
+        function clearItemsTable() {
+            $('#items-table tbody').empty();
+        }
+                $(document).on('click', '.settlement-row', function() {
+            var settleId = $(this).data('id'); // set data-id in your table row
+            loadItems(settleId);
+        });
+             
+        // function loadJournal(selectionMethod) {
+        //     $.ajax({
+        //         url: "/Lists",
+        //         type: "GET",
+        //         data: { selectionMethod: selectionMethod },
+        //         success: function (res) {
+        //            if (res.status) {
+        //                 // Destroy old DataTable if exists
+        //                 if ($.fn.DataTable.isDataTable("#table1")) {
+        //                     $("#table1").DataTable().destroy();
+        //                 }
+
+        //                 // Populate tbody
+        //                 let tbody = $("#table1 tbody");
+        //                 tbody.empty();
+
+        //               if (res.data && res.data.length > 0) {
+        //                     $.each(res.data, function (i, row) {
+        //                         // Handle the TOTAL row differently (it has null/empty SN)
+        //                         let isTotal = !row.sn || row.acName === "TOTAL";
+
+        //                         let tr = `
+        //                             <tr ${isTotal ? 'style="font-weight: bold; background-color: #f8f9fa;"' : ''}>
+        //                                 <td>${row.sn ?? ""}</td>
+        //                                 <td>${row.refId ?? ""}</td>
+        //                                 <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
+        //                                 <td>${row.type ?? ""}</td>
+        //                                 <td>${row.acCode ?? ""}</td>
+        //                                 <td>${row.acName ?? ""}</td>
+        //                                 <td style="text-align: right;">${formatCurrency(row.debit ?? 0)}</td>
+        //                                 <td style="text-align: right;">${formatCurrency(row.credit ?? 0)}</td>
+        //                             </tr>`;
+        //                         tbody.append(tr);
+        //                     });
+
+                 
+        //               }
+        //             }
+        //         }
+        //     });
+        // }
+
+    </script>
+}

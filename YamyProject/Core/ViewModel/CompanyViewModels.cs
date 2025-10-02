@@ -1,5 +1,4 @@
-﻿
-namespace YamyProject.Core.ViewModel
+﻿namespace YamyProject.Core.ViewModel
 {
     public class CompanyViewModels
     {
