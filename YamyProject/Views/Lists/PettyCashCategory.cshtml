@@ -100,7 +100,7 @@
 
 
 
-               function loadPettyCashCategories() {
+        function loadPettyCashCategories() {
             $.ajax({
                 url: "/Lists/GetPettyCashCategories",
                 type: "GET",
@@ -160,7 +160,7 @@
 
         loadPettyCashCategories();
 
-                    // Open modal for edit
+          // Open modal for edit
         $(document).on("click", ".editCategoryBtn", function () {
             const cat = $(this).data("category"); // make sure you pass data-category from table row
             if (!cat) return;
@@ -214,7 +214,7 @@
         });
 
 
-                // Reset modal on close
+         // Reset modal on close
         $('#pcCategoryModal').on('hidden.bs.modal', function () {
             $('#pcCategoryForm')[0].reset();        // clear form fields
             $('#pcCategoryForm').removeClass('was-validated'); // remove validation styles

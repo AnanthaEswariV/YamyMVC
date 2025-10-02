@@ -2355,6 +2355,7 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+
         [HttpGet]
         public async Task<IActionResult> GetPettyCashCategories()
         {
@@ -2396,8 +2397,6 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
-
 
         [HttpPost]
         public async Task<IActionResult> SavePettyCashCategory([FromBody] PettyCashCategoryRequest model)
@@ -2464,6 +2463,233 @@ namespace YamyProject.Controllers
 
                     return Ok(new { status = true, message = "Petty Cash Category updated successfully" });
                 }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region Petty Cash
+
+        public IActionResult PettyCash()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SavePettyCashCard([FromBody] PettyCashCardRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.EmployeeId <= 0)
+                return BadRequest(new { status = false, message = "Select employee first" });
+
+            if (model.AccountId <= 0)
+                return BadRequest(new { status = false, message = "Select account first" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check duplicate employee
+                string checkQuery = @"SELECT id FROM tbl_petty_cash_card WHERE name=@employeeId AND id<>@id LIMIT 1";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@employeeId", model.EmployeeId);
+                    checkCmd.Parameters.AddWithValue("@id", model.Id); // 0 for insert
+                    var exists = await checkCmd.ExecuteScalarAsync();
+                    if (exists != null)
+                        return BadRequest(new { status = false, message = "This employee already has a Petty Cash Card." });
+                }
+
+                if (model.Id == 0) // ➝ INSERT
+                {
+                    // 🔹 Generate new code
+                    string newCode = "PC-0001";
+                    var getLastCodeQuery = @"SELECT code FROM tbl_petty_cash_card 
+                                     ORDER BY CAST(SUBSTRING_INDEX(code, '-', -1) AS UNSIGNED) DESC 
+                                     LIMIT 1";
+                    using (var getCmd = new MySqlCommand(getLastCodeQuery, conn))
+                    {
+                        var lastCodeObj = await getCmd.ExecuteScalarAsync();
+                        if (lastCodeObj != null && !string.IsNullOrEmpty(lastCodeObj.ToString()))
+                        {
+                            int lastNum = int.Parse(lastCodeObj.ToString().Replace("PC-", ""));
+                            newCode = "PC-" + (lastNum + 1).ToString("0000");
+                        }
+                    }
+
+                    var insertQuery = @"
+                INSERT INTO tbl_petty_cash_card (code, name, mobile, whatsapp_no, email, account_id)
+                VALUES (@code, @name, @mobile, @whatsapp, @email, @accountId)";
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@code", newCode);
+                    insertCmd.Parameters.AddWithValue("@name", model.EmployeeId);
+                    insertCmd.Parameters.AddWithValue("@mobile", model.Mobile ?? "");
+                    insertCmd.Parameters.AddWithValue("@whatsapp", model.WhatsappNo ?? "");
+                    insertCmd.Parameters.AddWithValue("@email", model.Email ?? "");
+                    insertCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new { status = true, message = "Petty Cash Card created successfully" });
+                }
+                else // ➝ UPDATE
+                {
+                    var updateQuery = @"
+                UPDATE tbl_petty_cash_card 
+                SET code=@code, name=@name, mobile=@mobile, whatsapp_no=@whatsapp, email=@email, account_id=@accountId 
+                WHERE id=@id";
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@code", model.Code ?? "");
+                    updateCmd.Parameters.AddWithValue("@name", model.EmployeeId);
+                    updateCmd.Parameters.AddWithValue("@mobile", model.Mobile ?? "");
+                    updateCmd.Parameters.AddWithValue("@whatsapp", model.WhatsappNo ?? "");
+                    updateCmd.Parameters.AddWithValue("@email", model.Email ?? "");
+                    updateCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Petty Cash Card not found" });
+
+                    return Ok(new { status = true, message = "Petty Cash Card updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashCards()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+         SELECT 
+  pc.id,
+  pc.code,
+  pc.name           AS employeeId,      
+  e.name            AS employeeName,
+  pc.account_id     AS accountId,
+  a.name            AS accountName,
+  pc.mobile,
+  pc.whatsapp_no,
+  pc.email
+FROM tbl_petty_cash_card pc
+LEFT JOIN tbl_employee      e ON e.id = pc.name
+LEFT JOIN tbl_coa_level_4  a ON a.id = pc.account_id
+ORDER BY pc.id ASC;
+";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                        code = reader["code"].ToString(),
+                        employeeId = reader["employeeId"] == DBNull.Value ? 0 : Convert.ToInt32(reader["employeeId"]),
+                        employeeName = reader["employeeName"]?.ToString() ?? "",
+                        accountId = reader["accountId"] == DBNull.Value ? 0 : Convert.ToInt32(reader["accountId"]),
+                        accountName = reader["accountName"]?.ToString() ?? "",
+                        mobile = reader["mobile"]?.ToString() ?? "",
+                        whatsapp_no = reader["whatsapp_no"]?.ToString() ?? "",
+                        email = reader["email"]?.ToString() ?? ""
+                    });
+                }
+
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePettyCashCard(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Petty Cash Card ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // First check if the card is used in petty cash vouchers
+                string checkQuery = @"
+            SELECT id 
+            FROM tbl_petty_cash 
+            WHERE employee_id IN (SELECT c.name FROM tbl_petty_cash_card c WHERE c.id = @id)";
+
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    using var reader = await checkCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        return BadRequest(new
+                        {
+                            status = false,
+                            message = "Cannot delete this Petty Cash Card because it is referenced in Petty Cash Vouchers."
+                        });
+                    }
+                }
+
+                // If not used, delete
+                string deleteQuery = "DELETE FROM tbl_petty_cash_card WHERE id = @id";
+                using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@id", id);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
+                // optional: log audit here if needed
+                return Ok(new { status = true, message = "Petty Cash Card deleted successfully" });
             }
             catch (Exception ex)
             {

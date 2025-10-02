@@ -297,4 +297,17 @@ namespace YamyProject.Core.Models
         public string? Description { get; set; }
     }
 
+
+    public class PettyCashCardRequest
+    {
+        public int Id { get; set; }
+        public string Code { get; set; } 
+        public int EmployeeId { get; set; }   
+        public string Mobile { get; set; }
+        public string WhatsappNo { get; set; } 
+        public string Email { get; set; } 
+        public int AccountId { get; set; }    
+    }
+
+
 }

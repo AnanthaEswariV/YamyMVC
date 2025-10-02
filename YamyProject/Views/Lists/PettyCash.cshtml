@@ -1,0 +1,493 @@
+﻿
+@{
+    ViewData["Title"] = "PettyCash";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+
+<!-- Basic Tables start -->
+<section class="section">
+    <div class="row" id="basic-table">
+        <div class="col-12 col-md-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-end">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-primary dropdown-toggle"
+                                type="button"
+                                id="configMenuButton"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                                title="Configure">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="configMenuButton">
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#pettyCashModal">
+                                    <i class="fas fa-plus-circle me-2 text-success"></i> New P.C A/C
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/Lists/PettyCashCategory">
+                                    <i class="fas fa-list-alt me-2 text-primary"></i> P.C Categories
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-wallet me-2 text-warning"></i> New Petty Cash
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-edit me-2 text-info"></i> Edit Petty Cash
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-trash me-2 text-danger"></i> Delete Petty Cash
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-edit me-2 text-info"></i> Edit P.C A/C
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-trash-alt me-2 text-danger"></i> Delete P.C A/C
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-0">
+                        <!-- Table with outer spacing -->
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped custom-table mb-0" id="pettyCashTable">
+                                <thead class="table-ligh">
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Employee Name</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Rows will be loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+
+
+
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Table with outer spacing</h4>
+                </div>
+                <div class="card-content">
+                    <div class="card-body">
+                        <!-- Table with outer spacing -->
+                        <div class="table-responsive">
+                            <table class="table table-lg">
+                                <thead>
+                                    <tr>
+                                        <th>NAME</th>
+                                        <th>RATE</th>
+                                        <th>SKILL</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Basic Tables end -->
+
+
+<div class="modal fade" id="pettyCashModal" tabindex="-1" aria-labelledby="pettyCashModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="pettyCashForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+
+                <!-- Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="pettyCashModalLabel">Petty Cash Card - New</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+                    <!-- Hidden ID -->
+                    <input type="hidden" id="pettyCashId" value="0" />
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Code</label>
+                            <input type="text" id="code" class="form-control" placeholder="Code" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Employee Name</label>
+                            <select id="employeeSelect" class="form-select" required>
+                                <option value="">-- Select Employee --</option>
+                                <!-- Options will be loaded dynamically -->
+                            </select>
+                            <div class="invalid-feedback">Please select an employee.</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Account Code</label>
+                            <input type="text" id="accountCode" class="form-control" placeholder="Account Code" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Account Name</label>
+                            <select id="accountSelect" class="form-select" required>
+                                <option value="">-- Select Account --</option>
+                            </select>
+                            <div class="invalid-feedback">Please select an account.</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Mobile</label>
+                            <input type="text" id="mobile" class="form-control" placeholder="0543991167">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">WhatsApp No</label>
+                            <input type="text" id="whatsapp" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="email" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+
+                                                                        
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+<script>
+
+
+        $(document).ready(function () {
+
+          function loadPettyCashCards() {
+            $.ajax({
+                url: '/Lists/GetPettyCashCards', // API endpoint
+                type: 'GET',
+                success: function (res) {
+                    
+                    let tbody = $("#pettyCashTable tbody");
+                    tbody.empty();
+                        
+                    if (res.status && res.data.length > 0) {
+                        res.data.forEach((card, index) => {
+                            tbody.append(`
+                                <tr>
+                                    <td>${card.code ?? ""}</td>
+                                        <td>${card.employeeName ?? ""}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-primary edit-card"
+                                                data-id="${card.id}"
+                                                data-code="${card.code}"
+                                                data-empname="${card.employeeId}"
+                                                data-accountid="${card.accountId}"
+                                                data-mobile="${card.mobile}"
+                                                data-whatsapp="${card.whatsapp_no}"
+                                                data-email="${card.email}">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+
+                                        <button class="btn btn-sm btn-outline-danger delete-card" data-id="${card.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">No petty cash cards found</td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    toastr.error("❌ Failed to load petty cash cards");
+                }
+            });
+        }
+
+     
+            loadPettyCashCards();
+
+            $(document).on("click", ".edit-card", function () {
+            const card = $(this).data();
+            if (!card) return;
+            console.log(card);
+
+            $("#pettyCashId").val(card.id || 0);
+            $("#code").val(card.code || "");
+
+            // Employee
+            const $empSelect = $("#employeeSelect");
+            if (card.empname) {   
+                $empSelect.val(card.empname);
+            } else {
+                $empSelect.prop("disabled", false);
+            }
+
+            // Account
+            const $accSelect = $("#accountSelect");
+            if (card.accountid) {   // your backend sends accountid
+                $accSelect.val(card.accountid);
+            }
+            $("#accountCode").val($accSelect.find(':selected').data('code') || "");
+
+            // Other fields
+            $("#mobile").val(card.mobile || "");
+            $("#whatsapp").val(card.whatsapp || "");   // not whatsapp_no
+            $("#email").val(card.email || "");
+
+            $("#pettyCashModalLabel").text("Edit Petty Cash Card");
+            $("#pettyCashModal").modal("show");
+        });
+
+            // Submit form (unchanged, works for both create and update)
+            $('#pettyCashForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#pettyCashId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const pettyCashData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Code: $('#code').val() || '',
+                EmployeeId: parseInt($('#employeeSelect').val()) || 0,
+                Mobile: $('#mobile').val() || '',
+                WhatsappNo: $('#whatsapp').val() || '',
+                Email: $('#email').val() || '',
+                AccountId: parseInt($('#accountSelect').val()) || 0
+            };
+
+            $.ajax({
+                url: '/Lists/SavePettyCashCard',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(pettyCashData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Petty Cash Card updated' : 'Petty Cash Card created');
+                        $('#pettyCashModal').modal('hide');
+                        $('#pettyCashForm')[0].reset();
+                        loadPettyCashCards(); // reload table
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+           function loadAccounts() {
+                    $.ajax({
+                        url: '/HR/GetAccruedSalaries', // make sure this is your accounts API
+                        type: 'GET',
+                        success: function (data) {
+                            const dropdowns = [
+                                        { ddl: '#accountSelect', codeBox: '#accountCode' },
+                            ];
+
+                            dropdowns.forEach(set => {
+                                const $ddl = $(set.ddl);
+                                $ddl.empty().append('<option value="">-- Select --</option>');
+
+                                data.forEach(item => {
+                                    $ddl.append(
+                                        $('<option>', {
+                                            value: item.id,
+                                            text: item.code + ' - ' + item.name,
+                                            'data-code': item.code
+                                        })
+                                    );
+                                });
+
+                                // 🔹 Update account code textbox on change
+                                $ddl.off('change').on('change', function () {
+                                    const selected = $(this).find(':selected');
+                                    $(set.codeBox).val(selected.data('code') || "");
+                                });
+                            });
+                        },
+                        error: function (xhr, status, error) {
+                            console.error("❌ Error loading accounts:", status, error);
+                            toastr.error("Server error while loading accounts");
+                        }
+                    });
+                }
+
+           loadAccounts();
+
+            function loademployee() {
+            $.ajax({
+                url: '/HR/GetEmployees',
+                type: 'GET',
+                success: function (res) {
+
+                    const employees = res.data; // <-- FIX: use res.data
+
+                    const $ddl = $('#employeeSelect');
+                    if ($ddl.length === 0) {
+                        console.error("❌ #employeeSelect not found in DOM");
+                        return;
+                    }
+
+                    $ddl.empty().append('<option value="">-- Select Employee --</option>');
+
+                    if (!Array.isArray(employees)) {
+                        console.error("❌ res.data is not an array:", employees);
+                        return;
+                    }
+
+                    employees.forEach((item, index) => {
+
+                        const empId = item.id ?? "";
+                        const empCode = item.code ?? "";
+                        const empName = item.name ?? "";
+
+                        if (!empId || !empName) return;
+
+                        $ddl.append(
+                            $('<option>', {
+                                value: empId,
+                                text: `${empCode} - ${empName}`,
+                                'data-code': empCode
+                            })
+                        );
+                    });
+
+                    // 🔄 Update code field when selected
+                    $ddl.off('change').on('change', function () {
+                        const selected = $(this).find(':selected');
+                        const selectedCode = selected.data('code') || "";
+                        $('#code').val(selectedCode);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading employees:", status, error);
+                    toastr.error("Server error while loading employees");
+                }
+            });
+        }
+
+             loademployee();
+
+            // Reset form when modal is fully hidden
+            $('#pettyCashModal').on('hidden.bs.modal', function () {
+            // Reset form fields
+            $('#pettyCashForm')[0].reset();
+
+            // Clear hidden ID and dropdowns
+            $('#pettyCashId').val(0);
+            $('#employeeSelect').prop('disabled', false).val('');
+            $('#accountSelect').val('');
+            $('#accountCode').val('');
+
+            // Reset modal title
+            $("#pettyCashModalLabel").text("New Petty Cash Card");
+
+            // Remove validation styles
+            $('#pettyCashForm').removeClass('was-validated');
+        });
+
+
+                $(document).on("click", ".delete-card", function () {
+            const id = $(this).data("id");
+            if (!confirm("Are you sure you want to delete this Petty Cash Card?")) return;
+
+            $.ajax({
+                url: `/Lists/DeletePettyCashCard/${id}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success("Petty Cash Card deleted successfully!");
+                        loadPettyCashCards(); // refresh your table
+                    } else {
+                        toastr.error(res.message || "Error deleting Petty Cash Card");
+                    }
+                },
+                error: function (err) {
+                    console.error("AJAX error:", err);
+                    toastr.error("Server error occurred while deleting Petty Cash Card");
+                }
+            });
+        });
+
+
+
+        });
+
+
+    </script>
+
+
+
+}
