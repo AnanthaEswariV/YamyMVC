@@ -308,6 +308,15 @@ namespace YamyProject.Core.Models
         public string Email { get; set; } 
         public int AccountId { get; set; }    
     }
+    public class CoaLevel4Request
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+        public DateTime? Date { get; set; }
+    }
+
 
 
 }

@@ -20,24 +20,53 @@
 </div>
 
 <!-- Bootstrap Edit Modal -->
+<!-- Edit Level 4 Modal -->
 <div class="modal fade" id="editAccountModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Account</h5>
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Edit Level 4</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+
+            <!-- Body -->
             <div class="modal-body">
                 <input type="hidden" id="editAccountId">
+
+                <!-- Account Name -->
                 <div class="mb-3">
-                    <label class="form-label">Account Name</label>
-                    <input type="text" class="form-control" id="editAccountName">
+                    <label class="form-label">Enter Level 4 Name</label>
+                    <input type="text" class="form-control" id="editAccountName" placeholder="Account Name">
+                </div>
+
+                <!-- Debit / Credit / Due -->
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Debit</label>
+                        <input type="number" class="form-control text-end" id="editDebit" placeholder="0.000">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Credit</label>
+                        <input type="number" class="form-control text-end" id="editCredit" placeholder="0.000">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Due</label>
+                        <input type="date" class="form-control" id="editDueDate">
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveAccountBtn">Save</button>
+
+            <!-- Footer -->
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-primary" id="saveAccountBtn">Save</button>
+                    <button type="button" class="btn btn-danger" id="deleteAccountBtn">Delete</button>
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
+
         </div>
     </div>
 </div>
@@ -395,7 +424,6 @@
 
             // Your existing API call
             $.getJSON("/Lists/GetCOA", function (data) {
-                console.log("API Response:", data); // Debug log
 
                 if (data.status === false) {
                     $("#coaTree").html(`
@@ -564,15 +592,35 @@
                     infoDiv.append(`<div class='account-name'>${node.name || ''}</div>`);
                     nodeDiv.append(infoDiv);
 
-                    // Add double-click handler for level 3 nodes
+                    // --- START OF MODIFICATION ---
+                    // Replace double-click with Edit/Delete buttons for Level 3 nodes
                     if (level === 3) {
-                        nodeDiv.on("dblclick", function (e) {
+                        // Create Action Buttons Container
+                        var actionContainer = $("<div class='action-container'></div>");
+
+                        // Edit Button (using the fas fa-pen icon from your links)
+                        var editBtn = $(`<button class="btn btn-sm btn-outline-primary ms-2 edit-btn" title="Edit Account"><i class="fas fa-pen"></i></button>`);
+                        editBtn.on('click', function(e) {
                             e.stopPropagation();
                             openEditModal(node.id, node.name);
                         });
-                        nodeDiv.css('cursor', 'pointer');
-                        nodeDiv.attr('title', 'Double-click to edit');
+
+                        // Delete Button (using a common delete icon)
+                        var deleteBtn = $(`<button class="btn btn-sm btn-outline-danger ms-2 delete-btn" title="Delete Account"><i class="fas fa-trash-alt"></i></button>`);
+                        deleteBtn.on('click', function(e) {
+                            e.stopPropagation();
+                            // Call a new function to handle delete confirmation and API call
+                            handleDeleteAccount(node.id, node.code, node.name);
+                        });
+
+                        actionContainer.append(editBtn).append(deleteBtn);
+                        nodeDiv.append(actionContainer);
+
+                        // Remove previous dblclick cursor and title
+                        nodeDiv.css('cursor', 'default');
+                        nodeDiv.removeAttr('title');
                     }
+                    // --- END OF MODIFICATION ---
 
                     li.append(nodeDiv);
 
@@ -628,41 +676,53 @@
                 $('#editAccountName').val(accountName);
                 $('#editAccountModal').modal('show');
             }
+                    // Open Edit Account Modal and populate fields
+ 
 
-            // Save account changes
-            $('#saveAccountBtn').on('click', function() {
-                const accountId = $('#editAccountId').val();
-                const newName = $('#editAccountName').val().trim();
+           $("#saveAccountBtn").on("click", function () {
+            const data = {
+                Id: parseInt($("#editAccountId").val()),
+                Name: $("#editAccountName").val().trim(),
+                Debit: parseFloat($("#editDebit").val()) || 0,
+                Credit: parseFloat($("#editCredit").val()) || 0,
+                DueDate: $("#editDueDate").val()
+            };
 
-                if (!newName) {
-                    alert('Please enter an account name');
-                    return;
-                }
+            if (!data.Name) {
+                toastr.warning("Please enter account name");
+                return;
+            }
 
-                $.ajax({
-                    url: "/api/COA/EditAccount",
-                    type: "PUT",
-                    contentType: "application/json",
-                    data: JSON.stringify({ Id: accountId, Name: newName }),
-                    success: function (res) {
-                        if (res.success) {
-                            alert("Account updated successfully!");
-                            // Update UI without reload
-                            $(`.tree-node[data-id="${accountId}"] .account-name`).text(newName);
-                            $('#editAccountModal').modal('hide');
-                        } else {
-                            alert("Error: " + (res.message || 'Unknown error'));
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('Ajax error:', error);
-                        alert("Failed to update account. Please try again.");
+            console.log("Sending data:", data);
+
+            $.ajax({
+                url: '/Lists/EditCoaLevel4',
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.status) {
+                        $("#editAccountModal").modal("hide");
+                        toastr.success("Account updated successfully!");
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message || "Error updating account");
                     }
-                });
+                },
+                error: function (err) {
+                    console.error("AJAX error:", err);
+                    toastr.error("Server error occurred");
+                }
             });
+        });
+
 
             // Make openEditModal globally available for debugging
             window.openEditModal = openEditModal;
+
+
+
+
         });
     </script>
 }

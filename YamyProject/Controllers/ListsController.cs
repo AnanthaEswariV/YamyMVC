@@ -412,6 +412,61 @@ namespace YamyProject.Controllers
                 return Json(new { status = false, message = ex.Message });
             }
         }
+        [HttpPut]
+        public async Task<IActionResult> EditCoaLevel4([FromBody] CoaLevel4Request model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Account name is required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ✅ Optional: check duplicate (exclude current id)
+                var checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_4 WHERE name = @name AND id != @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                    if (exists)
+                        return BadRequest(new { status = false, message = "Account with same name already exists." });
+                }
+
+                // ✅ Update query
+                var updateQuery = @"UPDATE tbl_coa_level_4 
+                            SET name = @name, debit = @debit, credit = @credit, date = @date 
+                            WHERE id = @id";
+
+                using var updateCmd = new MySqlCommand(updateQuery, conn);
+                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                updateCmd.Parameters.AddWithValue("@debit", model.Debit);
+                updateCmd.Parameters.AddWithValue("@credit", model.Credit);
+                updateCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                var rows = await updateCmd.ExecuteNonQueryAsync();
+
+                if (rows == 0)
+                    return NotFound(new { status = false, message = "Account not found" });
+
+                return Ok(new { status = true, message = "COA Level 4 updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
 
 
