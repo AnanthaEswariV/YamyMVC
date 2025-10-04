@@ -1,0 +1,260 @@
+﻿
+@{
+    ViewData["Title"] = "ChartOfAccounts";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart of Accounts</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<style>
+    /* General Layout */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f7f9fc;
+        color: #333;
+        padding: 20px;
+    }
+
+    .container {
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+        color: #007bff;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+    }
+
+    /* Toolbar & Buttons */
+    .toolbar {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: center;
+    }
+
+    #account-filter {
+        flex-grow: 1;
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+
+    .action-btn {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s, transform 0.1s;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .primary {
+        background-color: #28a745;
+        color: white;
+    }
+
+        .primary:hover {
+            background-color: #218838;
+        }
+
+    .secondary {
+        background-color: #007bff;
+        color: white;
+    }
+
+        .secondary:hover {
+            background-color: #0056b3;
+        }
+
+    .tertiary {
+        background-color: #ffc107;
+        color: #333;
+    }
+
+        .tertiary:hover {
+            background-color: #e0a800;
+        }
+
+    /* Table Styling */
+    #accounts-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        #accounts-table th, #accounts-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        #accounts-table th {
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    /* Row Styling */
+    .account-row:hover {
+        background-color: #f5f5f5;
+        cursor: pointer;
+    }
+
+    /* Visual Hierarchy (Indentation) */
+    /* Hides all children by default */
+    .account-row.is-child {
+        display: none;
+    }
+
+    .account-row.level-1 {
+        background-color: #e9f5ff;
+        font-weight: bold;
+    }
+
+    .account-row.level-2 {
+        background-color: #f7faff;
+    }
+
+        /* The `Account Name` column is indented */
+        .account-row.level-2 td:nth-child(3) {
+            padding-left: 30px;
+        }
+
+    .account-row.level-3 td:nth-child(3) {
+        padding-left: 45px;
+    }
+
+    .account-row.level-4 td:nth-child(3) {
+        padding-left: 60px;
+    }
+
+    /* Toggle Icon */
+    .col-icon {
+        width: 1%;
+    }
+    /* Small column for the icon */
+    .col-type {
+        width: 15%;
+    }
+    /* Small column for the type */
+
+    .toggle-cell {
+        text-align: center;
+    }
+
+    .expand-icon {
+        color: #6c757d;
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+
+        .expand-icon.rotated {
+            transform: rotate(90deg);
+        }
+</style>
+<body>
+
+    <div class="container">
+        <h1>Chart Of Accounts</h1>
+
+        <div class="toolbar">
+            <input type="text" id="account-filter" placeholder="Filter by Account Name or Number...">
+            <button id="add-account" class="action-btn primary"><i class="fas fa-plus"></i> Add Account</button>
+            <button id="edit-account" class="action-btn secondary"><i class="fas fa-edit"></i> Edit Account</button>
+            <button id="export-import" class="action-btn tertiary"><i class="fas fa-file-export"></i> Export & Import</button>
+        </div>
+
+        <table id="accounts-table">
+            <thead>
+                <tr>
+                    <th class="col-icon"></th>
+                    <th>Account Number</th>
+                    <th>Account Name</th>
+                    <th class="col-type">Account Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="account-row level-1" data-id="1" data-parent="0">
+                    <td class="toggle-cell"><i class="fas fa-caret-right expand-icon"></i></td>
+                    <td>1</td>
+                    <td>Assets</td>
+                    <td>Header</td>
+                </tr>
+
+                <tr class="account-row level-2 is-child" data-id="11" data-parent="1">
+                    <td class="toggle-cell"><i class="fas fa-caret-right expand-icon"></i></td>
+                    <td>11</td>
+                    <td>Current Assets</td>
+                    <td>Header</td>
+                </tr>
+
+                <tr class="account-row level-3 is-child" data-id="1101" data-parent="11">
+                    <td class="toggle-cell"><i class="fas fa-caret-right expand-icon"></i></td>
+                    <td>1101</td>
+                    <td>Banks</td>
+                    <td>Header</td>
+                </tr>
+
+                <tr class="account-row level-4 is-child" data-id="1101001" data-parent="1101">
+                    <td class="toggle-cell"></td>
+                    <td>1101001</td>
+                    <td>Bank Accounts</td>
+                    <td>Detail</td>
+                </tr>
+
+                <tr class="account-row level-4 is-child" data-id="1101002" data-parent="1101">
+                    <td class="toggle-cell"></td>
+                    <td>1101002</td>
+                    <td>Other Employee Receivables</td>
+                    <td>Detail</td>
+                </tr>
+
+                <tr class="account-row level-3 is-child" data-id="1102" data-parent="11">
+                    <td class="toggle-cell"></td>
+                    <td>1102</td>
+                    <td>Petty Cash</td>
+                    <td>Detail</td>
+                </tr>
+
+                <tr class="account-row level-2 is-child" data-id="12" data-parent="1">
+                    <td class="toggle-cell"><i class="fas fa-caret-right expand-icon"></i></td>
+                    <td>12</td>
+                    <td>Long Term Assets</td>
+                    <td>Header</td>
+                </tr>
+
+                <tr class="account-row level-1" data-id="2" data-parent="0">
+                    <td class="toggle-cell"><i class="fas fa-caret-right expand-icon"></i></td>
+                    <td>2</td>
+                    <td>Liabilities</td>
+                    <td>Header</td>
+                </tr>
+
+                <tr class="account-row level-1" data-id="3" data-parent="0">
+                    <td class="toggle-cell"></td>
+                    <td>3</td>
+                    <td>Equity</td>
+                    <td>Header</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

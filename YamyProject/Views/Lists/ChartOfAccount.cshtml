@@ -85,7 +85,6 @@
 <div class="modal fade" id="coaModal" tabindex="-1" aria-labelledby="coaModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-md">
         <div class="modal-content rounded-4 shadow-lg border-0">
-
             <!-- Header -->
             <div class="modal-header bg-primary text-white rounded-top-4">
                 <h5 class="modal-title fw-semibold" id="coaModalLabel">COA - New Account</h5>
@@ -93,83 +92,76 @@
             </div>
 
             <!-- Body -->
-            <div class="modal-body px-4 py-3">
+            <form id="coaForm" class="needs-validation" novalidate>
+                <div class="modal-body px-4 py-3">
+                    <input type="hidden" id="level4Id" value="0">
 
-                <!-- LEVEL 1 -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">LEVEL 1</label>
-                    <div class="d-flex gap-2 align-items-center">
-                        <select class="form-select form-select-sm flex-grow-1">
-                            <option>1 - Assets</option>
-                            <option>2 - Liabilities</option>
-                            <option>3 - Equity</option>
-                        </select>
-                        <a href="#" class="text-primary" title="Add New"><i class="fas fa-plus-circle fs-6"></i></a>
-                        <a href="#" class="text-warning" title="Edit Name"><i class="fas fa-edit fs-6"></i></a>
-                        <a href="#" class="text-danger" title="Delete Name"><i class="fas fa-trash-alt fs-6"></i></a>
+                    <!-- LEVEL 1 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">LEVEL 1</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel1" required></select>
+                            <a href="/Lists/ChartOfAccountL1" class="text-primary" title="Chart of Account L1">
+                                <i class="fas fa-plus-circle fs-6"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- LEVEL 2 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">LEVEL 2</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel2" required></select>
+                            <a href="/Lists/ChartOfAccountL2" class="text-primary">
+                                <i class="fas fa-plus-circle fs-6"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- LEVEL 3 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">LEVEL 3</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel3" required></select>
+                            <a href="/Lists/ChartOfAccountL3" class="text-primary">
+                                <i class="fas fa-plus-circle fs-6"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- LEVEL 4 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">LEVEL 4</label>
+                        <input type="text" id="txtLevel4" class="form-control form-control-sm" placeholder="Enter Level 4" required>
+                    </div>
+
+                    <!-- Debit / Credit / Date -->
+                    <div class="row g-2 align-items-end">
+                        <div class="col-4">
+                            <label class="form-label fw-semibold">Debit</label>
+                            <input type="number" id="txtDebit" class="form-control form-control-sm" placeholder="Debit" value="0">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold">Credit</label>
+                            <input type="number" id="txtCredit" class="form-control form-control-sm" placeholder="Credit" value="0">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold">Due Date</label>
+                            <input type="date" id="txtDate" class="form-control form-control-sm">
+                        </div>
                     </div>
                 </div>
 
-                <!-- LEVEL 2 -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">LEVEL 2</label>
-                    <div class="d-flex gap-2 align-items-center">
-                        <select class="form-select form-select-sm flex-grow-1">
-                            <option>11 - Current Assets</option>
-                            <option>12 - Fixed Assets</option>
-                        </select>
-                        <a href="#" class="text-primary" title="Add New"><i class="fas fa-plus-circle fs-6"></i></a>
-                        <a href="#" class="text-warning" title="Edit Name"><i class="fas fa-edit fs-6"></i></a>
-                        <a href="#" class="text-danger" title="Delete Name"><i class="fas fa-trash-alt fs-6"></i></a>
-                    </div>
+                <!-- Footer -->
+                <div class="modal-footer justify-content-between">
+                    <button type="submit" class="btn btn-primary px-4 rounded-3">Save</button>
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Close</button>
                 </div>
-
-                <!-- LEVEL 3 -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">LEVEL 3</label>
-                    <div class="d-flex gap-2 align-items-center">
-                        <select class="form-select form-select-sm flex-grow-1">
-                            <option>1101 - Banks</option>
-                            <option>1102 - Cash</option>
-                        </select>
-                        <a href="#" class="text-primary" title="Add New"><i class="fas fa-plus-circle fs-6"></i></a>
-                        <a href="#" class="text-warning" title="Edit Name"><i class="fas fa-edit fs-6"></i></a>
-                        <a href="#" class="text-danger" title="Delete Name"><i class="fas fa-trash-alt fs-6"></i></a>
-                    </div>
-                </div>
-
-                <!-- LEVEL 4 -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">LEVEL 4</label>
-                    <input type="text" class="form-control form-control-sm" placeholder="Enter Level 4">
-                </div>
-
-                <!-- Debit / Credit / Date -->
-                <div class="row g-2 align-items-end">
-                    <div class="col-4">
-                        <label class="form-label fw-semibold">Debit</label>
-                        <input type="number" class="form-control form-control-sm" placeholder="Debit">
-                    </div>
-                    <div class="col-4">
-                        <label class="form-label fw-semibold">Credit</label>
-                        <input type="number" class="form-control form-control-sm" placeholder="Credit">
-                    </div>
-                    <div class="col-4">
-                        <label class="form-label fw-semibold">Due Date</label>
-                        <input type="date" class="form-control form-control-sm">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="modal-footer justify-content-between">
-                <button type="button" class="btn btn-primary px-4 rounded-3">Save</button>
-                <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Close</button>
-            </div>
-
+            </form>
         </div>
     </div>
 </div>
+
 
 
 
@@ -785,5 +777,147 @@
             // expose for debug if needed
             window.openEditModal = openEditModal;
         });
+
+
+
+        $(document).ready(function () {
+
+            // Load LEVEL 1 (All)
+            function loadLevel1() {
+                $.ajax({
+                    url: '/Lists/GetLevel1Accounts',
+                    type: 'GET',
+                    success: function (res) {
+                        const $ddl1 = $('#coaModal select').eq(0);
+                        $ddl1.empty().append('<option value="">Select Level 1</option>');
+                        if (res.status && res.data?.length > 0) {
+                            res.data.forEach(row => {
+                                $ddl1.append(`<option value="${row.id}">${row.name}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 1 accounts.');
+                    }
+                });
+            }
+
+            // Load LEVEL 2 based on selected Level 1
+            function loadLevel2(level1Id) {
+                const $ddl2 = $('#coaModal select').eq(1);
+                const $ddl3 = $('#coaModal select').eq(2);
+                $ddl2.empty().append('<option value="">Select Level 2</option>');
+                $ddl3.empty().append('<option value="">Select Level 3</option>');
+                if (!level1Id) return;
+                console.log(level1Id);
+                $.ajax({
+                    url: '/Lists/GetLevel2AccountsByLevel1?level1Id=' + level1Id,
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status && res.data?.length > 0) {
+                            res.data.forEach(row => {
+                                $ddl2.append(`<option value="${row.id}">${row.name}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 2 accounts.');
+                    }
+                });
+            }
+
+            // Load LEVEL 3 based on selected Level 2
+            function loadLevel3(level2Id) {
+                const $ddl3 = $('#coaModal select').eq(2);
+                $ddl3.empty().append('<option value="">Select Level 3</option>');
+                if (!level2Id) return;
+
+                $.ajax({
+                    url: '/Lists/GetLevel3AccountsByLevel2?id=' + level2Id,
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status && res.data?.length > 0) {
+                            res.data.forEach(row => {
+                                $ddl3.append(`<option value="${row.id}">${row.name}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 3 accounts.');
+                    }
+                });
+            }
+
+            // When modal opens → load Level 1
+            $('#coaModal').on('shown.bs.modal', function () {
+                loadLevel1();
+                $('#coaModal select').eq(1).empty().append('<option value="">Select Level 2</option>');
+                $('#coaModal select').eq(2).empty().append('<option value="">Select Level 3</option>');
+            });
+
+            // On Level 1 change → load Level 2
+            $('#coaModal select').eq(0).on('change', function () {
+                const level1Id = $(this).val();
+                loadLevel2(level1Id);
+            });
+
+            // On Level 2 change → load Level 3
+            $('#coaModal select').eq(1).on('change', function () {
+                const level2Id = $(this).val();
+                loadLevel3(level2Id);
+            });
+
+                // 🔹 Submit form
+        $('#coaForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#level4Id').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const payload = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: $('#txtLevel4').val().trim(),
+                Level3Id: parseInt($('#ddlLevel3').val()),
+                Debit: parseFloat($('#txtDebit').val() || 0),
+                Credit: parseFloat($('#txtCredit').val() || 0),
+                Date: $('#txtDate').val()
+            };
+
+            $.ajax({
+                url: isEdit ? '/Lists/UpdateLevel4Account' : '/Lists/AddLevel4Account',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Level 4 Account updated successfully' : 'Level 4 Account added successfully');
+                        $('#coaModal').modal('hide');
+                        $('#coaForm')[0].reset();
+                        $('#level4Id').val(0);
+                        $('#coaModalLabel').text('COA - New Account');
+                        form.classList.remove('was-validated');
+                        loadLevel4Accounts(); // optional: reload table/list
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+        });
+
+
+   
+
     </script>
 }
