@@ -315,6 +315,27 @@ namespace YamyProject.Core.Models
         public decimal Debit { get; set; }
         public decimal Credit { get; set; }
         public DateTime? Date { get; set; }
+        public int? UserId { get; set; } 
+        public int? OpeningBalanceEquityId { get; set; } 
+    }
+    public class Level1AccountRequest
+    {
+        public int Id { get; set; }           
+        public string Name { get; set; } = "";
+        public string CategoryCode { get; set; } = "";
+    }
+
+    public class Level2AccountRequest
+    {
+        public int Id { get; set; }          
+        public string Name { get; set; }     
+        public int Level1Id { get; set; }    
+    }
+    public class Level3AccountRequest
+    {
+        public int Id { get; set; } = 0;
+        public int Level2Id { get; set; }
+        public string Name { get; set; }
     }
 
 

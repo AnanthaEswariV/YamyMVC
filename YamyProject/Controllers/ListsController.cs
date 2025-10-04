@@ -1,6 +1,8 @@
-﻿using System.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Data;
 using YamyProject.Core.Models;
 using YamyProject.Core.Models.DTOs;
+using YamyProject.Core.Models.Enum;
 using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace YamyProject.Controllers
@@ -412,6 +414,146 @@ namespace YamyProject.Controllers
                 return Json(new { status = false, message = ex.Message });
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateLevel4Account([FromBody] CoaLevel4Request model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter Level 4 account name first" });
+
+            try
+            {
+                // 🔹 Build dynamic connection string based on session or default database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 1️⃣ Check for duplicate name
+                var checkQuery = "SELECT id FROM tbl_coa_level_4 WHERE name = @name";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name);
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingId != null && Convert.ToInt32(existingId) != model.Id)
+                        return BadRequest(new { status = false, message = "Name already exists. Enter another name." });
+                }
+
+                // 2️⃣ Update the Level 4 Account
+                var updateQuery = @"
+            UPDATE tbl_coa_level_4 
+            SET name = @name, debit = @debit, credit = @credit, date = @date 
+            WHERE id = @id";
+
+                using (var updateCmd = new MySqlCommand(updateQuery, conn))
+                {
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@debit", model.Debit);
+                    updateCmd.Parameters.AddWithValue("@credit", model.Credit);
+                    updateCmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
+
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+
+                // 3️⃣ Handle Opening Balance Transaction Logic
+                if (model.Debit != 0 || model.Credit != 0)
+                {
+                    await InsertTransactionsAsync(conn, model);
+                }
+
+                return Ok(new { status = true, message = "Level 4 account updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        private async Task InsertTransactionsAsync(MySqlConnection conn, CoaLevel4Request model)
+        {
+            try
+            {
+                string openingBalanceEquity = (model.OpeningBalanceEquityId ?? 0).ToString();
+
+                // 🔹 If not supplied, try to get Opening Balance Equity ID
+                if (int.Parse(openingBalanceEquity) == 0)
+                {
+                    var result = await new MySqlCommand(
+                        "SELECT id FROM tbl_coa_level_4 WHERE name = 'Opening Balance Equity'", conn
+                    ).ExecuteScalarAsync();
+
+                    if (result != null)
+                        openingBalanceEquity = result.ToString();
+                    else
+                        throw new Exception("Cannot make opening balance without Opening Balance Equity account.");
+                }
+
+                // 🔹 Delete old transactions for this account
+                var deleteQuery = "DELETE FROM tbl_transaction WHERE transaction_id = @refId AND t_type = 'GENERAL LEDGER OPENING BALANCE'";
+                using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@refId", model.Id);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
+                // 🔹 Credit side entries
+                if (model.Credit > 0)
+                {
+                    await AddTransactionAsync(conn, model.Date ?? DateTime.Now, openingBalanceEquity, model.Credit, 0, model.Id, "Opening Balance Equity - Ledger");
+                    await AddTransactionAsync(conn, model.Date ?? DateTime.Now, model.Id.ToString(), 0, model.Credit, model.Id, "Account Payable - Ledger Code");
+                }
+
+                // 🔹 Debit side entries
+                if (model.Debit > 0)
+                {
+                    await AddTransactionAsync(conn, model.Date ?? DateTime.Now, openingBalanceEquity, 0, model.Debit, model.Id, "Opening Balance Equity - Ledger Code");
+                    await AddTransactionAsync(conn, model.Date ?? DateTime.Now, model.Id.ToString(), model.Debit, 0, model.Id, "Account Payable - Ledger Code");
+                }
+            }
+            catch(Exception ex)
+            {
+
+                throw ex;
+            }
+           
+        }
+
+        private async Task AddTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit, int refId, string description)
+        {
+            try
+            {
+                string query = @"
+        INSERT INTO tbl_transaction 
+        (t_date, account_id, debit, credit, transaction_id, t_type, description)
+        VALUES (@date, @accountId, @debit, @credit, @refId, 'GENERAL LEDGER OPENING BALANCE', @desc)";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@accountId", accountId);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@refId", refId);
+                cmd.Parameters.AddWithValue("@desc", description);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+
         [HttpPut]
         public async Task<IActionResult> EditCoaLevel4([FromBody] CoaLevel4Request model)
         {
@@ -461,6 +603,726 @@ namespace YamyProject.Controllers
                     return NotFound(new { status = false, message = "Account not found" });
 
                 return Ok(new { status = true, message = "COA Level 4 updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
+
+        #region ChartOfAccount L1
+
+        public IActionResult ChartOfAccountL1()
+        {
+            return View();
+        }
+
+        public IActionResult GetAccountTypes()
+        {
+            try
+            {
+                var list = (from AccountType type in Enum.GetValues(typeof(AccountType))
+                            select new
+                            {
+                                Id = (int)type,
+                                Name = type.ToString()
+                            }).ToList();
+
+                return Json(list);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }   
+
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetLevel1Accounts()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                id,
+                name,
+                category_code
+            FROM tbl_coa_level_1
+            ORDER BY id ASC;
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                        name = reader["name"].ToString(),
+                        categoryCode = reader["category_code"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveLevel1Account([FromBody] Level1AccountRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter Level 1 name first" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // 🔹 Build connection string for correct DB
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check for duplicate name
+                string checkQuery = "SELECT id FROM tbl_coa_level_1 WHERE name=@name LIMIT 1";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name);
+                    var existingIdObj = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingIdObj != null)
+                    {
+                        int existingId = Convert.ToInt32(existingIdObj);
+                        if (model.Id == 0 || model.Id != existingId)
+                            return BadRequest(new { status = false, message = "Name already exists. Enter another name." });
+                    }
+                }
+
+                // 🔹 New record
+                if (model.Id == 0)
+                {
+                    int newCode = 1;
+                    string maxQuery = "SELECT MAX(code) AS code FROM tbl_coa_level_1";
+                    using (var cmd = new MySqlCommand(maxQuery, conn))
+                    {
+                        var result = await cmd.ExecuteScalarAsync();
+                        if (result != DBNull.Value && result != null)
+                            newCode = Convert.ToInt32(result) + 1;
+                    }
+
+                    string insertQuery = @"INSERT INTO tbl_coa_level_1 (name, code, category_code)
+                                   VALUES (@name, @code, @categoryCode)";
+                    using (var insertCmd = new MySqlCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@name", model.Name);
+                        insertCmd.Parameters.AddWithValue("@code", newCode);
+                        insertCmd.Parameters.AddWithValue("@categoryCode", model.CategoryCode ?? "");
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new { status = true, message = "Level 1 Account added successfully" });
+                }
+                else
+                {
+                    // 🔹 Update existing
+                    string updateQuery = @"UPDATE tbl_coa_level_1
+                                   SET name=@name, category_code=@categoryCode
+                                   WHERE id=@id";
+                    using (var updateCmd = new MySqlCommand(updateQuery, conn))
+                    {
+                        updateCmd.Parameters.AddWithValue("@id", model.Id);
+                        updateCmd.Parameters.AddWithValue("@name", model.Name);
+                        updateCmd.Parameters.AddWithValue("@categoryCode", model.CategoryCode ?? "");
+                        int affected = await updateCmd.ExecuteNonQueryAsync();
+
+                        if (affected == 0)
+                            return NotFound(new { status = false, message = "Level 1 Account not found" });
+                    }
+
+                    return Ok(new { status = true, message = "Level 1 Account updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteLevel1Account(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Level 1 ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // 🔹 Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check if Level 1 is used in Level 2
+                string checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_2 WHERE main_id=@id";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@id", id);
+                var countObj = await checkCmd.ExecuteScalarAsync();
+                int count = Convert.ToInt32(countObj);
+
+                if (count > 0)
+                    return BadRequest(new { status = false, message = "This Level 1 account is used in Level 2. Cannot delete." });
+
+                // 🔹 Delete Level 1
+                string deleteQuery = "DELETE FROM tbl_coa_level_1 WHERE id=@id";
+                using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+                deleteCmd.Parameters.AddWithValue("@id", id);
+                int affected = await deleteCmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Level 1 account not found" });
+
+                return Ok(new { status = true, message = "Level 1 account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region ChartOfAccount L2
+
+        public IActionResult ChartOfAccountL2()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetLevel2Accounts()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                l2.id, 
+                l2.name, 
+                l2.main_id, 
+                l1.name AS level1Name
+            FROM tbl_coa_level_2 l2
+            INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            ORDER BY l2.id ASC;
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                        name = reader["name"].ToString(),
+                        level1Id = reader.GetInt32("main_id"),
+                        level1Name = reader["level1Name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> SaveLevel2Account([FromBody] Level2AccountRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter Level 2 name first" });
+
+            if (model.Level1Id <= 0)
+                return BadRequest(new { status = false, message = "Please select Level 1 account first" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check duplicate name
+                string checkQuery = "SELECT id FROM tbl_coa_level_2 WHERE name=@name LIMIT 1";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name);
+                    var existingIdObj = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingIdObj != null)
+                    {
+                        int existingId = Convert.ToInt32(existingIdObj);
+                        if (model.Id == 0 || model.Id != existingId)
+                            return BadRequest(new { status = false, message = "Name already exists. Enter another name." });
+                    }
+                }
+
+                if (model.Id != 0)
+                {
+                    // 🔹 Update existing Level 2
+                    string updateQuery = "UPDATE tbl_coa_level_2 SET name=@name WHERE id=@id";
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Level 2 Account not found" });
+
+                    // Optionally: LogAudit(userId, "Update Level 2 Account", model.Id, model.Name);
+
+                    return Ok(new { status = true, message = "Level 2 Account updated successfully" });
+                }
+                else
+                {
+                    // 🔹 Insert new Level 2
+                    string level1CodeQuery = "SELECT code FROM tbl_coa_level_1 WHERE id=@id LIMIT 1";
+                    string level1Code = "";
+                    using (var cmd = new MySqlCommand(level1CodeQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", model.Level1Id);
+                        var result = await cmd.ExecuteScalarAsync();
+                        level1Code = result?.ToString() ?? "";
+                    }
+
+                    // Get max Level 2 code for this Level 1
+                    string maxCodeQuery = "SELECT MAX(code) AS code FROM tbl_coa_level_2 WHERE code LIKE @codePattern";
+                    string newCode = level1Code + "1";
+                    using (var cmd = new MySqlCommand(maxCodeQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codePattern", level1Code + "%");
+                        var maxCodeObj = await cmd.ExecuteScalarAsync();
+                        if (maxCodeObj != null && maxCodeObj != DBNull.Value)
+                        {
+                            int nextNum = int.Parse(maxCodeObj.ToString()) + 1;
+                            newCode = nextNum.ToString();
+                        }
+                    }
+
+                    string insertQuery = "INSERT INTO tbl_coa_level_2 (name, code, main_id) VALUES (@name, @code, @mainId)";
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name);
+                    insertCmd.Parameters.AddWithValue("@code", newCode);
+                    insertCmd.Parameters.AddWithValue("@mainId", model.Level1Id);
+
+                    int newId = await insertCmd.ExecuteNonQueryAsync();
+
+                    // Optionally: LogAudit(userId, "Add Level 2 Account", newId, model.Name);
+
+                    return Ok(new { status = true, message = "Level 2 Account added successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpDelete]
+        public async Task<IActionResult> DeleteLevel2Account(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Level 2 ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if Level 2 is used in Level 3
+                string checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_3 WHERE main_id=@id";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@id", id);
+                var countObj = await checkCmd.ExecuteScalarAsync();
+                int count = Convert.ToInt32(countObj);
+
+                if (count > 0)
+                    return BadRequest(new { status = false, message = "This Level 2 account is used in Level 3. Cannot delete." });
+
+                // Delete Level 2
+                string deleteQuery = "DELETE FROM tbl_coa_level_2 WHERE id=@id";
+                using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+                deleteCmd.Parameters.AddWithValue("@id", id);
+                int affected = await deleteCmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Level 2 account not found" });
+
+                return Ok(new { status = true, message = "Level 2 account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region ChartOfAccount L3
+
+        public IActionResult ChartOfAccountL3()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLevel3ById(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Level 3 ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                l3.id,
+                l3.name,
+                l3.main_id AS lvl2Id,
+                l2.main_id AS lvl1Id
+            FROM tbl_coa_level_3 l3
+            INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+            WHERE l3.id = @id
+            LIMIT 1
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var data = new
+                    {
+                        id = reader.GetInt32("id"),
+                        name = reader["name"].ToString(),
+                        lvl2Id = reader.GetInt32("lvl2Id"),
+                        lvl1Id = reader.GetInt32("lvl1Id")
+                    };
+
+                    return Ok(new { status = true, data });
+                }
+                else
+                {
+                    return NotFound(new { status = false, message = "Level 3 Account not found" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLevel2AccountsByLevel1(int level1Id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, name FROM tbl_coa_level_2 WHERE main_id=@level1Id ORDER BY id ASC";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@level1Id", level1Id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new { id = reader.GetInt32("id"), name = reader["name"].ToString() });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetLevel3Accounts()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                l3.id, l3.name AS level3Name,
+                l2.id AS level2Id, l2.name AS level2Name,
+                l1.id AS level1Id, l1.name AS level1Name
+            FROM tbl_coa_level_3 l3
+            INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+            INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            ORDER BY l3.id ASC;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                        level3Name = reader["level3Name"].ToString(),
+                        level2Id = reader.GetInt32("level2Id"),
+                        level2Name = reader["level2Name"].ToString(),
+                        level1Id = reader.GetInt32("level1Id"),
+                        level1Name = reader["level1Name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveLevel3Account([FromBody] Level3AccountRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter Level 3 name first" });
+
+            if (model.Level2Id <= 0)
+                return BadRequest(new { status = false, message = "Please select Level 2 account first" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check for duplicate Level 3 name
+                string checkQuery = "SELECT id FROM tbl_coa_level_3 WHERE name=@name LIMIT 1";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@name", model.Name);
+                var existingIdObj = await checkCmd.ExecuteScalarAsync();
+                if (existingIdObj != null)
+                {
+                    int existingId = Convert.ToInt32(existingIdObj);
+                    if (model.Id == 0 || model.Id != existingId)
+                        return BadRequest(new { status = false, message = "Name already exists. Enter another name." });
+                }
+
+                if (model.Id != 0)
+                {
+                    // 🔹 Update existing Level 3
+                    string updateQuery = "UPDATE tbl_coa_level_3 SET name=@name WHERE id=@id";
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Level 3 Account not found" });
+
+                    return Ok(new { status = true, message = "Level 3 Account updated successfully" });
+                }
+                else
+                {
+                    // 🔹 Get parent Level 2 code
+                    string level2CodeQuery = "SELECT code FROM tbl_coa_level_2 WHERE id=@id LIMIT 1";
+                    string level2Code = "";
+                    using (var cmd = new MySqlCommand(level2CodeQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", model.Level2Id);
+                        var result = await cmd.ExecuteScalarAsync();
+                        level2Code = result?.ToString() ?? "";
+                    }
+
+                    // 🔹 Get max Level 3 code for this Level 2
+                    string maxCodeQuery = $"SELECT MAX(code) AS code FROM tbl_coa_level_3 WHERE code LIKE @codePattern";
+                    string newCode = level2Code + "01";
+                    using (var cmd = new MySqlCommand(maxCodeQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codePattern", level2Code + "%");
+                        var maxCodeObj = await cmd.ExecuteScalarAsync();
+                        if (maxCodeObj != null && maxCodeObj != DBNull.Value)
+                        {
+                            int nextNum = int.Parse(maxCodeObj.ToString()) + 1;
+                            newCode = nextNum.ToString();
+                        }
+                    }
+
+                    // 🔹 Insert Level 3
+                    string insertQuery = "INSERT INTO tbl_coa_level_3 (name, code, main_id) VALUES (@name, @code, @mainId)";
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name);
+                    insertCmd.Parameters.AddWithValue("@code", newCode);
+                    insertCmd.Parameters.AddWithValue("@mainId", model.Level2Id);
+
+                    int newId = await insertCmd.ExecuteNonQueryAsync();
+
+
+                    return Ok(new { status = true, message = "Level 3 Account added successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteLevel3Account(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Level 3 ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if Level 3 is used in Level 4
+                string checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_4 WHERE main_id=@id";
+                using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@id", id);
+                var countObj = await checkCmd.ExecuteScalarAsync();
+                int count = Convert.ToInt32(countObj);
+
+                if (count > 0)
+                    return BadRequest(new { status = false, message = "This Level 3 account is used in Level 4. Cannot delete." });
+
+                // Delete Level 3
+                string deleteQuery = "DELETE FROM tbl_coa_level_3 WHERE id=@id";
+                using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+                deleteCmd.Parameters.AddWithValue("@id", id);
+                int affected = await deleteCmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Level 3 account not found" });
+
+                return Ok(new { status = true, message = "Level 3 account deleted successfully" });
             }
             catch (Exception ex)
             {

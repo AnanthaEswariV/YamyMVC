@@ -1,0 +1,417 @@
+﻿
+@{
+    ViewData["Title"] = "ChartOfAccountL3";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Chart Of Account (L3)</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" id="addLevel3Btn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#level3Modal">
+                <i class="bi bi-plus-circle me-2"></i>Add Level 3
+            </button>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="tableLevel3">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Level 1 Name</th>
+                    <th>Level 2 Name</th>
+                    <th>Level 3 Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Level 3 Modal -->
+<div class="modal fade" id="level3Modal" tabindex="-1" aria-labelledby="level3ModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="level3Form" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="level3ModalLabel">Add New Level 3</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <input type="hidden" id="level3Id" value="0" />
+
+                    <!-- Level 1 Dropdown -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="comboLevel1" class="form-label text-muted">Level 1</label>
+                            <select class="form-select" id="comboLevel1" required>
+                                <option value="">Select Level 1</option>
+                            </select>
+                            <div class="invalid-feedback">Please select Level 1.</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 2 Dropdown -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="comboLevel2" class="form-label text-muted">Level 2</label>
+                            <select class="form-select" id="comboLevel2" required>
+                                <option value="">Select Level 2</option>
+                            </select>
+                            <div class="invalid-feedback">Please select Level 2.</div>
+                        </div>
+                    </div>
+
+                    <!-- Level 3 Name Input -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <input type="text" class="form-control" id="txtLevel3" placeholder="Add New Level 3" required>
+                            <div class="invalid-feedback">Please enter Level 3 name.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            // Load Level 1 dropdown when modal opens
+            $('#level3Modal').on('show.bs.modal', function () {
+                loadLevel1();
+            });
+
+            function loadLevel1() {
+                $.ajax({
+                    url: '/Lists/GetLevel1Accounts', 
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status) {
+                            let html = '<option value="">Select Level 1</option>';
+                            res.data.forEach(l1 => {
+                                html += `<option value="${l1.id}">${l1.name}</option>`;
+                            });
+                            $('#comboLevel1').html(html);
+                            $('#comboLevel2').html('<option value="">Select Level 2</option>'); // reset Level 2
+                        } else {
+                            alert(res.message);
+                        }
+                    },
+                    error: function (err) {
+                        console.error(err);
+                    }
+                });
+            }
+
+                    function openLevel3Modal(level3Id = 0, l1Id = 0, l2Id = 0) {
+            // Reset form
+            $('#level3Form')[0].reset();
+            $('#level3Id').val(level3Id);
+            $('#comboLevel1').prop('disabled', false);
+            $('#comboLevel2').prop('disabled', false);
+
+            // Load Level 1 dropdown
+            $.ajax({
+                url: '/Lists/GetLevel1Accounts',
+                type: 'GET',
+                success: function(res) {
+                    if (res.status) {
+                        let html = '<option value="">Select Level 1</option>';
+                        res.data.forEach(l1 => {
+                            html += `<option value="${l1.id}">${l1.name}</option>`;
+                        });
+                        $('#comboLevel1').html(html);
+
+                        // Pre-select if editing
+                        if (level3Id > 0 || l1Id > 0) {
+                            let selectedL1 = level3Id > 0 ? null : l1Id;
+
+                            if (level3Id > 0) {
+                                $.ajax({
+                                    url: `/Lists/GetLevel3ById?id=${level3Id}`,
+                                    type: 'GET',
+                                    success: function(res2) {
+                                        if(res2.status) {
+                                            $('#txtLevel3').val(res2.data.name);
+                                            $('#comboLevel1').val(res2.data.lvl1Id).prop('disabled', true);
+                                            loadLevel2Options(res2.data.lvl1Id, res2.data.lvl2Id);
+                                        }
+                                    }
+                                });
+                            } else {
+                                $('#comboLevel1').val(selectedL1);
+                                if (l2Id > 0) loadLevel2Options(selectedL1, l2Id);
+                            }
+                        }
+                    } else {
+                        toastr.error(res.message || 'Failed to load Level 1 accounts');
+                    }
+                }
+            });
+
+            $('#level3ModalLabel').text(level3Id > 0 ? 'Edit Level 3' : 'Add Level 3');
+            $('#level3Modal').modal('show');
+        }
+
+        // Attach globally (optional)
+        window.openLevel3Modal = openLevel3Modal;
+
+
+             function loadLevel3Accounts() {
+            $.ajax({
+                url: '/Lists/GetLevel3Accounts',
+                type: 'GET',
+                success: function(res) {
+                    if(res.status) {
+                        if ($.fn.DataTable.isDataTable("#tableLevel3")) {
+                            $("#tableLevel3").DataTable().destroy();
+                        }
+
+                        let tbody = $("#tableLevel3 tbody");
+                        tbody.empty();
+
+                        if(res.data.length > 0) {
+                            res.data.forEach(row => {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.level1Name}</td>
+                                        <td>${row.level2Name}</td>
+                                        <td>${row.level3Name}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editLevel3Btn" data-id="${row.id}">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger deleteLevel3Btn" data-id="${row.id}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+                                // Initialize DataTable with buttons
+                            $("#tableLevel3").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.append('<tr><td colspan="5" class="text-center text-muted">No records found</td></tr>');
+                        }
+                    } else {
+                        alert(res.message || 'Failed to load Level 3 accounts');
+                    }
+                },
+                error: function(err) {
+                    console.error(err);
+                }
+            });
+        }
+
+     
+            loadLevel3Accounts(); // Load table on page load
+        
+
+
+        // Load Level 2 dropdown based on Level 1 selection
+        function loadLevel2Options(level1Id, selectedLevel2Id = 0) {
+            if(!level1Id) return;
+
+            $.ajax({
+                url: '/Lists/GetLevel2AccountsByLevel1',
+                type: 'GET',
+                data: { level1Id },
+                success: function(res) {
+                    if(res.status) {
+                        let html = '<option value="">Select Level 2</option>';
+                        res.data.forEach(l2 => {
+                            html += `<option value="${l2.id}">${l2.name}</option>`;
+                        });
+                        $('#comboLevel2').html(html);
+
+                        if(selectedLevel2Id > 0) {
+                            $('#comboLevel2').val(selectedLevel2Id).prop('disabled', true);
+                        }
+                    }
+                }
+            });
+        }
+
+        // On Level 1 change (for new entry)
+        $('#comboLevel1').change(function() {
+            const l1Id = $(this).val();
+            loadLevel2Options(l1Id);
+        });
+
+            // When Level 1 changes, load Level 2 based on selection
+            $('#comboLevel1').change(function () {
+                const level1Id = $(this).val();
+                if (level1Id) {
+                    $.ajax({
+                        url: '/Lists/GetLevel2AccountsByLevel1', 
+                        type: 'GET',
+                        data: { level1Id: level1Id },
+                        success: function (res) {
+                            if (res.status) {
+                                let html = '<option value="">Select Level 2</option>';
+                                res.data.forEach(l2 => {
+                                    html += `<option value="${l2.id}">${l2.name}</option>`;
+                                });
+                                $('#comboLevel2').html(html);
+                            } else {
+                                alert(res.message);
+                            }
+                        },
+                        error: function (err) {
+                            console.error(err);
+                        }
+                    });
+                } else {
+                    $('#comboLevel2').html('<option value="">Select Level 2</option>');
+                }
+            });
+
+                   // Delegated click for dynamically created edit buttons
+        $(document).on('click', '.editLevel3Btn', function () {
+            const level3Id = $(this).data('id');
+            if (!level3Id) return;
+
+            // Call modal function with Level 3 ID
+            openLevel3Modal(level3Id);
+        });
+
+
+             $('#level3Form').on('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#level3Id').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const data = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: $('#txtLevel3').val().trim(),
+                Level2Id: parseInt($('#comboLevel2').val()) || 0
+            };
+
+            $.ajax({
+                url: '/Lists/SaveLevel3Account',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success(isEdit ? 'Level 3 updated successfully' : 'Level 3 added successfully');
+                        $('#level3Modal').modal('hide');
+                        $('#level3Form')[0].reset();
+                        loadLevel3Accounts(); // reload Level 3 table
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+                $(document).on('click', '.deleteLevel3Btn', function () {
+            const id = $(this).data('id');
+
+            if (!id) {
+                toastr.error("Select Level 3 first.");
+                return;
+            }
+
+            if (!confirm("Are you sure you want to delete this Level 3 account?")) return;
+
+            $.ajax({
+                url: `/Lists/DeleteLevel3Account?id=${id}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        loadLevel3Accounts(); // reload Level 3 table
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+      
+            
+        });
+    </script>
+
+
+
+
+
+
+
+
+
+}

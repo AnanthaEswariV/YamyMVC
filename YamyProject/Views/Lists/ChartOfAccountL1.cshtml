@@ -1,0 +1,305 @@
+﻿@{
+    ViewData["Title"] = "ChartOfAccountL1";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Chart Of Account(L1)</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" id="addLevel1Btn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#levelModal">
+                <i class="bi bi-plus-circle me-2"></i>Add L1
+            </button>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Level 1 Name </th>
+                    <th>Category Code</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Level 1 Modal -->
+<div class="modal fade" id="levelModal" tabindex="-1" aria-labelledby="levelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="level1Form" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="levelModalLabel">New Level 1</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <input type="hidden" id="level1Id" value="0" />
+
+                    <!-- Level Name -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <input type="text" class="form-control" id="txtLevel1" name="LevelName"
+                                   placeholder="Enter Level 1 Name" required>
+                            <div class="invalid-feedback">Please provide a level name.</div>
+                        </div>
+                    </div>
+
+                    <!-- Account Under -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="comboCategoryCode" class="form-label text-muted">Account Under</label>
+                            <select class="form-select" id="comboCategoryCode" name="CategoryCode" required>
+                                <option value="">Select Account Type</option>
+                            </select>
+                            <div class="invalid-feedback">Please select an account type.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+
+        $(document).ready(function () {
+            
+            $.ajax({
+                url: '/Lists/GetAccountTypes', // API returning enum list
+                type: 'GET',
+                success: function (data) {
+                    const dropdown = $('#comboCategoryCode');
+                    dropdown.empty().append('<option value="">Select Account Type</option>');
+                    $.each(data, function (i, item) {
+                        dropdown.append(`<option value="${item.name}">${item.name}</option>`);
+                    });
+                },
+                error: function () {
+                    toastr.error('Failed to load Account Types');
+                }
+            });
+
+            function loadLevel1Accounts() {
+            $.ajax({
+                url: "/Lists/GetLevel1Accounts",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.name}</td>
+                                        <td>${row.categoryCode}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editLevelBtn"
+                                                    data-level='${JSON.stringify(row)}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-danger deleteLevelBtn"
+                                                    data-id='${row.id}'>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                                $("#table1").DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-primary btn-sm'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    className: 'btn btn-primary btn-sm'
+                }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 25
+        });
+
+                        } else {
+                            tbody.append(`<tr><td colspan="4" class="text-center text-muted p-4">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+                    } else {
+                        $("#table1 tbody").html(`<tr><td colspan="4" class="text-center text-danger p-4">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+                    $("#table1 tbody").html(`<tr><td colspan="4" class="text-center text-danger p-4">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+            loadLevel1Accounts();
+
+            $(document).on('click', '.editLevelBtn', function () {
+            const level = $(this).data('level'); // Get row data
+            if (!level) return;
+
+            // 🔹 Fill modal fields
+            $('#level1Id').val(level.id || 0);
+            $('#txtLevel1').val(level.name || '');
+            $('#comboCategoryCode').val(level.categoryCode || '');
+
+            // 🔹 Change modal title
+            $('#levelModalLabel').text('Edit Level 1 Account');
+
+            // 🔹 Show modal
+            $('#levelModal').modal('show');
+        });
+
+            $('#level1Form').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#level1Id').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const levelData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: ($('#txtLevel1').val() || '').trim(),
+                CategoryCode: ($('#comboCategoryCode').val() || '').trim()
+            };
+
+            $.ajax({
+                url: '/Lists/SaveLevel1Account',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(levelData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Level 1 Account updated successfully' : 'Level 1 Account added successfully');
+                        $('#levelModal').modal('hide');
+                        $('#level1Form')[0].reset();
+
+                        // Reset modal title and hidden field for next Add
+                        $('#levelModalLabel').text('New Level 1 Account');
+                        $('#level1Id').val(0);
+
+                        loadLevel1Accounts(); // reload table
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+            $(document).on('click', '.deleteLevelBtn', function () {
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+
+            if (!id) {
+                toastr.error("Select Level 1 first.");
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete?`)) return;
+
+            $.ajax({
+                url: `/Lists/DeleteLevel1Account?id=${id}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        loadLevel1Accounts();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+            $('#addLevel1Btn').on('click', function () {
+            $('#level1Form')[0].reset();
+            $('#level1Id').val(0);
+            $('#levelModalLabel').text('New Level 1 Account');
+            $('#levelModal').modal('show');
+        });
+
+        });
+    </script>
+
+
+
+}
