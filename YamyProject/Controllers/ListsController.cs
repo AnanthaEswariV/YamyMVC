@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Data;
 using YamyProject.Core.Models;
 using YamyProject.Core.Models.DTOs;
@@ -386,10 +388,6 @@ namespace YamyProject.Controllers
 
         #endregion
 
-        public IActionResult ChartOfAccounts()
-        {
-            return View();
-        }
         #region ChartOfAccount
         public IActionResult ChartOfAccount()
         {
@@ -402,8 +400,8 @@ namespace YamyProject.Controllers
             if (model == null)
                 return BadRequest(new { status = false, message = "Invalid request" });
 
-            if (model.Date.HasValue && model.Date.Value.Date > DateTime.Now.Date)
-                return BadRequest(new { status = false, message = "Enter a correct date" });
+            if (model.Date.HasValue && model.Date.Value.Date < DateTime.Today)
+                return BadRequest(new { status = false, message = "Date cannot be earlier than today." });
 
             if (string.IsNullOrWhiteSpace(model.Name))
                 return BadRequest(new { status = false, message = "Please enter Level 4 account name first." });
@@ -413,7 +411,7 @@ namespace YamyProject.Controllers
 
             try
             {
-                // ✅ 1️⃣ Build connection string dynamically (multi-tenant safe)
+                // ✅ 1️⃣ Build connection string dynamically
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ??
@@ -434,7 +432,7 @@ namespace YamyProject.Controllers
                 }
 
                 // ✅ 3️⃣ Get parent (Level 3) code
-                string level3Code = "";
+                string level3Code;
                 using (var codeCmd = new MySqlCommand("SELECT code FROM tbl_coa_level_3 WHERE id = @id", conn))
                 {
                     codeCmd.Parameters.AddWithValue("@id", model.Level3Id);
@@ -444,28 +442,24 @@ namespace YamyProject.Controllers
                     level3Code = result.ToString();
                 }
 
-                // ✅ 4️⃣ Find max existing code under that prefix
-                string newCode = "";
+                // ✅ 4️⃣ Find next code
+                string newCode;
                 using (var maxCmd = new MySqlCommand("SELECT MAX(code) FROM tbl_coa_level_4 WHERE code LIKE @prefix", conn))
                 {
                     maxCmd.Parameters.AddWithValue("@prefix", $"{level3Code}%");
                     var maxCodeObj = await maxCmd.ExecuteScalarAsync();
 
                     if (maxCodeObj != DBNull.Value && maxCodeObj != null && !string.IsNullOrEmpty(maxCodeObj.ToString()))
-                    {
                         newCode = (int.Parse(maxCodeObj.ToString()) + 1).ToString();
-                    }
                     else
-                    {
                         newCode = $"{level3Code}001";
-                    }
                 }
 
-                // ✅ 5️⃣ Default zero debit/credit if empty
+                // ✅ 5️⃣ Default debit/credit
                 decimal debit = model.Debit ?? 0;
                 decimal credit = model.Credit ?? 0;
 
-                // ✅ 6️⃣ Insert into tbl_coa_level_4
+                // ✅ 6️⃣ Insert into Level 4 table
                 int newId;
                 string insertQuery = @"
             INSERT INTO tbl_coa_level_4 (name, code, main_id, debit, credit, date)
@@ -480,14 +474,17 @@ namespace YamyProject.Controllers
                     insertCmd.Parameters.AddWithValue("@debit", debit);
                     insertCmd.Parameters.AddWithValue("@credit", credit);
                     insertCmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
-
                     newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
                 }
 
-                // ✅ 7️⃣ Insert opening balance transactions if debit/credit exist
+                // ✅ 7️⃣ Insert opening balance transactions if any
                 if (debit > 0 || credit > 0)
                 {
-                    await InsertTransactionsAsync(conn, newId, newCode, debit, credit, model.Date ?? DateTime.Now);
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Unauthorized(new { status = false, message = "User not logged in" });
+
+                    await InsertTransactionsAsync(conn, newId, newCode, debit, credit, model.Date ?? DateTime.Now, userId);
                 }
 
                 // ✅ 8️⃣ Return success
@@ -504,9 +501,13 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-        private async Task InsertTransactionsAsync(MySqlConnection conn, int refId, string code, decimal debit, decimal credit, DateTime date)
+
+
+        private async Task InsertTransactionsAsync(MySqlConnection conn, int refId, string code, decimal debit, decimal credit, DateTime date, int userId)
         {
-            // ✅ Find "Opening Balance Equity" ID
+            string accountId = refId.ToString();
+
+            // ✅ Find "Opening Balance Equity"
             string openingBalanceEquityId = "";
             using (var getEquityCmd = new MySqlCommand("SELECT id FROM tbl_coa_level_4 WHERE name = 'Opening Balance Equity'", conn))
             {
@@ -527,35 +528,61 @@ namespace YamyProject.Controllers
             // ✅ Credit entries
             if (credit > 0)
             {
-                await AddTransactionAsync(conn, date, openingBalanceEquityId, credit, 0, refId, "Opening Balance Equity - Ledger");
-                await AddTransactionAsync(conn, date, refId.ToString(), 0, credit, refId, "Account Payable - Ledger Code");
+                await AddTransactionAsync(conn, date, openingBalanceEquityId, credit, 0,
+                    refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
+                    "Opening Balance Equity - Ledger", userId, DateTime.Now.Date, "");
+
+                await AddTransactionAsync(conn, date, accountId, 0, credit,
+                    refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
+                    "Account Payable - Ledger Code", userId, DateTime.Now.Date, "");
             }
 
             // ✅ Debit entries
             if (debit > 0)
             {
-                await AddTransactionAsync(conn, date, openingBalanceEquityId, 0, debit, refId, "Opening Balance Equity - Ledger Code");
-                await AddTransactionAsync(conn, date, refId.ToString(), debit, 0, refId, "Account Payable - Ledger Code");
+                await AddTransactionAsync(conn, date, openingBalanceEquityId, 0, debit,
+                    refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
+                    "Opening Balance Equity - Ledger Code", userId, DateTime.Now.Date, "");
+
+                await AddTransactionAsync(conn, date, accountId, debit, 0,
+                    refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
+                    "Account Payable - Ledger Code", userId, DateTime.Now.Date, "");
             }
         }
-        private async Task AddTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit, int refId, string description)
+
+
+        private async Task AddTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit,
+                               string transactionId, string humId, string type, string voucher_name, string description,
+                               int createdBy, DateTime createdDate, string VoucherNo)
         {
-            string query = @"
-        INSERT INTO tbl_transaction
-        (t_date, account_id, debit, credit, transaction_id, t_type, description)
-        VALUES (@date, @accountId, @debit, @credit, @refId, 'GENERAL LEDGER OPENING BALANCE', @desc)";
+            try
+            {
+                string query = @"
+INSERT INTO tbl_transaction 
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
+VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no);";
 
-            using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@date", date);
-            cmd.Parameters.AddWithValue("@accountId", accountId);
-            cmd.Parameters.AddWithValue("@debit", debit);
-            cmd.Parameters.AddWithValue("@credit", credit);
-            cmd.Parameters.AddWithValue("@refId", refId);
-            cmd.Parameters.AddWithValue("@desc", description);
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@accountId", accountId);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@transactionId", transactionId);
+                cmd.Parameters.AddWithValue("@hum_id", humId);
+                cmd.Parameters.AddWithValue("@tType", type);
+                cmd.Parameters.AddWithValue("@type", voucher_name);
+                cmd.Parameters.AddWithValue("@description", description);
+                cmd.Parameters.AddWithValue("@createdBy", createdBy);
+                cmd.Parameters.AddWithValue("@createdDate", createdDate);
+                cmd.Parameters.AddWithValue("@voucher_no", VoucherNo);
 
-            await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while inserting transaction: " + ex.Message, ex);
+            }
         }
-
 
         [HttpGet]
         public async Task<IActionResult> GetCOA()
@@ -579,202 +606,6 @@ namespace YamyProject.Controllers
                 return Json(new { status = false, message = ex.Message });
             }
         }
-
-        //[HttpPost]
-        //public async Task<IActionResult> UpdateLevel4Account([FromBody] CoaLevel4Request model)
-        //{
-        //    if (model == null)
-        //        return BadRequest(new { status = false, message = "Invalid request" });
-
-        //    if (string.IsNullOrWhiteSpace(model.Name))
-        //        return BadRequest(new { status = false, message = "Please enter Level 4 account name first" });
-
-        //    try
-        //    {
-        //        // 🔹 Build dynamic connection string based on session or default database
-        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-        //        {
-        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-        //        };
-
-        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-        //        await conn.OpenAsync();
-
-        //        // 1️⃣ Check for duplicate name
-        //        var checkQuery = "SELECT id FROM tbl_coa_level_4 WHERE name = @name";
-        //        using (var checkCmd = new MySqlCommand(checkQuery, conn))
-        //        {
-        //            checkCmd.Parameters.AddWithValue("@name", model.Name);
-        //            var existingId = await checkCmd.ExecuteScalarAsync();
-
-        //            if (existingId != null && Convert.ToInt32(existingId) != model.Id)
-        //                return BadRequest(new { status = false, message = "Name already exists. Enter another name." });
-        //        }
-
-        //        // 2️⃣ Update the Level 4 Account
-        //        var updateQuery = @"
-        //    UPDATE tbl_coa_level_4 
-        //    SET name = @name, debit = @debit, credit = @credit, date = @date 
-        //    WHERE id = @id";
-
-        //        using (var updateCmd = new MySqlCommand(updateQuery, conn))
-        //        {
-        //            updateCmd.Parameters.AddWithValue("@id", model.Id);
-        //            updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-        //            updateCmd.Parameters.AddWithValue("@debit", model.Debit);
-        //            updateCmd.Parameters.AddWithValue("@credit", model.Credit);
-        //            updateCmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
-
-        //            await updateCmd.ExecuteNonQueryAsync();
-        //        }
-
-        //        // 3️⃣ Handle Opening Balance Transaction Logic
-        //        if (model.Debit != 0 || model.Credit != 0)
-        //        {
-        //            await InsertTransactionsAsync(conn, model);
-        //        }
-
-        //        return Ok(new { status = true, message = "Level 4 account updated successfully" });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, new { status = false, message = ex.Message });
-        //    }
-        //}
-
-
-        //private async Task InsertTransactionsAsync(MySqlConnection conn, CoaLevel4Request model)
-        //{
-        //    try
-        //    {
-        //        string openingBalanceEquity = (model.OpeningBalanceEquityId ?? 0).ToString();
-
-        //        // 🔹 If not supplied, try to get Opening Balance Equity ID
-        //        if (int.Parse(openingBalanceEquity) == 0)
-        //        {
-        //            var result = await new MySqlCommand(
-        //                "SELECT id FROM tbl_coa_level_4 WHERE name = 'Opening Balance Equity'", conn
-        //            ).ExecuteScalarAsync();
-
-        //            if (result != null)
-        //                openingBalanceEquity = result.ToString();
-        //            else
-        //                throw new Exception("Cannot make opening balance without Opening Balance Equity account.");
-        //        }
-
-        //        // 🔹 Delete old transactions for this account
-        //        var deleteQuery = "DELETE FROM tbl_transaction WHERE transaction_id = @refId AND t_type = 'GENERAL LEDGER OPENING BALANCE'";
-        //        using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
-        //        {
-        //            deleteCmd.Parameters.AddWithValue("@refId", model.Id);
-        //            await deleteCmd.ExecuteNonQueryAsync();
-        //        }
-
-        //        // 🔹 Credit side entries
-        //        if (model.Credit > 0)
-        //        {
-        //            await AddTransactionAsync(conn, model.Date ?? DateTime.Now, openingBalanceEquity, model.Credit, 0, model.Id, "Opening Balance Equity - Ledger");
-        //            await AddTransactionAsync(conn, model.Date ?? DateTime.Now, model.Id.ToString(), 0, model.Credit, model.Id, "Account Payable - Ledger Code");
-        //        }
-
-        //        // 🔹 Debit side entries
-        //        if (model.Debit > 0)
-        //        {
-        //            await AddTransactionAsync(conn, model.Date ?? DateTime.Now, openingBalanceEquity, 0, model.Debit, model.Id, "Opening Balance Equity - Ledger Code");
-        //            await AddTransactionAsync(conn, model.Date ?? DateTime.Now, model.Id.ToString(), model.Debit, 0, model.Id, "Account Payable - Ledger Code");
-        //        }
-        //    }
-        //    catch(Exception ex)
-        //    {
-
-        //        throw ex;
-        //    }
-           
-        //}
-
-        //private async Task AddTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit, int refId, string description)
-        //{
-        //    try
-        //    {
-        //        string query = @"
-        //INSERT INTO tbl_transaction 
-        //(t_date, account_id, debit, credit, transaction_id, t_type, description)
-        //VALUES (@date, @accountId, @debit, @credit, @refId, 'GENERAL LEDGER OPENING BALANCE', @desc)";
-
-        //        using var cmd = new MySqlCommand(query, conn);
-        //        cmd.Parameters.AddWithValue("@date", date);
-        //        cmd.Parameters.AddWithValue("@accountId", accountId);
-        //        cmd.Parameters.AddWithValue("@debit", debit);
-        //        cmd.Parameters.AddWithValue("@credit", credit);
-        //        cmd.Parameters.AddWithValue("@refId", refId);
-        //        cmd.Parameters.AddWithValue("@desc", description);
-
-        //        await cmd.ExecuteNonQueryAsync();
-        //    }
-        //    catch(Exception ex)
-        //    {
-        //        throw ex;
-        //    }
-        //}
-
-
-
-        [HttpPut]
-        public async Task<IActionResult> EditCoaLevel4([FromBody] CoaLevel4Request model)
-        {
-            if (model == null || model.Id <= 0)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { status = false, message = "Account name is required" });
-
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // ✅ Optional: check duplicate (exclude current id)
-                var checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_4 WHERE name = @name AND id != @id";
-                using (var checkCmd = new MySqlCommand(checkQuery, conn))
-                {
-                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    checkCmd.Parameters.AddWithValue("@id", model.Id);
-
-                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
-                    if (exists)
-                        return BadRequest(new { status = false, message = "Account with same name already exists." });
-                }
-
-                // ✅ Update query
-                var updateQuery = @"UPDATE tbl_coa_level_4 
-                            SET name = @name, debit = @debit, credit = @credit, date = @date 
-                            WHERE id = @id";
-
-                using var updateCmd = new MySqlCommand(updateQuery, conn);
-                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                updateCmd.Parameters.AddWithValue("@debit", model.Debit);
-                updateCmd.Parameters.AddWithValue("@credit", model.Credit);
-                updateCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
-                updateCmd.Parameters.AddWithValue("@id", model.Id);
-
-                var rows = await updateCmd.ExecuteNonQueryAsync();
-
-                if (rows == 0)
-                    return NotFound(new { status = false, message = "Account not found" });
-
-                return Ok(new { status = true, message = "COA Level 4 updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
 
         [HttpGet]
         public async Task<IActionResult> GetLevel3AccountsByLevel2(int id)
@@ -831,6 +662,133 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        [HttpPut]
+        public async Task<IActionResult> EditCoaLevel4([FromBody] CoaLevel4Request model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid account request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Account name is required" });
+
+            if (model.Date.HasValue && model.Date.Value.Date < DateTime.Today)
+                return BadRequest(new { status = false, message = "Date cannot be earlier than today" });
+
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if account exists
+                string checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_4 WHERE id = @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                    if (!exists)
+                        return NotFound(new { status = false, message = "Account not found" });
+                }
+
+                // Update the account with the values provided in model
+                string updateQuery = @"
+            UPDATE tbl_coa_level_4
+            SET name = @name,
+                debit = @debit,
+                credit = @credit,
+                date = @date
+            WHERE id = @id";
+
+                using var updateCmd = new MySqlCommand(updateQuery, conn);
+                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                updateCmd.Parameters.AddWithValue("@debit", model.Debit ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@credit", model.Credit ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                int rowsAffected = await updateCmd.ExecuteNonQueryAsync();
+                if (rowsAffected == 0)
+                    return NotFound(new { status = false, message = "No changes applied or account not found" });
+
+                // Return the **updated values from the model**, not old DB values
+                var result = new
+                {
+                    Id = model.Id,
+                    Name = model.Name,
+                    Debit = model.Debit ?? 0,
+                    Credit = model.Credit ?? 0,
+                    Date = model.Date
+                };
+
+                return Ok(new { status = true, data = result, message = "Account updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteCoaLevel4(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid account id" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if account is used in transactions (excluding 'General Ledger Opening Balance')
+                string checkQuery = @"SELECT COUNT(1) 
+                              FROM tbl_transaction 
+                              WHERE type != 'General Ledger Opening Balance' 
+                                AND account_id = @id";
+
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var countObj = await checkCmd.ExecuteScalarAsync();
+                    int recordCount = 0;
+                    if (countObj != null && countObj != DBNull.Value)
+                        recordCount = Convert.ToInt32(countObj);
+
+                    if (recordCount > 0)
+                        return BadRequest(new { status = false, message = "Account is already used in transactions" });
+                }
+
+                // Delete account and any 'General Ledger Opening Balance' transaction
+                string deleteQuery = @"
+            DELETE FROM tbl_coa_level_4 WHERE id = @id;
+            DELETE FROM tbl_transaction WHERE type = 'General Ledger Opening Balance' AND transaction_id = @id;
+        ";
+
+                using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+                deleteCmd.Parameters.AddWithValue("@id", id);
+                await deleteCmd.ExecuteNonQueryAsync();
+
+                // Optional: trigger an event if needed
+                // EventHub.Refreshlvl4Account(); // you may need to adapt this for API/web
+
+                return Ok(new { status = true, message = "Account deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

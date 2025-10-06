@@ -36,8 +36,6 @@
     </div>
 </div>
 
-
-
 <div class="modal fade" id="editAccountModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -68,8 +66,6 @@
                     <label class="form-label">Due Date</label>
                     <input type="date" id="editDate" class="form-control" />
                 </div>
-
-
             </div>
 
             <div class="modal-footer">
@@ -79,6 +75,7 @@
         </div>
     </div>
 </div>
+
 
 
 <!-- COA - New Account Modal -->
@@ -506,7 +503,8 @@
         }
     </style>
     <script>
-        $(function () {
+               $(function () {
+            // --- Account icons mapping ---
             const accountIcons = {
                 '1': '💰',
                 '2': '📋',
@@ -516,76 +514,34 @@
                 '6': '📊'
             };
 
-        // --- DATE FUNCTION RESTORED ---
-             // --- DATE FUNCTION FIX ---
-        function formatDateForInput(d) {
-            if (!d) return '';
-
-            if (typeof d === 'string') {
-                const match = d.match(/^(\d{4}-\d{2}-\d{2})/);
-                if (match) {
-                    return match[1]; 
-                }
+            // --- Get icon for account code ---
+            function getAccountIcon(code) {
+                const firstChar = (code || '').charAt(0);
+                if (accountIcons[firstChar]) return accountIcons[firstChar];
+                if (!isNaN(firstChar)) return '📂'; // number beyond 6
+                return '📁'; // default folder
             }
 
-            const dt = new Date(d);
-
-            if (isNaN(dt) || dt.toString() === 'Invalid Date') return '';
-
-            return dt.toISOString().split('T')[0];
-        }
-
-            // Function to reload the tree (used after edit/delete)
-            function loadChartOfAccounts() {
-                $("#coaTree").html('<div class="loading"><div class="spinner"></div>Loading accounts...</div>');
-                $.getJSON("/Lists/GetCOA")
-                    .done(function (data) {
-                        if (data && data.status === false) {
-                            $("#coaTree").html(renderEmpty("Unable to Load Accounts", data.message));
-                            return;
-                        }
-
-                        let nodes = data;
-                        if (data && data.data && Array.isArray(data.data)) nodes = data.data;
-                        if (!Array.isArray(nodes)) {
-                            console.error("Expected array but got:", typeof nodes);
-                            $("#coaTree").html(renderEmpty("Data Format Error", "Unexpected data format received from server."));
-                            return;
-                        }
-
-                        buildTree(nodes, $("#coaTree"));
-                        setupSearch();
-                    })
-                    .fail(function (xhr, status, error) {
-                        console.error("API Error:", error);
-                        $("#coaTree").html(renderEmpty("Connection Error", "Unable to load Chart of Accounts. Please try again."));
-                    });
-            }
-
-            // Initial Load
-            loadChartOfAccounts();
-
-
+            // --- Render empty state ---
             function renderEmpty(title, message) {
                 return `
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <h3>${title}</h3>
-                        <p>${message || ''}</p>
-                    </div>
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h3>${title}</h3>
+                    <p>${message || ''}</p>
+                </div>
                 `;
             }
 
+            // --- Build tree recursively ---
             function buildTree(nodes, container) {
                 container.empty();
                 const ul = $("<ul></ul>");
-                nodes.forEach(node => {
-                    ul.append(createNodeLi(node, 0));
-                });
+                nodes.forEach(node => ul.append(createNodeLi(node, 0)));
                 container.append(ul);
                 ul.show();
             }
@@ -594,26 +550,25 @@
                 const li = $("<li>").addClass(`level-${level}`);
                 const nodeDiv = $("<div>").addClass(`tree-node level-${level}`);
 
-                // Normalize values
+                // --- Normalize values ---
                 const id = node.id ?? '';
                 const code = node.code ?? '';
                 const name = node.name ?? '';
                 const debit = (node.debit === 0 || node.debit) ? node.debit : '';
                 const credit = (node.credit === 0 || node.credit) ? node.credit : '';
-                // --- DATE FIELD CAPTURE RESTORED ---
                 const date = formatDateForInput(node.date ?? node.due ?? '');
-                // --- END DATE FIELD CAPTURE ---
 
+                // --- Attach data attributes ---
+                nodeDiv.attr({
+                    'data-id': id,
+                    'data-code': code,
+                    'data-name': name,
+                    'data-debit': debit,
+                    'data-credit': credit,
+                    'data-date': date
+                });
 
-                // Attach data attributes (keep both keys to be robust)
-                nodeDiv.attr('data-id', id)
-                    .attr('data-code', code)
-                    .attr('data-name', name)
-                    .attr('data-debit', debit)
-                    .attr('data-credit', credit)
-                    .attr('data-date', date);
-
-                // Toggle or dot
+                // --- Toggle / dot ---
                 if (node.children && Array.isArray(node.children) && node.children.length) {
                     const toggle = $("<div class='toggle'>▶</div>");
                     toggle.on("click", function (e) {
@@ -632,52 +587,49 @@
                     nodeDiv.append("<div class='dot-indicator'>•</div>");
                 }
 
-                // Icon & info
-                const icon = (accountIcons[(code || '').charAt(0)] || '📁');
+                // --- Icon & info ---
+                const icon = getAccountIcon(code);
                 nodeDiv.append($(`<div class='account-icon'>${icon}</div>`));
 
                 const infoDiv = $("<div class='account-info'></div>");
                 infoDiv.append(`<div class='account-code'>${code}</div>`);
                 infoDiv.append(`<div class='account-name'>${name}</div>`);
-
                 nodeDiv.append(infoDiv);
 
-                  if (level === 3) {
-        const actionContainer = $("<div class='action-container'></div>");
-        const editBtn = $(`<button class="btn btn-sm btn-outline-primary ms-2" title="Edit"><i class="fas fa-pen"></i></button>`);
+                // --- Actions for level 4 ---
+                if (level === 3) {
+                    const actionContainer = $("<div class='action-container'></div>");
+                    const editBtn = $(`<button class="btn btn-sm btn-outline-primary ms-2" title="Edit"><i class="fas fa-pen"></i></button>`);
 
-        editBtn.on("click", e => {
-            e.stopPropagation();
-            // 1. Get the closest tree-node element
-            const $node = $(e.currentTarget).closest('.tree-node');
-
-            // 2. Retrieve the data attributes that were set earlier
-            const nodeId = $node.attr('data-id');
-            const nodeName = $node.attr('data-name');
-            const nodeDebit = $node.attr('data-debit');
-            const nodeCredit = $node.attr('data-credit');
-            const nodeDate = $node.attr('data-date'); // <<< THIS IS THE KEY VALUE
-
-            // 3. Pass all values to the modal function
-            openEditModal(nodeId, nodeName, nodeDebit, nodeCredit, nodeDate);
-        });
-                    // --- END openEditModal CALL UPDATED ---
-
-                    const deleteBtn = $(`<button class="btn btn-sm btn-outline-danger ms-2 delete-btn" title="Delete Account"><i class="fas fa-trash-alt"></i></button>`);
-                    deleteBtn.on('click', function (e) {
+                    editBtn.on("click", e => {
                         e.stopPropagation();
-                        const $node = $(this).closest('.tree-node');
-                        const nid = $node.attr('data-id') || $node.data('id');
-                        const ncode = $node.attr('data-code') || $node.data('code') || '';
-                        const nname = $node.attr('data-name') || $node.data('name') || '';
-                        // handleDeleteAccount(nid, ncode, nname); // Re-introduce or confirm if this function is defined elsewhere
+                        const $node = $(e.currentTarget).closest('.tree-node');
+                        openEditModal(
+                            $node.attr('data-id'),
+                            $node.attr('data-name'),
+                            $node.attr('data-debit'),
+                            $node.attr('data-credit'),
+                            $node.attr('data-date')
+                        );
                     });
 
-                    actionContainer.append(editBtn).append(deleteBtn);
+                          const deleteBtn = $(`<button class="btn btn-sm btn-outline-danger ms-2" title="Delete"><i class="fas fa-trash-alt"></i></button>`);
+
+        deleteBtn.on("click", e => {
+            e.stopPropagation();
+            const $node = $(e.currentTarget).closest('.tree-node');
+            const nid = $node.attr('data-id');
+            const nname = $node.attr('data-name');
+
+            // Call the ajax delete function
+            deleteLevel4Account(nid, nname);
+        });
+
+
+                    actionContainer.append(editBtn, deleteBtn);
                     nodeDiv.append(actionContainer);
                     nodeDiv.css('cursor', 'default');
                 } else {
-                    // For other levels, make node clickable to expand/collapse children
                     nodeDiv.on('click', function (e) {
                         e.stopPropagation();
                         const $toggle = $(this).find('> .toggle');
@@ -687,7 +639,7 @@
 
                 li.append(nodeDiv);
 
-                // Recursion for children
+                // --- Recursion for children ---
                 if (node.children && Array.isArray(node.children) && node.children.length) {
                     const childUl = $("<ul></ul>").hide();
                     node.children.forEach(child => childUl.append(createNodeLi(child, level + 1)));
@@ -697,7 +649,7 @@
                 return li;
             }
 
-
+            // --- Search setup ---
             function setupSearch() {
                 $('#searchInput').on('input', function () {
                     const searchTerm = $(this).val().toLowerCase().trim();
@@ -713,7 +665,6 @@
                         const $li = $(this);
                         const code = $li.find('.account-code').first().text().toLowerCase();
                         const name = $li.find('.account-name').first().text().toLowerCase();
-
                         if (code.includes(searchTerm) || name.includes(searchTerm)) {
                             $li.show();
                             $li.parents('li').show();
@@ -726,55 +677,109 @@
                 });
             }
 
-
-                    // ---------------- Edit Modal ----------------
-            // --- openEditModal FUNCTION UPDATED WITH DATE ---
-            function openEditModal(id, name, debit = 0, credit = 0, date = '') {
-                $("#editAccountId").val(id);
-                $("#editAccountName").val(name);
-                $("#editDebit").val(debit);
-                $("#editCredit").val(credit);
-                $("#editDate").val(formatDateForInput(date));
-                $("#editAccountModal").modal("show");
+            // --- Load tree ---
+            function loadChartOfAccounts() {
+                $("#coaTree").html('<div class="loading"><div class="spinner"></div>Loading accounts...</div>');
+                $.getJSON("/Lists/GetCOA")
+                    .done(function (data) {
+                        if (data && data.status === false) {
+                            $("#coaTree").html(renderEmpty("Unable to Load Accounts", data.message));
+                            return;
+                        }
+                        let nodes = (data && data.data && Array.isArray(data.data)) ? data.data : data;
+                        if (!Array.isArray(nodes)) {
+                            $("#coaTree").html(renderEmpty("Data Format Error", "Unexpected data format received from server."));
+                            return;
+                        }
+                        buildTree(nodes, $("#coaTree"));
+                        setupSearch();
+                    })
+                    .fail(function (xhr, status, error) {
+                        $("#coaTree").html(renderEmpty("Connection Error", "Unable to load Chart of Accounts. Please try again."));
+                    });
             }
-            // --- END openEditModal FUNCTION UPDATED ---
 
 
-                      $("#saveEditAccount").on("click", function () {
-                const payload = {
-            Id: parseInt($("#editAccountId").val()) || 0,
-            Name: $("#editAccountName").val(),
-            Debit: parseFloat($("#editDebit").val()) || 0,
-            Credit: parseFloat($("#editCredit").val()) || 0,
-            // --- DATE PROPERTY RESTORED IN PAYLOAD ---
-              Date: $("#editDate").val() || null
-            // --- END DATE PROPERTY RESTORED ---
-        };
+        function openEditModal(id, name, debit = 0, credit = 0, date = null) {
+            $("#editAccountId").val(id);
+            $("#editAccountName").val(name);
+            $("#editDebit").val(debit);
+            $("#editCredit").val(credit);
+            $("#editDate").val(formatDateForInput(date)); 
+            $("#editAccountModal").modal("show");
+        }
 
+
+        $("#saveEditAccount").on("click", function () {
+            const payload = {
+                Id: parseInt($("#editAccountId").val()) || 0,
+                Name: $("#editAccountName").val(),
+                Debit: parseFloat($("#editDebit").val()) || 0,
+                Credit: parseFloat($("#editCredit").val()) || 0,
+                Date: $("#editDate").val() || null
+            };
 
             $.ajax({
                 url: "/Lists/EditCoaLevel4",
                 type: "PUT",
-               contentType: "application/json; charset=utf-8",
+                contentType: "application/json; charset=utf-8",
                 data: JSON.stringify(payload),
                 success: function (res) {
                     if (res.status) {
                         toastr.success(res.message || "Account updated successfully");
                         $("#editAccountModal").modal("hide");
-                        loadChartOfAccounts(); // Reload tree
+                        loadChartOfAccounts(); // reload tree after edit
                     } else {
                         toastr.warning(res.message || "Failed to update");
                     }
                 },
                 error: function (xhr) {
                     toastr.error("Error updating account");
-                    console.error(xhr.responseText);
                 }
             });
         });
 
+            function formatDateForInput(d) {
+            if (!d) return '';
+            const dt = new Date(d);
+            if (isNaN(dt.getTime())) return '';
+            const month = (dt.getMonth() + 1).toString().padStart(2, '0');
+            const day = dt.getDate().toString().padStart(2, '0');
+            return `${dt.getFullYear()}-${month}-${day}`;
+        }
 
-            // expose for debug if needed
+
+                function deleteLevel4Account(id, name) {
+            if (!id) {
+                toastr.error("Invalid account selected.");
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
+            $.ajax({
+                url: `/Lists/DeleteCoaLevel4?id=${id}`,  // <-- use query param
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Account deleted successfully");
+                        loadChartOfAccounts(); // reload tree after deletion
+                    } else {
+                        toastr.error(res.message || "Failed to delete account");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Error deleting account");
+                }
+            });
+        }
+
+
+
+            // --- Initial load ---
+            loadChartOfAccounts();
+
+            // Expose edit modal for debugging
             window.openEditModal = openEditModal;
         });
 
@@ -867,7 +872,7 @@
                 loadLevel3(level2Id);
             });
 
-                // 🔹 Submit form
+               // 🔹 Submit form
         $('#coaForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -880,13 +885,18 @@
             const idVal = $('#level4Id').val();
             const isEdit = idVal && parseInt(idVal) > 0;
 
+            // ✅ Safe defaults
+            const debitVal = parseFloat($('#txtDebit').val()) || 0;
+            const creditVal = parseFloat($('#txtCredit').val()) || 0;
+            const dateVal = $('#txtDate').val() || null;
+
             const payload = {
                 Id: isEdit ? parseInt(idVal) : 0,
                 Name: $('#txtLevel4').val().trim(),
                 Level3Id: parseInt($('#ddlLevel3').val()),
-                Debit: parseFloat($('#txtDebit').val() || 0),
-                Credit: parseFloat($('#txtCredit').val() || 0),
-                Date: $('#txtDate').val()
+                Debit: debitVal,
+                Credit: creditVal,
+                Date: dateVal
             };
 
             $.ajax({
@@ -902,7 +912,7 @@
                         $('#level4Id').val(0);
                         $('#coaModalLabel').text('COA - New Account');
                         form.classList.remove('was-validated');
-                        loadLevel4Accounts(); // optional: reload table/list
+                        loadLevel4Accounts();
                     } else {
                         toastr.error(res.message);
                     }
@@ -912,6 +922,7 @@
                 }
             });
         });
+
 
 
         });
