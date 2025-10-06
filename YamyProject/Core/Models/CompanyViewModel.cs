@@ -281,6 +281,30 @@ namespace YamyProject.Core.Models
         public int LeavesStartFrom { get; set; }
         public int LeavesEndIn { get; set; }
     }
+    public class PettyCashVoucherRequest
+    {
+        public int Id { get; set; }
+        public DateTime VoucherDate { get; set; }
+        public int CashAccountId { get; set; }
+        public int EmployeeId { get; set; }
+        public string? Notes { get; set; }
+        public decimal Total { get; set; }
+        public List<PettyCashDetailRequest>? Details { get; set; }
+    }
+
+    public class PettyCashDetailRequest
+    {
+        public DateTime EntryDate { get; set; }
+        public string? RefId { get; set; }
+        public string? HumId { get; set; }
+        public string? HumName { get; set; }
+        public string? Description { get; set; }
+        public decimal? Amount { get; set; }
+        public string? Category { get; set; }
+        public string? CostCenterId { get; set; }
+        public string? Note { get; set; }
+    }
+
 
 
     public class ChequeActionRequest

@@ -1,0 +1,370 @@
+﻿
+@{
+    ViewData["Title"] = "PettyCashVoucher";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Petty Cash</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-4 gap-2">
+
+            <!-- Left - Filter -->
+            <div style="min-width: 150px;">
+                <select class="form-select form-select-sm" id="bankSelect">
+                    <option>Register Bank</option>
+                    <option>UnRegister Bank</option>
+                </select>
+            </div>
+
+            <div class="input-group input-group-sm" style="width: 44%;">
+                <span class="input-group-text">
+                    <i class="fas fa-angle-double-left"></i>
+                </span>
+                <!-- Dropdown for petty cash selection -->
+                <select class="form-select form-select-sm mt-1" id="pettyCashDropdown" style="width: 44%;">
+                    <option value="">Select Petty Cash</option>
+                </select>
+                <span class="input-group-text">
+                    <i class="fas fa-angle-double-right"></i>
+                </span>
+            </div>
+
+            <!-- Right - Buttons -->
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPettyCashModal">
+                    <i class="bi bi-plus-circle me-1"></i>Add Petty Cash
+                </button>
+                <button type="button" class="btn btn-success btn-sm recycleCardBtn" data-bs-toggle="modal" data-bs-target="#recycleBankCardModal">
+                    <i class="fas fa-recycle me-1"></i>Recycle
+                </button>
+            </div>
+
+        </div>
+
+
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>REF</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Project</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Petty Cash Modal -->
+<div class="modal fade" id="addPettyCashModal" tabindex="-1" aria-labelledby="addPettyCashModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="addPettyCashModalLabel">Add Petty Cash</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <!-- Top Fields -->
+                <div class="row mb-3 g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">PettyCash Code</label>
+                        <input type="text" class="form-control" id="pettyCashCode" disabled>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">PettyCash Name</label>
+                        <select class="form-select" id="pettyCashNameDropdown">
+                            <option value="">Select Petty Cash</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" id="pettyCashDate" value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">No</label>
+                        <input type="text" class="form-control" id="pettyCashNo" readonly>
+                    </div>
+                </div>
+
+                <!-- Table / Grid -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 70px;">No</th>
+                                <th style="width: 120px;">Date</th>
+                                <th style="width: 100px;">REF</th>
+                                <th style="width: 150px;">Category</th>
+                                <th style="width: 100px;">Type</th>
+                                <th style="width: 150px;">Project</th>
+                                <th>Description</th>
+                                <th style="width: 120px;">Amount</th>
+                                <th style="width: 150px;">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pettyCashTableBody">
+                            <tr>
+                                <td>1</td>
+                                <td><input type="date" class="form-control form-control-sm"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td>
+                                    <select class="form-select form-select-sm" id="pettyCashCategory">
+                                        <option value="">Select</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td>
+                                    <select class="form-select form-select-sm">
+                                        <option value="">Select</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="savePettyCashBtn">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script>
+        let pettyCashCategories = [];
+
+        // Load petty cash cards
+        function loadPettyCashCards() {
+            $.ajax({
+                url: '/Lists/GetPettyCashCards',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status && res.data?.length > 0) {
+                        const $dropdown1 = $('#pettyCashNameDropdown');
+                        const $dropdown2 = $('#pettyCashDropdown');
+
+                        $dropdown1.empty().append('<option value="">Select Petty Cash</option>');
+                        $dropdown2.empty().append('<option value="">Select Petty Cash</option>');
+
+                        res.data.forEach(pc => {
+                            const optionText = `${pc.code} - ${pc.employeeName}`;
+                            $dropdown1.append(`<option value="${pc.id}" data-code="${pc.code}">${optionText}</option>`);
+                            $dropdown2.append(`<option value="${pc.id}" data-code="${pc.code}">${optionText}</option>`);
+                        });
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Failed to load petty cash cards");
+                }
+            });
+        }
+
+        // Load petty cash categories
+        function loadPettyCashCategories() {
+            $.ajax({
+                url: '/Lists/GetPettyCashCategories',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status && res.data?.length > 0) {
+                        pettyCashCategories = res.data;
+                        // Fill the first dropdown
+                        fillCategoryDropdown($('#pettyCashTableBody tr:first select.pettyCashCategorySelect'));
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Failed to load petty cash categories");
+                }
+            });
+        }
+
+        // Fill any category dropdown
+        function fillCategoryDropdown($dropdown) {
+            $dropdown.empty().append('<option value="">Select Category</option>');
+            pettyCashCategories.forEach(cat => {
+                $dropdown.append(`<option value="${cat.id}">${cat.name}</option>`);
+            });
+        }
+
+        // Add new row
+        function addNewRow() {
+            const rowCount = $('#pettyCashTableBody tr').length + 1;
+            const newRow = `
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input type="date" class="form-control form-control-sm"></td>
+                    <td><input type="text" class="form-control form-control-sm"></td>
+                    <td>
+                        <select class="form-select form-select-sm pettyCashCategorySelect">
+                            <option value="">Select Category</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm"></td>
+                    <td><select class="form-select form-select-sm"><option value="">Select</option></select></td>
+                    <td><input type="text" class="form-control form-control-sm"></td>
+                    <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
+                    <td><input type="text" class="form-control form-control-sm"></td>
+                </tr>`;
+            $('#pettyCashTableBody').append(newRow);
+            fillCategoryDropdown($('#pettyCashTableBody tr:last select.pettyCashCategorySelect'));
+        }
+
+        // Auto add next row when selecting category in the LAST row
+        $(document).on('change', '#pettyCashTableBody .pettyCashCategorySelect', function () {
+            const $row = $(this).closest('tr');
+            const isLastRow = $row.is(':last-child');
+            if ($(this).val() && isLastRow) {
+                addNewRow();
+            }
+        });
+
+        // Auto-fill petty cash code on dropdown change
+        $(document).on('change', '#pettyCashNameDropdown', function () {
+            const selectedCode = $(this).find(':selected').data('code') || '';
+            $('#pettyCashCode').val(selectedCode);
+        });
+
+        // Helper: calculate total from table
+        function calculateTotalAmount() {
+            let total = 0;
+            $('#pettyCashTableBody tr').each(function () {
+                const val = parseFloat($(this).find('td:eq(7) input').val());
+                if (!isNaN(val)) total += val;
+            });
+            return total;
+        }
+
+        // Save button click
+        $(document).on('click', '#savePettyCashBtn', function () {
+            const pettyCashName = $('#pettyCashNameDropdown').val();
+            const pettyCashDate = $('#pettyCashDate').val();
+
+            if (!pettyCashName) {
+                toastr.warning('Please select Petty Cash Name');
+                return;
+            }
+
+            const totalAmount = calculateTotalAmount();
+            if (!totalAmount || totalAmount <= 0) {
+                toastr.warning('Please enter at least one valid amount');
+                return;
+            }
+
+            const details = [];
+            $('#pettyCashTableBody tr').each(function () {
+                const row = $(this);
+                const entryDate = row.find('td:eq(1) input').val();
+                const ref = row.find('td:eq(2) input').val();
+                const category = row.find('td:eq(3) select').val();
+                const type = row.find('td:eq(4) input').val();
+                const project = row.find('td:eq(5) select').val();
+                const description = row.find('td:eq(6) input').val();
+                const amount = parseFloat(row.find('td:eq(7) input').val()) || 0;
+                const note = row.find('td:eq(8) input').val();
+
+                if (amount > 0) {
+                    details.push({
+                        EntryDate: entryDate,
+                        RefId: ref,
+                        CategoryId: category,
+                        HumName: type,
+                        CostCenterId: project,
+                        Description: description,
+                        Amount: amount,
+                        Note: note
+                    });
+                }
+            });
+
+            const data = {
+                VoucherDate: pettyCashDate,
+                CashAccountId: parseInt(pettyCashName) || 0,
+                Total: totalAmount,
+                Details: details
+            };
+
+            $.ajax({
+                url: '/Lists/SavePettyCashVoucher',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Petty Cash Voucher saved successfully');
+                        $('#addPettyCashModal').modal('hide');
+                        $('#pettyCashTableBody').empty();
+                        addNewRow();
+                        loadPettyCashCards();
+                    } else {
+                        toastr.error(res.message || 'Save failed');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Error saving petty cash');
+                }
+            });
+        });
+
+        // When modal opens
+        $('#addPettyCashModal').on('shown.bs.modal', function () {
+            loadPettyCashCards();
+            loadPettyCashCategories(); // ✅ Correct function name
+            $('#pettyCashDate').val(new Date().toISOString().split('T')[0]);
+            $('#pettyCashCode').val('');
+            $('#pettyCashTableBody').empty();
+            addNewRow();
+        });
+
+        // On page ready
+        $(document).ready(function () {
+            loadPettyCashCards();
+            loadPettyCashCategories();
+        });
+    </script>
+}
