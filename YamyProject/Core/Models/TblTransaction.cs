@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblTransaction
 {
@@ -17,7 +14,10 @@ public partial class TblTransaction
 
     public decimal? Credit { get; set; }
 
+
     public int? TransactionId { get; set; }
+    [ForeignKey("TransactionId")]
+    public virtual TblSale? Sale { get; set; }
     [ForeignKey("TransactionId")]
     public virtual TblItemStockSettlement? lItemStockSettlement { get; set; }
 

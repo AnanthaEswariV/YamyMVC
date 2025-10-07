@@ -1,6 +1,4 @@
-﻿
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblCustomer
 {
     public int Id { get; set; }
@@ -11,10 +9,10 @@ public partial class TblCustomer
 
     public int? CatId { get; set; }
 
-    [ForeignKey("CatId")]
+     [ForeignKey(nameof(CatId))]
     public virtual TblCustomerCategory? CatIdNavigation { get; set; }
 
-    public decimal? Balance { get; set; }
+   public decimal? Balance { get; set; }
 
     public DateOnly? Date { get; set; }
 
@@ -31,22 +29,10 @@ public partial class TblCustomer
     public string? Website { get; set; }
 
     public string? Country { get; set; }
-
-
-    //[Column("Country")]
-    //public int? CountryId { get; set; }
-
-    //[ForeignKey(nameof(CountryId))]
-    //public virtual TblCountry? Countrys { get; set; }
-
+      
     public string? City { get; set; }
 
-    [Column("City")]
-    public int? CityId { get; set; }
-
-    //[ForeignKey(nameof(CityId))]
-    public virtual TblCity? Citys { get; set; }
-
+   
     public string? Region { get; set; }
 
     public string? BuildingName { get; set; }

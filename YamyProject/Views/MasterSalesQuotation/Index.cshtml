@@ -1,4 +1,4 @@
-﻿@model YamyProject.Controllers.Customer.MasterSalesQuotationController
+﻿@model SalesCenterViewModel
 
 @{
     ViewData["Title"] = "Sales Quotation Center";
@@ -9,11 +9,11 @@
 
     <!-- Filters -->
     <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
-        <div class="col-md-3">
+       <div class="col-md-3">
             <label class="form-label">Customer Name</label>
-            @* <select asp-for="CustomerId" class="form-select" asp-items="Model.CustomerList"></select> *@
+             <select  class="form-select" asp-items="Model.Customers"></select> 
             <div class="form-check mt-1">
-                @* <input type="checkbox" asp-for="AllCustomers" class="form-check-input" /> *@
+                @*  <input type="checkbox" asp-for="AllCustomers" class="form-check-input" /> *@
                 <label class="form-check-label">All</label>
             </div>
         </div>

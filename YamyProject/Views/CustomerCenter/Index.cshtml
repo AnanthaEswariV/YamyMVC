@@ -1,192 +1,168 @@
-﻿@* @model IEnumerable<TblCustomer> *@
+﻿@model CustomerCenterViewModel
 @{
     ViewData["Title"] = "Customer Center";
 }
 
-<div class="container-fluid mt-3">
+<div class="container-fluid mt-2">
     <!-- Top Menu -->
-    <div class="d-flex justify-content-between  bg-light p-1 border rounded">
-        <div class="dropdown">
+    <div class="d-flex align-items-center bg-light p-2 border rounded mb-2">
+        <div class="btn-group">
             <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
                 Customer Operations
             </button>
             <ul class="dropdown-menu">
-                 <li><a class="dropdown-item" >New Customer</a></li>
-                <li><a class="dropdown-item" >Edit Customer</a></li>
-                <li><a class="dropdown-item" >Delete Customer</a></li>
-           
-       </ul>
+                <li><a class="dropdown-item" asp-action="Create">New Customer</a></li>
+                @if (Model.SelectedCustomer != null)
+                {
+                    <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@Model.SelectedCustomer.Id">Edit Customer</a></li>
+                    <li><a class="dropdown-item" asp-action="Delete" asp-route-id="@Model.SelectedCustomer.Id">Delete Customer</a></li>
+                }
+            </ul>
         </div>
 
-        <div class="dropdown">
+        <div class="btn-group">
             <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
                 New Transactions
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" >Create Invoice</a></li> 
-                <li><a class="dropdown-item" >Receive Payment</a></li> 
+                <li><a class="dropdown-item" href="#">Create Invoice</a></li>
+                @if (Model.SelectedCustomer != null)
+                {
+                    <li><a class="dropdown-item" asp-action="Details" asp-route-id="@Model.SelectedCustomer.Id">Receive Payment</a></li>
+                }
             </ul>
         </div>
-
-        <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                Print
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Customer List</a></li>
-                <li class="dropdown-submenu">
-                    <a class="dropdown-item dropdown-toggle" href="#">Transaction List</a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Credit & Payment</a></li>
-                        <li><a class="dropdown-item" href="#">Cash</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-
-        
     </div>
 
-    <div class="row mt-3">
-        <!-- Left Panel: Customer List -->
-        <div class="col-md-6">
-            <div class="card">
-                    <select class="form-select form-select-solid js-select2">
-                        <option value="0">All</option>
-                        <option value="1">Active Customer</option>
-                        <option value="2">Inactive Customer</option>
-                    </select>
-                </div>
-                <span class="text-danger d-block"></span>
-            <div>
-                <input type="text" class="form-control form-control-sm" placeholder="Search by Name, Code" />
+    <div class="row">
+        <!-- Left Panel -->
+        <div class="col-md-3 border-end">
+            <form method="get" asp-action="Index" class="mb-2">
+                <select name="state" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="All" selected="@(Model.State == "All")">All Customers</option>
+                    <option value="Active" selected="@(Model.State == "Active")">Active Customer</option>
+                    <option value="Inactive" selected="@(Model.State == "Inactive")">Inactive Customer</option>
+
+                </select>
+            </form>
+
+            <form method="get" asp-action="Index" class="mb-2">
+                <input type="text" name="searchText" value="@Model.SearchText" class="form-control form-control-sm" placeholder="Search by Name, Code" />
+            </form>
+
+            <div class="list-group small">
+                @foreach (var customer in Model.Customers)
+                {
+                    var isActive = Model.SelectedCustomer?.Id == customer.Id ? "active" : "";
+                    <a asp-action="Index" asp-route-selectedId="@customer.Id" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @isActive">
+                        @customer.Code - @customer.Name
+                        <span class="badge @(customer.Balance > 0 ? "bg-success" : "bg-light text-dark") rounded-pill">@(customer.Balance.GetValueOrDefault().ToString("N2"))</span>
+                    </a>
+                }
             </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                    @*     @foreach (var customer in Model.Customers)
-                        {
-                            <li class="list-group-item">
-                                <a href="@Url.Action("Details", "Customer", new { id = customer.Id })">
-                                    @customer.Name (@customer.Code)
-                                </a>
-                            </li>
-                        } *@
-                    </ul>
-                </div>
-    </div>
+        </div>
 
-        <!-- Right Panel: Customer Info -->
+        <!-- Right Panel -->
         <div class="col-md-9">
-            <div class="card mb-3">
-                <div class="card-header">
-                    Customer Information
-                </div>
-                <div class="card-body">
-                    @* @foreach (var customer in Model) *@
-                 @*    {<div>
-                        <tr>
-                            <label>Customer Code  : @customer.Code</label>
-                            <td>Customer Name     : @customer.Name</td>
-                            <td>TRN               : @customer.Trn</td>
-                            <td>Email             : @customer.Email</td>
-                            <td>Work Phone        : @customer.WorkPhone</td>
-                            <td>Customer Category : @customer.CatIdNavigation.Name</td>
-                            <td>Main Phone        : @customer.MainPhone</td>
-                            <td>Address           : @customer.Balance</td>
-                          @*   <td>
-                                <a asp-action="Details" asp-route-id="@customer.Id" class="btn btn-sm btn-primary">Details</a>
-                                <a asp-action="Edit" asp-route-id="@customer.Id" class="btn btn-sm btn-warning">Edit</a>
-                                <form asp-action="Delete" asp-route-id="@customer.Id" method="post" style="display:inline;">
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
-                            </td> *@
-                        </tr>
-                        </div>
-                  @*   } *@
-                   @*  <p><strong>Customer Code:</strong> @Model.SelectedCustomer.Code</p>
-                    <p><strong>Name:</strong> @Model.SelectedCustomer.Name</p>
-                    <p><strong>TRN:</strong> @Model.SelectedCustomer.TRN</p>
-                    <p><strong>Email:</strong> @Model.SelectedCustomer.Email</p>
-                    <p><strong>Work Phone:</strong> @Model.SelectedCustomer.WorkPhone</p>
-                    <p><strong>Category:</strong> @Model.SelectedCustomer.Category</p>
-                    <p><strong>Address:</strong> @Model.SelectedCustomer.Address</p>
-                   <p><strong>Main Phone:</strong> @Model.SelectedCustomer.MainPhone</p>
-                      *@ 
-            </div>
-            <!-- Tabs -->
-            <ul class="nav nav-tabs" id="customerTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" data-bs-toggle="tab" href="#transactions">Transactions</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#cashInvoice">Cash Invoice</a>
-                </li>
-            </ul>
+            @if (Model.SelectedCustomer != null)
+            {
+                <div class="card mb-3">
+                    <div class="card-header bg-white fw-bold">
+                        Customer Information
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-3">Customer Code</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.Code</dd>
 
-            <div class="tab-content border p-3">
-                <!-- Transactions -->
-                <div class="tab-pane fade show active" id="transactions">
-                    <table class="table table-striped table-sm">
-                        <thead>
-                            <tr>
-                                <th>SN#</th>
-                                <th>Date</th>
-                                <th>Voucher No</th>
-                                <th>Voucher Type</th>
-                                <th>Description</th>
-                                <th>Debit</th>
-                                <th>Credit</th>
-                                <th>Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @*  @foreach (var txn in Model.Transactions)
-                            {
+                            <dt class="col-sm-3">Customer Name</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.Name</dd>
+
+                            <dt class="col-sm-3">TRN</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.Trn</dd>
+
+                            <dt class="col-sm-3">Email</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.Email</dd>
+
+                            <dt class="col-sm-3">Work Phone</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.WorkPhone</dd>
+
+                            <dt class="col-sm-3">Customer Category</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.City?</dd>
+
+                            <dt class="col-sm-3">Main Phone</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer.MainPhone</dd>
+
+                            <dt class="col-sm-3">Address</dt>
+                            <dd class="col-sm-9">@Model.SelectedCustomer?.City </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#transactions">Transactions</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content border border-top-0 p-2">
+                    <!-- Transactions -->
+                    <div class="tab-pane fade show active" id="transactions">
+                        <table class="table table-sm table-striped">
+                            <thead class="table-light">
                                 <tr>
-                                    <td>@txn.SerialNumber</td>
-                                    <td>@txn.Date.ToShortDateString()</td>
-                                    <td>@txn.VoucherNo</td>
-                                    <td>@txn.VoucherType</td>
-                                    <td>@txn.Description</td>
-                                    <td>@txn.Debit</td>
-                                    <td>@txn.Credit</td>
-                                    <td>@txn.Balance</td>
+                                    <th>SN#</th>
+                                    <th>Date</th>
+                                    <th>Voucher No</th>
+                                    <th>Voucher Type</th>
+                                    <th>Description</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Balance</th>
                                 </tr>
-                            } *@
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @if (Model.Transactions.Any())
+                                {
+                                    int sn = 1;
+                                    decimal runningBalance = 0;
+
+                                    foreach (var t in Model.Transactions)
+                                    {
+                                        var debit = t.Debit ?? 0;
+                                        var credit = t.Credit ?? 0;
+                                        runningBalance += (debit - credit);
+                                        var date = t.Date.HasValue ? t.Date.Value.ToString("yyyy-MM-dd") : "-";
+
+                                        <tr>
+                                            <td>@sn</td>
+                                            <td>@date</td>
+                                            <td>@t.TransactionId</td>
+                                            <td>@t.Type</td>
+                                            <td>@t.Description</td>
+                                            <td>@debit.ToString("N2")</td>
+                                            <td>@credit.ToString("N2")</td>
+                                            <td>@runningBalance.ToString("N2")</td>
+                                        </tr>
+
+                                        sn++;
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td colspan="8" class="text-center">No transactions found.</td></tr>
+                                }
+
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-
-                <!-- Cash Invoice -->
-                <div class="tab-pane fade" id="cashInvoice">
-                    <table class="table table-striped table-sm">
-                        <thead>
-                            <tr>
-                                <th>SN#</th>
-                                <th>Date</th>
-                                <th>Invoice No</th>
-                                <th>Description</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @*   @foreach (var invoice in Model.CashInvoices)
-                            {
-                                <tr>
-                                    <td>@invoice.SerialNumber</td>
-                                    <td>@invoice.Date.ToShortDateString()</td>
-                                    <td>@invoice.InvoiceNo</td>
-                                    <td>@invoice.Description</td>
-                                    <td>@invoice.Total</td>
-                                </tr> 
-                            }*@
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-
+            }
+            else
+            {
+                <div class="alert alert-info">Select a customer from the left panel to view details.</div>
+            }
         </div>
     </div>
 </div>

@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblSalesDetail
 {
     public int Id { get; set; }
 
     public int? SalesId { get; set; }
-
-    public TblSale Sales { get; set; }
+    [ForeignKey(nameof(SalesId))]
+    public virtual TblSale Sales { get; set; }
     public int? ItemId { get; set; }
 
     public decimal? Qty { get; set; }

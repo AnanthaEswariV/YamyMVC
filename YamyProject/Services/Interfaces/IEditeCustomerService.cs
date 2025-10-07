@@ -4,5 +4,6 @@
     {
         Task<CustomerViewModel> GetCustomerFormDataAsync(int? id);
         Task SaveCustomerAsync(TblCustomer customer);
+        Task<CustomerViewModel> GetCreateCustomerFormAsync();
     }
 }

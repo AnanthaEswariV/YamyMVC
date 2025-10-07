@@ -4771,6 +4771,11 @@ public partial class YamyDbContext : DbContext
             entity.Property(e => e.State).HasColumnName("state");
         });
 
+        modelBuilder.Entity<TblSale>()
+         .HasOne(s => s.TblTransaction)
+         .WithOne(t => t.Sale)
+         .HasForeignKey<TblTransaction>(t => t.TransactionId);
+
         OnModelCreatingPartial(modelBuilder);
     }
 

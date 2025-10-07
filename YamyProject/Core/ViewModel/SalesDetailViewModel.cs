@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
+﻿
 namespace YamyProject.Core.ViewModel
 {
      public class SalesDetailViewModel

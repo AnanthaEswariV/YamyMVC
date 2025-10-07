@@ -1,45 +1,58 @@
-﻿@model SaleDetailViewModel
+﻿@model  IEnumerable<YamyProject.Core.ViewModel.SalesCenterViewModel>
 
 @{
     ViewData["Title"] = "Sales Center";
+    Layout = "_Layout"; // or null if you don't use a layout
+    // Helper to choose customer select source: Model.Customers -> ViewBag.Customers -> empty
+    // var customerSelect = Model?.Customers ?? (ViewBag.Customers as IEnumerable<System.Web.Mvc.SelectListItem>);
 }
+
+ 
+@*   Index.cshtml - Sales Center
+  - Server-rendered invoice table
+  - Item-detail panel populated by JavaScript when user selects a row
+  - Buttons wired with unobtrusive JS (Edit navigates using route with selected id)
+ *@ 
 
 <div class="container-fluid bg-light p-3 rounded shadow-sm">
     <h3 class="text-center mb-3">Sales Center</h3>
 
     <!-- Filter Section -->
     <form method="get" asp-action="Index" class="row g-3 mb-3 align-items-end">
-
-        <!-- Customer Dropdown -->
         <div class="col-md-3">
             <label class="form-label">Customer Name</label>
-         @*    <select asp-for="CustomerId" asp-items="ViewBag.Customers" class="form-select">
-                <option value="">All</option>
-            </select> *@
+            @* @if (customerSelect != null && customerSelect.Any())
+            { 
+                <select asp-for="" asp-items="customerSelect" class="form-select">
+                    <option value="">All</option>
+                </select>
+           @*  }
+            else
+            {
+                <select name="CustomerId" class="form-select">
+                    <option value="">All</option>
+                </select>
+            } *@
         </div>
 
-        <!-- Date From -->
         <div class="col-md-2">
             <label class="form-label">From</label>
-            <input type="date" class="form-control" name="FromDate" value="@ViewBag.FromDate" />
+            <input type="date" class="form-control" name="FromDate"  />
         </div>
 
-        <!-- Date To -->
         <div class="col-md-2">
             <label class="form-label">To</label>
-            <input type="date" class="form-control" name="ToDate" value="@ViewBag.ToDate" />
+            <input type="date" class="form-control" name="ToDate"  />
         </div>
 
-        <!-- Selection Method -->
         <div class="col-md-2">
             <label class="form-label">Selection Method</label>
             <select class="form-select" name="SelectionMethod">
-                <option value="Default">Default</option>
+                <option value="Default" selected>Default</option>
                 <option value="ItemWise">Item Wise</option>
             </select>
         </div>
 
-        <!-- Payment Method -->
         <div class="col-md-2">
             <label class="form-label">Payment Method</label>
             <select class="form-select" name="PaymentMethod">
@@ -56,38 +69,38 @@
 
     <!-- Invoice Table -->
     <div class="table-responsive mb-3">
-        <table class="table table-bordered table-striped align-middle">
+        <table id="tblInvoices" class="table table-bordered table-striped align-middle">
             <thead class="table-dark">
                 <tr>
-                    <th>Sn</th>
-                    <th>Date</th>
-                    <th>INV NO</th>
-                    <th>JV No</th>
+                    <th style="width:50px">Sn</th>
+                    <th style="width:120px">Date</th>
+                    <th style="width:140px">INV NO</th>
+                    <th style="width:100px">JV No</th>
                     <th>Customer Name</th>
-                    <th>Payment Method</th>
-                    <th>Total</th>
-                    <th>VAT</th>
-                    <th>Net</th>
+                    <th style="width:140px">Payment Method</th>
+                    <th style="width:120px; text-align:right">Total</th>
+                    <th style="width:120px; text-align:right">VAT</th>
+                    <th style="width:120px; text-align:right">Net</th>
                 </tr>
             </thead>
             <tbody>
-              @*   @if (Model != null && Model.Any())
+                @if (Model != null )
                 {
-                    int i = 1;
-                    foreach (var item in Model)
+                    foreach (var s in Model)
                     {
-                        <tr>
-                            <td>@i</td>
-                            <td>@item.Date.ToShortDateString()</td>
-                            <td>@item.InvoiceNo</td>
-                            <td>@item.JvNo</td>
-                            <td>@item.CustomerName</td>
-                            <td>@item.PaymentMethod</td>
-                            <td>@item.Total.ToString("C")</td>
-                            <td>@item.Vat.ToString("C")</td>
-                            <td>@item.Net.ToString("C")</td>
+                        // safe JSON serialization of items for client-side details rendering
+                          <tr class="invoice-row" data-id="@s.Id"'>
+                            <td>@s.SN</td>
+                            <td>@(s.Date.ToString("yyyy-MM-dd"))</td>
+                            <td>@s.InvoiceId</td>
+                            <td>@s.JvNo</td>
+                            <td>@s.CustomerName</td>
+                            <td>@s.PaymentMethod</td>
+                            <td style="text-align:right">@String.Format("{0:N3}", s.Total)</td>
+                            <td style="text-align:right">@String.Format("{0:N3}", s.Vat)</td>
+                            <td style="text-align:right">@String.Format("{0:N3}", s.Net)</td>
                         </tr>
-                        i++;
+                     
                     }
                 }
                 else
@@ -96,20 +109,181 @@
                         <td colspan="9" class="text-center">No invoices found</td>
                     </tr>
                 }
-   *@
             </tbody>
         </table>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="d-flex justify-content-between">
-        <div>
-            <a asp-action="Create" class="btn btn-success">New Invoice</a>
-            <a asp-action="Edit" class="btn btn-warning">Edit Invoice</a>
+    <!-- Item details + action buttons -->
+    <div class="row">
+        <div class="col-md-9 items-panel p-2" style="background:#f2f2f8; border-top:2px solid #bfbfbf;">
+            <div class="small text-muted mb-1">Item Name</div>
+            <div class="table-responsive">
+                <table id="tblItems" class="table table-sm mb-0">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Item Name</th>
+                            <th style="width:110px; text-align:right">QTY</th>
+                            <th style="width:110px; text-align:right">Price</th>
+                            <th style="width:100px; text-align:right">Vat</th>
+                            <th style="width:120px; text-align:right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="no-items">
+                            <td colspan="5" class="text-muted">Select an invoice to view items.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div>
-            <button type="button" class="btn btn-danger">Delete</button>
-            <button type="button" class="btn btn-secondary">Recycle</button>
+
+        <div class="col-md-3 text-end py-2">
+            <div class="d-grid gap-2">
+                <a asp-action="Create" class="btn btn-success">New Invoice</a>
+                @* Edit requires selected id handled in JS 
+                <button id="btnEdit" type="button" class="btn btn-warning">Edit Invoice</button>
+                <button id="btnDelete" type="button" class="btn btn-danger">Delete</button>
+                <button id="btnRecycle" type="button" class="btn btn-secondary">Recycle</button>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Use event delegation and unobtrusive JS.
+            const invoiceRows = document.querySelectorAll('.invoice-row');
+            const itemsBody = document.querySelector('#tblItems tbody');
+            let selectedId = null;
+
+            function formatNumber(n) {
+                // show with 3 decimals, fallback for null/undefined
+                const v = (n === null || n === undefined) ? 0 : Number(n);
+                return v.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+            }
+
+            function clearSelected() {
+                document.querySelectorAll('.invoice-row').forEach(r => r.classList.remove('table-success'));
+            }
+
+            function renderItems(items) {
+                itemsBody.innerHTML = '';
+                if (!items || items.length === 0) {
+                    itemsBody.innerHTML = '<tr><td colspan="5" class="text-muted">No items for this invoice.</td></tr>';
+                    return;
+                }
+                items.forEach(it => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${escapeHtml(it.itemName ?? it.Name ?? '')}</td>
+                        <td style="text-align:right">${formatNumber(it.qty ?? it.Qty ?? 0)}</td>
+                        <td style="text-align:right">${formatNumber(it.price ?? it.Price ?? 0)}</td>
+                        <td style="text-align:right">${formatNumber(it.vat ?? it.Vat ?? 0)}</td>
+                        <td style="text-align:right">${formatNumber(it.total ?? it.Total ?? 0)}</td>
+                    `;
+                    itemsBody.appendChild(tr);
+                });
+            }
+
+            function escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            // Attach click handlers
+            invoiceRows.forEach(r => {
+                r.addEventListener('click', function () {
+                    clearSelected();
+                    r.classList.add('table-success');
+                    selectedId = r.dataset.id;
+                    // items data is stored in data-items attribute as JSON string
+                    let itemsJson = r.getAttribute('data-items') || '[]';
+                    try {
+                        const items = JSON.parse(itemsJson);
+                        renderItems(items);
+                    } catch (err) {
+                        console.error('Failed to parse items JSON', err);
+                        renderItems([]);
+                    }
+                });
+            });
+
+            // If there's at least one row, select the first by default (matches screenshot)
+            if (invoiceRows.length > 0) {
+                invoiceRows[0].click();
+            }
+
+            // Buttons
+            document.getElementById('btnEdit').addEventListener('click', function () {
+                if (!selectedId) {
+                    alert('Please select an invoice to edit.');
+                    return;
+                }
+                // navigate to Edit action; adjust route if needed
+                location.href = '@Url.Action("Edit", "Sales")/' + selectedId;
+            });
+
+            document.getElementById('btnDelete').addEventListener('click', function () {
+                if (!selectedId) {
+                    alert('Please select an invoice to delete.');
+                    return;
+                }
+                if (!confirm('Delete selected invoice?')) return;
+                // Submit a form or call API for deletion; here we post to Delete action via form (clean approach)
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '@Url.Action("Delete", "Sales")';
+                // anti-forgery token (if you use it) -- insert server-side token element
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'id';
+                idInput.value = selectedId;
+                form.appendChild(idInput);
+                document.body.appendChild(form);
+                form.submit();
+            });
+
+            document.getElementById('btnRecycle').addEventListener('click', function () {
+                if (!selectedId) {
+                    alert('Please select an invoice to recycle.');
+                    return;
+                }
+                // Post to Recycle action using fetch (AJAX)
+                if (!confirm('Move selected invoice to recycle bin?')) return;
+                fetch('@Url.Action("Recycle", "Sales")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getAntiForgeryToken() },
+                    body: JSON.stringify({ id: selectedId })
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error('Network response was not ok');
+                    return r.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Recycle failed');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred while recycling.');
+                });
+            });
+
+            function getAntiForgeryToken() {
+                // If your layout renders the anti-forgery token in a meta tag:
+                const t = document.querySelector('meta[name="csrf-token"]');
+                return t ? t.content : '';
+            }
+        })();
+    </script>
+}
+ *@

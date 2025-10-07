@@ -1,47 +1,38 @@
-﻿using System;
-using YamyProject.Services.Interfaces;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
 {
-
-
     public class CustomerEditeService : IEditeCustomerService
     {
         private readonly YamyDbContext _context;
         public CustomerEditeService(YamyDbContext context) { _context = context; }
-
         public async Task<CustomerViewModel> GetCustomerFormDataAsync(int? id)
         {
             var vm = new CustomerViewModel
             {
-                Categories = await _context.TblCustomerCategories.ToListAsync(),
-                Countries = await _context.TblCountries.ToListAsync(),
-                Accounts = await _context.TblCoaLevel4s.ToListAsync(),
-                Cities = await _context.TblCities.ToListAsync()
-            };
+               };
 
-            if (id.HasValue)
-            {
-                vm.Customer = await _context.TblCustomers
-                    .Include(c => c.Country)
-                 //   .Include(c => c.Countrys)
-                    .FirstOrDefaultAsync(c => c.Id == id.Value);
+           
+         if (id.HasValue)
+          {
+                    vm.Customer = await _context.TblCustomers
+                     .FirstOrDefaultAsync(c => c.Id == id.Value) ?? new TblCustomer();
 
-                //vm.Cities = await _context.TblCities
-                //    .Where(x => x.CountryId.Equals( vm.Customer.Country)).ToListAsync();
-
-                vm.Transactions = await _context.TblTransactions
-                    .Where(t => t.HumId == id.Value).ToListAsync();
+                    vm.Transactions = await _context.TblTransactions
+                      .FirstOrDefaultAsync(t => t.HumId == id.Value && t.Type == "Customer Opening Balance") ?? new TblTransaction();
             }
-            else
-            {
-                vm.Customer = new TblCustomer();
-                vm.Cities = new List<TblCity>();
-                vm.Transactions = new List<TblTransaction>();
-            }
+            
             return vm;
         }
 
+        public async Task<CustomerViewModel> GetCreateCustomerFormAsync()
+        {
+            // Initialize a new customer view model for creation
+            var vm = new CustomerViewModel
+            {
+                Customer = new TblCustomer(),
+                Transactions =new TblTransaction() // empty for new customer
+            };
+            return vm;
+        }
         public async Task SaveCustomerAsync(TblCustomer customer)
         {
             if (customer.Id == 0)
@@ -51,7 +42,6 @@ namespace YamyProject.Services.Implementations
 
             await _context.SaveChangesAsync();
         }
-
     }
-
 }
+    

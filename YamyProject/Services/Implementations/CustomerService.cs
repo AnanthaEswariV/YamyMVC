@@ -13,14 +13,9 @@
         public async Task<IEnumerable<TblCustomer>> GetAllAsync(string state)
         {
             var query = _context.TblCustomers
-                .Include(c => c.CatIdNavigation) // assuming navigation property
-                .AsQueryable();
+               .AsQueryable();
 
-            if (state == "Active")
-                query = query.Where(c => c.Active == 0);
-            else if (state == "Inactive")
-                query = query.Where(c => c.Active != 0);
-
+          
             return await query.ToListAsync();
         }
 

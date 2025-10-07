@@ -1,34 +1,46 @@
-﻿@* @model YamyProject.Models.CreditNoteCenterViewModel
+﻿@model IEnumerable<YamyProject.Core.ViewModel.SalesCenterViewModel>
 
 @{
-    ViewData["Title"] = "Credit Note Center";
-} *@
+    ViewData["Title"] = "Sales Center";
+}
 
 <div class="container-fluid bg-light p-3 rounded shadow-sm">
-    <h3 class="text-center mb-3">Credit Note Center</h3>
+    <h3 class="text-center mb-3">Sales Center</h3>
 
     <!-- Filters -->
     <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
+        <!-- Customer Dropdown -->
+        <div class="col-md-6 col-12">
+            <label class="form-label small mb-1">Customer</label>
+            <select asp-for="FirstOrDefault().Id" asp-items="@(new SelectList(Model.FirstOrDefault()?.Customers, "Value", "Text"))" class="form-select form-select-sm">
+                <option value="">-- Select Customer --</option>
+            </select>
+        </div>
+
+        <!-- Date Filters -->
         <div class="col-md-3">
             <label class="form-label">From</label>
-            <input@*  asp-for="FromDate"  *@type="date" class="form-control" />
+            <input type="date" name="fromDate" class="form-control form-control-sm" />
         </div>
         <div class="col-md-3">
             <label class="form-label">To</label>
-            <input@*   asp-for="ToDate"  *@type="date" class="form-control" />
+            <input type="date" name="toDate" class="form-control form-control-sm" />
         </div>
+
+        <!-- Checkboxes -->
         <div class="col-md-2 d-flex align-items-center">
             <div class="form-check mt-4">
-                <input type="checkbox" @* asp-for="AllDates" *@ class="form-check-input" />
-                <label  class="form-check-label">All</label>
+                <input type="checkbox" name="allDates" class="form-check-input" />
+                <label class="form-check-label">All Dates</label>
             </div>
         </div>
         <div class="col-md-2 d-flex align-items-center">
             <div class="form-check mt-4">
-                <input type="checkbox" @*asp-for="AllRecords" *@ class="form-check-input" />
-                <label   class="form-check-label">All</label>
+                <input type="checkbox" name="allRecords" class="form-check-input" />
+                <label class="form-check-label">All Records</label>
             </div>
         </div>
+
         <div class="col-12 text-end">
             <button type="submit" class="btn btn-primary">Search</button>
         </div>
@@ -39,31 +51,39 @@
         <table class="table table-bordered table-striped align-middle">
             <thead class="table-secondary text-center">
                 <tr>
-                    <th>Sn</th>
+                    <th>SN</th>
                     <th>Date</th>
                     <th>JV No</th>
                     <th>INV No</th>
                     <th>Amount</th>
                     <th>VAT</th>
-                    <th>Credit Account</th>
-                    <th>Debit Account</th>
+                    <th>Customer</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Item VAT</th>
+                    <th>Item Total</th>
                 </tr>
             </thead>
             <tbody>
-          @*        @if (Model.CreditNotes != null && Model.CreditNotes.Any())
+                @if (Model != null && Model.Any())
                 {
                     int sn = 1;
-                    foreach (var note in Model.CreditNotes)
+                    foreach (var sale in Model)
                     {
                         <tr>
-                            <td>@sn</td>
-                            <td>@note.Date.ToShortDateString()</td>
-                            <td>@note.JVNo</td>
-                            <td>@note.InvoiceNo</td>
-                            <td>@note.Amount</td>
-                            <td>@note.Vat</td>
-                            <td>@note.CreditAccount</td>
-                            <td>@note.DebitAccount</td>
+                            <td class="text-center">@sn</td>
+                            <td>@sale.Date.ToShortDateString()</td>
+                            <td>@sale.JvNo</td>
+                            <td>@sale.InvoiceId</td>
+                            <td>@sale.Total.ToString("C")</td>
+                            <td>@sale.Vat.ToString("C")</td>
+                            <td>@sale.CustomerName</td>
+                            <td>@sale.ItemName</td>
+                            <td>@sale.Qty</td>
+                            <td>@sale.Price</td>
+                            <td>@sale.ItemVat?.ToString("C")</td>
+                            <td>@sale.ItemTotal?.ToString("C")</td>
                         </tr>
                         sn++;
                     }
@@ -71,9 +91,9 @@
                 else
                 {
                     <tr>
-                        <td colspan="8" class="text-center">No records found</td>
+                        <td colspan="12" class="text-center">No records found</td>
                     </tr>
-                }*@
+                }
             </tbody>
         </table>
     </div>
@@ -81,12 +101,12 @@
     <!-- Footer Buttons -->
     <div class="d-flex justify-content-between">
         <div>
-            <a @*   asp-action="Create" *@ class="btn btn-primary">New</a>
-                <a@*   asp-action="Edit" *@ class="btn btn-secondary">Edit</a>
+            <a asp-action="Create" class="btn btn-primary">New</a>
+            <a asp-action="Edit" class="btn btn-secondary">Edit</a>
         </div>
         <div>
-        <a@*   asp-action="Delete"  *@ class="btn btn-danger">Delete</a>
-            <a@*   asp-action="Recycle"  *@ class="btn btn-outline-primary">Recycle</a>
+            <a asp-action="Delete" class="btn btn-danger">Delete</a>
+            <a asp-action="Recycle" class="btn btn-outline-primary">Recycle</a>
         </div>
     </div>
 </div>

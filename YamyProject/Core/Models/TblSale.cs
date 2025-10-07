@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblSale
 {
@@ -10,6 +7,9 @@ public partial class TblSale
     public DateOnly Date { get; set; }
 
     public int CustomerId { get; set; }
+
+    public virtual TblCustomer? Customer { get; set; }
+    public virtual TblTransaction? TblTransaction { get; set; }
 
     public string InvoiceId { get; set; } = null!;
 
@@ -63,6 +63,7 @@ public partial class TblSale
 
     public int ProjectId { get; set; }
 
-    public ICollection<TblSalesDetail> TblSalesDetails { get; set; }
+    public ICollection<TblSalesDetail>? TblSalesDetails { get; set; }
+
 
 }

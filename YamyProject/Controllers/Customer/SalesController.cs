@@ -1,15 +1,6 @@
 ﻿
 namespace YamyProject.Controllers.Customer
 {
-    //    public class SalesController : Controller
-    //    {
-    //        public IActionResult Index()
-    //        {
-    //            return View();
-    //        }
-    //    }
-    //}
-
     public class SalesController: Controller
     {
         private readonly ISalesService _service;

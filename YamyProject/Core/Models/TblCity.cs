@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-
+﻿
 namespace YamyProject.Core.Models;
 
 public partial class TblCity
