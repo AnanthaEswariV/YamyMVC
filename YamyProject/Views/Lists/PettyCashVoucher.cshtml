@@ -14,8 +14,8 @@
             <!-- Left - Filter / Bank -->
             <div style="min-width: 150px;">
                 <select class="form-select form-select-sm" id="bankSelect">
-                    <option>Register Bank</option>
-                    <option>UnRegister Bank</option>
+                    <option>Petty Cash</option>
+                    <option>Deleted Petty Cash</option>
                 </select>
             </div>
 
@@ -53,6 +53,7 @@
                     <th>Description</th>
                     <th>Amount</th>
                     <th>Note</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -115,6 +116,7 @@
                                 <th>Description</th>
                                 <th>Amount</th>
                                 <th>Note</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="pettyCashTableBody">
@@ -145,18 +147,76 @@
     </div>
 </div>
 
+
+
+<!-- Edit Petty Cash Modal -->
+<div class="modal fade" id="editPettyCashModal" tabindex="-1" aria-labelledby="editPettyCashModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold" id="editPettyCashModalLabel">Edit Petty Cash</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <!-- Top Fields -->
+                <div class="row mb-3 g-3">
+                    <input type="hidden" id="editPettyCashId">
+                    <div class="col-md-3">
+                        <label class="form-label">PettyCash Code</label>
+                        <input type="text" class="form-control" id="editPettyCashCode" disabled>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">PettyCash Name</label>
+                        <select class="form-select" id="editPettyCashNameDropdown"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" id="editPettyCashDate">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Employee</label>
+                        <input type="text" class="form-control" id="editPettyCashEmployeeName" disabled>
+                    </div>
+                </div>
+
+                <!-- Petty Cash Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Date</th>
+                                <th>REF</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th>Project</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="editPettyCashTableBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="updatePettyCashBtn">Update</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 @section Scripts {
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-
+   
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+  
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
@@ -165,7 +225,6 @@
     <script>
         let pettyCashCategories = [];
 
-        // ===================== Load Petty Cash Cards =====================
         function loadPettyCashCards() {
             $.ajax({
                 url: '/Lists/GetPettyCashCards',
@@ -173,15 +232,12 @@
                 success: function(res) {
                     if (res.status && res.data?.length > 0) {
                         const $dropdown1 = $('#pettyCashNameDropdown');
-                        const $dropdown2 = $('#pettyCashDropdown');
 
                         $dropdown1.empty().append('<option value="">Select Petty Cash</option>');
-                        $dropdown2.empty().append('<option value="">Select Petty Cash</option>');
 
                         res.data.forEach(pc => {
                             const optionText = `${pc.code} - ${pc.employeeName}`;
                             $dropdown1.append(`<option value="${pc.id}" data-code="${pc.code}" data-empid="${pc.employeeId}">${optionText}</option>`);
-                            $dropdown2.append(`<option value="${pc.id}" data-code="${pc.code}" data-empid="${pc.employeeId}">${optionText}</option>`);
                         });
                     }
                 },
@@ -191,7 +247,6 @@
             });
         }
 
-        // ===================== Load Petty Cash Categories =====================
         function loadPettyCashCategories() {
             $.ajax({
                 url: '/Lists/GetPettyCashCategories',
@@ -212,7 +267,6 @@
             });
         }
 
-        // ===================== Add Table Row =====================
         function addNewRow() {
             const rowCount = $('#pettyCashTableBody tr').length + 1;
             const newRow = `<tr>
@@ -230,12 +284,108 @@
             fillCategoryDropdown($('#pettyCashTableBody tr:last select.pettyCashCategorySelect'));
         }
 
-        // Auto-add row when last category is selected
         $(document).on('change', '.pettyCashCategorySelect', function() {
             if ($(this).val() && $(this).closest('tr').is(':last-child')) addNewRow();
         });
 
-        // ===================== Handle Petty Cash Selection =====================
+                   // ===================== Modal Open Event =====================
+        $('#addPettyCashModal').on('shown.bs.modal', function() {
+                    loadPettyCashCards();
+                    loadPettyCashCategories();
+                    $('#pettyCashDate').val(new Date().toISOString().split('T')[0]);
+                    $('#pettyCashCode').val('');
+                    $('#pettyCashNo').val('');
+                    $('#pettyCashEmployeeId').val('');
+                    $('#pettyCashTableBody').empty();
+                    addNewRow();
+                });
+
+                function loadPettyCashForEmployee() {
+            $.ajax({
+                url: '/Lists/GetPettyCashCardsByEmployee',
+                type: 'GET',
+                success: function (res) {
+                    const $dropdown = $('#pettyCashDropdown');
+                    $dropdown.empty().append('<option value="">Select Petty Cash</option>');
+
+                    if (res.status && res.data?.length > 0) {
+                        res.data.forEach(pc => {
+                            // Show code + employee name in the option text
+                            const optionText = `${pc.code} - ${pc.employeeName}`;
+                            $dropdown.append(`<option value="${pc.id}" data-code="${pc.code}" data-empid="${pc.employeeId}">${optionText}</option>`);
+                        });
+                    } else {
+                        $dropdown.html('<option value="">No petty cash found</option>');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Failed to load petty cash');
+                }
+            });
+        }
+
+
+                $(document).on('change', '#pettyCashDropdown', function() {
+            const selected = $(this).find(':selected');
+            $('#pettyCashCode').val(selected.data('code') || '');
+            $('#pettyCashNo').val(selected.data('code') || '');
+            $('#pettyCashEmployeeId').val(selected.data('empid') || '');
+        })
+
+
+        $(document).on('change', '#pettyCashDropdown', function() {
+            const selectedId = $(this).val();
+            if (!selectedId) return;
+
+            $.ajax({
+                url: `/Lists/GetPettyCashVoucher?id=${selectedId}`,
+                type: "GET",
+                success: function(res) {
+                    const tbody = $("#table1 tbody");
+                    tbody.empty();
+
+                    if (res.status && res.data && res.data.details.length > 0) {
+                        const voucher = res.data; // <-- Save the whole voucher object
+
+                        $.each(voucher.details, function(i, row) {
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${row.entryDate ?? ''}</td>
+                                    <td>${row.refId ?? ''}</td>
+                                    <td>${row.category ?? ''}</td>
+                                    <td>${row.humName ?? ''}</td>
+                                    <td>${row.projectName ?? ''}</td>
+                                    <td>${row.description ?? ''}</td>
+                                    <td>${row.amount ?? 0}</td>
+                                    <td>${row.note ?? ''}</td>
+                                    <td>
+                     <button type="button" class="btn btn-sm btn-primary editPettyCashBtn"
+            data-voucher='${JSON.stringify(voucher).replace(/'/g, "&apos;")}'>
+            <i class="fas fa-pen"></i>
+        </button>
+
+
+
+                                        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${row.id}' disabled>
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(tr);
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="10" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                    }
+                },
+                error: function() {
+                    $("#table1 tbody").html(`<tr><td colspan="10" class="text-center" style="color:red; padding:40px;">Error loading data</td></tr>`);
+                }
+            });
+        });
+
+
         $(document).on('change', '#pettyCashNameDropdown', function() {
             const selected = $(this).find(':selected');
             $('#pettyCashCode').val(selected.data('code') || '');
@@ -243,7 +393,6 @@
             $('#pettyCashEmployeeId').val(selected.data('empid') || '');
         });
 
-        // ===================== Calculate Total =====================
         function calculateTotalAmount() {
             let total = 0;
             $('#pettyCashTableBody tr').each(function() {
@@ -253,7 +402,6 @@
             return total;
         }
 
-        // ===================== Save Petty Cash =====================
         $('#savePettyCashBtn').on('click', function() {
             const pettyCashName = $('#pettyCashNameDropdown').val();
             const pettyCashDate = $('#pettyCashDate').val();
@@ -268,13 +416,16 @@
             $('#pettyCashTableBody tr').each(function() {
                 const row = $(this);
                 const amount = parseFloat(row.find('td:eq(7) input').val()) || 0;
+
                 if (amount > 0) {
+                    const Category = row.find('select.pettyCashCategorySelect').val();
+
                     details.push({
-                        EntryDate: row.find('td:eq(1) input').val(),
+                        EntryDate: new Date(row.find('td:eq(1) input').val()).toISOString(), // ✅ proper DateTime
                         RefId: row.find('td:eq(2) input').val(),
-                        CategoryId: row.find('td:eq(3) select').val(),
+                        Category: Category ? Category.toString() : null, // ✅ string for C# model
                         HumName: row.find('td:eq(4) input').val(),
-                        CostCenterId: row.find('td:eq(5) select').val(),
+                        CostCenterId: row.find('td:eq(5) select').val() || null, // ✅ string
                         Description: row.find('td:eq(6) input').val(),
                         Amount: amount,
                         Note: row.find('td:eq(8) input').val()
@@ -287,7 +438,7 @@
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
-                    VoucherDate: pettyCashDate,
+                    VoucherDate: new Date(pettyCashDate).toISOString(), // ✅ ISO format
                     CashAccountId: parseInt(pettyCashName) || 0,
                     EmployeeId: empId,
                     Total: totalAmount,
@@ -300,26 +451,202 @@
                         $('#pettyCashTableBody').empty();
                         addNewRow();
                         loadPettyCashCards();
-                    } else toastr.error(res.message || 'Save failed');
+                    } else {
+                        toastr.error(res.message || 'Save failed');
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Error saving petty cash');
                 }
             });
         });
 
-        // ===================== Modal Open Event =====================
-        $('#addPettyCashModal').on('shown.bs.modal', function() {
-            loadPettyCashCards();
-            loadPettyCashCategories();
+        $('#addPettyCashBtn').on('click', function() {
+            $('#pettyCashForm')[0].reset();  // reset all inputs
+            $('#pettyCashTableBody').empty();
             $('#pettyCashDate').val(new Date().toISOString().split('T')[0]);
             $('#pettyCashCode').val('');
             $('#pettyCashNo').val('');
             $('#pettyCashEmployeeId').val('');
-            $('#pettyCashTableBody').empty();
             addNewRow();
+
+            $('#addPettyCashModalLabel').text('Add Petty Cash');
+            $('#addPettyCashModal').modal('show');
         });
 
         $(document).ready(function() {
             loadPettyCashCards();
             loadPettyCashCategories();
+            loadPettyCashForEmployee();
         });
+
+                $(document).on("click", ".editPettyCashBtn", function () {
+            const voucherStr = $(this).attr("data-voucher");
+            if (!voucherStr) return;
+
+            const voucher = JSON.parse(voucherStr.replace(/&apos;/g, "'"));
+            console.log("Editing voucher:", voucher);
+
+            // Clear previous modal data
+            const $modal = $("#editPettyCashModal");
+            $modal.find("input, select").val('');
+            $("#editPettyCashTableBody").empty();
+
+            // Fill modal header fields
+            $("#editPettyCashId").val(voucher.voucher.id);
+            $("#editPettyCashCode").val(voucher.voucher.code);
+            $("#editPettyCashDate").val(voucher.voucher.voucherDate);
+            $("#editPettyCashEmployeeName").val(voucher.voucher.employeeId);
+
+            // Load petty cash dropdown first and set selected value
+            loadPettyCashCardsTo("#editPettyCashNameDropdown", voucher.voucher.cashAccountId);
+
+            // Fill table rows
+            const tbody = $("#editPettyCashTableBody");
+            voucher.details.forEach((row, i) => {
+                const tr = `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><input type="date" class="form-control form-control-sm" value="${row.entryDate ?? ''}"></td>
+                        <td><input type="text" class="form-control form-control-sm" value="${row.refId ?? ''}"></td>
+                        <td>
+                            <select class="form-select form-select-sm pettyCashCategorySelect">
+                                <option value="${row.category}" selected>${row.category}</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="form-control form-control-sm" value="${row.humName ?? ''}"></td>
+                        <td><input type="text" class="form-control form-control-sm" value="${row.projectName ?? ''}"></td>
+                        <td><input type="text" class="form-control form-control-sm" value="${row.description ?? ''}"></td>
+                        <td><input type="number" class="form-control form-control-sm" step="0.01" value="${row.amount ?? 0}"></td>
+                        <td><input type="text" class="form-control form-control-sm" value="${row.note ?? ''}"></td>
+                    </tr>`;
+                tbody.append(tr);
+            });
+
+            // Load categories for table dropdowns after rows are appended
+            loadPettyCashCategoriesToTable("#editPettyCashTableBody");
+
+            $modal.modal("show");
+        });
+
+
+         function loadPettyCashCardsTo(selector, selectedId = null) {
+            $.ajax({
+                url: '/Lists/GetPettyCashCards',
+                type: 'GET',
+                success: function (res) {
+                    const $dropdown = $(selector);
+                    $dropdown.empty().append('<option value="">Select Petty Cash</option>');
+
+                    if (res.status && res.data?.length > 0) {
+                        $.each(res.data, function (i, item) {
+                            $dropdown.append(`<option value="${item.id}">${item.code} - ${item.employeeName}</option>`);
+                        });
+                    }
+
+                    // Set selected value AFTER options are loaded
+                    if (selectedId) {
+                        $dropdown.val(selectedId);
+                    }
+                }
+            });
+        }
+
+
+
+        function loadPettyCashCategoriesToTable(tbodySelector) {
+            $.ajax({
+                url: '/Lists/GetPettyCashCategories',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status && res.data?.length > 0) {
+                        $(tbodySelector)
+                            .find('select.pettyCashCategorySelect')
+                            .each(function () {
+                                const currentVal = $(this).val();
+                                $(this).empty().append('<option value="">Select Category</option>');
+                                $.each(res.data, function (i, cat) {
+                                    $(this).append(`<option value="${cat.id}" ${cat.name === currentVal ? "selected" : ""}>${cat.name}</option>`);
+                                }.bind(this));
+                            });
+                    }
+                }
+            });
+        }
+
+         $('#updatePettyCashBtn').on('click', function () {
+            const id = parseInt($('#editPettyCashId').val()) || 0;
+            const date = $('#editPettyCashDate').val();
+            const cashAccountId = parseInt($('#editPettyCashNameDropdown').val()) || 0;
+
+            if (!cashAccountId) return toastr.warning('Select Petty Cash Name');
+            if (!date) return toastr.warning('Select Petty Cash Date');
+
+            const details = [];
+            let totalAmount = 0; // ✅ Initialize total tracker
+
+            $('#editPettyCashTableBody tr').each(function () {
+                const row = $(this);
+                const amount = parseFloat(row.find('td:eq(7) input').val()) || 0;
+
+                if (amount > 0) {
+                    const category = row.find('td:eq(3) select').val();
+                    const entryDate = row.find('td:eq(1) input').val();
+
+                    totalAmount += amount; // ✅ Add to total
+
+                    details.push({
+                        EntryDate: entryDate ? new Date(entryDate).toISOString() : null,
+                        RefId: row.find('td:eq(2) input').val() || null,
+                        Category: category ? category.toString() : null,
+                        HumName: row.find('td:eq(4) input').val() || null,
+                        ProjectName: row.find('td:eq(5) input').val() || null,
+                        Description: row.find('td:eq(6) input').val() || null,
+                        Amount: amount,
+                        Note: row.find('td:eq(8) input').val() || ""
+                    });
+                }
+            });
+
+            if (details.length === 0)
+                return toastr.warning('Enter at least one valid amount');
+
+            // ✅ Send total in payload
+            $.ajax({
+                url: '/Lists/EditPettyCashVoucher',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    Id: id,
+                    VoucherDate: new Date(date).toISOString(),
+                    CashAccountId: cashAccountId,
+                    EmployeeId: parseInt($('#pettyCashEmployeeId').val()) || 0, // optional
+                    Notes: $('#editPettyCashNotes').val() || "",
+                    Total: totalAmount,
+                    Details: details
+                }),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Petty Cash updated successfully');
+                        $('#editPettyCashModal').modal('hide');
+                        loadPettyCashForEmployee();
+                    } else {
+                        toastr.error(res.message || 'Update failed');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Error updating petty cash');
+                }
+            });
+        });
+
+
+
+       $(document).on('click', '.editPettyCashBtn, .deletePettyCashBtn, #savePettyCashBtn', function(e) {
+    e.preventDefault();
+    e.stopPropagation(); // stops bubbling if inside a form
+});
+
+
     </script>
-    }
+}

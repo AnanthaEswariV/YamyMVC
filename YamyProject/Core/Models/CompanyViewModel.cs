@@ -300,10 +300,11 @@ namespace YamyProject.Core.Models
         public string? HumName { get; set; }
         public string? Description { get; set; }
         public decimal? Amount { get; set; }
-        public string? Category { get; set; }
+        public string? Category { get; set; } 
         public string? CostCenterId { get; set; }
         public string? Note { get; set; }
     }
+
 
 
 

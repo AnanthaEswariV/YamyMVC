@@ -3793,6 +3793,8 @@ ORDER BY pc.id ASC;
         {
             return View();
         }
+
+
         [HttpPost]
         public async Task<IActionResult> SavePettyCashVoucher([FromBody] PettyCashVoucherRequest model)
         {
@@ -3919,6 +3921,268 @@ ORDER BY pc.id ASC;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashVoucher(int id)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Get main voucher info
+                string voucherQuery = @"
+            SELECT pc.id, pc.code, pc.voucher_date, pc.cash_account_id, pc.employee_id, pc.total
+            FROM tbl_petty_cash pc
+            WHERE pc.id = @id";
+
+                using var voucherCmd = new MySqlCommand(voucherQuery, conn);
+                voucherCmd.Parameters.AddWithValue("@id", id);
+
+                object voucherData = null;
+
+                using (var reader = await voucherCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        voucherData = new
+                        {
+                            id = reader.GetInt32("id"),
+                            code = reader["code"].ToString(),
+                            voucherDate = reader["voucher_date"] == DBNull.Value ? null : reader.GetDateTime("voucher_date").ToString("yyyy-MM-dd"),
+                            cashAccountId = reader["cash_account_id"] == DBNull.Value ? 0 : Convert.ToInt32(reader["cash_account_id"]),
+                            employeeId = reader["employee_id"] == DBNull.Value ? 0 : Convert.ToInt32(reader["employee_id"]),
+                            total = reader["total"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["total"])
+                        };
+                    }
+                }
+
+                if (voucherData == null)
+                    return NotFound(new { status = false, message = "Voucher not found" });
+
+                // Get voucher detail data
+                string detailsQuery = @"
+            SELECT dt.id, dt.petty_cash_id, dt.entry_date, dt.ref_id, dt.hum_id, dt.hum_name, dt.category,
+                   dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.note,
+            c.name AS categoryName
+            FROM tbl_petty_cash_details dt
+                LEFT JOIN tbl_petty_cash_category c ON c.id = dt.category
+            WHERE dt.petty_cash_id = @id
+            ORDER BY dt.entry_date";
+
+                using var detailsCmd = new MySqlCommand(detailsQuery, conn);
+                detailsCmd.Parameters.AddWithValue("@id", id);
+
+                var detailsList = new List<object>();
+                decimal totalAmount = 0;
+
+                using (var reader = await detailsCmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        decimal amount = reader["amount"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["amount"]);
+                        totalAmount += amount;
+
+                        detailsList.Add(new
+                        {
+                            id = reader.GetInt32("id"),
+                            pettyCashId = reader["petty_cash_id"] == DBNull.Value ? 0 : Convert.ToInt32(reader["petty_cash_id"]),
+                            entryDate = reader["entry_date"] == DBNull.Value ? null : Convert.ToDateTime(reader["entry_date"]).ToString("yyyy-MM-dd"),
+                            refId = reader["ref_id"]?.ToString() ?? "",
+                            humId = reader["hum_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["hum_id"]),
+                            humName = reader["hum_name"]?.ToString() ?? "",
+                            //category = reader["category"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["category"]),
+                            category = reader["categoryName"]?.ToString() ?? "",
+                            costCenterId = reader["cost_center_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["cost_center_id"]),
+                            description = reader["description"]?.ToString() ?? "",
+                            amount = amount,
+                            projectId = reader["project_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["project_id"]),
+                            note = reader["note"]?.ToString() ?? ""
+                        });
+                    }
+                }
+
+                // Return voucher + details + calculated total
+                return Ok(new
+                {
+                    status = true,
+                    data = new
+                    {
+                        voucher = voucherData,
+                        details = detailsList,
+                        totalAmount
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashCardsByEmployee()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+      SELECT 
+    pc.id,
+    pc.code,
+    pc.employee_id AS employeeId,   
+    e.name AS employeeName
+FROM tbl_petty_cash pc
+LEFT JOIN tbl_employee e ON e.id = pc.employee_id
+ORDER BY pc.id ASC;
+ ";
+
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                        code = reader["code"].ToString(),
+                        employeeId = reader["employeeId"] == DBNull.Value ? 0 : Convert.ToInt32(reader["employeeId"]),
+                        employeeName = reader["employeeName"]?.ToString() ?? "",
+                    });
+                }
+
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EditPettyCashVoucher([FromBody] PettyCashVoucherRequest model)
+        {
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.Total <= 0)
+                return BadRequest(new { status = false, message = "Please enter a valid amount" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // --- UPDATE MAIN PETTY CASH VOUCHER ---
+                string updateQuery = @"
+            UPDATE tbl_petty_cash
+            SET voucher_date = @voucher_date,
+                cash_account_id = @cash_account_id,
+                employee_id = @employee_id,
+                notes = @notes,
+                total = @total
+            WHERE id = @id";
+
+                using (var cmdUpdate = new MySqlCommand(updateQuery, conn))
+                {
+                    cmdUpdate.Parameters.AddWithValue("@voucher_date", model.VoucherDate);
+                    cmdUpdate.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
+                    cmdUpdate.Parameters.AddWithValue("@employee_id", model.EmployeeId);
+                    cmdUpdate.Parameters.AddWithValue("@notes", model.Notes ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@total", model.Total);
+                    cmdUpdate.Parameters.AddWithValue("@id", model.Id);
+
+                    await cmdUpdate.ExecuteNonQueryAsync();
+                }
+
+                // --- DELETE EXISTING DETAILS ---
+                string deleteDetailsQuery = "DELETE FROM tbl_petty_cash_details WHERE petty_cash_id = @id";
+                using (var cmdDelete = new MySqlCommand(deleteDetailsQuery, conn))
+                {
+                    cmdDelete.Parameters.AddWithValue("@id", model.Id);
+                    await cmdDelete.ExecuteNonQueryAsync();
+                }
+
+                // --- INSERT NEW DETAILS ---
+                if (model.Details != null && model.Details.Any())
+                {
+                    foreach (var d in model.Details)
+                    {
+                        if (d.Amount == null || d.Amount <= 0)
+                            continue;
+
+                        string insertDetailQuery = @"
+                    INSERT INTO tbl_petty_cash_details
+                        (entry_date, petty_cash_id, hum_id, hum_name, ref_id, cost_center_id, amount, description, category, note)
+                    VALUES
+                        (@date, @Petty_Cash_id, @hum_id, @hum_name, @ref_id, @cost_center_id, @amount, @description, @category, @note)";
+
+                        using (var cmdDetail = new MySqlCommand(insertDetailQuery, conn))
+                        {
+                            cmdDetail.Parameters.AddWithValue("@Petty_Cash_id", model.Id);
+                            cmdDetail.Parameters.AddWithValue("@date", d.EntryDate);
+                            cmdDetail.Parameters.AddWithValue("@hum_id", string.IsNullOrWhiteSpace(d.HumId) ? "0" : d.HumId);
+                            cmdDetail.Parameters.AddWithValue("@hum_name", d.HumName ?? "");
+                            cmdDetail.Parameters.AddWithValue("@ref_id", string.IsNullOrWhiteSpace(d.RefId) ? "0" : d.RefId);
+                            cmdDetail.Parameters.AddWithValue("@cost_center_id", string.IsNullOrWhiteSpace(d.CostCenterId) ? "0" : d.CostCenterId);
+                            cmdDetail.Parameters.AddWithValue("@amount", d.Amount ?? 0);
+                            cmdDetail.Parameters.AddWithValue("@description", d.Description ?? "");
+                            cmdDetail.Parameters.AddWithValue("@category", string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category);
+                            cmdDetail.Parameters.AddWithValue("@note", d.Note ?? "");
+
+                            await cmdDetail.ExecuteNonQueryAsync();
+                        }
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Petty Cash Voucher updated successfully",
+                    pettyCashId = model.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
 
         #endregion
 
