@@ -38,7 +38,7 @@
                                     <i class="fas fa-wallet me-2 text-warning"></i> New Petty Cash
                                 </a>
                             </li>
-                            <li>
+                          @*   <li>
                                 <a class="dropdown-item" href="#">
                                     <i class="fas fa-edit me-2 text-info"></i> Edit Petty Cash
                                 </a>
@@ -47,14 +47,14 @@
                                 <a class="dropdown-item" href="#">
                                     <i class="fas fa-trash me-2 text-danger"></i> Delete Petty Cash
                                 </a>
-                            </li>
+                            </li> *@
                         </ul>
                     </div>
                 </div>
 
                 <div class="card shadow-sm h-100">
                     <div class="card-body p-0">
-                        <!-- Table with outer spacing -->
+                      
                         <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                             <table class="table table-striped custom-table mb-0" id="pettyCashTable">
                                 <thead class="table-ligh">
@@ -74,31 +74,70 @@
             </div>
         </div>
         <div class="col-12 col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title">Petty Cash Log</h4>
-                </div>
-                <div class="card-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Petty cash Log</h5>
+                    </div>
                     <div class="card-body">
-                        <!-- Table with outer spacing -->
-                        <div class="table-responsive">
-                            <table class="table table-lg">
-                                <thead>
-                                    <tr>
-                                        <th>NAME</th>
-                                        <th>RATE</th>
-                                        <th>SKILL</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
+                        <ul class="nav nav-tabs" id="myTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home"
+                                   role="tab" aria-controls="home" aria-selected="true">Petty Cash Voucher</a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="profile-tab" data-bs-toggle="tab" href="#profile"
+                                   role="tab" aria-controls="profile" aria-selected="false">Transactions</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="home" role="tabpanel"
+                                 aria-labelledby="home-tab">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-striped custom-table mb-0" id="pettyCashVoucherTable">
+                                    <thead class="table-ligh">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Code</th>
+                                            <th>Date</th>
+                                            <th>Total</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rows will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            </div>
+                            <div class="tab-pane fade" id="profile" role="tabpanel"
+                                 aria-labelledby="profile-tab">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-striped custom-table mb-0" id="pettyCashTransactionsTable">
+                                    <thead class="table-ligh">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Date</th>
+                                            <th>Voucher No</th>
+                                            <th>Type</th>
+                                            <th>Inv Id</th>
+                                            <th>Description</th>
+                                            <th>Debit</th>
+                                            <th>Credit</th>
+                                            <th>Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rows will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+   
 </section>
 <!-- Basic Tables end -->
 
@@ -204,54 +243,137 @@
 
         $(document).ready(function () {
 
-          function loadPettyCashCards() {
-            $.ajax({
-                url: '/Lists/GetPettyCashCards', // API endpoint
-                type: 'GET',
-                success: function (res) {
-                    
-                    let tbody = $("#pettyCashTable tbody");
-                    tbody.empty();
-                        
-                    if (res.status && res.data.length > 0) {
-                        res.data.forEach((card, index) => {
-                            tbody.append(`
-                                <tr>
-                                    <td>${card.code ?? ""}</td>
-                                        <td>${card.employeeName ?? ""}</td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary edit-card"
-                                                data-id="${card.id}"
-                                                data-code="${card.code}"
-                                                data-empname="${card.employeeId}"
-                                                data-accountid="${card.accountId}"
-                                                data-mobile="${card.mobile}"
-                                                data-whatsapp="${card.whatsapp_no}"
-                                                data-email="${card.email}">
-                                            <i class="fas fa-pen"></i>
-                                        </button>
+            // 1️⃣ Load Petty Cash Cards
+            function loadPettyCashCards() {
+                $.ajax({
+                    url: '/Lists/GetPettyCashCards',
+                    type: 'GET',
+                    success: function (res) {
+                        let tbody = $("#pettyCashTable tbody");
+                        tbody.empty();
 
-                                        <button class="btn btn-sm btn-outline-danger delete-card" data-id="${card.id}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `);
-                        });
-                    } else {
-                        tbody.append(`
-                            <tr>
-                                <td colspan="3" class="text-center text-muted">No petty cash cards found</td>
-                            </tr>
-                        `);
+                        if (res.status && res.data.length > 0) {
+                            res.data.forEach(card => {
+                                tbody.append(`
+                                    <tr class="employee-row" data-empcode="${card.empCode}">
+                                        <td>${card.code ?? ""}</td>
+                                        <td>${card.employeeName ?? ""}</td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-outline-primary edit-card"
+                                                    data-id="${card.id}"
+                                                    data-code="${card.code}"
+                                                    data-empname="${card.employeeId}"
+                                                    data-accountid="${card.accountId}"
+                                                    data-mobile="${card.mobile}"
+                                                    data-whatsapp="${card.whatsapp_no}"
+                                                    data-email="${card.email}">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger delete-card" data-id="${card.id}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="3" class="text-center text-muted">No petty cash cards found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error("Failed to load petty cash cards");
                     }
-                },
-                error: function () {
-                    toastr.error("❌ Failed to load petty cash cards");
+                });
+            }
+
+            // 2️⃣ On Employee Row Click → Load Vouchers & Transactions
+            $(document).on('click', '.employee-row', function () {
+                let empCode = $(this).data('empcode');
+                if (!empCode) {
+                    console.error("❌ empCode not found");
+                    return;
                 }
+
+                // Highlight selected row
+                $('.employee-row').removeClass('table-primary');
+                $(this).addClass('table-primary');
+
+                loadVouchers(empCode);
+                loadTransactions(empCode);
             });
-        }
-     
+
+            // 3️⃣ Load Petty Cash Vouchers
+            function loadVouchers(empCode) {
+                $.ajax({
+                    url: '/Lists/GetEmployeePettyCash',
+                    type: 'GET',
+                    data: { empCode: empCode },
+                    success: function (res) {
+                        let tbody = $("#pettyCashVoucherTable tbody");
+                        tbody.empty();
+
+                        if (res.status && res.data.length > 0) {
+                            res.data.forEach((voucher, index) => {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${voucher.code ?? ""}</td>
+                                        <td>${voucher.date ?? ""}</td>
+                                        <td class="text-end">${voucher.total ?? voucher.totalWithVAT ?? 0}</td>
+                                        <td>${voucher.status ?? ""}</td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="5" class="text-center text-muted">No vouchers found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error("Failed to load vouchers");
+                    }
+                });
+            }
+
+            // 4️⃣ Load Petty Cash Transactions
+            function loadTransactions(empCode) {
+                $.ajax({
+                    url: '/Lists/GetEmployeePettyCashTransactions',
+                    type: 'GET',
+                    data: { empCode: empCode }, // Make sure backend accepts 'empCode'
+                    success: function (res) {
+                        let tbody = $("#pettyCashTransactionsTable tbody");
+                        tbody.empty();
+
+                        if (res.status && res.data.length > 0) {
+                            res.data.forEach((trx, index) => {
+                                tbody.append(`
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${trx.date ?? ""}</td>
+                                        <td>${trx.no ?? ""}</td>
+                                        <td>${trx.type ?? ""}</td>
+                                        <td>${trx.invoiceId ?? ""}</td>
+                                        <td>${trx.description ?? ""}</td>
+                                        <td class="text-end">${trx.debit ?? 0}</td>
+                                        <td class="text-end">${trx.credit ?? 0}</td>
+                                        <td class="text-end">${trx.balance ?? 0}</td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="9" class="text-center text-muted">No transactions found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error("Failed to load transactions");
+                    }
+                });
+            }
+
+        
+
+
+
             loadPettyCashCards();
 
             $(document).on("click", ".edit-card", function () {
@@ -463,6 +585,11 @@
             });
         });
 
+
+            
+
+
+            
 
         });
 

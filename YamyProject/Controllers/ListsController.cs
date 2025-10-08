@@ -3692,7 +3692,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
   a.name            AS accountName,
   pc.mobile,
   pc.whatsapp_no,
-  pc.email
+  pc.email,
+   e.code           AS empCode
 FROM tbl_petty_cash_card pc
 LEFT JOIN tbl_employee      e ON e.id = pc.name
 LEFT JOIN tbl_coa_level_4  a ON a.id = pc.account_id
@@ -3717,7 +3718,8 @@ ORDER BY pc.id ASC;
                         accountName = reader["accountName"]?.ToString() ?? "",
                         mobile = reader["mobile"]?.ToString() ?? "",
                         whatsapp_no = reader["whatsapp_no"]?.ToString() ?? "",
-                        email = reader["email"]?.ToString() ?? ""
+                        email = reader["email"]?.ToString() ?? "",
+                        empCode = reader.GetInt32("empCode")
                     });
                 }
 
@@ -4181,8 +4183,341 @@ ORDER BY pc.id ASC;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        [HttpPost]
+        public async Task<IActionResult> DeletePettyCashVoucher([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid ID" });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // --- 1. Read all records ---
+                var dtVoucher = new DataTable();
+                using (var cmd = new MySqlCommand("SELECT * FROM tbl_petty_cash WHERE id=@id", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    dtVoucher.Load(reader);
+                }
+
+                var dtDetails = new DataTable();
+                using (var cmd = new MySqlCommand("SELECT * FROM tbl_petty_cash_details WHERE Petty_Cash_id=@id", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    dtDetails.Load(reader);
+                }
+
+                var dtTransaction = new DataTable();
+                using (var cmd = new MySqlCommand("SELECT * FROM tbl_transaction WHERE transaction_id=@id AND t_type='PettyCash'", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    dtTransaction.Load(reader);
+                }
+
+                // --- 2. Backup records ---
+                string insertBackup = @"INSERT INTO tbl_deleted_records (table_name, record_data, deleted_by) VALUES (@table, @data, @user)";
+                foreach (DataRow row in dtVoucher.Rows)
+                {
+                    using var cmd = new MySqlCommand(insertBackup, conn);
+                    cmd.Parameters.AddWithValue("@table", "tbl_PettyCash_voucher");
+                    cmd.Parameters.AddWithValue("@data", JsonConvert.SerializeObject(row));
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                foreach (DataRow row in dtDetails.Rows)
+                {
+                    using var cmd = new MySqlCommand(insertBackup, conn);
+                    cmd.Parameters.AddWithValue("@table", "tbl_PettyCash_voucher_details");
+                    cmd.Parameters.AddWithValue("@data", JsonConvert.SerializeObject(row));
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                foreach (DataRow row in dtTransaction.Rows)
+                {
+                    using var cmd = new MySqlCommand(insertBackup, conn);
+                    cmd.Parameters.AddWithValue("@table", "tbl_transaction");
+                    cmd.Parameters.AddWithValue("@data", JsonConvert.SerializeObject(row));
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // --- 3. Delete all related records ---
+                string[] deleteQueries =
+                {
+            "DELETE FROM tbl_transaction WHERE t_type=@type AND transaction_id=@id",
+            "DELETE FROM tbl_cost_center_transaction WHERE type=@type AND ref_id=@id",
+            "DELETE FROM tbl_petty_cash_details WHERE Petty_Cash_id=@id",
+            "DELETE FROM tbl_petty_cash WHERE id=@id"
+        };
+
+                foreach (var query in deleteQueries)
+                {
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    if (query.Contains("@type"))
+                        cmd.Parameters.AddWithValue("@type", "PettyCash");
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "PettyCash voucher deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
 
 
+        #region Petty Cash Log
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeePettyCash(string empCode)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                //bool enableApproval = HttpContext.Session.GetInt32("EnableApproval") == 1;
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query;
+
+                //if (!enableApproval)
+                //{
+                //    query = @"
+                //SELECT 
+                //    d.id,
+                //    d.date AS `Date`,
+                //    ps.code,
+                //    coa.name AS `Account`,
+                //    d.total AS `TotalWithVAT`,
+                //    cat.name AS `Category`,
+                //    d.note
+                //FROM 
+                //    tbl_petty_cash_submition_details d
+                //INNER JOIN 
+                //    tbl_petty_cash_submition ps ON d.petty_id = ps.id
+                //INNER JOIN 
+                //    tbl_employee e ON ps.name = e.id
+                //INNER JOIN tbl_petty_cash_category cat ON d.category = cat.id
+                //INNER JOIN tbl_coa_level_4 coa ON d.account_id = coa.id
+                //WHERE e.code = @empCode;";
+                //}
+                //else
+                //{
+                    query = @"
+                SELECT 
+                    p.id,
+                    p.code AS `Code`,
+                    p.voucher_date AS `Date`,
+                    p.total AS `Total`,
+                    CASE 
+                        WHEN p.status = 0 THEN 'Pending'
+                        ELSE 'Confirmed'
+                    END AS `Status`
+                FROM tbl_petty_cash p
+                INNER JOIN tbl_petty_cash_card c ON p.employee_id = c.name
+                INNER JOIN tbl_employee e ON e.id = p.employee_id
+                WHERE e.code = @empCode;";
+                //}
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@empCode", empCode);
+
+                var result = new List<object>();
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    //if (!enableApproval)
+                    //{
+                    //    result.Add(new
+                    //    {
+                    //        id = reader["id"],
+                    //        date = reader["Date"] == DBNull.Value ? null : Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                    //        code = reader["code"]?.ToString(),
+                    //        account = reader["Account"]?.ToString(),
+                    //        totalWithVAT = reader["TotalWithVAT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["TotalWithVAT"]),
+                    //        category = reader["Category"]?.ToString(),
+                    //        note = reader["note"]?.ToString()
+                    //    });
+                    //}
+                    //else
+                    //{
+                        result.Add(new
+                        {
+                            id = reader["id"],
+                            code = reader["Code"]?.ToString(),
+                            date = reader["Date"] == DBNull.Value ? null : Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                            total = reader["Total"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total"]),
+                            status = reader["Status"]?.ToString()
+                        });
+                    //}
+                }
+
+                if (result.Count == 0)
+                    return Ok(new { status = true, data = new List<object>(), message = "No records found" });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeePettyCashTransactions(string empCode)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                //bool enableApproval = HttpContext.Session.GetInt32("EnableApproval") == 1;
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                //if (!enableApproval)
+                //{
+                //    string query = @"
+                //SELECT 
+                //    d.id,
+                //    d.date AS `Date`,
+                //    ps.code,
+                //    coa.name AS `Account`,
+                //    d.total AS `TotalWithVAT`,
+                //    cat.name AS `Category`,
+                //    d.note
+                //FROM 
+                //    tbl_petty_cash_submition_details d
+                //INNER JOIN 
+                //    tbl_petty_cash_submition ps ON d.petty_id = ps.id
+                //INNER JOIN 
+                //    tbl_employee e ON ps.name = e.id
+                //INNER JOIN tbl_petty_cash_category cat ON d.category = cat.id
+                //INNER JOIN tbl_coa_level_4 coa ON d.account_id = coa.id
+                //WHERE e.code = @empCode;";
+
+                //    using var cmd = new MySqlCommand(query, conn);
+                //    cmd.Parameters.AddWithValue("@empCode", empCode);
+
+                //    var list = new List<object>();
+
+                //    using var reader = await cmd.ExecuteReaderAsync();
+                //    while (await reader.ReadAsync())
+                //    {
+                //        list.Add(new
+                //        {
+                //            id = reader["id"],
+                //            date = reader["Date"] == DBNull.Value ? null : Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                //            code = reader["code"]?.ToString(),
+                //            account = reader["Account"]?.ToString(),
+                //            totalWithVAT = reader["TotalWithVAT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["TotalWithVAT"]),
+                //            category = reader["Category"]?.ToString(),
+                //            note = reader["note"]?.ToString()
+                //        });
+                //    }
+
+                //    return Ok(new { status = true, data = list });
+                //}
+                //else
+                //{
+                    string query = @"
+                SELECT 
+                    t.id,
+                    t.Date,
+                    t.voucher_no AS `No`,
+                    t.type AS `Type`,
+                    t.transaction_id AS `InvoiceId`,
+                    coa.name AS `Description`,
+                    t.debit AS `Debit`,
+                    t.credit AS `Credit`
+                FROM 
+                    tbl_transaction t
+                INNER JOIN tbl_coa_level_4 coa ON t.account_id = coa.id
+                WHERE 
+                    t.transaction_id IN (
+                        SELECT pt.id 
+                        FROM tbl_employee e
+                        INNER JOIN tbl_petty_cash pt ON pt.employee_id = e.id
+                        WHERE e.code = @empCode
+                    )
+                    AND t.state = 0
+                    AND t.type = 'Petty Cash'
+                ORDER BY t.Date, t.id;";
+
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@empCode", empCode);
+
+                    var list = new List<object>();
+                    decimal balance = 0;
+                    int sn = 1;
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal debit = reader["Debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Debit"]);
+                        decimal credit = reader["Credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Credit"]);
+                        balance += credit - debit;
+
+                        list.Add(new
+                        {
+                            sn = sn++,
+                            date = reader["Date"] == DBNull.Value ? null : Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                            no = string.IsNullOrEmpty(reader["No"]?.ToString()) ? $"PC-00{reader["id"]}" : reader["No"].ToString(),
+                            type = reader["Type"]?.ToString(),
+                            invoiceId = reader["InvoiceId"]?.ToString(),
+                            description = reader["Description"]?.ToString(),
+                            debit,
+                            credit,
+                            balance
+                        });
+                    }
+
+                    return Ok(new { status = true, data = list });
+                //}
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 

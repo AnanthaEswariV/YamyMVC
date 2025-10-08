@@ -365,11 +365,11 @@
             <i class="fas fa-pen"></i>
         </button>
 
+                <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${row.id}'>
+            <i class="fas fa-trash-alt"></i>
+        </button>
 
 
-                                        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${row.id}' disabled>
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
                                     </td>
                                 </tr>
                             `;
@@ -647,6 +647,32 @@
     e.stopPropagation(); // stops bubbling if inside a form
 });
 
+
+        $(document).on('click', '.deletePettyCashBtn', function () {
+            const id = $(this).data('id');
+            if (!id) return;
+
+            if (!confirm('Are you sure you want to delete this Petty Cash voucher?')) return;
+
+            $.ajax({
+                url: '/Lists/DeletePettyCashVoucher',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(id),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        // Remove row from table
+                        $(`button.deletePettyCashBtn[data-id='${id}']`).closest('tr').remove();
+                    } else {
+                        toastr.error(res.message || 'Failed to delete');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Error deleting voucher');
+                }
+            });
+        });
 
     </script>
 }
