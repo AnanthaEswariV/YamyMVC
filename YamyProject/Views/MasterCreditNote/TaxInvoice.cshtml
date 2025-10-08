@@ -1,0 +1,212 @@
+﻿@model TaxInvoiceViewModel
+
+@{
+    var isEdit = Model?.Id > 0;
+    ViewData["Title"] = $"Tax Invoice - {(isEdit ? "Edit" : "Create")}";
+}
+
+<div class="container-fluid">
+
+    <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>@ViewData["Title"]</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="@(isEdit ? "Edit" : "Create")" method="post" id="invoiceForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label asp-for="CustomerCode">Customer Code</label>
+                        <input asp-for="CustomerCode" class="form-control" readonly />
+                        <span asp-validation-for="CustomerCode" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-5">
+                        <label asp-for="CustomerId">Customer</label>
+                        <select asp-for="CustomerId" asp-items="Model.CustomerList" class="form-select"></select>
+                        <span asp-validation-for="CustomerId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-2">
+                        <label asp-for="InvoiceDate">Date</label>
+                        <input asp-for="InvoiceDate" type="date" class="form-control" />
+                        <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-2">
+                        <label asp-for="InvoiceNumber">Invoice #</label>
+                        <input asp-for="InvoiceNumber" class="form-control" readonly />
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label asp-for="InvoiceType">Invoice Type</label>
+                        <select asp-for="InvoiceType" class="form-select">
+                            <option value="">-- Select Type --</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Credit">Credit</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="Emirate">Emirate</label>
+                        <select asp-for="Emirate" class="form-select">
+                            <option value="">-- Select Emirate --</option>
+                            <option>Abu Dhabi</option>
+                            <option>Dubai</option>
+                            <option>Sharjah</option>
+                            <option>Ajman</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="WarehouseId">Warehouse</label>
+                        <select asp-for="WarehouseId" asp-items="Model.WarehouseList" class="form-select"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="AccountName">Account Name</label>
+                        <select asp-for="AccountName" asp-items="Model.AccountList" class="form-select"></select>
+                    </div>
+                </div>
+
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered table-sm align-middle" id="invoiceItems">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Disc</th>
+                                <th>Net Price</th>
+                                <th>VAT</th>
+                                <th>Amount</th>
+                                <th>Cost Center</th>
+                                <th>Remove</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Items != null && Model.Items.Any())
+                            {
+                                int idx = 0;
+                                foreach (var item in Model.Items)
+                                {
+                                    <tr>
+                                        <td>@(idx + 1)</td>
+                                        <td>
+                                            <input type="text" name="Items[@idx].ItemName" value="@item.ItemName" class="form-control item-name" />
+                                        </td>
+                                        <td><input type="text" name="Items[@idx].Quantity" value="@item.Quantity" class="form-control qty" /></td>
+                                        <td><input type="text" name="Items[@idx].Price" value="@item.Price" class="form-control price" /></td>
+                                        <td><input type="text" name="Items[@idx].Discount" value="@item.Discount" class="form-control disc" /></td>
+                                        <td><input type="text" name="Items[@idx].NetPrice" value="@item.NetPrice" class="form-control net-price" readonly /></td>
+                                        <td><input type="text" name="Items[@idx].Vat" value="@item.Vat" class="form-control vat" readonly /></td>
+                                        <td><input type="text" name="Items[@idx].Amount" value="@item.Amount" class="form-control amount" readonly /></td>
+                                        <td><input type="text" name="Items[@idx].CostCenter" value="@item.CostCenter" class="form-control cost-center" /></td>
+                                        <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
+                                    </tr>
+                                    idx++;
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td>1</td>
+                                    <td><input name="Items[0].ItemName" class="form-control item-name" /></td>
+                                    <td><input name="Items[0].Quantity" class="form-control qty" /></td>
+                                    <td><input name="Items[0].Price" class="form-control price" /></td>
+                                    <td><input name="Items[0].Discount" class="form-control disc" /></td>
+                                    <td><input name="Items[0].NetPrice" class="form-control net-price" readonly /></td>
+                                    <td><input name="Items[0].Vat" class="form-control vat" readonly /></td>
+                                    <td><input name="Items[0].Amount" class="form-control amount" readonly /></td>
+                                    <td><input name="Items[0].CostCenter" class="form-control cost-center" /></td>
+                                    <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" id="addRowBtn" class="btn btn-primary mb-3">Add Item</button>
+
+                <div class="row justify-content-end mb-3">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" value="@Model.Items.Sum(x => x.Amount)" readonly placeholder="Total Amount" />
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <a asp-action="Index" class="btn btn-secondary">Close</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <script>
+        function recalcRow($row) {
+            var qty = parseFloat($row.find('.qty').val()) || 0;
+            var price = parseFloat($row.find('.price').val()) || 0;
+            var disc = parseFloat($row.find('.disc').val()) || 0;
+
+            var net = qty * price - disc;
+            var vat = net * 0.05; // example VAT 5%
+            var amount = net + vat;
+
+            $row.find('.net-price').val(net.toFixed(2));
+            $row.find('.vat').val(vat.toFixed(2));
+            $row.find('.amount').val(amount.toFixed(2));
+        }
+
+        function NewRow() {
+            var index = $('#invoiceItems tbody tr').length;
+            var newRow = $(`
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><input name="Items[${index}].ItemName" class="form-control item-name" /></td>
+                    <td><input name="Items[${index}].Quantity" class="form-control qty" /></td>
+                    <td><input name="Items[${index}].Price" class="form-control price" /></td>
+                    <td><input name="Items[${index}].Discount" class="form-control disc" /></td>
+                    <td><input name="Items[${index}].NetPrice" class="form-control net-price" readonly /></td>
+                    <td><input name="Items[${index}].Vat" class="form-control vat" readonly /></td>
+                    <td><input name="Items[${index}].Amount" class="form-control amount" readonly /></td>
+                    <td><input name="Items[${index}].CostCenter" class="form-control cost-center" /></td>
+                    <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
+                </tr>
+            `);
+            $('#invoiceItems tbody').append(newRow);
+        }
+
+        $(document).ready(function () {
+            $('#addRowBtn').click(NewRow);
+
+            $('#invoiceItems').on('click', '.remove-row', function () {
+                $(this).closest('tr').remove();
+                updateRowIndexes();
+            });
+
+            $('#invoiceItems').on('input', '.qty, .price, .disc', function () {
+                recalcRow($(this).closest('tr'));
+            });
+
+            function updateRowIndexes() {
+                $('#invoiceItems tbody tr').each(function (i) {
+                    $(this).find('td:first').text(i + 1);
+                    $(this).find('input').each(function () {
+                        var name = $(this).attr('name');
+                        if (name) {
+                            $(this).attr('name', name.replace(/\d+/, i));
+                        }
+                    });
+                });
+            }
+
+            // Initialize calculations
+            $('#invoiceItems tbody tr').each(function () {
+                recalcRow($(this));
+            });
+        });
+    </script>
+}

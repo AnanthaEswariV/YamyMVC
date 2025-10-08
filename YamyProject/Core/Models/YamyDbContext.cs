@@ -4474,7 +4474,7 @@ public partial class YamyDbContext : DbContext
                 .HasColumnName("type");
         });
 
-        modelBuilder.Entity<TblSubCostCenter>(entity =>
+        modelBuilder.Entity<>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
 

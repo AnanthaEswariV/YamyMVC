@@ -14,20 +14,8 @@ namespace YamyProject.Controllers.Customer
         }
         public async Task<IActionResult> Index()
         {
-           var categories = await _ListServices.GetCustomersAsync();
-
-           var  categorySelectList = categories.Select(c => new SelectListItem
-            {
-                Text = c.Name.ToString(), // Adjust according to your property names
-                Value = c.Id.ToString() // Adjust according to your property names
-            });
             var Sales = await _SalesService.GetSalesReportAsync();
-            Sales.Cast<SalesCenterViewModel>().ToList().ForEach(s =>
-            {
-                s.Customers = categorySelectList;
-            });
-            var customers = await _ListServices.GetCustomersAsync();
-            // Map to SelectListItem
+            var customers = await _ListServices.GetCustomersAsync();    
             var customerSelectList = customers
                 .Select(c => new SelectListItem
                 {
@@ -39,5 +27,30 @@ namespace YamyProject.Controllers.Customer
               ViewBag.Customers = customerSelectList;
             return View(Sales);
         }
+        [HttpGet]
+        public async Task<IActionResult> Create()
+        {
+            var Warehouse = await _ListServices.GetCustomersAsync();
+            var WarehouseSelectList = Warehouse
+                .Select(c => new SelectListItem
+                {
+                    Value = c.Id.ToString(),
+                    Text = c.Name?.ToString()
+                }).ToList();
+
+            var customers = await _ListServices.GetCustomersAsync();
+            var customerSelectList = customers
+                .Select(c => new SelectListItem
+                {
+                    Value = c.Id.ToString(),
+                    Text =  c.Name?.ToString()
+                })
+                .ToList();
+            ViewBag.Customers = customerSelectList;
+            ViewBag.Warehouse = WarehouseSelectList;
+
+            return View("TaxInvoice");
+        }
+
     }
 }

@@ -45,5 +45,13 @@ namespace YamyProject.Services.Implementations
         {
             return await _context.TblCustomers.ToListAsync();
         }
+        public async Task<IEnumerable<TblTax>> GetVatAsync()
+        {
+            return await _context.TblTaxes.ToListAsync();
+        }
+        public async Task<IEnumerable<TblSubCostCenter>> GetCostCenterAsync()
+        {
+            return await _context.TblSubCostCenters.ToListAsync();
+        }
     }
 }

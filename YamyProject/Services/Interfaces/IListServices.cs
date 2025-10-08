@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Services.Interfaces
+﻿using YamyProject.Core.Models;
+
+namespace YamyProject.Services.Interfaces
 {
     public interface IListServices
     {
@@ -10,6 +12,8 @@
         Task<IEnumerable<TblCoaLevel4>> GetAccountsAsync();
         Task<IEnumerable<TblVendor>> GetVendorsAsync();
         Task<IEnumerable<TblCustomer>> GetCustomersAsync();
+        Task<IEnumerable<TblTax>> GetVatAsync();
+        Task<IEnumerable<TblSubCostCenter>> GetCostCenterAsync();
 
     }
 }
