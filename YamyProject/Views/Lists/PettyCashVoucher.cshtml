@@ -365,8 +365,8 @@
             <i class="fas fa-pen"></i>
         </button>
 
-                <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${row.id}'>
-            <i class="fas fa-trash-alt"></i>
+        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${voucher.voucher.id}'>
+                 <i class="fas fa-trash-alt"></i>
         </button>
 
 
@@ -449,6 +449,9 @@
                         toastr.success('Petty Cash saved successfully');
                         $('#addPettyCashModal').modal('hide');
                         $('#pettyCashTableBody').empty();
+                                   setTimeout(function () {
+                                        location.reload();
+                                     }, 1500); // Optional delay before redirect
                         addNewRow();
                         loadPettyCashCards();
                     } else {
@@ -630,6 +633,9 @@
                         toastr.success('Petty Cash updated successfully');
                         $('#editPettyCashModal').modal('hide');
                         loadPettyCashForEmployee();
+                                   setTimeout(function () {
+                                        location.reload();
+                                     }, 1500); // Optional delay before redirect
                     } else {
                         toastr.error(res.message || 'Update failed');
                     }
@@ -648,6 +654,7 @@
 });
 
 
+
         $(document).on('click', '.deletePettyCashBtn', function () {
             const id = $(this).data('id');
             if (!id) return;
@@ -656,14 +663,15 @@
 
             $.ajax({
                 url: '/Lists/DeletePettyCashVoucher',
-                type: 'POST',
+                type: 'POST',  // Use POST for reliable body binding
                 contentType: 'application/json',
                 data: JSON.stringify(id),
                 success: function (res) {
                     if (res.status) {
                         toastr.success(res.message);
-                        // Remove row from table
-                        $(`button.deletePettyCashBtn[data-id='${id}']`).closest('tr').remove();
+                                   setTimeout(function () {
+                                        location.reload();
+                                     }, 1500); // Optional delay before redirect
                     } else {
                         toastr.error(res.message || 'Failed to delete');
                     }

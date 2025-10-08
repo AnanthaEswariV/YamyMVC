@@ -3796,7 +3796,6 @@ ORDER BY pc.id ASC;
             return View();
         }
 
-
         [HttpPost]
         public async Task<IActionResult> SavePettyCashVoucher([FromBody] PettyCashVoucherRequest model)
         {
@@ -4203,61 +4202,30 @@ ORDER BY pc.id ASC;
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // --- 1. Read all records ---
+                using var transaction = await conn.BeginTransactionAsync();
+
+                // Backup main voucher
                 var dtVoucher = new DataTable();
-                using (var cmd = new MySqlCommand("SELECT * FROM tbl_petty_cash WHERE id=@id", conn))
+                using (var cmd = new MySqlCommand("SELECT * FROM tbl_petty_cash WHERE id=@id", conn, transaction))
                 {
                     cmd.Parameters.AddWithValue("@id", id);
                     using var reader = await cmd.ExecuteReaderAsync();
                     dtVoucher.Load(reader);
                 }
 
-                var dtDetails = new DataTable();
-                using (var cmd = new MySqlCommand("SELECT * FROM tbl_petty_cash_details WHERE Petty_Cash_id=@id", conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    using var reader = await cmd.ExecuteReaderAsync();
-                    dtDetails.Load(reader);
-                }
-
-                var dtTransaction = new DataTable();
-                using (var cmd = new MySqlCommand("SELECT * FROM tbl_transaction WHERE transaction_id=@id AND t_type='PettyCash'", conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    using var reader = await cmd.ExecuteReaderAsync();
-                    dtTransaction.Load(reader);
-                }
-
-                // --- 2. Backup records ---
-                string insertBackup = @"INSERT INTO tbl_deleted_records (table_name, record_data, deleted_by) VALUES (@table, @data, @user)";
                 foreach (DataRow row in dtVoucher.Rows)
                 {
-                    using var cmd = new MySqlCommand(insertBackup, conn);
-                    cmd.Parameters.AddWithValue("@table", "tbl_PettyCash_voucher");
+                    using var cmd = new MySqlCommand(
+                        "INSERT INTO tbl_deleted_records (table_name, record_data, deleted_by) VALUES (@table, @data, @user)",
+                        conn, transaction
+                    );
+                    cmd.Parameters.AddWithValue("@table", "tbl_petty_cash");
                     cmd.Parameters.AddWithValue("@data", JsonConvert.SerializeObject(row));
                     cmd.Parameters.AddWithValue("@user", userId);
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                foreach (DataRow row in dtDetails.Rows)
-                {
-                    using var cmd = new MySqlCommand(insertBackup, conn);
-                    cmd.Parameters.AddWithValue("@table", "tbl_PettyCash_voucher_details");
-                    cmd.Parameters.AddWithValue("@data", JsonConvert.SerializeObject(row));
-                    cmd.Parameters.AddWithValue("@user", userId);
-                    await cmd.ExecuteNonQueryAsync();
-                }
-
-                foreach (DataRow row in dtTransaction.Rows)
-                {
-                    using var cmd = new MySqlCommand(insertBackup, conn);
-                    cmd.Parameters.AddWithValue("@table", "tbl_transaction");
-                    cmd.Parameters.AddWithValue("@data", JsonConvert.SerializeObject(row));
-                    cmd.Parameters.AddWithValue("@user", userId);
-                    await cmd.ExecuteNonQueryAsync();
-                }
-
-                // --- 3. Delete all related records ---
+                // Delete related records
                 string[] deleteQueries =
                 {
             "DELETE FROM tbl_transaction WHERE t_type=@type AND transaction_id=@id",
@@ -4268,14 +4236,17 @@ ORDER BY pc.id ASC;
 
                 foreach (var query in deleteQueries)
                 {
-                    using var cmd = new MySqlCommand(query, conn);
+                    using var cmd = new MySqlCommand(query, conn, transaction);
                     cmd.Parameters.AddWithValue("@id", id);
                     if (query.Contains("@type"))
                         cmd.Parameters.AddWithValue("@type", "PettyCash");
+
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                return Ok(new { status = true, message = "PettyCash voucher deleted successfully" });
+                await transaction.CommitAsync();
+
+                return Ok(new { status = true, message = "Petty Cash voucher deleted successfully" });
             }
             catch (Exception ex)
             {
@@ -4283,8 +4254,8 @@ ORDER BY pc.id ASC;
             }
         }
 
-        #endregion
 
+        #endregion
 
         #region Petty Cash Log
 
