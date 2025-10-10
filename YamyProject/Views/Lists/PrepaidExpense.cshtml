@@ -384,8 +384,6 @@
                     if (res.status) {
                         toastr.success(isEdit ? 'Prepaid Expense updated successfully' : 'Prepaid Expense added successfully');
                         $('#bankModal').modal('hide');
-                        // Refresh your list or table after saving
-                        loadPrepaidExpenseList();
                          setTimeout(function () {
                                         location.reload();
                                      }, 1500); // Optional delay before redirect
@@ -444,7 +442,7 @@
                                         <button class="btn btn-sm btn-primary editPrepaidBtn" data-prepaid='${JSON.stringify(row)}' title="Edit Prepaid">
                                             <i class="fas fa-pen"></i>
                                         </button>
-                                                  <button class="btn btn-sm btn-primary journalCategoryBtn" data-id="${row.id}" title="View Journal Category">
+                                                  <button class="btn btn-sm btn-primary journalCategoryBtn" data-id="${row.id}" title="View Journal Entry">
             <i class="fas fa-book"></i>
         </button>
                                     </td>

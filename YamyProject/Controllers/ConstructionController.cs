@@ -486,6 +486,253 @@ namespace YamyProject.Controllers
 
         #region SiteCenter
 
+        public IActionResult SiteCenter()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetCities()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, name FROM tbl_city ORDER BY name;";
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var cityList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    cityList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = cityList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSites()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY ps.id) AS SN, 
+                ps.id, 
+                ps.code, 
+                ps.name, 
+                COALESCE(c.name, 'Unknown') AS location, 
+                ps.plot_number, 
+                ps.address,
+                c.id AS LocationId
+            FROM tbl_project_sites ps
+            LEFT JOIN tbl_city c ON c.id = ps.location_id;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = reader.GetInt32("SN"),
+                        id = reader.GetInt32("id"),
+                        code = reader["code"].ToString(),
+                        name = reader["name"].ToString(),
+                        location = reader["location"].ToString(),
+                        plotNumber = reader["plot_number"].ToString(),
+                        address = reader["address"].ToString(),
+                        locationId = reader.GetInt32("LocationId")
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveSite([FromBody] SiteRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter Site Name" });
+
+            if (model.LocationId == null || model.LocationId <= 0)
+                return BadRequest(new { status = false, message = "Please select a project location" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔍 Check if site name already exists
+                string checkQuery = "SELECT id FROM tbl_project_sites WHERE name=@name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                        return BadRequest(new { status = false, message = "Site Name already in use" });
+                }
+
+                if (model.Id == 0)
+                {
+                    // 🆕 Generate next site code
+                    string code = await GenerateNextSiteCode(conn);
+
+                    // Insert new site
+                    string insertQuery = @"
+                INSERT INTO tbl_project_sites (code, name, location_id, plot_number, address)
+                VALUES (@code, @name, @location_id, @plot_number, @address);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@location_id", model.LocationId ?? 0);
+                    cmd.Parameters.AddWithValue("@plot_number", model.PlotNumber ?? "");
+                    cmd.Parameters.AddWithValue("@address", model.Address ?? "");
+
+                    int siteId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                    return Ok(new { status = true, message = "Site added successfully", id = siteId, code = code });
+                }
+                else
+                {
+                    // ✏️ Update existing site
+                    string updateQuery = @"
+                UPDATE tbl_project_sites 
+                SET name=@name, location_id=@location_id, plot_number=@plot_number, address=@address 
+                WHERE id=@id;";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@location_id", model.LocationId ?? 0);
+                    cmd.Parameters.AddWithValue("@plot_number", model.PlotNumber ?? "");
+                    cmd.Parameters.AddWithValue("@address", model.Address ?? "");
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Site not found" });
+
+                    return Ok(new { status = true, message = "Site updated successfully", id = model.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextSiteCode(MySqlConnection conn)
+        {
+            string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_project_sites";
+            await using var cmd = new MySqlCommand(query, conn);
+            object result = await cmd.ExecuteScalarAsync();
+
+            int next = 1;
+            if (result != DBNull.Value && result != null)
+                next = Convert.ToInt32(result) + 1;
+
+            return next.ToString("D3"); // e.g., 001, 002, 003
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteProjectSite(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project Site ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if used in tbl_project_planning
+                string checkQuery = "SELECT COUNT(1) FROM tbl_project_planning WHERE site = @id";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var result = await checkCmd.ExecuteScalarAsync();
+                    int count = Convert.ToInt32(result);
+                    if (count > 0)
+                        return BadRequest(new { status = false, message = "Project site already used in project planning" });
+                }
+
+                // Delete project site
+                string deleteQuery = "DELETE FROM tbl_project_sites WHERE id=@id";
+                await using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@id", id);
+                    int affected = await deleteCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Project site not found" });
+                }
+
+                return Ok(new { status = true, message = "Project site deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

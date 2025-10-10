@@ -402,6 +402,14 @@ namespace YamyProject.Core.Models
         public int Id { get; set; }
         public string Name { get; set; }
     }
+    public class SiteRequest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public int? LocationId { get; set; }
+        public string PlotNumber { get; set; }
+        public string Address { get; set; }
+    }
 
 
 
