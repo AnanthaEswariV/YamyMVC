@@ -309,6 +309,188 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region TenderCenter
+
+        public IActionResult TenderCenter()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTenders()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, code, name FROM tbl_tender_names ORDER BY id;";
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var tenderList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    tenderList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = tenderList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveTender([FromBody] TenderRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter Tender Name" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if name already exists
+                string checkQuery = "SELECT id FROM tbl_tender_names WHERE name=@name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                        return BadRequest(new { status = false, message = "Tender Name already in use" });
+                }
+
+                if (model.Id == 0)
+                {
+                    // Generate next tender code
+                    string code = await GenerateNextTenderCode(conn);
+
+                    string insertQuery = @"INSERT INTO tbl_tender_names (code, name) VALUES (@code, @name); SELECT LAST_INSERT_ID();";
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    int tenderId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                    return Ok(new { status = true, message = "Tender added successfully", id = tenderId, code = code });
+                }
+                else
+                {
+                    string updateQuery = @"UPDATE tbl_tender_names SET name=@name WHERE id=@id";
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Tender not found" });
+
+                    return Ok(new { status = true, message = "Tender updated successfully", id = model.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteTender(int tenderId)
+        {
+            if (tenderId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Tender ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if tender is used in tbl_project_tender
+                string checkQuery = "SELECT COUNT(1) FROM tbl_project_tender WHERE tender_name_id=@id";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", tenderId);
+                    var result = await checkCmd.ExecuteScalarAsync();
+                    int recordCount = result != null ? Convert.ToInt32(result) : 0;
+                    if (recordCount > 0)
+                        return BadRequest(new { status = false, message = "Tender already used in projects and cannot be deleted" });
+                }
+
+                string deleteQuery = "DELETE FROM tbl_tender_names WHERE id=@id";
+                await using (var cmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", tenderId);
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Tender not found" });
+                }
+
+                return Ok(new { status = true, message = "Tender deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // Generate sequential tender code (001, 002, 003)
+        private async Task<string> GenerateNextTenderCode(MySqlConnection conn)
+        {
+            string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_tender_names";
+            await using var cmd = new MySqlCommand(query, conn);
+            object result = await cmd.ExecuteScalarAsync();
+
+            int next = 1;
+            if (result != DBNull.Value && result != null)
+                next = Convert.ToInt32(result) + 1;
+
+            return next.ToString("D3"); // Format: 001, 002, 003
+        }
+
+        #endregion
+
+        #region SiteCenter
+
+
+        #endregion
+
+
+
 
 
 

@@ -396,6 +396,12 @@ namespace YamyProject.Core.Models
         public int? CityId { get; set; }
         public bool IsProjectOption { get; set; }
     }
+    // TenderRequest DTO
+    public class TenderRequest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
 
 
 
