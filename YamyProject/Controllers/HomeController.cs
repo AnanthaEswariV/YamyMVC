@@ -1,4 +1,3 @@
-
 namespace YamyProject.Controllers
 {
     public class HomeController : Controller

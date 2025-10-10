@@ -15,4 +15,7 @@ global using System.ComponentModel.DataAnnotations.Schema;
 global using YamyProject.Services.Interfaces;
 global using System.ComponentModel.DataAnnotations;
 global using Microsoft.AspNetCore.Mvc.Rendering;
-
+global using System.Data;
+global using YamyProject.Core.Models.Enum;
+global using Microsoft.EntityFrameworkCore.Metadata.Internal;
+global using YamyProject.Core.Models;

@@ -1,8 +1,4 @@
-﻿
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using YamyProject.Core.Models;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     [Route("Settings")]
     public class SettingsController : Controller

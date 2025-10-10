@@ -1,7 +1,4 @@
-﻿using YamyProject.Core.Models;
-using static Org.BouncyCastle.Math.EC.ECCurve;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
 
     public class AccountController : Controller

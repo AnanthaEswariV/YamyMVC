@@ -1,13 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Data;
-using YamyProject.Core.Models;
-using YamyProject.Core.Models.DTOs;
-using YamyProject.Core.Models.Enum;
-using static Org.BouncyCastle.Math.EC.ECCurve;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     [Route("Lists/[action]")]
     public class ListsController : Controller
@@ -4886,7 +4877,6 @@ ORDER BY pc.id ASC;
         await cmd.ExecuteNonQueryAsync();
     }
 }
-
 
         [HttpGet]
         public async Task<IActionResult> GetPrepaidJournalEntries(int prepaidId)

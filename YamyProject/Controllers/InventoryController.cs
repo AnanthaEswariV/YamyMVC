@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using static Org.BouncyCastle.Math.EC.ECCurve;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     [Route("Inventory/[action]")]
     public class InventoryController : Controller
