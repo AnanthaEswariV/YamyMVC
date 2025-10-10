@@ -11,7 +11,7 @@
 <section class="section">
     <div class="row" id="basic-table">
         <div class="col-12 col-md-4">
-            <div class="card">
+            <div class="card" style="height: 150%;">
                 <div class="card-header d-flex justify-content-end">
                     <div class="dropdown">
                         <button class="btn btn-sm btn-primary dropdown-toggle"
@@ -74,7 +74,7 @@
             </div>
         </div>
         <div class="col-12 col-md-8">
-                <div class="card">
+                <div class="card" style="height: 150%;">
                     <div class="card-header">
                         <h5 class="card-title">Petty cash Log</h5>
                     </div>
@@ -256,7 +256,7 @@
                             res.data.forEach(card => {
                                 tbody.append(`
                                     <tr class="employee-row" data-empcode="${card.empCode}">
-                                        <td>${card.code ?? ""}</td>
+                                        <td>${card.empCode ?? ""}</td>
                                         <td>${card.employeeName ?? ""}</td>
                                         <td class="text-center">
                                             <button class="btn btn-sm btn-outline-primary edit-card"
@@ -286,7 +286,6 @@
                 });
             }
 
-            // 2️⃣ On Employee Row Click → Load Vouchers & Transactions
             $(document).on('click', '.employee-row', function () {
                 let empCode = $(this).data('empcode');
                 if (!empCode) {
@@ -369,10 +368,6 @@
                     }
                 });
             }
-
-        
-
-
 
             loadPettyCashCards();
 
@@ -563,7 +558,7 @@
             $('#pettyCashForm').removeClass('was-validated');
         });
 
-             $(document).on("click", ".delete-card", function () {
+            $(document).on("click", ".delete-card", function () {
             const id = $(this).data("id");
             if (!confirm("Are you sure you want to delete this Petty Cash Card?")) return;
 
@@ -585,11 +580,6 @@
             });
         });
 
-
-            
-
-
-            
 
         });
 

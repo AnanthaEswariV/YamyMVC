@@ -363,6 +363,26 @@ namespace YamyProject.Core.Models
         public int Level2Id { get; set; }
         public string Name { get; set; }
     }
+    public class PrepaidExpenseCategoryRequest
+    {
+        public int Id { get; set; }
+        public string CategoryName { get; set; }
+    }
+    public class PrepaidExpenseRequest
+    {
+        public int Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public int CategoryId { get; set; }
+        public int DebitAccountId { get; set; }
+        public int CreditAccountId { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Fee { get; set; }
+        public decimal Total { get; set; }
+    }
+
 
 
 

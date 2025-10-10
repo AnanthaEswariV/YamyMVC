@@ -1,0 +1,230 @@
+﻿@{
+    ViewData["Title"] = "PrepaidExpenseCategory";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Category</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" id="addCategoryBtn" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Category
+            </button>
+
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="categoryTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Category Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Category Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="categoryForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="categoryModalLabel">Category - New Category</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <input type="hidden" id="categoryId" value="0" />
+
+                    <!-- Category Name Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="categoryName" class="form-label text-muted">Category Name</label>
+                            <input type="text" class="form-control" id="categoryName" name="CategoryName" placeholder="Enter Category Name" required>
+                            <div class="invalid-feedback">
+                                Please enter a category name.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">CLOSE</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+        $(document).ready(function () {
+                 function loadPrepaidExpenseCategories() {
+            $.ajax({
+                url: "/Lists/GetCategories",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#categoryTable")) {
+                            $("#categoryTable").DataTable().destroy();
+                        }
+
+                        let tbody = $("#categoryTable tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let tr = `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>${row.categoryName ?? ""}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editCategoryBtn" data-category='${JSON.stringify(row)}'>
+                                                 <i class="fas fa-pen"></i>
+                                            </button>
+                                          
+
+                                        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                               $("#categoryTable").DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-primary btn-sm'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    className: 'btn btn-primary btn-sm'
+                }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 25
+        });
+                        } else {
+                            tbody.append(`<tr><td colspan="3" class="text-center text-muted py-4">No records found</td></tr>`);
+                        }
+                    }
+                },
+                error: function () {
+                    toastr.error("Failed to load categories");
+                }
+            });
+        }
+
+                loadPrepaidExpenseCategories();
+
+                $('[data-bs-target="#categoryModal"]').on("click", function () {
+            $("#categoryModalLabel").text("Category - New Category");
+            $("#categoryId").val("0");
+            $("#categoryName").val("");
+            $("#categoryForm").removeClass("was-validated")[0].reset();
+        });
+
+                $(document).on("click", ".editCategoryBtn", function () {
+            const category = $(this).data("category");
+            if (!category) return;
+
+            // 📝 Fill modal fields
+            $("#categoryId").val(category.id);
+            $("#categoryName").val(category.categoryName);
+
+            // 🏷️ Update modal title
+            $("#categoryModalLabel").text("Edit Category");
+
+            // 🪟 Show modal
+            $("#categoryModal").modal("show");
+        });
+
+                // 💾 Save Category (Add / Edit)
+                $('#categoryForm').on('submit', function (e) {
+                e.preventDefault();
+
+                const form = this;
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return;
+                }
+
+                const idVal = $('#categoryId').val();
+                const isEdit = idVal && parseInt(idVal) > 0;
+
+                const categoryData = {
+                    Id: isEdit ? parseInt(idVal) : 0,
+                    CategoryName: $('#categoryName').val().trim()
+                };
+
+                $.ajax({
+                    url: '/Lists/SavePrepaidExpenseCategory',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(categoryData),
+                    success: function (res) {
+                        if (res.status) {
+                            toastr.success(isEdit ? 'Category updated successfully' : 'Category added successfully');
+                            $('#categoryModal').modal('hide');
+                            loadPrepaidExpenseCategories();
+                        } else {
+                            toastr.error(res.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                    }
+                });
+            });
+
+        });
+
+    </script>
+}

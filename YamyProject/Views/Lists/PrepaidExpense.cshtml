@@ -1,0 +1,552 @@
+﻿
+@{
+    ViewData["Title"] = "PrepaidExpense";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>PrePaid Expenses</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" id="addCategoryBtn" data-bs-toggle="modal" data-bs-target="#bankModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Expenses
+            </button>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Days</th>
+                    <th>Note</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Bank Modal Redesigned -->
+<div class="modal fade" id="bankModal" tabindex="-1" aria-labelledby="bankModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="bankForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="bankModalLabel">PrePaid Expenses - New</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="bankId" value="0" />
+
+                    <!-- Code and Date -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bankCode" class="form-label text-muted">Code</label>
+                            <input type="text" class="form-control" id="bankCode" placeholder="Code" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="date" class="form-label text-muted">Date</label>
+                            <input type="date" class="form-control" id="date" value="<?= date('Y-m-d') ?>">
+                        </div>
+                    </div>
+
+                    <!-- Name and Category -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label text-muted">Name</label>
+                            <input type="text" class="form-control" id="bankName" name="BankName" placeholder="Name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="category" class="form-label text-muted">Category</label>
+                            <select class="form-select" id="category" name="Category" required>
+                                <option value="">Category</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-secondary w-100">New</button>
+                        </div>
+                    </div>
+
+                    <!-- Agreement Dates and Total Days -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="startDate" class="form-label text-muted">Agreement Start Date</label>
+                            <input type="date" class="form-control" id="startDate" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="endDate" class="form-label text-muted">Agreement End Date</label>
+                            <input type="date" class="form-control" id="endDate" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="totalDays" class="form-label text-muted">Total Days</label>
+                            <input type="text" class="form-control" id="totalDays" value="1" disabled>
+                        </div>
+                    </div>
+
+                    <!-- Agreement Amounts -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="agreementAmount" class="form-label text-muted">Agreement Amount</label>
+                            <input type="text" class="form-control" id="agreementAmount">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="feesAmount" class="form-label text-muted">Fees Amount</label>
+                            <input type="text" class="form-control" id="feesAmount">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="agreementTotal" class="form-label text-muted">Agreement Total</label>
+                            <input type="text" class="form-control" id="agreementTotal" disabled>
+                        </div>
+                    </div>
+
+                    <!-- Debit and Credit Accounts -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="debitAccount" class="form-label text-muted">Debit Account</label>
+                            <select class="form-select" id="debitAccount">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="creditAccount" class="form-label text-muted">Credit Account</label>
+                            <select class="form-select" id="creditAccount">
+                                <option value="">Select Account</option>
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="journalModal" tabindex="-1" aria-labelledby="journalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="journalModalLabel">Journal Entries</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Account</th>
+                            <th>Debit</th>
+                            <th>Credit</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="journalTableBody">
+                        <tr><td colspan="5" class="text-center text-muted">No records found</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+
+
+                function populateBankAccounts() {
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : res.data || [];
+
+                    if (!data.length) return;
+
+                    // Target both debit and credit selects
+                    const accountSelectors = ['#debitAccount', '#creditAccount'];
+
+                    accountSelectors.forEach(function(selector) {
+                        const $select = $(selector);
+                        const selectedId = $select.data('selected-id'); // optional pre-selected ID
+
+                        // Clear existing options and add default
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        // Append new options
+                        $.each(data, function(i, item) {
+                            const $option = $('<option>', {
+                                value: item.id,
+                                text: `${item.code} - ${item.name}`,
+                                selected: String(item.id) === String(selectedId)
+                            });
+
+                            $select.append($option);
+                        });
+                    });
+                },
+                error: function(err) {
+                    console.error('Failed to fetch bank accounts:', err);
+                }
+            });
+        }
+
+                function populateCategories() {
+            $.ajax({
+                url: '/Lists/GetCategories',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : res.data || [];
+                  
+                    if (!data.length) return;
+
+                    // Target both debit and credit selects
+                    const accountSelectors = ['#category'];
+
+                    accountSelectors.forEach(function(selector) {
+                        const $select = $(selector);
+                        const selectedId = $select.data('selected-id'); // optional pre-selected ID
+
+                        // Clear existing options and add default
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        // Append new options
+                        $.each(data, function(i, item) {
+                            const $option = $('<option>', {
+                                value: item.id,
+                                text: `${item.categoryName}`,
+                                selected: String(item.id) === String(selectedId)
+                            });
+
+                            $select.append($option);
+                        });
+                    });
+                },
+                error: function(err) {
+                    console.error('Failed to fetch bank accounts:', err);
+                }
+            });
+        }
+
+           
+                $(document).ready(function() {
+
+                   
+            // 1. Calculate Total Days based on start and end date
+            function calculateTotalDays() {
+                const start = $('#startDate').val();
+                const end = $('#endDate').val();
+
+                if (start && end) {
+                    const startDate = new Date(start);
+                    const endDate = new Date(end);
+                    const diffTime = endDate - startDate; // in milliseconds
+                    const diffDays = Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1, 1); // +1 to include start day
+                    $('#totalDays').val(diffDays);
+                } else {
+                    $('#totalDays').val(1);
+                }
+            }
+
+            // 2. Calculate Agreement Total based on Agreement Amount + Fees Amount
+            function calculateAgreementTotal() {
+                const agreementAmount = parseFloat($('#agreementAmount').val()) || 0;
+                const feesAmount = parseFloat($('#feesAmount').val()) || 0;
+                $('#agreementTotal').val((agreementAmount + feesAmount).toFixed(2));
+            }
+
+            // Event listeners
+            $('#startDate, #endDate').on('change', calculateTotalDays);
+            $('#agreementAmount, #feesAmount').on('input', calculateAgreementTotal);
+
+            // Initialize calculations on modal open
+            $('#bankModal').on('shown.bs.modal', function() {
+                calculateTotalDays();
+                calculateAgreementTotal();
+            });
+            populateCategories();
+             populateBankAccounts();
+
+                     // 🖊️ Edit Prepaid Expense Button Click
+        $(document).on("click", ".editPrepaidBtn", function () {
+            const prepaid = $(this).data("prepaid");
+            if (!prepaid) return;
+
+            // 🔹 Fill modal fields
+            $("#bankId").val(prepaid.id ?? 0);
+            $("#bankCode").val(prepaid.code ?? "");
+            $("#bankName").val(prepaid.name ?? "");
+            $("#category").val(prepaid.categoryId ?? 0);
+            $("#debitAccount").val(prepaid.debitAccountId ?? 0);
+            $("#creditAccount").val(prepaid.creditAccountId ?? 0);
+            $("#startDate").val(prepaid.startDate ?? "");
+            $("#endDate").val(prepaid.endDate ?? "");
+            $("#agreementAmount").val(prepaid.amount ?? 0);
+            $("#feesAmount").val(prepaid.fee ?? 0);
+            $("#agreementTotal").val(prepaid.total ?? 0);
+
+            // 🔹 Calculate total days
+            if (prepaid.startDate && prepaid.endDate) {
+                const start = new Date(prepaid.startDate);
+                const end = new Date(prepaid.endDate);
+                const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                $("#totalDays").val(days);
+            }
+
+            // 🔹 Update modal title
+            $("#bankModalLabel").text("Edit Prepaid Expense");
+
+            // 🔹 Show modal
+            $("#bankModal").modal("show");
+        });
+
+                     // 💾 Save Prepaid Expense (Add / Edit)
+        $('#bankForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#bankId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const prepaidData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Code: $('#bankCode').val().trim(),
+                Name: $('#bankName').val().trim(),
+                CategoryId: parseInt($('#category').val()) || 0,
+                DebitAccountId: parseInt($('#debitAccount').val()) || 0,
+                CreditAccountId: parseInt($('#creditAccount').val()) || 0,
+                StartDate: $('#startDate').val(),
+                EndDate: $('#endDate').val(),
+                Amount: parseFloat($('#agreementAmount').val()) || 0,
+                Fee: parseFloat($('#feesAmount').val()) || 0,
+                Total: parseFloat($('#agreementTotal').val()) || 0
+            };
+
+            $.ajax({
+                url: '/Lists/SavePrepaidExpense',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(prepaidData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Prepaid Expense updated successfully' : 'Prepaid Expense added successfully');
+                        $('#bankModal').modal('hide');
+                        // Refresh your list or table after saving
+                        loadPrepaidExpenseList();
+                         setTimeout(function () {
+                                        location.reload();
+                                     }, 1500); // Optional delay before redirect
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+           function loadPrepaidExpenses() {
+            $.ajax({
+                url: "/Lists/GetPrepaidExpenses",
+                type: "GET",
+                success: function(res) {
+                    if (!res.status) {
+                        toastr.error("Failed to load prepaid expenses");
+                        return;
+                    }
+               
+
+                    // Destroy existing DataTable if exists
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+
+                    let tbody = $("#table1 tbody");
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function(i, row) {
+                            const startDate = row.startDate ?? "";
+                            const endDate = row.endDate ?? "";
+                            let days = 0;
+
+                            if (startDate && endDate) {
+                                const start = new Date(startDate);
+                                const end = new Date(endDate);
+                                days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            }
+
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${row.code ?? ""}</td>
+                                    <td>${row.name ?? ""}</td>
+                                    <td>${startDate}</td>
+                                    <td>${endDate}</td>
+                                    <td>${days}</td>
+                                    <td>Amount: ${row.amount}, Fee: ${row.fee}, Total: ${row.total}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary editPrepaidBtn" data-prepaid='${JSON.stringify(row)}' title="Edit Prepaid">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                                  <button class="btn btn-sm btn-primary journalCategoryBtn" data-id="${row.id}" title="View Journal Category">
+            <i class="fas fa-book"></i>
+        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $("#table1").DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function() {
+                    toastr.error("Failed to load prepaid expenses");
+                }
+            });
+        }
+
+            loadPrepaidExpenses();
+
+                           $(document).on("click", ".journalCategoryBtn", function () {
+            const prepaidId = $(this).data("id");
+            if (!prepaidId) {
+                console.error("Prepaid ID not found.");
+                return;
+            }
+
+            console.log("Clicked prepaidId:", prepaidId);
+
+            $('#journalModalLabel').text(`Journal Entries for Prepaid #${prepaidId}`);
+            $('#journalTableBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');
+            $('#journalModal').modal('show');
+
+            $.ajax({
+                url: `/Lists/GetPrepaidJournalEntries?prepaidId=${prepaidId}`,
+                type: 'GET',
+                success: function (res) {
+                    if (res.status && res.data.length > 0) {
+                        let rows = '';
+                        let totalDebit = 0;
+                        let totalCredit = 0;
+
+                        $.each(res.data, function (i, item) {
+                            const debit = parseFloat(item.debit) || 0;
+                            const credit = parseFloat(item.credit) || 0;
+
+                            totalDebit += debit;
+                            totalCredit += credit;
+
+                            rows += `
+                                <tr>
+                                    <td>${item.date}</td>
+                                    <td>${item.accountName || '-'}</td>
+                                    <td class="text-end">${debit.toFixed(2)}</td>
+                                    <td class="text-end">${credit.toFixed(2)}</td>
+                                    <td>${item.description || ''}</td>
+                                </tr>`;
+                        });
+
+                        // Add total row
+                        rows += `
+                            <tr class="table-secondary fw-bold">
+                                <td colspan="2" class="text-end">Total:</td>
+                                <td class="text-end">${totalDebit.toFixed(2)}</td>
+                                <td class="text-end">${totalCredit.toFixed(2)}</td>
+                                <td></td>
+                            </tr>`;
+
+                        $('#journalTableBody').html(rows);
+                    } else {
+                        $('#journalTableBody').html('<tr><td colspan="5" class="text-center text-muted">No journal entries found</td></tr>');
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr);
+                    $('#journalTableBody').html('<tr><td colspan="5" class="text-center text-danger">Failed to load journal entries</td></tr>');
+                }
+            });
+        });
+
+
+        });
+
+
+
+   </script>
+
+   }

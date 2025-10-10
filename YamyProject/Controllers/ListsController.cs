@@ -3720,6 +3720,7 @@ ORDER BY pc.id ASC;
                         whatsapp_no = reader["whatsapp_no"]?.ToString() ?? "",
                         email = reader["email"]?.ToString() ?? "",
                         empCode = reader.GetInt32("empCode")
+                       
                     });
                 }
 
@@ -4030,61 +4031,7 @@ ORDER BY pc.id ASC;
             }
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetPettyCashCardsByEmployee()
-        {
-            try
-            {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-      SELECT 
-    pc.id,
-    pc.code,
-    pc.employee_id AS employeeId,   
-    e.name AS employeeName
-FROM tbl_petty_cash pc
-LEFT JOIN tbl_employee e ON e.id = pc.employee_id
-ORDER BY pc.id ASC;
- ";
-
-
-                using var cmd = new MySqlCommand(query, conn);
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                var list = new List<object>();
-                int sn = 1;
-                while (await reader.ReadAsync())
-                {
-                    list.Add(new
-                    {
-                        sn = sn++,
-                        id = reader.GetInt32("id"),
-                        code = reader["code"].ToString(),
-                        employeeId = reader["employeeId"] == DBNull.Value ? 0 : Convert.ToInt32(reader["employeeId"]),
-                        employeeName = reader["employeeName"]?.ToString() ?? "",
-                    });
-                }
-
-
-                return Ok(new { status = true, data = list });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
+      
         [HttpPost]
         public async Task<IActionResult> EditPettyCashVoucher([FromBody] PettyCashVoucherRequest model)
         {
@@ -4254,7 +4201,203 @@ ORDER BY pc.id ASC;
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashVoucherJournal(int id)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // --- STEP 1: Get Voucher Header ---
+                string voucherQuery = @"SELECT * FROM tbl_petty_cash WHERE id = @id;";
+                using var voucherCmd = new MySqlCommand(voucherQuery, conn);
+                voucherCmd.Parameters.AddWithValue("@id", id);
+
+                using var reader = await voucherCmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                    return Ok(new { status = false, message = "Voucher not found" });
+
+                string code = reader["code"].ToString();
+                DateTime voucherDate = Convert.ToDateTime(reader["voucher_date"]);
+                string cashAccountId = reader["cash_account_id"].ToString();
+                decimal total = Convert.ToDecimal(reader["total"]);
+                bool isOldBill = reader["status"].ToString().ToLower() == "1";
+                int pettyCashId = Convert.ToInt32(cashAccountId);
+                reader.Close();
+
+                // --- STEP 2: Get Petty Cash Account ID ---
+                string pettyCashAccountQuery = @"
+            SELECT pcc.account_id, emp.name AS employeeName
+            FROM tbl_petty_cash_card pcc
+            JOIN tbl_employee emp ON CAST(pcc.name AS UNSIGNED) = emp.id
+            WHERE emp.id = @id;";
+                using var pettyCashAccountCmd = new MySqlCommand(pettyCashAccountQuery, conn);
+                pettyCashAccountCmd.Parameters.AddWithValue("@id", pettyCashId);
+
+
+                var pettyCashAccountIdObj = await pettyCashAccountCmd.ExecuteScalarAsync();
+                int pettyCashAccountId = pettyCashAccountIdObj != null ? Convert.ToInt32(pettyCashAccountIdObj) : 0;
+
+                string employeeName = "";
+                string empNameQuery = "SELECT name FROM tbl_employee WHERE id = @id";
+                await using var empNameCmd = new MySqlCommand(empNameQuery, conn);
+                empNameCmd.Parameters.AddWithValue("@id", pettyCashId);
+
+                var empNameObj = await empNameCmd.ExecuteScalarAsync();
+                employeeName = empNameObj?.ToString() ?? "";
+
+                // --- STEP 3: Load Petty Cash Details ---
+                string detailsQuery = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY entry_date) AS SN,
+                dt.id, dt.petty_cash_id, dt.entry_date, dt.ref_id, dt.hum_id, dt.category,
+                dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.note
+            FROM tbl_petty_cash_details dt
+            WHERE dt.petty_cash_id = @id;";
+
+                using var detailsCmd = new MySqlCommand(detailsQuery, conn);
+                detailsCmd.Parameters.AddWithValue("@id", id);
+
+                using var detailsReader = await detailsCmd.ExecuteReaderAsync();
+
+                var detailsList = new List<object>();
+                decimal totalAmount = 0;
+
+                while (await detailsReader.ReadAsync())
+                {
+                    int detailId = Convert.ToInt32(detailsReader["id"]);
+                    string description = detailsReader["description"]?.ToString() ?? "";
+                    decimal amount = detailsReader["amount"] != DBNull.Value ? Convert.ToDecimal(detailsReader["amount"]) : 0;
+                    totalAmount += amount;
+
+                    string costCenterId = detailsReader["cost_center_id"]?.ToString();
+                    string humId = detailsReader["hum_id"]?.ToString();
+                    string note = detailsReader["note"]?.ToString();
+
+                    detailsList.Add(new
+                    {
+                        SN = detailsReader["SN"],
+                        id = detailId,
+                        description,
+                        amount,
+                        costCenterId,
+                        humId,
+                        note
+                    });
+                }
+                detailsReader.Close();
+
+                // --- STEP 4: Match Account from tbl_transaction ---
+                foreach (dynamic detail in detailsList.ToList())
+                {
+                    string transactionQuery = @"
+                SELECT account_id 
+                FROM tbl_transaction 
+                WHERE transaction_id = @voucherId 
+                  AND t_type = 'PettyCash' 
+                  AND account_id != @cashId 
+                  AND description = @description;";
+                    using var trCmd = new MySqlCommand(transactionQuery, conn);
+                    trCmd.Parameters.AddWithValue("@voucherId", id);
+                    trCmd.Parameters.AddWithValue("@cashId", pettyCashAccountId);
+                    trCmd.Parameters.AddWithValue("@description", detail.description);
+
+                    var accountIdObj = await trCmd.ExecuteScalarAsync();
+                    int accountId = accountIdObj != null ? Convert.ToInt32(accountIdObj) : 0;
+
+                    detail.GetType().GetProperty("AccountId")?.SetValue(detail, accountId);
+                }
+
+                // --- STEP 5: Prepare Final Output ---
+                var result = new
+                {
+                    header = new
+                    {
+                        id,
+                        code,
+                        date = voucherDate.ToString("yyyy-MM-dd"),
+                        cashAccountId,
+                        pettyCashId,
+                        pettyCashAccountId,
+                        employeeName,
+                        total,
+                        isOldBill
+                    },
+                    details = detailsList,
+                    totalAmount
+                };
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashCardsByEmployee()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                //                string query = @"
+                //      SELECT 
+                //    pc.id,
+                //    pc.code,
+                //    pc.employee_id AS employeeId,   
+                //    e.name AS employeeName
+                //FROM tbl_petty_cash pc
+                //LEFT JOIN tbl_employee e ON e.id = pc.employee_id
+                //ORDER BY pc.id ASC;
+                // ";
+
+                string query = @" select Id from tbl_petty_cash";
+
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                    });
+                }
+
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
         #endregion
 
         #region Petty Cash Log
@@ -4489,6 +4632,435 @@ ORDER BY pc.id ASC;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        #endregion
+
+        #region Prepaid Expense
+
+        public IActionResult PrepaidExpense()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPrepaidExpenses()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"SELECT * FROM tbl_prepaid_expense ORDER BY id DESC";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var expenses = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    expenses.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        CategoryId = reader["category_id"],
+                        DebitAccountId = reader["debit_account_id"],
+                        CreditAccountId = reader["credit_account_id"],
+                        StartDate = reader.GetDateTime("start_date").ToString("yyyy-MM-dd"),
+                        EndDate = reader.GetDateTime("end_date").ToString("yyyy-MM-dd"),
+                        Amount = reader.GetDecimal("amount"),
+                        Fee = reader.GetDecimal("fee"),
+                        Total = reader.GetDecimal("total")
+                    });
+                }
+
+                return Ok(new { status = true, data = expenses });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SavePrepaidExpense([FromBody] PrepaidExpenseRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter Name First" });
+
+            if (model.Total <= 0)
+                return BadRequest(new { status = false, message = "Total Amount can't be null or zero" });
+
+            if (model.StartDate == null || model.EndDate == null)
+                return BadRequest(new { status = false, message = "Check Agreement Dates" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // If new record, generate code
+                string code = model.Id == 0 ? await GenerateNextPrepaidCode(conn) : model.Code;
+
+                if (model.Id == 0)
+                {
+                    // Insert new prepaid expense
+                    string insertQuery = @"
+                INSERT INTO tbl_prepaid_expense
+                (code, name, category_id, debit_account_id, credit_account_id, start_date, end_date, amount, fee, total, created_by, created_date)
+                VALUES
+                (@code, @name, @category_id, @debit_account_id, @credit_account_id, @start_date, @end_date, @amount, @fee, @total, @created_by, @created_date);
+                SELECT LAST_INSERT_ID();";
+
+                    using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@category_id", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@start_date", model.StartDate);
+                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@fee", model.Fee);
+                    cmd.Parameters.AddWithValue("@total", model.Total);
+                    cmd.Parameters.AddWithValue("@created_by", userId);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+
+                    var insertedId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                    // Insert Journal Entries
+                    await InsertJournal(conn, insertedId, model, userId);
+
+                    return Ok(new { status = true, message = "Prepaid Expense created successfully", id = insertedId });
+                }
+                else
+                {
+                    // Update existing prepaid expense
+                    string updateQuery = @"
+                UPDATE tbl_prepaid_expense
+                SET name=@name, category_id=@category_id, debit_account_id=@debit_account_id, credit_account_id=@credit_account_id,
+                    start_date=@start_date, end_date=@end_date, amount=@amount, fee=@fee, total=@total,
+                    modified_by=@modified_by, modified_date=@modified_date
+                WHERE id=@id;";
+
+                    using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@category_id", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@start_date", model.StartDate);
+                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@fee", model.Fee);
+                    cmd.Parameters.AddWithValue("@total", model.Total);
+                    cmd.Parameters.AddWithValue("@modified_by", userId);
+                    cmd.Parameters.AddWithValue("@modified_date", DateTime.Now);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Prepaid Expense not found" });
+
+                    // Delete old transactions and insert updated journal entries
+                    using var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND type='Prepaid Expense'", conn);
+                    delCmd.Parameters.AddWithValue("@id", model.Id);
+                    await delCmd.ExecuteNonQueryAsync();
+
+                    await InsertJournal(conn, model.Id, model, userId);
+
+                    return Ok(new { status = true, message = "Prepaid Expense updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextPrepaidCode(MySqlConnection conn)
+        {
+            string query = "SELECT MAX(CAST(code AS UNSIGNED)) AS lastCode FROM tbl_prepaid_expense";
+            using var cmd = new MySqlCommand(query, conn);
+            var result = await cmd.ExecuteScalarAsync();
+            int code = (result != DBNull.Value) ? Convert.ToInt32(result) + 1 : 1;
+            return code.ToString("D5");
+        }
+
+        // Journal insertion logic (similar to your WinForms InsertJournal)
+        private async Task InsertJournal(MySqlConnection conn, int pId, PrepaidExpenseRequest model, int userId)
+        {
+            DateTime startDate = model.StartDate;
+            DateTime endDate = model.EndDate;
+            decimal totalAmount = model.Total;
+            int totalDays = (endDate - startDate).Days + 1;
+            DateTime currentDate = startDate;
+
+            int lastDayOfFirstMonth = DateTime.DaysInMonth(currentDate.Year, currentDate.Month);
+            DateTime lastDateOfFirstMonth = new DateTime(currentDate.Year, currentDate.Month, lastDayOfFirstMonth);
+            if (lastDateOfFirstMonth > endDate) lastDateOfFirstMonth = endDate;
+
+            int daysInFirstMonth = (lastDateOfFirstMonth - startDate).Days + 1;
+            decimal firstMonthAmount = Math.Round((totalAmount / totalDays) * daysInFirstMonth, 3);
+
+            await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfFirstMonth,
+                model.DebitAccountId.ToString(), firstMonthAmount.ToString(), "0", pId.ToString(), "0", "Prepaid Expense",
+                model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+
+            await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfFirstMonth,
+                model.CreditAccountId.ToString(), "0", firstMonthAmount.ToString(), pId.ToString(), "0", "Prepaid Expense",
+                model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+
+            currentDate = lastDateOfFirstMonth.AddDays(1);
+
+            while (currentDate <= endDate)
+            {
+                int lastDay = DateTime.DaysInMonth(currentDate.Year, currentDate.Month);
+                DateTime lastDateOfMonth = new DateTime(currentDate.Year, currentDate.Month, lastDay);
+                if (lastDateOfMonth > endDate) lastDateOfMonth = endDate;
+
+                int daysInMonth = (lastDateOfMonth - currentDate).Days + 1;
+                decimal monthlyAmount = Math.Round((totalAmount / totalDays) * daysInMonth, 2);
+
+                await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfMonth,
+                    model.DebitAccountId.ToString(), monthlyAmount.ToString(), "0", pId.ToString(), "0", "Prepaid Expense",
+                    model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+
+                await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfMonth,
+                    model.CreditAccountId.ToString(), "0", monthlyAmount.ToString(), pId.ToString(), "0", "Prepaid Expense",
+                    model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+
+                currentDate = lastDateOfMonth.AddDays(1);
+            }
+        }
+        public static class CommonInsert
+{
+    public static async Task InsertTransactionEntryAsync(
+        MySqlConnection conn,
+        DateTime date,
+        string accountId,
+        string debit,
+        string credit,
+        string transactionId,
+        string humId,
+        string type,
+        string description,
+        int createdBy,
+        DateTime createdDate)
+    {
+        string query = @"
+            INSERT INTO tbl_transaction 
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state)
+            VALUES 
+            (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0);";
+
+        using var cmd = new MySqlCommand(query, conn);
+        cmd.Parameters.AddWithValue("@date", date);
+        cmd.Parameters.AddWithValue("@accountId", accountId);
+        cmd.Parameters.AddWithValue("@debit", debit);
+        cmd.Parameters.AddWithValue("@credit", credit);
+        cmd.Parameters.AddWithValue("@transactionId", transactionId);
+        cmd.Parameters.AddWithValue("@hum_id", humId);
+        cmd.Parameters.AddWithValue("@tType", ""); // same as original
+        cmd.Parameters.AddWithValue("@type", type?.Trim() ?? "");
+        cmd.Parameters.AddWithValue("@description", description);
+        cmd.Parameters.AddWithValue("@createdBy", createdBy);
+        cmd.Parameters.AddWithValue("@createdDate", createdDate);
+
+        await cmd.ExecuteNonQueryAsync();
+    }
+}
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPrepaidJournalEntries(int prepaidId)
+        {
+            try
+            {
+                // Build connection string with session-based database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                t.id,
+                t.date,
+                t.account_id,
+                a.name AS AccountName,
+                t.debit,
+                t.credit,
+                t.description
+            FROM tbl_transaction t
+            LEFT JOIN tbl_coa_level_4 a ON a.id = t.account_id
+            WHERE t.transaction_id = @prepaidId
+              AND t.type = 'Prepaid Expense'
+            ORDER BY t.date;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@prepaidId", prepaidId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Id = reader["id"],
+                        Date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
+                        AccountName = reader["AccountName"]?.ToString(),
+                        Debit = reader["debit"]?.ToString(),
+                        Credit = reader["credit"]?.ToString(),
+                        Description = reader["description"]?.ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region Prepaid Expense Category
+
+        public IActionResult PrepaidExpenseCategory()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetCategories()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = "SELECT id, name FROM tbl_prepaid_expense_category ORDER BY id DESC";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var categories = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    categories.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        CategoryName = reader.GetString("name")
+                    });
+                }
+
+                return Ok(new { status = true, data = categories });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SavePrepaidExpenseCategory([FromBody] PrepaidExpenseCategoryRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.CategoryName))
+                return BadRequest(new { status = false, message = "Please enter category name" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔍 Check for duplicate category
+                string checkQuery = @"SELECT id FROM tbl_prepaid_expense_category WHERE name = @name";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingId != null && (model.Id == 0 || Convert.ToInt32(existingId) != model.Id))
+                    {
+                        return BadRequest(new { status = false, message = "Category already exists. Enter another name." });
+                    }
+                }
+
+                if (model.Id == 0)
+                {
+                    // ➕ Insert new category
+                    string insertQuery = @"INSERT INTO tbl_prepaid_expense_category (name) VALUES (@name)";
+                    using (var insertCmd = new MySqlCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    
+
+                    return Ok(new { status = true, message = "Category added successfully" });
+                }
+                else
+                {
+                    // ✏️ Update existing category
+                    string updateQuery = @"UPDATE tbl_prepaid_expense_category SET name = @name WHERE id = @id";
+                    using (var updateCmd = new MySqlCommand(updateQuery, conn))
+                    {
+                        updateCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+                        updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                        int affected = await updateCmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                            return NotFound(new { status = false, message = "Category not found" });
+                    }
+
+                    return Ok(new { status = true, message = "Category updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 
