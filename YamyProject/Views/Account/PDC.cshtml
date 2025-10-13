@@ -2,6 +2,18 @@
     ViewData["Title"] = "PDC";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
 
 <div class="card">
     <div class="card-header text-center">
@@ -131,8 +143,8 @@
                             $("#table1").DataTable({
                                 dom: 'Bfrtip',
                                 buttons: [
-                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                    { extend: 'excelHtml5',  className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5', className: 'btn btn-primary btn-sm',exportOptions: { columns: ':not(:last-child)' } }
                                 ],
                                 order: [[0, 'asc']],
                                 pageLength: 25

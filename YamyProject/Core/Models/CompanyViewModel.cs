@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
+﻿
 namespace YamyProject.Core.Models
 {
     public class CompanyViewModel
@@ -165,17 +164,17 @@ namespace YamyProject.Core.Models
     }
     public class TransferRequest
     {
-        public int SourceWarehouseId { get; set; }   // from warehouse
-        public int TargetWarehouseId { get; set; }   // to warehouse
-        public int ItemId { get; set; }              // which item
-        public decimal Qty { get; set; }             // transfer quantity
-        public int UserId { get; set; }              // logged-in user
+        public int SourceWarehouseId { get; set; }   
+        public int TargetWarehouseId { get; set; }   
+        public int ItemId { get; set; }             
+        public decimal Qty { get; set; }
+        public int UserId { get; set; }         
     }
 
     public class ItemRequest
     {
         public int Id { get; set; }
-        public string Code { get; set; }      // Auto-generated on insert
+        public string Code { get; set; }    
         public string Name { get; set; }
         public int WarehouseId { get; set; }
         public string Type { get; set; }
@@ -283,37 +282,35 @@ namespace YamyProject.Core.Models
     }
     public class PettyCashVoucherRequest
     {
-        public int Id { get; set; }
+        public int Id { get; set; } 
         public DateTime VoucherDate { get; set; }
         public int CashAccountId { get; set; }
         public int EmployeeId { get; set; }
         public string? Notes { get; set; }
         public decimal Total { get; set; }
-        public List<PettyCashDetailRequest>? Details { get; set; }
+        public string? Code { get; set; }
+        public List<PettyCashDetail>? Details { get; set; }
     }
 
-    public class PettyCashDetailRequest
+    public class PettyCashDetail
     {
         public DateTime EntryDate { get; set; }
-        public string? RefId { get; set; }
         public string? HumId { get; set; }
         public string? HumName { get; set; }
+        public string? RefId { get; set; }
+        public string? CostCenterId { get; set; }
+        public string? Category { get; set; }
         public string? Description { get; set; }
         public decimal? Amount { get; set; }
-        public string? Category { get; set; } 
-        public string? CostCenterId { get; set; }
         public string? Note { get; set; }
     }
-
-
-
 
     public class ChequeActionRequest
     {
         public int CheckDetailId { get; set; }
-        public string Action { get; set; }  // "Pass", "Return", "Hold", "Cancel"
+        public string Action { get; set; }  
         public DateTime SelectedDate { get; set; }
-        public bool IsPayable { get; set; } // true=Payable, false=Receivable
+        public bool IsPayable { get; set; } 
     }
     public class PettyCashCategoryRequest
     {

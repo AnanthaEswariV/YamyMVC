@@ -200,8 +200,6 @@
 
     <script>
 
-
-
                 function populateBankAccounts() {
             $.ajax({
                 url: '/HR/GetAccruedSalaries',
@@ -486,8 +484,6 @@
                 console.error("Prepaid ID not found.");
                 return;
             }
-
-            console.log("Clicked prepaidId:", prepaidId);
 
             $('#journalModalLabel').text(`Journal Entries for Prepaid #${prepaidId}`);
             $('#journalTableBody').html('<tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>');

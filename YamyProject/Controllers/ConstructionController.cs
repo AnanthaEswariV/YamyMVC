@@ -79,7 +79,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         [HttpPost]
         public async Task<IActionResult> SaveProject([FromBody] ProjectRequest model)
         {
@@ -240,8 +239,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
-        // Generate next sequential code (001, 002, 003)
+  
         private async Task<string> GenerateNextProjectCode(MySqlConnection conn)
         {
             string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_projects";
@@ -254,7 +252,6 @@ namespace YamyProject.Controllers
 
             return next.ToString("D3"); // Format: 001, 002, 003
         }
-
 
         [HttpDelete]
         public async Task<IActionResult> DeleteProject(int projectId)
@@ -736,7 +733,157 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Project Tender
 
+        public IActionResult ProjectTender()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectTenders(
+    int? projectId = null,
+    int? tenderId = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY pt.date) AS SN,
+                pt.id,
+                pt.date AS Date,
+                CONCAT(p.code,' - ', p.name) AS ProjectName,
+                CONCAT(t.code,' - ', t.name) AS TenderName,
+                pt.submission_date AS SubmitDate,
+                pt.fees AS Fees
+            FROM tbl_project_tender pt
+            INNER JOIN tbl_projects p ON pt.project_id = p.id
+            INNER JOIN tbl_tender_names t ON pt.tender_name_id = t.id
+            WHERE pt.state = 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (projectId.HasValue)
+                {
+                    query += " AND pt.project_id = @projectId";
+                    parameters.Add(new MySqlParameter("@projectId", projectId.Value));
+                }
+
+                if (tenderId.HasValue)
+                {
+                    query += " AND pt.tender_name_id = @tenderId";
+                    parameters.Add(new MySqlParameter("@tenderId", tenderId.Value));
+                }
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                var tenders = new List<object>();
+                int sn = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    tenders.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Date = reader["Date"] != DBNull.Value ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd") : null,
+                        ProjectName = reader["ProjectName"].ToString(),
+                        TenderName = reader["TenderName"].ToString(),
+                        SubmitDate = reader["SubmitDate"] != DBNull.Value ? Convert.ToDateTime(reader["SubmitDate"]).ToString("yyyy-MM-dd") : null,
+                        Fees = reader["Fees"] != DBNull.Value ? Convert.ToDecimal(reader["Fees"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = tenders });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTenderItems(int tenderId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if tender is exported
+                string checkQuery = "SELECT COUNT(*) FROM tbl_items_boq WHERE ref_id = @id";
+                await using var checkCmd = new MySqlCommand(checkQuery, conn);
+                checkCmd.Parameters.AddWithValue("@id", tenderId);
+                int count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                bool isExported = count > 0;
+
+                string itemQuery;
+                if (isExported)
+                {
+                    itemQuery = @"
+                SELECT CONCAT(ti.sr,' - ',ti.name) AS ItemName,
+                       ts.qty AS Qty,
+                       ts.rate AS Rate,
+                       ts.unit_id AS Unit,
+                       ts.amount AS Amount
+                FROM tbl_project_tender_details ts
+                INNER JOIN tbl_items_boq ti ON ts.item_id = ti.id AND ts.tender_id = ti.ref_id
+                WHERE ts.tender_id = @id";
+                }
+                else
+                {
+                    itemQuery = @"
+                SELECT CONCAT(ti.code,' - ',ti.name) AS ItemName,
+                       ts.qty AS Qty,
+                       ts.rate AS Rate,
+                       (SELECT NAME FROM tbl_unit WHERE id = ts.unit_id) AS Unit,
+                       ts.amount AS Amount
+                FROM tbl_project_tender_details ts
+                INNER JOIN tbl_items ti ON ts.item_id = ti.id
+                WHERE ts.tender_id = @id";
+                }
+
+                await using var itemCmd = new MySqlCommand(itemQuery, conn);
+                itemCmd.Parameters.AddWithValue("@id", tenderId);
+
+                var items = new List<object>();
+                await using var reader = await itemCmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        ItemName = reader["ItemName"].ToString(),
+                        Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                        Rate = reader["Rate"] != DBNull.Value ? Convert.ToDecimal(reader["Rate"]) : 0,
+                        Unit = reader["Unit"].ToString(),
+                        Amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
 
 
 

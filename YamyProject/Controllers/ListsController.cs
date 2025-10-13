@@ -3794,8 +3794,15 @@ ORDER BY pc.id ASC;
             if (model == null)
                 return BadRequest(new { status = false, message = "Invalid request" });
 
+            // --- Equivalent to chkRequireData() ---
+            if (model.CashAccountId <= 0)
+                return BadRequest(new { status = false, message = "Please select a petty cash account" });
+            if (model.EmployeeId <= 0)
+                return BadRequest(new { status = false, message = "Please select an employee" });
             if (model.Total <= 0)
-                return BadRequest(new { status = false, message = "Please enter a valid amount" });
+                return BadRequest(new { status = false, message = "Please enter a valid total amount" });
+            if (model.VoucherDate == DateTime.MinValue)
+                return BadRequest(new { status = false, message = "Invalid voucher date" });
 
             try
             {
@@ -3811,9 +3818,9 @@ ORDER BY pc.id ASC;
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // --- Generate Next Petty Cash Code ---
+                // --- Generate next Petty Cash Code ---
                 string newCode = "PC-0001";
-                using (var cmdLast = new MySqlCommand("SELECT MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)) AS lastCode FROM tbl_petty_cash", conn))
+                using (var cmdLast = new MySqlCommand("SELECT MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)) FROM tbl_petty_cash", conn))
                 {
                     var lastCode = await cmdLast.ExecuteScalarAsync();
                     if (lastCode != DBNull.Value && lastCode != null)
@@ -3823,18 +3830,21 @@ ORDER BY pc.id ASC;
                     }
                 }
 
-                // --- INSERT MAIN Petty Cash VOUCHER ---
-                string insertQuery = @"
-            INSERT INTO tbl_petty_cash 
-                (code, voucher_date, cash_account_id, employee_id, notes, total, created_by)
-            VALUES 
-                (@code, @voucher_date, @cash_account_id, @employee_id, @notes, @total, @created_by);
-            SELECT LAST_INSERT_ID();";
+                int pettyCashId = model.Id;
+                string pettyCashCode = model.Code ?? newCode;
 
-                int pettyCashId;
-                using (var cmdInsert = new MySqlCommand(insertQuery, conn))
+                // --- INSERT OR UPDATE MAIN PETTY CASH VOUCHER ---
+                if (model.Id == 0)
                 {
-                    cmdInsert.Parameters.AddWithValue("@code", newCode);
+                    string insertQuery = @"
+                INSERT INTO tbl_petty_cash 
+                    (code, voucher_date, cash_account_id, employee_id, notes, total, created_by)
+                VALUES 
+                    (@code, @voucher_date, @cash_account_id, @employee_id, @notes, @total, @created_by);
+                SELECT LAST_INSERT_ID();";
+
+                    using var cmdInsert = new MySqlCommand(insertQuery, conn);
+                    cmdInsert.Parameters.AddWithValue("@code", pettyCashCode);
                     cmdInsert.Parameters.AddWithValue("@voucher_date", model.VoucherDate);
                     cmdInsert.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
                     cmdInsert.Parameters.AddWithValue("@employee_id", model.EmployeeId);
@@ -3844,69 +3854,101 @@ ORDER BY pc.id ASC;
 
                     pettyCashId = Convert.ToInt32(await cmdInsert.ExecuteScalarAsync());
                 }
+                else
+                {
+                    // --- UPDATE ---
+                    string updateQuery = @"
+                UPDATE tbl_petty_cash 
+                SET code=@code, voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
+                    employee_id=@employee_id, total=@total, notes=@notes 
+                WHERE id=@id;";
 
-                // --- INSERT Petty Cash DETAILS ---
+                    using var cmdUpdate = new MySqlCommand(updateQuery, conn);
+                    cmdUpdate.Parameters.AddWithValue("@id", model.Id);
+                    cmdUpdate.Parameters.AddWithValue("@code", pettyCashCode);
+                    cmdUpdate.Parameters.AddWithValue("@voucher_date", model.VoucherDate);
+                    cmdUpdate.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
+                    cmdUpdate.Parameters.AddWithValue("@employee_id", model.EmployeeId);
+                    cmdUpdate.Parameters.AddWithValue("@total", model.Total);
+                    cmdUpdate.Parameters.AddWithValue("@notes", model.Notes ?? "");
+                    await cmdUpdate.ExecuteNonQueryAsync();
+
+                    // Delete old petty cash details
+                    using (var cmdDel = new MySqlCommand("DELETE FROM tbl_petty_cash_details WHERE petty_cash_id=@id", conn))
+                    {
+                        cmdDel.Parameters.AddWithValue("@id", model.Id);
+                        await cmdDel.ExecuteNonQueryAsync();
+                    }
+
+                    // Delete old transaction entries
+                    using (var cmdDelTrx = new MySqlCommand("DELETE FROM tbl_transaction WHERE t_type=@tType AND transaction_id=@id", conn))
+                    {
+                        cmdDelTrx.Parameters.AddWithValue("@tType", "PettyCash");
+                        cmdDelTrx.Parameters.AddWithValue("@id", model.Id);
+                        await cmdDelTrx.ExecuteNonQueryAsync();
+                    }
+
+                    // Delete cost center transactions
+                    using (var cmdDelCC = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE type=@type AND ref_id=@id", conn))
+                    {
+                        cmdDelCC.Parameters.AddWithValue("@type", "PettyCash");
+                        cmdDelCC.Parameters.AddWithValue("@id", model.Id);
+                        await cmdDelCC.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // --- INSERT PETTY CASH DETAILS ---
                 if (model.Details != null && model.Details.Any())
                 {
                     foreach (var d in model.Details)
                     {
-                        // same null / empty / zero checks as WinForms code
                         if (d.Amount == null || d.Amount <= 0)
                             continue;
 
-                        // Parse and normalize fields like WinForms
-                        var date = d.EntryDate;
-                        var invId = string.IsNullOrWhiteSpace(d.RefId) ? "0" : d.RefId;
-                        var categoryId = string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category;
-                        var costCenterId = string.IsNullOrWhiteSpace(d.CostCenterId) ? "0" : d.CostCenterId;
+                        // Defensive null/empty handling
+                        var entryDate = d.EntryDate == DateTime.MinValue ? DateTime.Now : d.EntryDate;
                         var humId = string.IsNullOrWhiteSpace(d.HumId) ? "0" : d.HumId;
                         var humName = d.HumName ?? "";
+                        var refId = string.IsNullOrWhiteSpace(d.RefId) ? "0" : d.RefId;
+                        var costCenterId = string.IsNullOrWhiteSpace(d.CostCenterId) ? "0" : d.CostCenterId;
                         var description = d.Description ?? "";
+                        var category = string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category;
+                        var note = d.Note ?? "";
                         var amount = d.Amount ?? 0;
-                        var colNote = d.Note ?? "";
 
-                        // --- Delete Cost Center Transaction Entry before inserting ---
-                        string deleteCostQuery = @"DELETE FROM tbl_cost_center_transaction 
-                                           WHERE type = @type AND ref_id = @id;";
-                        using (var deleteCmd = new MySqlCommand(deleteCostQuery, conn))
-                        {
-                            deleteCmd.Parameters.AddWithValue("@type", "Petty Cash");
-                            deleteCmd.Parameters.AddWithValue("@id", invId);
-                            await deleteCmd.ExecuteNonQueryAsync();
-                        }
-
-                        // --- Insert into Petty Cash Details ---
                         string insertDetailQuery = @"
-                    INSERT INTO tbl_petty_cash_details
+                    INSERT INTO tbl_petty_cash_details  
                         (entry_date, petty_cash_id, hum_id, hum_name, ref_id, cost_center_id, amount, description, category, note)
                     VALUES
-                        (@date, @Petty_Cash_id, @hum_id, @hum_name, @inv_code, @cost_center_id, @amount, @description, @category, @note);";
+                        (@entry_date, @petty_cash_id, @hum_id, @hum_name, @ref_id, @cost_center_id, @amount, @description, @category, @note);";
 
-                        using (var cmdDetail = new MySqlCommand(insertDetailQuery, conn))
-                        {
-                            cmdDetail.Parameters.AddWithValue("@Petty_Cash_id", pettyCashId);
-                            cmdDetail.Parameters.AddWithValue("@date", date);
-                            cmdDetail.Parameters.AddWithValue("@hum_id", humId);
-                            cmdDetail.Parameters.AddWithValue("@hum_name", humName);
-                            cmdDetail.Parameters.AddWithValue("@inv_code", invId);
-                            cmdDetail.Parameters.AddWithValue("@cost_center_id", costCenterId);
-                            cmdDetail.Parameters.AddWithValue("@amount", amount);
-                            cmdDetail.Parameters.AddWithValue("@description", description);
-                            cmdDetail.Parameters.AddWithValue("@category", categoryId);
-                            cmdDetail.Parameters.AddWithValue("@note", colNote);
+                        using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
+                        cmdDetail.Parameters.AddWithValue("@entry_date", entryDate);
+                        cmdDetail.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
+                        cmdDetail.Parameters.AddWithValue("@hum_id", humId);
+                        cmdDetail.Parameters.AddWithValue("@hum_name", humName);
+                        cmdDetail.Parameters.AddWithValue("@ref_id", refId);
+                        cmdDetail.Parameters.AddWithValue("@cost_center_id", costCenterId);
+                        cmdDetail.Parameters.AddWithValue("@amount", amount);
+                        cmdDetail.Parameters.AddWithValue("@description", description);
+                        cmdDetail.Parameters.AddWithValue("@category", category);
+                        cmdDetail.Parameters.AddWithValue("@note", note);
 
-                            await cmdDetail.ExecuteNonQueryAsync();
-                        }
+                        await cmdDetail.ExecuteNonQueryAsync();
                     }
                 }
 
+                // --- SUCCESS RESPONSE ---
+                string message = model.Id == 0
+                    ? "The Petty Cash Voucher has been paid successfully"
+                    : "The Petty Cash Voucher has been updated successfully";
 
                 return Ok(new
                 {
                     status = true,
-                    message = "Petty Cash Voucher added successfully",
+                    message,
                     pettyCashId,
-                    code = newCode
+                    code = pettyCashCode
                 });
             }
             catch (Exception ex)
@@ -4022,104 +4064,6 @@ ORDER BY pc.id ASC;
             }
         }
 
-      
-        [HttpPost]
-        public async Task<IActionResult> EditPettyCashVoucher([FromBody] PettyCashVoucherRequest model)
-        {
-            if (model == null || model.Id <= 0)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (model.Total <= 0)
-                return BadRequest(new { status = false, message = "Please enter a valid amount" });
-
-            try
-            {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // --- UPDATE MAIN PETTY CASH VOUCHER ---
-                string updateQuery = @"
-            UPDATE tbl_petty_cash
-            SET voucher_date = @voucher_date,
-                cash_account_id = @cash_account_id,
-                employee_id = @employee_id,
-                notes = @notes,
-                total = @total
-            WHERE id = @id";
-
-                using (var cmdUpdate = new MySqlCommand(updateQuery, conn))
-                {
-                    cmdUpdate.Parameters.AddWithValue("@voucher_date", model.VoucherDate);
-                    cmdUpdate.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
-                    cmdUpdate.Parameters.AddWithValue("@employee_id", model.EmployeeId);
-                    cmdUpdate.Parameters.AddWithValue("@notes", model.Notes ?? "");
-                    cmdUpdate.Parameters.AddWithValue("@total", model.Total);
-                    cmdUpdate.Parameters.AddWithValue("@id", model.Id);
-
-                    await cmdUpdate.ExecuteNonQueryAsync();
-                }
-
-                // --- DELETE EXISTING DETAILS ---
-                string deleteDetailsQuery = "DELETE FROM tbl_petty_cash_details WHERE petty_cash_id = @id";
-                using (var cmdDelete = new MySqlCommand(deleteDetailsQuery, conn))
-                {
-                    cmdDelete.Parameters.AddWithValue("@id", model.Id);
-                    await cmdDelete.ExecuteNonQueryAsync();
-                }
-
-                // --- INSERT NEW DETAILS ---
-                if (model.Details != null && model.Details.Any())
-                {
-                    foreach (var d in model.Details)
-                    {
-                        if (d.Amount == null || d.Amount <= 0)
-                            continue;
-
-                        string insertDetailQuery = @"
-                    INSERT INTO tbl_petty_cash_details
-                        (entry_date, petty_cash_id, hum_id, hum_name, ref_id, cost_center_id, amount, description, category, note)
-                    VALUES
-                        (@date, @Petty_Cash_id, @hum_id, @hum_name, @ref_id, @cost_center_id, @amount, @description, @category, @note)";
-
-                        using (var cmdDetail = new MySqlCommand(insertDetailQuery, conn))
-                        {
-                            cmdDetail.Parameters.AddWithValue("@Petty_Cash_id", model.Id);
-                            cmdDetail.Parameters.AddWithValue("@date", d.EntryDate);
-                            cmdDetail.Parameters.AddWithValue("@hum_id", string.IsNullOrWhiteSpace(d.HumId) ? "0" : d.HumId);
-                            cmdDetail.Parameters.AddWithValue("@hum_name", d.HumName ?? "");
-                            cmdDetail.Parameters.AddWithValue("@ref_id", string.IsNullOrWhiteSpace(d.RefId) ? "0" : d.RefId);
-                            cmdDetail.Parameters.AddWithValue("@cost_center_id", string.IsNullOrWhiteSpace(d.CostCenterId) ? "0" : d.CostCenterId);
-                            cmdDetail.Parameters.AddWithValue("@amount", d.Amount ?? 0);
-                            cmdDetail.Parameters.AddWithValue("@description", d.Description ?? "");
-                            cmdDetail.Parameters.AddWithValue("@category", string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category);
-                            cmdDetail.Parameters.AddWithValue("@note", d.Note ?? "");
-
-                            await cmdDetail.ExecuteNonQueryAsync();
-                        }
-                    }
-                }
-
-                return Ok(new
-                {
-                    status = true,
-                    message = "Petty Cash Voucher updated successfully",
-                    pettyCashId = model.Id
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
         [HttpPost]
         public async Task<IActionResult> DeletePettyCashVoucher([FromBody] int id)
         {
@@ -4226,26 +4170,38 @@ ORDER BY pc.id ASC;
                 int pettyCashId = Convert.ToInt32(cashAccountId);
                 reader.Close();
 
-                // --- STEP 2: Get Petty Cash Account ID ---
-                string pettyCashAccountQuery = @"
-            SELECT pcc.account_id, emp.name AS employeeName
-            FROM tbl_petty_cash_card pcc
-            JOIN tbl_employee emp ON CAST(pcc.name AS UNSIGNED) = emp.id
-            WHERE emp.id = @id;";
-                using var pettyCashAccountCmd = new MySqlCommand(pettyCashAccountQuery, conn);
-                pettyCashAccountCmd.Parameters.AddWithValue("@id", pettyCashId);
-
-
-                var pettyCashAccountIdObj = await pettyCashAccountCmd.ExecuteScalarAsync();
-                int pettyCashAccountId = pettyCashAccountIdObj != null ? Convert.ToInt32(pettyCashAccountIdObj) : 0;
-
+                // --- STEP 2: Get Employee Name using employee_id from petty cash ---
+                int pettyCashAccountId = 0;
                 string employeeName = "";
-                string empNameQuery = "SELECT name FROM tbl_employee WHERE id = @id";
-                await using var empNameCmd = new MySqlCommand(empNameQuery, conn);
-                empNameCmd.Parameters.AddWithValue("@id", pettyCashId);
 
-                var empNameObj = await empNameCmd.ExecuteScalarAsync();
-                employeeName = empNameObj?.ToString() ?? "";
+                // ✅ Get employee_id directly from petty cash table
+                int employeeId = 0;
+                string employeeQuery = @"SELECT employee_id FROM tbl_petty_cash WHERE id = @id;";
+                using (var empIdCmd = new MySqlCommand(employeeQuery, conn))
+                {
+                    empIdCmd.Parameters.AddWithValue("@id", id);
+                    var empIdObj = await empIdCmd.ExecuteScalarAsync();
+                    if (empIdObj != null && empIdObj != DBNull.Value)
+                        employeeId = Convert.ToInt32(empIdObj);
+                }
+
+                // ✅ Now get employee name from tbl_employee using that employee_id
+                if (employeeId > 0)
+                {
+                    string empNameQuery = "SELECT name FROM tbl_employee WHERE id = @id;";
+                    using var empNameCmd = new MySqlCommand(empNameQuery, conn);
+                    empNameCmd.Parameters.AddWithValue("@id", employeeId);
+                    var empNameObj = await empNameCmd.ExecuteScalarAsync();
+                    employeeName = empNameObj?.ToString() ?? "";
+                }
+
+                // ✅ Get petty cash account id from petty cash card
+                string pettyCashAccountQuery = @"SELECT account_id FROM tbl_petty_cash_card WHERE id = @id;";
+                using var pettyCashAccountCmd = new MySqlCommand(pettyCashAccountQuery, conn);
+                pettyCashAccountCmd.Parameters.AddWithValue("@id", Convert.ToInt32(cashAccountId));
+                var pettyCashAccountIdObj = await pettyCashAccountCmd.ExecuteScalarAsync();
+                if (pettyCashAccountIdObj != null)
+                    pettyCashAccountId = Convert.ToInt32(pettyCashAccountIdObj);
 
                 // --- STEP 3: Load Petty Cash Details ---
                 string detailsQuery = @"
@@ -4389,6 +4345,220 @@ ORDER BY pc.id ASC;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SavePettyCashVoucherJournal([FromBody] PettyCashVoucherRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid payload" });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+                           ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+            await using var tx = await conn.BeginTransactionAsync();
+
+            try
+            {
+                bool isOldBill = false;
+                int pettyCashId = model.Id;
+                string code = model.Code ?? "";
+                DateTime voucherDate = model.VoucherDate;
+                decimal total = model.Total;
+
+                // ---------------------------
+                // 1️⃣ Check if voucher exists
+                // ---------------------------
+                if (pettyCashId > 0)
+                {
+                    // Check by ID
+                    var checkCmd = new MySqlCommand("SELECT * FROM tbl_petty_cash WHERE id=@id;", conn, tx);
+                    checkCmd.Parameters.AddWithValue("@id", pettyCashId);
+                    await using (var reader = await checkCmd.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            code = reader["code"].ToString();
+                            voucherDate = Convert.ToDateTime(reader["voucher_date"]);
+                            pettyCashId = Convert.ToInt32(reader["id"]);
+                            isOldBill = true;
+                        }
+                    }
+                }
+                else
+                {
+                    // Check by code to prevent duplicate insertion
+                    var codeCheck = new MySqlCommand("SELECT * FROM tbl_petty_cash WHERE code=@code;", conn, tx);
+                    codeCheck.Parameters.AddWithValue("@code", code);
+                    await using (var reader = await codeCheck.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            pettyCashId = Convert.ToInt32(reader["id"]);
+                            voucherDate = Convert.ToDateTime(reader["voucher_date"]);
+                            isOldBill = true;
+                        }
+                    }
+                }
+
+                // ---------------------------
+                // 2️⃣ Validation
+                // ---------------------------
+                if (total <= 0)
+                {
+                    await tx.RollbackAsync();
+                    return Ok(new { status = false, message = "Please enter PettyCash amount." });
+                }
+
+                if (model.Details == null || model.Details.Count == 0)
+                {
+                    await tx.RollbackAsync();
+                    return Ok(new { status = false, message = "No transaction details found." });
+                }
+
+                foreach (var d in model.Details)
+                {
+                    if (d.Amount != null && d.Amount > 0 && string.IsNullOrEmpty(d.Category))
+                    {
+                        await tx.RollbackAsync();
+                        return Ok(new { status = false, message = "Please choose an account for each detail line." });
+                    }
+                }
+
+                // ---------------------------
+                // 3️⃣ Delete old transactions if updating
+                // ---------------------------
+                if (isOldBill)
+                {
+                    var delTrans = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND type='PettyCash';", conn, tx);
+                    delTrans.Parameters.AddWithValue("@id", pettyCashId);
+                    await delTrans.ExecuteNonQueryAsync();
+
+                    var delCost = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='PettyCash';", conn, tx);
+                    delCost.Parameters.AddWithValue("@id", pettyCashId);
+                    await delCost.ExecuteNonQueryAsync();
+
+                    // Update main voucher instead of inserting
+                    var updateCmd = new MySqlCommand(@"
+                UPDATE tbl_petty_cash 
+                SET voucher_date=@voucher_date, cash_account_id=@cash_account_id, employee_id=@employee_id, total=@total, status='1'
+                WHERE id=@id;", conn, tx);
+                    updateCmd.Parameters.AddWithValue("@voucher_date", voucherDate);
+                    updateCmd.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
+                    updateCmd.Parameters.AddWithValue("@employee_id", model.EmployeeId);
+                    updateCmd.Parameters.AddWithValue("@total", total);
+                    updateCmd.Parameters.AddWithValue("@id", pettyCashId);
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+                else
+                {
+                    // Insert new voucher
+                    var insertCmd = new MySqlCommand(@"
+                INSERT INTO tbl_petty_cash (code, voucher_date, cash_account_id, employee_id, total, status)
+                VALUES (@code,@voucher_date,@cash_account_id,@employee_id,@total,'1');", conn, tx);
+                    insertCmd.Parameters.AddWithValue("@code", code);
+                    insertCmd.Parameters.AddWithValue("@voucher_date", voucherDate);
+                    insertCmd.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
+                    insertCmd.Parameters.AddWithValue("@employee_id", model.EmployeeId);
+                    insertCmd.Parameters.AddWithValue("@total", total);
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    pettyCashId = (int)insertCmd.LastInsertedId;
+                }
+
+                // ---------------------------
+                // 4️⃣ Insert transaction lines
+                // ---------------------------
+                foreach (var d in model.Details)
+                {
+                    if (d.Amount == null || d.Amount <= 0) continue;
+
+                    string costCenterId = d.CostCenterId ?? "0";
+                    string accountId = d.Category ?? "0";
+                    string description = d.Description ?? "";
+                    string humId = d.HumId ?? "0";
+                    string amount = d.Amount?.ToString() ?? "0";
+
+                    // Cost center debit
+                    var costCmd = new MySqlCommand(@"
+                INSERT INTO tbl_cost_center_transaction 
+                (type,date,ref_id,debit,credit,description,cost_center_id)
+                VALUES (@type,@date,@ref,@debit,@credit,@description,@cost_center_id);", conn, tx);
+                    costCmd.Parameters.AddWithValue("@type", "PettyCash");
+                    costCmd.Parameters.AddWithValue("@date", voucherDate);
+                    costCmd.Parameters.AddWithValue("@ref", pettyCashId.ToString());
+                    costCmd.Parameters.AddWithValue("@debit", amount);
+                    costCmd.Parameters.AddWithValue("@credit", "0");
+                    costCmd.Parameters.AddWithValue("@description", "PettyCash Entry");
+                    costCmd.Parameters.AddWithValue("@cost_center_id", costCenterId);
+                    await costCmd.ExecuteNonQueryAsync();
+
+                    // Journal debit
+                    var journalCmd = new MySqlCommand(@"
+                INSERT INTO tbl_transaction 
+                (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+                VALUES (@date,@accountId,@debit,@credit,@transactionId,@humId,@tType,@type,@description,@createdBy,@createdDate,0,@voucherNo);", conn, tx);
+                    journalCmd.Parameters.AddWithValue("@date", voucherDate);
+                    journalCmd.Parameters.AddWithValue("@accountId", accountId);
+                    journalCmd.Parameters.AddWithValue("@debit", amount);
+                    journalCmd.Parameters.AddWithValue("@credit", "0");
+                    journalCmd.Parameters.AddWithValue("@transactionId", pettyCashId.ToString());
+                    journalCmd.Parameters.AddWithValue("@humId", humId);
+                    journalCmd.Parameters.AddWithValue("@tType", "Petty Cash");
+                    journalCmd.Parameters.AddWithValue("@type", "PettyCash");
+                    journalCmd.Parameters.AddWithValue("@description", description);
+                    journalCmd.Parameters.AddWithValue("@createdBy", model.EmployeeId);
+                    journalCmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+                    journalCmd.Parameters.AddWithValue("@voucherNo", code);
+                    await journalCmd.ExecuteNonQueryAsync();
+                }
+
+                // ---------------------------
+                // 5️⃣ Insert total credit line
+                // ---------------------------
+                var totalCmd = new MySqlCommand(@"
+            INSERT INTO tbl_transaction
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+            VALUES (@date,@accountId,@debit,@credit,@transactionId,@humId,@tType,@type,@description,@createdBy,@createdDate,0,@voucherNo);", conn, tx);
+                totalCmd.Parameters.AddWithValue("@date", voucherDate);
+                totalCmd.Parameters.AddWithValue("@accountId", model.CashAccountId.ToString());
+                totalCmd.Parameters.AddWithValue("@debit", "0");
+                totalCmd.Parameters.AddWithValue("@credit", total.ToString());
+                totalCmd.Parameters.AddWithValue("@transactionId", pettyCashId.ToString());
+                totalCmd.Parameters.AddWithValue("@humId", "0");
+                totalCmd.Parameters.AddWithValue("@tType", "Petty Cash");
+                totalCmd.Parameters.AddWithValue("@type", "PettyCash");
+                totalCmd.Parameters.AddWithValue("@description", $"PETTY CASH NO.{code}");
+                totalCmd.Parameters.AddWithValue("@createdBy", model.EmployeeId);
+                totalCmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+                totalCmd.Parameters.AddWithValue("@voucherNo", code);
+                await totalCmd.ExecuteNonQueryAsync();
+
+                await tx.CommitAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    message = isOldBill ? "The PettyCash Journal Updated!" : "The PettyCash Journal Created!"
+                });
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
         #endregion
 
         #region Petty Cash Log
@@ -4794,7 +4964,6 @@ ORDER BY pc.id ASC;
             return code.ToString("D5");
         }
 
-        // Journal insertion logic (similar to your WinForms InsertJournal)
         private async Task InsertJournal(MySqlConnection conn, int pId, PrepaidExpenseRequest model, int userId)
         {
             DateTime startDate = model.StartDate;
@@ -4840,6 +5009,7 @@ ORDER BY pc.id ASC;
                 currentDate = lastDateOfMonth.AddDays(1);
             }
         }
+
         public static class CommonInsert
 {
     public static async Task InsertTransactionEntryAsync(

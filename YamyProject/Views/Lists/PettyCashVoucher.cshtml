@@ -163,6 +163,7 @@
                 <!-- Top Fields -->
                 <div class="row mb-3 g-3">
                     <input type="hidden" id="editPettyCashId">
+                    <input type="hidden" id="editPettyCashEmployeeId">
                     <div class="col-md-3">
                         <label class="form-label">PettyCash Code</label>
                         <input type="text" class="form-control" id="editPettyCashCode" disabled>
@@ -172,7 +173,7 @@
                         <select class="form-select" id="editPettyCashNameDropdown"></select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">Date</label>
+                        <label class="form-label">Date</label>  
                         <input type="date" class="form-control" id="editPettyCashDate">
                     </div>
                     <div class="col-md-3">
@@ -235,7 +236,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Petty Cash Name</label>
-                            <select id="pettyCashName" class="form-select" disabled>
+                            <select id="pettyCashNameJ" class="form-select" disabled>
                             </select>
                             <div class="invalid-feedback">Please select a petty cash name.</div>
                         </div>
@@ -323,7 +324,6 @@
                 url: '/Lists/GetPettyCashCards',
                 type: 'GET',
                 success: function(res) {
-                    console.log(res);
                     if (res.status && res.data?.length > 0) {
                         const $dropdown1 = $('#pettyCashNameDropdown');
                        // const $dropdown2 = $('#pettyCashDropdown');
@@ -343,7 +343,8 @@
                 }
             });
         }
-                function loadPettyCashForEmployee() {
+
+        function loadPettyCashForEmployee() {
             $.ajax({
                 url: '/Lists/GetPettyCashCardsByEmployee',
                 type: 'GET',
@@ -437,7 +438,7 @@
                 success: function(res) {
                     const tbody = $("#table1 tbody");
                     tbody.empty();
-
+                    console.log(res);
                     if (res.status && res.data && res.data.details.length > 0) {
                         const voucher = res.data; // <-- Save the whole voucher object
 
@@ -577,7 +578,7 @@
             populateAndSelectBankAccounts();
         });
 
-                $(document).on("click", ".editPettyCashBtn", function () {
+        $(document).on("click", ".editPettyCashBtn", function () {
             const voucherStr = $(this).attr("data-voucher");
             if (!voucherStr) return;
 
@@ -595,8 +596,10 @@
 
             // ✅ FIX: Use employeeName instead of employeeId
             $("#editPettyCashEmployeeName").val(voucher.voucher.employeeName || '');
-
-            // Load petty cash dropdown and set selected value
+            $('#editPettyCashEmployeeId').val(voucher.voucher.employeeId);
+                    var emp =   $('#editPettyCashEmployeeId').val(voucher.voucher.employeeId);
+                    console.log(emp);
+                    // Load petty cash dropdown and set selected value
             loadPettyCashCardsTo("#editPettyCashNameDropdown", voucher.voucher.cashAccountId);
 
             // Fill table rows
@@ -625,7 +628,7 @@
             $modal.modal("show");
         });
 
-                function loadPettyCashCardsTo(selector, selectedId = null) {
+        function loadPettyCashCardsTo(selector, selectedId = null) {
             $.ajax({
                 url: '/Lists/GetPettyCashCards',
                 type: 'GET',
@@ -688,7 +691,7 @@
             if (!date) return toastr.warning('Select Petty Cash Date');
 
             const details = [];
-            let totalAmount = 0; // ✅ Initialize total tracker
+            let totalAmount = 0;
 
             $('#editPettyCashTableBody tr').each(function () {
                 const row = $(this);
@@ -698,7 +701,7 @@
                     const category = row.find('td:eq(3) select').val();
                     const entryDate = row.find('td:eq(1) input').val();
 
-                    totalAmount += amount; // ✅ Add to total
+                    totalAmount += amount; 
 
                     details.push({
                         EntryDate: entryDate ? new Date(entryDate).toISOString() : null,
@@ -716,16 +719,15 @@
             if (details.length === 0)
                 return toastr.warning('Enter at least one valid amount');
 
-            // ✅ Send total in payload
             $.ajax({
-                url: '/Lists/EditPettyCashVoucher',
+                                        url: '/Lists/SavePettyCashVoucher',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
                     Id: id,
                     VoucherDate: new Date(date).toISOString(),
                     CashAccountId: cashAccountId,
-                    EmployeeId: parseInt($('#pettyCashEmployeeId').val()) || 0, // optional
+                    EmployeeId: parseInt($('#editPettyCashEmployeeId').val()) || 0,
                     Notes: $('#editPettyCashNotes').val() || "",
                     Total: totalAmount,
                     Details: details
@@ -737,7 +739,7 @@
                         loadPettyCashForEmployee();
                                    setTimeout(function () {
                                         location.reload();
-                                     }, 1500); // Optional delay before redirect
+                                     }, 1500); 
                     } else {
                         toastr.error(res.message || 'Update failed');
                     }
@@ -750,8 +752,8 @@
 
        $(document).on('click', '.editPettyCashBtn, .deletePettyCashBtn, #savePettyCashBtn', function(e) {
     e.preventDefault();
-    e.stopPropagation(); // stops bubbling if inside a form
-});
+    e.stopPropagation(); 
+    });
 
        $(document).on('click', '.deletePettyCashBtn', function () {
             const id = $(this).data('id');
@@ -761,7 +763,7 @@
 
             $.ajax({
                 url: '/Lists/DeletePettyCashVoucher',
-                type: 'POST',  // Use POST for reliable body binding
+                type: 'POST',  
                 contentType: 'application/json',
                 data: JSON.stringify(id),
                 success: function (res) {
@@ -769,7 +771,7 @@
                         toastr.success(res.message);
                                    setTimeout(function () {
                                         location.reload();
-                                     }, 1500); // Optional delay before redirect
+                                     }, 1500);
                     } else {
                         toastr.error(res.message || 'Failed to delete');
                     }
@@ -780,7 +782,7 @@
             });
         });
 
-               $(document).on('click', '.recycleCardBtn', function () {
+        $(document).on('click', '.recycleCardBtn', function () {
             const selectedId = $('#pettyCashDropdown').val();
             if (!selectedId) {
                 alert('Please select a petty cash voucher first.');
@@ -792,7 +794,7 @@
             // Clear old data first
             $('#submissionTableBody').html('<tr><td colspan="7" class="text-muted text-center">Loading...</td></tr>');
             $('#pettyCashCode, #submissionDate, #submissionNo').val('');
-            $('#pettyCashName').empty();
+            $('#pettyCashNameJ').empty();
 
             // API Call
             $.ajax({
@@ -802,7 +804,7 @@
                     if (res.status && res.data) {
                         const header = res.data.header;
                         const details = res.data.details;
-
+                      
                         // ✅ FIX: Fill Header Fields with proper fallbacks
                         $('#pettyCashCode').val(header.code ?? '');
 
@@ -811,7 +813,7 @@
                             ? `${header.code} - ${header.employeeName}`
                             : header.code;
 
-                        $('#pettyCashName').html(
+                        $('#pettyCashNameJ').html(
                             `<option value="${header.pettyCashId ?? header.cashAccountId ?? ''}">${displayText}</option>`
                         );
 
@@ -865,7 +867,7 @@
             });
         });
 
-               function convertNumberToWords(num) {
+       function convertNumberToWords(num) {
             try {
                 const a = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
                     'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen',
@@ -932,6 +934,72 @@
         $('#pettyCashSubmissionModal').on('shown.bs.modal', function () {
                     populateAndSelectBankAccounts();
         });
+
+
+                $("#saveCloseBtn").on("click", function () {
+            const voucherId = parseInt($("#submissionNo").val()) || 0;
+            const pettyCashCode = $("#pettyCashCode").val();
+            const voucherDate = $("#submissionDate").val();
+
+            let totalAmount = 0;
+            const details = [];
+
+            $("#submissionTableBody tr").each(function () {
+                const row = $(this);
+                const amount = parseFloat(row.find('td:eq(4) input').val()) || 0;
+                if (amount <= 0) return;
+
+                totalAmount += amount;
+
+                details.push({
+                    EntryDate: voucherDate,                               
+                    HumId: "0",                                         
+                    HumName: row.find('td:eq(1) select option:selected').text() || "", 
+                    RefId: "0",                                          
+                    CostCenterId: row.find('td:eq(2) select').val() || "0",
+                    Category: row.find('td:eq(1) select').val() || "0",
+                    Description: row.find('td:eq(3) input').val() || "",
+                    Amount: amount,
+                    Note: ""                                              
+                });
+            });
+
+            if (!details.length) return toastr.warning("Enter at least one valid amount");
+
+            const payload = {
+                Id: voucherId,
+                Code: pettyCashCode,
+                VoucherDate: voucherDate,
+                CashAccountId: parseInt($("#pettyCashNameJ").val()) || 1, 
+                EmployeeId: parseInt($("#employeeId").val()) || 1,       
+                Notes: "",
+                Total: totalAmount,
+                Details: details
+            };
+
+            console.log("Payload sent:", payload); 
+
+            $.ajax({
+                url: "/Lists/SavePettyCashVoucherJournal",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        $("#pettyCashSubmissionModal").modal("hide");
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message || "Failed to save voucher");
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    toastr.error(xhr.responseJSON?.message || "Error saving voucher");
+                }
+            });
+        });
+
 
 
     </script>
