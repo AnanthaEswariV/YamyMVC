@@ -407,6 +407,34 @@ namespace YamyProject.Core.Models
         public string PlotNumber { get; set; }
         public string Address { get; set; }
     }
+    public class ProjectTenderRequest
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public int ProjectId { get; set; }           // ✅ required
+        public int TenderNameId { get; set; }       // ✅ required
+        public int AccountId { get; set; }
+        public int WarehouseId { get; set; }        // ✅ required
+        public DateTime SubmissionDate { get; set; }
+        public decimal? Fees { get; set; }
+        public string? Description { get; set; }
+        public List<ProjectTenderItem> Items { get; set; } = new();  // ✅ required
+    }
+
+    public class ProjectTenderItem
+    {
+        public string? Sr { get; set; }
+        public string? Description { get; set; }
+        public string? Unit { get; set; }
+        public decimal? Qty { get; set; }
+        public decimal? Rate { get; set; }
+        public decimal? Amount { get; set; }
+        public decimal? Length { get; set; }
+        public decimal? Width { get; set; }
+        public decimal? Thick { get; set; }
+        public string? Note { get; set; }
+    }
+
 
 
 

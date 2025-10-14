@@ -440,9 +440,9 @@
                                         <button class="btn btn-sm btn-primary editPrepaidBtn" data-prepaid='${JSON.stringify(row)}' title="Edit Prepaid">
                                             <i class="fas fa-pen"></i>
                                         </button>
-                                                  <button class="btn btn-sm btn-primary journalCategoryBtn" data-id="${row.id}" title="View Journal Entry">
-            <i class="fas fa-book"></i>
-        </button>
+                                         <button class="btn btn-sm btn-primary journalCategoryBtn" data-id="${row.id}" title="View Journal Entry">
+                                            <i class="fas fa-book"></i>
+                                         </button>
                                     </td>
                                 </tr>`;
                             tbody.append(tr);
@@ -478,7 +478,7 @@
 
             loadPrepaidExpenses();
 
-                           $(document).on("click", ".journalCategoryBtn", function () {
+             $(document).on("click", ".journalCategoryBtn", function () {
             const prepaidId = $(this).data("id");
             if (!prepaidId) {
                 console.error("Prepaid ID not found.");

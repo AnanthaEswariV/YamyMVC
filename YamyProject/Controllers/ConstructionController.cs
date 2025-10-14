@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis;
+using System.Xml.Linq;
 
 namespace YamyProject.Controllers
 {
@@ -763,7 +765,12 @@ namespace YamyProject.Controllers
                 CONCAT(p.code,' - ', p.name) AS ProjectName,
                 CONCAT(t.code,' - ', t.name) AS TenderName,
                 pt.submission_date AS SubmitDate,
-                pt.fees AS Fees
+                pt.fees AS Fees,
+                pt.project_id As Project_Id,
+                pt.account_id As Account_Id,
+                pt.tender_name_id As Tender_Name_Id,
+                pt.description As Description,
+                p.code As Code
             FROM tbl_project_tender pt
             INNER JOIN tbl_projects p ON pt.project_id = p.id
             INNER JOIN tbl_tender_names t ON pt.tender_name_id = t.id
@@ -800,7 +807,13 @@ namespace YamyProject.Controllers
                         ProjectName = reader["ProjectName"].ToString(),
                         TenderName = reader["TenderName"].ToString(),
                         SubmitDate = reader["SubmitDate"] != DBNull.Value ? Convert.ToDateTime(reader["SubmitDate"]).ToString("yyyy-MM-dd") : null,
-                        Fees = reader["Fees"] != DBNull.Value ? Convert.ToDecimal(reader["Fees"]) : 0
+                        Fees = reader["Fees"] != DBNull.Value ? Convert.ToDecimal(reader["Fees"]) : 0,
+                        Project_Id = reader.GetInt32("Project_Id"),
+                        Account_Id = reader.GetInt32("Account_Id"),
+                        Tender_Name_Id = reader.GetInt32("Tender_Name_Id"),
+                        Description = reader["Description"].ToString(),
+                        Code = reader["Code"].ToString()
+
                     });
                 }
 
@@ -840,7 +853,13 @@ namespace YamyProject.Controllers
                        ts.qty AS Qty,
                        ts.rate AS Rate,
                        ts.unit_id AS Unit,
-                       ts.amount AS Amount
+                       ts.amount AS Amount,
+                       ti.sr As Sr,
+                       ti.name As Name,
+                       ti.unit_name As Unit_Name,
+                       ti.length As Length,
+                       ti.width As Width,
+                       ti.thickness As Thickness
                 FROM tbl_project_tender_details ts
                 INNER JOIN tbl_items_boq ti ON ts.item_id = ti.id AND ts.tender_id = ti.ref_id
                 WHERE ts.tender_id = @id";
@@ -871,7 +890,13 @@ namespace YamyProject.Controllers
                         Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
                         Rate = reader["Rate"] != DBNull.Value ? Convert.ToDecimal(reader["Rate"]) : 0,
                         Unit = reader["Unit"].ToString(),
-                        Amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0
+                        Amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0,
+                        Sr = reader["Sr"].ToString(),
+                        Name = reader["Name"].ToString(),
+                        Unit_Name = reader["Unit_Name"].ToString(),
+                        Length = reader["Length"] != DBNull.Value ? Convert.ToDecimal(reader["Length"]) : 0,
+                        Width = reader["Width"] != DBNull.Value ? Convert.ToDecimal(reader["Width"]) : 0,
+                        Thickness = reader["Thickness"] != DBNull.Value ? Convert.ToDecimal(reader["Thickness"]) : 0
                     });
                 }
 
@@ -882,6 +907,324 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateTender([FromBody] ProjectTenderRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validation: Required fields
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Project" });
+
+            if (model.TenderNameId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Tender" });
+
+            if (model.WarehouseId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Warehouse" });
+
+            if (model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Please add at least one BOQ item" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check if tender is estimated already (if updating)
+                bool isEstimated = false;
+                if (model.Id > 0)
+                {
+                    string checkEstimate = "SELECT estimate_status FROM tbl_project_tender WHERE id=@id";
+                    await using var checkCmd = new MySqlCommand(checkEstimate, conn);
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    var estObj = await checkCmd.ExecuteScalarAsync();
+                    if (estObj != null && Convert.ToInt32(estObj) == 1)
+                        isEstimated = true;
+
+                    if (isEstimated)
+                        return BadRequest(new
+                        {
+                            status = false,
+                            message = "Estimate already generated for this tender. Editing is not allowed."
+                        });
+                }
+
+                int tenderId = 0;
+
+                // 🔹 Insert Mode
+                if (model.Id == 0)
+                {
+                    string insertQuery = @"
+                INSERT INTO tbl_project_tender 
+                (date, tender_name_id, account_id, project_id, fees, submission_date, description, warehouse_id, created_by, created_date, state)
+                VALUES 
+                (@date, @tenderNameId, @accountId, @projectId, @fees, @submissionDate, @description, @warehouseId, @createdBy, @createdDate, 0);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@date", model.Date);
+                    insertCmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+                    insertCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                    insertCmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    insertCmd.Parameters.AddWithValue("@fees", model.Fees ?? 0);
+                    insertCmd.Parameters.AddWithValue("@submissionDate", model.SubmissionDate);
+                    insertCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    insertCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                    insertCmd.Parameters.AddWithValue("@createdBy", userId);
+                    insertCmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+
+                    tenderId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    // 🔹 Update Mode
+                    string updateQuery = @"
+                UPDATE tbl_project_tender 
+                SET modified_by=@modifiedBy, modified_date=@modifiedDate,
+                    date=@date, project_id=@projectId, submission_date=@submissionDate,
+                    description=@description, fees=@fees, warehouse_id=@warehouseId,
+                    account_id=@accountId, tender_name_id=@tenderNameId
+                WHERE id=@id;";
+
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@date", model.Date);
+                    updateCmd.Parameters.AddWithValue("@submissionDate", model.SubmissionDate);
+                    updateCmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    updateCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                    updateCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                    updateCmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+                    updateCmd.Parameters.AddWithValue("@fees", model.Fees ?? 0);
+                    updateCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    updateCmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    updateCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Tender not found" });
+
+                    tenderId = model.Id;
+
+                    // Delete old details
+                    string deleteDetails = "DELETE FROM tbl_project_tender_details WHERE tender_id=@id";
+                    await using var delCmd = new MySqlCommand(deleteDetails, conn);
+                    delCmd.Parameters.AddWithValue("@id", model.Id);
+                    await delCmd.ExecuteNonQueryAsync();
+                }
+
+                // 🔹 Insert Tender BOQ Items
+                foreach (var item in model.Items)
+                {
+                    string insertItemBoq = @"
+                INSERT INTO tbl_items_boq (sr, ref_id, type, name, unit_name, qty, price, amount, length, width, thickness, note)
+                VALUES (@sr, @refId, 'BOQ', @name, @unit, @qty, @price, @amount, @length, @width, @thickness, @note);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var itemCmd = new MySqlCommand(insertItemBoq, conn);
+                    itemCmd.Parameters.AddWithValue("@sr", item.Sr);
+                    itemCmd.Parameters.AddWithValue("@refId", tenderId);
+                    itemCmd.Parameters.AddWithValue("@name", item.Description ?? "");
+                    itemCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                    itemCmd.Parameters.AddWithValue("@qty", item.Qty ?? 0);
+                    itemCmd.Parameters.AddWithValue("@price", item.Rate ?? 0);
+                    itemCmd.Parameters.AddWithValue("@amount", item.Amount ?? 0);
+                    itemCmd.Parameters.AddWithValue("@length", item.Length ?? 0);
+                    itemCmd.Parameters.AddWithValue("@width", item.Width ?? 0);
+                    itemCmd.Parameters.AddWithValue("@thickness", item.Thick ?? 0);
+                    itemCmd.Parameters.AddWithValue("@note", item.Note ?? "");
+
+                    int itemId = Convert.ToInt32(await itemCmd.ExecuteScalarAsync());
+
+                    string insertTenderDetails = @"
+                INSERT INTO tbl_project_tender_details
+                (sr, tender_id, item_id, qty, unit_id, rate, amount, length, width, thickness, note)
+                VALUES
+                (@sr, @tenderId, @itemId, @qty, 0, @rate, @amount, @length, @width, @thickness, @note);";
+
+                    await using var detailCmd = new MySqlCommand(insertTenderDetails, conn);
+                    detailCmd.Parameters.AddWithValue("@sr", item.Sr);
+                    detailCmd.Parameters.AddWithValue("@tenderId", tenderId);
+                    detailCmd.Parameters.AddWithValue("@itemId", itemId);
+                    detailCmd.Parameters.AddWithValue("@qty", item.Qty ?? 0);
+                    detailCmd.Parameters.AddWithValue("@rate", item.Rate ?? 0);
+                    detailCmd.Parameters.AddWithValue("@amount", item.Amount ?? 0);
+                    detailCmd.Parameters.AddWithValue("@length", item.Length ?? 0);
+                    detailCmd.Parameters.AddWithValue("@width", item.Width ?? 0);
+                    detailCmd.Parameters.AddWithValue("@thickness", item.Thick ?? 0);
+                    detailCmd.Parameters.AddWithValue("@note", item.Note ?? "");
+                    await detailCmd.ExecuteNonQueryAsync();
+                }
+
+                // ✅ Return success
+                return Ok(new
+                {
+                    status = true,
+                    message = model.Id == 0
+                   ? "Project Tender created successfully"
+                   : "Project Tender updated successfully",
+                    id = tenderId
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = "An unexpected error occurred: " + ex.Message
+                });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteTenders(int tenderId)
+        {
+            if (tenderId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Tender ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if tender is estimated (cannot delete if estimated)
+                string checkEstimateQuery = "SELECT estimate_status FROM tbl_project_tender WHERE id=@id";
+                await using var checkCmd = new MySqlCommand(checkEstimateQuery, conn);
+                checkCmd.Parameters.AddWithValue("@id", tenderId);
+                var estObj = await checkCmd.ExecuteScalarAsync();
+                if (estObj != null && Convert.ToInt32(estObj) == 1)
+                {
+                    return BadRequest(new
+                    {
+                        status = false,
+                        message = "Cannot delete. Estimate already generated for this tender."
+                    });
+                }
+
+                // Soft delete: set state = -1
+                string deleteQuery = "UPDATE tbl_project_tender SET state=-1 WHERE id=@id";
+                await using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", tenderId);
+                int affected = await cmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Tender not found" });
+
+                return Ok(new { status = true, message = "Tender deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = "Error deleting tender: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDeletedTenders()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            ROW_NUMBER() OVER (ORDER BY pt.date) AS SN,
+            pt.id,
+            pt.date AS Date,
+            CONCAT(p.code,' - ', p.name) AS ProjectName,
+            CONCAT(t.code,' - ', t.name) AS TenderName,
+            pt.submission_date AS SubmitDate,
+            pt.fees AS Fees
+        FROM tbl_project_tender pt
+        INNER JOIN tbl_projects p ON pt.project_id = p.id
+        INNER JOIN tbl_tender_names t ON pt.tender_name_id = t.id
+        WHERE pt.state = -1"; 
+
+                await using var cmd = new MySqlCommand(query, conn);
+
+                var tenders = new List<object>();
+                int sn = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    tenders.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Date = reader["Date"] != DBNull.Value ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd") : null,
+                        ProjectName = reader["ProjectName"].ToString(),
+                        TenderName = reader["TenderName"].ToString(),
+                        SubmitDate = reader["SubmitDate"] != DBNull.Value ? Convert.ToDateTime(reader["SubmitDate"]).ToString("yyyy-MM-dd") : null,
+                        Fees = reader["Fees"] != DBNull.Value ? Convert.ToDecimal(reader["Fees"]) : 0,
+                    });
+                }
+
+                return Ok(new { status = true, data = tenders });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RestoreTender(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid tender ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = "UPDATE tbl_project_tender SET state = 1 WHERE id = @id";
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                int rows = await cmd.ExecuteNonQueryAsync();
+
+                if (rows > 0)
+                    return Ok(new { status = true, message = "Tender restored successfully" });
+                else
+                    return NotFound(new { status = false, message = "Tender not found or already active" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 
