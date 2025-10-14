@@ -1208,7 +1208,7 @@ namespace YamyProject.Controllers
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                string query = "UPDATE tbl_project_tender SET state = 1 WHERE id = @id";
+                string query = "UPDATE tbl_project_tender SET state = 0 WHERE id = @id";
                 await using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@id", id);
 
