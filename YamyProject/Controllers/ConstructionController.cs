@@ -1225,9 +1225,16 @@ namespace YamyProject.Controllers
             }
         }
 
-
         #endregion
 
+        #region Project Estimation
+
+        public IActionResult ProjectEstimation()
+        {
+            return View();
+        }
+
+        #endregion
 
 
 
