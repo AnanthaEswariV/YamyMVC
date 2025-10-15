@@ -11,7 +11,7 @@
     <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
        <div class="col-md-3">
             <label class="form-label">Customer Name</label>
-             <select  class="form-select" asp-items="Model.Customers"></select> 
+             <select  class="form-select" @* asp-items="" *@></select> 
             <div class="form-check mt-1">
                 @*  <input type="checkbox" asp-for="AllCustomers" class="form-check-input" /> *@
                 <label class="form-check-label">All</label>
@@ -34,7 +34,7 @@
 
         <div class="col-md-2">
             <label class="form-label">Selection Method</label>
-            @* <select asp-for="SelectionMethod" class="form-select"> *@
+             <select  class="form-select"> 
                 <option>Default</option>
                 <option>Item Wise</option>
             </select>
@@ -42,7 +42,7 @@
 
         <div class="col-md-2">
             <label class="form-label">Payment Method</label>
-            @* <select asp-for="PaymentMethod" class="form-select"> *@
+             <select  class="form-select"> 
                 <option>Cash</option>
                 <option>Credit</option>
             </select>
@@ -120,7 +120,7 @@
     <div class="d-flex justify-content-between">
         <div>
             <a asp-action="Create" class="btn btn-primary">New Quotation</a>
-            <a asp-action="Edit" class="btn btn-secondary">Edit Quotation</a>
+            @* <a asp-action="Edit" class="btn btn-secondary">Edit Quotation</a> *@
             <a asp-action="CreateInvoice" class="btn btn-success">Create Invoice</a>
         </div>
         <div>

@@ -13,7 +13,7 @@
         </div>
         <div class="card-body">
     <form asp-action="@(isEdit ? "Edit" : "Create")" method="post">
-        @Html.AntiForgeryToken()
+        @* @Html.AntiForgeryToken() *@
         <input type="hidden" asp-for="Id" />
 
         <div class="row mb-3">
@@ -73,8 +73,13 @@
                             <td style="display:none;"><input type="hidden" name="Items[@idx].id" value="@item.Id" class="form-control item-id hidden" /></td>
 
                             <td>@(idx + 1)</td>
-                            <td><input type="text" name="Items[@idx].ItemCode" value="@item.ItemCode" class="form-control item-code" /></td>
-                            <td><input type="text" name="Items[@idx].ItemName" value="@item.ItemName" class="form-control item-name" /></td>
+                             <datalist id="itemOptions0"></datalist>
+                                    <td><input type="text" name="Items[@idx].ItemCode" value="@item.ItemCode" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-code itemCode" />
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
+                                    <td><input type="text" name="Items[@idx].ItemName" value="@item.ItemName" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-name itemname" />
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
                             <td><input type="text" name="Items[@idx].on-hand" value="@item.qty" class="form-control on-hand" readonly /></td>
                             <td><input type="text" name="Items[@idx].CostPrice" value="@item.CostPrice" class="form-control price" readonly /></td>
                             <td><input type="text" class="form-control sys-amount" readonly /></td>
@@ -95,8 +100,14 @@
                         <td style="display:none;"><input type="hidden" name="Items[0].id" class="form-control item-id hidden" readonly /></td>
 
                         <td>1</td>
-                        <td><input type="text" name="Items[0].ItemCode" class="form-control item-code" /></td>
-                        <td><input type="text" name="Items[0].ItemName" class="form-control item-name" /></td>
+                        <td>@* <input type="text" name="Items[0].ItemCode" class="form-control item-code" /> *@
+                             <input type="text" name="Items[0].ItemCode" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-code itemCode"  />
+                             <datalist id="itemOptions0"></datalist>
+                        </td>
+                        <td>
+                            <input type="text" name="Items[0].ItemName" class="form-control item-name" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-name itemname" />
+                            <datalist id="itemOptions0"></datalist>
+                        </td>
                         <td><input type="text" name="Items[0].qty" class="form-control sys-qty" readonly /></td>
                         <td><input type="text" name="Items[0].Price" class="form-control price" readonly /></td>
                         <td><input type="text" name="Items[0].SysAmount" class=" form-control sys-amount" readonly /></td>
@@ -147,69 +158,138 @@
             $row.find('.minus-amt').val(Math.max(0, (onHand - newQty) * price).toFixed(2));
             $row.find('.plus-amt').val(Math.max(0, (newQty - onHand) * price).toFixed(2));
         }
+                // Fills the row with the chosen item object (case-insensitive props handled)
+       
+        function fillRowFromItem($row, item) {
+          const get = (o, a, b) => o[a] ?? o[b];
+          debugger
+          $row.find('.item-id').val(get(item, 'Id', 'id'));
+          $row.find('.item-code').val(get(item, 'Code', 'code'));
+          $row.find('.item-method').val(get(item, 'Method', 'method'));
+          $row.find('.item-type').val(get(item, 'Type', 'type'));
+          $row.find('.item-name').val(get(item, 'Name', 'name'));
+          $row.find('.on-hand').val(get(item, 'OnHand', 'onHand'));
+          $row.find('.price').val(get(item, 'CostPrice', 'costPrice'));
+          $row.find('.WarehouseId').val(get(item, 'WarehouseId', 'warehouseId'));
+
+          // your own function
+          if (typeof recalcRow === 'function') recalcRow($row);
+        }
 
         function setupAutocomplete($row) {
-           $row.find('.item-code, .item-name').autocomplete({
-            source: function (request, response) {
-            
-               $.getJSON('@Url.Action("GetItems")',
-                  {
-                      term: request.term,
-                      warehouseId:  document.querySelector('.js-select2').value
-                  },
-                  function (data) {
-                                            
-                    if (!data) {
-                        console.error("No data returned from server!");
-                        return;
-                    }
+          const $code = $row.find('.item-code');
+          const listId = $code.attr('list'); // e.g., "itemOptions0"
+          const $datalist = listId ? $('#' + listId) : $(); // may be empty if no datalist
+          let cacheItems = []; // last fetched items for this row
 
-                    // 2️⃣ Make sure it's an array (or access the array if wrapped)
-                    const itemsArray = Array.isArray(data) ? data : data.items;
+          function fetchItems(term, cb) {
+            $.getJSON('@Url.Action("GetItems")', {
+              term: term,
+              warehouseId: document.querySelector('.js-select2')?.value
+            },
+            function (data) {
+              const itemsArray = Array.isArray(data) ? data : data?.items;
+              const arr = Array.isArray(itemsArray) ? itemsArray : [];
+              cacheItems = arr;
+              cb(arr);
+            });
+          }
 
+          // 3.b) If user picks from native datalist, you'll get a change/input on $code
+          // Try to resolve the exact code to a cached item and fill the row.
+          function tryResolveFromCache() {
+            const code = $code.val();
+            if (!code || !cacheItems.length) return;
+            const chosen = cacheItems.find(x => (x.Code ?? x.code) === code);
+            if (chosen) fillRowFromItem($row, chosen);
+          }
 
-                    if (!Array.isArray(itemsArray)) {
-                        console.error("Data is not an array!");
-                        return;
-                    }
-
-                    // 3️⃣ Map each item and check properties
-                    response($.map(itemsArray, function(item) {
-                         return {
-                            label: (item.Code || item.code) + " - " + (item.Name || item.name), // fallback for casing
-                            value: item.Code || item.code,
-                            itemData: item
-                        };
-                    }));
+          // When user types, refresh datalist (if present)
+          if ($datalist.length) {
+            $code.on('input', function () {
+              const term = this.value || '';
+              if (term.length < 1) { $datalist.empty(); return; }
+              fetchItems(term, function (arr) {
+                $datalist.empty();
+                arr.slice(0, 50).forEach(item => {
+                  const code = item.Code ?? item.code;
+                  const name = item.Name ?? item.name;
+                  $('<option/>', { value: code, text: `${code} - ${name}` }).appendTo($datalist);
                 });
-            },
-
-            select: function (event, ui) {
-                $row.find('.item-id').val(ui.item.itemData.Id || ui.item.itemData.id);
-                $row.find('.item-id').val(ui.item.itemData.Id || ui.item.itemData.id); 
-                $row.find('.item-code').val(ui.item.itemData.Code || ui.item.itemData.code);
-                $row.find('.item-method').val(ui.item.itemData.Method || ui.item.itemData.method);
-                $row.find('.item-type').val(ui.item.itemData.Type || ui.item.itemData.type);
-                $row.find('.item-name').val(ui.item.itemData.Name || ui.item.itemData.name);
-                $row.find('.on-hand').val(ui.item.itemData.OnHand || ui.item.itemData.onHand);
-                $row.find('.price').val(ui.item.itemData.CostPrice || ui.item.itemData.costPrice);
-                $row.find('.WarehouseId').val(ui.item.itemData.WarehouseId || ui.item.itemData.warehouseId);
-                recalcRow($row);
-                return false;
-            },
-            minLength: 1
-        });
-         
+              });
+            });
+            // On commit (blur/change), resolve selection to full object and fill other fields
+            $code.on('change blur', tryResolveFromCache);
+          }
         }
-        function NewRow(){
+
+
+        // function setupAutocomplete($row) {
+        //    $row.find('.item-code, .item-name').autocomplete({
+        //     source: function (request, response) {
+            
+        //        $.getJSON('@Url.Action("GetItems")',
+        //           {
+        //               term: request.term,
+        //               warehouseId:  document.querySelector('.js-select2').value
+        //           },
+        //           function (data) {
+                                            
+        //             if (!data) {
+        //                 console.error("No data returned from server!");
+        //                 return;
+        //             }
+
+        //             // 2️⃣ Make sure it's an array (or access the array if wrapped)
+        //             const itemsArray = Array.isArray(data) ? data : data.items;
+
+
+        //             if (!Array.isArray(itemsArray)) {
+        //                 console.error("Data is not an array!");
+        //                 return;
+        //             }
+
+        //             // 3️⃣ Map each item and check properties
+        //             response($.map(itemsArray, function(item) {
+        //                  return {
+        //                     label: (item.Code || item.code) + " - " + (item.Name || item.name), // fallback for casing
+        //                     value: item.Code || item.code,
+        //                     itemData: item
+        //                 };
+        //             }));
+        //         });
+        //     },
+
+        //     select: function (event, ui) {
+        //         $row.find('.item-id').val(ui.item.itemData.Id || ui.item.itemData.id);
+        //         $row.find('.item-id').val(ui.item.itemData.Id || ui.item.itemData.id); 
+        //         $row.find('.item-code').val(ui.item.itemData.Code || ui.item.itemData.code);
+        //         $row.find('.item-method').val(ui.item.itemData.Method || ui.item.itemData.method);
+        //         $row.find('.item-type').val(ui.item.itemData.Type || ui.item.itemData.type);
+        //         $row.find('.item-name').val(ui.item.itemData.Name || ui.item.itemData.name);
+        //         $row.find('.on-hand').val(ui.item.itemData.OnHand || ui.item.itemData.onHand);
+        //         $row.find('.price').val(ui.item.itemData.CostPrice || ui.item.itemData.costPrice);
+        //         $row.find('.WarehouseId').val(ui.item.itemData.WarehouseId || ui.item.itemData.warehouseId);
+        //         recalcRow($row);
+        //         return false;
+        //     },
+        //     minLength: 1
+        // });
+         
+        // }
+         function NewRow(){
                 var index = $('#itemsTable tbody tr').length;
                 var newRow = $(`
                     <tr>
                         <td style="display:none;"><input type="hidden" name="Items[${index}].id" class="form-control item-id" readonly/></td>
 
                         <td>${index + 1}</td>
-                        <td><input name="Items[${index}].ItemCode" class="form-control item-code" /></td>
-                        <td><input name="Items[${index}].ItemName" class="form-control item-name" /></td>
+                        <td><input name="Items[${index}].ItemCode" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-code itemCode" />
+                             <datalist id="itemOptions0"></datalist>
+                        </td>
+                        <td><input name="Items[${index}].ItemName" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-name itemname"  />
+                             <datalist id="itemOptions0"></datalist>
+                        </td>
                         <td><input name="Items[${index}].OnHand" class="form-control on-hand" readonly /></td>
                         <td><input name="Items[${index}].Price" class="form-control price" readonly/></td>
                         <td><input name="Items[${index}].NewOnHand"class="form-control sys-amount" readonly /></td>

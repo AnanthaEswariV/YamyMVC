@@ -12,7 +12,7 @@ namespace YamyProject.Controllers.Customer
             _logger = logger;
         }
 
-        public async Task<IActionResult> Index()
+        public  async Task<IActionResult> Index()
         {
             return View();
         }
@@ -92,11 +92,6 @@ namespace YamyProject.Controllers.Customer
                 return StatusCode(500, "An error occurred while deleting the sale.");
             }
         }
-
-
-
-
-
         public async Task<IActionResult> CreatTax()
         { return View(); 
         }

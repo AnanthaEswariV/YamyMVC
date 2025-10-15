@@ -11,7 +11,6 @@ function showErrorMessage(message = 'Something went wrong!') {
 }
 $(document).ready(function () {
     $('body').delegate('.js-render-modal', 'click', function () {
-    debugger
     var btn = $(this);
     var modal = $('#Modal');
     modal.find('#ModalLabel').text(btn.data('title'));

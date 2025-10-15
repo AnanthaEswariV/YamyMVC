@@ -1,140 +1,264 @@
-﻿@* @model TaxInvoiceViewModel
-
+﻿@model TaxInvoiceViewModel
 @{
-    var isEdit = Model?.Id > 0;
-    ViewData["Title"] = $"Tax Invoice - {(isEdit ? "Edit" : "Create")}";
+    ViewData["Title"] = "Tax Invoice";
 }
 
-<div class="container-fluid">
-
-    <div class="card shadow">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5>@ViewData["Title"]</h5>
+<div class="container-fluid mt-3">
+    <div class="card shadow-sm border-0">
+        <div class="card-header  justify-content-between align-items-center">
+            <h5 class="mb-0">Tax Invoice</h5>
         </div>
-        <div class="card-body">
-            <form asp-action="@(isEdit ? "Edit" : "Create")" method="post" id="invoiceForm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" asp-for="Id" />
 
-                <div class="row mb-3">
+        <div class="card-body">
+            <div class="mb-3">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+
+            <form method="post" asp-controller="MasterCreditNote" id="invoiceForm">
+               
+                <!-- Header: Customer Code/ Customer / Invoice Date/Invoice -->
+                <input type="hidden" class="form-control" asp-for="CustomerId" id="customidId" value="@Model.CustomerId" readonly />
+
+                <div class="row g-5">
+                    <div class="col-md-2">
+                        <label class="form-label">Customer Code</label>
+                        <input class="form-control" asp-for="CustomerCode" id="customerCode" value="@Model.CustomerCode" readonly />
+                    </div>
+
                     <div class="col-md-3">
-                        <label asp-for="CustomerCode">Customer Code</label>
-                        <input asp-for="CustomerCode" class="form-control" readonly />
-                        <span asp-validation-for="CustomerCode" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-5">
-                        <label asp-for="CustomerId">Customer</label>
-                        <select asp-for="CustomerId" asp-items="Model.CustomerList" class="form-select"></select>
-                        <span asp-validation-for="CustomerId" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-2">
-                        <label asp-for="InvoiceDate">Date</label>
-                        <input asp-for="InvoiceDate" type="date" class="form-control" />
-                        <span asp-validation-for="InvoiceDate" class="text-danger"></span>
+                        <label class="form-label">Customer</label>
+                        <select class="form-select" asp-for="CustomerId"
+                                asp-items="@(new SelectList(Model.Customers, "Id", "Name" ))"
+                                id="filterCustomer">
+                            @* <option value="">-- Select Customer --</option> *@
+                        </select>
+                        <span class="text-danger" asp-validation-for="CustomerId"></span>
                     </div>
                     <div class="col-md-2">
-                        <label asp-for="InvoiceNumber">Invoice #</label>
-                        <input asp-for="InvoiceNumber" class="form-control" readonly />
+                        <label class="form-label">Customer Name</label>
+                        <input class="form-control" asp-for="CustomerName" id="customerName" value="@Model.CustomerName" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice Date</label>
+                        <input asp-for="DueTo" type="date" class="form-control" />
+                        <span class="text-danger" asp-validation-for="DueTo"></span>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice Date</label>
+                        <input asp-for="Date" type="date" class="form-control" />
+                        <span class="text-danger" asp-validation-for="Date"></span>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice #</label>
+                        <input class="form-control" asp-for="Invoce" value="@Model.Invoce" readonly />
                     </div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <label asp-for="InvoiceType">Invoice Type</label>
+                <!-- Second Row: Types / Locations / Warehouse -->
+                <div class="row g-5 mt-1">
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice Type</label>
                         <select asp-for="InvoiceType" class="form-select">
-                            <option value="">-- Select Type --</option>
                             <option value="Cash">Cash</option>
                             <option value="Credit">Credit</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label asp-for="Emirate">Emirate</label>
+                    <div class="col-md-2">
+                        <label class="form-label">Emirate</label>
                         <select asp-for="Emirate" class="form-select">
-                            <option value="">-- Select Emirate --</option>
                             <option>Abu Dhabi</option>
                             <option>Dubai</option>
                             <option>Sharjah</option>
                             <option>Ajman</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label asp-for="WarehouseId">Warehouse</label>
-                        <select asp-for="WarehouseId" asp-items="Model.WarehouseList" class="form-select"></select>
+                    <div class="col-md-2">
+                        <label class="form-label">Warehouse</label>
+                        <select class="form-select js-select2" asp-for="WarehousesId"
+                                asp-items="@(new SelectList(Model.Warehouses, "Id", "Name"))"
+                                id="filterWarehouse">
+                            @* <option value="">-- Select Warehouse --</option> *@
+                        </select>
                     </div>
                     <div class="col-md-3">
-                        <label asp-for="AccountName">Account Name</label>
-                        <select asp-for="AccountName" asp-items="Model.AccountList" class="form-select"></select>
+                        <label class="form-label">Payment Terms (Days)</label>
+                        <select asp-for="PaymentTermDays" class="form-select">
+                            <option>30</option>
+                            <option>60</option>
+                            <option>90</option>
+                            <option>120</option>
+                            <option>150</option>
+                            <option>180</option>
+                            <option>210</option>
+                            <option>240</option>
+                            <option>270</option>
+                            <option>300</option>
+                            <option>330</option>
+                            <option>360</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="table-responsive mb-3">
-                    <table class="table table-bordered table-sm align-middle" id="invoiceItems">
-                        <thead class="table-light">
+                <!-- Third Row: Account -->
+                <div class="row g-5 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label">Account Name</label>
+                        <select class="form-select" asp-for="AccountsId"
+                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Items (DataTable) -->
+                 <div class="table-responsive mt-4">
+                    <table id="itemsTable" class="table table-striped table-bordered table-sm align-middle table-responsive{-sm|-md|-lg|-xl}">
+                        <thead class="">
                             <tr>
+                                <th style="display:none">Id</th>
                                 <th>#</th>
-                                <th>Item</th>
+                                <th>Item Code</th>
+                                <th>Item Name</th>
                                 <th>Qty</th>
                                 <th>Price</th>
                                 <th>Disc</th>
                                 <th>Net Price</th>
-                                <th>VAT</th>
+                                <th>VAT %</th>
+                                <th>VAT Amount</th>
                                 <th>Amount</th>
                                 <th>Cost Center</th>
                                 <th>Remove</th>
-                            </tr>
+                                <th style="display:none">Cost CostPrice</th>
+                                <th style="display:none">Type</th>
+                                <th style="display:none">Method</th>
+                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody >
                             @if (Model.Items != null && Model.Items.Any())
                             {
                                 int idx = 0;
-                                foreach (var item in Model.Items)
-                                {
-                                    <tr>
-                                        <td>@(idx + 1)</td>
+                                
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td style="display:none;"><input type="hidden" name="Items[@idx].id" value="@item.Id" class="form-control item-id hidden" /></td>
+
+                            <td>@(idx + 1)</td>
+                             <datalist id="itemOptions0"></datalist>
+                                    <td><input type="text" name="Items[@idx].ItemCode" value="@item.ItemCode" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-code itemCode" />
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
+                                    <td><input type="text" name="Items[@idx].ItemName" value="@item.ItemName" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-name itemname" />
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
+                                        <td><input class="form-control form-control-sm item-QTY" asp-for="@item.QTY" /></td>
+                                        <td><input class="form-control form-control-sm item-Price" asp-for="@item.Price" /></td>
+                                        <td><input class="form-control form-control-sm item-Disc" asp-for="@item.Disc" /></td>
+                                        <td><input class="form-control form-control-sm item-NetPrice" asp-for="@item.NetPrice" readonly /></td>
                                         <td>
-                                            <input type="text" name="Items[@idx].ItemName" value="@item.ItemName" class="form-control item-name" />
+                                            <select class="form-select form-select-sm" asp-for="@item.VatPersint"
+                                                    asp-items="@(new SelectList(Model.Vat, "Value", "Name"))">
+                                            </select>
+                                        </td>                                     
+                                        <td><input class="form-control form-control-sm item-VatAmonut" asp-for="@item.VatAmonut" readonly /></td>
+                                        <td><input class="form-control form-control-sm item-Amount" asp-for="@item.Amount" readonly /></td>
+                                        <td>
+                                            <select class="form-select form-select-sm" asp-for="@item.CostCenterId"
+                                                    asp-items="@(new SelectList(Model.CostCenter, "Id", "Code"))">
+                                                <option value="">--</option>
+                                            </select>
                                         </td>
-                                        <td><input type="text" name="Items[@idx].Quantity" value="@item.Quantity" class="form-control qty" /></td>
-                                        <td><input type="text" name="Items[@idx].Price" value="@item.Price" class="form-control price" /></td>
-                                        <td><input type="text" name="Items[@idx].Discount" value="@item.Discount" class="form-control disc" /></td>
-                                        <td><input type="text" name="Items[@idx].NetPrice" value="@item.NetPrice" class="form-control net-price" readonly /></td>
-                                        <td><input type="text" name="Items[@idx].Vat" value="@item.Vat" class="form-control vat" readonly /></td>
-                                        <td><input type="text" name="Items[@idx].Amount" value="@item.Amount" class="form-control amount" readonly /></td>
-                                        <td><input type="text" name="Items[@idx].CostCenter" value="@item.CostCenter" class="form-control cost-center" /></td>
-                                        <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-row">×</button>
+                                        </td>
+                                        <td style="display:none;"><input type="hidden" name="Items[@idx].CostPrice" asp-for="@item.CostPrice" value="@item.CostPrice" class="form-control item-CostPrice hidden" /></td>
+                                        <td style="display:none;"><input type="hidden" name="Items[@idx].Type" asp-for="@item.Type" value="@item.Type" class="form-control item-Type hidden" /></td>
+                                        <td style="display:none;"><input type="hidden" name="Items[@idx].Method" asp-for="@item.Method" value="@item.Method" class="form-control item-Method hidden" /></td>
+                                        <td style="display:none;"><input type="hidden" name="Items[@idx].WarehouseId" asp-for="@item.WarehouseId" value="@item.WarehouseId" class="form-control item-WarehouseId hidden" /></td>
+
                                     </tr>
-                                    idx++;
                                 }
                             }
                             else
-                            {
+                            {   
                                 <tr>
+                                    <td style="display:none;"><input type="hidden" name="Items[0].id" class="form-control item-id hidden" readonly /></td>
+
                                     <td>1</td>
-                                    <td><input name="Items[0].ItemName" class="form-control item-name" /></td>
-                                    <td><input name="Items[0].Quantity" class="form-control qty" /></td>
-                                    <td><input name="Items[0].Price" class="form-control price" /></td>
-                                    <td><input name="Items[0].Discount" class="form-control disc" /></td>
-                                    <td><input name="Items[0].NetPrice" class="form-control net-price" readonly /></td>
-                                    <td><input name="Items[0].Vat" class="form-control vat" readonly /></td>
-                                    <td><input name="Items[0].Amount" class="form-control amount" readonly /></td>
-                                    <td><input name="Items[0].CostCenter" class="form-control cost-center" /></td>
-                                    <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
+                                    <td>
+                                        <input type="text" name="Items[0].ItemCode" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-code itemCode" />
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="Items[0].ItemName" class="form-control item-name" id="itemInput0" list="itemOptions0" placeholder="Type or select..." class="form-control item-name itemname" />
+                                        <datalist id="itemOptions0"></datalist>
+                                    </td>
+                                    <td><input type="text" class="form-control form-control-sm item-QTY"  name="Items[0].QTY"/></td>
+                                    <td><input type="text" class="form-control form-control-sm item-Price" name="Items[0].Price"/></td>
+                                    <td><input type="text" class="form-control form-control-sm item-Disc" name="Items[0].Disc"/></td>
+                                    <td><input type="text" class="form-control form-control-sm item-NetPrice" name="Items[0].NetPrice" readonly/></td>
+                                    <td>
+                                        <select class="form-select form-select-sm item-VatPersint" name="Items[0].VatPersint"
+                                                asp-items="@(new SelectList(Model.Vat, "Value", "Name"))">
+                                            <option value="">--</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="text" class="form-control form-control-sm item-VatAmonut" name="Items[0].VatAmonut" readonly /></td>
+                                    <td><input type="text" class="form-control form-control-sm item-Amount" name="Items[0].Amount" readonly /></td>
+                                    <td>
+                                        <select class="form-select form-select-sm" name="Items[0].CostCenterId"
+                                                asp-items="@(new SelectList(Model.CostCenter, "Id", "Code"))">
+                                            <option value="">--</option>
+                                        </select>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-row">×</button>
+                                    </td>
+                                    <td style="display:none;"><input type="hidden" name="Items[0].CostPrice" class="form-control item-CostPrice hidden" readonly /></td>
+                                    <td style="display:none;"><input type="hidden" name="Items[0].Type" class="form-control item-Type hidden" readonly /></td>
+                                    <td style="display:none;"><input type="hidden" name="Items[0].Method" class="form-control item-Method hidden" readonly /></td>
+                                    <td style="display:none;"><input type="hidden" name="Items[0].WarehouseId" class="form-control item-WarehouseId hidden" readonly /></td>
+
                                 </tr>
                             }
                         </tbody>
-                    </table>
-                </div>
-
-                <button type="button" id="addRowBtn" class="btn btn-primary mb-3">Add Item</button>
-
-                <div class="row justify-content-end mb-3">
-                    <div class="col-md-3">
-                        <input type="text" class="form-control" value="@Model.Items.Sum(x => x.Amount)" readonly placeholder="Total Amount" />
+                </table>
+        </div>
+        
+        <div class="row g-3 mt-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Notes</label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 bg-light">
+                            <div class="mb-2 d-flex justify-content-between">
+                                <strong>Total Before VAT:</strong>
+                                <span class="total-BeforeVat">@Model.TotalBeforeVat.ToString("N2")</span>
+                                <input type="hidden" asp-for="TotalBeforeVat" class="totalBeforeVat"  />
+                            </div>
+                            <div class="mb-2 d-flex justify-content-between">
+                                <strong>Total VAT:</strong>
+                                <span class="total-Vat">@Model.TotalVat.ToString("N2")</span>
+                                <input type="hidden" asp-for="TotalVat" class="totalVat"  />
+                            </div>
+                            <div class="mb-2 d-flex justify-content-between">
+                                <strong>Total Discount:</strong>
+                                <span class="tota-Discount">@Model.TotaDiscount.ToString("N2")</span>
+                                <input type="hidden" asp-for="TotaDiscount" class="totaDiscount " />
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <strong>Net Amount:</strong>
+                                <span class="fw-bold net-Amount">@Model.TotaAmount.ToString("N2")</span>
+                                <input type="hidden" asp-for="TotaAmount" class="netAmount "/>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="text-end">
-                    <button type="submit" class="btn btn-success">Save</button>
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="submit" asp-action="Create" class="btn btn-primary" form="invoiceForm">Save</button>
+                    <button type="submit" asp-action="Create" name="saveAndClose" class="btn btn-success" form="Form">Save &amp; Close</button>
                     <a asp-action="Index" class="btn btn-secondary">Close</a>
                 </div>
             </form>
@@ -144,70 +268,239 @@
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+      <script>
 
-    <script>
-        function recalcRow($row) {
-            var qty = parseFloat($row.find('.qty').val()) || 0;
-            var price = parseFloat($row.find('.price').val()) || 0;
-            var disc = parseFloat($row.find('.disc').val()) || 0;
-
-            var net = qty * price - disc;
-            var vat = net * 0.05; // example VAT 5%
-            var amount = net + vat;
-
-            $row.find('.net-price').val(net.toFixed(2));
-            $row.find('.vat').val(vat.toFixed(2));
-            $row.find('.amount').val(amount.toFixed(2));
-        }
-
-        function NewRow() {
-            var index = $('#invoiceItems tbody tr').length;
-            var newRow = $(`
-                <tr>
-                    <td>${index + 1}</td>
-                    <td><input name="Items[${index}].ItemName" class="form-control item-name" /></td>
-                    <td><input name="Items[${index}].Quantity" class="form-control qty" /></td>
-                    <td><input name="Items[${index}].Price" class="form-control price" /></td>
-                    <td><input name="Items[${index}].Discount" class="form-control disc" /></td>
-                    <td><input name="Items[${index}].NetPrice" class="form-control net-price" readonly /></td>
-                    <td><input name="Items[${index}].Vat" class="form-control vat" readonly /></td>
-                    <td><input name="Items[${index}].Amount" class="form-control amount" readonly /></td>
-                    <td><input name="Items[${index}].CostCenter" class="form-control cost-center" /></td>
-                    <td><button type="button" class="btn btn-danger remove-row">Remove</button></td>
-                </tr>
-            `);
-            $('#invoiceItems tbody').append(newRow);
-        }
-
-        $(document).ready(function () {
-            $('#addRowBtn').click(NewRow);
-
-            $('#invoiceItems').on('click', '.remove-row', function () {
-                $(this).closest('tr').remove();
-                updateRowIndexes();
+          $('#itemsTable tbody tr').each(function () {
+                var $row = $(this);
+                setupAutocomplete($row);
+                // recalcRow($row);
             });
+          function updateRowIndexes() {
+                        $('#itemsTable tbody tr').each(function (i) {
+                            $(this).find('td:first').text(i + 1);
+                            $(this).find('input, select').each(function () {
+                                var name = $(this).attr('name');
+                                if (name) {
+                                    var newName = name.replace(/\d+/, i);
+                                    $(this).attr('name', newName);
+                                }
+                            });
+                        });
+                    }
+          function fillRowFromItem($row, item) {
+            
+          const get = (o, a, b) => o[a] ?? o[b];
+          $row.find('.item-id').val(get(item, 'Id', 'id'));
+          $row.find('.item-code').val(get(item, 'Code', 'code'));
+          $row.find('.item-name').val(get(item, 'Name', 'name'));
+          $row.find('.item-Price').val(get(item, 'SalesPrice', 'salesPrice'));
+          $row.find('.item-QTY').val(0);
+          $row.find('.item-Disc').val(0);
+          $row.find('.item-NetPrice').val(0);
+          $row.find('.item-VatAmonut').val(0);
+          $row.find('.item-Amount').val(0);
+          $row.find('.item-CostPrice').val(get(item, 'CostPrice', 'costPrice'));
+          $row.find('.item-Type').val(get(item, 'Type', 'type'));
+          $row.find('.item-Method').val(get(item, 'Method', 'method'));
+          $row.find('.item-WarehouseId').val(get(item, 'WarehouseId', 'warehouseId'));
 
-            $('#invoiceItems').on('input', '.qty, .price, .disc', function () {
-                recalcRow($(this).closest('tr'));
-            });
-
-            function updateRowIndexes() {
-                $('#invoiceItems tbody tr').each(function (i) {
-                    $(this).find('td:first').text(i + 1);
-                    $(this).find('input').each(function () {
-                        var name = $(this).attr('name');
-                        if (name) {
-                            $(this).attr('name', name.replace(/\d+/, i));
-                        }
-                    });
-                });
+              // your own function
+              if (typeof recalcRow === 'function') recalcRow($row);
             }
+          function setupAutocomplete($row) {
+          // --- helper: get the <datalist> for an input (scoped to row, then global) ---
+          function getDatalist($input, $scope = $(document)) {
+            const el = $input[0];
+            if (!el) return $();
+            if (el.list) return $(el.list); // native reference
+            const id = $input.attr('list');
+            if (!id) return $();
+            const $scoped = $scope.find('#' + id);
+            return $scoped.length ? $scoped : $('#' + id);
+          }
 
-            // Initialize calculations
-            $('#invoiceItems tbody tr').each(function () {
-                recalcRow($(this));
+          const $code = $row.find('.item-code');
+          const $name = $row.find('.item-name');
+
+          const $codeDL = getDatalist($code, $row);
+          const $nameDL = getDatalist($name, $row);
+
+          let cacheItems = []; // last fetched items for this row
+
+          function fetchItems(term, cb) {
+            $.getJSON('@Url.Action("GetItems")', {
+              term: term,
+              warehouseId: document.querySelector('.js-select2')?.value
+            }, function (data) {
+              const itemsArray = Array.isArray(data) ? data : data?.items;
+              const arr = Array.isArray(itemsArray) ? itemsArray : [];
+              cacheItems = arr;
+              cb(arr);
             });
-        });
-    </script>
+          }
+
+          // fill <datalist> with "code - name" label, but value differs:
+          // - for code field: option.value = code
+          // - for name field: option.value = name
+          function populateDatalist($dl, arr, valueKey) {
+            if (!$dl || !$dl.length) return;
+            $dl.empty();
+            arr.slice(0, 50).forEach(item => {
+              const code = item.Code ?? item.code;
+              const name = item.Name ?? item.name;
+              const value = valueKey === 'code' ? code : name;
+              $('<option />', { value: value, text: `${code} - ${name}` }).appendTo($dl);
+            });
+          }
+          // Try resolve from whichever input triggered (code or name)
+          function resolveAndFill($input) {
+            if (!cacheItems.length) return;
+
+            const isCode = $input.is('.item-code');
+            const val = ($input.val() || '').trim();
+            if (!val) return;
+
+            const chosen = cacheItems.find(x => {
+              const code = x.Code ?? x.code;
+              const name = x.Name ?? x.name;
+              return isCode ? code === val : name === val;
+            });
+
+            if (chosen) {
+              fillRowFromItem($row, chosen);
+            }
+          }
+
+          // -- wiring: CODE input --
+          if ($codeDL.length) {
+            $code.on('input', function () {
+              const term = this.value || '';
+              if (term.length < 1) { $codeDL.empty(); return; }
+              fetchItems(term, function (arr) {
+                populateDatalist($codeDL, arr, 'code');
+              });
+            });
+            $code.on('change blur', function () { resolveAndFill($code); });
+          }
+
+          // -- wiring: NAME input --
+          if ($nameDL.length) {
+            $name.on('input', function () {
+              const term = this.value || '';
+              if (term.length < 1) { $nameDL.empty(); return; }
+              fetchItems(term, function (arr) {
+                populateDatalist($nameDL, arr, 'name');
+              });
+            });
+            $name.on('change blur', function () { resolveAndFill($name); });
+          }
+        }
+       </script>
+        <script>
+
+         //Cl
+          (function () {
+          // ---- helpers
+          const num = v => {
+            if (v == null) return 0;
+            const n = parseFloat(String(v).replace(/,/g, ''));
+            return Number.isFinite(n) ? n : 0;
+          };
+          const fmt = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+          // ---- calc a single row
+          function calcRow($tr) {
+
+             const qty    = num($tr.find('.item-QTY').val());
+             const price  = num($tr.find('.item-Price').val());
+             const disc   = num($tr.find('.item-Disc').val());
+             const vatPct = num($tr.find('.item-VatPersint').val());
+
+            // Your formulas
+           
+            const net     = (qty * price) - disc;          // Net Price
+            const vatAmt  = net * (vatPct / 100);        // VATAMT
+            const amount  = net + vatAmt;                // Amount
+            const Discount=disc;
+
+            // write back
+             $tr.find('.item-NetPrice').val(fmt(net));
+             $tr.find('.item-VatAmonut').val(fmt(vatAmt));
+             $tr.find('.item-Amount').val(fmt(amount));
+             $tr.find('.item-Disc').val(fmt(Discount));
+
+            // return pieces used in totals
+              return { net, vatAmt, amount, Discount };
+          }
+
+          // ---- calc all totals
+          function calcTotals() {
+            let totalPrice = 0, totalVat = 0, totalAmount = 0,totalDiscount = 0;
+            $('#itemsTable tbody tr').each(function () {
+              const r = calcRow($(this));
+              totalPrice    += r.net;   // Total Before VAT = sum of prices
+              totalVat      += r.vatAmt;  // Total VAT       = sum of VATAmt
+              totalDiscount += r.Discount;  // Total VAT       = sum of VATAmt
+              totalAmount   += r.amount;  // Net Amount      = sum of Amount
+            });
+
+            $('.total-BeforeVat').text(fmt(totalPrice));
+            $('.total-Vat').text(fmt(totalVat));
+            $('.tota-Discount').text(fmt(totalDiscount));
+            $('.net-Amount').text(fmt(totalAmount));
+
+             const set = (name, val) => { const el = document.querySelector(`input[name="${name}"]`); if (el) el.value = val; };
+             set('TotalBeforeVat', totalPrice);
+             set('TotalVat', totalVat);
+             set('TotaDiscount', totalDiscount);
+             set('TotaAmount', totalAmount);
+
+          }
+
+          // ---- wire events (works for existing and future rows)
+           $('#itemsTable').on('input change', '.item-QTY,.item-Price,.item-Disc,.item-VatPersint', function () {
+            const $tr = $(this).closest('tr');
+            calcRow($tr);
+            calcTotals();
+          });
+           
+
+          // ---- initialize once on load
+          $(function () { calcTotals(); });
+         })();
+
+
+</script>
+
+<script>
+   //get the user id to the input
+  // Build a lookup: id -> { id, code, name }
+  const customers = @Json.Serialize(
+    Model.Customers.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+  );
+  const byId = Object.fromEntries(customers.map(x => [String(x.id), x]));
+
+  const sel       = document.getElementById('filterCustomer');
+  const hiddenId  = document.getElementById('customidId');   // note your current id is 'customidId'
+  const codeInput = document.getElementById('customerCode');
+  const nameInput = document.getElementById('customerName');
+
+  function syncFromSelect() {
+    const m = byId[sel.value];
+    if (!m) { codeInput.value = ""; nameInput.value = ""; return; }
+    if (hiddenId) hiddenId.value = String(m.id);
+    codeInput.value = m.code ?? "";
+    nameInput.value = m.name ?? "";
+  }
+
+  // If you have a pre-selected CustomerId in the hidden field, apply it to the <select> first.
+  (function init() {
+    const pre = hiddenId?.value;
+    if (pre && byId[pre]) sel.value = pre;   // set selection from model
+    syncFromSelect();
+    sel.addEventListener('change', syncFromSelect);
+  })();
+</script>
+
+
 }
- *@

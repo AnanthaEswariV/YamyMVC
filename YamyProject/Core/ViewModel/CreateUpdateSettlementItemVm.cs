@@ -4,6 +4,7 @@
     {
         public int? Id { get; set; }
         public int ItemId { get; set; }
+        public string ItemName { get; set; }
         public decimal OnHand { get; set; }
         public decimal Price { get; set; }
         public decimal NewOnHand { get; set; }

@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.Xml.Linq;
-using YamyProject.Core.Models;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
 {
     public class ItemStockSettlementService: IItemStockSettlementService
     {// Services/ItemStockSettlementService.cs
@@ -26,7 +22,6 @@ namespace YamyProject.Services.Implementations
                 // base query
                  var q = _db.TblItemStockSettlements 
                            .Where(s => s.State == 0); // replicate WHERE tbl_item_stock_settlement.state = 0
-
 
             if (defaultMode == "Default")
                 {
@@ -306,8 +301,7 @@ namespace YamyProject.Services.Implementations
                 await _db.SaveChangesAsync();
             }
         public async Task<List<TblItem>> GetItemsByCodeAsync(string code, int warehouseId)
-        {
-           
+        {           
             return await _db.TblItems
                 .Where(i => i.WarehouseId == warehouseId
                             && i.State == 0

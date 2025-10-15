@@ -799,7 +799,7 @@ public partial class YamyDbContext : DbContext
                 .HasMaxLength(100)
                 .HasDefaultValueSql("''")
                 .HasColumnName("address");
-           // entity.Property(e => e.CountryId).HasColumnName("country_id");
+            // entity.Property(e => e.CountryId).HasColumnName("country_id");
             //  entity.Ignore(e => e.CountryId);
 
             entity.Property(e => e.Descriptions)
@@ -4474,22 +4474,22 @@ public partial class YamyDbContext : DbContext
                 .HasColumnName("type");
         });
 
-        //modelBuilder.Entity<>(entity =>
-        //{
-        //    entity.HasKey(e => e.Id).HasName("PRIMARY");
+        modelBuilder.Entity<TblSubCostCenter>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
 
-        //    entity
-        //        .ToTable("tbl_sub_cost_center")
-        //        .UseCollation("utf8mb4_general_ci");
+            entity
+                .ToTable("tbl_sub_cost_center")
+                .UseCollation("utf8mb4_general_ci");
 
-        //    entity.Property(e => e.Id).HasColumnName("id");
-        //    entity.Property(e => e.Code).HasColumnName("code");
-        //    entity.Property(e => e.MainId).HasColumnName("main_id");
-        //    entity.Property(e => e.Name)
-        //        .HasMaxLength(50)
-        //        .HasColumnName("name");
-        //    entity.Property(e => e.ProjectId).HasColumnName("project_id");
-        //});
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Code).HasColumnName("code");
+            entity.Property(e => e.MainId).HasColumnName("main_id");
+            entity.Property(e => e.Name)
+                .HasMaxLength(50)
+                .HasColumnName("name");
+            entity.Property(e => e.ProjectId).HasColumnName("project_id");
+        });
 
         modelBuilder.Entity<TblSubMenu>(entity =>
         {
