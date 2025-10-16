@@ -538,14 +538,22 @@
             }
         });
 
-            $(document).on("click", ".editTenderBtn", function () {
+           
+
+
+
+        });
+        
+        $(document).ready(function () {
+
+             $(document).on("click", ".editTenderBtn", function () {
             const tenderStr = $(this).attr("data-tender");
             const tender = tenderStr ? JSON.parse(tenderStr) : null;
             if (!tender) {
                 console.warn("No tender data found!");
                 return;
             }
-           
+
             // Fill main tender info
             $("#TenderId").val(tender.id ?? 0);
             $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
@@ -575,7 +583,7 @@
                     console.log(items);
                     if (items.length > 0) {
                         items.forEach((item, index) => {
-                            const sr = item.sr ?? String.fromCharCode(65 + index); 
+                            const sr = item.sr ?? String.fromCharCode(65 + index);
                             $("#tenderTableBody").append(`
                                 <tr>
                                     <td><input type="text" class="form-control sr" value="${sr}" name="Items[0].Sr" readonly></td>
@@ -594,8 +602,14 @@
                                 </tr>
                             `);
                         });
+
+        $("#tenderTableBody tr").each(function () {
+            calculateRow($(this), "rate");
+        });
+
+        calculateGrandTotal();
                     } else {
-                        addEmptyRow(); // fallback if no items
+                        addEmptyRow();
                     }
                 },
                 error: function() {
@@ -603,6 +617,7 @@
                     addEmptyRow();
                 }
             });
+
 
             $("#tenderModalLabel").text("Edit Project Tender");
             $("#tenderModal").modal("show");
@@ -644,7 +659,7 @@
                 Amount: parseFloat($("#grandTotal").val()) || 0,
                 Items: []
             };
-          
+
             // Loop through BOQ items
             $("#tenderTableBody tr").each(function () {
                 const $row = $(this);
@@ -678,7 +693,6 @@
                 return;
             }
 
-            // AJAX call
             $.ajax({
                 url: '/Construction/SaveOrUpdateEstimation',
                 type: 'POST',
@@ -704,12 +718,6 @@
             });
         });
 
-
-
-        });
-        
-        $(document).ready(function () {
-
             function escapeHtml(text) {
                 return String(text ?? "").replace(/[&<>"'`=\/]/g, s => ({
                     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
@@ -724,6 +732,7 @@
 
             function buildRowHtml(sr, item = {}) {
                 return `
+
                 <tr>
                     <td><input type="text" class="form-control text-center sr" value="${sr}" readonly></td>
                     <td><input type="text" class="form-control description" value="${escapeHtml(item.description)}"></td>
@@ -752,23 +761,17 @@
             });
         }
 
-            function calculateRow($row, changedField) {
+                   function calculateRow($row, changedField) {
             const qty = parseDecimal($row.find(".qty").val());
-            const length = parseDecimal($row.find(".length").val());
-            const width = parseDecimal($row.find(".width").val());
-            const thick = parseDecimal($row.find(".thick").val());
             const rate = parseDecimal($row.find(".rate").val());
 
-            // Base amount
-            let baseQty = qty;
-            if (length > 0 && width > 0 && thick > 0)
-                baseQty = qty * length * width * thick;
-
-            const subTotal = baseQty * rate;
+            // ✅ Base amount = Qty * Rate (updated)
+            const subTotal = qty * rate;
 
             let marginPct = parseDecimal($row.find(".margin").val());
             let marginAmt = parseDecimal($row.find(".marginamount").val());
 
+            // Margin recalculation
             if (changedField === "margin") {
                 marginAmt = subTotal * (marginPct / 100);
             } else if (changedField === "marginamount" && subTotal > 0) {
@@ -783,6 +786,7 @@
 
             const total = subTotal + marginAmt;
 
+            // Update row fields
             $row.find(".amount").val(subTotal.toFixed(2));
             $row.find(".margin").val(marginPct.toFixed(2));
             $row.find(".marginamount").val(marginAmt.toFixed(2));
@@ -790,6 +794,7 @@
 
             calculateGrandTotal();
         }
+
 
             function calculateGrandTotal() {
                 let totalSum = 0;
@@ -803,17 +808,18 @@
                $("#grandTotal").val(grand.toFixed(2));
             }
 
-            $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
+                $("#tenderTableBody").on("input change", ".qty, .rate, .margin, .marginamount", function () {
             const $row = $(this).closest("tr");
             const field = getChangedFieldClass(this);
             calculateRow($row, field);
         });
 
-            function getChangedFieldClass(el) {
-            const knownFields = ["qty", "length", "width", "thick", "rate", "margin", "marginamount"];
+                function getChangedFieldClass(el) {
+            const knownFields = ["qty", "rate", "margin", "marginamount"];
             const classes = $(el).attr("class").split(/\s+/);
             return classes.find(cls => knownFields.includes(cls));
         }
+
 
 
             $("#tenderTableBody").on("input change", "tr:last-child input", function () {

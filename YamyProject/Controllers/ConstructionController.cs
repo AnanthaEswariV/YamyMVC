@@ -1,8 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.CodeAnalysis;
-using OfficeOpenXml;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
+﻿using System.Text.RegularExpressions;
+
 
 namespace YamyProject.Controllers
 {
@@ -1242,8 +1239,6 @@ namespace YamyProject.Controllers
             return View();
         }
 
-        #endregion
-
         [HttpPost]
         public async Task<IActionResult> SaveOrUpdateEstimation([FromBody] ProjectTenderRequest model)
         {
@@ -1284,56 +1279,56 @@ namespace YamyProject.Controllers
 
                 try
                 {
-                    if (model.Id > 0)
-                    {
-                        string checkEstimate = "SELECT estimate_status FROM tbl_project_tender WHERE id=@id";
-                        await using (var cmd = new MySqlCommand(checkEstimate, conn, (MySqlTransaction)transaction))
-                        {
-                            cmd.Parameters.AddWithValue("@id", model.Id);
-                            var estObj = await cmd.ExecuteScalarAsync();
-                            if (estObj != null && Convert.ToInt32(estObj) == 1)
-                            {
-                                await transaction.RollbackAsync();
-                                return BadRequest(new { status = false, message = "Estimate already generated for this tender. Editing is not allowed." });
-                            }
-                        }
-                    }
+                    //if (model.Id > 0)
+                    //{
+                    //    string checkEstimate = "SELECT estimate_status FROM tbl_project_tender WHERE id=@id";
+                    //    await using (var cmd = new MySqlCommand(checkEstimate, conn, (MySqlTransaction)transaction))
+                    //    {
+                    //        cmd.Parameters.AddWithValue("@id", model.Id);
+                    //        var estObj = await cmd.ExecuteScalarAsync();
+                    //        if (estObj != null && Convert.ToInt32(estObj) == 1)
+                    //        {
+                    //            await transaction.RollbackAsync();
+                    //            return BadRequest(new { status = false, message = "Estimate already generated for this tender. Editing is not allowed." });
+                    //        }
+                    //    }
+                    //}
 
                     int tenderId = 0;
 
-                        string updateTender = @"
+                    string updateTender = @"
                         UPDATE tbl_project_tender 
                         SET modified_by = @modifiedBy, modified_date = @modifiedDate,
                             date = @date, project_id = @projectId, submission_date = @submissionDate,
-                            description = @description, fees = @fees, amount = @amount, warehouse_id = @warehouseId, account_id = @accountId, tender_name_id = @tenderNameId
-                        WHERE id = @id;";
-                        await using (var cmd = new MySqlCommand(updateTender, conn, (MySqlTransaction)transaction))
+                            description = @description, fees = @fees, amount = @amount, warehouse_id = @warehouseId, account_id = @accountId, tender_name_id = @tenderNameId,
+                        estimate_status=1 WHERE id = @id;";
+                    await using (var cmd = new MySqlCommand(updateTender, conn, (MySqlTransaction)transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@modifiedBy", userId);
+                        cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                        cmd.Parameters.AddWithValue("@submissionDate", model.SubmissionDate.Date);
+                        cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                        cmd.Parameters.AddWithValue("@fees", model.Fees ?? 0);
+                        cmd.Parameters.AddWithValue("@amount", model.Amount ?? 0);
+                        cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                        cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
                         {
-                            cmd.Parameters.AddWithValue("@id", model.Id);
-                            cmd.Parameters.AddWithValue("@modifiedBy", userId);
-                            cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
-                            cmd.Parameters.AddWithValue("@date", model.Date.Date);
-                            cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
-                            cmd.Parameters.AddWithValue("@submissionDate", model.SubmissionDate.Date);
-                            cmd.Parameters.AddWithValue("@description", model.Description ?? "");
-                            cmd.Parameters.AddWithValue("@fees", model.Fees ?? 0);
-                            cmd.Parameters.AddWithValue("@amount", model.Amount ?? 0);
-                            cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-                            cmd.Parameters.AddWithValue("@accountId", model.AccountId);
-                            cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
-
-                            int affected = await cmd.ExecuteNonQueryAsync();
-                            if (affected == 0)
-                            {
-                                await transaction.RollbackAsync();
-                                return NotFound(new { status = false, message = "Tender not found" });
-                            }
+                            await transaction.RollbackAsync();
+                            return NotFound(new { status = false, message = "Tender not found" });
                         }
+                    }
 
-                        tenderId = model.Id;
+                    tenderId = model.Id;
 
-                        // Delete old details and dependent records (mirrors your WinForms deletes)
-                        string deleteDetails = @"
+                    // Delete old details and dependent records (mirrors your WinForms deletes)
+                    string deleteDetails = @"
                         DELETE FROM tbl_project_tender_details WHERE tender_id=@tenderId;
                         DELETE FROM tbl_items_boq_details WHERE ref_id IN (SELECT id FROM tbl_items_boq WHERE ref_id=@tenderId);
                         DELETE FROM tbl_item_assembly_bos WHERE assembly_id IN (SELECT id FROM tbl_items_boq WHERE ref_id=@tenderId);
@@ -1342,11 +1337,11 @@ namespace YamyProject.Controllers
                         DELETE FROM tbl_transaction WHERE type = 'Project Tender' AND transaction_id = @tenderId;
                         DELETE FROM tbl_item_card_details WHERE trans_type = 'Project Tender' AND trans_no = @tenderId;
                     ";
-                        await using (var del = new MySqlCommand(deleteDetails, conn, (MySqlTransaction)transaction))
-                        {
-                            del.Parameters.AddWithValue("@tenderId", tenderId);
-                            await del.ExecuteNonQueryAsync();
-                        }
+                    await using (var del = new MySqlCommand(deleteDetails, conn, (MySqlTransaction)transaction))
+                    {
+                        del.Parameters.AddWithValue("@tenderId", tenderId);
+                        await del.ExecuteNonQueryAsync();
+                    }
 
                     int nextItemCode = 0;
                     string nextCodeSql = "SELECT IFNULL(MAX(CAST(code AS UNSIGNED)), 0) + 1 AS next_code FROM tbl_items;";
@@ -1580,13 +1575,10 @@ namespace YamyProject.Controllers
                                 await relCmd.ExecuteNonQueryAsync();
                             }
 
-                            // If qty != 0 => insert item transaction and journal entries (like your WinForms)
                             if (qty != 0)
                             {
-                                // Insert item transaction (CommonInsert.InsertItemTransaction equivalent)
                                 await InsertItemTransaction(conn, (MySqlTransaction)transaction, qty, model.Date.Date, rate, tenderId.ToString(), itemIdOf.ToString(), model.WarehouseId.ToString());
 
-                                // Insert item journal entries
                                 await InsertItemJournal(conn, (MySqlTransaction)transaction, qty, model.Date.Date, nextItemCode.ToString(), rate, 0, tenderId.ToString());
                             }
 
@@ -1769,73 +1761,13 @@ namespace YamyProject.Controllers
             }
         }
 
-        //private void saveToExcel()
-        //{
-        //    using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
-        //    {
-        //        folderDialog.Description = "Select a folder to save the Excel file";
 
-        //        if (folderDialog.ShowDialog() == DialogResult.OK)
-        //        {
-        //            string selectedPath = folderDialog.SelectedPath;
-        //            string filePath = Path.Combine(selectedPath, $"Project_{id}.xlsx");
 
-        //            var tenderItems = new List<TenderItems>();
-        //            var estimateItems = new List<EstimateItems>();
+        #endregion
 
-        //            foreach (DataGridViewRow row in dgvItems.Rows)
-        //            {
-        //                if (row.IsNewRow) continue; // skip the empty row
 
-        //                tenderItems.Add(new TenderItems()
-        //                {
-        //                    Sr = row.Cells["sr"].Value?.ToString(),
-        //                    Description = row.Cells["name"].Value?.ToString(),
-        //                    Qty = row.Cells["qty"].Value?.ToString(),
-        //                    Unit = row.Cells["unit"].Value?.ToString(),
-        //                    Rate = row.Cells["rate"].Value?.ToString(),
-        //                    Amount = row.Cells["amount"].Value?.ToString()
-        //                });
 
-        //                estimateItems.Add(new EstimateItems()
-        //                {
-        //                    Sr = row.Cells["sr"].Value?.ToString(),
-        //                    Description = row.Cells["name"].Value?.ToString(),
-        //                    Qty = row.Cells["qty"].Value?.ToString(),
-        //                    Unit = row.Cells["unit"].Value?.ToString(),
-        //                    Rate = row.Cells["rate"].Value?.ToString(),
-        //                    Amount = row.Cells["amount"].Value?.ToString(),
-        //                    MarginPercentage = row.Cells["marginPercentage"].Value?.ToString(),
-        //                    MarginAmount = row.Cells["marginAmount"].Value?.ToString(),
-        //                    Total = row.Cells["total"].Value?.ToString()
-        //                });
-        //            }
 
-        //            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-        //            using (var excelPack = new ExcelPackage(new FileInfo(filePath)))
-        //            {
-        //                excelPack.Workbook.Worksheets.Clear();
-
-        //                var wsTender = excelPack.Workbook.Worksheets.Add("Tender");
-        //                wsTender.Cells["A1"].LoadFromCollection(tenderItems, true, OfficeOpenXml.Table.TableStyles.Light8);
-
-        //                var wsEstimate = excelPack.Workbook.Worksheets.Add("Estimate");
-        //                wsEstimate.Cells["A1"].LoadFromCollection(estimateItems, true, OfficeOpenXml.Table.TableStyles.Light8);
-
-        //                excelPack.Save();
-        //            }
-
-        //            //MessageBox.Show("Excel file saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        //        }
-        //        else
-        //        {
-        //            //MessageBox.Show("Save canceled by user.", "Canceled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        //        }
-        //    }
-        //}
-
-        
     }
 
 
