@@ -746,8 +746,8 @@ namespace YamyProject.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetProjectTenders(
-    int? projectId = null,
-    int? tenderId = null)
+                                                    int? projectId = null,
+                                                    int? tenderId = null)
         {
             try
             {
@@ -863,7 +863,9 @@ namespace YamyProject.Controllers
                        ti.unit_name As Unit_Name,
                        ti.length As Length,
                        ti.width As Width,
-                       ti.thickness As Thickness
+                       ti.thickness As Thickness,
+                       ts.margin_percentage As Margin_Percentage,
+                       ts.margin_amount As Margin_Amount
                 FROM tbl_project_tender_details ts
                 INNER JOIN tbl_items_boq ti ON ts.item_id = ti.id AND ts.tender_id = ti.ref_id
                 WHERE ts.tender_id = @id";
@@ -900,7 +902,9 @@ namespace YamyProject.Controllers
                         Unit_Name = reader["Unit_Name"].ToString(),
                         Length = reader["Length"] != DBNull.Value ? Convert.ToDecimal(reader["Length"]) : 0,
                         Width = reader["Width"] != DBNull.Value ? Convert.ToDecimal(reader["Width"]) : 0,
-                        Thickness = reader["Thickness"] != DBNull.Value ? Convert.ToDecimal(reader["Thickness"]) : 0
+                        Thickness = reader["Thickness"] != DBNull.Value ? Convert.ToDecimal(reader["Thickness"]) : 0,
+                        Margin_Percentage = reader["Margin_Percentage"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Percentage"]) : 0,
+                        Margin_Amount = reader["Margin_Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Amount"]) : 0
                     });
                 }
 
@@ -1732,7 +1736,7 @@ namespace YamyProject.Controllers
         }
         private async Task<string> SelectDefaultLevelAccount(MySqlConnection conn, MySqlTransaction trx, string accountName)
         {
-            string sql = "SELECT AccountId FROM ChartOfAccounts WHERE AccountName = @name LIMIT 1";
+            string sql = "SELECT Id FROM tbl_coa_level_4 WHERE name = @name LIMIT 1";
             using (var cmd = new MySqlCommand(sql, conn, trx))
             {
                 cmd.Parameters.AddWithValue("@name", accountName);

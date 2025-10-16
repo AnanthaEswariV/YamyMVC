@@ -17,6 +17,7 @@
             color: #fff !important;
         }
 </style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
@@ -155,9 +156,19 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Description</label>
-                        <input type="text" class="form-control" id="tenderDescription" placeholder="Description">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" class="form-control" id="tenderDescription" placeholder="Description">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="warehouseDropdown" class="form-label fw-semibold">Warehouse</label>
+                            <select id="warehouseDropdown" class="form-select">
+                                <option value="">Select Warehouse</option>
+                            </select>
+                        </div>
+
                     </div>
 
                     <!-- Table -->
@@ -199,7 +210,7 @@
             <!-- Footer -->
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="saveTenderBtn">Save Tender</button>
+                <button type="button" class="btn btn-primary" id="btnSaveEstimation">Save Tender</button>
             </div>
 
         </div>
@@ -213,17 +224,13 @@
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
@@ -231,7 +238,37 @@
 
     <script>
 
+          function loadWarehouses() {
+            $.ajax({
+                url: '/Inventory/GetWarehouses',
+                type: 'GET',
+                success: function(result) {
+                    const dropdown = $('#warehouseDropdown');
+                    dropdown.empty().append('<option value="">Select Warehouse</option>');
+
+                    if (result.status) {
+                        // Check if there are warehouses to display
+                        if (result.data && result.data.length > 0) {
+                            result.data.forEach(w => {
+                                dropdown.append(`<option value="${w.id}">${w.display}</option>`);
+                            });
+                        } else {
+                            dropdown.append('<option value="">No warehouses available</option>');
+                        }
+                    } else {
+                        alert(result.message || 'Error loading warehouses');
+                    }
+                },
+                error: function(err) {
+                    console.error('Error fetching data:', err);
+                    alert('Failed to load warehouse data. Please try again later.');
+                }
+            });
+        }
+
         $(document).ready(function () {
+
+            loadWarehouses();
 
             function loadProjects() {
                 $.ajax({
@@ -269,7 +306,6 @@
                             return;
                         }
 
-                        // Destroy DataTable if already initialized
                         if ($.fn.DataTable.isDataTable('#table1')) {
                             $('#table1').DataTable().clear().destroy();
                         }
@@ -509,7 +545,7 @@
                 console.warn("No tender data found!");
                 return;
             }
-            console.log(tender);
+           
             // Fill main tender info
             $("#TenderId").val(tender.id ?? 0);
             $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
@@ -525,7 +561,6 @@
             // Clear existing BOQ rows
             $("#tenderTableBody").empty();
 
-            // 🔹 Fetch tender items from another API
             $.ajax({
                 url: '/Construction/GetTenderItems',
                 type: 'GET',
@@ -537,25 +572,25 @@
                         return;
                     }
                     const items = res.data;
-
+                    console.log(items);
                     if (items.length > 0) {
                         items.forEach((item, index) => {
-                            const sr = item.sr ?? String.fromCharCode(65 + index); // 'A', 'B', ...
+                            const sr = item.sr ?? String.fromCharCode(65 + index); 
                             $("#tenderTableBody").append(`
                                 <tr>
-                                    <td><input type="text" class="form-control sr" value="${sr}" readonly></td>
-                                    <td><input type="text" class="form-control description" value="${item.name ?? ''}" placeholder="Description of work"></td>
-                                    <td><input type="text" class="form-control qty" value="${item.qty ?? 0}"></td>
-                                    <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}"></td>
-                                    <td><input type="text" class="form-control length" value="${item.length ?? 0}"></td>
-                                    <td><input type="text" class="form-control width" value="${item.width ?? 0}"></td>
-                                    <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}"></td>
-                                    <td><input type="text" class="form-control rate" value="${item.rate ?? 0}" ></td>
-                                    <td><input type="text" class="form-control amount" readonly value="${item.amount ?? 0}" ></td>
-                                     <td><input type="text" class="form-control margin" value="${item.margin ?? 0}"></td>
-                                    <td><input type="text" class="form-control marginamount" value="${item.marginAmount ?? 0}"></td>
-                                    <td><input type="text" class="form-control total" readonly value="${item.totoal ?? 0}" ></td>
-                                    <td><input type="text" class="form-control note" value="${item.note ?? 0}" ></td>
+                                    <td><input type="text" class="form-control sr" value="${sr}" name="Items[0].Sr" readonly></td>
+                                    <td><input type="text" class="form-control description" value="${item.name ?? ''}" name="Items[0].Description" placeholder="Description of work"></td>
+                                    <td><input type="text" class="form-control qty" value="${item.qty ?? 0}" name="Items[0].Qty"></td>
+                                    <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}" name="Items[0].Unit"></td>
+                                    <td><input type="text" class="form-control length" value="${item.length ?? 0}" name="Items[0].Length"></td>
+                                    <td><input type="text" class="form-control width" value="${item.width ?? 0}" name="Items[0].Width"></td>
+                                    <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}" name="Items[0].Thick"></td>
+                                    <td><input type="text" class="form-control rate" value="${item.rate ?? 0}" name="Items[0].Rate" ></td>
+                                    <td><input type="text" class="form-control amount" readonly value="${item.amount ?? 0}" name="Items[0].Amount"></td>
+                                     <td><input type="text" class="form-control margin" value="${item.margin_Percentage ?? 0}" name="Items[0].MarginPercentage"></td>
+                                    <td><input type="text" class="form-control marginamount" value="${item.margin_Amount ?? 0}" name="Items[0].MarginAmount"></td>
+                                    <td><input type="text" class="form-control total" readonly value="${item.totoal ?? 0}"  name="Items[0].Total"></td>
+                                    <td><input type="text" class="form-control note" value="${item.note ?? 0}" name="Items[0].Note"></td>
                                 </tr>
                             `);
                         });
@@ -592,6 +627,84 @@
                 </tr>
             `);
         }
+
+
+                    $("#btnSaveEstimation").click(function () {
+
+            const model = {
+                Id: parseInt($("#TenderId").val()) || 0,
+                Date: $("#tenderDate").val(),
+                ProjectId: parseInt($("#projectDropdown").val()) || 0,
+                TenderNameId: parseInt($("#tenderDropdown").val()) || 0,
+                AccountId: parseInt($("#debitAccount").val()) || 0,
+                WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
+                SubmissionDate: $("#submissionDate").val(),
+                Fees: parseFloat($("#fees").val()) || 0,
+                Description: $("#tenderDescription").val(),
+                Amount: parseFloat($("#grandTotal").val()) || 0,
+                Items: []
+            };
+          
+            // Loop through BOQ items
+            $("#tenderTableBody tr").each(function () {
+                const $row = $(this);
+                const description = $row.find(".description").val();
+                if (description && description.trim() !== "") {
+                    const item = {
+                        Sr: $row.find(".sr").val(),
+                        Description: description,
+                        Unit: $row.find(".unit").val(),
+                        Qty: parseFloat($row.find(".qty").val()) || 0,
+                        Rate: parseFloat($row.find(".rate").val()) || 0,
+                        Amount: parseFloat($row.find(".amount").val()) || 0,
+                        Length: parseFloat($row.find(".length").val()) || 0,
+                        Width: parseFloat($row.find(".width").val()) || 0,
+                        Thick: parseFloat($row.find(".thick").val()) || 0,
+                        Note: $row.find(".note").val(),
+                        MarginAmount: parseFloat($row.find(".marginamount").val()) || 0,
+                        MarginPercentage: parseFloat($row.find(".margin").val()) || 0
+                    };
+                    model.Items.push(item);
+                }
+            });
+
+            // Validation (optional)
+            if (!model.ProjectId) {
+                toastr.warning("Please select a Project");
+                return;
+            }
+            if (!model.TenderNameId) {
+                toastr.warning("Please select a Tender Name");
+                return;
+            }
+
+            // AJAX call
+            $.ajax({
+                url: '/Construction/SaveOrUpdateEstimation',
+                type: 'POST',
+                data: JSON.stringify(model),
+                contentType: 'application/json; charset=utf-8',
+                beforeSend: function () {
+                    $("#btnSaveEstimation").prop("disabled", true).text("Saving...");
+                },
+                success: function (response) {
+                    if (response.status) {
+                        toastr.success(response.message || "Saved successfully!");
+                        $("#tenderModal").modal("hide");
+                    } else {
+                        toastr.warning(response.message || "Save failed!");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error("Error: " + (xhr.responseText || "Unexpected error"));
+                },
+                complete: function () {
+                    $("#btnSaveEstimation").prop("disabled", false).text("Save Tender");
+                }
+            });
+        });
+
+
 
         });
         
@@ -688,7 +801,6 @@
                 const grand = totalSum + fees;
 
                $("#grandTotal").val(grand.toFixed(2));
-                console.log(`🧮 GrandTotal = ${grand.toFixed(2)} (Items=${totalSum.toFixed(2)} + Fees=${fees})`);
             }
 
             $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
