@@ -601,7 +601,6 @@
         
         $(document).ready(function () {
 
-            // ------------------- Helpers -------------------
             function escapeHtml(text) {
                 return String(text ?? "").replace(/[&<>"'`=\/]/g, s => ({
                     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
@@ -614,7 +613,6 @@
                 return isNaN(v) ? 0 : v;
             }
 
-            // ------------------- Row Builder -------------------
             function buildRowHtml(sr, item = {}) {
                 return `
                 <tr>
@@ -634,48 +632,64 @@
                 </tr>`;
             }
 
-            function addEmptyRow() {
-                const sr = $("#tenderTableBody tr").length + 1;
-                $("#tenderTableBody").append(buildRowHtml(sr));
+            // function addEmptyRow() {
+            //     const sr = $("#tenderTableBody tr").length + 1;
+            //     $("#tenderTableBody").append(buildRowHtml(sr));
+            // }
+
+
+                    function addEmptyRow() {
+            $("#tenderTableBody").append(buildRowHtml(0)); 
+            updateSrNumbers();
+        }
+        function updateSrNumbers() {
+            $("#tenderTableBody tr").each(function (index) {
+                $(this).find(".sr").val(index + 1);
+            });
+        }
+
+
+                    function calculateRow($row, changedField) {
+            const qty = parseDecimal($row.find(".qty").val());
+            const length = parseDecimal($row.find(".length").val());
+            const width = parseDecimal($row.find(".width").val());
+            const thick = parseDecimal($row.find(".thick").val());
+            const rate = parseDecimal($row.find(".rate").val());
+
+            // Base amount
+            let baseQty = qty;
+            if (length > 0 && width > 0 && thick > 0)
+                baseQty = qty * length * width * thick;
+
+            const subTotal = baseQty * rate;
+
+            let marginPct = parseDecimal($row.find(".margin").val());
+            let marginAmt = parseDecimal($row.find(".marginamount").val());
+
+            if (changedField === "margin") {
+                marginAmt = subTotal * (marginPct / 100);
+            } else if (changedField === "marginamount" && subTotal > 0) {
+                marginPct = (marginAmt / subTotal) * 100;
+            } else {
+                marginAmt = subTotal * (marginPct / 100);
             }
 
-            // ------------------- Calculations -------------------
-            function calculateRow($row, changedField) {
-                const qty = parseDecimal($row.find(".qty").val());
-                const length = parseDecimal($row.find(".length").val());
-                const width = parseDecimal($row.find(".width").val());
-                const thick = parseDecimal($row.find(".thick").val());
-                const rate = parseDecimal($row.find(".rate").val());
+            // Safety checks
+            if (!isFinite(marginAmt)) marginAmt = 0;
+            if (!isFinite(marginPct)) marginPct = 0;
 
-                // Base amount
-                let baseQty = qty;
-                if (length > 0 && width > 0 && thick > 0)
-                    baseQty = qty * length * width * thick;
+            const total = subTotal + marginAmt;
 
-                const subTotal = baseQty * rate;
+            $row.find(".amount").val(subTotal.toFixed(2));
+            $row.find(".margin").val(marginPct.toFixed(2));
+            $row.find(".marginamount").val(marginAmt.toFixed(2));
+            $row.find(".total").val(total.toFixed(2));
 
-                let marginPct = parseDecimal($row.find(".margin").val());
-                let marginAmt = parseDecimal($row.find(".marginamount").val());
+            calculateGrandTotal();
+        }
 
-                if (changedField === "margin") {
-                    marginAmt = subTotal * (marginPct / 100);
-                } else if (changedField === "marginamount" && subTotal > 0) {
-                    marginPct = (marginAmt / subTotal) * 100;
-                } else {
-                    marginAmt = subTotal * (marginPct / 100);
-                }
 
-                const total = subTotal + marginAmt;
-
-                $row.find(".amount").val(subTotal.toFixed(2));
-                $row.find(".margin").val(marginPct.toFixed(2));
-                $row.find(".marginamount").val(marginAmt.toFixed(2));
-                $row.find(".total").val(total.toFixed(2));
-
-                console.log(`Row#${$row.index() + 1} → Qty=${qty}, L=${length}, W=${width}, T=${thick}, Rate=${rate}, SubTotal=${subTotal.toFixed(2)}, Margin%=${marginPct}, MarginAmt=${marginAmt.toFixed(2)}, Total=${total.toFixed(2)}`);
-
-                calculateGrandTotal();
-            }
+           
 
             function calculateGrandTotal() {
                 let totalSum = 0;
@@ -691,11 +705,18 @@
             }
 
             // ------------------- Event Handlers -------------------
-            $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
-                const $row = $(this).closest("tr");
-                const field = $(this).attr("class").split(" ")[1];
-                calculateRow($row, field);
-            });
+                   $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
+            const $row = $(this).closest("tr");
+            const field = getChangedFieldClass(this);
+            calculateRow($row, field);
+        });
+
+                function getChangedFieldClass(el) {
+            const knownFields = ["qty", "length", "width", "thick", "rate", "margin", "marginamount"];
+            const classes = $(el).attr("class").split(/\s+/);
+            return classes.find(cls => knownFields.includes(cls));
+        }
+
 
             $("#tenderTableBody").on("input change", "tr:last-child input", function () {
                 const $last = $(this).closest("tr");
