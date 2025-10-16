@@ -165,14 +165,14 @@
                         <table class="table table-bordered table-sm align-middle">
                             <thead class="table-light text-center">
                                 <tr>
-                                    <th>Sr</th>
+                                    <th style="width:90px;">Sr</th>
                                     <th>Description of Work</th>
-                                    <th>Qty</th>
-                                    <th>Unit</th>
-                                    <th>Length</th>
-                                    <th>Width</th>
-                                    <th>Thick</th>
-                                    <th>Rate</th>
+                                    <th style="width: 90px;">Qty</th>
+                                    <th style="width: 90px;">Unit</th>
+                                    <th style="width: 90px;">Length</th>
+                                    <th style="width: 90px;">Width</th>
+                                    <th style="width: 90px;">Thick</th>
+                                    <th style="width: 90px;">Rate</th>
                                     <th>Amount</th>
                                     <th>Margin %</th>
                                     <th>Margin Amount</th>
@@ -186,7 +186,7 @@
                                 <tr>
                                     <td colspan="11" class="text-end">Total Amount:</td>
                                     <td>
-                                        <input type="text" id="grandTotal" class="form-control text-center fw-bold" readonly value="0.00">
+                                        <input type="text" id="grandTotal" class="form-control text-center fw-bold" readonly value="0.00" style="width: 100px;">
                                     <td colspan="2"></td>
                                 </tr>
                             </tfoot>
@@ -551,11 +551,11 @@
                                     <td><input type="text" class="form-control width" value="${item.width ?? 0}"></td>
                                     <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}"></td>
                                     <td><input type="text" class="form-control rate" value="${item.rate ?? 0}" ></td>
-                                    <td><input type="text" class="form-control amount" value="${item.amount ?? 0}" ></td>
-                                     <td><input type="text" class="form-control width" value="${item.margin ?? 0}"></td>
-                                    <td><input type="text" class="form-control thick" value="${item.marginAmount ?? 0}"></td>
-                                    <td><input type="text" class="form-control rate" value="${item.totoal ?? 0}" ></td>
-                                    <td><input type="text" class="form-control amount" value="${item.note ?? 0}" ></td>
+                                    <td><input type="text" class="form-control amount" readonly value="${item.amount ?? 0}" ></td>
+                                     <td><input type="text" class="form-control margin" value="${item.margin ?? 0}"></td>
+                                    <td><input type="text" class="form-control marginamount" value="${item.marginAmount ?? 0}"></td>
+                                    <td><input type="text" class="form-control total" readonly value="${item.totoal ?? 0}" ></td>
+                                    <td><input type="text" class="form-control note" value="${item.note ?? 0}" ></td>
                                 </tr>
                             `);
                         });
@@ -584,18 +584,14 @@
                     <td><input type="text" class="form-control width"></td>
                     <td><input type="text" class="form-control thick"></td>
                     <td><input type="text" class="form-control rate" ></td>
-                    <td><input type="text" class="form-control amount" ></td>
+                    <td><input type="text" class="form-control amount" readonly></td>
                        <td><input type="text" class="form-control margin"></td>
                     <td><input type="text" class="form-control marginamount"></td>
-                    <td><input type="text" class="form-control total" ></td>
+                    <td><input type="text" class="form-control total readonly" ></td>
                     <td><input type="text" class="form-control note" ></td>
                 </tr>
             `);
         }
-
-
-
-
 
         });
         
@@ -631,25 +627,19 @@
                     <td><input type="text" class="form-control note" value="${escapeHtml(item.note)}"></td>
                 </tr>`;
             }
-
-            // function addEmptyRow() {
-            //     const sr = $("#tenderTableBody tr").length + 1;
-            //     $("#tenderTableBody").append(buildRowHtml(sr));
-            // }
-
-
-                    function addEmptyRow() {
+           
+            function addEmptyRow() {
             $("#tenderTableBody").append(buildRowHtml(0)); 
             updateSrNumbers();
         }
-        function updateSrNumbers() {
+
+            function updateSrNumbers() {
             $("#tenderTableBody tr").each(function (index) {
                 $(this).find(".sr").val(index + 1);
             });
         }
 
-
-                    function calculateRow($row, changedField) {
+            function calculateRow($row, changedField) {
             const qty = parseDecimal($row.find(".qty").val());
             const length = parseDecimal($row.find(".length").val());
             const width = parseDecimal($row.find(".width").val());
@@ -688,9 +678,6 @@
             calculateGrandTotal();
         }
 
-
-           
-
             function calculateGrandTotal() {
                 let totalSum = 0;
                 $("#tenderTableBody tr").each(function () {
@@ -704,14 +691,13 @@
                 console.log(`🧮 GrandTotal = ${grand.toFixed(2)} (Items=${totalSum.toFixed(2)} + Fees=${fees})`);
             }
 
-            // ------------------- Event Handlers -------------------
-                   $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
+            $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
             const $row = $(this).closest("tr");
             const field = getChangedFieldClass(this);
             calculateRow($row, field);
         });
 
-                function getChangedFieldClass(el) {
+            function getChangedFieldClass(el) {
             const knownFields = ["qty", "length", "width", "thick", "rate", "margin", "marginamount"];
             const classes = $(el).attr("class").split(/\s+/);
             return classes.find(cls => knownFields.includes(cls));
@@ -726,12 +712,9 @@
 
             $("#fees").on("input change", calculateGrandTotal);
 
-            // ------------------- Init -------------------
             addEmptyRow();
             calculateGrandTotal();
         });
-
-
 
 
     </script>
