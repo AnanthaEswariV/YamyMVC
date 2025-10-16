@@ -31,13 +31,6 @@
                     <option value="">-- Select Project --</option>
                 </select>
             </div>
-
-           @*  <!-- Right: Add Button -->
-            <div>
-                <button class="btn btn-primary rounded-3" id="addTenderBtn" data-bs-toggle="modal" data-bs-target="#tenderModal">
-                    <i class="fas fa-plus me-2"></i> Add Tender
-                </button>
-            </div> *@
         </div>
 
         <!-- Table -->
@@ -98,7 +91,7 @@
 
             <!-- Header -->
             <div class="modal-header bg-primary text-white rounded-top-4">
-                <h5 class="modal-title fw-semibold" id="tenderModalLabel">Project - New Tender</h5>
+                <h5 class="modal-title fw-semibold" id="tenderModalLabel">Project - Edit Estimate</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
@@ -181,21 +174,22 @@
                                     <th>Thick</th>
                                     <th>Rate</th>
                                     <th>Amount</th>
+                                    <th>Margin %</th>
+                                    <th>Margin Amount</th>
+                                    <th>Total</th>
+                                    <th>Note</th>
                                 </tr>
                             </thead>
-                            <tbody id="tenderTableBody">
+                            <tbody id="tenderTableBody"></tbody>
+                            <!-- Total Row -->
+                            <tfoot class="table-secondary fw-semibold">
                                 <tr>
-                                    <td><input type="text" class="form-control sr" value="A" readonly></td>
-                                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
-                                    <td><input type="number" class="form-control qty"></td>
-                                    <td><input type="text" class="form-control unit"></td>
-                                    <td><input type="text" class="form-control length"></td>
-                                    <td><input type="text" class="form-control width"></td>
-                                    <td><input type="text" class="form-control thick"></td>
-                                    <td><input type="text" class="form-control rate" disabled></td>
-                                    <td><input type="text" class="form-control amount" disabled></td>
+                                    <td colspan="11" class="text-end">Total Amount:</td>
+                                    <td>
+                                        <input type="text" id="grandTotal" class="form-control text-center fw-bold" readonly value="0.00">
+                                    <td colspan="2"></td>
                                 </tr>
-                            </tbody>
+                            </tfoot>
                         </table>
                     </div>
 
@@ -211,6 +205,9 @@
         </div>
     </div>
 </div>
+
+
+
 
 
 @section Scripts {
@@ -505,79 +502,217 @@
             }
         });
 
-            function getSrForRow(rowIndex) {
-            // Each group = 4 rows: 0 -> A, 1 -> 1, 2 -> 2, 3 -> 3, 4 -> B, 5 -> 1...
-            const groupIndex = Math.floor(rowIndex / 4);
-            const posInGroup = rowIndex % 4;
+            $(document).on("click", ".editTenderBtn", function () {
+            const tenderStr = $(this).attr("data-tender");
+            const tender = tenderStr ? JSON.parse(tenderStr) : null;
+            if (!tender) {
+                console.warn("No tender data found!");
+                return;
+            }
+            console.log(tender);
+            // Fill main tender info
+            $("#TenderId").val(tender.id ?? 0);
+            $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
+            $("#projectDropdown").val(tender.project_Id ?? 0);
+            $("#projectCode").val(tender.code ?? "");
+            $("#debitAccount").val(tender.account_Id ?? 0);
+            $("#warehouseDropdown").val(tender.warehouse_Id ?? 0);
+            $("#tenderDropdown").val(tender.tender_Name_Id ?? 0);
+            $("#submissionDate").val(tender.submitDate ?? new Date().toISOString().slice(0,10));
+            $("#fees").val(tender.fees ?? 0);
+            $("#tenderDescription").val(tender.description ?? "");
 
-            const letter = String.fromCharCode(65 + groupIndex); // 65 = 'A'
-            if (posInGroup === 0) return letter;
-            return posInGroup; // 1,2,3
-        }
+            // Clear existing BOQ rows
+            $("#tenderTableBody").empty();
 
-            function addRow() {
-            const rowIndex = $('#tenderTableBody tr').length;
-            const srValue = getSrForRow(rowIndex);
+            // 🔹 Fetch tender items from another API
+            $.ajax({
+                url: '/Construction/GetTenderItems',
+                type: 'GET',
+                data: { tenderId: tender.id },
+                success: function(res) {
+                    if (!res || !res.status) {
+                        toastr.warning("No BOQ items found");
+                        addEmptyRow();
+                        return;
+                    }
+                    const items = res.data;
 
-            const newRow = `
-                <tr>
-                    <td class="sr-cell text-center">${srValue}</td>
-                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
-                    <td><input type="number" class="form-control qty"></td>
-                    <td><input type="text" class="form-control unit"></td>
-                    <td><input type="text" class="form-control length"></td>
-                    <td><input type="text" class="form-control width"></td>
-                    <td><input type="text" class="form-control thick"></td>
-                    <td><input type="text" class="form-control rate" disabled></td>
-                    <td><input type="text" class="form-control amount" disabled></td>
-                </tr>`;
+                    if (items.length > 0) {
+                        items.forEach((item, index) => {
+                            const sr = item.sr ?? String.fromCharCode(65 + index); // 'A', 'B', ...
+                            $("#tenderTableBody").append(`
+                                <tr>
+                                    <td><input type="text" class="form-control sr" value="${sr}" readonly></td>
+                                    <td><input type="text" class="form-control description" value="${item.name ?? ''}" placeholder="Description of work"></td>
+                                    <td><input type="text" class="form-control qty" value="${item.qty ?? 0}"></td>
+                                    <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}"></td>
+                                    <td><input type="text" class="form-control length" value="${item.length ?? 0}"></td>
+                                    <td><input type="text" class="form-control width" value="${item.width ?? 0}"></td>
+                                    <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}"></td>
+                                    <td><input type="text" class="form-control rate" value="${item.rate ?? 0}" ></td>
+                                    <td><input type="text" class="form-control amount" value="${item.amount ?? 0}" ></td>
+                                     <td><input type="text" class="form-control width" value="${item.margin ?? 0}"></td>
+                                    <td><input type="text" class="form-control thick" value="${item.marginAmount ?? 0}"></td>
+                                    <td><input type="text" class="form-control rate" value="${item.totoal ?? 0}" ></td>
+                                    <td><input type="text" class="form-control amount" value="${item.note ?? 0}" ></td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        addEmptyRow(); // fallback if no items
+                    }
+                },
+                error: function() {
+                    toastr.error("Failed to load BOQ items");
+                    addEmptyRow();
+                }
+            });
 
-            $('#tenderTableBody').append(newRow);
-        }
-
-            $(document).ready(function () {
-            if ($('#tenderTableBody tr').length === 0) addRow();
+            $("#tenderModalLabel").text("Edit Project Tender");
+            $("#tenderModal").modal("show");
         });
 
-            $('#tenderTableBody').on('input', 'tr:last-child input', function () {
-            const $lastRow = $(this).closest('tr');
-            const filled = $lastRow.find('input').toArray().some(i => $(i).val().trim() !== '');
-            if (filled) addRow();
-        });
-
-            $('#tenderModal').on('hidden.bs.modal', function () {
-            const projectId = $('#projectName').val();
-            if (projectId) loadProjectTenders(projectId);
-        });
-
-            $('#tenderModal').on('hidden.bs.modal', function () {
-            // Reset form fields
-            $('#tenderForm')[0].reset();
-            $('#tenderForm').removeClass('was-validated');
-            $('#TenderId').val(0);
-            $('#tenderModalLabel').text("Project - New Tender");
-
-            // Clear BOQ table
-            $('#tenderTableBody').empty();
-
-            // Add a default empty row
-            $('#tenderTableBody').append(`
+            function addEmptyRow() {
+            $("#tenderTableBody").append(`
                 <tr>
                     <td><input type="text" class="form-control sr" value="A" readonly></td>
                     <td><input type="text" class="form-control description" placeholder="Description of work"></td>
-                    <td><input type="number" class="form-control qty"></td>
+                    <td><input type="text" class="form-control qty"></td>
                     <td><input type="text" class="form-control unit"></td>
                     <td><input type="text" class="form-control length"></td>
                     <td><input type="text" class="form-control width"></td>
                     <td><input type="text" class="form-control thick"></td>
-                    <td><input type="text" class="form-control rate" disabled></td>
-                    <td><input type="text" class="form-control amount" disabled></td>
+                    <td><input type="text" class="form-control rate" ></td>
+                    <td><input type="text" class="form-control amount" ></td>
+                       <td><input type="text" class="form-control margin"></td>
+                    <td><input type="text" class="form-control marginamount"></td>
+                    <td><input type="text" class="form-control total" ></td>
+                    <td><input type="text" class="form-control note" ></td>
                 </tr>
             `);
+        }
+
+
+
+
+
+        });
+        
+        $(document).ready(function () {
+
+            // ------------------- Helpers -------------------
+            function escapeHtml(text) {
+                return String(text ?? "").replace(/[&<>"'`=\/]/g, s => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+                    "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
+                })[s]);
+            }
+
+            function parseDecimal(val) {
+                const v = parseFloat(val);
+                return isNaN(v) ? 0 : v;
+            }
+
+            // ------------------- Row Builder -------------------
+            function buildRowHtml(sr, item = {}) {
+                return `
+                <tr>
+                    <td><input type="text" class="form-control text-center sr" value="${sr}" readonly></td>
+                    <td><input type="text" class="form-control description" value="${escapeHtml(item.description)}"></td>
+                    <td><input type="text" step="any" class="form-control qty" value="${item.qty ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control length" value="${item.length ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control width" value="${item.width ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control thick" value="${item.thick ?? ''}"></td>
+                    <td><input type="text" class="form-control unit" value="${escapeHtml(item.unit)}"></td>
+                    <td><input type="text" step="any" class="form-control rate" value="${item.rate ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control amount" readonly value="${item.amount ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control margin" value="${item.margin ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control marginamount" value="${item.marginAmount ?? ''}"></td>
+                    <td><input type="text" step="any" class="form-control total" readonly value="${item.total ?? ''}"></td>
+                    <td><input type="text" class="form-control note" value="${escapeHtml(item.note)}"></td>
+                </tr>`;
+            }
+
+            function addEmptyRow() {
+                const sr = $("#tenderTableBody tr").length + 1;
+                $("#tenderTableBody").append(buildRowHtml(sr));
+            }
+
+            // ------------------- Calculations -------------------
+            function calculateRow($row, changedField) {
+                const qty = parseDecimal($row.find(".qty").val());
+                const length = parseDecimal($row.find(".length").val());
+                const width = parseDecimal($row.find(".width").val());
+                const thick = parseDecimal($row.find(".thick").val());
+                const rate = parseDecimal($row.find(".rate").val());
+
+                // Base amount
+                let baseQty = qty;
+                if (length > 0 && width > 0 && thick > 0)
+                    baseQty = qty * length * width * thick;
+
+                const subTotal = baseQty * rate;
+
+                let marginPct = parseDecimal($row.find(".margin").val());
+                let marginAmt = parseDecimal($row.find(".marginamount").val());
+
+                if (changedField === "margin") {
+                    marginAmt = subTotal * (marginPct / 100);
+                } else if (changedField === "marginamount" && subTotal > 0) {
+                    marginPct = (marginAmt / subTotal) * 100;
+                } else {
+                    marginAmt = subTotal * (marginPct / 100);
+                }
+
+                const total = subTotal + marginAmt;
+
+                $row.find(".amount").val(subTotal.toFixed(2));
+                $row.find(".margin").val(marginPct.toFixed(2));
+                $row.find(".marginamount").val(marginAmt.toFixed(2));
+                $row.find(".total").val(total.toFixed(2));
+
+                console.log(`Row#${$row.index() + 1} → Qty=${qty}, L=${length}, W=${width}, T=${thick}, Rate=${rate}, SubTotal=${subTotal.toFixed(2)}, Margin%=${marginPct}, MarginAmt=${marginAmt.toFixed(2)}, Total=${total.toFixed(2)}`);
+
+                calculateGrandTotal();
+            }
+
+            function calculateGrandTotal() {
+                let totalSum = 0;
+                $("#tenderTableBody tr").each(function () {
+                    totalSum += parseDecimal($(this).find(".total").val());
+                });
+
+                const fees = parseDecimal($("#fees").val());
+                const grand = totalSum + fees;
+
+               $("#grandTotal").val(grand.toFixed(2));
+                console.log(`🧮 GrandTotal = ${grand.toFixed(2)} (Items=${totalSum.toFixed(2)} + Fees=${fees})`);
+            }
+
+            // ------------------- Event Handlers -------------------
+            $("#tenderTableBody").on("input change", ".qty, .length, .width, .thick, .rate, .margin, .marginamount", function () {
+                const $row = $(this).closest("tr");
+                const field = $(this).attr("class").split(" ")[1];
+                calculateRow($row, field);
+            });
+
+            $("#tenderTableBody").on("input change", "tr:last-child input", function () {
+                const $last = $(this).closest("tr");
+                const hasValue = $last.find("input").toArray().some(el => $(el).val().trim() !== "");
+                if (hasValue) addEmptyRow();
+            });
+
+            $("#fees").on("input change", calculateGrandTotal);
+
+            // ------------------- Init -------------------
+            addEmptyRow();
+            calculateGrandTotal();
         });
 
 
-        });
+
+
     </script>
 
 

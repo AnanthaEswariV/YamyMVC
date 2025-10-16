@@ -164,9 +164,19 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Description</label>
-                        <input type="text" class="form-control" id="tenderDescription" placeholder="Description">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" class="form-control" id="tenderDescription" placeholder="Description">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="warehouseDropdown" class="form-label fw-semibold">Warehouse</label>
+                            <select id="warehouseDropdown" class="form-select">
+                                <option value="">Select Warehouse</option>
+                            </select>
+                        </div>
+
                     </div>
 
                     <!-- Table -->
@@ -265,8 +275,37 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+         function loadWarehouses() {
+            $.ajax({
+                url: '/Inventory/GetWarehouses',
+                type: 'GET',
+                success: function(result) {
+                    const dropdown = $('#warehouseDropdown');
+                    dropdown.empty().append('<option value="">Select Warehouse</option>');
+
+                    if (result.status) {
+                        // Check if there are warehouses to display
+                        if (result.data && result.data.length > 0) {
+                            result.data.forEach(w => {
+                                dropdown.append(`<option value="${w.id}">${w.display}</option>`);
+                            });
+                        } else {
+                            dropdown.append('<option value="">No warehouses available</option>');
+                        }
+                    } else {
+                        alert(result.message || 'Error loading warehouses');
+                    }
+                },
+                error: function(err) {
+                    console.error('Error fetching data:', err);
+                    alert('Failed to load warehouse data. Please try again later.');
+                }
+            });
+        }
 
         $(document).ready(function () {
+
+            loadWarehouses();
 
             function loadProjects() {
                 $.ajax({
@@ -385,6 +424,7 @@
 
             $('#tenderItemsModal').modal('show');
             loadTenderItems(tenderId);
+
         });
 
             function loadTenderItems(tenderId) {
@@ -587,13 +627,14 @@
                 console.warn("No tender data found!");
                 return;
             }
-
+            console.log(tender);
             // Fill main tender info
             $("#TenderId").val(tender.id ?? 0);
             $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
             $("#projectDropdown").val(tender.project_Id ?? 0);
             $("#projectCode").val(tender.code ?? "");
             $("#debitAccount").val(tender.account_Id ?? 0);
+            $("#warehouseDropdown").val(tender.warehouse_Id ?? 0);
             $("#tenderDropdown").val(tender.tender_Name_Id ?? 0);
             $("#submissionDate").val(tender.submitDate ?? new Date().toISOString().slice(0,10));
             $("#fees").val(tender.fees ?? 0);
@@ -604,16 +645,15 @@
 
             // 🔹 Fetch tender items from another API
             $.ajax({
-                url: '/Construction/GetTenderItems',  // Your API endpoint
+                url: '/Construction/GetTenderItems',
                 type: 'GET',
                 data: { tenderId: tender.id },
                 success: function(res) {
                     if (!res || !res.status) {
                         toastr.warning("No BOQ items found");
-                        addEmptyRow(); // fallback
+                        addEmptyRow(); 
                         return;
                     }
-                    console.log(res);
                     const items = res.data;
 
                     if (items.length > 0) {
@@ -694,7 +734,8 @@
                  ProjectId: parseInt($('#projectDropdown').val()) || 0,
                  TenderNameId: parseInt($('#tenderDropdown').val()) || 0,
                  AccountId: parseInt($('#debitAccount').val()) || 0,
-                 WarehouseId: 1, 
+                 // WarehouseId: 1,
+                  WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
                  Fees: parseFloat($('#fees').val()) || 0,
                  SubmissionDate: $('#submissionDate').val() || todayStr,
                  Description: $('#tenderDescription').val() || '',
@@ -793,26 +834,22 @@
                 $(function () { // DOM ready
             // load when button clicked OR when modal shown (covers both cases)
             $(document).on('click', '.recycleCardBtn', function (e) {
-                console.log('recycleCardBtn clicked');
                 loadDeletedTenders();
                 // don't prevent bootstrap modal from opening (if you use data-bs-toggle)
             });
 
             // also call when modal fully shown (redundant but reliable)
             $('#recycleTenderModal').on('shown.bs.modal', function () {
-                console.log('recycleTenderModal shown');
                 loadDeletedTenders();
             });
 
             function loadDeletedTenders() {
-                console.log('calling GetDeletedTenders API...');
                 $.ajax({
                     url: '/Construction/GetDeletedTenders',
                     type: 'GET',
                     dataType: 'json',
                     cache: false,
                     success: function (res) {
-                        console.log('GetDeletedTenders response:', res);
                         if (!res || res.status !== true) {
                             toastr.error(res?.message || 'Failed to load deleted tenders');
                             return;

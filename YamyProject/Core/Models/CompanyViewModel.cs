@@ -411,14 +411,15 @@ namespace YamyProject.Core.Models
     {
         public int Id { get; set; }
         public DateTime Date { get; set; }
-        public int ProjectId { get; set; }           // ✅ required
-        public int TenderNameId { get; set; }       // ✅ required
+        public int ProjectId { get; set; }         
+        public int TenderNameId { get; set; }       
         public int AccountId { get; set; }
-        public int WarehouseId { get; set; }        // ✅ required
+        public int WarehouseId { get; set; }        
         public DateTime SubmissionDate { get; set; }
         public decimal? Fees { get; set; }
         public string? Description { get; set; }
-        public List<ProjectTenderItem> Items { get; set; } = new();  // ✅ required
+        public decimal? Amount { get; set; }
+        public List<ProjectTenderItem> Items { get; set; } = new();
     }
 
     public class ProjectTenderItem
@@ -433,6 +434,8 @@ namespace YamyProject.Core.Models
         public decimal? Width { get; set; }
         public decimal? Thick { get; set; }
         public string? Note { get; set; }
+        public decimal? MarginAmount { get; set; }
+        public decimal? MarginPercentage { get; set; }
     }
 
 
