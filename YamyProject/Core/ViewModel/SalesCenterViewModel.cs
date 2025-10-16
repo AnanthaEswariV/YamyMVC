@@ -2,7 +2,6 @@
 {
     public class SalesCenterViewModel
     {
-        public IEnumerable<SelectListItem> Customers { get; set; } = new List<SelectListItem>();
 
         //column used in the table to count the row number
         //Na

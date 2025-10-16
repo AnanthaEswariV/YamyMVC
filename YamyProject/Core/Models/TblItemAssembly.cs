@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblItemAssembly
 {
@@ -12,4 +9,5 @@ public partial class TblItemAssembly
     public int? ItemId { get; set; }
 
     public decimal? Qty { get; set; }
+    public virtual TblItem? Item { get; set; }
 }

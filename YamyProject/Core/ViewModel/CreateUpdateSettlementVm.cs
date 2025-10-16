@@ -14,6 +14,6 @@
 
         public IEnumerable<CreateUpdateSettlementItemVm> Items { get; set; } = new List<CreateUpdateSettlementItemVm>();
         public IEnumerable<ItemViewModel> ItemDatas { get; set; } = new List<ItemViewModel>();
-
+        
     }
 }

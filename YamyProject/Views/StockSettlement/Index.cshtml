@@ -114,6 +114,8 @@
     <!-- Items Section -->
             <div class="table-responsive mt-4" style="max-height: 400px; overflow-y: auto;">
                 <h5>Items</h5>
+                @if (selectedMode == "ItemWise")
+                {
                 <table class="table table-bordered table-sm table-hover w-100" id="itemsSupTable">
                     <thead class="table-secondary">
                         <tr>
@@ -128,6 +130,7 @@
                     <tbody>
                   </tbody>
                 </table>
+                }
             </div>
          </div>
 </div>

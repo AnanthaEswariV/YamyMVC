@@ -1,5 +1,4 @@
 ﻿namespace YamyProject.Core.Models;
-
 public partial class TblSale
 {
     public int Id { get; set; }
