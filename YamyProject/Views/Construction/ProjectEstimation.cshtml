@@ -113,7 +113,7 @@
                                 <select class="form-select" id="projectDropdown">
                                     <option value="">-- Select Project --</option>
                                 </select>
-                                <button class="btn btn-primary" type="button">+</button>
+                                <a href="/Construction/ProjectCenter" class="btn btn-primary">+</a>
                             </div>
                         </div>
 
@@ -137,7 +137,7 @@
                                 <select class="form-select" id="tenderDropdown">
                                     <option value="">-- Select Tender --</option>
                                 </select>
-                                <button class="btn btn-primary" type="button">+</button>
+                                <a href="/Construction/TenderCenter" class="btn btn-primary">+</a>
                             </div>
                         </div>
 
@@ -238,7 +238,7 @@
 
     <script>
 
-          function loadWarehouses() {
+        function loadWarehouses() {
             $.ajax({
                 url: '/Inventory/GetWarehouses',
                 type: 'GET',

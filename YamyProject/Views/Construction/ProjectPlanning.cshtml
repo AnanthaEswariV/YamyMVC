@@ -1,0 +1,726 @@
+﻿
+@{
+    ViewData["Title"] = "ProjectPlanning";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <bold> <strong>Project Planning</strong></bold>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Reported By</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkReportedBy" checked>
+                </div>
+                <select class="form-select" id="projectName" disabled>
+                    <option value="">-- Select Reported By --</option>
+                </select>
+            </div>
+
+            <!-- Project Type -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Project Type</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectType" checked>
+                </div>
+                <select class="form-select" id="projectType" disabled>
+                    <option value="">-- Select Project Type --</option>
+                    <option value="Residential">Residential</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Industrial">Industrial</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Institutional">Institutional</option>
+                    <option value="Renovation/Refurbishment">Renovation / Refurbishment</option>
+                    <option value="Landscaping">Landscaping</option>
+                    <option value="Specialized">Specialized</option>
+                    <option value="Government">Government</option>
+                </select>
+            </div>
+
+
+            <!-- Project Status -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Project Status</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectStatus" checked>
+                </div>
+                <select class="form-select" id="projectStatus" disabled>
+                    <option value="">-- Select Project Status --</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Mobilizing">Mobilizing</option>
+                    <option value="Under Construction">Under Construction</option>
+                    <option value="Inspection">Inspection</option>
+                    <option value="Finalizing">Finalizing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Change Order">Change Order</option>
+                    <option value="Commissioning">Commissioning</option>
+                    <option value="Final Handover">Final Handover</option>
+                </select>
+            </div>
+
+
+            <!-- Add Tender Button -->
+            <div class="text-center">
+                <button class="btn btn-primary rounded-3" id="addPlanningBtn" data-bs-toggle="modal" data-bs-target="#planningModal">
+                    <i class="fas fa-plus me-2"></i> Add Planning
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>Project Name</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                    <th>Project Type</th>
+                    <th>Est Budget</th>
+                    <th>Progress</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="planningModal" tabindex="-1" aria-labelledby="planningModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="planningModalLabel">Planning - New</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <form id="planningForm">
+                    <div class="row">
+                        <!-- Date Picker -->
+                        <div class="col-md-4">
+                            <label for="date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="date">
+                        </div>
+
+                        <!-- Fund Management Account -->
+                        <div class="col-md-4">
+                            <label for="fundAccount" class="form-label">Fund Management Account</label>
+                            <select class="form-select" id="debitAccount">
+                                <option value="">-- Select Account --</option>
+                            </select>
+                        </div>
+
+                        <!-- Estimated Budget -->
+                        <div class="col-md-4">
+                            <label for="estimatedBudget" class="form-label">Estimated Budget</label>
+                            <input type="text" class="form-control" id="estimatedBudget">
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <!-- Project Name -->
+                        <div class="col-md-4">
+                            <label for="projectNames" class="form-label">Project Name</label>
+                            <select class="form-select" id="projectNames">
+                                <option value="">-- Select Project --</option>
+                            </select>
+                        </div>
+
+                        <!-- Project Site -->
+                        <div class="col-md-4">
+                            <label for="projectSite" class="form-label">Project Site</label>
+                            <div class="d-flex align-items-center">
+                                <!-- Project Site Dropdown -->
+                                <select class="form-select" id="projectSite" style="max-width: 85%;">
+                                    <option value="">-- Select Site --</option>
+                                </select>
+                                <!-- Add Button -->
+                                <a href="/Construction/SiteCenter" class="btn btn-primary ms-2" style="width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">
+                                    <i class="fas fa-plus text-white" style="font-size: 18px;"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Tender Name -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Tender Name</label>
+                            <div class="input-group">
+                                <select class="form-select" id="tenderDropdown">
+                                    <option value="">-- Select Tender --</option>
+                                </select>
+                                <a href="/Construction/TenderCenter" class="btn btn-primary ms-2" style="width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">
+                                    <i class="fas fa-plus text-white" style="font-size: 18px;"></i>
+                                </a>
+                                <!-- Show Button -->
+                                <button type="button" class="btn btn-secondary ms-2" id="showTendersBtn">Show</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <!-- Project Status -->
+                        <div class="col-md-4">
+                            <label for="projectStatuss" class="form-label">Project Status</label>
+                            <select class="form-select" id="projectStatuss">
+                                <option value="">-- Select Project Status --</option>
+                                <option value="Planning">Planning</option>
+                                <option value="Mobilizing">Mobilizing</option>
+                                <option value="Under Construction">Under Construction</option>
+                                <option value="Inspection">Inspection</option>
+                                <option value="Finalizing">Finalizing</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Delayed">Delayed</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="Change Order">Change Order</option>
+                                <option value="Commissioning">Commissioning</option>
+                                <option value="Final Handover">Final Handover</option>
+                            </select>
+                        </div>
+
+                        <!-- Project Type -->
+                        <div class="col-md-4">
+                            <label for="projectTypee" class="form-label">Project Type</label>
+                            <select class="form-select" id="projectTypee">
+                                <option value="">-- Select Project Type --</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial">Commercial</option>
+                                <option value="Industrial">Industrial</option>
+                                <option value="Infrastructure">Infrastructure</option>
+                                <option value="Institutional">Institutional</option>
+                                <option value="Renovation/Refurbishment">Renovation /</option>
+                                <option value="Landscaping">Landscaping</option>
+                                <option value="Specialized">Specialized</option>
+                                <option value="Government">Government</option>
+                            </select>
+                        </div>
+
+                        <!-- Start Date -->
+                        <div class="col-md-4">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="startDate">
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <!-- End Date -->
+                        <div class="col-md-4">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="endDate">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="boqTotal" class="form-label">BOQ Total</label>
+                            <input type="text" class="form-control" id="boqTotal" value="0" readonly>
+                        </div>
+                    </div>
+
+
+
+                    <div class="row mt-4 text-center">
+                        <!-- Save and Close Buttons -->
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+
+
+                    <!-- DataTable for Project Tenders -->
+                    <table class="table table-striped mt-4" id="table2">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Date</th>
+                                <th>Project Name</th>
+                                <th>Tender Name</th>
+                                <th>Submit Date</th>
+                                <th>Fees</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be loaded dynamically -->
+                        </tbody>
+                    </table>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Tender Items Modal -->
+<div class="modal fade" id="tenderItemsModal" tabindex="-1" aria-labelledby="tenderItemsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white shadow-sm">
+                <h5 class="modal-title fw-semibold d-flex align-items-center" id="tenderItemsModalLabel">
+                    <i class="fas fa-list-alt me-2"></i> Tender Items
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped table-bordered align-middle" id="table3" style="font-size:13px; width:100%;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>S.No</th>
+                            <th>Item Name</th>
+                            <th>Qty</th>
+                            <th>Rate</th>
+                            <th>Unit</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+   
+
+    <script>
+
+        $(document).ready(function () {
+
+            $(document).on('change', '.autoLock', function () {
+                const selectId = $(this).attr('id').replace('chk', ''); 
+                const select = $('#' + selectId.charAt(0).toLowerCase() + selectId.slice(1));
+
+                select.prop('disabled', $(this).is(':checked'));
+
+                if (selectId === 'ReportedBy' && !$(this).is(':checked')) {
+                    loadProjects();  
+                }
+
+                loadProjectPlanning();
+            });
+
+            loadProjects();
+            loadProjectPlanning();
+
+            $('#projectName, #projectType, #projectStatus').on('change', function () {
+                loadProjectPlanning();
+            });
+
+            $.ajax({
+            url: '/Construction/GetTenders',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status) {
+                    var dropdown = $('#tenderDropdown');
+                    response.data.forEach(function(tender) {
+                        dropdown.append(
+                            $('<option>', {
+                                value: tender.id,
+                                text: tender.name
+                            })
+                        );
+                    });
+                } else {
+                    console.error('Failed to load tenders:', response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error fetching tenders:', error);
+            }
+        });
+
+            $.ajax({
+            url: '/Construction/GetProjectSites',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status) {
+                    var dropdown = $('#projectSite');
+                    response.data.forEach(function(site) {
+                        dropdown.append(
+                            $('<option>', {
+                                value: site.id,
+                                text: site.name
+                            })
+                        );
+                    });
+                } else {
+                    console.error('Failed to load tenders:', response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error fetching tenders:', error);
+            }
+        });
+
+            function populateBankAccounts() {
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : res.data || [];
+
+                    if (!data.length) return;
+
+                    const accountSelectors = ['#debitAccount'];
+
+                    accountSelectors.forEach(function(selector) {
+                        const $select = $(selector);
+                        const selectedId = $select.data('selected-id');
+
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function(i, item) {
+                            const $option = $('<option>', {
+                                value: item.id,
+                                text: `${item.code} - ${item.name}`,
+                                selected: String(item.id) === String(selectedId)
+                            });
+
+                            $select.append($option);
+                        });
+                    });
+                },
+                error: function(err) {
+                    console.error('Failed to fetch bank accounts:', err);
+                }
+            });
+        }
+
+            populateBankAccounts();
+
+            $('#showTendersBtn').on('click', function () {
+            // Get the selected project ID
+            const projectId = $('#projectNames').val();
+
+            if (projectId) {
+                loadProjectTenders(projectId);
+            } else {
+                toastr.error('Please select a project first.');
+            }
+
+           });
+
+            function loadProjectTenders(projectId) {
+            $.ajax({
+                url: '/Construction/GetProjectTenders',
+                type: 'GET',
+                data: { projectId: projectId },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load project tenders');
+                        return;
+                    }
+
+                    // Destroy DataTable if already initialized
+                    if ($.fn.DataTable.isDataTable('#table2')) {
+                        $('#table2').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table2 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr data-id="${row.id}" style="cursor:pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.date ?? ''}</td>
+                                    <td>${row.projectName ?? ''}</td>
+                                    <td>${row.tenderName ?? ''}</td>
+                                    <td>${row.submitDate ?? ''}</td>
+                                    <td>${row.fees ?? 0}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}" title="View Items">
+                                            <i class="fas fa-book"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $('#table2').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading project tenders');
+                }
+            });
+        }
+
+            $(document).on('click', '.viewItemsBtn', function () {
+            const tenderId = $(this).data('id');
+            if (!tenderId) return;
+
+            $('#tenderItemsModal').modal('show');
+            loadTenderItems(tenderId);
+
+        });
+
+            function loadTenderItems(tenderId) {
+            $.ajax({
+                url: '/Construction/GetTenderItems',
+                type: 'GET',
+                data: { tenderId: tenderId },
+                success: function (res) {
+                    // Destroy DataTable if already exists
+                    if ($.fn.DataTable.isDataTable('#table3')) {
+                        $('#table3').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table3 tbody');
+                    tbody.empty();
+
+                    if (res.status && res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, item) {
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${item.itemName ?? ''}</td>
+                                    <td>${item.qty ?? 0}</td>
+                                    <td>${item.rate ?? 0}</td>
+                                    <td>${item.unit ?? ''}</td>
+                                    <td>${item.amount ?? 0}</td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable with export buttons
+                        $('#table3').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 10
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Failed to load tender items');
+                }
+            });
+        }
+
+                 $('#planningForm').on('submit', function (e) {
+            e.preventDefault();
+        });
+      
+        });
+
+        function loadProjects() {
+            $.ajax({
+                url: '/Construction/GetProjects',
+                type: 'GET',
+                success: function (result) {
+                    if (result.status) {
+                        const $dropdown = $('#projectName');  
+                        const $dropdowns = $('#projectNames'); 
+                        $dropdown.empty();
+                        $dropdowns.empty();
+
+                        // Append default options
+                        $dropdown.append('<option value="">-- Select Reported By --</option>');
+                        $dropdowns.append('<option value="">-- Select Project --</option>');
+
+                        // Populate both dropdowns with project names
+                        $.each(result.data, function (index, project) {
+                            $dropdown.append('<option value="' + project.id + '">' + project.name + '</option>');
+                            $dropdowns.append('<option value="' + project.id + '">' + project.name + '</option>');
+                        });
+
+                     
+                        if ($('#chkReportedBy').is(':checked')) {
+                            $dropdown.prop('disabled', true);  
+                        } else {
+                            $dropdown.prop('disabled', false); 
+                        }
+                    } else {
+                        toastr.error('Failed to load projects');
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading projects');
+                }
+            });
+        }
+
+        function loadProjectPlanning() {
+            const reportedBy = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
+            const projectType = $('#chkProjectType').is(':checked') ? null : $('#projectType').val();
+            const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
+
+            $.ajax({
+                url: '/Construction/GetProjectPlanning', 
+                type: 'GET',
+                data: {
+                    projectId: reportedBy,
+                    projectType: projectType,
+                    projectStatus: projectStatus
+                },
+                beforeSend: function () {
+                    $('#table1 tbody').html(
+                        `<tr><td colspan="10" class="text-center text-muted py-4">
+                            <div class="spinner-border text-primary me-2"></div>Loading...
+                        </td></tr>`
+                    );
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load project planning');
+                        return;
+                    }
+
+                    // Destroy the existing DataTable if it is initialized
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr data-id="${row.projectNo}" style="cursor:pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.date ?? ''}</td>
+                                    <td>${row.projectName ?? ''}</td>
+                                    <td>${row.startDate ?? ''}</td>
+                                    <td>${row.endDate ?? ''}</td>
+                                    <td>${row.status ?? ''}</td>
+                                    <td>${row.projectType ?? ''}</td>
+                                    <td>${row.estBudget ?? 0}</td>
+                                    <td>${row.progress ?? ''}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary editPlanningBtn"
+                                                data-planning='${JSON.stringify(row)}'
+                                                title="Edit Planning">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger deletePlanningBtn"
+                                                data-id='${row.projectNo}'
+                                                title="Delete Planning">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable with export buttons
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'
+                                    }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'
+                                    },
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="10" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading project planning');
+                }
+            });
+        }
+
+   </script>
+
+   }
