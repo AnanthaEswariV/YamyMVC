@@ -862,7 +862,8 @@ namespace YamyProject.Controllers
                        ti.width As Width,
                        ti.thickness As Thickness,
                        ts.margin_percentage As Margin_Percentage,
-                       ts.margin_amount As Margin_Amount
+                       ts.margin_amount As Margin_Amount,
+                       ts.total As Total
                 FROM tbl_project_tender_details ts
                 INNER JOIN tbl_items_boq ti ON ts.item_id = ti.id AND ts.tender_id = ti.ref_id
                 WHERE ts.tender_id = @id";
@@ -901,7 +902,8 @@ namespace YamyProject.Controllers
                         Width = reader["Width"] != DBNull.Value ? Convert.ToDecimal(reader["Width"]) : 0,
                         Thickness = reader["Thickness"] != DBNull.Value ? Convert.ToDecimal(reader["Thickness"]) : 0,
                         Margin_Percentage = reader["Margin_Percentage"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Percentage"]) : 0,
-                        Margin_Amount = reader["Margin_Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Amount"]) : 0
+                        Margin_Amount = reader["Margin_Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Amount"]) : 0,
+                        Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0
                     });
                 }
 
@@ -1397,8 +1399,8 @@ namespace YamyProject.Controllers
 
                             // Insert into tbl_project_tender_details
                             string insertTenderDetail = @"
-                        INSERT INTO tbl_project_tender_details (sr, tender_id, item_id, qty, unit_id, rate, amount, length, width, thickness, note, margin_percentage, margin_amount)
-                        VALUES (@sr, @tenderId, @itemId, @qty, 0, @rate, @amount, @length, @width, @thickness, @note, @margin_percentage, @margin_amount);";
+                        INSERT INTO tbl_project_tender_details (sr, tender_id, item_id, qty, unit_id, rate, amount, length, width, thickness, note, margin_percentage, margin_amount,total)
+                        VALUES (@sr, @tenderId, @itemId, @qty, 0, @rate, @amount, @length, @width, @thickness, @note, @margin_percentage, @margin_amount, @total);";
                             await using (var detCmd = new MySqlCommand(insertTenderDetail, conn, (MySqlTransaction)transaction))
                             {
                                 detCmd.Parameters.AddWithValue("@sr", sr);
@@ -1413,6 +1415,7 @@ namespace YamyProject.Controllers
                                 detCmd.Parameters.AddWithValue("@note", item.Note ?? "");
                                 detCmd.Parameters.AddWithValue("@margin_percentage", marginPercentage);
                                 detCmd.Parameters.AddWithValue("@margin_amount", marginAmount);
+                                detCmd.Parameters.AddWithValue("@total", amount + marginAmount);
                                 await detCmd.ExecuteNonQueryAsync();
                             }
 

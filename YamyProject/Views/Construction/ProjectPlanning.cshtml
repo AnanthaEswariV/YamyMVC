@@ -297,6 +297,9 @@
                             <th>Rate</th>
                             <th>Unit</th>
                             <th>Amount</th>
+                            <th>Margin %</th>
+                            <th>Margin Amount</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -529,6 +532,7 @@
                 type: 'GET',
                 data: { tenderId: tenderId },
                 success: function (res) {
+                    console.log(res);
                     // Destroy DataTable if already exists
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
@@ -547,6 +551,9 @@
                                     <td>${item.rate ?? 0}</td>
                                     <td>${item.unit ?? ''}</td>
                                     <td>${item.amount ?? 0}</td>
+                                    <td>${item.margin_Percentage ?? 0}</td>
+                                    <td>${item.margin_Amount ?? 0}</td>
+                                    <td>${item.total ?? 0}</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
@@ -572,14 +579,43 @@
                     } else {
                         tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>`);
                     }
+                      // ✅ Calculate BOQ Total
+                        calculateBoqTotal();
                 },
                 error: function () {
                     toastr.error('Failed to load tender items');
                 }
+
+                      
             });
         }
 
-                 $('#planningForm').on('submit', function (e) {
+            function calculateBoqTotal() {
+            let boqTotal = 0;
+
+            $("#table3 tbody tr").each(function () {
+                const total = parseFloat($(this).find("td:eq(8)").text()) || 0; // 9th column = Total
+                boqTotal += total;
+            });
+
+            $("#boqTotal").val(boqTotal.toFixed(2));
+        }
+
+             $("#projectNames").on("change", function () {
+            const projectId = $(this).val();
+            if (projectId) {
+                // Reload tender items for the selected project
+                loadTenderItems(projectId);
+            } else {
+                // Clear table & BOQ total if no project selected
+                $("#table3 tbody").empty().append(`<tr><td colspan="9" class="text-center text-muted py-3">No items found</td></tr>`);
+                $("#boqTotal").val(0);
+            }
+        });
+
+
+
+             $('#planningForm').on('submit', function (e) {
             e.preventDefault();
         });
       

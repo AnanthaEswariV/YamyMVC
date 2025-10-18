@@ -580,7 +580,7 @@
                         return;
                     }
                     const items = res.data;
-                    console.log(items);
+                   
                     if (items.length > 0) {
                         items.forEach((item, index) => {
                             const sr = item.sr ?? String.fromCharCode(65 + index);
@@ -801,7 +801,7 @@
                 $("#tenderTableBody tr").each(function () {
                     totalSum += parseDecimal($(this).find(".total").val());
                 });
-
+                
                 const fees = parseDecimal($("#fees").val());
                 const grand = totalSum + fees;
 
