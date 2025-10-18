@@ -123,6 +123,7 @@
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <form id="planningForm">
+                    <input type="hidden" id="planningId" value="0" />
                     <div class="row">
                         <!-- Date Picker -->
                         <div class="col-md-4">
@@ -247,7 +248,7 @@
                     <div class="row mt-4 text-center">
                         <!-- Save and Close Buttons -->
                         <div class="col">
-                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="submit" class="btn btn-primary" id="btnSavePlanning">Save</button>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         </div>
                     </div>
@@ -756,6 +757,103 @@
                 }
             });
         }
+
+
+        $("#btnSavePlanning").on("click", function () {
+
+            // Collect form values
+            const model = {
+                Id: parseInt($("#planningId").val()) || 0,
+                Date: $("#date").val(),
+                ProjectId: parseInt($("#projectNames").val()) || 0,
+                SiteId: parseInt($("#projectSite").val()) || 0,
+                TenderId: parseInt($("#tenderDropdown").val()) || 0,
+                TenderNameId: parseInt($("#tenderDropdown").val()) || 0,
+                AccountId: parseInt($("#debitAccount").val()) || 0,
+                CashAccountId: parseInt($("#cashAccount").val()) || 0,
+                EstimatedBudget: parseFloat($("#estimatedBudget").val()) || 0,
+                Status: $("#projectStatuss").val(),
+                ProjectType: $("#projectTypee").val(),
+                StartDate: $("#startDate").val(),
+                EndDate: $("#endDate").val()
+            };
+
+            // --- Validation ---
+            if (!model.ProjectId) {
+                toastr.warning("Please select a Project.");
+                return;
+            }
+            if (!model.SiteId) {
+                toastr.warning("Please select a Site.");
+                return;
+            }
+            if (!model.TenderId || !model.TenderNameId) {
+                toastr.warning("Please select a Tender and Tender Name.");
+                return;
+            }
+            if (!model.AccountId) {
+                toastr.warning("Please select a Fund Management Account.");
+                return;
+            }
+            if (model.EstimatedBudget <= 0) {
+                toastr.warning("Estimated Budget must be greater than zero.");
+                return;
+            }
+            if (!model.Status) {
+                toastr.warning("Please select Project Status.");
+                return;
+            }
+            if (!model.ProjectType) {
+                toastr.warning("Please select Project Type.");
+                return;
+            }
+            if (!model.Date) {
+                toastr.warning("Please select a Date.");
+                return;
+            }
+            if (!model.StartDate) {
+                toastr.warning("Please select a Start Date.");
+                return;
+            }
+            if (!model.EndDate) {
+                toastr.warning("Please select an End Date.");
+                return;
+            }
+
+            if (new Date(model.EndDate) < new Date(model.StartDate)) {
+                toastr.warning("End Date cannot be earlier than Start Date.");
+                return;
+            }
+
+            $.ajax({
+                url: '/Construction/SaveOrUpdateProjectPlanning',
+                type: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify(model),
+                beforeSend: function () {
+                    $("#btnSavePlanning").prop("disabled", true).text("Saving...");
+                },
+                success: function (response) {
+                    if (response.status) {
+                        toastr.success(response.message || "Saved successfully!");
+                        $("#planningModal").modal("hide");
+                        loadProjectPlanning();
+                    } else {
+                        toastr.warning(response.message || "Save failed!");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error("Error: " + (xhr.responseText || "Unexpected error"));
+                },
+                complete: function () {
+                    $("#btnSavePlanning").prop("disabled", false).text("Save");
+                }
+            });
+        });
+
+
+
+
 
    </script>
 

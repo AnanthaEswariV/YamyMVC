@@ -1783,7 +1783,6 @@ namespace YamyProject.Controllers
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetProjectPlanning(
            int? projectId = null,
@@ -1878,6 +1877,175 @@ namespace YamyProject.Controllers
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectPlanning([FromBody] ProjectPlanningRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            if (model.ProjectId <= 0)
+                return Json(new { status = false, message = "Select Project First." });
+
+            if (model.EstimatedBudget <= 0)
+                return Json(new { status = false, message = "Budget Must Be Bigger Than Zero" });
+
+            if (model.TenderId <= 0)
+                return Json(new { status = false, message = "Tender is not initiated for this project" });
+
+            if (model.TenderNameId <= 0)
+                return Json(new { status = false, message = "Select Tender Name First." });
+
+            if (model.SiteId <= 0)
+                return Json(new { status = false, message = "Select Site Name First." });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Json(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                await using var transaction = await conn.BeginTransactionAsync();
+
+                try
+                {
+                    int recordId = 0;
+
+                    if (model.Id > 0)
+                    {
+                        // Update existing project planning
+                        string updateSql = @"
+                    UPDATE tbl_project_planning
+                    SET modified_by=@modifiedBy, modified_date=@modifiedDate,
+                        date=@date, project_id=@projectId, location=@location,
+                        site=@site, plot_number=@plotNumber, start_date=@startDate,
+                        end_date=@endDate, status=@status, estimated_budget=@estimatedBudget,
+                        project_type=@projectType, description=@description,
+                        fund_account_id=@accountId, fund_period=@fundPeriod,
+                        assigned_team=@assignedTeam, progress=@progress
+                    WHERE id=@id;";
+
+                        await using var cmd = new MySqlCommand(updateSql, conn, (MySqlTransaction)transaction);
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@modifiedBy", userId);
+                        cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                        cmd.Parameters.AddWithValue("@location", "0");
+                        cmd.Parameters.AddWithValue("@site", model.SiteId);
+                        cmd.Parameters.AddWithValue("@plotNumber", "");
+                        cmd.Parameters.AddWithValue("@startDate", model.StartDate.Date);
+                        cmd.Parameters.AddWithValue("@endDate", model.EndDate.Date);
+                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
+                        cmd.Parameters.AddWithValue("@projectType", model.ProjectType ?? "");
+                        cmd.Parameters.AddWithValue("@estimatedBudget", model.EstimatedBudget);
+                        cmd.Parameters.AddWithValue("@description", "");
+                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                        cmd.Parameters.AddWithValue("@fundPeriod", "");
+                        cmd.Parameters.AddWithValue("@assignedTeam", "");
+                        cmd.Parameters.AddWithValue("@progress", 0);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                        {
+                            await transaction.RollbackAsync();
+                            return NotFound(new { status = false, message = "Project Planning not found" });
+                        }
+
+                        recordId = model.Id;
+
+                        // Delete previous transactions
+                        string deleteTransactions = @"DELETE FROM tbl_transaction WHERE t_type='Project Planning' AND transaction_id=@id;";
+                        await using var delCmd = new MySqlCommand(deleteTransactions, conn, (MySqlTransaction)transaction);
+                        delCmd.Parameters.AddWithValue("@id", recordId);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+                    else
+                    {
+                        // Insert new project planning
+                        string insertSql = @"
+                    INSERT INTO tbl_project_planning
+                    (date, project_id, location, site, plot_number, start_date, end_date, status, estimated_budget, project_type,
+                     description, fund_account_id, fund_period, assigned_team, progress, tender_id, created_by, created_date, tender_name_id)
+                    VALUES
+                    (@date, @projectId, @location, @site, @plotNumber, @startDate, @endDate, @status, @estimatedBudget, @projectType,
+                     @description, @accountId, @fundPeriod, @assignedTeam, @progress, @tenderId, @created_by, @created_date, @tenderNameId);
+                    SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertSql, conn, (MySqlTransaction)transaction);
+                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                        cmd.Parameters.AddWithValue("@location", "0");
+                        cmd.Parameters.AddWithValue("@site", model.SiteId);
+                        cmd.Parameters.AddWithValue("@plotNumber", "");
+                        cmd.Parameters.AddWithValue("@startDate", DateTime.Now.Date);
+                        cmd.Parameters.AddWithValue("@endDate", DateTime.Now.Date);
+                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
+                        cmd.Parameters.AddWithValue("@projectType", model.ProjectType ?? "");
+                        cmd.Parameters.AddWithValue("@estimatedBudget", model.EstimatedBudget);
+                        cmd.Parameters.AddWithValue("@description", "");
+                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                        cmd.Parameters.AddWithValue("@fundPeriod", "");
+                        cmd.Parameters.AddWithValue("@assignedTeam", "");
+                        cmd.Parameters.AddWithValue("@progress", 0);
+                        cmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                        cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+                        cmd.Parameters.AddWithValue("@created_by", userId);
+                        cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+
+                        var resultObj = await cmd.ExecuteScalarAsync();
+                        recordId = resultObj != null ? Convert.ToInt32(resultObj) : 0;
+                    }
+
+                    // Add transactions (mirroring WinForms transactions method)
+                    if (model.EstimatedBudget > 0)
+                    {
+                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), model.EstimatedBudget, 0, recordId);
+                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.CashAccountId.ToString(), 0, model.EstimatedBudget, recordId);
+                    }
+
+                  
+                    await transaction.CommitAsync();
+
+                    return Ok(new { status = true, message = model.Id > 0 ? "Project Planning updated successfully" : "Project Planning created successfully", id = recordId });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new { status = false, message = "Error: " + ex.Message });
+                }
+            }
+            catch (Exception exOuter)
+            {
+                return StatusCode(500, new { status = false, message = "Error: " + exOuter.Message });
+            }
+        }
+
+        private async Task InsertTransaction(MySqlConnection conn, MySqlTransaction trx, DateTime date, string accountId, decimal debit, decimal credit, int transactionId)
+        {
+            string insert = @"
+        INSERT INTO tbl_transaction (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state)
+        VALUES (@date, @accountId, @debit, @credit, @transactionId, 0, 'Project Planning', 'PROJECT PLANNING', 'Project Planning Invoice NO.', @createdBy, @createdDate, 0);";
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+            await using var cmd = new MySqlCommand(insert, conn, trx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@createdBy", userId);
+            cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+            await cmd.ExecuteNonQueryAsync();
         }
 
 
