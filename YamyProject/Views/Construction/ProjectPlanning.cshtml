@@ -115,7 +115,7 @@
 
 <!-- Modal -->
 <div class="modal fade" id="planningModal" tabindex="-1" aria-labelledby="planningModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="planningModalLabel">Planning - New</h5>
@@ -273,9 +273,161 @@
                     </table>
                 </form>
             </div>
+
+
+            <!-- Tabs Section (Hidden by Default, shown only on Edit) -->
+            <div id="pettyCashSection" class="card mt-4 shadow-sm border-0" style="display:none;">
+                <div class="card-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs" id="planningSection" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity"
+                                    type="button" role="tab" aria-controls="activity" aria-selected="true">
+                                Activity
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="request-tab" data-bs-toggle="tab" data-bs-target="#request"
+                                    type="button" role="tab" aria-controls="request" aria-selected="false">
+                                Request Material
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="issue-tab" data-bs-toggle="tab" data-bs-target="#issue"
+                                    type="button" role="tab" aria-controls="issue" aria-selected="false">
+                                Issue Material
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="receive-tab" data-bs-toggle="tab" data-bs-target="#receive"
+                                    type="button" role="tab" aria-controls="receive" aria-selected="false">
+                                Receive Material
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="resource-tab" data-bs-toggle="tab" data-bs-target="#resource"
+                                    type="button" role="tab" aria-controls="resource" aria-selected="false">
+                                Resource
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content pt-3" id="planningSectionContent">
+
+                        <!-- Activity Tab -->
+                        <div class="tab-pane fade show active" id="activity" role="tabpanel" aria-labelledby="activity-tab">
+                            <div class="table-responsive">
+                                <table id="activityTable" class="table table-bordered table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Name</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Progress</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Activity Data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Request Material Tab -->
+                        <div class="tab-pane fade" id="request" role="tabpanel" aria-labelledby="request-tab">
+                            <div class="table-responsive">
+                                <table id="requestTable" class="table table-bordered table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Ref_Id</th>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Unit</th>
+                                            <th>QTY</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Request Material Data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Issue Material Tab -->
+                        <div class="tab-pane fade" id="issue" role="tabpanel" aria-labelledby="issue-tab">
+                            <div class="table-responsive">
+                                <table id="issueTable" class="table table-bordered table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Ref_Id</th>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Received Material</th>
+                                            <th>Resource</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Issue Material Data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Receive Material Tab -->
+                        <div class="tab-pane fade" id="receive" role="tabpanel" aria-labelledby="receive-tab">
+                            <div class="table-responsive">
+                                <table id="receiveTable" class="table table-bordered table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Sl.No</th>
+                                            <th>Ref_Id</th>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>QTY</th>
+                                            <th>Unit</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Receive Material Data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Resource Tab -->
+                        <div class="tab-pane fade" id="resource" role="tabpanel" aria-labelledby="resource-tab">
+                            <div class="table-responsive">
+                                <table id="resourceTable" class="table table-bordered table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Code</th>
+                                            <th>Resource Name</th>
+                                            <th>Resource Type</th>
+                                            <th>Primary Role</th>
+                                            <th>Default Units/Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Resource Data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+
 
 
 <!-- Tender Items Modal -->
@@ -682,7 +834,7 @@
                         toastr.error('Failed to load project planning');
                         return;
                     }
-
+                    console.log(res);
                     // Destroy the existing DataTable if it is initialized
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
@@ -755,6 +907,10 @@
                 }
             });
         }
+
+        $("#addPlanningBtn").on("click", () => $("#pettyCashSection").hide());
+
+        $(document).on("click", ".editPlanningBtn", () => $("#pettyCashSection").slideDown());
 
         $("#btnSavePlanning").on("click", function () {
 
@@ -848,7 +1004,41 @@
             });
         });
 
+        // Edit Planning Button
+        $(document).on("click", ".editPlanningBtn", function () {
+            const planning = $(this).data("planning");
+            if (!planning) return;
 
+            // Fill modal fields
+            $("#planningId").val(planning.id ?? 0);
+            $("#date").val(planning.date ? planning.date.split('T')[0] : "");
+            $("#projectNames").val(planning.project_Id ?? 0).trigger("change");
+            $("#projectSite").val(planning.site ?? 0).trigger("change");
+            $("#tenderDropdown").val(planning.tender_Name_Id ?? 0).trigger("change");
+            $("#debitAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
+            $("#cashAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
+            $("#estimatedBudget").val(planning.estBudget ?? 0);
+            $("#projectStatuss").val(planning.status ?? "").trigger("change");
+            $("#projectTypee").val(planning.projectType ?? "").trigger("change");
+            $("#startDate").val(planning.startDate ? planning.startDate.split('T')[0] : "");
+            $("#endDate").val(planning.endDate ? planning.endDate.split('T')[0] : "");
+
+             $("#planningSection").slideDown();
+            // Update modal title and button text
+            $("#planningModalLabel").text("Edit Project Planning");
+            $("#btnSavePlanning").text("Update Planning");
+
+            // Show modal
+            $("#planningModal").modal("show");
+        });
+
+        $("#addPlanningBtn").on("click", function () {
+            $("#planningModalLabel").text("Planning - New");
+            $("#btnSavePlanning").text("Save");
+            $("#planningSection").hide();
+            $("#planningId").val(0);
+            $("#planningForm")[0].reset();
+        });
 
 
 

@@ -101,6 +101,42 @@
                   alert(result.message);
               }
           }
+                  function saveCategory() {
+            var categoryName = $("#categoryName").val();
+
+            if (!categoryName.trim()) {
+                alert("Please enter a category name.");
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/AddCategory',
+                type: 'POST',
+                data: { categoryName: categoryName },
+                success: function (result) {
+                    if (result.status) {
+                        var modalEl = document.getElementById("addCategoryModal");
+                        var modal = bootstrap.Modal.getInstance(modalEl);
+                        modal.hide();
+
+                        $("#addCategoryForm")[0].reset();
+                        toastr.success('Category Added Successfully!');
+                        // ✅ Refresh the category table/grid
+                        if (typeof loadCategories === "function") {
+                            loadCategories();
+                        }
+                        // setTimeout(function () {
+                        //     location.reload();
+                        // }, 1500);
+                    } else {
+                        toastr.error(result.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error: " + error);
+                }
+            });
+        }
 
 
 

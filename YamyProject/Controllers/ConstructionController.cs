@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using YamyProject.Core.Models;
 
 
 namespace YamyProject.Controllers
@@ -1811,7 +1812,11 @@ namespace YamyProject.Controllers
                 p.status AS `Status`,
                 p.project_type AS `Project Type`,
                 p.estimated_budget AS `Est Budget`,
-                p.progress AS `Progress`
+                p.progress AS `Progress`,
+                p.fund_account_id As `Fund_Account_Id`,
+                p.project_id As `Project_Id`,
+                p.site As `Site`,
+                p.tender_name_id As `Tender_Name_Id` 
             FROM tbl_project_planning p
             INNER JOIN tbl_projects pr ON p.project_id = pr.id
             WHERE p.state = 0";
@@ -1851,6 +1856,7 @@ namespace YamyProject.Controllers
                     projects.Add(new
                     {
                         SN = sn++,
+                        Id = reader.GetInt32("Id"),
                         Date = reader["Date"] != DBNull.Value
                             ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd")
                             : null,
@@ -1867,7 +1873,11 @@ namespace YamyProject.Controllers
                         EstBudget = reader["Est Budget"] != DBNull.Value
                             ? Convert.ToDecimal(reader["Est Budget"])
                             : 0,
-                        Progress = reader["Progress"].ToString()
+                        Progress = reader["Progress"].ToString(),
+                        Fund_Account_Id = reader.GetInt32("Fund_Account_Id"),
+                        Project_Id = reader.GetInt32("Project_Id"),
+                        Site = reader.GetInt32("Site"),
+                        Tender_Name_Id = reader.GetInt32("Tender_Name_Id"),
                     });
                 }
 
@@ -1878,6 +1888,12 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        //p.progress AS `Progress`,
+        //        p.funt_account_id As Funt_Account_Id,
+        //        p.project_id As Project_Id,
+        //        p.site As Site,
+        //        p.tender_name_id As Tender_Name_Id
+        //    FROM tbl_project_planning p
 
         [HttpPost]
         public async Task<IActionResult> SaveOrUpdateProjectPlanning([FromBody] ProjectPlanningRequest model)
