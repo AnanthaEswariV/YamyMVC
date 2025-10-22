@@ -2,8 +2,8 @@
 {
     public interface ISalesCreateService
     {
-        Task<int> CreateTaxInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId);
-        Task<decimal> InsertItemTransaction(SalesRowDataViewModel request, int? itemId, decimal qty, string? method, DateOnly SelseDate, int invId,string invoiceNo);
+         Task CreateTaxInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId);
+        // Task<decimal> InsertItemTransaction(SalesRowDataViewModel request, int? itemId, decimal qty, string? method, DateOnly SelseDate, int invId,string invoiceNo);
         Task InsertItemTransaction(DateOnly date, string type, string Invoce, int? itemId, decimal costPrice, int qtyIn, decimal salesPrice, decimal qtyOut, 
                                   string description, int warehouseId);
         Task AddItemCardDetails(DateOnly date, string type, string Invoce, int itemId,
@@ -16,7 +16,12 @@
                             int transactionId, int humId, string type, string voucher_name, string description, int createdBy, DateOnly createdDate, string VoucherNo);
         Task Transaction(TaxInvoiceViewModel Model, int level4PaymentCreditMethodId, int Invid, string invoiceNo, int level4VatId);
 
-       // Task<bool> CheckItemAvailability(int? itemId, decimal salesQty);
-    }
+        // Task<bool> CheckItemAvailability(int? itemId, decimal salesQty);
+        Task<TaxInvoiceViewModel> GetEditAsync(int id, string formType = "");
+    
+        //  Task UpdateAsync(int id, TaxInvoiceViewModel vm, int currentUserId);
+        Task<bool> CheckItemValidity(TaxInvoiceViewModel vm, int itemId);
+        Task UpdateTaxInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId);
+       }
 }
 

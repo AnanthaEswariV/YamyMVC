@@ -127,7 +127,7 @@ namespace YamyProject.Controllers
             var cities = await _ListServices.GetCitysAsync();
 
             vm.Customer ??= new TblCustomer();
-            vm.Categoriess = categories.Select(c => new SelectListItem
+            vm.Categoriess = categories.Select(static c => new SelectListItem
             {
                 Text = c.Name.ToString(), // Adjust according to your property names
                 Value = c.Id.ToString() // Adjust according to your property names

@@ -13,11 +13,14 @@ var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // Add services to the container.
 
 builder.Services.AddScoped<ICustomerService, CustomerService>();
-builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
 builder.Services.AddScoped<IListServices, ListServices>();
+builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
 builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
 builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
 builder.Services.AddScoped<ISalesCreateService, SalesCreateService>();
+builder.Services.AddScoped<ISalesQuotationCenterService, SalesQuotationCenterService>();
+builder.Services.AddScoped<ISalesOrderCenterService, SalesOrderCenterService>();
+builder.Services.AddScoped<ISalesProformaCenterService, SalesProformaCenterService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<ISalesServices, SalesServices>();
 builder.Services.AddScoped<ISalesCenterService, SalesCenterService>();

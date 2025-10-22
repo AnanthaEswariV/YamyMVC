@@ -14,7 +14,6 @@ public partial class TblTransaction
 
     public decimal? Credit { get; set; }
 
-
     public int? TransactionId { get; set; }
     [ForeignKey("TransactionId")]
     public virtual TblSale? Sale { get; set; }

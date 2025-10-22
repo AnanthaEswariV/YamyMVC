@@ -10,6 +10,7 @@
 
         public DateOnly Date { get; set; }  // tbl_sales.date
         public int Id { get; set; }         // tbl_sales.id
+        public int TranferStatus { get; set; }         // tbl_sales.id
         public string InvoiceId { get; set; } = null!; // tbl_sales.invoice_id as 'INV NO'
         public string PaymentMethod { get; set; } = null!; // tbl_sales.payment_method
         public decimal Total { get; set; }  // tbl_sales.total

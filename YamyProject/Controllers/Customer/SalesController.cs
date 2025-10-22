@@ -93,7 +93,8 @@ namespace YamyProject.Controllers.Customer
             }
         }
         public async Task<IActionResult> CreatTax()
-        { return View(); 
+        { 
+            return View(); 
         }
 
     }

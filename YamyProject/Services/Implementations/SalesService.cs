@@ -173,7 +173,7 @@
                     Price = d.Price ?? 0,
                     VatPercent = d.Vatp,
                     Total = d.Total ?? 0,
-                    Discount = d.Discount ?? 0
+                    Discount = d.Discount 
                 }).ToList()
             };
         }

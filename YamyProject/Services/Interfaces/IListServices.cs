@@ -15,5 +15,6 @@ namespace YamyProject.Services.Interfaces
         Task<IEnumerable<TblTax>> GetVatAsync();
         Task<IEnumerable<TblSubCostCenter>> GetCostCenterAsync();
 
+
     }
 }

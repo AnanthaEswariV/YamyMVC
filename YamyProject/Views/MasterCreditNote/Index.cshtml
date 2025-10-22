@@ -23,11 +23,11 @@
                   <!-- Date Filters -->
                   <div class="col-md-3">
                      <label class="form-label">From</label>
-                     <input type="date" name="fromDate" class="form-control form-control-sm" />
+                    <input type="date" value="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" name="fromDate" class="form-control form-control-sm" />
                   </div>
                   <div class="col-md-3">
                       <label class="form-label">To</label>
-                      <input type="date" name="toDate" class="form-control form-control-sm" />
+                    <input type="date" value="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" name="toDate" class="form-control form-control-sm" />
                   </div>
                   <!-- Checkboxes -->
                   <div class="col-md-2 d-flex align-items-center">
@@ -83,6 +83,7 @@
                             <th>Item VAT</th>
                             <th>Item Total</th>
                               }
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -110,6 +111,9 @@
                                         <td>@sale.ItemVat?.ToString("C")</td>
                                         <td>@sale.ItemTotal?.ToString("C")</td>
                                      }
+                                     <td>
+                                    <a class="menu-link px-3 js-render-modal" asp-controller="MasterCreditNote" asp-action="Edit" asp-route-id="@sale.Id">Edit</a>
+                                     </td>
                                 </tr>
                                 sn++;
                             }
