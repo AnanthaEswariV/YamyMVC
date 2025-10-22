@@ -2472,6 +2472,190 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateMaterialRequest([FromBody] MaterialRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validation: Required fields
+            if (model.TenderId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Tender" });
+
+            if (model.PlanningId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Planning ID" });
+
+            if (model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Please add at least one item" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                int requestId = 0;
+
+                // 🔹 Insert Mode (if no Id)
+                if (model.Id == 0)
+                {
+                    string insertQuery = @"
+            INSERT INTO tbl_project_material_requests (tender_id, planning_id, RequestedDate)
+            VALUES (@tenderId, @planningId, @requestedDate);
+            SELECT LAST_INSERT_ID();";
+
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                    insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+
+                    requestId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    // 🔹 Update Mode (if Id exists)
+                    string updateQuery = @"
+            UPDATE tbl_project_material_requests 
+            SET RequestedDate = @requestedDate 
+            WHERE id = @id;";
+
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Material Request not found" });
+
+                    requestId = model.Id;
+                }
+
+                // 🔹 Insert/Update Items
+                foreach (var item in model.Items)
+                {
+                    // Check if item exists
+                    string checkItemQuery = "SELECT id FROM tbl_project_material_requests WHERE tender_id = @tenderId AND planning_id = @planningId AND itemId = @itemId";
+                    await using var checkItemCmd = new MySqlCommand(checkItemQuery, conn);
+                    checkItemCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                    checkItemCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    checkItemCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+
+                    var itemIdObj = await checkItemCmd.ExecuteScalarAsync();
+                    int itemId = itemIdObj != DBNull.Value ? Convert.ToInt32(itemIdObj) : 0;
+
+                    // If item exists, update it; otherwise, insert a new record
+                    if (itemId > 0)
+                    {
+                        string updateItemQuery = @"
+                UPDATE tbl_project_material_requests 
+                SET RequestedQty = @qty, unit = @unit
+                WHERE id = @id;";
+
+                        await using var updateItemCmd = new MySqlCommand(updateItemQuery, conn);
+                        updateItemCmd.Parameters.AddWithValue("@id", itemId);
+                        updateItemCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+                        updateItemCmd.Parameters.AddWithValue("@unit", item.Unit);
+
+                        await updateItemCmd.ExecuteNonQueryAsync();
+                    }
+                    else
+                    {
+                        string insertItemQuery = @"
+                INSERT INTO tbl_project_material_requests (tender_id, planning_id, itemId, RequestedQty, unit)
+                VALUES (@tenderId, @planningId, @itemId, @qty, @unit);";
+
+                        await using var insertItemCmd = new MySqlCommand(insertItemQuery, conn);
+                        insertItemCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                        insertItemCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                        insertItemCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                        insertItemCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+                        insertItemCmd.Parameters.AddWithValue("@unit", item.Unit);
+
+                        await insertItemCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // ✅ Return success
+                return Ok(new
+                {
+                    status = true,
+                    message = model.Id == 0 ? "Material Request created successfully" : "Material Request updated successfully",
+                    id = requestId
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItemsByTenderId(int tenderId)
+        {
+            if (tenderId <= 0)
+            {
+                return BadRequest(new { status = false, message = "Invalid Tender ID" });
+            }
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Query to fetch items associated with the tenderId
+                string query = @"
+            SELECT 
+                CONCAT(tbl_items_boq.sr, ' - ', tbl_items_boq.name) AS name,
+                tbl_items_boq.id,
+                tbl_items_boq.qty,
+                tbl_items_boq.unit_name 
+            FROM tbl_project_tender_details 
+            INNER JOIN tbl_items_boq 
+                ON tbl_project_tender_details.tender_id = ref_id 
+                AND tbl_project_tender_details.item_id = tbl_items_boq.id
+            WHERE tbl_project_tender_details.tender_id = @tenderId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+
+                var dt = new DataTable();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    dt.Load(reader);
+                }
+
+                var items = dt.AsEnumerable()
+                    .Select(row => new
+                    {
+                        Name = row["name"].ToString(),
+                        Id = Convert.ToInt32(row["id"]),
+                        Qty = Convert.ToDecimal(row["qty"]).ToString("F2"),
+                        Unit = row["unit_name"].ToString()
+                    })
+                    .ToList();
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+        }
+
+
 
         #endregion
 

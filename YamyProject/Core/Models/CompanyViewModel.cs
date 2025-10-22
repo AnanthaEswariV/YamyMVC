@@ -456,6 +456,22 @@ namespace YamyProject.Core.Models
         public DateTime EndDate { get; set; }
     }
 
+    public class MaterialRequest
+    {
+        public int Id { get; set; }
+        public int TenderId { get; set; }
+        public int PlanningId { get; set; }
+        public DateTime RequestedDate { get; set; }
+        public List<MaterialItem> Items { get; set; }
+    }
+
+    public class MaterialItem
+    {
+        public int ItemId { get; set; }
+        public decimal RequestedQty { get; set; }
+        public string Unit { get; set; }
+    }
+
 
 
 }
