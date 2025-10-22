@@ -322,16 +322,16 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>S.No</th>
-                                            <th>Name</th>
+                                            <th>SR</th>
+                                            <th>Activity Name</th>
                                             <th>Start Date</th>
                                             <th>End Date</th>
                                             <th>Progress</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <!-- Activity Data -->
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
+
                             </div>
                         </div>
 
@@ -428,8 +428,6 @@
 </div>
 
 
-
-
 <!-- Tender Items Modal -->
 <div class="modal fade" id="tenderItemsModal" tabindex="-1" aria-labelledby="tenderItemsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -485,7 +483,7 @@
    
 
     <script>
-
+         let currentTenderId = null;
         $(document).ready(function () {
 
             $(document).on('change', '.autoLock', function () {
@@ -676,7 +674,6 @@
 
             $('#tenderItemsModal').modal('show');
             loadTenderItems(tenderId);
-
         });
 
             function loadTenderItems(tenderId) {
@@ -685,7 +682,6 @@
                 type: 'GET',
                 data: { tenderId: tenderId },
                 success: function (res) {
-                    console.log(res);
                     // Destroy DataTable if already exists
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
@@ -734,6 +730,7 @@
                     }
                       // ✅ Calculate BOQ Total
                         calculateBoqTotal();
+        
                 },
                 error: function () {
                     toastr.error('Failed to load tender items');
@@ -771,6 +768,7 @@
         });
       
         });
+
 
         function loadProjects() {
             $.ajax({
@@ -834,7 +832,6 @@
                         toastr.error('Failed to load project planning');
                         return;
                     }
-                    console.log(res);
                     // Destroy the existing DataTable if it is initialized
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
@@ -1004,10 +1001,12 @@
             });
         });
 
-        // Edit Planning Button
-        $(document).on("click", ".editPlanningBtn", function () {
+             $(document).on("click", ".editPlanningBtn", function () {
             const planning = $(this).data("planning");
             if (!planning) return;
+
+            // Save tender ID globally
+            currentTenderId = planning.tender_Name_Id;
 
             // Fill modal fields
             $("#planningId").val(planning.id ?? 0);
@@ -1023,23 +1022,79 @@
             $("#startDate").val(planning.startDate ? planning.startDate.split('T')[0] : "");
             $("#endDate").val(planning.endDate ? planning.endDate.split('T')[0] : "");
 
-             $("#planningSection").slideDown();
-            // Update modal title and button text
             $("#planningModalLabel").text("Edit Project Planning");
             $("#btnSavePlanning").text("Update Planning");
 
-            // Show modal
             $("#planningModal").modal("show");
+
+            // Show petty cash section & activity tab
+            $('#pettyCashSection').slideDown();
+            $('#activity-tab').tab('show');
+                             // ✅ Load activity planning for the same tenderId
+            loadActivityPlanning(currentTenderId);
+          
         });
 
+        // ---------------- Add Planning Button ----------------
         $("#addPlanningBtn").on("click", function () {
+            currentTenderId = null;
             $("#planningModalLabel").text("Planning - New");
             $("#btnSavePlanning").text("Save");
-            $("#planningSection").hide();
+            $("#pettyCashSection").hide();
             $("#planningId").val(0);
             $("#planningForm")[0].reset();
         });
 
+
+                 // ---------------- Load Activity Planning ----------------
+        function loadActivityPlanning(tenderId) {
+            console.log("Loading activities for tenderId:", tenderId);
+
+            $.ajax({
+                url: '/Construction/GetActivityPlanning',
+                type: 'GET',
+                data: { tenderId: tenderId },
+                success: function (res) {
+                    const tbody = $('#activityTable tbody').empty();
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
+                        return;
+                    }
+
+                    $.each(res.data, function (i, r) {
+                        tbody.append(`
+                            <tr>
+                                <td>${r.SNo ?? i + 1}</td>
+                                <td>${r.sr ?? ''}</td>
+                                <td>${r.name ?? ''}</td>
+                                <td>${r.startDate ?? ''}</td>
+                                <td>${r.endDate ?? ''}</td>
+                                <td>${r.progress ?? '0'}%</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function (xhr) {
+                    console.error("API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load activity planning');
+                }
+            });
+        }
+
+
+        $('.editPlanningBtn').on('click', function () {
+            const tender = $(this).data('planning');
+            $('#pettyCashSection').show();
+            $('#activity-tab').tab('show');
+            loadActivityPlanning(tender.tenderId);
+        });
+
+                // Load activities when Activity tab is clicked
+                $('#activity-tab').on('shown.bs.tab', function () {
+            if (currentTenderId) {
+                loadActivityPlanning(currentTenderId);
+            }
+        });
 
 
    </script>

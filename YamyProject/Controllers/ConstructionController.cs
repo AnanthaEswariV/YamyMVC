@@ -1888,12 +1888,6 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-        //p.progress AS `Progress`,
-        //        p.funt_account_id As Funt_Account_Id,
-        //        p.project_id As Project_Id,
-        //        p.site As Site,
-        //        p.tender_name_id As Tender_Name_Id
-        //    FROM tbl_project_planning p
 
         [HttpPost]
         public async Task<IActionResult> SaveOrUpdateProjectPlanning([FromBody] ProjectPlanningRequest model)
@@ -2063,6 +2057,65 @@ namespace YamyProject.Controllers
             cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
             await cmd.ExecuteNonQueryAsync();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetActivityPlanning(int tenderId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"));
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                connStrBuilder.Database = string.IsNullOrEmpty(dbName)
+                    ? _config.GetConnectionString("DefaultDatabase")
+                    : dbName;
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                const string query = @"
+    SELECT pd.sr, 
+           COALESCE(b.name, i.name) AS name,
+           pd.start_date, 
+           pd.end_date, 
+           pd.progress
+    FROM tbl_project_tender_details pd
+    LEFT JOIN tbl_items_boq b 
+           ON pd.tender_id = b.ref_id AND pd.item_id = b.id
+    LEFT JOIN tbl_items i 
+           ON pd.item_id = i.id
+    WHERE pd.tender_id = @id;";
+
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", tenderId);
+
+                var activityList = new List<object>();
+                int count = 1;
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    activityList.Add(new
+                    {
+                        SNo = count++,
+                        Sr = reader["sr"]?.ToString(),
+                        Name = reader["name"]?.ToString(),
+                        StartDate = reader["start_date"] == DBNull.Value ? null :
+                                    Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd"),
+                        EndDate = reader["end_date"] == DBNull.Value ? null :
+                                  Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd"),
+                        Progress = reader["progress"] == DBNull.Value ? "0" : reader["progress"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = activityList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
 
         #endregion
