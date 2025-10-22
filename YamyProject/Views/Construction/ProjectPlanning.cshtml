@@ -335,8 +335,57 @@
                             </div>
                         </div>
 
+
                         <!-- Request Material Tab -->
                         <div class="tab-pane fade" id="request" role="tabpanel" aria-labelledby="request-tab">
+                            <!-- Button to trigger modal -->
+                            <button class="btn btn-primary rounded-3" id="addRequestBtn" data-bs-toggle="modal" data-bs-target="#requestModal">
+                                <i class="fas fa-plus me-2"></i> Add Request
+                            </button>
+
+                            <!-- Modal Structure -->
+                            <div class="modal fade" id="requestModal" tabindex="-1" aria-labelledby="requestModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title" id="requestModalLabel">New Material Request</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form id="materialRequestForm">
+                                                <!-- Date Picker -->
+                                                <div class="mb-3">
+                                                    <label for="requestDate" class="form-label">Date</label>
+                                                    <input type="date" class="form-control" id="requestDate" >
+                                                </div>
+
+                                                <!-- Material Description -->
+                                                <div class="mb-3">
+                                                    <label for="materialDescription" class="form-label">Description</label>
+                                                    <input type="text" class="form-control" id="materialDescription" placeholder="Enter material description">
+                                                </div>
+
+                                                <!-- Quantity -->
+                                                <div class="mb-3">
+                                                    <label for="quantity" class="form-label">Quantity</label>
+                                                    <input type="number" class="form-control" id="quantity" min="1">
+                                                </div>
+
+                                                <!-- Unit -->
+                                                <div class="mb-3">
+                                                    <label for="unit" class="form-label">Unit</label>
+                                                    <input type="text" class="form-control" id="unit"  placeholder="Enter unit of measure">
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary" id="submitRequestBtn">Submit Request</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="table-responsive">
                                 <table id="requestTable" class="table table-bordered table-striped align-middle">
                                     <thead class="table-light">
@@ -359,6 +408,54 @@
 
                         <!-- Issue Material Tab -->
                         <div class="tab-pane fade" id="issue" role="tabpanel" aria-labelledby="issue-tab">
+                            <button class="btn btn-primary rounded-3" id="addIssueMaterialBtn" data-bs-toggle="modal" data-bs-target="#issueMaterialModal">
+                                <i class="fas fa-plus me-2"></i> Add Issue Material
+                            </button>
+
+                            <!-- Modal Structure -->
+                            <div class="modal fade" id="issueMaterialModal" tabindex="-1" aria-labelledby="issueMaterialModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title" id="issueMaterialModalLabel">Issue Material</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form id="issueMaterialForm">
+                                                <!-- Date Picker -->
+                                                <div class="mb-3">
+                                                    <label for="issueDate" class="form-label">Issue Date</label>
+                                                    <input type="date" class="form-control" id="issueDate">
+                                                </div>
+
+                                                <!-- Material Description -->
+                                                <div class="mb-3">
+                                                    <label for="issueDescription" class="form-label">Material Description</label>
+                                                    <input type="text" class="form-control" id="issueDescription" placeholder="Enter material description">
+                                                </div>
+
+                                                <!-- Quantity -->
+                                                <div class="mb-3">
+                                                    <label for="issueQuantity" class="form-label">Quantity</label>
+                                                    <input type="number" class="form-control" id="issueQuantity" min="1">
+                                                </div>
+
+                                                <!-- Unit -->
+                                                <div class="mb-3">
+                                                    <label for="issueUnit" class="form-label">Unit</label>
+                                                    <input type="text" class="form-control" id="issueUnit" placeholder="Enter unit of measure">
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary" id="submitIssueRequestBtn">Submit Issue</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <div class="table-responsive">
                                 <table id="issueTable" class="table table-bordered table-striped align-middle">
                                     <thead class="table-light">
@@ -380,6 +477,54 @@
 
                         <!-- Receive Material Tab -->
                         <div class="tab-pane fade" id="receive" role="tabpanel" aria-labelledby="receive-tab">
+                            <button class="btn btn-primary rounded-3" id="addRequestBtn" data-bs-toggle="modal" data-bs-target="#receiveMaterialModal">
+                                <i class="fas fa-plus me-2"></i> Add
+                            </button>
+
+                            <!-- Modal Structure -->
+                            <div class="modal fade" id="receiveMaterialModal" tabindex="-1" aria-labelledby="receiveMaterialModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h5 class="modal-title" id="receiveMaterialModalLabel">Receive Material</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form id="receiveMaterialForm">
+                                                <!-- Date Picker -->
+                                                <div class="mb-3">
+                                                    <label for="receiveDate" class="form-label">Receive Date</label>
+                                                    <input type="date" class="form-control" id="receiveDate">
+                                                </div>
+
+                                                <!-- Material Description -->
+                                                <div class="mb-3">
+                                                    <label for="receiveDescription" class="form-label">Material Description</label>
+                                                    <input type="text" class="form-control" id="receiveDescription" placeholder="Enter material description">
+                                                </div>
+
+                                                <!-- Quantity -->
+                                                <div class="mb-3">
+                                                    <label for="receiveQuantity" class="form-label">Quantity</label>
+                                                    <input type="number" class="form-control" id="receiveQuantity"  min="1">
+                                                </div>
+
+                                                <!-- Unit -->
+                                                <div class="mb-3">
+                                                    <label for="receiveUnit" class="form-label">Unit</label>
+                                                    <input type="text" class="form-control" id="receiveUnit"  placeholder="Enter unit of measure">
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary" id="submitReceiveRequestBtn">Submit Receipt</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <div class="table-responsive">
                                 <table id="receiveTable" class="table table-bordered table-striped align-middle">
                                     <thead class="table-light">
@@ -402,6 +547,9 @@
 
                         <!-- Resource Tab -->
                         <div class="tab-pane fade" id="resource" role="tabpanel" aria-labelledby="resource-tab">
+                            <button class="btn btn-primary rounded-3" id="addRequestBtn" data-bs-toggle="modal" data-bs-target="#tenderModal">
+                                <i class="fas fa-plus me-2"></i> Add Resource
+                            </button>
                             <div class="table-responsive">
                                 <table id="resourceTable" class="table table-bordered table-striped align-middle">
                                     <thead class="table-light">
@@ -462,6 +610,87 @@
     </div>
 </div>
 
+<!-- Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1" aria-labelledby="activityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-l modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow-lg border-0">
+            <div class="modal-header bg-primary text-white rounded-top-4">
+                <h5 class="modal-title" id="activityModalLabel">Activity Center</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Add your modal content here similar to the screenshot -->
+                <form id="activityForm">
+                    <div class="mb-3">
+                        <label for="activityName" class="form-label">Activity Name</label>
+                        <input type="text" class="form-control" id="activityName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                    <div class="mb-3">
+                        <label for="progress" class="form-label">Progress</label>
+                        <input type="text" class="form-control" id="progress">
+                    </div>
+                    <div class="mb-3">
+                        <label for="activitys" class="form-label">Activity</label>
+                        <input type="text" class="form-control" id="activitys">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sub-Activity Modal -->
+<div class="modal fade" id="subActivityModal" tabindex="-1" aria-labelledby="subActivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow-lg border-0">
+            <div class="modal-header bg-primary text-white rounded-top-4">
+                <h5 class="modal-title" id="subActivityModalLabel">Activity</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="subActivityForm">
+                    <div class="mb-3">
+                        <label for="subActivityDescription" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="subActivityDescription">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subActivityProgress" class="form-label">Progress</label>
+                        <input type="text" class="form-control" id="subActivityProgress">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subActivityStartDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="subActivityStartDate">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subActivityEndDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="subActivityEndDate">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subActivityResource" class="form-label">Assign resources to the activity</label>
+                        <textarea class="form-control" id="subActivityResource" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -484,6 +713,8 @@
 
     <script>
          let currentTenderId = null;
+         let currentPlanningId = null;
+
         $(document).ready(function () {
 
             $(document).on('change', '.autoLock', function () {
@@ -769,7 +1000,6 @@
       
         });
 
-
         function loadProjects() {
             $.ajax({
                 url: '/Construction/GetProjects',
@@ -1001,13 +1231,13 @@
             });
         });
 
-             $(document).on("click", ".editPlanningBtn", function () {
+        $(document).on("click", ".editPlanningBtn", function () {
             const planning = $(this).data("planning");
             if (!planning) return;
 
             // Save tender ID globally
             currentTenderId = planning.tender_Name_Id;
-
+            currentPlanningId = planning.id;
             // Fill modal fields
             $("#planningId").val(planning.id ?? 0);
             $("#date").val(planning.date ? planning.date.split('T')[0] : "");
@@ -1032,10 +1262,12 @@
             $('#activity-tab').tab('show');
                              // ✅ Load activity planning for the same tenderId
             loadActivityPlanning(currentTenderId);
-          
+           loadRequestMaterial(currentPlanningId);
+           loadIssuedMaterial(currentPlanningId);
+           loadReceivedMaterial(currentPlanningId);
+            loadResourceList(currentPlanningId);
         });
 
-        // ---------------- Add Planning Button ----------------
         $("#addPlanningBtn").on("click", function () {
             currentTenderId = null;
             $("#planningModalLabel").text("Planning - New");
@@ -1045,13 +1277,11 @@
             $("#planningForm")[0].reset();
         });
 
-
-                 // ---------------- Load Activity Planning ----------------
         function loadActivityPlanning(tenderId) {
-            console.log("Loading activities for tenderId:", tenderId);
+          
 
             $.ajax({
-                url: '/Construction/GetActivityPlanning',
+                url: '/Construction/GetProjectTenderDetails',
                 type: 'GET',
                 data: { tenderId: tenderId },
                 success: function (res) {
@@ -1081,6 +1311,148 @@
             });
         }
 
+        function loadRequestMaterial(planningId) {
+            $.ajax({
+                url: '/Construction/GetRequestedMaterial',
+                type: 'GET',
+                data: { planningId: planningId },
+                success: function (res) {
+                    const tbody = $('#requestTable tbody').empty();
+                    console.log(res);
+
+                    // ✅ Check the correct structure
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="7" class="text-center">No records found</td></tr>');
+                        return;
+                    }
+
+                    // ✅ Loop through `res.data`
+                    $.each(res.data, function (i, r) {
+                        tbody.append(`
+                            <tr>
+                                <td>${r.sNo ?? i + 1}</td>
+                                <td>${r.id ?? ''}</td>
+                                <td>${r.date ?? ''}</td>
+                                <td>${r.name ?? ''}</td>
+                                <td>${r.unit ?? ''}</td>
+                                <td>${r.qty ?? '0.00'}</td>
+                                <td>${r.status ?? ''}</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function (xhr) {
+                    console.error("API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load request material');
+                }
+            });
+        }
+
+                // 🔹 Load Issued Material
+        function loadIssuedMaterial(planningId) {
+            $.ajax({
+                url: '/Construction/GetIssuedMaterial',
+                type: 'GET',
+                data: { planningId: planningId },
+                success: function (res) {
+                    const tbody = $('#issueTable tbody').empty();
+                    console.log("Issued:", res);
+
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
+                        return;
+                    }
+
+                    $.each(res.data, function (i, r) {
+                        tbody.append(`
+                            <tr>
+                                <td>${r.sNo ?? i + 1}</td>
+                                <td>${r.id ?? ''}</td>
+                                <td>${r.date ?? ''}</td>
+                                <td>${r.name ?? ''}</td>
+                                <td>${r.qty ?? '0.00'}</td>
+                                <td>${r.status ?? ''}</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function (xhr) {
+                    console.error("Issued API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load issued materials');
+                }
+            });
+        }
+
+        // 🔹 Load Received Material
+        function loadReceivedMaterial(planningId) {
+            $.ajax({
+                url: '/Construction/GetReceivedMaterial',
+                type: 'GET',
+                data: { planningId: planningId },
+                success: function (res) {
+                    const tbody = $('#receiveTable tbody').empty();
+                    console.log("Received:", res);
+
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="7" class="text-center">No records found</td></tr>');
+                        return;
+                    }
+
+                    $.each(res.data, function (i, r) {
+                        tbody.append(`
+                            <tr>
+                                <td>${r.sNo ?? i + 1}</td>
+                                <td>${r.id ?? ''}</td>
+                                <td>${r.date ?? ''}</td>
+                                <td>${r.name ?? ''}</td>
+                                <td>${r.qty ?? '0.00'}</td>
+                                <td>${r.unit ?? ''}</td>
+                                <td>${r.status ?? ''}</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function (xhr) {
+                    console.error("Received API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load received materials');
+                }
+            });
+        }
+
+        // 🔹 Load Resource List
+        function loadResourceList(planningId) {
+            $.ajax({
+                url: '/Construction/GetResourceData',
+                type: 'GET',
+                data: { planningId: planningId },
+                success: function (res) {
+                    const tbody = $('#resourceTable tbody').empty();
+                    console.log("Resources:", res);
+
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
+                        return;
+                    }
+
+                    $.each(res.data, function (i, r) {
+                        tbody.append(`
+                            <tr>
+                                <td>${r.sNo ?? i + 1}</td>
+                                <td>${r.code ?? ''}</td>
+                                <td>${r.name ?? ''}</td>
+                                <td>${r.type ?? ''}</td>
+                                <td>${r.roleName ?? ''}</td>
+                                <td>${r.priceUnit ?? '0.00'}</td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function (xhr) {
+                    console.error("Resource API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load resource data');
+                }
+            });
+        }
 
         $('.editPlanningBtn').on('click', function () {
             const tender = $(this).data('planning');
@@ -1089,11 +1461,71 @@
             loadActivityPlanning(tender.tenderId);
         });
 
-                // Load activities when Activity tab is clicked
-                $('#activity-tab').on('shown.bs.tab', function () {
+        $('#activity-tab').on('shown.bs.tab', function () {
             if (currentTenderId) {
                 loadActivityPlanning(currentTenderId);
             }
+        });
+
+        $('#request-tab').on('shown.bs.tab', function () {
+            if(currentPlanningId){
+                loadRequestMaterial(currentPlanningId);
+            }   
+        });
+
+                $('#issue-tab').on('shown.bs.tab', function () {
+            if (currentPlanningId) {
+                loadIssuedMaterial(currentPlanningId);
+            }
+        });
+
+        $('#receive-tab').on('shown.bs.tab', function () {
+            if (currentPlanningId) {
+                loadReceivedMaterial(currentPlanningId);
+            }
+        });
+
+        $('#resource-tab').on('shown.bs.tab', function () {
+            if (currentPlanningId) {
+                loadResourceList(currentPlanningId);
+            }
+        });
+
+        $(document).ready(function() {
+            $('#activityTable tbody').on('dblclick', 'tr', function() {
+                // Get row data
+                var rowData = $(this).children('td').map(function() {
+                    return $(this).text();
+                }).get();
+
+                // Fill modal inputs
+                $('#activityName').val(rowData[2]); 
+                $('#startDate').val(formatDate(rowData[3])); 
+                $('#endDate').val(formatDate(rowData[4]));  
+                $('#progress').val(rowData[5]); 
+
+                // Open modal
+                var modal = new bootstrap.Modal(document.getElementById('activityModal'));
+                modal.show();
+            });
+        });
+
+        // Helper to format date if needed
+        function formatDate(dateStr) {
+            // Convert DD/MM/YYYY to YYYY-MM-DD for input[type=date]
+            var parts = dateStr.split('/');
+            return parts[2] + '-' + parts[1] + '-' + parts[0];
+        }
+
+
+            document.addEventListener('DOMContentLoaded', function() {
+            const activityInput = document.getElementById('activitys');
+
+            activityInput.addEventListener('click', function() {
+                // Open Sub-Activity modal
+                var subActivityModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
+                subActivityModal.show();
+            });
         });
 
 

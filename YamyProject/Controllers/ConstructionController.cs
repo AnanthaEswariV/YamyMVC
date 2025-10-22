@@ -2058,57 +2058,140 @@ namespace YamyProject.Controllers
             await cmd.ExecuteNonQueryAsync();
         }
 
+        //    [HttpGet]
+        //    public async Task<IActionResult> GetActivityPlanning(int tenderId)
+        //    {
+        //        try
+        //        {
+        //            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"));
+        //            var dbName = HttpContext.Session.GetString("DatabaseName");
+        //            connStrBuilder.Database = string.IsNullOrEmpty(dbName)
+        //                ? _config.GetConnectionString("DefaultDatabase")
+        //                : dbName;
+
+        //            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //            await conn.OpenAsync();
+
+        //            const string query = @"
+        //SELECT pd.sr, 
+        //       COALESCE(b.name, i.name) AS name,
+        //       pd.start_date, 
+        //       pd.end_date, 
+        //       pd.progress
+        //FROM tbl_project_tender_details pd
+        //LEFT JOIN tbl_items_boq b 
+        //       ON pd.tender_id = b.ref_id AND pd.item_id = b.id
+        //LEFT JOIN tbl_items i 
+        //       ON pd.item_id = i.id
+        //WHERE pd.tender_id = @id;";
+
+
+        //            await using var cmd = new MySqlCommand(query, conn);
+        //            cmd.Parameters.AddWithValue("@id", tenderId);
+
+        //            var activityList = new List<object>();
+        //            int count = 1;
+        //            await using var reader = await cmd.ExecuteReaderAsync();
+
+        //            while (await reader.ReadAsync())
+        //            {
+        //                activityList.Add(new
+        //                {
+        //                    SNo = count++,
+        //                    Sr = reader["sr"]?.ToString(),
+        //                    Name = reader["name"]?.ToString(),
+        //                    StartDate = reader["start_date"] == DBNull.Value ? null :
+        //                                Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd"),
+        //                    EndDate = reader["end_date"] == DBNull.Value ? null :
+        //                              Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd"),
+        //                    Progress = reader["progress"] == DBNull.Value ? "0" : reader["progress"].ToString()
+        //                });
+        //            }
+
+        //            return Ok(new { status = true, data = activityList });
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            return StatusCode(500, new { status = false, message = ex.Message });
+        //        }
+        //    }
+
         [HttpGet]
-        public async Task<IActionResult> GetActivityPlanning(int tenderId)
+        public async Task<IActionResult> GetProjectTenderDetails(int tenderId)
         {
             try
             {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"));
-                var dbName = HttpContext.Session.GetString("DatabaseName");
-                connStrBuilder.Database = string.IsNullOrEmpty(dbName)
-                    ? _config.GetConnectionString("DefaultDatabase")
-                    : dbName;
+                if (tenderId == 0)
+                    return BadRequest(new { status = false, message = "Tender ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                const string query = @"
-    SELECT pd.sr, 
-           COALESCE(b.name, i.name) AS name,
-           pd.start_date, 
-           pd.end_date, 
-           pd.progress
-    FROM tbl_project_tender_details pd
-    LEFT JOIN tbl_items_boq b 
-           ON pd.tender_id = b.ref_id AND pd.item_id = b.id
-    LEFT JOIN tbl_items i 
-           ON pd.item_id = i.id
-    WHERE pd.tender_id = @id;";
-
+                string query = @"
+            SELECT 
+                ptd.id,
+                ptd.sr,
+                ib.name,
+                ib.id AS item_id,
+                ib.type,
+                ib.unit_name,
+                ptd.start_date,
+                ptd.end_date,
+                ptd.progress,
+                ptd.assigned
+            FROM tbl_project_tender_details ptd
+            INNER JOIN tbl_items_boq ib 
+                ON ptd.tender_id = @tenderId 
+                AND ptd.item_id = ib.id";
 
                 await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@id", tenderId);
+                cmd.Parameters.AddWithValue("@tenderId", tenderId);
 
-                var activityList = new List<object>();
+                var items = new List<object>();
                 int count = 1;
-                await using var reader = await cmd.ExecuteReaderAsync();
 
+                await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    activityList.Add(new
+                    // Format dates
+                    string startDate = reader["start_date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd")
+                        : DateTime.Now.ToString("yyyy-MM-dd");
+
+                    string endDate = reader["end_date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd")
+                        : DateTime.Now.ToString("yyyy-MM-dd");
+
+                    // Assigned employee
+                    string empId = reader["assigned"] != DBNull.Value ? reader["assigned"].ToString() : "0";
+
+                    // Progress
+                    string progress = reader["progress"] != DBNull.Value
+                        ? decimal.Parse(reader["progress"].ToString()).ToString("#.##")
+                        : "0";
+
+                    items.Add(new
                     {
                         SNo = count++,
-                        Sr = reader["sr"]?.ToString(),
-                        Name = reader["name"]?.ToString(),
-                        StartDate = reader["start_date"] == DBNull.Value ? null :
-                                    Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd"),
-                        EndDate = reader["end_date"] == DBNull.Value ? null :
-                                  Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd"),
-                        Progress = reader["progress"] == DBNull.Value ? "0" : reader["progress"].ToString()
+                        Id = reader["id"].ToString(),
+                        SR = reader["sr"].ToString(),
+                        Name = reader["name"].ToString(),
+                        StartDate = startDate,
+                        EndDate = endDate,
+                        Progress = progress,
+                        Assigned = empId,
+                        ItemId = reader["item_id"].ToString(),
+                        Type = reader["type"].ToString(),
+                        UnitName = reader["unit_name"].ToString()
                     });
                 }
 
-                return Ok(new { status = true, data = activityList });
+                return Ok(new { status = true, message = "Success", data = items });
             }
             catch (Exception ex)
             {
@@ -2116,6 +2199,278 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetRequestedMaterial(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                rm.id,
+                rm.RequestedQty AS qty,
+                rm.RequestedDate AS date,
+                rm.unit,
+                boq.sr,
+                boq.name,
+                CASE 
+                    WHEN rm.ReceivedQty > 0 THEN 'Received' 
+                    WHEN rm.IssuedQty > 0 THEN 'Issued' 
+                    ELSE 'Requested' 
+                END AS status
+            FROM tbl_project_material_requests rm
+            INNER JOIN tbl_items_boq boq 
+                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+            WHERE rm.planning_id = @planningId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var materialRequests = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string requestedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    materialRequests.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = requestedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = materialRequests
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetIssuedMaterial(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            rm.id,
+            rm.IssuedQty AS qty,
+            rm.IssuedDate AS date,
+            rm.unit,
+            boq.sr,
+            boq.name,
+            CASE 
+                WHEN rm.ReceivedQty > 0 THEN 'Received' 
+                WHEN rm.IssuedQty > 0 THEN 'Issued' 
+                ELSE 'Requested' 
+            END AS status
+        FROM tbl_project_material_requests rm
+        INNER JOIN tbl_items_boq boq 
+            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+        WHERE rm.IssuedQty > 0 AND rm.planning_id = @planningId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var issuedItems = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string issuedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    issuedItems.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = issuedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = issuedItems });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetReceivedMaterial(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            rm.id,
+            rm.ReceivedQty AS qty,
+            rm.IssuedDate AS date,
+            rm.unit,
+            boq.sr,
+            boq.name,
+            CASE 
+                WHEN rm.ReceivedQty > 0 THEN 'Received' 
+                WHEN rm.IssuedQty > 0 THEN 'Issued' 
+                ELSE 'Requested' 
+            END AS status
+        FROM tbl_project_material_requests rm
+        INNER JOIN tbl_items_boq boq 
+            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+        WHERE rm.ReceivedQty > 0 AND rm.planning_id = @planningId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var receivedItems = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string receivedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    receivedItems.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = receivedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = receivedItems });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetResourceData(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            pr.id,
+            pr.code,
+            pr.name,
+            r.name AS roleName,
+            pr.type,
+            pr.price_unit,
+            pr.unit_time,
+            pr.max_unit_time
+        FROM tbl_project_resource pr
+        INNER JOIN tbl_project_role r ON r.id = pr.role
+        WHERE EXISTS (
+            SELECT 1 
+            FROM tbl_project_planning p 
+            WHERE p.id = @planningId 
+              AND FIND_IN_SET(pr.id, p.assigned_team) > 0
+        );";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var resources = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    resources.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        Code = reader["code"].ToString(),
+                        ResourceName = reader["name"].ToString(),
+                        ResourceType = reader["type"].ToString(),
+                        PrimaryRole = reader["roleName"].ToString(),
+                        DefaultUnitsTime = reader["price_unit"] != DBNull.Value ? Convert.ToDecimal(reader["price_unit"]).ToString("N2") : "0.00"
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = resources });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
 
         #endregion
