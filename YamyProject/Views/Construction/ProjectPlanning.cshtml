@@ -114,7 +114,7 @@
 
 <!-- Modal -->
 <div class="modal fade" id="planningModal" tabindex="-1" aria-labelledby="planningModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="planningModalLabel">Planning - New</h5>
@@ -1607,7 +1607,14 @@
                                     toastr.success(response.message || "Material request submitted successfully!");
                                     $('#requestModal').modal('hide');
                                     $('#materialTable tbody').empty();
-                                    addNewRow(); 
+                                    addNewRow();
+                                    setTimeout(() => {
+            const prevTab = document.querySelector('#activity-tab');
+            if (prevTab) {
+                const tab = new bootstrap.Tab(prevTab);
+                tab.show();
+            }
+        }, 500); 
                                 } else {
                             toastr.warning(response.message || "Save failed!");
                                 }
@@ -1758,6 +1765,13 @@
                             $('#issueMaterialModal').modal('hide');
                             $('#issueMaterialTable tbody').empty();
                             addIssueRow(); // reset for next
+                            setTimeout(() => {
+            const prevTab = document.querySelector('#request-tab');
+            if (prevTab) {
+                const tab = new bootstrap.Tab(prevTab);
+                tab.show();
+            }
+        }, 500); 
                         } else {
                              toastr.warning(response.message || "Save failed!");
                         }
@@ -1775,7 +1789,7 @@
             });
         });
 
-                                $(document).ready(function () {
+                       $(document).ready(function () {
             // 🔹 Load issued-but-not-received materials for dropdowns
             function loadPendingReceivedItems(planningId, dropdown) {
                 $.ajax({
@@ -1887,6 +1901,13 @@
                             $('#receiveMaterialModal').modal('hide');
                             $('#receiveMaterialTable tbody').empty();
                             addReceiveRow();
+                            setTimeout(() => {
+            const prevTab = document.querySelector('#issue-tab');
+            if (prevTab) {
+                const tab = new bootstrap.Tab(prevTab);
+                tab.show();
+            }
+        }, 500); 
                         } else {
                             toastr.warning(response.message || 'Save failed.');
                         }
