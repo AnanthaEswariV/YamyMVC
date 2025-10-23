@@ -1,17 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblSalesProforma
 {
     public int Id { get; set; }
-
+    public virtual ICollection<TblSalesProformaDetail>? SalesProformaDetails { get; set; }
+    
     public DateOnly Date { get; set; }
 
     public int CustomerId { get; set; }
+    public virtual TblCustomer? Customer { get; set; }
 
     public string InvoiceId { get; set; } = null!;
+    public string Description { get; set; } = null!;
 
     public int WarehouseId { get; set; }
 

@@ -7,6 +7,5 @@
         Task<IEnumerable<SalesCenterViewModel>> GetDetailedReportAsync();
         Task<string> GenerateInvoiceNoAsync();
 
-
     }
 }

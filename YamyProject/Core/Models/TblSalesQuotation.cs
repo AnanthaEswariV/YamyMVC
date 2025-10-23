@@ -6,12 +6,14 @@ public partial class TblSalesQuotation
     public DateOnly Date { get; set; }
 
     public int CustomerId { get; set; }
+    public virtual TblCustomer? Customer { get; set; }
 
     public string InvoiceId { get; set; } = null!;
 
     public int WarehouseId { get; set; }
 
     public string PoNum { get; set; } = null!;
+    public string Description { get; set; } = null!;
 
     public string BillTo { get; set; } = null!;
 
@@ -56,6 +58,10 @@ public partial class TblSalesQuotation
     public int? TranferStatus { get; set; }
 
     public int? SalesId { get; set; }
+
+    [ForeignKey(nameof(SalesId))]
+    public virtual ICollection<TblSalesQuotationDetail>? SalesQuotationDetails { get; set; }
+
 
     public int ProjectId { get; set; }
 }
