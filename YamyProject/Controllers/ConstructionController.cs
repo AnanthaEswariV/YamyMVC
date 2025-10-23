@@ -2478,7 +2478,6 @@ namespace YamyProject.Controllers
             if (model == null)
                 return BadRequest(new { status = false, message = "Invalid request" });
 
-            // 🔹 Validation: Required fields
             if (model.TenderId <= 0)
                 return BadRequest(new { status = false, message = "Please select a Tender" });
 
@@ -2502,94 +2501,87 @@ namespace YamyProject.Controllers
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                int requestId = 0;
-
-                // 🔹 Insert Mode (if no Id)
+                // 🔹 If Id == 0 => INSERT all
                 if (model.Id == 0)
                 {
-                    string insertQuery = @"
-            INSERT INTO tbl_project_material_requests (tender_id, planning_id, RequestedDate)
-            VALUES (@tenderId, @planningId, @requestedDate);
-            SELECT LAST_INSERT_ID();";
+                    foreach (var item in model.Items)
+                    {
+                        if (item.ItemId == null || item.ItemId <= 0)
+                            continue;
 
-                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
-                    insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                    insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                    insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                        string insertQuery = @"
+                    INSERT INTO tbl_project_material_requests
+                        (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
+                    VALUES
+                        (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
 
-                    requestId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+                        await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                        insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                        insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                        insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                        insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                        insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                        insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new { status = true, message = "Material requests inserted successfully" });
                 }
                 else
                 {
-                    // 🔹 Update Mode (if Id exists)
-                    string updateQuery = @"
-            UPDATE tbl_project_material_requests 
-            SET RequestedDate = @requestedDate 
-            WHERE id = @id;";
-
-                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
-                    updateCmd.Parameters.AddWithValue("@id", model.Id);
-                    updateCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
-
-                    int affected = await updateCmd.ExecuteNonQueryAsync();
-                    if (affected == 0)
-                        return NotFound(new { status = false, message = "Material Request not found" });
-
-                    requestId = model.Id;
-                }
-
-                // 🔹 Insert/Update Items
-                foreach (var item in model.Items)
-                {
-                    // Check if item exists
-                    string checkItemQuery = "SELECT id FROM tbl_project_material_requests WHERE tender_id = @tenderId AND planning_id = @planningId AND itemId = @itemId";
-                    await using var checkItemCmd = new MySqlCommand(checkItemQuery, conn);
-                    checkItemCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                    checkItemCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                    checkItemCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-
-                    var itemIdObj = await checkItemCmd.ExecuteScalarAsync();
-                    int itemId = itemIdObj != DBNull.Value ? Convert.ToInt32(itemIdObj) : 0;
-
-                    // If item exists, update it; otherwise, insert a new record
-                    if (itemId > 0)
+                    // 🔹 If Id > 0 => UPDATE all
+                    foreach (var item in model.Items)
                     {
-                        string updateItemQuery = @"
-                UPDATE tbl_project_material_requests 
-                SET RequestedQty = @qty, unit = @unit
-                WHERE id = @id;";
+                        if (item.ItemId == null || item.ItemId <= 0)
+                            continue;
 
-                        await using var updateItemCmd = new MySqlCommand(updateItemQuery, conn);
-                        updateItemCmd.Parameters.AddWithValue("@id", itemId);
-                        updateItemCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
-                        updateItemCmd.Parameters.AddWithValue("@unit", item.Unit);
+                        // Get the record ID if passed in (optional per item)
+                        int rowId = item.Id ?? 0;
 
-                        await updateItemCmd.ExecuteNonQueryAsync();
+                        if (rowId > 0)
+                        {
+                            // Update by row ID
+                            string updateQuery = @"
+                        UPDATE tbl_project_material_requests 
+                        SET RequestedDate = @requestedDate,
+                            itemId = @itemId,
+                            unit = @unit,
+                            RequestedQty = @qty
+                        WHERE id = @id;";
+
+                            await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                            updateCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                            updateCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                            updateCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                            updateCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+                            updateCmd.Parameters.AddWithValue("@id", rowId);
+
+                            await updateCmd.ExecuteNonQueryAsync();
+                        }
+                        else
+                        {
+                            // If no ID for this row, insert as new
+                            string insertQuery = @"
+                        INSERT INTO tbl_project_material_requests
+                            (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
+                        VALUES
+                            (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
+
+                            await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                            insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                            insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                            insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                            insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                            insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                            insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+
+                            await insertCmd.ExecuteNonQueryAsync();
+                        }
                     }
-                    else
-                    {
-                        string insertItemQuery = @"
-                INSERT INTO tbl_project_material_requests (tender_id, planning_id, itemId, RequestedQty, unit)
-                VALUES (@tenderId, @planningId, @itemId, @qty, @unit);";
 
-                        await using var insertItemCmd = new MySqlCommand(insertItemQuery, conn);
-                        insertItemCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                        insertItemCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                        insertItemCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-                        insertItemCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
-                        insertItemCmd.Parameters.AddWithValue("@unit", item.Unit);
-
-                        await insertItemCmd.ExecuteNonQueryAsync();
-                    }
+                    return Ok(new { status = true, message = "Material requests updated successfully" });
                 }
-
-                // ✅ Return success
-                return Ok(new
-                {
-                    status = true,
-                    message = model.Id == 0 ? "Material Request created successfully" : "Material Request updated successfully",
-                    id = requestId
-                });
             }
             catch (Exception ex)
             {

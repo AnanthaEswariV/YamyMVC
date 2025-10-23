@@ -467,10 +467,12 @@ namespace YamyProject.Core.Models
 
     public class MaterialItem
     {
+        public int? Id { get; set; }    
         public int ItemId { get; set; }
         public decimal RequestedQty { get; set; }
         public string Unit { get; set; }
     }
+
 
 
 

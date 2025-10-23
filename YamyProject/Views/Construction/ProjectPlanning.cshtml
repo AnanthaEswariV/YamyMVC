@@ -345,63 +345,42 @@
 
                             <!-- Modal Structure -->
                             <div class="modal fade" id="requestModal" tabindex="-1" aria-labelledby="requestModalLabel" aria-hidden="true">
-                                <div class="modal-dialog modal-lg">
+                                <div class="modal-dialog modal-xl">
                                     <div class="modal-content">
                                         <div class="modal-header bg-primary text-white">
-                                            <h5 class="modal-title" id="requestModalLabel">New Material Request</h5>
+                                            <h5 class="modal-title" id="requestModalLabel">Request Material - Edit</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
+
                                         <div class="modal-body">
                                             <form id="materialRequestForm">
-                                                <!-- Date Picker -->
-                                                <div class="mb-3">
-                                                    <label for="requestDate" class="form-label">Date</label>
-                                                    <input type="date" class="form-control" id="requestDate">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-3">
+                                                        <label for="requestDate" class="form-label fw-bold">Date</label>
+                                                        <input type="date" class="form-control" id="requestDate" value="">
+                                                    </div>
                                                 </div>
 
-                                                <!-- Material Description -->
-                                                <div class="mb-3">
-                                                    <label for="materialDescription" class="form-label">Description</label>
-                                                    <select class="form-select" id="materialDescription">
-                                                        <option value="">Select Item</option>
-                                                        <!-- Dynamic options will be loaded here -->
-                                                    </select>
-                                                </div>
-
-                                                <!-- Quantity -->
-                                                <div class="mb-3">
-                                                    <label for="quantity" class="form-label">Quantity</label>
-                                                    <input type="number" class="form-control" id="quantity" min="1">
-                                                </div>
-
-                                                <!-- Unit -->
-                                                <div class="mb-3">
-                                                    <label for="unit" class="form-label">Unit</label>
-                                                    <input type="text" class="form-control" id="unit" placeholder="Enter unit of measure">
-                                                </div>
-
-                                                <!-- Table to display the rows dynamically -->
-                                                <table class="table" id="materialTable">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>#</th>
+                                                <!-- Table Layout -->
+                                                <table class="table table-bordered align-middle" id="materialTable">
+                                                    <thead class="table-light">
+                                                        <tr class="text-center">
+                                                            <th style="width: 50px;">#</th>
                                                             <th>Description</th>
-                                                            <th>Quantity</th>
-                                                            <th>Unit</th>
+                                                            <th style="width: 120px;">QTY</th>
+                                                            <th style="width: 100px;">Unit</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <!-- Dynamic rows will be added here -->
+                                                        <!-- First dynamic row -->
                                                     </tbody>
                                                 </table>
-
-                                                <!-- Add Row Button -->
-                                                <button type="button" class="btn btn-success" id="addRowBtn">Add Row</button>
                                             </form>
                                         </div>
+
                                         <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="button" class="btn btn-primary" id="submitRequestBtn">Submit Request</button>
+                                            <button type="button" class="btn btn-primary" id="submitRequestBtn">Save</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1338,7 +1317,6 @@
                 data: { planningId: planningId },
                 success: function (res) {
                     const tbody = $('#requestTable tbody').empty();
-                    console.log(res);
 
                     // ✅ Check the correct structure
                     if (!res.status || !res.data || res.data.length === 0) {
@@ -1375,7 +1353,7 @@
                 data: { planningId: planningId },
                 success: function (res) {
                     const tbody = $('#issueTable tbody').empty();
-                    console.log("Issued:", res);
+                    
 
                     if (!res.status || !res.data || res.data.length === 0) {
                         tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
@@ -1409,7 +1387,6 @@
                 data: { planningId: planningId },
                 success: function (res) {
                     const tbody = $('#receiveTable tbody').empty();
-                    console.log("Received:", res);
 
                     if (!res.status || !res.data || res.data.length === 0) {
                         tbody.html('<tr><td colspan="7" class="text-center">No records found</td></tr>');
@@ -1444,7 +1421,6 @@
                 data: { planningId: planningId },
                 success: function (res) {
                     const tbody = $('#resourceTable tbody').empty();
-                    console.log("Resources:", res);
 
                     if (!res.status || !res.data || res.data.length === 0) {
                         tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
@@ -1508,80 +1484,117 @@
             }
         });
 
-        $(document).ready(function() {
-            $('#activityTable tbody').on('dblclick', 'tr', function() {
-                // Get row data
-                var rowData = $(this).children('td').map(function() {
-                    return $(this).text();
-                }).get();
 
-                // Fill modal inputs
-                $('#activityName').val(rowData[2]); 
-                $('#startDate').val(formatDate(rowData[3])); 
-                $('#endDate').val(formatDate(rowData[4]));  
-                $('#progress').val(rowData[5]); 
+                $(document).ready(function () {
 
-                // Open modal
-                var modal = new bootstrap.Modal(document.getElementById('activityModal'));
-                modal.show();
-            });
+            // Load items dynamically from tender selection
+            function loadItems(tenderId, targetDropdown = null) {
+                $.ajax({
+                    url: `/Construction/GetItemsByTenderId?tenderId=${tenderId}`,
+                    type: 'GET',
+                    success: function (response) {
+                        if (response.status) {
+                            const items = response.data;
 
+                            // If specific dropdown passed → populate only that
+                            const dropdowns = targetDropdown ? targetDropdown : $('.materialDescription');
 
-                 // Load items dynamically from the tender selection
-        function loadItems(tenderId) {
-            $.ajax({
-                url: `/Construction/GetItemsByTenderId?tenderId=${tenderId}`,
-                type: 'GET',
-                success: function (response) {
-                    if (response.status) {
-                        const items = response.data;
-                        const dropdown = $('#materialDescription');
-                        dropdown.empty();
-                        dropdown.append('<option value="">Select Item</option>');
-                        items.forEach(item => {
-                            dropdown.append(`<option value="${item.id}" data-unit="${item.unit}" data-qty="${item.qty}">${item.name}</option>`);
-                        });
-                    } else {
-                        alert('Error loading items');
+                            dropdowns.each(function () {
+                                const dropdown = $(this);
+                                const selectedValue = dropdown.val();
+
+                                dropdown.empty();
+                                dropdown.append('<option value="">Select Item</option>');
+                                items.forEach(item => {
+                                    dropdown.append(`<option value="${item.id}" data-unit="${item.unit}" data-qty="${item.qty}">${item.name}</option>`);
+                                });
+
+                                // Restore previous value if reloading all
+                                if (selectedValue && !targetDropdown) {
+                                    dropdown.val(selectedValue);
+                                }
+                            });
+                        } else {
+                            alert('Error loading items');
+                        }
+                    },
+                    error: function () {
+                        alert('An error occurred while fetching items.');
                     }
-                },
-                error: function () {
-                    alert('An error occurred while fetching items.');
+                });
+            }
+
+            // Function to add a new empty row
+            function addNewRow() {
+                const rowCount = $('#materialTable tbody tr').length + 1;
+                const newRow = $(`
+                    <tr>
+                        <td>${rowCount}</td>
+                        <td>
+                            <select class="form-select materialDescription">
+                                <option value="">Select Item</option>
+                            </select>
+                        </td>
+                        <td><input type="number" class="form-control quantity" min="1" /></td>
+                        <td><input type="text" class="form-control unit" /></td>
+                    </tr>
+                `);
+
+                $('#materialTable tbody').append(newRow);
+
+                // Load items only for the new dropdown
+                if (currentTenderId) loadItems(currentTenderId, newRow.find('.materialDescription'));
+            }
+
+            // Event: when a description is selected → fill qty/unit + auto add row
+            $('#materialTable').on('change', '.materialDescription', function () {
+                const selectedOption = $(this).find('option:selected');
+                const row = $(this).closest('tr');
+                const unit = selectedOption.data('unit');
+                const qty = selectedOption.data('qty');
+
+                row.find('.quantity').val(qty || '');
+                row.find('.unit').val(unit || '');
+
+                // If it's the last row and a valid item is selected → add new row
+                const isLastRow = row.is(':last-child');
+                if (isLastRow && selectedOption.val()) {
+                    addNewRow();
                 }
             });
-        }
 
-        // Event listener when an item is selected
-        $('#materialDescription').on('change', function () {
-            const selectedOption = $(this).find('option:selected');
-            const unit = selectedOption.data('unit');
-            const qty = selectedOption.data('qty');
-
-            // Set the unit and quantity based on the selected item
-            $('#unit').val(unit).prop('disabled', false); 
-            $('#quantity').val(qty).prop('disabled', false); 
-        });
-
-        // Submit request functionality
-        $('#submitRequestBtn').on('click', function () {
-            const selectedItem = $('#materialDescription').val();
-            const quantity = $('#quantity').val();
-            const unit = $('#unit').val();
-            const requestDate = $('#requestDate').val();
+            // Submit request
+            $('#submitRequestBtn').on('click', function () {
+                const requestDate = $('#requestDate').val();
+                const items = [];
+        $('#materialTable tbody tr').each(function () {
+            const descSelect = $(this).find('.materialDescription');
+            const selectedItem = parseInt(descSelect.val());
+            const quantity = parseFloat($(this).find('.quantity').val());
+            const unit = $(this).find('.unit').val();
 
             if (selectedItem && quantity && unit) {
-                const model = {
-                    TenderId: currentTenderId, 
-                    PlanningId: currentPlanningId,
-                    RequestedDate: requestDate,
-                    Items: [
-                        {
-                            ItemId: selectedItem,
-                            RequestedQty: quantity,
-                            Unit: unit
-                        }
-                    ]
-                };
+                items.push({
+                    ItemId: selectedItem,
+                    RequestedQty: quantity,
+                    Unit: unit
+                });
+            }
+        });
+
+
+                if (items.length === 0) {
+                    alert('Please add at least one item.');
+                    return;
+                }
+
+                      const model = {
+            TenderId: currentTenderId,
+            PlanningId: currentPlanningId,
+            RequestedDate: requestDate, // must be a valid date string
+            Items: items                // must be an array of { ItemId, RequestedQty, Unit }
+        };
+
 
                 $.ajax({
                     url: '/Construction/SaveOrUpdateMaterialRequest',
@@ -1592,6 +1605,8 @@
                         if (response.status) {
                             alert('Material request submitted successfully');
                             $('#requestModal').modal('hide');
+                            $('#materialTable tbody').empty();
+                            addNewRow(); // reset for next entry
                         } else {
                             alert('Error submitting request');
                         }
@@ -1600,18 +1615,20 @@
                         alert('An error occurred while submitting the request.');
                     }
                 });
-            } else {
-                alert('Please fill out all fields.');
-            }
+            });
+
+            // When modal opens, load items & create the first row
+            $('#requestModal').on('shown.bs.modal', function () {
+                $('#materialTable tbody').empty();
+                addNewRow();
+                if (currentTenderId) {
+                    loadItems(currentTenderId);
+                }
+            });
         });
 
-        // Call loadItems when the modal is shown
-        $('#requestModal').on('shown.bs.modal', function () {
-            if (currentTenderId) {
-                loadItems(currentTenderId);
-            }
-        });
-        });
+
+
 
         function formatDate(dateStr) {
             // Convert DD/MM/YYYY to YYYY-MM-DD for input[type=date]
@@ -1629,114 +1646,7 @@
             });
         });
 
-
-                $(document).ready(function () {
-
-            // Function to load items from the API
-            function loadItems() {
-                $.ajax({
-                    url: '/api/getItems',  // Replace this with your actual API URL
-                    type: 'GET',
-                    success: function (response) {
-                        if (response.status) {
-                            const items = response.data;  // Assuming your API returns the list of items as 'data'
-                            const dropdown = $('#materialDescription');
-                            dropdown.empty();
-                            dropdown.append('<option value="">Select Item</option>');
-                            items.forEach(item => {
-                                dropdown.append(`<option value="${item.id}" data-unit="${item.unit}" data-qty="${item.qty}">${item.name}</option>`);
-                            });
-                        } else {
-                            alert('Error loading items');
-                        }
-                    },
-                    error: function () {
-                        alert('An error occurred while fetching items.');
-                    }
-                });
-            }
-
-            // Load items when the modal is shown
-            $('#requestModal').on('shown.bs.modal', function () {
-                loadItems();
-            });
-
-            // Handle "Add Row" button click
-            $('#addRowBtn').on('click', function () {
-                const selectedItem = $('#materialDescription').val();
-                const quantity = $('#quantity').val();
-                const unit = $('#unit').val();
-
-                if (selectedItem && quantity && unit) {
-                    // Get item details based on selected item
-                    const selectedOption = $('#materialDescription option:selected');
-                    const itemName = selectedOption.text();
-                    const itemUnit = selectedOption.data('unit');
-                    const itemQty = selectedOption.data('qty');
-
-                    // Add the row to the table
-                    const newRow = `
-                        <tr>
-                            <td>${$('#materialTable tbody tr').length + 1}</td>
-                            <td>${itemName}</td>
-                            <td>${quantity}</td>
-                            <td>${unit}</td>
-                        </tr>
-                    `;
-                    $('#materialTable tbody').append(newRow);
-
-                    // Reset the form inputs for the next row
-                    $('#materialDescription').val('');
-                    $('#quantity').val('');
-                    $('#unit').val('');
-                } else {
-                    alert('Please fill in all fields before adding a row.');
-                }
-            });
-
-            // Handle form submission
-            $('#submitRequestBtn').on('click', function () {
-                const rows = [];
-                $('#materialTable tbody tr').each(function () {
-                    const cells = $(this).find('td');
-                    const row = {
-                        description: cells.eq(1).text(),
-                        quantity: cells.eq(2).text(),
-                        unit: cells.eq(3).text()
-                    };
-                    rows.push(row);
-                });
-
-                if (rows.length > 0) {
-                    // Call your API to submit the data (example)
-                    const requestData = {
-                        requestDate: $('#requestDate').val(),
-                        items: rows
-                    };
-
-                    $.ajax({
-                        url: '/api/SaveMaterialRequest', // Replace with your actual API endpoint
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify(requestData),
-                        success: function (response) {
-                            alert('Material request submitted successfully');
-                            $('#requestModal').modal('hide');
-                        },
-                        error: function () {
-                            alert('Error submitting the material request');
-                        }
-                    });
-                } else {
-                    alert('Please add at least one item.');
-                }
-            });
-        });
-
-
-
-          
-
+0
 
    </script>
 
