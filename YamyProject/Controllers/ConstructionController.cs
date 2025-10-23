@@ -2058,64 +2058,6 @@ namespace YamyProject.Controllers
             await cmd.ExecuteNonQueryAsync();
         }
 
-        //    [HttpGet]
-        //    public async Task<IActionResult> GetActivityPlanning(int tenderId)
-        //    {
-        //        try
-        //        {
-        //            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"));
-        //            var dbName = HttpContext.Session.GetString("DatabaseName");
-        //            connStrBuilder.Database = string.IsNullOrEmpty(dbName)
-        //                ? _config.GetConnectionString("DefaultDatabase")
-        //                : dbName;
-
-        //            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-        //            await conn.OpenAsync();
-
-        //            const string query = @"
-        //SELECT pd.sr, 
-        //       COALESCE(b.name, i.name) AS name,
-        //       pd.start_date, 
-        //       pd.end_date, 
-        //       pd.progress
-        //FROM tbl_project_tender_details pd
-        //LEFT JOIN tbl_items_boq b 
-        //       ON pd.tender_id = b.ref_id AND pd.item_id = b.id
-        //LEFT JOIN tbl_items i 
-        //       ON pd.item_id = i.id
-        //WHERE pd.tender_id = @id;";
-
-
-        //            await using var cmd = new MySqlCommand(query, conn);
-        //            cmd.Parameters.AddWithValue("@id", tenderId);
-
-        //            var activityList = new List<object>();
-        //            int count = 1;
-        //            await using var reader = await cmd.ExecuteReaderAsync();
-
-        //            while (await reader.ReadAsync())
-        //            {
-        //                activityList.Add(new
-        //                {
-        //                    SNo = count++,
-        //                    Sr = reader["sr"]?.ToString(),
-        //                    Name = reader["name"]?.ToString(),
-        //                    StartDate = reader["start_date"] == DBNull.Value ? null :
-        //                                Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd"),
-        //                    EndDate = reader["end_date"] == DBNull.Value ? null :
-        //                              Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd"),
-        //                    Progress = reader["progress"] == DBNull.Value ? "0" : reader["progress"].ToString()
-        //                });
-        //            }
-
-        //            return Ok(new { status = true, data = activityList });
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            return StatusCode(500, new { status = false, message = ex.Message });
-        //        }
-        //    }
-
         [HttpGet]
         public async Task<IActionResult> GetProjectTenderDetails(int tenderId)
         {
@@ -2902,7 +2844,103 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectResources(int? planningId = null)
+        {
+            try
+            {
+                // Validate session
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
+                // Build connection dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query to load all resources
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY pr.id) AS SN,
+                pr.id,
+                pr.code,
+                pr.date,
+                pr.name,
+                r.name AS roleName,
+                pr.phone,
+                pr.type,
+                pr.price_unit,
+                pr.unit_time,
+                pr.max_unit_time
+            FROM tbl_project_resource pr
+            INNER JOIN tbl_project_role r ON r.id = pr.role;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var resources = new List<dynamic>();
+                while (await reader.ReadAsync())
+                {
+                    resources.Add(new
+                    {
+                        sn = reader.GetInt32("SN"),
+                        id = reader.GetInt32("id"),
+                        code = reader["code"].ToString(),
+                        name = reader["name"].ToString(),
+                        type = reader["type"].ToString(),
+                        roleName = reader["roleName"].ToString(),
+                        unitTime = reader["unit_time"].ToString(),
+                        priceUnit = reader["price_unit"].ToString(),
+                        maxUnitTime = reader["max_unit_time"].ToString(),
+                        phone = reader["phone"].ToString(),
+                        date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
+                        selected = false // will be updated later if planningId is provided
+                    });
+                }
+
+                await reader.CloseAsync();
+
+                // If planningId is provided, mark assigned resources as selected
+                if (planningId.HasValue)
+                {
+                    string assignedQuery = @"
+                SELECT id 
+                FROM tbl_project_resource 
+                WHERE EXISTS (
+                    SELECT 1 FROM tbl_project_planning p 
+                    WHERE p.id = @planningId 
+                    AND FIND_IN_SET(tbl_project_resource.id, p.assigned_team) > 0
+                );
+            ";
+
+                    await using var assignedCmd = new MySqlCommand(assignedQuery, conn);
+                    assignedCmd.Parameters.AddWithValue("@planningId", planningId.Value);
+
+                    var assignedIds = new List<int>();
+                    await using var assignedReader = await assignedCmd.ExecuteReaderAsync();
+                    while (await assignedReader.ReadAsync())
+                        assignedIds.Add(assignedReader.GetInt32("id"));
+
+                    foreach (var res in resources)
+                    {
+                        if (assignedIds.Contains((int)res.id))
+                            res.selected = true;
+                    }
+                }
+
+                return Ok(new { status = true, data = resources });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 

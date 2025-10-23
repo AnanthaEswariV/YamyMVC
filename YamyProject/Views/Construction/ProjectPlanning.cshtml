@@ -545,7 +545,7 @@
 
                         <!-- Resource Tab -->
                         <div class="tab-pane fade" id="resource" role="tabpanel" aria-labelledby="resource-tab">
-                            <button class="btn btn-primary rounded-3" id="addRequestBtn" data-bs-toggle="modal" data-bs-target="#tenderModal">
+                            <button class="btn btn-primary rounded-3" id="addRequestBtn" data-bs-toggle="modal" data-bs-target="#assignResourceModal">
                                 <i class="fas fa-plus me-2"></i> Add Resource
                             </button>
                             <div class="table-responsive">
@@ -688,8 +688,190 @@
     </div>
 </div>
 
+<!-- Assign Resource Modal -->
+<div class="modal fade" id="assignResourceModal" tabindex="-1" aria-labelledby="assignResourceLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="assignResourceLabel">Assign Resource - New</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 10%">Code</th>
+                            <th style="width: 30%">Resource Name</th>
+                            <th style="width: 15%">Resource Type</th>
+                            <th style="width: 15%">Primary Role</th>
+                            <th style="width: 15%">Default Units / Time</th>
+                            <th style="width: 10%">Select</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer d-flex justify-content-between">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#projectResourceModal">New Resource</button>
+                <div>
+                    <button type="button" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- Project Resource - New Modal -->
+<div class="modal fade" id="projectResourceModal" tabindex="-1" aria-labelledby="projectResourceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="projectResourceModalLabel">Project Resource - New</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <form id="projectResourceForm">
+
+                    <!-- Row 1 -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Code</label>
+                            <input type="text" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" placeholder="Enter name">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" class="form-control" placeholder="Enter phone">
+                        </div>
+                    </div>
+
+                    <!-- Row 2 -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Role</label>
+                            <div class="input-group">
+                                <select class="form-select">
+                                </select>
+                                <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#newRoleModal">New</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Type & Unit Section -->
+                    <div class="row">
+                        <!-- Type Section -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 mb-3">
+                                <h6 class="text-muted">Type</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="type" id="labour" value="Labour" checked>
+                                    <label class="form-check-label" for="labour">Labour</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="type" id="nonlabour" value="NonLabour">
+                                    <label class="form-check-label" for="nonlabour">Non Labour (Machinery, Equipment, etc.)</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="type" id="material" value="Material">
+                                    <label class="form-check-label" for="material">Material</label>
+                                </div>
+
+                                <div id="employeeSection">
+                                    <label class="form-label">Employee</label>
+                                    <select class="form-select">
+                                        <option selected>Select Employee</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Units, Time & Prices -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 mb-3">
+                                <h6 class="text-muted">Units / Time & Prices</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Price/Unit ($/h)</label>
+                                    <input type="number" class="form-control" placeholder="Enter price">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Default Units/Time (8/d)</label>
+                                    <input type="number" class="form-control" placeholder="Enter default">
+                                </div>
+                                <div>
+                                    <label class="form-label">Max Units/Time (8/d)</label>
+                                    <input type="number" class="form-control" placeholder="Enter max">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Role Modal -->
+<div class="modal fade" id="newRoleModal" tabindex="-1" aria-labelledby="newRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title" id="newRoleModalLabel">Enter Role and Code</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="newRoleForm">
+                    <div class="mb-3">
+                        <label class="form-label">Code:</label>
+                        <input type="text" id="roleCode" class="form-control" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role:</label>
+                        <input type="text" id="roleName" class="form-control" placeholder="Enter role">
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="saveRoleBtn">OK</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 
 @section Scripts {
+
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 
@@ -1923,6 +2105,74 @@
                 $('#receiveMaterialTable tbody').empty();
                 addReceiveRow();
             });
+
+
+        // Trigger when Assign Resource modal opens
+        $('#assignResourceModal').on('shown.bs.modal', function () {
+            loadProjectResources();
+        });
+
+        // Load resources from API
+        function loadProjectResources() {
+            const planningId = $('#PlanningId').val() || 0; // Optional hidden field or variable
+            const apiUrl = `/Construction/GetProjectResources?planningId=${planningId}`;
+
+            $('tbody', '#assignResourceModal').empty(); // clear old rows
+
+            $.ajax({
+                url: apiUrl,
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status && response.data.length > 0) {
+                        const tbody = $('#assignResourceModal tbody');
+                        $.each(response.data, function (i, item) {
+                            const checked = item.selected ? 'checked' : '';
+                            const row = `
+                                <tr>
+                                    <td>${item.sn}</td>
+                                    <td>${item.code}</td>
+                                    <td>${item.name}</td>
+                                    <td>${item.type}</td>
+                                    <td>${item.roleName}</td>
+                                    <td>${item.unitTime}</td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input select-resource" data-id="${item.id}" ${checked}>
+                                    </td>
+                                </tr>`;
+                            tbody.append(row);
+                        });
+                    } else {
+                        $('#assignResourceModal tbody').html(`<tr><td colspan="7" class="text-center text-muted">No resources found</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    $('#assignResourceModal tbody').html(`<tr><td colspan="7" class="text-center text-danger">Failed to load resources</td></tr>`);
+                }
+            });
+        }
+
+
+        });
+
+
+             // Function to toggle employee dropdown
+        function toggleEmployeeDropdown() {
+            const selectedType = $('input[name="type"]:checked').val();
+            if (selectedType === "Labour") {
+                $('#employeeSection').show();
+            } else {
+                $('#employeeSection').hide();
+            }
+        }
+
+        // Initial check on page load
+        toggleEmployeeDropdown();
+
+        // When type changes
+        $('input[name="type"]').change(function() {
+            toggleEmployeeDropdown();
         });
 
 
