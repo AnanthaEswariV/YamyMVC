@@ -472,7 +472,35 @@ namespace YamyProject.Core.Models
         public decimal RequestedQty { get; set; }
         public string Unit { get; set; }
     }
+    public class IssueMaterialModel
+    {
+        public int TenderId { get; set; }
+        public int PlanningId { get; set; }
+        public DateTime IssueDate { get; set; }
+        public List<IssueMaterialItem> Items { get; set; }
+    }
 
+    public class IssueMaterialItem
+    {
+        public int ItemId { get; set; }
+        public decimal IssuedQty { get; set; }
+        public string Unit { get; set; }
+    }
+
+    public class ReceiveMaterialModel
+    {
+        public int TenderId { get; set; }
+        public int PlanningId { get; set; }
+        public DateTime ReceiveDate { get; set; }
+        public List<ReceiveMaterialItem> Items { get; set; }
+    }
+
+    public class ReceiveMaterialItem
+    {
+        public int ItemId { get; set; }
+        public decimal ReceivedQty { get; set; }
+        public string Unit { get; set; }
+    }
 
 
 

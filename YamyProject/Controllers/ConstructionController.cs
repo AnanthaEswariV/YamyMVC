@@ -2199,6 +2199,8 @@ namespace YamyProject.Controllers
             }
         }
 
+        #region Tab Get API
+
         [HttpGet]
         public async Task<IActionResult> GetRequestedMaterial(int planningId)
         {
@@ -2472,6 +2474,8 @@ namespace YamyProject.Controllers
             }
         }
 
+        #endregion
+
         [HttpPost]
         public async Task<IActionResult> SaveOrUpdateMaterialRequest([FromBody] MaterialRequest model)
         {
@@ -2646,6 +2650,257 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
             }
         }
+
+        #region Add Dropdown API
+
+        [HttpGet]
+        public async Task<IActionResult> GetRequestedData(int planningId)
+        {
+            if (planningId <= 0)
+                return BadRequest(new { status = false, message = "Planning ID is required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                rm.id,
+                rm.RequestedQty AS qty,
+                rm.RequestedDate AS date,
+                rm.unit,
+                rm.itemId As ItemId,
+                boq.sr,
+                boq.name,
+                'Requested' AS status
+            FROM tbl_project_material_requests rm
+            INNER JOIN tbl_items_boq boq 
+                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+            WHERE rm.planning_id = @planningId
+              AND rm.RequestedDate IS NOT NULL
+              AND rm.IssuedDate IS NULL
+              AND rm.ReceivedDate IS NULL;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var materialRequests = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string requestedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    materialRequests.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = requestedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = "Requested",
+                        ItemId = reader.GetInt32("ItemId")
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = materialRequests
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateIssueMaterial([FromBody] IssueMaterialModel model)
+        {
+            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Invalid data provided" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            UPDATE tbl_project_material_requests 
+            SET IssuedDate = @IssuedDate, IssuedQty = @IssuedQty
+            WHERE planning_id = @PlanningId 
+              AND tender_id = @TenderId 
+              AND itemId = @ItemId;";
+
+                foreach (var item in model.Items)
+                {
+                    await using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
+                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
+                    cmd.Parameters.AddWithValue("@IssuedDate", model.IssueDate);
+                    cmd.Parameters.AddWithValue("@IssuedQty", item.IssuedQty);
+                    await cmd.ExecuteNonQueryAsync();
+
+                }
+
+                return Ok(new { status = true, message = "Issue Material updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPendingReceivedMaterials(int planningId)
+        {
+            if (planningId <= 0)
+                return BadRequest(new { status = false, message = "Planning ID is required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                rm.id,
+                rm.RequestedQty AS qty,
+                rm.RequestedDate,
+                rm.IssuedDate,
+                rm.ReceivedDate,
+                rm.unit,
+                rm.itemId AS ItemId,
+                boq.sr,
+                boq.name,
+                'Issued' AS status
+            FROM tbl_project_material_requests rm
+            INNER JOIN tbl_items_boq boq 
+                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+            WHERE rm.planning_id = @planningId
+              AND rm.ReceivedDate IS NULL;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var materialRequests = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    materialRequests.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        RequestedDate = reader["RequestedDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["RequestedDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        IssuedDate = reader["IssuedDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["IssuedDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        ReceivedDate = reader["ReceivedDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["ReceivedDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString(),
+                        ItemId = reader.GetInt32("ItemId")
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = materialRequests
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateReceiveMaterial([FromBody] ReceiveMaterialModel model)
+        {
+            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Invalid data provided" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Ensure we always use today if no date provided
+                var receiveDate = model.ReceiveDate == default ? DateTime.Today : model.ReceiveDate;
+
+                string query = @"
+            UPDATE tbl_project_material_requests 
+            SET ReceivedDate = @ReceivedDate, ReceivedQty = @ReceivedQty
+            WHERE planning_id = @PlanningId 
+              AND tender_id = @TenderId 
+              AND itemId = @ItemId;";
+
+                foreach (var item in model.Items)
+                {
+                    await using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
+                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
+                    cmd.Parameters.AddWithValue("@ReceivedDate", receiveDate);
+                    cmd.Parameters.AddWithValue("@ReceivedQty", item.ReceivedQty);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+
+                    if (affected == 0)
+                    {
+                        Console.WriteLine($"No rows updated for ItemId={item.ItemId}, PlanningId={model.PlanningId}, TenderId={model.TenderId}");
+                    }
+                }
+
+                return Ok(new { status = true, message = "Received material updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
 
 
 
