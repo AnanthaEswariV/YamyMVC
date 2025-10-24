@@ -2412,8 +2412,23 @@
         });
 
                    $('#assignResourceModal').on('show.bs.modal', function (e) {
-            const planningId = $(e.relatedTarget).data('planning-id'); // gets ID from the element that triggered modal
+            const planningId = $(e.relatedTarget).data('planning-id'); 
             if (planningId) $('#currentPlanningId').val(planningId);
+        });
+
+           // Double click event (unchanged)
+        $('#activityTable tbody').on('dblclick', 'tr', function () {
+            var rowData = $(this).children('td').map(function () {
+                return $(this).text();
+            }).get();
+
+            $('#activityName').val(rowData[2]);
+            $('#startDate').val(formatDate(rowData[3]));
+            $('#endDate').val(formatDate(rowData[4]));
+            $('#progress').val(rowData[5]);
+
+            var modal = new bootstrap.Modal(document.getElementById('activityModal'));
+            modal.show();
         });
 
 
