@@ -123,10 +123,11 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
+
         $(document).ready(function () {
 
 
-                    function loadProjectSites() {
+            function loadProjectSites() {
             $.ajax({
                 url: '/Construction/GetProjectSites',
                 type: 'GET',
@@ -203,7 +204,7 @@
 
             loadProjectSites();
         
-                    function loadCityDropdown() {
+            function loadCityDropdown() {
             $.ajax({
                 url: '/Construction/GetCities',
                 type: 'GET',
@@ -225,10 +226,9 @@
             });
         }
 
-        loadCityDropdown();
+            loadCityDropdown();
 
-
-                $(document).on("click", ".editSiteBtn", function () {
+             $(document).on("click", ".editSiteBtn", function () {
             const site = $(this).data("site");
             if (!site) return;
 
@@ -242,9 +242,7 @@
             $("#siteModal").modal("show");
         });
 
-
-                // Save Site (Add/Edit)
-        $("#siteForm").on("submit", function (e) {
+             $("#siteForm").on("submit", function (e) {
             e.preventDefault();
             const form = this;
             if (!form.checkValidity()) {
@@ -282,8 +280,7 @@
             });
         });
 
-
-                $(document).on('click', '.deleteSiteBtn', function() {
+              $(document).on('click', '.deleteSiteBtn', function() {
             const id = $(this).data('id');
             if (!confirm('Are you sure you want to delete this site?')) return;
 
@@ -305,7 +302,7 @@
         });
 
 
-
         });
+
     </script>
 }

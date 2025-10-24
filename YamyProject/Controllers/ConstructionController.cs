@@ -2942,6 +2942,374 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateRole([FromBody] ProjectRoleRequest model)
+        {
+
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request" });
+
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return Json(new { status = false, message = "Please enter Role Name" });
+
+                try
+                {
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Unauthorized(new { status = false, message = "User not logged in" });
+
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+
+                    // 1️⃣ Check if role name already exists
+                    string checkQuery = "SELECT id FROM tbl_project_role WHERE name=@name";
+                    await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        var existingId = await checkCmd.ExecuteScalarAsync();
+
+                        if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                        {
+                            return Json(new { status = false, message = "Role name already in use" });
+                        }
+                    }
+
+                    // 2️⃣ Generate role code automatically (R1, R2, R3...)
+                    string roleCode = model.Id == 0 ? await GenerateNextRoleCode(conn) : model.Code;
+
+                    if (model.Id == 0)
+                    {
+                        // 3️⃣ Insert new role
+                        string insertQuery = @"
+                INSERT INTO tbl_project_role (code, name)
+                VALUES (@code, @name);
+                SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertQuery, conn);
+                        cmd.Parameters.AddWithValue("@code", roleCode);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                      
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Role inserted successfully",
+                            id = newId,
+                            code = roleCode
+                        });
+                    }
+                    else
+                    {
+                        // 4️⃣ Update existing role
+                        string updateQuery = "UPDATE tbl_project_role SET name=@name, code=@code WHERE id=@id";
+                        await using var cmd = new MySqlCommand(updateQuery, conn);
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        cmd.Parameters.AddWithValue("@code", roleCode);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                            return NotFound(new { status = false, message = "Role not found" });
+
+                        // Optional: Audit log
+                        string audit = "INSERT INTO tbl_audit_log (user_id, action, module, ref_id, description) VALUES (@user_id, @action, @module, @ref_id, @desc)";
+                        await using (var auditCmd = new MySqlCommand(audit, conn))
+                        {
+                            auditCmd.Parameters.AddWithValue("@user_id", userId);
+                            auditCmd.Parameters.AddWithValue("@action", "Update Project Role");
+                            auditCmd.Parameters.AddWithValue("@module", "Project Role");
+                            auditCmd.Parameters.AddWithValue("@ref_id", model.Id);
+                            auditCmd.Parameters.AddWithValue("@desc", "Updated Project Role: " + model.Name);
+                            await auditCmd.ExecuteNonQueryAsync();
+                        }
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Role updated successfully",
+                            id = model.Id,
+                            code = roleCode
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextRoleCode(MySqlConnection conn)
+        {
+            try
+            {
+                string query = "SELECT code FROM tbl_project_role ORDER BY id DESC LIMIT 1";
+                await using var cmd = new MySqlCommand(query, conn);
+                var lastCodeObj = await cmd.ExecuteScalarAsync();
+
+                if (lastCodeObj == null || string.IsNullOrWhiteSpace(lastCodeObj.ToString()))
+                    return "R1";
+
+                string lastCode = lastCodeObj.ToString();
+                if (int.TryParse(lastCode.Replace("R", ""), out int num))
+                    return $"R{num + 1}";
+
+                return "R1";
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+          
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetRoles()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = "SELECT id, code, name FROM tbl_project_role ORDER BY id ASC";
+                var roles = new List<object>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        roles.Add(new
+                        {
+                            id = reader.GetInt32("id"),
+                            code = reader.GetString("code"),
+                            name = reader.GetString("name")
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = roles });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectResource([FromBody] ProjectResourceRequest model)
+        {
+
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request" });
+
+                if (string.IsNullOrWhiteSpace(model.Role))
+                    return Json(new { status = false, message = "Role can't be empty" });
+
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return Json(new { status = false, message = "Name can't be empty" });
+
+                if (model.Type == "Labour" && (model.EmployeeId == null || model.EmployeeId <= 0))
+                    return Json(new { status = false, message = "Employee name can't be empty" });
+
+                try
+                {
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Json(new { status = false, message = "User not logged in" });
+
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+
+                    // 🔹 Auto-generate code if empty
+                    string resourceCode = string.IsNullOrEmpty(model.Code)
+                        ? await GenerateNextResourceCode(conn)
+                        : model.Code;
+
+                    if (model.Id == 0)
+                    {
+                        // 🟩 INSERT new resource
+                        string insertQuery = @"
+                INSERT INTO tbl_project_resource
+                (code, date, name, role, phone, type, price_unit, unit_time, max_unit_time, employee_id)
+                VALUES (@code, @date, @name, @role, @phone, @type, @priceUnit, @unitTime, @maxUnitTime, @empId);
+                SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertQuery, conn);
+                        cmd.Parameters.AddWithValue("@code", resourceCode);
+                        cmd.Parameters.AddWithValue("@date", model.Date);
+                        cmd.Parameters.AddWithValue("@name", model.Name);
+                        cmd.Parameters.AddWithValue("@role", model.Role);
+                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
+                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
+                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
+
+                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Resource inserted successfully",
+                            id = newId,
+                            code = resourceCode
+                        });
+                    }
+                    else
+                    {
+                        // 🟦 UPDATE existing resource
+                        string updateQuery = @"
+                UPDATE tbl_project_resource
+                SET date = @date, name = @name, role = @role, phone = @phone, type = @type,
+                    code = @code, price_unit = @priceUnit, unit_time = @unitTime,
+                    max_unit_time = @maxUnitTime, employee_id = @empId
+                WHERE id = @id";
+
+                        await using var cmd = new MySqlCommand(updateQuery, conn);
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@code", resourceCode);
+                        cmd.Parameters.AddWithValue("@date", model.Date);
+                        cmd.Parameters.AddWithValue("@name", model.Name);
+                        cmd.Parameters.AddWithValue("@role", model.Role);
+                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
+                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
+                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                            return NotFound(new { status = false, message = "Resource not found" });
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Resource updated successfully",
+                            id = model.Id,
+                            code = resourceCode
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Json(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+
+        }
+
+        private async Task<string> GenerateNextResourceCode(MySqlConnection conn)
+        {
+            try
+            {
+                string query = "SELECT code FROM tbl_project_resource ORDER BY id DESC LIMIT 1";
+                await using var cmd = new MySqlCommand(query, conn);
+                var lastCodeObj = await cmd.ExecuteScalarAsync();
+
+                if (lastCodeObj == null)
+                    return "RS1";
+
+                string lastCode = lastCodeObj.ToString();
+                if (int.TryParse(lastCode.Replace("RS", ""), out int num))
+                    return $"RS{num + 1}";
+                return "RS1";
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AssignResources([FromBody] AssignResourcesRequest model)
+        {
+            try
+            {
+                if (model == null || model.PlanningId <= 0)
+                    return Json(new { status = false, message = "Invalid request" });
+
+                try
+                {
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Json(new { status = false, message = "User not logged in" });
+
+                    // Convert list of ResourceIds to comma-separated string
+                    string assignedTeam = model.ResourceIds != null && model.ResourceIds.Count > 0
+                        ? string.Join(",", model.ResourceIds)
+                        : "";
+
+                    // Build connection string
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+
+                    // Update assigned_team
+                    string updateQuery = "UPDATE tbl_project_planning SET assigned_team=@assignedTeam WHERE id=@id";
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@assignedTeam", assignedTeam);
+                    cmd.Parameters.AddWithValue("@id", model.PlanningId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+
+                    if (affected > 0)
+                    {
+                        return Ok(new { status = true, message = "Resources assigned successfully", assignedTeam });
+                    }
+                    else
+                    {
+                        return Json(new { status = false, message = "Planning record not found" });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Json(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+
+        }
         #endregion
 
 

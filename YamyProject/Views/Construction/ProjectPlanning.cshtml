@@ -701,28 +701,30 @@
 
             <!-- Body -->
             <div class="modal-body">
-                <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 5%">#</th>
-                            <th style="width: 10%">Code</th>
-                            <th style="width: 30%">Resource Name</th>
-                            <th style="width: 15%">Resource Type</th>
-                            <th style="width: 15%">Primary Role</th>
-                            <th style="width: 15%">Default Units / Time</th>
-                            <th style="width: 10%">Select</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
+                <form id="assignResourceForm">
+                    <table class="table table-bordered table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%">#</th>
+                                <th style="width: 10%">Code</th>
+                                <th style="width: 30%">Resource Name</th>
+                                <th style="width: 15%">Resource Type</th>
+                                <th style="width: 15%">Primary Role</th>
+                                <th style="width: 15%">Default Units / Time</th>
+                                <th style="width: 10%">Select</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </form>
             </div>
 
             <!-- Footer -->
             <div class="modal-footer d-flex justify-content-between">
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#projectResourceModal">New Resource</button>
                 <div>
-                    <button type="button" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-primary" id="saveAssignResourceBtn">Save</button>
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -736,34 +738,33 @@
 <div class="modal fade" id="projectResourceModal" tabindex="-1" aria-labelledby="projectResourceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-
-            <!-- Header -->
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="projectResourceModalLabel">Project Resource - New</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <!-- Body -->
             <div class="modal-body">
-                <form id="projectResourceForm">
+                <form id="projectResourceForm" novalidate>
+                    <!-- Hidden ID -->
+                    <input type="hidden" id="resourceId" value="0">
 
                     <!-- Row 1 -->
                     <div class="row mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Date</label>
-                            <input type="date" class="form-control">
+                            <input id="resourceDate" type="date" class="form-control" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Code</label>
-                            <input type="text" class="form-control">
+                            <input id="resourceCode" type="text" class="form-control" readonly>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Name</label>
-                            <input type="text" class="form-control" placeholder="Enter name">
+                            <input id="resourceName" type="text" class="form-control" placeholder="Enter name" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Phone</label>
-                            <input type="text" class="form-control" placeholder="Enter phone">
+                            <input id="resourcePhone" type="text" class="form-control" placeholder="Enter phone">
                         </div>
                     </div>
 
@@ -772,7 +773,8 @@
                         <div class="col-md-6">
                             <label class="form-label">Role</label>
                             <div class="input-group">
-                                <select class="form-select">
+                                <select id="roleDropdown" class="form-select" required>
+                                    <option value="">-- Select Role --</option>
                                 </select>
                                 <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#newRoleModal">New</button>
                             </div>
@@ -781,58 +783,57 @@
 
                     <!-- Type & Unit Section -->
                     <div class="row">
-                        <!-- Type Section -->
                         <div class="col-md-6">
                             <div class="border rounded p-3 mb-3">
                                 <h6 class="text-muted">Type</h6>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="type" id="labour" value="Labour" checked>
-                                    <label class="form-check-label" for="labour">Labour</label>
+                                    <input class="form-check-input" type="radio" name="type" id="typeLabour" value="Labour" checked>
+                                    <label class="form-check-label" for="typeLabour">Labour</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="type" id="nonlabour" value="NonLabour">
-                                    <label class="form-check-label" for="nonlabour">Non Labour (Machinery, Equipment, etc.)</label>
+                                    <input class="form-check-input" type="radio" name="type" id="typeNonLabour" value="NonLabour">
+                                    <label class="form-check-label" for="typeNonLabour">Non Labour (Machinery, Equipment, etc.)</label>
                                 </div>
                                 <div class="form-check mb-3">
-                                    <input class="form-check-input" type="radio" name="type" id="material" value="Material">
-                                    <label class="form-check-label" for="material">Material</label>
+                                    <input class="form-check-input" type="radio" name="type" id="typeMaterial" value="Material">
+                                    <label class="form-check-label" for="typeMaterial">Material</label>
                                 </div>
 
                                 <div id="employeeSection">
                                     <label class="form-label">Employee</label>
-                                    <select class="form-select">
-                                        <option selected>Select Employee</option>
+                                    <select id="employeeDropdown" class="form-select">
+                                        <option value="">Select Employee</option>
                                     </select>
+
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Units, Time & Prices -->
                         <div class="col-md-6">
                             <div class="border rounded p-3 mb-3">
                                 <h6 class="text-muted">Units / Time & Prices</h6>
                                 <div class="mb-3">
                                     <label class="form-label">Price/Unit ($/h)</label>
-                                    <input type="number" class="form-control" placeholder="Enter price">
+                                    <input id="priceUnit" type="number" class="form-control" placeholder="Enter price">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Default Units/Time (8/d)</label>
-                                    <input type="number" class="form-control" placeholder="Enter default">
+                                    <input id="unitTime" type="number" class="form-control" placeholder="Enter default">
                                 </div>
                                 <div>
                                     <label class="form-label">Max Units/Time (8/d)</label>
-                                    <input type="number" class="form-control" placeholder="Enter max">
+                                    <input id="maxUnitTime" type="number" class="form-control" placeholder="Enter max">
                                 </div>
                             </div>
                         </div>
                     </div>
-                </form>
-            </div>
 
-            <!-- Footer -->
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Save</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <!-- Footer -->
+                    <div class="modal-footer">
+                        <button id="saveResourceBtn" type="submit" class="btn btn-primary">Save</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -842,32 +843,34 @@
 <div class="modal fade" id="newRoleModal" tabindex="-1" aria-labelledby="newRoleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">
-
             <div class="modal-header bg-primary text-white">
-                <h6 class="modal-title" id="newRoleModalLabel">Enter Role and Code</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h6 class="modal-title" id="newRoleModalLabel">New Role</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body">
-                <form id="newRoleForm">
+            <form id="newRoleForm" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" id="roleId" value="0">
                     <div class="mb-3">
-                        <label class="form-label">Code:</label>
-                        <input type="text" id="roleCode" class="form-control" readonly>
+                        <label class="form-label">Code</label>
+                        <input type="text" id="roleCode" class="form-control" readonly placeholder="Auto generated">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Role:</label>
-                        <input type="text" id="roleName" class="form-control" placeholder="Enter role">
+                        <label class="form-label">Role Name</label>
+                        <input type="text" id="roleName" class="form-control" placeholder="Enter role name" required>
+                        <div class="invalid-feedback">Please enter a role name.</div>
                     </div>
-                </form>
-            </div>
+                </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="saveRoleBtn">OK</button>
-            </div>
-
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="saveRoleBtn">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
 
 
 @section Scripts {
@@ -1601,7 +1604,6 @@
                         data: { planningId: planningId },
                         success: function (res) {
                             const tbody = $('#resourceTable tbody').empty();
-
                             if (!res.status || !res.data || res.data.length === 0) {
                                 tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
                                 return;
@@ -1612,10 +1614,10 @@
                                     <tr>
                                         <td>${r.sNo ?? i + 1}</td>
                                         <td>${r.code ?? ''}</td>
-                                        <td>${r.name ?? ''}</td>
-                                        <td>${r.type ?? ''}</td>
-                                        <td>${r.roleName ?? ''}</td>
-                                        <td>${r.priceUnit ?? '0.00'}</td>
+                                        <td>${r.resourceName ?? ''}</td>
+                                        <td>${r.resourceType ?? ''}</td>
+                                        <td>${r.primaryRole ?? ''}</td>
+                                        <td>${r.defaultUnitsTime ?? '0.00'}</td>
                                     </tr>
                                 `);
                             });
@@ -1796,7 +1798,7 @@
                 const tab = new bootstrap.Tab(prevTab);
                 tab.show();
             }
-        }, 500); 
+        }, 500);
                                 } else {
                             toastr.warning(response.message || "Save failed!");
                                 }
@@ -1953,7 +1955,7 @@
                 const tab = new bootstrap.Tab(prevTab);
                 tab.show();
             }
-        }, 500); 
+        }, 500);
                         } else {
                              toastr.warning(response.message || "Save failed!");
                         }
@@ -2071,7 +2073,7 @@
                     ReceiveDate: receiveDate,
                     Items: items
                 };
-                console.log(model);
+           
                 $.ajax({
                     url: '/Construction/SaveOrUpdateReceiveMaterial',
                     type: 'POST',
@@ -2089,7 +2091,7 @@
                 const tab = new bootstrap.Tab(prevTab);
                 tab.show();
             }
-        }, 500); 
+        }, 500);
                         } else {
                             toastr.warning(response.message || 'Save failed.');
                         }
@@ -2124,6 +2126,7 @@
                 type: 'GET',
                 dataType: 'json',
                 success: function (response) {
+                
                     if (response.status && response.data.length > 0) {
                         const tbody = $('#assignResourceModal tbody');
                         $.each(response.data, function (i, item) {
@@ -2176,9 +2179,231 @@
         });
 
 
+
+                // 🟩 Open modal for new role
+        $("#addRoleBtn").on("click", function () {
+            $("#roleId").val(0);
+            $("#roleCode").val(""); // Auto-generate in API
+            $("#roleName").val("");
+            $("#newRoleModalLabel").text("New Role");
+            $("#newRoleModal").modal("show");
+        });
+
+        // 🟦 Submit form (Add/Edit)
+        $("#newRoleForm").on("submit", function (e) {
+            e.preventDefault();
+            const form = this;
+
+            if (!form.checkValidity()) {
+                form.classList.add("was-validated");
+                return;
+            }
+
+            const roleData = {
+                Id: parseInt($("#roleId").val()) || 0,
+                Code: $("#roleCode").val().trim() || null,
+                Name: $("#roleName").val().trim()
+            };
+
+            $.ajax({
+                url: "/Construction/SaveOrUpdateRole",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(roleData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(roleData.Id > 0 ? "Role updated successfully" : "Role added successfully");
+                        $("#newRoleModal").modal("hide");
+                          // 🔹 After save, go back to previous tab (Issue tab)
+        setTimeout(() => {
+            const prevTab = document.querySelector('#resource-tab');
+            if (prevTab) {
+                const tab = new bootstrap.Tab(prevTab);
+                tab.show();
+            }
+        }, 500); // slight delay to ensure modal fully closes
+                    } else {
+                        toastr.error(res.message || "Something went wrong");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to save role");
+                }
+            });
+        });
+
+
+                function loadRoles() {
+            $.ajax({
+                url: "/Construction/GetRoles",
+                type: "GET",
+                success: function (res) {
+                    const $dropdown = $("#roleDropdown");
+                    $dropdown.empty().append(`<option value="">-- Select Role --</option>`);
+
+                    if (res.status && res.data?.length > 0) {
+                        res.data.forEach(role => {
+                            $dropdown.append(`<option value="${role.id}">${role.name}</option>`);
+                        });
+                    } else {
+                        $dropdown.append(`<option value="">No roles found</option>`);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to load roles");
+                }
+            });
+        }
+
+
+        loadRoles();
+
+
+            $("#saveResourceBtn").on("click", function (e) {
+            e.preventDefault();
+
+            const form = $("#projectResourceForm")[0];
+            if (!form.checkValidity()) {
+                form.classList.add("was-validated");
+                return;
+            }
+
+            const resourceData = {
+                Id: parseInt($("#resourceId").val()) || 0,
+                Code: $("#resourceCode").val().trim(),
+                Date: $("#resourceDate").val(),
+                Name: $("#resourceName").val().trim(),
+                Phone: $("#resourcePhone").val().trim(),
+                Role: $("#roleDropdown").val(),
+                Type: $("input[name='type']:checked").val(),
+                EmployeeId: parseInt($("#employeeDropdown").val()) || null,
+                PriceUnit: parseFloat($("#priceUnit").val()) || 0,
+                UnitTime: parseFloat($("#unitTime").val()) || 8,
+                MaxUnitTime: parseFloat($("#maxUnitTime").val()) || 8
+            };
+
+            if (!resourceData.Role) return toastr.warning("Role is required");
+            if (!resourceData.Name) return toastr.warning("Name is required");
+
+            $.ajax({
+                url: "/Construction/SaveOrUpdateProjectResource",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(resourceData),
+                beforeSend: function () {
+                    $("#saveResourceBtn").prop("disabled", true).text("Saving...");
+                },
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(resourceData.Id > 0 ? "Resource updated successfully" : "Resource added successfully");
+                        // 🔹 Wait until Project Resource modal fully hidden
+                $("#projectResourceModal").one('hidden.bs.modal', function () {
+
+                    // Refresh Assign Resource modal
+                    $("#assignResourceForm")[0].reset();
+                    $("#assignResourceForm").removeClass("was-validated");
+                    loadRoles(); // reload roles if needed
+                    loadManagersDropdown(); // reload employees if needed
+
+                    // Show Assign Resource modal
+                    $("#assignResourceModal").modal("show");
                 });
 
-        
+                // Now hide Project Resource modal (triggers hidden.bs.modal)
+                $("#projectResourceModal").modal("hide");
+                        if (typeof loadProjectResources === "function") loadProjectResources();
+                    } else {
+                        toastr.error(res.message || "Something went wrong");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to save resource");
+                },
+                complete: function () {
+                    $("#saveResourceBtn").prop("disabled", false).text("Save");
+                }
+            });
+        });
+
+              function loadManagersDropdown(selectedId = null) {
+            $.getJSON('/Inventory/GetAllEmployees', function(employees) {
+                const $manager = $('#employeeDropdown');
+                $manager.empty().append('<option value="">Select Manager</option>');
+
+                employees.forEach(emp => {
+                    const selected = selectedId && emp.id === selectedId ? 'selected' : '';
+                    $manager.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
+                });
+            });
+        }
+
+            loadManagersDropdown();
+
+
+        // 🟦 Submit Assign Resource form
+        $('#saveAssignResourceBtn').on('click', function (e) {
+            e.preventDefault();
+
+            const selectedResources = [];
+            const planningId = parseInt($('#currentPlanningId').val()) || 0;
+
+            // Collect selected resources from the table
+                    $('#assignResourceForm tbody tr').each(function () {
+            const $row = $(this);
+            const isChecked = $row.find('input[type="checkbox"]').is(':checked');
+            if (isChecked) {
+                const resourceId = parseInt($row.data('resource-id'));
+                if (resourceId) selectedResources.push(resourceId);
+            }
+        });
+
+
+            if (selectedResources.length === 0) {
+                return toastr.warning("Please select at least one resource");
+            }
+
+            const requestData = {
+                PlanningId: planningId,
+                ResourceIds: selectedResources
+            };
+
+            $.ajax({
+                url: '/Construction/AssignResources',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                beforeSend: function () {
+                    $('#saveAssignResourceBtn').prop('disabled', true).text('Saving...');
+                },
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || 'Resources assigned successfully');
+                        $('#assignResourceModal').modal('hide');
+
+                        // Optional: reload table of resources
+                        if (typeof loadAssignedResources === 'function') loadAssignedResources();
+
+                        // Reset the form
+                        $('#assignResourceForm')[0].reset();
+                    } else {
+                        toastr.error(res.message || "Something went wrong");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to assign resources");
+                },
+                complete: function () {
+                    $('#saveAssignResourceBtn').prop('disabled', false).text('Save');
+                }
+            });
+        });
+
+
+
+
+                });
+
+
 
     </script>
 

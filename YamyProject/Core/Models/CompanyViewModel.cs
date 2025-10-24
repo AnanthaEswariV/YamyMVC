@@ -501,7 +501,33 @@ namespace YamyProject.Core.Models
         public decimal ReceivedQty { get; set; }
         public string Unit { get; set; }
     }
+    public class ProjectRoleRequest
+    {
+        public int Id { get; set; }
+        public string? Code { get; set; }
+        public string Name { get; set; }
+    }
 
+    public class ProjectResourceRequest
+    {
+        public int Id { get; set; }
+        public string? Code { get; set; }
+        public DateTime Date { get; set; }
+        public string Name { get; set; }
+        public string Role { get; set; }
+        public string? Phone { get; set; }
+        public string? Type { get; set; }
+        public decimal? PriceUnit { get; set; }
+        public decimal? UnitTime { get; set; }
+        public decimal? MaxUnitTime { get; set; }
+        public int? EmployeeId { get; set; }
+    }
+
+    public class AssignResourcesRequest
+    {
+        public int PlanningId { get; set; }
+        public List<int> ResourceIds { get; set; } = new List<int>();
+    }
 
 
 }
