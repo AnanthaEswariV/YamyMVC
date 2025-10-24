@@ -702,6 +702,7 @@
             <!-- Body -->
             <div class="modal-body">
                 <form id="assignResourceForm">
+                      <input type="hidden" id="currentPlanningId" value="0">
                     <table class="table table-bordered table-hover align-middle">
                         <thead class="table-light">
                             <tr>
@@ -1603,6 +1604,7 @@
                         type: 'GET',
                         data: { planningId: planningId },
                         success: function (res) {
+                            console.log(res);
                             const tbody = $('#resourceTable tbody').empty();
                             if (!res.status || !res.data || res.data.length === 0) {
                                 tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
@@ -1611,7 +1613,7 @@
 
                             $.each(res.data, function (i, r) {
                                 tbody.append(`
-                                    <tr>
+                                   <tr data-resource-id="${r.id}">
                                         <td>${r.sNo ?? i + 1}</td>
                                         <td>${r.code ?? ''}</td>
                                         <td>${r.resourceName ?? ''}</td>
@@ -1621,6 +1623,12 @@
                                     </tr>
                                 `);
                             });
+
+                                 // Set the current planning ID from the first resource
+        if (res.data[0]?.planningId) {
+                 $('#currentPlanningId').val(res.data[0].planningId);
+                 console.log('Current Planning ID set to:', res.data[0].planningId);
+             }
                         },
                         error: function (xhr) {
                             console.error("Resource API error:", xhr.status, xhr.responseText);
@@ -2132,7 +2140,7 @@
                         $.each(response.data, function (i, item) {
                             const checked = item.selected ? 'checked' : '';
                             const row = `
-                                <tr>
+                                <tr data-resource-id="${item.id}">
                                     <td>${item.sn}</td>
                                     <td>${item.code}</td>
                                     <td>${item.name}</td>
@@ -2296,20 +2304,16 @@
                 success: function (res) {
                     if (res.status) {
                         toastr.success(resourceData.Id > 0 ? "Resource updated successfully" : "Resource added successfully");
-                        // 🔹 Wait until Project Resource modal fully hidden
                 $("#projectResourceModal").one('hidden.bs.modal', function () {
 
-                    // Refresh Assign Resource modal
                     $("#assignResourceForm")[0].reset();
                     $("#assignResourceForm").removeClass("was-validated");
-                    loadRoles(); // reload roles if needed
-                    loadManagersDropdown(); // reload employees if needed
+                    loadRoles(); 
+                    loadManagersDropdown(); 
 
-                    // Show Assign Resource modal
                     $("#assignResourceModal").modal("show");
                 });
 
-                // Now hide Project Resource modal (triggers hidden.bs.modal)
                 $("#projectResourceModal").modal("hide");
                         if (typeof loadProjectResources === "function") loadProjectResources();
                     } else {
@@ -2344,34 +2348,35 @@
         $('#saveAssignResourceBtn').on('click', function (e) {
             e.preventDefault();
 
+        const planningId = Number($('#currentPlanningId').val())
             const selectedResources = [];
-            const planningId = parseInt($('#currentPlanningId').val()) || 0;
-
             // Collect selected resources from the table
-                    $('#assignResourceForm tbody tr').each(function () {
+                 $('#assignResourceForm tbody tr').each(function () {
             const $row = $(this);
             const isChecked = $row.find('input[type="checkbox"]').is(':checked');
-            if (isChecked) {
-                const resourceId = parseInt($row.data('resource-id'));
-                if (resourceId) selectedResources.push(resourceId);
+            const resourceId = Number($row.data('resource-id'));
+
+            if (isChecked && !isNaN(resourceId)) {
+                selectedResources.push(resourceId);
             }
         });
+
+                ;
+        console.log('PlanningId being sent:', planningId);
+        console.log('Selected Resources:', selectedResources);
 
 
             if (selectedResources.length === 0) {
                 return toastr.warning("Please select at least one resource");
             }
 
-            const requestData = {
-                PlanningId: planningId,
-                ResourceIds: selectedResources
-            };
+           
 
             $.ajax({
                 url: '/Construction/AssignResources',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify(requestData),
+                 data: JSON.stringify({ PlanningId: planningId, ResourceIds: selectedResources }),
                 beforeSend: function () {
                     $('#saveAssignResourceBtn').prop('disabled', true).text('Saving...');
                 },
@@ -2379,6 +2384,14 @@
                     if (res.status) {
                         toastr.success(res.message || 'Resources assigned successfully');
                         $('#assignResourceModal').modal('hide');
+                          // 🔹 After save, go back to previous tab (Issue tab)
+        setTimeout(() => {
+            const prevTab = document.querySelector('#receive-tab');
+            if (prevTab) {
+                const tab = new bootstrap.Tab(prevTab);
+                tab.show();
+            }
+        }, 500); // slight delay to ensure modal fully closes
 
                         // Optional: reload table of resources
                         if (typeof loadAssignedResources === 'function') loadAssignedResources();
@@ -2398,6 +2411,10 @@
             });
         });
 
+                   $('#assignResourceModal').on('show.bs.modal', function (e) {
+            const planningId = $(e.relatedTarget).data('planning-id'); // gets ID from the element that triggered modal
+            if (planningId) $('#currentPlanningId').val(planningId);
+        });
 
 
 

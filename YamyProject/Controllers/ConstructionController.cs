@@ -2369,23 +2369,21 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 string query = @"
-        SELECT 
-            pr.id,
-            pr.code,
-            pr.name,
-            r.name AS roleName,
-            pr.type,
-            pr.price_unit,
-            pr.unit_time,
-            pr.max_unit_time
-        FROM tbl_project_resource pr
-        INNER JOIN tbl_project_role r ON r.id = pr.role
-        WHERE EXISTS (
-            SELECT 1 
-            FROM tbl_project_planning p 
-            WHERE p.id = @planningId 
-              AND FIND_IN_SET(pr.id, p.assigned_team) > 0
-        );";
+   SELECT 
+    pr.id,
+    pr.code,
+    pr.name,
+    r.name AS roleName,
+    pr.type,
+    pr.price_unit,
+    pr.unit_time,
+    pr.max_unit_time,
+    p.id AS PlanningId
+FROM tbl_project_resource pr
+INNER JOIN tbl_project_role r ON r.id = pr.role
+INNER JOIN tbl_project_planning p 
+    ON p.id = @planningId
+    AND FIND_IN_SET(pr.id, p.assigned_team) > 0;";
 
                 await using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@planningId", planningId);
@@ -2401,6 +2399,7 @@ namespace YamyProject.Controllers
                         SNo = count++,
                         Id = reader["id"].ToString(),
                         Code = reader["code"].ToString(),
+                        PlanningId = reader.GetInt32("PlanningId"),
                         ResourceName = reader["name"].ToString(),
                         ResourceType = reader["type"].ToString(),
                         PrimaryRole = reader["roleName"].ToString(),
