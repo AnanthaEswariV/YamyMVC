@@ -901,6 +901,14 @@
                  let currentPlanningId = null;
                 let currentItemId = null;
 
+                        function getCurrentPlanningId() {
+            return currentPlanningId ||
+                   Number($('#planningId').val()) ||
+                   Number($('#currentPlanningId').val()) ||
+                   0;
+        }
+
+
                 $(document).ready(function () {
 
                     $(document).on('change', '.autoLock', function () {
@@ -1404,6 +1412,9 @@
                                 toastr.success(response.message || "Saved successfully!");
                                 $("#planningModal").modal("hide");
                                 loadProjectPlanning();
+                                    setTimeout(function () {
+                            location.reload();
+                        }, 1500);
                             } else {
                                 toastr.warning(response.message || "Save failed!");
                             }
@@ -1497,6 +1508,7 @@
 
 
                         function loadRequestMaterial(planningId) {
+                            if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                         url: '/Construction/GetRequestedMaterial',
                         type: 'GET',
@@ -1533,6 +1545,7 @@
                 }
 
                         function loadIssuedMaterial(planningId) {
+                            if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                         url: '/Construction/GetIssuedMaterial',
                         type: 'GET',
@@ -1567,6 +1580,7 @@
                 }
 
                         function loadReceivedMaterial(planningId) {
+                            if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                         url: '/Construction/GetReceivedMaterial',
                         type: 'GET',
@@ -1601,6 +1615,7 @@
                 }
 
                         function loadResourceList(planningId) {
+                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                         url: '/Construction/GetResourceData',
                         type: 'GET',
@@ -2347,8 +2362,12 @@
         // 🟦 Submit Assign Resource form
         $('#saveAssignResourceBtn').on('click', function (e) {
             e.preventDefault();
+                let planningId = Number($('#currentPlanningId').val()) ||
+                         Number($('#planningId').val()) ||
+                         currentPlanningId ||
+                         0;
 
-        const planningId = Number($('#currentPlanningId').val())
+        console.log("Planning ID found:", planningId);
             const selectedResources = [];
             // Collect selected resources from the table
                  $('#assignResourceForm tbody tr').each(function () {
@@ -2418,8 +2437,9 @@
                  currentItemId = rowData.itemId;         
         currentActivityId = rowData.id;
               currentPlanningId = $('#currentPlanningId').val() || null;
-        currentTenderId = rowData.tender_Id;
 
+        currentTenderId = rowData.tender_Id;
+          $('#currentPlanningId').val(rowData.planningId || rowData.PlanningId || 0);
             // Fill sub-activity modal fields
             $('#subActivityDescription').val(rowData.name ?? '');
             $('#subActivityProgress').val(rowData.progress ?? '');
@@ -2433,9 +2453,11 @@
             // Optionally store the activity for later saving
             $('#subActivityModal').data('activity', rowData);
 
-            // Get planningId (assuming stored in hidden input)
-            const planningId = $('#currentPlanningId').val();
-
+            // const planningId = $('#currentPlanningId').val();
+             let planningId = Number($('#currentPlanningId').val()) ||
+                         Number($('#planningId').val()) ||
+                         currentPlanningId ||
+                         0;
             // Load assigned resources dynamically
             if (planningId) {
                 loadAssignedResources(planningId);
@@ -2447,20 +2469,19 @@
         });
 
              function loadAssignedResources(planningId) {
+                  if (!planningId) planningId = getCurrentPlanningId();
             $.ajax({
                 url: '/Construction/GetAssignedResources',
                 type: 'GET',
                 data: { planningId: planningId },
                 success: function (res) {
                     const container = $('#subActivityResource').empty();
-                    console.log(res);
                     if (!res.status || !res.data || res.data.length === 0) {
                         container.html('<p class="text-muted text-center mb-0">No resources found</p>');
                         return;
                     }
         $.each(res.data, function (i, r) {
             const checkboxId = `resource_${r.id}`;
-            console.log(checkboxId);
             container.append(`
                 <div class="form-check">
                     <input class="form-check-input resource-checkbox" type="checkbox" value="${r.id}" id="${checkboxId}">
