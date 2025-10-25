@@ -648,7 +648,6 @@
     </div>
 </div>
 
-<!-- Sub-Activity Modal -->
 <div class="modal fade" id="subActivityModal" tabindex="-1" aria-labelledby="subActivityModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
         <div class="modal-content rounded-4 shadow-lg border-0">
@@ -676,12 +675,15 @@
                     </div>
                     <div class="mb-3">
                         <label for="subActivityResource" class="form-label">Assign resources to the activity</label>
-                        <textarea class="form-control" id="subActivityResource" rows="3"></textarea>
+                        <div id="subActivityResource" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Resource checkboxes will be appended here dynamically -->
+                        </div>
                     </div>
+
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary">Save</button>
+               <button type="button" class="btn btn-primary" id="btnSaveSubActivity">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -897,6 +899,7 @@
     <script>
                  let currentTenderId = null;
                  let currentPlanningId = null;
+                let currentItemId = null;
 
                 $(document).ready(function () {
 
@@ -1452,7 +1455,6 @@
                 });
 
                         $("#addPlanningBtn").on("click", function () {
-                    currentTenderId = null;
                     $("#planningModalLabel").text("Planning - New");
                     $("#btnSavePlanning").text("Save");
                     $("#pettyCashSection").hide();
@@ -1460,39 +1462,39 @@
                     $("#planningForm")[0].reset();
                 });
 
-                        function loadActivityPlanning(tenderId) {
+                                function loadActivityPlanning(tenderId) {
+            $.ajax({
+                url: '/Construction/GetProjectTenderDetails',
+                type: 'GET',
+                data: { tenderId: tenderId },
+                success: function (res) {
+                 
+                    const tbody = $('#activityTable tbody').empty();
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
+                        return;
+                    }
 
-
-                    $.ajax({
-                        url: '/Construction/GetProjectTenderDetails',
-                        type: 'GET',
-                        data: { tenderId: tenderId },
-                        success: function (res) {
-                            const tbody = $('#activityTable tbody').empty();
-                            if (!res.status || !res.data || res.data.length === 0) {
-                                tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
-                                return;
-                            }
-
-                            $.each(res.data, function (i, r) {
-                                tbody.append(`
-                                    <tr>
-                                        <td>${r.SNo ?? i + 1}</td>
-                                        <td>${r.sr ?? ''}</td>
-                                        <td>${r.name ?? ''}</td>
-                                        <td>${r.startDate ?? ''}</td>
-                                        <td>${r.endDate ?? ''}</td>
-                                        <td>${r.progress ?? '0'}%</td>
-                                    </tr>
-                                `);
-                            });
-                        },
-                        error: function (xhr) {
-                            console.error("API error:", xhr.status, xhr.responseText);
-                            toastr.error('Failed to load activity planning');
-                        }
+                    $.each(res.data, function (i, r) {
+                        tbody.append(`
+                            <tr data-item='${JSON.stringify(r)}'>
+                                <td>${r.sNo}</td>
+                                <td>${r.sr}</td>
+                                <td>${r.name}</td>
+                                <td>${r.startDate}</td>
+                                <td>${r.endDate}</td>
+                                <td>${r.progress}%</td>
+                            </tr>
+                        `);
                     });
+                },
+                error: function (xhr) {
+                    console.error("API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load activity planning');
                 }
+            });
+        }
+
 
                         function loadRequestMaterial(planningId) {
                     $.ajax({
@@ -1604,7 +1606,6 @@
                         type: 'GET',
                         data: { planningId: planningId },
                         success: function (res) {
-                            console.log(res);
                             const tbody = $('#resourceTable tbody').empty();
                             if (!res.status || !res.data || res.data.length === 0) {
                                 tbody.html('<tr><td colspan="6" class="text-center">No records found</td></tr>');
@@ -1627,7 +1628,6 @@
                                  // Set the current planning ID from the first resource
         if (res.data[0]?.planningId) {
                  $('#currentPlanningId').val(res.data[0].planningId);
-                 console.log('Current Planning ID set to:', res.data[0].planningId);
              }
                         },
                         error: function (xhr) {
@@ -1838,8 +1838,8 @@
 
                         activityInput.addEventListener('click', function() {
                         // Open Sub-Activity modal
-                        var subActivityModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
-                        subActivityModal.show();
+                        // var subActivityModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
+                        // subActivityModal.show();
                     });
 
 
@@ -2361,11 +2361,6 @@
             }
         });
 
-                ;
-        console.log('PlanningId being sent:', planningId);
-        console.log('Selected Resources:', selectedResources);
-
-
             if (selectedResources.length === 0) {
                 return toastr.warning("Please select at least one resource");
             }
@@ -2411,25 +2406,130 @@
             });
         });
 
-                   $('#assignResourceModal').on('show.bs.modal', function (e) {
+        $('#assignResourceModal').on('show.bs.modal', function (e) {
             const planningId = $(e.relatedTarget).data('planning-id'); 
             if (planningId) $('#currentPlanningId').val(planningId);
         });
 
-           // Double click event (unchanged)
-        $('#activityTable tbody').on('dblclick', 'tr', function () {
-            var rowData = $(this).children('td').map(function () {
-                return $(this).text();
-            }).get();
+             $('#activityTable tbody').on('dblclick', 'tr', function () {
+            const rowData = $(this).data('item');
+            if (!rowData) return;
+          
+                 currentItemId = rowData.itemId;         
+        currentActivityId = rowData.id;
+              currentPlanningId = $('#currentPlanningId').val() || null;
+        currentTenderId = rowData.tender_Id;
 
-            $('#activityName').val(rowData[2]);
-            $('#startDate').val(formatDate(rowData[3]));
-            $('#endDate').val(formatDate(rowData[4]));
-            $('#progress').val(rowData[5]);
+            // Fill sub-activity modal fields
+            $('#subActivityDescription').val(rowData.name ?? '');
+            $('#subActivityProgress').val(rowData.progress ?? '');
+            $('#subActivityStartDate').val(
+                rowData.startDate ? new Date(rowData.startDate).toISOString().split('T')[0] : ''
+            );
+            $('#subActivityEndDate').val(
+                rowData.endDate ? new Date(rowData.endDate).toISOString().split('T')[0] : ''
+            );
 
-            var modal = new bootstrap.Modal(document.getElementById('activityModal'));
-            modal.show();
+            // Optionally store the activity for later saving
+            $('#subActivityModal').data('activity', rowData);
+
+            // Get planningId (assuming stored in hidden input)
+            const planningId = $('#currentPlanningId').val();
+
+            // Load assigned resources dynamically
+            if (planningId) {
+                loadAssignedResources(planningId);
+            }
+
+            // Show modal
+            const subModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
+            subModal.show();
         });
+
+             function loadAssignedResources(planningId) {
+            $.ajax({
+                url: '/Construction/GetAssignedResources',
+                type: 'GET',
+                data: { planningId: planningId },
+                success: function (res) {
+                    const container = $('#subActivityResource').empty();
+                    console.log(res);
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        container.html('<p class="text-muted text-center mb-0">No resources found</p>');
+                        return;
+                    }
+        $.each(res.data, function (i, r) {
+            const checkboxId = `resource_${r.id}`;
+            console.log(checkboxId);
+            container.append(`
+                <div class="form-check">
+                    <input class="form-check-input resource-checkbox" type="checkbox" value="${r.id}" id="${checkboxId}">
+                    <label class="form-check-label" for="${checkboxId}">
+                        ${r.name}
+                    </label>
+                </div>
+            `);
+        });
+
+                },
+                error: function (xhr) {
+                    console.error("Resource API error:", xhr.status, xhr.responseText);
+                    toastr.error('Failed to load assigned resources');
+                }
+            });
+        }
+
+             $('#btnSaveSubActivity').on('click', function () {
+            const id = currentActivityId || 0;
+            const description = $('#subActivityDescription').val().trim();
+            const progress = parseInt($('#subActivityProgress').val()) || 0;
+            const startDate = $('#subActivityStartDate').val();
+            const endDate = $('#subActivityEndDate').val();
+
+            const assignedResources = [];
+            $('.resource-checkbox:checked').each(function () {
+                assignedResources.push(parseInt($(this).val()));
+            });
+
+            if (!description) {
+                alert('Please enter description');
+                return;
+            }
+
+               const model = {
+            Id: currentActivityId,
+            PlanningId: currentPlanningId,
+            TenderId: currentTenderId, 
+            ItemId: currentItemId,
+            StartDate: startDate,
+            EndDate: endDate,
+            Progress: progress,
+            AssignedResources: assignedResources
+        };
+
+
+          
+            $.ajax({
+                url: '/Construction/SaveOrUpdateProjectActivity',
+                type: 'POST',
+                data: JSON.stringify(model),        
+                contentType: 'application/json',     
+                success: function (res) {
+                    if (res.status) {
+                        $('#subActivityModal').modal('hide');
+                        toastr.success(res.message || 'Activity Assigned successfully');
+                        loadActivityPlanning(currentTenderId);
+                    } else {
+                        alert(res.message || 'Failed to save activity');
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    alert('Server error while saving activity');
+                }
+            });
+        });
+
 
 
 

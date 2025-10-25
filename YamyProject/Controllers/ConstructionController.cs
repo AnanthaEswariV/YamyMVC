@@ -2085,7 +2085,8 @@ namespace YamyProject.Controllers
                 ptd.start_date,
                 ptd.end_date,
                 ptd.progress,
-                ptd.assigned
+                ptd.assigned,
+                ptd.tender_id
             FROM tbl_project_tender_details ptd
             INNER JOIN tbl_items_boq ib 
                 ON ptd.tender_id = @tenderId 
@@ -2129,7 +2130,8 @@ namespace YamyProject.Controllers
                         Assigned = empId,
                         ItemId = reader["item_id"].ToString(),
                         Type = reader["type"].ToString(),
-                        UnitName = reader["unit_name"].ToString()
+                        UnitName = reader["unit_name"].ToString(),
+                        Tender_Id = reader.GetInt32("tender_id")
                     });
                 }
 
@@ -3309,6 +3311,231 @@ INNER JOIN tbl_project_planning p
             }
 
         }
+        [HttpGet]
+        public async Task<IActionResult> GetAssignedResources(int planningId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                pr.id, 
+                pr.code, 
+                pr.date, 
+                pr.name, 
+                r.name AS roleName, 
+                pr.phone, 
+                pr.type, 
+                pr.price_unit, 
+                pr.unit_time, 
+                pr.max_unit_time
+            FROM tbl_project_resource pr
+            JOIN tbl_project_role r ON r.id = pr.role
+            WHERE EXISTS (
+                SELECT 1 
+                FROM tbl_project_planning p 
+                WHERE p.id = @planningId 
+                  AND FIND_IN_SET(pr.id, p.assigned_team) > 0
+            );";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var resourceList = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    resourceList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"]?.ToString(),
+                        Name = reader["name"]?.ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = resourceList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectActivity([FromBody] ProjectActivityRequest model)
+        {
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request data." });
+
+                if (model.PlanningId <= 0)
+                    return Json(new { status = false, message = "Planning ID is required." });
+
+                if (model.TenderId <= 0)
+                    return Json(new { status = false, message = "Tender ID is required." });
+
+                if (model.ItemId <= 0)
+                    return Json(new { status = false, message = "Item ID is required." });
+
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Json(new { status = false, message = "User not logged in." });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                int progress = model.Progress ?? 0;
+                DateTime startDate = model.StartDate ?? DateTime.Today;
+                DateTime endDate = model.EndDate ?? DateTime.Today;
+                string status = progress == 100 ? "Completed" :
+                                (DateTime.Today >= startDate ? "In Progress" : "Not Started");
+
+                int activityId;
+
+                // -------------------------
+                // Insert or Update Activity
+                // -------------------------
+                if (model.Id == 0)
+                {
+                    string insertQuery = @"
+                INSERT INTO tbl_project_activity 
+                    (planning_id, code, name, start_date, end_date, progress, status)
+                VALUES (@planningId, @code, @name, @startDate, @endDate, @progress, @status);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    cmd.Parameters.AddWithValue("@code", model.ItemId);
+                    cmd.Parameters.AddWithValue("@name", model.ItemId);
+                    cmd.Parameters.AddWithValue("@startDate", startDate);
+                    cmd.Parameters.AddWithValue("@endDate", endDate);
+                    cmd.Parameters.AddWithValue("@progress", progress);
+                    cmd.Parameters.AddWithValue("@status", status);
+
+                    activityId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    string updateQuery = @"
+                UPDATE tbl_project_activity 
+                SET planning_id = @planningId, code = @code, name = @name,
+                    start_date = @startDate, end_date = @endDate,
+                    progress = @progress, status = @status
+                WHERE id = @id;";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    cmd.Parameters.AddWithValue("@code", model.ItemId);
+                    cmd.Parameters.AddWithValue("@name", model.ItemId);
+                    cmd.Parameters.AddWithValue("@startDate", startDate);
+                    cmd.Parameters.AddWithValue("@endDate", endDate);
+                    cmd.Parameters.AddWithValue("@progress", progress);
+                    cmd.Parameters.AddWithValue("@status", status);
+
+                    await cmd.ExecuteNonQueryAsync();
+                    activityId = model.Id;
+
+                    // Remove previous resource assignments
+                    string deleteAssignments = "DELETE FROM tbl_project_activity_assignment WHERE activity_id = @id";
+                    await using var delCmd = new MySqlCommand(deleteAssignments, conn);
+                    delCmd.Parameters.AddWithValue("@id", activityId);
+                    await delCmd.ExecuteNonQueryAsync();
+                }
+
+                // -------------------------
+                // Assign Resources
+                // -------------------------
+                if (model.AssignedResources != null && model.AssignedResources.Any())
+                {
+                    foreach (var resId in model.AssignedResources)
+                    {
+                        string insertAssignment = @"
+                    INSERT INTO tbl_project_activity_assignment (activity_id, resource_id)
+                    VALUES (@activityId, @resourceId);";
+
+                        await using var assignCmd = new MySqlCommand(insertAssignment, conn);
+                        assignCmd.Parameters.AddWithValue("@activityId", activityId);
+                        assignCmd.Parameters.AddWithValue("@resourceId", resId);
+                        await assignCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // -------------------------
+                // Update Tender Details
+                // -------------------------
+                string updateTender = @"
+            UPDATE tbl_project_tender_details 
+            SET start_date=@startDate, end_date=@endDate, progress=@progress
+            WHERE item_id=@itemId AND tender_id=@tenderId;";
+
+                await using (var tenderCmd = new MySqlCommand(updateTender, conn))
+                {
+                    tenderCmd.Parameters.AddWithValue("@itemId", model.ItemId);
+                    tenderCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                    tenderCmd.Parameters.AddWithValue("@startDate", startDate);
+                    tenderCmd.Parameters.AddWithValue("@endDate", endDate);
+                    tenderCmd.Parameters.AddWithValue("@progress", progress);
+                    await tenderCmd.ExecuteNonQueryAsync();
+
+                    var affectedRows = await tenderCmd.ExecuteNonQueryAsync();
+                    if (affectedRows == 0)
+                        Console.WriteLine("No tender row updated! Check ItemId/TenderId combination.");
+
+                }
+
+                // -------------------------
+                // Update Project Planning
+                // -------------------------
+                string updatePlanning = @"
+            UPDATE tbl_project_planning
+            SET modified_by = @modifiedBy,
+                modified_date = @modifiedDate,
+                progress = @progress
+            WHERE id = @planningId;";
+
+                await using (var planningCmd = new MySqlCommand(updatePlanning, conn))
+                {
+                    planningCmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    planningCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+                    planningCmd.Parameters.AddWithValue("@progress", 0); // default progress
+                    planningCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    await planningCmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = model.Id == 0 ? "Activity inserted successfully" : "Activity updated successfully",
+                    id = activityId,
+                    progress = progress,
+                    statusText = status
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
         #endregion
 
 

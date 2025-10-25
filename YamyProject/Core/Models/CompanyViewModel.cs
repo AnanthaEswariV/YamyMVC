@@ -528,6 +528,17 @@ namespace YamyProject.Core.Models
         public int PlanningId { get; set; }
         public List<int> ResourceIds { get; set; } = new List<int>();
     }
+    public class ProjectActivityRequest
+    {
+        public int Id { get; set; }
+        public int PlanningId { get; set; }
+        public int TenderId { get; set; }
+        public int ItemId { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public int? Progress { get; set; }
+        public List<int>? AssignedResources { get; set; } = new();
+    }
 
 
 }
