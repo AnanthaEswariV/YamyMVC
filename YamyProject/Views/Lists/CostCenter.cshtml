@@ -3,6 +3,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <style>
     .tree-container {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -194,10 +195,7 @@
             </div>
             <div class="modal-body">
                 <form id="costCenterForm">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Cost Center Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required />
-                    </div>
+                    <!-- Type Selection -->
                     <div class="mb-3">
                         <label class="form-label">Type</label><br />
                         <div class="form-check form-check-inline">
@@ -209,12 +207,21 @@
                             <label class="form-check-label" for="radioSub">Sub Cost Center</label>
                         </div>
                     </div>
+
+                    <!-- Dropdown for Main Cost Centers (for Sub type only) -->
                     <div class="mb-3" id="mainSelectDiv" style="display:none;">
                         <label for="mainId" class="form-label">Select Main Cost Center</label>
                         <select id="mainId" name="mainId" class="form-select">
                             <option value="">Choose main cost center...</option>
                         </select>
                     </div>
+
+                    <!-- Common Textbox for Cost Center Name -->
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Cost Center Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required />
+                    </div>
+
                     <input type="hidden" id="editId" name="editId" value="" />
                 </form>
             </div>
@@ -229,10 +236,11 @@
     </div>
 </div>
 
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
         let costCenterData = [];
 
@@ -279,7 +287,7 @@
             });
         }
 
-               function createNode(node, children = [], isMain = false) {
+                               function createNode(node, children = [], isMain = false) {
             const hasChildren = children && children.length > 0;
             const childrenId = `children-${node.id}`;
 
@@ -290,8 +298,21 @@
                         ${hasChildren ? '<i class="bi bi-chevron-right"></i>' : ''}
                     </div>
                     <div class="node-icon">${isMain ? '<i class="bi bi-folder"></i>' : '<i class="bi bi-file-text"></i>'}</div>
-                    <div class="node-content">
+                    <div class="node-content d-flex align-items-center justify-content-between">
                         <span class="node-label">${node.code || ''} - ${node.name}</span>
+                        ${!isMain ? `
+                        <span class="node-actions" style="margin-left: 10px; display: flex; gap: 5px;">
+                            <button class="btn btn-sm btn-outline-primary editCostCenterBtn"
+                                    data-costcenter='${JSON.stringify(node).replace(/'/g, "&apos;")}'
+                                    title="Edit">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger deleteCostCenterBtn"
+                                    data-costcenter='${JSON.stringify(node).replace(/'/g, "&apos;")}'
+                                    title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </span>` : ''}
                     </div>
                 </div>
             </div>
@@ -307,6 +328,8 @@
 
             return html;
         }
+
+
 
 
 
@@ -340,47 +363,6 @@
             `);
         }
 
-        // Edit cost center
-        function editCostCenter(id) {
-            const costCenter = costCenterData.find(cc => cc.Id === id);
-            if (!costCenter) return;
-
-            $('#editId').val(costCenter.Id);
-            $('#name').val(costCenter.Name);
-
-            if (costCenter.IsMain) {
-                $('#radioMain').prop('checked', true);
-                $('#mainSelectDiv').hide();
-            } else {
-                $('#radioSub').prop('checked', true);
-                loadMainCostCentersForSelect();
-                $('#mainSelectDiv').show();
-                $('#mainId').val(costCenter.MainId);
-            }
-
-            $('.modal-title').text('Edit Cost Center');
-            $('#saveButtonText').text('Update');
-            $('#addCostCenterModal').modal('show');
-        }
-
-        // Delete cost center
-        function deleteCostCenter(id, name) {
-            Swal.fire({
-                title: 'Delete Cost Center',
-                text: `Are you sure you want to delete "${name}"?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Add your delete AJAX call here
-                    Swal.fire('Deleted!', 'Cost center has been deleted.', 'success');
-                    loadCostCenters(); // Reload the tree
-                }
-            });
-        }
 
         // Load main cost centers for dropdown
         function loadMainCostCentersForSelect() {
@@ -397,89 +379,7 @@
         $(document).ready(function() {
             loadCostCenters();
 
-            // Handle type selection
-            $('input[name="type"]').change(function() {
-                if ($(this).val() === 'sub') {
-                    loadMainCostCentersForSelect();
-                    $('#mainSelectDiv').show();
-                } else {
-                    $('#mainSelectDiv').hide();
-                }
-            });
-
-            // Handle modal reset
-            $('#addCostCenterModal').on('hidden.bs.modal', function() {
-                $('#costCenterForm')[0].reset();
-                $('#editId').val('');
-                $('.modal-title').text('Add Cost Center');
-                $('#saveButtonText').text('Save');
-                $('#mainSelectDiv').hide();
-            });
-
-            // Save cost center
-            $('#saveCostCenterBtn').click(function() {
-                const $btn = $(this);
-                const $spinner = $('#saveButtonSpinner');
-                const $text = $('#saveButtonText');
-
-                // Validation
-                if (!$('#name').val().trim()) {
-                    Swal.fire('Validation Error', 'Please enter a cost center name.', 'warning');
-                    return;
-                }
-
-                if (!$('input[name="type"]:checked').val()) {
-                    Swal.fire('Validation Error', 'Please select a type.', 'warning');
-                    return;
-                }
-
-                if ($('#radioSub').is(':checked') && !$('#mainId').val()) {
-                    Swal.fire('Validation Error', 'Please select a main cost center.', 'warning');
-                    return;
-                }
-
-                // Show loading
-                $btn.prop('disabled', true);
-                $spinner.removeClass('d-none');
-                $text.text('Saving...');
-
-                const formData = {
-                    Id: parseInt($('#editId').val()) || 0,
-                    Name: $('#name').val().trim(),
-                    IsMain: $('#radioMain').is(':checked'),
-                    IsSub: $('#radioSub').is(':checked'),
-                    MainId: $('#radioSub').is(':checked') ? parseInt($('#mainId').val()) : null
-                };
-
-                console.log('Saving cost center:', formData);
-
-                $.ajax({
-                    url: '/Lists/SaveCostCenter', 
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(formData),
-                    success: function(response) {
-                        console.log('Save response:', response);
-                        if (response && response.status) {
-                            Swal.fire('Success', response.message || 'Cost center saved successfully!', 'success');
-                            $('#addCostCenterModal').modal('hide');
-                            loadCostCenters();
-                        } else {
-                            Swal.fire('Error', response.message || 'Failed to save cost center', 'error');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Save error:', xhr.responseText);
-                        Swal.fire('Error', 'Failed to save cost center: ' + error, 'error');
-                    },
-                    complete: function() {
-                        // Hide loading
-                        $btn.prop('disabled', false);
-                        $spinner.addClass('d-none');
-                        $text.text($('#editId').val() ? 'Update' : 'Save');
-                    }
-                });
-            });
+           
 
             // Handle tree node selection
             $(document).on('click', '.tree-node', function(e) {
@@ -491,6 +391,183 @@
                 $('.tree-node').removeClass('selected');
                 $(this).addClass('selected');
             });
+
+         
+        $('#addCostCenterBtn').on('click', function () {
+            $('#editId').val('');
+            $('#name').val('');
+            $('#radioMain').prop('checked', false);
+            $('#radioSub').prop('checked', false);
+            $('#mainId').val('');
+            $('#mainSelectDiv').hide();
+            $('#saveButtonText').text('Save');
+            $('#addCostCenterModal .modal-title').text('Add Cost Center');
+            $('#addCostCenterModal').modal('show');
+        });
+
+
+
+
+        $(document).on('click', '.editCostCenterBtn', function () {
+            const data = $(this).data('costcenter'); 
+            if (!data) return;
+
+            $('#editId').val(data.id ?? '');
+            $('#name').val(data.name ?? '');
+
+            if (data.isMain) {
+                $('#radioMain').prop('checked', true);
+                $('#mainId').closest('.mb-3').hide();
+            } else {
+                $('#radioSub').prop('checked', true);
+                $('#mainId').closest('.mb-3').show();
+                $('#mainId').val(data.mainId ?? '');
+            }
+
+            $('#saveButtonText').text('Update');
+            $('#addCostCenterModal .modal-title').text('Edit Cost Center');
+            $('#addCostCenterModal').modal('show');
+        });
+
+              $('#saveCostCenterBtn').on('click', function (e) {
+            e.preventDefault();
+
+            const name = $('#name').val().trim();
+            const isMain = $('#radioMain').is(':checked');
+            const isSub = $('#radioSub').is(':checked');
+            const mainId = $('#mainId').val();
+            const id = $('#editId').val();
+            const projectId = $('#currentProjectId').val() || 0;
+
+            if (!isMain && !isSub) {
+                toastr.warning('Please choose Cost Center type (Main/Sub).');
+                return;
+            }
+
+            if (name === '') {
+                toastr.warning('Please enter Cost Center Name.');
+                return;
+            }
+
+            if (isSub && !mainId) {
+                toastr.warning('Please select a Main Cost Center.');
+                return;
+            }
+
+            const costCenterData = {
+                Id: id ? parseInt(id) : 0,
+                Name: name,
+                IsMain: isMain,
+                IsSub: isSub,
+                MainId: isSub ? parseInt(mainId) : null, // null if main
+                ProjectId: projectId ? parseInt(projectId) : null, // null if missing
+                UserId: parseInt($('#currentUserId').val() || 0) // optional field if you track user
+            };
+
+            $('#saveButtonSpinner').removeClass('d-none');
+            $('#saveButtonText').text('Saving...');
+
+            $.ajax({
+                url: '/Lists/SaveCostCenter',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(costCenterData),
+                success: function (res) {
+                    $('#saveButtonSpinner').addClass('d-none');
+                    $('#saveButtonText').text('Save');
+
+                    if (res.status) {
+                        toastr.success(id ? 'Cost Center updated successfully' : 'Cost Center added successfully');
+                        $('#addCostCenterModal').modal('hide');
+
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    $('#saveButtonSpinner').addClass('d-none');
+                    $('#saveButtonText').text('Save');
+                    toastr.error(xhr.responseJSON?.message || 'Something went wrong.');
+                }
+            });
+        });
+
+
+
+               // Handle type selection (main vs sub)
+        $('input[name="type"]').change(function() {
+            const type = $(this).val();
+
+            if (type === 'sub') {
+                $('#mainSelectDiv').show();      
+                loadMainCostCenters();             
+            } else {
+                $('#mainSelectDiv').hide();      
+                $('#mainId').val('');              
+            }
+        });
+
+        // ✅ Load Main Cost Centers via API
+        function loadMainCostCenters() {
+            $.ajax({
+                url: '/Lists/GetMainCostCenters',
+                type: 'GET',
+                success: function (res) {
+                    const ddl = $('#mainId');
+                    ddl.empty().append('<option value="">Choose main cost center...</option>');
+
+                    if (res.status && res.data?.length > 0) {
+                        res.data.forEach(x => {
+                            ddl.append(`<option value="${x.id}">${x.code} - ${x.name}</option>`);
+                        });
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Failed to load main cost centers');
+                }
+            });
+        }
+
+
+        loadMainCostCenters();
+
+
+                $(document).on('click', '.deleteCostCenterBtn', function () {
+            const data = $(this).data('costcenter');
+            if (!data || !data.id) return;
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This will delete the sub cost center!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Lists/DeleteSubCostCenter',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(data.id),
+                        success: function (res) {
+                            if (res.status) {
+                                toastr.success(res.message);
+                                loadCostCenters(); // reload tree
+                            } else {
+                                toastr.error(res.message);
+                            }
+                        },
+                        error: function (xhr) {
+                            toastr.error(xhr.responseJSON?.message || 'Something went wrong.');
+                        }
+                    });
+                }
+            });
+        });
+
+
         });
     </script>
 }

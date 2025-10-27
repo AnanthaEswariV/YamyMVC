@@ -39,8 +39,8 @@ namespace YamyProject.Core.Models
         public string Name { get; set; }
         public bool IsMain { get; set; }
         public bool IsSub { get; set; }
-        public int ProjectId { get; set; }
-        public int MainId { get; set; } 
+        public int? ProjectId { get; set; }
+        public int? MainId { get; set; } 
         public int UserId { get; set; } 
     }
     public class WarehouseRequest
