@@ -3538,6 +3538,540 @@ INNER JOIN tbl_project_planning p
 
         #endregion
 
+        #region Project Work Done
+
+        public IActionResult ProjectWorkDone()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectWorkDone(
+    int? projectId = null,
+    int? tenderId = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY pwd.date) AS Sn,
+                pwd.id AS VNo,
+                pwd.id,
+                pwd.date AS Date,
+                CONCAT(p.code,' - ', p.name) AS ProjectName,
+                CONCAT(t.code,' - ', t.name) AS TenderName,
+                (SELECT SUM(qty_total) FROM tbl_project_work_done_details WHERE ref_id = pwd.id) AS TotalQtyP,
+                (SELECT SUM(qty_used) FROM tbl_project_work_done_details WHERE ref_id = pwd.id) AS TotalQtyWD
+            FROM tbl_project_work_done pwd
+            INNER JOIN tbl_project_planning pp ON pwd.planning_id = pp.id
+            INNER JOIN tbl_projects p ON pp.project_id = p.id
+            INNER JOIN tbl_tender_names t ON pp.tender_name_id = t.id
+            WHERE pwd.state = 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (projectId.HasValue)
+                {
+                    query += " AND pp.project_id = @projectId";
+                    parameters.Add(new MySqlParameter("@projectId", projectId.Value));
+                }
+
+                if (tenderId.HasValue)
+                {
+                    query += " AND pp.tender_name_id = @tenderId";
+                    parameters.Add(new MySqlParameter("@tenderId", tenderId.Value));
+                }
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                var workDoneList = new List<object>();
+                int sn = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    workDoneList.Add(new
+                    {
+                        Sn = sn++,
+                        Id = reader.GetInt32("Id"),
+                        VNo = reader.GetInt32("VNo"),
+                        Date = reader["Date"] != DBNull.Value ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd") : null,
+                        ProjectName = reader["ProjectName"].ToString(),
+                        TenderName = reader["TenderName"].ToString(),
+                        TotalQtyP = reader["TotalQtyP"] != DBNull.Value ? Convert.ToDecimal(reader["TotalQtyP"]) : 0,
+                        TotalQtyWD = reader["TotalQtyWD"] != DBNull.Value ? Convert.ToDecimal(reader["TotalQtyWD"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = workDoneList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectWorkDoneItems(int id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if there are any items
+                string checkQuery = "SELECT COUNT(*) FROM tbl_project_work_done_details WHERE ref_id = @id";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    int count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+
+                    if (count == 0)
+                    {
+                        return Ok(new { status = true, data = new List<object>(), message = "No items found" });
+                    }
+                }
+
+                // Fetch item details
+                string query = @"
+            SELECT 
+                CONCAT(ti.sr, ' - ', ti.name) AS ItemName,
+                pwd.qty_used AS Qty,
+                ti.price AS Rate,
+                pwd.unit AS Unit,
+                (pwd.qty_used * ti.price) AS Amount
+            FROM tbl_project_work_done_details pwd
+            INNER JOIN tbl_items_boq ti ON pwd.main_id = ti.id
+            WHERE pwd.ref_id = @id";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                var items = new List<object>();
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        ItemName = reader["ItemName"].ToString(),
+                        Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                        Rate = reader["Rate"] != DBNull.Value ? Convert.ToDecimal(reader["Rate"]) : 0,
+                        Unit = reader["Unit"].ToString(),
+                        Amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectWorkDoneDetails(int projectId, int tenderId, int siteId)
+        {
+            try
+            {
+                // Build database connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Validate parameters
+                if (projectId <= 0 || tenderId <= 0 || siteId <= 0)
+                {
+                    return Ok(new { status = false, data = new List<object>(), message = "Invalid input" });
+                }
+
+                // ✅ Fixed parameter name here
+                string query = @"
+            SELECT Id, Date 
+            FROM tbl_project_planning 
+            WHERE project_id = @project 
+              AND tender_name_id = @tenderId 
+              AND site = @siteId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@project", projectId);
+                cmd.Parameters.AddWithValue("@tenderId", tenderId); // ✅ match query
+                cmd.Parameters.AddWithValue("@siteId", siteId);
+
+                var planningList = new List<object>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    planningList.Add(new
+                    {
+                        Id = reader["Id"].ToString(),
+                        Date = Convert.ToDateTime(reader["Date"]).ToString("dd/MM/yyyy")
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = planningList,
+                    message = planningList.Count > 0 ? "Planning dates loaded successfully" : "No data found"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBoqItems(int planningId)
+        {
+            try
+            {
+                // Build connection dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+           SELECT tbl_items_boq.id,tbl_project_tender_details.sr,tbl_project_tender_details.qty,tbl_project_tender_details.unit_id,tbl_project_tender_details.item_id, tbl_items_boq.id as code,tbl_items_boq.name,tbl_items_boq.type,tbl_items_boq.unit_name as unit_name FROM tbl_project_tender_details 
+                            INNER JOIN tbl_items_boq ON tbl_project_tender_details.tender_id = ref_id AND tbl_project_tender_details.item_id = tbl_items_boq.id
+                            WHERE tbl_project_tender_details.tender_id = (SELECT tender_id FROM tbl_project_planning WHERE id=@planningId)";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var boqItems = new List<object>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                int count = 1;
+                while (await reader.ReadAsync())
+                {
+                    boqItems.Add(new
+                    {
+                        Id = reader["id"].ToString(),
+                        SrNo = count++,
+                        Sr = reader["sr"].ToString(),
+                        Name = reader["name"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]) : 0,
+                        Unit = reader["unit_name"].ToString()
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = boqItems,
+                    message = boqItems.Count > 0 ? "BOQ items loaded successfully" : "No items found"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAssemblyData(int itemId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT ti.code,
+                   ti.id,
+                   ti.on_hand AS qty,
+                   ti.cost_price AS rate,
+                   ti.name,
+                   ti.ref_id,
+                   ti.unit_id,
+                   (SELECT unit_name FROM tbl_items_boq WHERE id = ti.ref_id) AS unit_name
+            FROM tbl_item_assembly_bos ta
+            INNER JOIN tbl_items_boq_details ti 
+                ON ta.item_id = ti.id AND ti.ref_id = ta.assembly_id
+            WHERE ta.assembly_id = @itemId;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@itemId", itemId);
+
+                var assemblyDataList = new List<object>();
+
+                // Read all main assembly data first
+                var mainRows = new List<dynamic>();
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        mainRows.Add(new
+                        {
+                            Id = reader["id"].ToString(),
+                            Code = reader["code"].ToString(),
+                            RefId = reader["ref_id"].ToString(),
+                            Name = reader["name"].ToString(),
+                            BoqQty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]) : 0,
+                            Unit = reader["unit_name"].ToString()
+                        });
+                    }
+                }
+
+                // For each main row, fetch material data in separate connection
+                foreach (var row in mainRows)
+                {
+                    await using var conn2 = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn2.OpenAsync();
+
+                    string materialQuery = @"
+                SELECT RequestedDate,
+                       IssuedDate,
+                       ReceivedDate,
+                       RequestedQty,
+                       IssuedQty,
+                       ReceivedQty
+                FROM tbl_project_material_requests
+                WHERE itemId = @refId;";
+
+                    await using var materialCmd = new MySqlCommand(materialQuery, conn2);
+                    materialCmd.Parameters.AddWithValue("@refId", row.RefId);
+
+                    var materialData = new
+                    {
+                        RequestedDate = (DateTime?)null,
+                        IssuedDate = (DateTime?)null,
+                        ReceivedDate = (DateTime?)null,
+                        RequestedQty = 0m,
+                        IssuedQty = 0m,
+                        ReceivedQty = 0m
+                    };
+
+                    await using (var reader2 = await materialCmd.ExecuteReaderAsync())
+                    {
+                        if (await reader2.ReadAsync())
+                        {
+                            materialData = new
+                            {
+                                RequestedDate = reader2["RequestedDate"] != DBNull.Value ? Convert.ToDateTime(reader2["RequestedDate"]) : (DateTime?)null,
+                                IssuedDate = reader2["IssuedDate"] != DBNull.Value ? Convert.ToDateTime(reader2["IssuedDate"]) : (DateTime?)null,
+                                ReceivedDate = reader2["ReceivedDate"] != DBNull.Value ? Convert.ToDateTime(reader2["ReceivedDate"]) : (DateTime?)null,
+                                RequestedQty = reader2["RequestedQty"] != DBNull.Value ? Convert.ToDecimal(reader2["RequestedQty"]) : 0,
+                                IssuedQty = reader2["IssuedQty"] != DBNull.Value ? Convert.ToDecimal(reader2["IssuedQty"]) : 0,
+                                ReceivedQty = reader2["ReceivedQty"] != DBNull.Value ? Convert.ToDecimal(reader2["ReceivedQty"]) : 0
+                            };
+                        }
+                    }
+
+                    assemblyDataList.Add(new
+                    {
+                        row.Id,
+                        row.Code,
+                        row.RefId,
+                        row.Name,
+                        row.BoqQty,
+                        row.Unit,
+                        RequestedQty = materialData.RequestedQty,
+                        IssuedQty = materialData.IssuedQty,
+                        ReceivedQty = materialData.ReceivedQty,
+                        UsedQty = materialData.ReceivedQty
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = assemblyDataList,
+                    message = assemblyDataList.Count > 0 ? "Assembly data loaded successfully" : "No data found"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectWorkDone([FromBody] ProjectWorkDoneRequest model)
+        {
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request data." });
+
+                if (model.PlanningId <= 0)
+                    return Json(new { status = false, message = "Planning ID is required." });
+
+                if (model.AccountId <= 0)
+                    return Json(new { status = false, message = "Account ID is required." });
+
+                if (model.WarehouseId <= 0)
+                    return Json(new { status = false, message = "Warehouse ID is required." });
+
+                if (model.Items == null || !model.Items.Any())
+                    return Json(new { status = false, message = "At least one work done item is required." });
+
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Json(new { status = false, message = "User not logged in." });
+                DateTime? workDate = model.Date;
+                // Build dynamic connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                int workDoneId;
+
+                if (model.Id == 0)
+                {
+                    // --------------------------
+                    // INSERT MAIN RECORD
+                    // --------------------------
+                    string insertQuery = @"
+                INSERT INTO tbl_project_work_done 
+                    (date, planning_id, account_id, warehouse_id, created_by, created_date, state)
+                VALUES
+                    (@date, @planningId, @accountId, @warehouseId, @createdBy, @createdDate, 0);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now.Date);
+                    insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    insertCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                    insertCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                    insertCmd.Parameters.AddWithValue("@createdBy", userId);
+                    insertCmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+
+                    workDoneId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    // --------------------------
+                    // UPDATE MAIN RECORD
+                    // --------------------------
+                    string updateQuery = @"
+                UPDATE tbl_project_work_done
+                SET modified_by = @modifiedBy,
+                    modified_date = @modifiedDate,
+                    date = @date,
+                    planning_id = @planningId,
+                    warehouse_id = @warehouseId,
+                    account_id = @accountId
+                WHERE id = @id;";
+
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now.Date);
+                    updateCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    updateCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                    updateCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                    updateCmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    updateCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now);
+
+                    await updateCmd.ExecuteNonQueryAsync();
+
+                    workDoneId = model.Id;
+
+                    // --------------------------
+                    // DELETE EXISTING DETAILS
+                    // --------------------------
+                    string deleteDetails = "DELETE FROM tbl_project_work_done_details WHERE ref_id = @id;";
+                    await using var delCmd = new MySqlCommand(deleteDetails, conn);
+                    delCmd.Parameters.AddWithValue("@id", workDoneId);
+                    await delCmd.ExecuteNonQueryAsync();
+                }
+
+                // --------------------------
+                // INSERT ITEM DETAILS
+                // --------------------------
+                foreach (var item in model.Items)
+                {
+                    string insertDetailQuery = @"
+                INSERT INTO tbl_project_work_done_details
+                    (ref_id, item_id, main_id, code, qty_total, unit, qty_used)
+                VALUES
+                    (@refId, @itemId, @mainItemId, @code, @qtyTotal, @unit, @qtyUsed);";
+
+                    await using var detailCmd = new MySqlCommand(insertDetailQuery, conn);
+                    detailCmd.Parameters.AddWithValue("@refId", workDoneId);
+                    detailCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                    detailCmd.Parameters.AddWithValue("@mainItemId", item.MainItemId);
+                    detailCmd.Parameters.AddWithValue("@code", item.Code ?? "");
+                    detailCmd.Parameters.AddWithValue("@qtyTotal", item.QtyTotal);
+                    detailCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                    detailCmd.Parameters.AddWithValue("@qtyUsed", item.QtyUsed);
+                    await detailCmd.ExecuteNonQueryAsync();
+                }
+
+                // --------------------------
+                // AUDIT LOG
+                // --------------------------
+                string action = model.Id == 0 ? "Insert" : "Update";
+                string logMsg = $"{action} Project Work Done for Planning {model.PlanningId}";
+                string auditQuery = @"
+            INSERT INTO tbl_audit_log (user_id, action, module, ref_id, description, log_date)
+            VALUES (@userId, @action, 'Project Work Done', @refId, @desc, @date);";
+
+                await using var logCmd = new MySqlCommand(auditQuery, conn);
+                logCmd.Parameters.AddWithValue("@userId", userId);
+                logCmd.Parameters.AddWithValue("@action", action);
+                logCmd.Parameters.AddWithValue("@refId", workDoneId);
+                logCmd.Parameters.AddWithValue("@desc", logMsg);
+                logCmd.Parameters.AddWithValue("@date", DateTime.Now);
+                await logCmd.ExecuteNonQueryAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    message = model.Id == 0
+                        ? "Project Work Done inserted successfully."
+                        : "Project Work Done updated successfully.",
+                    id = workDoneId
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
+
 
     }
 
