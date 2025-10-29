@@ -96,6 +96,7 @@
                     <th>Budget</th>
                     <th>Actual Cost</th>
                     <th>Remaining</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -104,6 +105,169 @@
         </table>
     </div>
 </div>
+
+
+<!-- Project Management Modal -->
+<div class="modal fade" id="projectManagementModal" tabindex="-1" aria-labelledby="projectManagementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" style="max-width: 1400px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="projectManagementLabel">Projects - Management</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="container-fluid">
+                    <!-- Project Info -->
+                    <div class="row mb-3">
+                        <div class="col-md-2">
+                            <label>Date</label>
+                            <input type="date" id="dtDate" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label>Project Name</label>
+                            <input type="text" id="txtProjectName" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Assigned Team</label>
+                            <input type="text" id="txtAssignedTeam" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0">Project Type</h6>
+                            </div>
+                            <select class="form-select" id="projectTypes">
+                                <option value="">-- Select Project Type --</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial">Commercial</option>
+                                <option value="Industrial">Industrial</option>
+                                <option value="Infrastructure">Infrastructure</option>
+                                <option value="Institutional">Institutional</option>
+                                <option value="Renovation/Refurbishment">Renovation / Refurbishment</option>
+                                <option value="Landscaping">Landscaping</option>
+                                <option value="Specialized">Specialized</option>
+                                <option value="Government">Government</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0">Project Status</h6>
+                            </div>
+                            <select class="form-select" id="projectStatuss">
+                                <option value="">-- Select Project Status --</option>
+                                <option value="Planning">Planning</option>
+                                <option value="Mobilizing">Mobilizing</option>
+                                <option value="Under Construction">Under Construction</option>
+                                <option value="Inspection">Inspection</option>
+                                <option value="Finalizing">Finalizing</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Delayed">Delayed</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="Change Order">Change Order</option>
+                                <option value="Commissioning">Commissioning</option>
+                                <option value="Final Handover">Final Handover</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label>Project Location</label>
+                            <input type="text" id="txtProjectLocation" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Project Site</label>
+                            <input type="text" id="txtProjectSite" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Plot Number</label>
+                            <input type="text" id="txtPlotNumber" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Fund Management Account</label>
+                            <select class="form-select" id="debitAccount">
+                                <option value="">-- Select Account --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label>Start Date</label>
+                            <input type="date" id="dtp_start" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>End Date</label>
+                            <input type="date" id="dtp_end" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Estimated Budget</label>
+                            <input type="text" id="txtEstimatedBudget" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Tender Name</label>
+                            <input type="text" id="txtTenderName" class="form-control" readonly>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label>Progress</label>
+                            <input type="text" id="txtProgress" class="form-control" placeholder="Progress">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Budget</label>
+                            <input type="text" id="txtBudget" class="form-control" placeholder="Budget">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Actual Cost</label>
+                            <input type="text" id="txtActualCost" class="form-control" placeholder="Actual Cost">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Remaining Budget</label>
+                            <input type="text" id="txtRemainingBudget" class="form-control" placeholder="Remaining Budget">
+                        </div>
+                    </div>
+
+                    <!-- Activities Table -->
+                    <h6 class="mt-4">Activity</h6>
+                    <table class="table table-bordered" id="tblActivity">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Description</th>
+                                <th>Qty Needed</th>
+                                <th>Qty Used</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <!-- Assignments Table -->
+                    <h6 class="mt-4">Assign Details</h6>
+                    <table class="table table-bordered" id="tblAssign">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnSave">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -154,6 +318,34 @@
             // Dropdown change triggers filter
             $('#projectName, #projectType, #projectStatus').on('change', function () {
                 loadProjectPlanning();
+            });
+
+             $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : res.data || [];
+                    if (!data.length) return;
+
+                    const accountSelectors = ['#debitAccount'];
+                    accountSelectors.forEach(function(selector) {
+                        const $select = $(selector);
+                        const selectedId = $select.data('selected-id');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function(i, item) {
+                            const $option = $('<option>', {
+                                value: item.id,
+                                text: `${item.code} - ${item.name}`,
+                                selected: String(item.id) === String(selectedId)
+                            });
+                            $select.append($option);
+                        });
+                    });
+                },
+                error: function(err) {
+                    console.error('Failed to fetch accounts:', err);
+                }
             });
 
             function loadProjects() {
@@ -211,7 +403,7 @@
                             toastr.error('Failed to load project summary');
                             return;
                         }
-
+                     
                         if ($.fn.DataTable.isDataTable('#table1')) {
                             $('#table1').DataTable().clear().destroy();
                         }
@@ -221,20 +413,28 @@
 
                                if (res.data && res.data.length > 0) {
             $.each(res.data, function (i, row) {
-                const tr = `
-                    <tr data-id="${row.projectNo}" style="cursor:pointer;">
-                        <td>${row.sn}</td>
-                        <td>${row.Date ?? ''}</td>
-                        <td>${row.projectName ?? ''}</td>
-                        <td>${row.startDate ?? ''}</td>
-                        <td>${row.endDate ?? ''}</td>
-                        <td>${row.status ?? ''}</td>
-                        <td>${row.projectType ?? ''}</td>
-                        <td>${row.estBudget ?? 0}</td>
-                        <td>${row.budget ?? 0}</td>
-                        <td>${row.actualCost ?? 0}</td>
-                        <td>${row.remainingBudget ?? 0}</td>
-                    </tr>`;
+                     const tr = `
+        <tr data-id="${row.projectNo}" style="cursor:pointer;">
+            <td>${row.sn}</td>
+            <td>${row.Date ?? ''}</td>
+            <td>${row.projectName ?? ''}</td>
+            <td>${row.startDate ?? ''}</td>
+            <td>${row.endDate ?? ''}</td>
+            <td>${row.status ?? ''}</td>
+            <td>${row.projectType ?? ''}</td>
+            <td>${row.estBudget ?? 0}</td>
+            <td>${row.budget ?? 0}</td>
+            <td>${row.actualCost ?? 0}</td>
+            <td>${row.remainingBudget ?? 0}</td>
+            <td>
+                <button class="btn btn-sm btn-primary editProjectSummaryBtn"
+                        data-id="${row.projectNo}"
+                        title="Edit Project Summary">
+                    <i class="fas fa-pen"></i>
+                </button>
+            </td>
+        </tr>`;
+
                 tbody.append(tr);
             });
 
@@ -269,6 +469,179 @@
                     }
                 });
             }
+
+           $(document).on('click', '.editProjectSummaryBtn', function () {
+            const projectId = $(this).data('id');
+
+            // Show modal
+            $('#projectManagementModal').modal('show');
+
+            // Call API using the selected ID
+            $.ajax({
+                url: '/Construction/GetProjectPlanningSummary',
+                type: 'GET',
+                data: { id: projectId },
+                       success: function (res) {
+            if (!res || !res.status) {
+                alert("No data found for this project.");
+                return;
+            }
+
+         
+
+            const project = res.project || {};
+            const site = res.site || {};
+            const assignedTeam = res.assignedTeam || [];
+            const activities = res.activities || [];
+            const assignments = res.assignments || [];
+            const budget = res.budgetInfo || {};
+             $('#projectManagementModal').data('project-id', project.projectId || project.id || 0);
+            $('#projectManagementModal').data('planning-id', project.planningId || project.projectPlanningId || projectId || 0);
+            $('#projectManagementModal').data('record-id', project.managementId || 0);
+            console.log(res);
+            // === Project Info ===
+            $('#dtDate').val(new Date().toISOString().split('T')[0]);
+            $('#txtProjectName').val(project.projectName || '');
+            $('#txtAssignedTeam').val(assignedTeam.length > 0 ? assignedTeam.map(t => t.name).join(', ') : '');
+            $('#txtProjectLocation').val(site.location || '');
+            $('#txtProjectSite').val(site.siteName || '');
+            $('#txtPlotNumber').val(site.plotNumber || '');
+            $('#dtp_start').val(project.startDate ? project.startDate.split('T')[0] : '');
+            $('#dtp_end').val(project.endDate ? project.endDate.split('T')[0] : '');
+            $('#txtEstimatedBudget').val(project.estimatedBudget || '');
+            $('#txtTenderName').val(project.tenderName || '');
+            $('#projectStatuss').val(project.status || '');
+            $('#projectTypes').val(project.projectType || '');
+             $('#debitAccount').val(project.fundAccountId || '');
+            $('#txtBudget').val(budget.budget || '');
+             $('#txtActualCost').val(budget.actualCost || '');
+              $('#txtRemainingBudget').val(budget.remainingBudget || '');
+
+            // === Activities Table ===
+            const activitiesTbody = $('#tblActivity tbody').empty();
+            if (activities.length > 0) {
+                activities.forEach((act, index) => {
+                    let qtyNeeded = 0;
+                    if (act.qtyNeeded && typeof act.qtyNeeded === 'object') {
+                        const keys = Object.keys(act.qtyNeeded);
+                        if (keys.length > 0) qtyNeeded = Number(act.qtyNeeded[keys[0]]) || 0;
+                    } else {
+                        qtyNeeded = act.qtyNeeded || 0;
+                    }
+
+                    activitiesTbody.append(`
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${act.description || ''}</td>
+                            <td>${qtyNeeded}</td>
+                            <td>${act.qtyUsed || 0}</td>
+                            <td>${act.status || ''}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                activitiesTbody.append('<tr><td colspan="5" class="text-center">No activities found</td></tr>');
+            }
+
+            // === Assignments Table ===
+            const assignTbody = $('#tblAssign tbody').empty();
+            if (assignments.length > 0) {
+                assignments.forEach((ass, index) => {
+                    assignTbody.append(`
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${ass.name || ''}</td>
+                            <td>${ass.date || ''}</td>
+                            <td>${ass.status || ''}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                assignTbody.append('<tr><td colspan="4" class="text-center">No assignments found</td></tr>');
+            }
+        },
+
+                error: function (err) {
+                    console.error("Error fetching project planning:", err);
+                    alert("An error occurred while fetching project data.");
+                }
+            });
+        });
+
+
+        function calculateRemainingBudget() {
+            const budget = parseFloat($('#txtBudget').val()) || 0;
+            const actualCost = parseFloat($('#txtActualCost').val()) || 0;
+
+            const remaining = budget - actualCost;
+            $('#txtRemainingBudget').val(remaining.toFixed(2)); 
+        }
+
+        $('#txtBudget, #txtActualCost').on('input', calculateRemainingBudget);
+
+                // Save Project Management
+        $("#btnSave").off("click").on("click", function () {
+            const rawDate = $("#dtDate").val();
+            const formattedDate = rawDate ? new Date(rawDate).toISOString() : null;
+
+            const model = {
+                Id: parseInt($("#projectManagementModal").data("record-id")) || 0,
+                Date: formattedDate,
+                 ProjectPlanningId: parseInt($("#projectManagementModal").data("planning-id")) || 0,
+        ProjectId: parseInt($("#projectManagementModal").data("project-id")) || 0,
+                ProjectName: $("#txtProjectName").val(),
+                Budget: parseFloat($("#txtBudget").val()) || 0,
+                ActualCost: parseFloat($("#txtActualCost").val()) || 0,
+                RemainingBudget: parseFloat($("#txtRemainingBudget").val()) || 0,
+                Progress: parseFloat($("#txtProgress").val()) || 0
+            };
+            console.log(model);
+            // Validation
+            if (!model.ProjectId) return toastr.warning("Please select a Project.");
+            if (!model.ProjectPlanningId) return toastr.warning("Please select a Planning.");
+            if (!model.Budget) return toastr.warning("Budget must be greater than 0.");
+
+            // API Call
+            $.ajax({
+                url: '/Construction/SaveOrUpdateProjectManagement',
+                type: 'POST',
+                data: JSON.stringify(model),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                beforeSend: function () {
+                    $("#btnSave").prop("disabled", true).text("Saving...");
+                },
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Project Management saved successfully!");
+                        $("#projectManagementModal").modal("hide");
+                        // Optional: reload or refresh data table
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        toastr.warning(res.message || "Save failed!");
+                    }
+                },
+                error: function (xhr) {
+                    console.error("Error details:", xhr);
+                    let errorMsg = "Unexpected error";
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMsg = response.message || errorMsg;
+                    } catch (e) {
+                        errorMsg = xhr.responseText || errorMsg;
+                    }
+                    toastr.error("Error: " + errorMsg);
+                },
+                complete: function () {
+                    $("#btnSave").prop("disabled", false).text("Save");
+                }
+            });
+        });
+
+
+
+
+
         });
 
 
