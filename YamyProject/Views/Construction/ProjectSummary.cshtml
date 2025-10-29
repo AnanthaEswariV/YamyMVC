@@ -5,3 +5,275 @@
 }
 
 
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <bold> <strong>Project Summary</strong></bold>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Reported By</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkReportedBy" checked>
+                </div>
+                <select class="form-select" id="projectName" disabled>
+                    <option value="">-- Select Reported By --</option>
+                </select>
+            </div>
+
+            <!-- Project Type -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Project Type</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectType" checked>
+                </div>
+                <select class="form-select" id="projectType" disabled>
+                    <option value="">-- Select Project Type --</option>
+                    <option value="Residential">Residential</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Industrial">Industrial</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Institutional">Institutional</option>
+                    <option value="Renovation/Refurbishment">Renovation / Refurbishment</option>
+                    <option value="Landscaping">Landscaping</option>
+                    <option value="Specialized">Specialized</option>
+                    <option value="Government">Government</option>
+                </select>
+            </div>
+
+
+            <!-- Project Status -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Project Status</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectStatus" checked>
+                </div>
+                <select class="form-select" id="projectStatus" disabled>
+                    <option value="">-- Select Project Status --</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Mobilizing">Mobilizing</option>
+                    <option value="Under Construction">Under Construction</option>
+                    <option value="Inspection">Inspection</option>
+                    <option value="Finalizing">Finalizing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Change Order">Change Order</option>
+                    <option value="Commissioning">Commissioning</option>
+                    <option value="Final Handover">Final Handover</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>Project Name</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                    <th>Project Type</th>
+                    <th>Est Budget</th>
+                    <th>Budget</th>
+                    <th>Actual Cost</th>
+                    <th>Remaining</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+@section Scripts {
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+
+              $(document).ready(function () {
+
+            // Initial load
+            loadProjectPlanning();
+
+            // Checkbox change
+            $(document).on('change', '.autoLock', function () {
+                const selectId = $(this).attr('id').replace('chk', '');
+                const select = $('#' + selectId.charAt(0).toLowerCase() + selectId.slice(1));
+
+                // Set dropdown disabled state based on checkbox
+                if ($(this).is(':checked')) {
+                    select.prop('disabled', true); // Disabled when checked
+                } else {
+                    select.prop('disabled', false); // Enabled when unchecked
+
+                    // Load projects only if "Reported By" is enabled
+                    if (selectId === 'ReportedBy') {
+                        loadProjects();
+                    }
+                }
+
+                loadProjectPlanning();
+            });
+
+            // Dropdown change triggers filter
+            $('#projectName, #projectType, #projectStatus').on('change', function () {
+                loadProjectPlanning();
+            });
+
+            function loadProjects() {
+                $.ajax({
+                    url: '/Construction/GetProjects',
+                    type: 'GET',
+                    success: function (result) {
+                        if (result.status) {
+                            const $dropdown = $('#projectName');
+                            $dropdown.empty();
+                            $dropdown.append('<option value="">-- Select Reported By --</option>');
+
+                            $.each(result.data, function (index, project) {
+                                $dropdown.append('<option value="' + project.id + '">' + project.name + '</option>');
+                            });
+
+                            // Make sure dropdown is only enabled if checkbox is unchecked
+                            if ($('#chkReportedBy').is(':checked')) {
+                                $dropdown.prop('disabled', true);
+                            } else {
+                                $dropdown.prop('disabled', false);
+                            }
+                        } else {
+                            toastr.error('Failed to load projects');
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading projects');
+                    }
+                });
+            }
+
+            function loadProjectPlanning() {
+                const reportedBy = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
+                const projectType = $('#chkProjectType').is(':checked') ? null : $('#projectType').val();
+                const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
+
+                $.ajax({
+                    url: '/Construction/GetProjectSummary',
+                    type: 'GET',
+                    data: {
+                        projectId: reportedBy || undefined,
+                        projectType: projectType || undefined,
+                        projectStatus: projectStatus || undefined
+                    },
+                    beforeSend: function () {
+                        $('#table1 tbody').html(
+                            `<tr><td colspan="11" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td></tr>`
+                        );
+                    },
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error('Failed to load project summary');
+                            return;
+                        }
+
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().clear().destroy();
+                        }
+
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
+
+                               if (res.data && res.data.length > 0) {
+            $.each(res.data, function (i, row) {
+                const tr = `
+                    <tr data-id="${row.projectNo}" style="cursor:pointer;">
+                        <td>${row.sn}</td>
+                        <td>${row.Date ?? ''}</td>
+                        <td>${row.projectName ?? ''}</td>
+                        <td>${row.startDate ?? ''}</td>
+                        <td>${row.endDate ?? ''}</td>
+                        <td>${row.status ?? ''}</td>
+                        <td>${row.projectType ?? ''}</td>
+                        <td>${row.estBudget ?? 0}</td>
+                        <td>${row.budget ?? 0}</td>
+                        <td>${row.actualCost ?? 0}</td>
+                        <td>${row.remainingBudget ?? 0}</td>
+                    </tr>`;
+                tbody.append(tr);
+            });
+
+            // Initialize DataTable with export buttons
+            $('#table1').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                        className: 'btn btn-primary btn-sm',
+                        exportOptions: { columns: ':not(:last-child)' }
+                    },
+                    {
+                        extend: 'pdfHtml5',
+                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                        className: 'btn btn-primary btn-sm',
+                        exportOptions: { columns: ':not(:last-child)' },
+                        orientation: 'landscape',
+                        pageSize: 'A4'
+                    }
+                ],
+                order: [[0, 'asc']],
+                pageLength: 25
+            });
+        } else {
+            tbody.append(`<tr><td colspan="11" class="text-center text-muted py-4">No records found</td></tr>`);
+        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading project summary');
+                    }
+                });
+            }
+        });
+
+
+
+
+
+    </script>
+    }

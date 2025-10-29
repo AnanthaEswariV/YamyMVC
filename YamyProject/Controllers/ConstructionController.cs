@@ -4108,6 +4108,99 @@ LIMIT 1;";
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSummary(
+    int? projectId = null,
+    string projectStatus = null,
+    string projectType = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            ROW_NUMBER() OVER (ORDER BY tbl_project_planning.date) AS SN,
+            tbl_project_planning.date AS DATE,
+            tbl_project_planning.id AS ProjectNo,
+            CONCAT(tbl_projects.code, ' - ', tbl_projects.name) AS ProjectName,
+            tbl_project_planning.start_date AS StartDate,
+            tbl_project_planning.end_date AS EndDate,
+            tbl_project_planning.Status,
+            tbl_project_planning.project_type AS ProjectType,
+            tbl_project_planning.estimated_budget AS EstBudget,
+            COALESCE(tbl_project_management.id, 0) AS ManagementId,
+            COALESCE(tbl_project_management.budget, '') AS Budget,
+            COALESCE(tbl_project_management.actual_cost, '') AS ActualCost,
+            COALESCE(tbl_project_management.remaining_budget, '') AS RemainingBudget
+        FROM tbl_project_planning
+        INNER JOIN tbl_projects ON tbl_project_planning.project_id = tbl_projects.id
+        LEFT JOIN tbl_project_management 
+            ON tbl_project_management.project_planning_id = tbl_project_planning.id 
+            AND tbl_project_management.project_id = tbl_project_planning.project_id
+        WHERE tbl_project_planning.state = 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (projectId.HasValue)
+                {
+                    query += " AND tbl_project_planning.project_id = @projectId";
+                    parameters.Add(new MySqlParameter("@projectId", projectId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(projectStatus))
+                {
+                    query += " AND tbl_project_planning.status = @status";
+                    parameters.Add(new MySqlParameter("@status", projectStatus));
+                }
+
+                if (!string.IsNullOrEmpty(projectType))
+                {
+                    query += " AND tbl_project_planning.project_type = @type";
+                    parameters.Add(new MySqlParameter("@type", projectType));
+                }
+
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = reader.GetInt32("SN"),
+                        Date = reader["DATE"] != DBNull.Value ? Convert.ToDateTime(reader["DATE"]).ToString("yyyy-MM-dd") : null,
+                        ProjectNo = reader.GetInt32("ProjectNo"),
+                        ProjectName = reader["ProjectName"].ToString(),
+                        StartDate = reader["StartDate"] != DBNull.Value ? Convert.ToDateTime(reader["StartDate"]).ToString("yyyy-MM-dd") : null,
+                        EndDate = reader["EndDate"] != DBNull.Value ? Convert.ToDateTime(reader["EndDate"]).ToString("yyyy-MM-dd") : null,
+                        Status = reader["Status"].ToString(),
+                        ProjectType = reader["ProjectType"].ToString(),
+                        EstBudget = reader["EstBudget"].ToString(),
+                        ManagementId = reader.GetInt32("ManagementId"),
+                        Budget = reader["Budget"].ToString(),
+                        ActualCost = reader["ActualCost"].ToString(),
+                        RemainingBudget = reader["RemainingBudget"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
         #endregion
 
 
