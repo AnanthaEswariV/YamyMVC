@@ -199,14 +199,15 @@
 
 
     <script>
-        $(document).ready(function () {
+               $(document).ready(function () {
+            // Global variable to track the current selected planning ID
+            let selectedPlanningId = 0;
 
             loadProjects();
 
             $('#chkReportedBy').change(function () {
                 if ($(this).is(':checked')) {
                     $('#projectName').prop('disabled', true);
-                    // Optionally, load all data if checkbox checked
                     loadProjectWorkDone();
                 } else {
                     $('#projectName').prop('disabled', false);
@@ -226,7 +227,7 @@
                     success: function (result) {
                         if (result.status) {
                             const $dropdown = $('#projectName');
-                             const $dropdowns = $('#projectNames');
+                            const $dropdowns = $('#projectNames');
                             $dropdown.empty();
                             $dropdowns.empty();
                             $dropdown.append('<option value="">-- Select Project Name --</option>');
@@ -277,7 +278,7 @@
                                         <td>${row.totalQtyP ?? 0}</td>
                                         <td>${row.totalQtyWD ?? 0}</td>
                                         <td>
-                                                <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}" title="View Items">
+                                            <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}" title="View Items">
                                                 <i class="fas fa-book"></i>
                                             </button>
                                         </td>
@@ -295,7 +296,7 @@
                                 pageLength: 25
                             });
                         } else {
-                            tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
+                            tbody.append(`<tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>`);
                         }
                     },
                     error: function () {
@@ -305,463 +306,466 @@
             }
 
             $('#table1').on('click', '.viewItemsBtn', function () {
-            const workDoneId = $(this).data('id');
-       
-            // Open modal
-            $('#itemsModal').modal('show');
+                const workDoneId = $(this).data('id');
+                $('#itemsModal').modal('show');
 
-            const tbody = $('#itemsTable tbody');
-            tbody.empty();
+                const tbody = $('#itemsTable tbody');
+                tbody.empty();
 
-            $.ajax({
-                url: '/Construction/GetProjectWorkDoneItems',
-                type: 'GET',
-                data: { id: workDoneId },
-                success: function (res) {
-                    if (!res.status) {
-                        toastr.error('Failed to load items');
-                        return;
+                $.ajax({
+                    url: '/Construction/GetProjectWorkDoneItems',
+                    type: 'GET',
+                    data: { id: workDoneId },
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error('Failed to load items');
+                            return;
+                        }
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, item) {
+                                const tr = `
+                                    <tr>
+                                        <td>${item.itemName}</td>
+                                        <td>${item.qty}</td>
+                                        <td>${item.rate}</td>
+                                        <td>${item.unit}</td>
+                                        <td>${item.amount}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="5" class="text-center text-muted py-2">No items found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading items');
                     }
+                });
+            });
 
-                    if (res.data && res.data.length > 0) {
-                        $.each(res.data, function (i, item) {
+            // Load Project Sites
+            $.ajax({
+                url: '/Construction/GetProjectSites',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        var dropdown = $('#projectSite');
+                        response.data.forEach(function(site) {
+                            dropdown.append($('<option>', {
+                                value: site.id,
+                                text: site.name
+                            }));
+                        });
+                    } else {
+                        console.error('Failed to load sites:', response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching sites:', error);
+                }
+            });
+
+            // Load Tenders
+            $.ajax({
+                url: '/Construction/GetTenders',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        var dropdown = $('#tenderDropdown');
+                        response.data.forEach(function(tender) {
+                            dropdown.append($('<option>', {
+                                value: tender.id,
+                                text: tender.name
+                            }));
+                        });
+                    } else {
+                        console.error('Failed to load tenders:', response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching tenders:', error);
+                }
+            });
+
+            // Load Accounts
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : res.data || [];
+                    if (!data.length) return;
+
+                    const accountSelectors = ['#debitAccount'];
+                    accountSelectors.forEach(function(selector) {
+                        const $select = $(selector);
+                        const selectedId = $select.data('selected-id');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function(i, item) {
+                            const $option = $('<option>', {
+                                value: item.id,
+                                text: `${item.code} - ${item.name}`,
+                                selected: String(item.id) === String(selectedId)
+                            });
+                            $select.append($option);
+                        });
+                    });
+                },
+                error: function(err) {
+                    console.error('Failed to fetch accounts:', err);
+                }
+            });
+
+            // When Project/Site/Tender changes, load planning dates
+            $('#projectNames, #projectSite, #tenderDropdown').change(function () {
+                const projectId = $('#projectNames').val();
+                const siteId = $('#projectSite').val();
+                const tenderId = $('#tenderDropdown').val();
+
+                // Reset the selected planning ID
+                selectedPlanningId = 0;
+                $('#workDoneTable tbody').empty();
+                $('.work-assembly-container').remove();
+
+                if (projectId && siteId && tenderId) {
+                    loadWorkDoneItems(projectId, siteId, tenderId);
+                }
+            });
+
+            function loadWorkDoneItems(projectId, siteId, tenderId) {
+                const tbody = $('#workDoneTable tbody');
+                tbody.empty();
+
+                $.ajax({
+                    url: '/Construction/GetProjectWorkDoneDetails',
+                    type: 'GET',
+                    data: { projectId, siteId, tenderId },
+                    success: function (res) {
+                        if (!res.status || !res.data || res.data.length === 0) {
+                            tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No planning dates found</td></tr>`);
+                            toastr.warning(res.message || 'No items found for this selection.');
+                            return;
+                        }
+
+                        console.log('Planning data:', res);
+                        const planningList = res.data;
+
+                        $.each(planningList, function (i, item) {
+                            // Store the planning ID - convert to integer
+                            const planId = parseInt(item.id) || 0;
+
                             const tr = `
-                                <tr>
-                                    <td>${item.itemName}</td>
-                                    <td>${item.qty}</td>
-                                    <td>${item.rate}</td>
-                                    <td>${item.unit}</td>
-                                    <td>${item.amount}</td>
+                                <tr class="planning-row" data-planning-id="${planId}" style="cursor:pointer; background-color: #f8f9fa;">
+                                    <td>${planId}</td>
+                                    <td class="text-primary fw-bold">${item.date || ''}</td>
+                                    <td>${i + 1}</td>
+                                    <td colspan="3" class="text-muted fst-italic">Click to expand BOQ items</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
-                    } else {
-                        tbody.append(`<tr><td colspan="5" class="text-center text-muted py-2">No items found</td></tr>`);
-                    }
-                },
-                error: function () {
-                    toastr.error('Error loading items');
-                }
-            });
-        });
 
-            $.ajax({
-                    url: '/Construction/GetProjectSites',
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.status) {
-                            var dropdown = $('#projectSite');
-                            response.data.forEach(function(site) {
-                                dropdown.append(
-                                    $('<option>', {
-                                        value: site.id,
-                                        text: site.name
-                                    })
-                                );
-                            });
-                        } else {
-                            console.error('Failed to load tenders:', response.message);
-                        }
+                        toastr.success('Planning dates loaded. Click a date to view BOQ items.');
                     },
-                    error: function(xhr, status, error) {
-                        console.error('Error fetching tenders:', error);
+                    error: function (xhr) {
+                        toastr.error('Error loading planning dates.');
+                        console.error(xhr);
                     }
                 });
+            }
 
-            $.ajax({
-                    url: '/Construction/GetTenders',
+            // Click planning row to expand BOQ items
+            $('#workDoneTable tbody').on('click', 'tr.planning-row', function () {
+                const tr = $(this);
+                const planningId = parseInt(tr.data('planning-id')) || 0;
+
+                if (!planningId) {
+                    toastr.error('Invalid planning ID');
+                    return;
+                }
+
+                // Update the global selected planning ID
+                selectedPlanningId = planningId;
+
+                // Collapse if already expanded
+                if (tr.hasClass('expanded')) {
+                    tr.removeClass('expanded');
+                    $(`tr.boq-row[data-parent-id="${planningId}"]`).remove();
+                    $('.work-assembly-container').remove();
+                    return;
+                }
+
+                // Collapse other planning rows
+                $('tr.planning-row').removeClass('expanded');
+                $('tr.boq-row').remove();
+                $('.work-assembly-container').remove();
+
+                // Insert loading row
+                tr.after(`<tr class="boq-row temp-row" data-parent-id="${planningId}">
+                            <td colspan="6" class="text-center text-muted">Loading BOQ items...</td>
+                          </tr>`);
+
+                // Fetch BOQ items
+                $.ajax({
+                    url: '/Construction/GetBoqItems',
                     type: 'GET',
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.status) {
-                            var dropdown = $('#tenderDropdown');
-                            response.data.forEach(function(tender) {
-                                dropdown.append(
-                                    $('<option>', {
-                                        value: tender.id,
-                                        text: tender.name
-                                    })
-                                );
-                            });
-                        } else {
-                            console.error('Failed to load tenders:', response.message);
+                    data: { planningId },
+                    success: function (res) {
+                        $(`tr.temp-row[data-parent-id="${planningId}"]`).remove();
+
+                        if (!res.status || !res.data || res.data.length === 0) {
+                            toastr.warning(res.message || 'No BOQ items found');
+                            return;
                         }
+
+                        let boqRowsHtml = '';
+                        res.data.forEach(item => {
+                            boqRowsHtml += `
+                                <tr class="boq-row" data-item-id="${item.id}" data-parent-id="${planningId}">
+                                    <td></td>
+                                    <td></td>
+                                    <td>${item.sr || ''}</td>
+                                    <td class="name-cell text-primary" style="cursor:pointer; padding-left: 20px;">
+                                        <i class="fas fa-arrow-right me-2"></i>${item.name || ''}
+                                    </td>
+                                    <td>${item.qty || ''}</td>
+                                    <td>${item.unit || ''}</td>
+                                </tr>`;
+                        });
+
+                        $(boqRowsHtml).insertAfter(tr);
+                        tr.addClass('expanded');
+                        toastr.info('Click on a BOQ item name to view assembly details');
                     },
-                    error: function(xhr, status, error) {
-                        console.error('Error fetching tenders:', error);
+                    error: function () {
+                        $(`tr.temp-row[data-parent-id="${planningId}"]`).remove();
+                        toastr.error('Error fetching BOQ items.');
                     }
                 });
-
-            $.ajax({
-                        url: '/HR/GetAccruedSalaries',
-                        type: 'GET',
-                        success: function(res) {
-                            const data = Array.isArray(res) ? res : res.data || [];
-
-                            if (!data.length) return;
-
-                            const accountSelectors = ['#debitAccount'];
-
-                            accountSelectors.forEach(function(selector) {
-                                const $select = $(selector);
-                                const selectedId = $select.data('selected-id');
-
-                                $select.empty().append('<option value="">-- Select --</option>');
-
-                                $.each(data, function(i, item) {
-                                    const $option = $('<option>', {
-                                        value: item.id,
-                                        text: `${item.code} - ${item.name}`,
-                                        selected: String(item.id) === String(selectedId)
-                                    });
-
-                                    $select.append($option);
-                                });
-                            });
-                        },
-                        error: function(err) {
-                            console.error('Failed to fetch bank accounts:', err);
-                        }
-                    });
-
-            $('#projectNames, #projectSite, #tenderDropdown').change(function () {
-            const projectId = $('#projectNames').val();
-            const siteId = $('#projectSite').val();
-            const tenderId = $('#tenderDropdown').val();
-
-            if (projectId && siteId && tenderId) {
-                loadWorkDoneItems(projectId, siteId, tenderId);
-            }
-        });
-
-            function loadWorkDoneItems(projectId, siteId, tenderId) {
-            const tbody = $('#workDoneTable tbody');
-            tbody.empty();
-
-            $.ajax({
-                url: '/Construction/GetProjectWorkDoneDetails',
-                type: 'GET',
-                data: { projectId, siteId, tenderId },
-                success: function (res) {
-                    if (!res.status || !res.data || res.data.length === 0) {
-                        tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No planning dates found</td></tr>`);
-                        toastr.warning(res.message || 'No items found for this selection.');
-                        return;
-                    }
-
-                    const planningList = res.data;
-
-                    $.each(planningList, function (i, item) {
-                        const tr = `
-                            <tr data-planning-id="${item.id}">
-                                <td>${item.id || ''}</td>
-                                <td class="clickable text-primary" style="cursor:pointer;">${item.date || ''}</td>
-                                <td>${i + 1}</td>
-                            </tr>`;
-                        tbody.append(tr);
-                    });
-                },
-                error: function (xhr) {
-                    toastr.error('Error loading work done items.');
-                    console.error(xhr);
-                }
             });
-        }
 
-            $('#workDoneTable tbody').on('click', 'tr[data-planning-id]', function () {
-            const tr = $(this);
-            const planningId = tr.data('planning-id');
-            if (!planningId) return;
-
-            // Collapse if already expanded
-            if (tr.hasClass('expanded')) {
-                tr.removeClass('expanded');
-                $(`tr.boq-row[data-parent-id="${planningId}"]`).remove();
-                return;
-            }
-
-            // Remove previous BOQ rows
-            $(`tr.boq-row[data-parent-id="${planningId}"]`).remove();
-
-            // Insert loading row
-            tr.after(`<tr class="boq-row temp-row" data-parent-id="${planningId}">
-                        <td colspan="6" class="text-center text-muted">Loading...</td>
-                      </tr>`);
-
-            // Fetch BOQ items
-            $.ajax({
-                url: '/Construction/GetBoqItems',
-                type: 'GET',
-                data: { planningId },
-                success: function (res) {
-                    $(`tr.temp-row[data-parent-id="${planningId}"]`).remove();
-
-                    if (!res.status || !res.data || res.data.length === 0) {
-                        toastr.warning(res.message || 'No BOQ items found');
-                        return;
-                    }
-
-                    let boqRowsHtml = '';
-                    res.data.forEach(item => {
-                        boqRowsHtml += `
-                            <tr class="boq-row" data-item-id="${item.id}" data-parent-id="${planningId}">
-                                <td></td>
-                                <td></td>
-                                <td>${item.sr || ''}</td>
-                                <td class="name-cell text-primary" style="cursor:pointer;">${item.name || ''}</td>
-                                <td>${item.qty || ''}</td>
-                                <td>${item.unit || ''}</td>
-                            </tr>`;
-                    });
-
-                    $(boqRowsHtml).insertAfter(tr);
-                    tr.addClass('expanded');
-                },
-                error: function () {
-                    $(`tr.temp-row[data-parent-id="${planningId}"]`).remove();
-                    toastr.error('Error fetching BOQ items.');
-                }
-            });
-        });
-
+            // Click BOQ item name to view assembly
             $('#workDoneTable tbody').on('click', 'td.name-cell', function (e) {
-            e.stopPropagation(); // Prevent row click from firing
-            const tr = $(this).closest('tr');
-            const itemId = tr.data('item-id');
+                e.stopPropagation();
+                const tr = $(this).closest('tr');
+                const itemId = tr.data('item-id');
 
-            if (!itemId) return; // Ignore planning row names
+                if (!itemId) return;
 
-            fetchAssemblyData(itemId);
-        });
-
-        function ensureWorkDoneDate() {
-            let $date = $("#workDoneDate");
-            if ($date.length === 0) {
-                $date = $("#newItemsModal input[type='date']").first();
-                $date.attr("id", "workDoneDate");
-            }
-            if (!$date.val()) {
-                const today = new Date().toISOString().split("T")[0];
-                $date.val(today);
-            }
-            return $date.val();
-        }
-
-        function fetchAssemblyData(itemId) {
-            $.ajax({
-                url: '/Construction/GetAssemblyData',
-                type: 'GET',
-                data: { itemId },
-                success: function (res) {
-                    if (!res.status || !res.data || res.data.length === 0) {
-                        toastr.warning(res.message || 'No assembly data found');
-                        return;
-                    }
-
-                    // build assembly table
-                    let html = `
-                        <div class="mt-3 work-assembly-container">
-                            <h6 class="mb-2">Assembly Details</h6>
-                            <div class="table-responsive">
-                            <table class="table table-sm table-bordered table-hover mb-0" id="assemblyTable">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Name</th>
-                                        <th>BOQ Qty</th>
-                                        <th>Unit</th>
-                                        <th>Requested Qty</th>
-                                        <th>Issued Qty</th>
-                                        <th>Received Qty</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-
-                    res.data.forEach(a => {
-                        // sanitize values to avoid breaking attributes
-                        const code = a.code ?? "";
-                        const name = a.name ?? "";
-                        const boqqty = a.boqQty ?? "";
-                        const unit = a.unit ?? "";
-                        const requested = a.requestedQty ?? "";
-                        const issued = a.issuedQty ?? "";
-                        const received = a.receivedQty ?? "";
-                        const sr = a.sr ?? "";
-
-                        html += `
-                            <tr class="assembly-detail-row" style="cursor:pointer;"
-                                data-boqqty="${boqqty}"
-                                data-requestedqty="${requested}"
-                                data-issuedqty="${issued}"
-                                data-receivedqty="${received}"
-                                data-usedqty="${a.usedQty ?? ''}"
-                                data-code="${code}"
-                                data-name="${name}"
-                                data-unit="${unit}"
-                                data-sr="${sr}"
-                                data-itemid="${a.id ?? ''}">
-                                <td>${code}</td>
-                                <td>${name}</td>
-                                <td>${boqqty}</td>
-                                <td>${unit}</td>
-                                <td>${requested}</td>
-                                <td>${issued}</td>
-                                <td>${received}</td>
-                            </tr>`;
-                    });
-
-                    html += '</tbody></table></div></div>';
-
-                    // remove any previous assembly container and append right after Work Done Table (so it's visible near Work Details)
-                    $('#newItemsModal .work-assembly-container').remove();
-                    $("#workDoneTable").after(html);
-
-                    // optional: scroll into view
-                    const $assembly = $("#newItemsModal #assemblyTable").closest('.work-assembly-container');
-                    if ($assembly.length) {
-                        $assembly[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }
-                },
-                error: function () {
-                    toastr.error('Error loading assembly data.');
-                }
-            });
-        }
-
-              // Click assembly row → add to Work Done Table
-        $(document).on('click', '.assembly-detail-row', function () {
-            const $row = $(this);
-
-            const itemId = parseInt($row.data('itemid')) || 0;
-            const today = ensureWorkDoneDate();
-            const sr = $row.data('sr') || '';
-            const name = $row.data('name') || '';
-            const qty = parseFloat($row.data('usedqty')) || parseFloat($row.data('receivedqty')) || parseFloat($row.data('boqqty')) || 0;
-            const unit = $row.data('unit') || '';
-
-            if (!itemId || !name) {
-                toastr.warning('Invalid assembly item');
-                return;
-            }
-
-            // Avoid duplicate entries
-            const exists = $("#workDoneTable tbody tr.work-item-row").filter(function () {
-                return $(this).data('itemid') === itemId;
-            }).length > 0;
-
-            if (!exists) {
-                const newRow = `
-                    <tr class="work-item-row" data-itemid="${itemId}">
-                        <td class="item-id">${itemId}</td>
-                        <td class="item-date">${today}</td>
-                        <td class="item-sr">${sr}</td>
-                        <td class="item-name">${name}</td>
-                        <td class="item-qty text-end">${qty}</td>
-                        <td class="item-unit">${unit}</td>
-                    </tr>`;
-                $("#workDoneTable tbody").append(newRow);
-                toastr.success('Item added to Work Done table');
-            } else {
-                toastr.info('Item already added');
-            }
-
-            // Remove assembly container
-            $('#newItemsModal .work-assembly-container').remove();
-        });
-
-              // Save Work Done
-        $("#btnSaveWorkDone").off('click').on("click", function () {
-            ensureWorkDoneDate();
-                    const rawDate = $("#workDoneDate").val(); // "28-10-2025"
-        let formattedDate = null;
-
-        if (rawDate) {
-            const parts = rawDate.split(/[-\/]/);
-            if (parts.length === 3) {
-                const day = parseInt(parts[0], 10);
-                const month = parseInt(parts[1], 10) - 1; // JS month 0-11
-                const year = parseInt(parts[2], 10);
-                const dt = new Date(year, month, day);
-                if (!isNaN(dt.getTime())) {
-                    formattedDate = dt.toISOString().split("T")[0]; // "yyyy-MM-dd"
-                }
-            }
-        }
-
-        const model = {
-            Id: parseInt($("#workDoneId").val()) || 0,
-            Date: formattedDate,       // optional
-            ProjectId: parseInt($("#projectNames").val()) || 0,
-            SiteId: parseInt($("#projectSite").val()) || 0,
-            TenderId: parseInt($("#tenderDropdown").val()) || 0,
-            PlanningId: parseInt($("#planningDropdown").val()) || 1,
-            AccountId: parseInt($("#debitAccount").val()) || 0,
-            WarehouseId: parseInt($("#warehouseDropdown").val()) || 1,
-            Items: []
-        };
-
-
-            // Collect Assembly items
-            $("#assemblyTable tbody tr.assembly-detail-row").each(function () {
-                const $tr = $(this);
-                const qty = parseFloat($tr.data("usedqty")) || parseFloat($tr.data("receivedqty")) || parseFloat($tr.data("boqqty")) || 0;
-
-                if (qty > 0) {
-                    model.Items.push({
-                        ItemId: parseInt($tr.data("itemid")) || 0,
-                        MainItemId: parseInt($tr.data("mainid")) || 0,
-                        Code: $tr.data("code") || "",
-                        QtyTotal: qty,
-                        Unit: $tr.data("unit") || "",
-                        QtyUsed: qty
-                    });
-                }
+                fetchAssemblyData(itemId);
             });
 
-            console.log("Saving model:", model);
+            function fetchAssemblyData(itemId) {
+                $.ajax({
+                    url: '/Construction/GetAssemblyData',
+                    type: 'GET',
+                    data: { itemId },
+                    success: function (res) {
+                        if (!res.status || !res.data || res.data.length === 0) {
+                            toastr.warning(res.message || 'No assembly data found');
+                            return;
+                        }
 
-            // Validation
-            if (!model.ProjectId) return toastr.warning("Please select a Project.");
-            if (!model.SiteId) return toastr.warning("Please select a Project Site.");
-            if (!model.TenderId) return toastr.warning("Please select a Tender.");
-            if (!model.AccountId) return toastr.warning("Please select an Account.");
-            if (!model.WarehouseId) return toastr.warning("Please select a Warehouse.");
-            if (model.Items.length === 0) return toastr.warning("Please add at least one item.");
+                        let html = `
+                            <div class="mt-3 work-assembly-container">
+                                <div class="alert alert-info">
+                                    <strong>Assembly Details for Planning ID: ${selectedPlanningId}</strong><br>
+                                    <small>Click on any row to add it to your work done record</small>
+                                </div>
+                                <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-hover mb-0" id="assemblyTable" data-planning-id="${selectedPlanningId}">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Name</th>
+                                            <th>BOQ Qty</th>
+                                            <th>Unit</th>
+                                            <th>Requested Qty</th>
+                                            <th>Issued Qty</th>
+                                            <th>Received Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
 
-            // API call
-            $.ajax({
-                url: '/Construction/SaveOrUpdateProjectWorkDone',
-                type: 'POST',
-                data: JSON.stringify(model),
-                contentType: 'application/json; charset=utf-8',
-                beforeSend: function () {
-                    $("#btnSaveWorkDone").prop("disabled", true).text("Saving...");
-                },
-                success: function (response) {
-                    if (response.status) {
-                        toastr.success(response.message || "Saved successfully!");
-                        $("#newItemsModal").modal("hide");
-                        if (typeof loadWorkDoneList === "function") loadWorkDoneList();
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        toastr.warning(response.message || "Save failed!");
+                        res.data.forEach(a => {
+                            const code = a.code ?? "";
+                            const name = a.name ?? "";
+                            const boqqty = a.boqQty ?? "";
+                            const unit = a.unit ?? "";
+                            const requested = a.requestedQty ?? "";
+                            const issued = a.issuedQty ?? "";
+                            const received = a.receivedQty ?? "";
+                            const sr = a.sr ?? "";
+
+                            html += `
+                                <tr class="assembly-detail-row" style="cursor:pointer;"
+                                    data-boqqty="${boqqty}"
+                                    data-requestedqty="${requested}"
+                                    data-issuedqty="${issued}"
+                                    data-receivedqty="${received}"
+                                    data-usedqty="${a.usedQty ?? ''}"
+                                    data-code="${code}"
+                                    data-name="${name}"
+                                    data-unit="${unit}"
+                                    data-sr="${sr}"
+                                    data-itemid="${a.id ?? ''}"
+                                    data-mainid="${a.mainId ?? 0}">
+                                    <td>${code}</td>
+                                    <td>${name}</td>
+                                    <td>${boqqty}</td>
+                                    <td>${unit}</td>
+                                    <td>${requested}</td>
+                                    <td>${issued}</td>
+                                    <td>${received}</td>
+                                </tr>`;
+                        });
+
+                        html += '</tbody></table></div></div>';
+
+                        $('#newItemsModal .work-assembly-container').remove();
+                        $("#workDoneTable").after(html);
+
+                        const $assembly = $("#newItemsModal #assemblyTable").closest('.work-assembly-container');
+                        if ($assembly.length) {
+                            $assembly[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+
+                        toastr.success('Assembly items loaded! Click rows to select items.');
+                    },
+                    error: function () {
+                        toastr.error('Error loading assembly data.');
                     }
-                },
-                error: function (xhr) {
-                    toastr.error("Error: " + (xhr.responseText || "Unexpected error"));
-                },
-                complete: function () {
-                    $("#btnSaveWorkDone").prop("disabled", false).text("Save");
+                });
+            }
+
+            function ensureWorkDoneDate() {
+                let $date = $("#workDoneDate");
+                if ($date.length === 0) {
+                    $date = $("#newItemsModal input[type='date']").first();
+                    $date.attr("id", "workDoneDate");
                 }
+                if (!$date.val()) {
+                    const today = new Date().toISOString().split("T")[0];
+                    $date.val(today);
+                }
+                return $date.val();
+            }
+
+            // Save Work Done
+            $("#btnSaveWorkDone").off('click').on("click", function () {
+                ensureWorkDoneDate();
+
+                const rawDate = $("#workDoneDate").val();
+                let formattedDate = null;
+                if (rawDate) {
+                    const dateObj = new Date(rawDate);
+                    formattedDate = dateObj.toISOString();
+                }
+
+                // Get planning ID from assembly table or global variable
+                const planningId = parseInt($("#assemblyTable").data("planning-id")) || selectedPlanningId;
+
+                const model = {
+                    Id: parseInt($("#workDoneId").val()) || 0,
+                    Date: formattedDate,
+                    ProjectId: parseInt($("#projectNames").val()) || 0,
+                    SiteId: parseInt($("#projectSite").val()) || 0,
+                    TenderId: parseInt($("#tenderDropdown").val()) || 0,
+                    PlanningId: planningId,
+                    AccountId: parseInt($("#debitAccount").val()) || 0,
+                    WarehouseId: 1,
+                    Items: []
+                };
+
+                // Collect Assembly items
+                $("#assemblyTable tbody tr.assembly-detail-row").each(function () {
+                    const $tr = $(this);
+                    const qty = parseFloat($tr.data("usedqty")) ||
+                                parseFloat($tr.data("receivedqty")) ||
+                                parseFloat($tr.data("boqqty")) || 0;
+
+                    if (qty > 0) {
+                        model.Items.push({
+                            ItemId: parseInt($tr.data("itemid")) || 0,
+                            MainItemId: parseInt($tr.data("mainid")) || 0,
+                            Code: ($tr.data("code") || "").toString(),
+                            QtyTotal: qty,
+                            Unit: ($tr.data("unit") || "").toString(),
+                            QtyUsed: qty
+                        });
+                    }
+                });
+
+                console.log("Saving model:", model);
+
+                // Validation
+                if (!model.ProjectId) return toastr.warning("Please select a Project.");
+                if (!model.SiteId) return toastr.warning("Please select a Project Site.");
+                if (!model.TenderId) return toastr.warning("Please select a Tender.");
+                if (!model.PlanningId || model.PlanningId === 0) {
+                    return toastr.warning("Please select a Planning by clicking a planning date row.");
+                }
+                if (!model.AccountId) return toastr.warning("Please select an Account.");
+                if (model.Items.length === 0) {
+                    return toastr.warning("Please add at least one item from assembly details.");
+                }
+
+                // API call
+                $.ajax({
+                    url: '/Construction/SaveOrUpdateProjectWorkDone',
+                    type: 'POST',
+                    data: JSON.stringify(model),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    beforeSend: function () {
+                        $("#btnSaveWorkDone").prop("disabled", true).text("Saving...");
+                    },
+                    success: function (response) {
+                        if (response.status) {
+                            toastr.success(response.message || "Work Done saved successfully!");
+                            $("#newItemsModal").modal("hide");
+                            loadProjectWorkDone();
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            toastr.warning(response.message || "Save failed!");
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error("Error details:", xhr);
+                        let errorMsg = "Unexpected error";
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMsg = response.message || errorMsg;
+                        } catch (e) {
+                            errorMsg = xhr.responseText || errorMsg;
+                        }
+                        toastr.error("Error: " + errorMsg);
+                    },
+                    complete: function () {
+                        $("#btnSaveWorkDone").prop("disabled", false).text("Save");
+                    }
+                });
             });
-        });
 
+            // Reset when modal closes
+            $('#newItemsModal').on('hidden.bs.modal', function () {
+                selectedPlanningId = 0;
+                $('#workDoneId').val(0);
+                $('#workDoneTable tbody').empty();
+                $('.work-assembly-container').remove();
+                $('#projectNames, #projectSite, #tenderDropdown, #debitAccount').val('');
+            });
 
-
-
-
-
+            // Reset when modal opens (for new entry)
+            $('#addPlanningBtn').on('click', function() {
+                selectedPlanningId = 0;
+                $('#workDoneId').val(0);
+                $('#workDoneTable tbody').empty();
+                $('.work-assembly-container').remove();
+                ensureWorkDoneDate();
+            });
         });
     </script>
 

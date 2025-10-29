@@ -544,24 +544,25 @@ namespace YamyProject.Core.Models
     {
         public int Id { get; set; }
         public DateTime? Date { get; set; }
-        public int ProjectId { get; set; }  
-        public int SiteId { get; set; }      
-        public int TenderId { get; set; }  
+        public int ProjectId { get; set; }
+        public int SiteId { get; set; }
+        public int TenderId { get; set; }
         public int PlanningId { get; set; }
         public int AccountId { get; set; }
         public int WarehouseId { get; set; }
-        public List<ProjectWorkDoneItem> Items { get; set; } = new();
+        public List<ProjectItem> Items { get; set; }
     }
 
-    public class ProjectWorkDoneItem
+    public class ProjectItem
     {
         public int ItemId { get; set; }
         public int MainItemId { get; set; }
-        public string? Code { get; set; }
+        public string Code { get; set; }
         public decimal QtyTotal { get; set; }
-        public string? Unit { get; set; }
         public decimal QtyUsed { get; set; }
+        public string Unit { get; set; }
     }
+
 
 
 }

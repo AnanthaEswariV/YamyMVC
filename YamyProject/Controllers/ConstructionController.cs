@@ -3838,7 +3838,7 @@ INNER JOIN tbl_project_planning p
                         mainRows.Add(new
                         {
                             Id = reader["id"].ToString(),
-                            Code = reader["code"].ToString(),
+                            Code = reader["ref_id"].ToString(),
                             RefId = reader["ref_id"].ToString(),
                             Name = reader["name"].ToString(),
                             BoqQty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]) : 0,
@@ -3955,6 +3955,51 @@ INNER JOIN tbl_project_planning p
 
                 int workDoneId;
 
+                // Check if main work done record exists
+                string checkMainQuery = @"
+    SELECT id 
+    FROM tbl_project_work_done 
+    WHERE planning_id = @planningId 
+      AND warehouse_id = @warehouseId
+    LIMIT 1;";
+
+                await using var checkMainCmd = new MySqlCommand(checkMainQuery, conn);
+                checkMainCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                checkMainCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                checkMainCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+
+                var existingWorkDoneIdObj = await checkMainCmd.ExecuteScalarAsync();
+                int? existingWorkDoneId = existingWorkDoneIdObj != null ? Convert.ToInt32(existingWorkDoneIdObj) : (int?)null;
+
+                // Check if any item already exists in details
+                if (existingWorkDoneId.HasValue)
+                {
+                    // Check if any item already exists in details (item_id only)
+                    foreach (var item in model.Items)
+                    {
+                        string checkDetailQuery = @"
+SELECT 1
+FROM tbl_project_work_done_details
+WHERE item_id = @itemId
+LIMIT 1;";
+
+                        await using var checkDetailCmd = new MySqlCommand(checkDetailQuery, conn);
+                        checkDetailCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+
+                        var exists = await checkDetailCmd.ExecuteScalarAsync();
+                        if (exists != null)
+                        {
+                            return Json(new
+                            {
+                                status = false,
+                                message = $"Item {item.ItemId} already exists in work done details."
+                            });
+                        }
+                    }
+
+                }
+
+
                 if (model.Id == 0)
                 {
                     // --------------------------
@@ -4028,7 +4073,7 @@ INNER JOIN tbl_project_planning p
                     await using var detailCmd = new MySqlCommand(insertDetailQuery, conn);
                     detailCmd.Parameters.AddWithValue("@refId", workDoneId);
                     detailCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-                    detailCmd.Parameters.AddWithValue("@mainItemId", item.MainItemId);
+                    detailCmd.Parameters.AddWithValue("@mainItemId", item.Code ?? "");
                     detailCmd.Parameters.AddWithValue("@code", item.Code ?? "");
                     detailCmd.Parameters.AddWithValue("@qtyTotal", item.QtyTotal);
                     detailCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
@@ -4036,22 +4081,6 @@ INNER JOIN tbl_project_planning p
                     await detailCmd.ExecuteNonQueryAsync();
                 }
 
-                // --------------------------
-                // AUDIT LOG
-                // --------------------------
-                string action = model.Id == 0 ? "Insert" : "Update";
-                string logMsg = $"{action} Project Work Done for Planning {model.PlanningId}";
-                string auditQuery = @"
-            INSERT INTO tbl_audit_log (user_id, action, module, ref_id, description, log_date)
-            VALUES (@userId, @action, 'Project Work Done', @refId, @desc, @date);";
-
-                await using var logCmd = new MySqlCommand(auditQuery, conn);
-                logCmd.Parameters.AddWithValue("@userId", userId);
-                logCmd.Parameters.AddWithValue("@action", action);
-                logCmd.Parameters.AddWithValue("@refId", workDoneId);
-                logCmd.Parameters.AddWithValue("@desc", logMsg);
-                logCmd.Parameters.AddWithValue("@date", DateTime.Now);
-                await logCmd.ExecuteNonQueryAsync();
 
                 return Ok(new
                 {
@@ -4069,6 +4098,15 @@ INNER JOIN tbl_project_planning p
         }
 
 
+
+        #endregion
+
+        #region Project Summary
+
+        public IActionResult ProjectSummary()
+        {
+            return View();
+        }
 
         #endregion
 
