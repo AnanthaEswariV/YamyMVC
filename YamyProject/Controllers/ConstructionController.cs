@@ -4603,6 +4603,192 @@ LIMIT 1;";
 
         #endregion
 
+        #region Project Activity Report
+
+        public IActionResult ActivitySummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetActivitySummary(bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT 
+                id,
+                (SELECT name FROM tbl_items_boq WHERE id = tpa.code LIMIT 1) AS Name,
+                code,
+                start_date AS StartDate,
+                end_date AS EndDate,
+                progress,
+                status
+            FROM tbl_project_activity tpa
+            WHERE id > 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Apply date filter only when showAll is false
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += @" AND planning_id IN (
+                            SELECT id FROM tbl_project_planning 
+                            WHERE date >= @dateFrom AND date <= @dateTo
+                        )";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value));
+                }
+
+                query += " ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                var reader = await cmd.ExecuteReaderAsync();
+                var activityList = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    activityList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["Name"]?.ToString(),
+                        Code = reader["code"]?.ToString(),
+                        StartDate = reader["StartDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["StartDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        EndDate = reader["EndDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["EndDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        Progress = reader["progress"] != DBNull.Value ? Convert.ToDecimal(reader["progress"]) : 0,
+                        Status = reader["status"]?.ToString()
+                    });
+                }
+
+                await reader.CloseAsync();
+                await conn.CloseAsync();
+
+                return Ok(new { status = true, data = activityList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Project Assign Report
+
+        public IActionResult ProjectAssignReport()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetActivityAssignmentSummary(bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                // Build connection string dynamically (supports multi-tenant setups)
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                var query = @"
+            SELECT 
+                a.id,
+                c.code AS Code,
+                c.date AS Date,
+                c.name AS Name,
+                c.type AS Type,
+                (SELECT name FROM tbl_project_role WHERE id = role) AS Role,
+                price_unit AS `PricePerUnit`,
+                unit_time AS `DefaultUnitTime`,
+                max_unit_time AS `MaxUnitTime`
+            FROM tbl_project_activity_assignment a
+            LEFT JOIN tbl_project_activity b ON a.activity_id = b.id
+            INNER JOIN tbl_project_resource c ON c.id = a.resource_id
+            WHERE c.employee_id > 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Apply date filter only when showAll = false
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += @" AND b.planning_id IN (
+                            SELECT id FROM tbl_project_planning 
+                            WHERE date >= @dateFrom AND date <= @dateTo
+                        )";
+
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value));
+                }
+
+                query += " ORDER BY a.id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var activityAssignments = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    activityAssignments.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Code = reader["Code"]?.ToString(),
+                        Date = reader["Date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd")
+                            : null,
+                        Name = reader["Name"]?.ToString(),
+                        Type = reader["Type"]?.ToString(),
+                        Role = reader["Role"]?.ToString(),
+                        PricePerUnit = reader["PricePerUnit"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["PricePerUnit"]).ToString("N2")
+                            : "0.00",
+                        DefaultUnitTime = reader["DefaultUnitTime"]?.ToString(),
+                        MaxUnitTime = reader["MaxUnitTime"]?.ToString()
+                    });
+                }
+
+                await reader.CloseAsync();
+                await conn.CloseAsync();
+
+                return Ok(new { status = true, data = activityAssignments });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
 
     }
 

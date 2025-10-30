@@ -1,0 +1,205 @@
+﻿@{
+    ViewData["Title"] = "ActivitySummary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Project Activity Summary</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox to lock/unlock filter -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+
+@section Scripts {
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+    $(document).ready(function () {
+
+            loadActivitySummary();
+
+        $('#chkAllData').change(function () {
+            const isChecked = $(this).is(':checked');
+
+            $('#startDate, #endDate').prop('disabled', isChecked);
+
+                loadActivitySummary();
+        });
+
+        // Filter button click
+        $('#filterBtn').click(function () {
+                loadActivitySummary();
+        });
+
+               function loadActivitySummary() {
+            // Checkbox: true = show all data (disable date filter)
+            const showAll = $('#chkAllData').is(':checked');
+            const startDate = showAll ? null : $('#startDate').val();
+            const endDate = showAll ? null : $('#endDate').val();
+
+            $.ajax({
+                url: '/Construction/GetActivitySummary',
+                type: 'GET',
+                data: {
+                    showAll: showAll,
+                    startDate: startDate || undefined,
+                    endDate: endDate || undefined
+                },
+                beforeSend: function () {
+                    // Show loading spinner inside table
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>
+                                Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load activity summary');
+                        return;
+                    }
+
+                    // Destroy old DataTable if exists
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr data-id="${row.id}" style="cursor:pointer;">
+                                    <td>${row.sn}</td>
+                                    <td>${row.name ?? ''}</td>
+                                    <td>${row.code ?? ''}</td>
+                                    <td>${row.startDate ?? ''}</td>
+                                    <td>${row.endDate ?? ''}</td>
+                                    <td>${row.progress ?? 0}</td>
+                                    <td>${row.status ?? ''}</td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable with export buttons
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':visible' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':visible' },
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No records found
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading activity summary');
+                }
+            });
+        }
+
+    });
+</script>
+}
