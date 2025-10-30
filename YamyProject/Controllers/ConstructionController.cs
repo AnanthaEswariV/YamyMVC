@@ -305,7 +305,6 @@ namespace YamyProject.Controllers
         }
 
 
-
         #endregion
 
         #region TenderCenter
@@ -4979,6 +4978,129 @@ LIMIT 1;";
                 }
 
                 return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Project Dashboard
+
+        public IActionResult ProjectDashboard()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectDashboard(int? projectId = null)
+        {
+            try
+            {
+                // Connection with dynamic DB
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base queries
+                string queryProjects = @"
+            SELECT a.id, a.date, a.project_id, a.start_date, a.end_date, a.status, a.project_type, a.estimated_budget, 
+                   b.name AS location, a.fund_account_id, a.created_by, a.description, a.fund_period
+            FROM tbl_project_planning a
+            LEFT JOIN tbl_project_sites b ON b.id = a.site
+            WHERE a.state = 0";
+
+                string queryEstimates = @"SELECT id, '' AS description, project_id FROM tbl_project_tender WHERE state = 0 AND estimate_status > 0";
+                string queryTenders = @"
+            SELECT a.id, b.name AS tender_name, b.code, a.amount AS bid_amount, a.submission_date,
+                   (SELECT CONCAT(ROUND(SUM(progress)/100, 2), '% / ', COUNT(*)) FROM tbl_project_tender_details WHERE tender_id = a.id) AS status,
+                   a.DESCRIPTION, a.project_id
+            FROM tbl_project_tender a
+            LEFT JOIN tbl_tender_names b ON a.tender_name_id = b.id
+            WHERE a.state = 0";
+
+                // Filter by project if projectId is provided
+                if (projectId.HasValue)
+                {
+                    queryProjects += " AND project_id = @projectId";
+                    queryEstimates += " AND project_id = @projectId";
+                    queryTenders += " AND project_id = @projectId";
+                }
+
+                // Execute queries
+                var projects = new List<object>();
+                await using (var cmd = new MySqlCommand(queryProjects, conn))
+                {
+                    if (projectId.HasValue) cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    int sn = 1;
+                    while (await reader.ReadAsync())
+                    {
+                        projects.Add(new
+                        {
+                            SN = sn++,
+                            Id = reader.GetInt32("id"),
+                            ProjectId = reader.GetInt32("project_id"),
+                            Date = reader["date"] != DBNull.Value ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd") : null,
+                            StartDate = reader["start_date"] != DBNull.Value ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd") : null,
+                            EndDate = reader["end_date"] != DBNull.Value ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd") : null,
+                            Status = reader["status"]?.ToString(),
+                            ProjectType = reader["project_type"]?.ToString(),
+                            EstimatedBudget = reader["estimated_budget"] != DBNull.Value ? Convert.ToDecimal(reader["estimated_budget"]) : 0,
+                            Location = reader["location"]?.ToString(),
+                            FundAccountId = reader["fund_account_id"] != DBNull.Value ? Convert.ToInt32(reader["fund_account_id"]) : 0,
+                            CreatedBy = reader["created_by"]?.ToString(),
+                            Description = reader["description"]?.ToString(),
+                            FundPeriod = reader["fund_period"]?.ToString()
+                        });
+                    }
+                }
+
+                var estimates = new List<object>();
+                await using (var cmd = new MySqlCommand(queryEstimates, conn))
+                {
+                    if (projectId.HasValue) cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        estimates.Add(new
+                        {
+                            Id = reader.GetInt32("id"),
+                            Description = reader["description"]?.ToString(),
+                            ProjectId = reader.GetInt32("project_id")
+                        });
+                    }
+                }
+
+                var tenders = new List<object>();
+                await using (var cmd = new MySqlCommand(queryTenders, conn))
+                {
+                    if (projectId.HasValue) cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        tenders.Add(new
+                        {
+                            Id = reader.GetInt32("id"),
+                            TenderName = reader["tender_name"]?.ToString(),
+                            Code = reader["code"]?.ToString(),
+                            BidAmount = reader["bid_amount"] != DBNull.Value ? Convert.ToDecimal(reader["bid_amount"]) : 0,
+                            SubmissionDate = reader["submission_date"] != DBNull.Value ? Convert.ToDateTime(reader["submission_date"]).ToString("yyyy-MM-dd") : null,
+                            Status = reader["status"]?.ToString(),
+                            Description = reader["DESCRIPTION"]?.ToString(),
+                            ProjectId = reader["project_id"] != DBNull.Value ? Convert.ToInt32(reader["project_id"]) : 0
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, projects, estimates, tenders });
             }
             catch (Exception ex)
             {

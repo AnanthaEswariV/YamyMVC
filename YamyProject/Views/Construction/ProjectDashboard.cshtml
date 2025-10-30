@@ -1,0 +1,343 @@
+﻿@{
+    ViewData["Title"] = "ProjectDashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="card mb-3">
+        @* <div class="card-header bg-primary text-white text-center">
+            Project Dashboard
+        </div> *@
+        <div class="card-header text-center">
+            <strong>Project Dashboard</strong>
+        </div>
+        <div class="card-body text-center">
+            <div class="row mb-3">
+                <div class="col-md-4"><h5>Total Projects: <span class="fw-bold text-primary total-projects">0</span></h5></div>
+                <div class="col-md-4"><h5>Total Tenders: <span class="fw-bold text-success total-tenders">0</span></h5></div>
+                <div class="col-md-4"><h5>Total Estimates: <span class="fw-bold text-danger total-estimates">0</span></h5></div>
+            </div>
+            <div class="row">
+                <!-- Left Table -->
+                <div class="col-md-8">
+                    <table class="table table-striped text-center align-middle" id="projectsTable">
+                        <thead>
+                            <tr>
+                                <th>Project Date</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                                <th>Project Type</th>
+                                <th>Estimated Budget</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Right Column: Dropdown Card + Chart Card -->
+                <div class="col-md-4">
+                    <!-- Dropdown Card -->
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-body">
+                            <div style="min-width: 250px;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold mb-0">Reported By</h6>
+                                    <input type="checkbox" class="form-check-input autoLock" id="chkReportedBy" checked>
+                                </div>
+                                <select class="form-select" id="projectName" disabled>
+                                    <option value="">-- Select Reported By --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Card -->
+                    <div class="card shadow-sm">
+                        <div class="card-header text-center">
+                            Project Status
+                        </div>
+                        <div class="card-body">
+                            <div id="chart-visitors-profile"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Tenders Table -->
+            <div class="mt-4">
+                <table class="table table-striped text-center align-middle" id="tendersTable">
+                    <thead>
+                        <tr>
+                            <th>Tender Name</th>
+                            <th>Code</th>
+                            <th>Bid Amount</th>
+                            <th>Submission Date</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+<script src="~/assets/vendors/apexcharts/apexcharts.js"></script>
+<script>
+    function loadProjectSummary(projectId = null) {
+        $.ajax({
+                url: '/Construction/GetProjectDashboard',
+            type: 'GET',
+            data: { projectId: projectId },
+            beforeSend: function () {
+                // Show spinner in tables
+                $('table tbody').html(`
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            <div class="spinner-border text-primary me-2"></div>Loading...
+                        </td>
+                    </tr>
+                `);
+            },
+            success: function (res) {
+                if (!res.status) {
+                    toastr.error(res.message || 'Failed to load project summary');
+                    return;
+                }
+              console.log(res);
+                const { projects, estimates, tenders } = res;
+
+                // Update counts
+                $('.total-projects').text(projects.length);
+                $('.total-tenders').text(tenders.length);
+                $('.total-estimates').text(estimates.length);
+
+                // Destroy and clear tables if already initialized
+                if ($.fn.DataTable.isDataTable('#projectsTable')) {
+                    $('#projectsTable').DataTable().clear().destroy();
+                }
+                if ($.fn.DataTable.isDataTable('#tendersTable')) {
+                    $('#tendersTable').DataTable().clear().destroy();
+                }
+
+                  // Color map for statuses
+                const statusColorMap = {
+                    'mobilizing': '#007bff',          // Blue
+                    'under construction': '#ffc107',  // Yellow
+                    'planning': '#dc3545'             // Red
+                };
+
+
+                // Populate Projects table
+                const projTbody = $('#projectsTable tbody');
+                projTbody.empty();
+                if (projects.length > 0) {
+                    projects.forEach(p => {
+
+                            const statusText = p.status ?? '';
+                            const lowerStatus = statusText.toLowerCase();
+                            const color = statusColorMap[lowerStatus] || '#6c757d'; // Default gray if unmatched
+
+                        projTbody.append(`
+                            <tr>
+                                <td>${p.date ?? ''}</td>
+                                <td>${p.startDate ?? ''}</td>
+                                <td>${p.endDate ?? ''}</td>
+                                   <td>
+                                        <span class="badge rounded-pill px-3 py-2" style="background-color:${color}; color:#fff;">
+                                            ${statusText}
+                                        </span>
+                                    </td>
+                                <td>${p.projectType ?? ''}</td>
+                                <td>${p.estimatedBudget ?? 0}</td>
+                                <td>${p.location ?? ''}</td>
+                            </tr>
+                        `);
+                    });
+                    $('#projectsTable').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                className: 'btn btn-primary btn-sm',
+                                exportOptions: { columns: ':visible' }
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                className: 'btn btn-primary btn-sm',
+                                exportOptions: { columns: ':visible' },
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            }
+                        ],
+                        order: [[0, 'asc']],
+                        pageLength: 5
+                    });
+                } else {
+                    projTbody.append(`<tr><td colspan="7" class="text-center py-4 text-muted">No projects found</td></tr>`);
+                }
+
+                // Populate Tenders table
+                const tenderTbody = $('#tendersTable tbody');
+                tenderTbody.empty();
+                if (tenders.length > 0) {
+                    tenders.forEach(t => {
+                        tenderTbody.append(`
+                            <tr>
+                                <td>${t.tenderName ?? ''}</td>
+                                <td>${t.code ?? ''}</td>
+                                <td>${t.bidAmount ?? 0}</td>
+                                <td>${t.submissionDate ?? ''}</td>
+                                <td>${t.status ?? ''}</td>
+                                <td>${t.description ?? ''}</td>
+                            </tr>
+                        `);
+                    });
+                          
+                    $('#tendersTable').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                className: 'btn btn-primary btn-sm',
+                                exportOptions: { columns: ':visible' }
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                className: 'btn btn-primary btn-sm',
+                                exportOptions: { columns: ':visible' },
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            }
+                        ],
+                        order: [[0, 'asc']],
+                        pageLength: 5
+                    });
+                } else {
+                    tenderTbody.append(`<tr><td colspan="6" class="text-center py-4 text-muted">No tenders found</td></tr>`);
+                }
+
+                   $('#chart-visitors-profile').empty();
+
+                    const statusCounts = { 'Mobilizing': 0, 'Under Construction': 0, 'Planning': 0 };
+                    projects.forEach(p => {
+                        const s = (p.status || '').toLowerCase();
+                        if (s.includes('mobilizing')) statusCounts['Mobilizing']++;
+                        else if (s.includes('under construction')) statusCounts['Under Construction']++;
+                        else if (s.includes('planning')) statusCounts['Planning']++;
+                    });
+
+                    const chartSeries = [
+                        statusCounts['Mobilizing'],
+                        statusCounts['Under Construction'],
+                        statusCounts['Planning']
+                    ];
+
+                    const chart = new ApexCharts(document.querySelector("#chart-visitors-profile"), {
+                        chart: { type: 'pie', height: 300 },
+                        series: chartSeries,
+                        labels: ['Mobilizing', 'Under Construction', 'Planning'],
+                        colors: ['#007bff', '#ffc107', '#dc3545'],
+                        legend: { position: 'bottom' }
+                    });
+                    chart.render();
+                },
+            error: function () {
+                toastr.error('Error fetching project summary');
+            }
+        });
+    }
+
+        function loadProjects() {
+                    $.ajax({
+                        url: '/Construction/GetProjects',
+                        type: 'GET',
+                        success: function (result) {
+                            if (result.status) {
+                                const $dropdown = $('#projectName');
+                                $dropdown.empty();
+                                $dropdown.append('<option value="">-- Select Reported By --</option>');
+
+                                $.each(result.data, function (i, project) {
+                                    $dropdown.append('<option value="' + project.id + '">' + project.name + '</option>');
+                                });
+
+                                $('#projectName').prop('disabled', $('#chkReportedBy').is(':checked'));
+                            } else {
+                                toastr.error('Failed to load projects');
+                            }
+                        },
+                        error: function () {
+                            toastr.error('Error loading projects');
+                        }
+                    });
+                }
+
+        $(document).ready(function () {
+            loadProjectSummary(); // default load all
+            loadProjects();
+
+            // Enable/disable dropdown
+            $('#chkReportedBy').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#projectName').prop('disabled', isChecked);
+
+                // If unchecked, allow selecting project
+                if (isChecked) {
+                    loadProjectSummary(); // show all when checkbox is ON
+                } else {
+                    const selectedId = $('#projectName').val();
+                    if (selectedId) loadProjectSummary(selectedId);
+                }
+            });
+
+            // When a project is selected, reload dashboard with that project
+            $('#projectName').change(function () {
+                const projectId = $(this).val();
+                if (projectId) {
+                    loadProjectSummary(projectId); // filter by project
+                } else {
+                    loadProjectSummary(); // load all if cleared
+                }
+            });
+        });
+</script>
+
+}

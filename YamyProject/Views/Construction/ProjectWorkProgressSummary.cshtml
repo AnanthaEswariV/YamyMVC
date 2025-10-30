@@ -64,15 +64,12 @@
 
     <script>
 
-                $(document).ready(function () {
+        $(document).ready(function () {
 
-            // Load projects dropdown
             loadProjects();
 
-            // Load table with default: all data
             loadWorkProgressSummary(true);
 
-            // Load projects into dropdown
             function loadProjects() {
                 $.ajax({
                     url: '/Construction/GetProjects',
@@ -98,7 +95,6 @@
                 });
             }
 
-            // Checkbox change
             $('#chkReportedBy').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#projectName').prop('disabled', isChecked);
@@ -107,14 +103,12 @@
                 loadWorkProgressSummary(isChecked);
             });
 
-            // Project dropdown change
             $('#projectName').change(function () {
                 if (!$('#chkReportedBy').is(':checked')) {
                     loadWorkProgressSummary(false);
                 }
             });
 
-            // Function to load table
             function loadWorkProgressSummary(showAll) {
                 const projectId = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
 
