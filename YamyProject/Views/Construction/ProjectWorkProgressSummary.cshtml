@@ -1,0 +1,180 @@
+﻿@{
+    ViewData["Title"] = "ProjectWorkProgressSummary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Project Work Progress Summary</strong>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Reported By</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkReportedBy" checked>
+                </div>
+                <select class="form-select" id="projectName" disabled>
+                    <option value="">-- Select Reported By --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Description</th>
+                    <th>Total Done Qty</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+
+                $(document).ready(function () {
+
+            // Load projects dropdown
+            loadProjects();
+
+            // Load table with default: all data
+            loadWorkProgressSummary(true);
+
+            // Load projects into dropdown
+            function loadProjects() {
+                $.ajax({
+                    url: '/Construction/GetProjects',
+                    type: 'GET',
+                    success: function (result) {
+                        if (result.status) {
+                            const $dropdown = $('#projectName');
+                            $dropdown.empty();
+                            $dropdown.append('<option value="">-- Select Reported By --</option>');
+
+                            $.each(result.data, function (i, project) {
+                                $dropdown.append('<option value="' + project.id + '">' + project.name + '</option>');
+                            });
+
+                            $('#projectName').prop('disabled', $('#chkReportedBy').is(':checked'));
+                        } else {
+                            toastr.error('Failed to load projects');
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading projects');
+                    }
+                });
+            }
+
+            // Checkbox change
+            $('#chkReportedBy').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#projectName').prop('disabled', isChecked);
+
+                // Reload table
+                loadWorkProgressSummary(isChecked);
+            });
+
+            // Project dropdown change
+            $('#projectName').change(function () {
+                if (!$('#chkReportedBy').is(':checked')) {
+                    loadWorkProgressSummary(false);
+                }
+            });
+
+            // Function to load table
+            function loadWorkProgressSummary(showAll) {
+                const projectId = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
+
+                $.ajax({
+                         url: '/Construction/GetProjectWorkDoneDetailss',
+                        type: 'GET',
+                        data: projectId ? { projectId: projectId } : {},
+                    beforeSend: function () {
+                        $('#table1 tbody').html(`
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">
+                                    <div class="spinner-border text-primary me-2"></div>Loading...
+                                </td>
+                            </tr>
+                        `);
+                    },
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error('Failed to load work progress summary');
+                            return;
+                        }
+
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().clear().destroy();
+                        }
+
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                const tr = `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>${row.description}</td>
+                                        <td>${row.totalDoneQty}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            $('#table1').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    { extend: 'excelHtml5', text: 'Excel', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':visible' } },
+                                    { extend: 'pdfHtml5', text: 'PDF', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':visible' }, orientation: 'landscape', pageSize: 'A4' }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 25
+                            });
+                        } else {
+                            tbody.html(`<tr><td colspan="3" class="text-center text-muted py-4">No records found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading work progress summary');
+                    }
+                });
+            }
+        });
+
+
+    </script>
+}

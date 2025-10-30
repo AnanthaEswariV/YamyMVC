@@ -4789,6 +4789,205 @@ LIMIT 1;";
 
         #endregion
 
+        #region Project Resource Report
+
+        public IActionResult ProjectResourceReport()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectAssignmentSummary(bool showAll = true, DateTime? dateFrom = null, DateTime? dateTo = null)
+        {
+            try
+            {
+                // ✅ Connection setup with dynamic DB selection (as per your pattern)
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ✅ Base query
+                var query = @"
+            SELECT a.id,c.code Code,c.Date,c.name Name,c.type Type,(SELECT NAME FROM tbl_project_role WHERE id = role) Role,IFNULL((SELECT NAME FROM tbl_employee WHERE id = employee_id),'') Employee,
+                       price_unit AS PricePerUnit,
+    unit_time AS DefaultUnitTime,
+    max_unit_time AS MaxUnitTime
+                        from tbl_project_activity_assignment a LEFT JOIN tbl_project_activity b ON a.activity_id = b.id LEFT JOIN tbl_project_resource c ON c.id = a.resource_id";
+
+                var cmd = new MySqlCommand();
+                cmd.Connection = conn;
+
+                // ✅ Optional date filter
+                if (!showAll && dateFrom.HasValue && dateTo.HasValue)
+                {
+                    query += " AND b.planning_id IN (SELECT id FROM tbl_project_planning WHERE date >= @dateFrom AND date <= @dateTo)";
+                    cmd.Parameters.AddWithValue("@dateFrom", dateFrom.Value.Date);
+                    cmd.Parameters.AddWithValue("@dateTo", dateTo.Value.Date);
+                }
+
+                cmd.CommandText = query;
+
+                var list = new List<object>();
+                int sn = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+
+
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Code = reader["Code"]?.ToString() ?? "",
+                        Date = reader["Date"] != DBNull.Value ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd") : "",
+                        Name = reader["Name"]?.ToString() ?? "",
+                        Type = reader["Type"]?.ToString() ?? "",
+                        Role = reader["Role"]?.ToString() ?? "",
+                        Employee = reader["Employee"]?.ToString() ?? "",
+                        PricePerUnit = reader["PricePerUnit"]?.ToString()??"",
+                        DefaultUnitTime = reader["DefaultUnitTime"]?.ToString() ?? "",
+                        MaxUnitTime = reader["MaxUnitTime"]?.ToString() ?? ""
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region  Project Progress Summary
+
+        public IActionResult ProjectProgressSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectActivitySummary()
+        {
+            try
+            {
+                // Build connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // SQL query to summarize activities
+                var query = @"
+            SELECT 
+                planning_id, 
+                COUNT(*) AS total_activities,
+                SUM(CASE WHEN progress = 100 THEN 1 ELSE 0 END) AS completed,
+                CONCAT(ROUND(SUM(progress) / COUNT(*), 2), '%') AS avg_progress
+            FROM tbl_project_activity
+            GROUP BY planning_id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+
+                var list = new List<object>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        PlanningId = reader.GetInt32("planning_id"),
+                        TotalActivities = reader.GetInt32("total_activities"),
+                        Completed = reader.GetInt32("completed"),
+                        AvgProgress = reader["avg_progress"]?.ToString() ?? "0%"
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Project Work Progress Summary
+
+        public IActionResult ProjectWorkProgressSummary()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectWorkDoneDetailss(int? projectId = null)
+        {
+            try
+            {
+                // Build MySQL connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                var query = @"
+            SELECT 
+                (SELECT name FROM tbl_items_boq WHERE id = code) AS Description,
+                SUM(qty_total) AS TotalDoneQty
+            FROM tbl_project_work_done_details
+            WHERE id > 0";
+
+                // Add project filter if provided
+                if (projectId.HasValue)
+                {
+                    query += " AND ref_id = @projectId";
+                }
+
+                query += " GROUP BY code;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+
+                if (projectId.HasValue)
+                {
+                    cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+                }
+
+                var list = new List<object>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Description = reader["Description"]?.ToString() ?? "",
+                        TotalDoneQty = reader["TotalDoneQty"] != DBNull.Value ? Convert.ToDecimal(reader["TotalDoneQty"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
 
     }
 
