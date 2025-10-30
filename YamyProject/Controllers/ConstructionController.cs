@@ -304,7 +304,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         #endregion
 
         #region TenderCenter
@@ -5107,6 +5106,79 @@ LIMIT 1;";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        #endregion
+
+        #region Project TimeLine
+
+        public IActionResult ProjectTimeLine()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectTimelineSummary()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                plan.id,
+                IFNULL(ted.name, CONCAT('Task ', plan.id)) AS task_name,
+                plan.start_date,
+                plan.end_date,
+                plan.progress AS planning_progress,
+                plan.description,
+                plan.date
+            FROM tbl_project_planning plan
+            LEFT JOIN tbl_tender_names ted ON plan.tender_id = ted.id;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var timelineList = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    timelineList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        TaskName = reader["task_name"].ToString(),
+                        StartDate = reader["start_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd")
+                            : null,
+                        EndDate = reader["end_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd")
+                            : null,
+                        Progress = reader["planning_progress"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["planning_progress"])
+                            : 0,
+                        Description = reader["description"]?.ToString() ?? "",
+                        Date = reader["date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                            : null
+                    });
+                }
+
+                return Ok(new { status = true, data = timelineList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

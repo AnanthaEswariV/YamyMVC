@@ -1,0 +1,170 @@
+﻿@{
+    ViewData["Title"] = "Project Timeline";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-12">
+        <!-- Timeline Chart Card -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h4>Project Timeline</h4>
+            </div>
+            <div class="card-body">
+                <div id="chart-profile-visit" style="overflow-x:auto;"></div>
+            </div>
+        </div>
+
+        <!-- Task Table Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Task Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm mb-0" id="taskTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>S.No</th>
+                                <th>Task Name</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Duration (Days)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/assets/vendors/apexcharts/apexcharts.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    function loadProjectTimeline() {
+        $.ajax({
+            url: '/Construction/GetProjectTimelineSummary',
+            type: 'GET',
+            beforeSend: function () {
+                $("#chart-profile-visit").html(`
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary me-2"></div> Loading timeline...
+                    </div>
+                `);
+                $("#taskTable tbody").html("");
+            },
+            success: function (res) {
+                if (!res.status) {
+                    toastr.error(res.message || 'Failed to load timeline');
+                    return;
+                }
+
+                const data = res.data;
+                if (!data || data.length === 0) {
+                    $("#chart-profile-visit").html(`
+                        <div class="text-center text-muted py-5">
+                            No timeline data available
+                        </div>
+                    `);
+                    $("#taskTable tbody").html(`<tr><td colspan="6" class="text-center text-muted">No data</td></tr>`);
+                    return;
+                }
+
+                // Build series for vertical Gantt (tasks on X, timeline on Y)
+                const seriesData = data.map(item => ({
+                    x: item.taskName,
+                    y: [new Date(item.startDate).getTime(), new Date(item.endDate).getTime()]
+                }));
+
+                // ApexCharts options
+                const options = {
+                    chart: {
+                        type: 'rangeBar',
+                        height: 600,
+                        toolbar: { show: true },
+                        zoom: { enabled: true }
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: false, // vertical bars
+                            columnWidth: '50%',
+                            borderRadius: 4
+                        }
+                    },
+                    series: [{
+                        name: 'Task Duration',
+                        data: seriesData
+                    }],
+                    xaxis: {
+                        type: 'category',
+                        categories: data.map(item => item.taskName),
+                        title: { text: 'Tasks' },
+                        labels: { rotate: -45, style: { fontSize: '12px' } }
+                    },
+                       yaxis: {
+        type: 'numeric', // keep numeric for rangeBar vertical
+        title: { text: 'Timeline' },
+        labels: {
+            formatter: function(val) {
+                const date = new Date(val);
+                const day = ("0" + date.getDate()).slice(-2);
+                const month = ("0" + (date.getMonth() + 1)).slice(-2);
+                const year = date.getFullYear();
+                return `${day}-${month}-${year}`; // e.g., 30-10-2025
+            },
+            style: { fontSize: '12px' }
+        }
+    },
+                    tooltip: {
+                        y: {
+                            formatter: (_, { dataPointIndex }) => {
+                                const item = data[dataPointIndex];
+                                return `${item.startDate} → ${item.endDate}`;
+                            }
+                        }
+                    },
+                    dataLabels: { enabled: false },
+                    fill: { type: 'solid', opacity: 0.9 },
+                    colors: ['#007bff'],
+                    legend: { show: false },
+                    grid: { borderColor: '#eee', strokeDashArray: 4 }
+                };
+
+                // Render chart
+                $("#chart-profile-visit").empty();
+                const chart = new ApexCharts(document.querySelector("#chart-profile-visit"), options);
+                chart.render();
+
+                // Populate task table
+                let rows = "";
+                data.forEach((item, index) => {
+                    const start = new Date(item.startDate);
+                    const end = new Date(item.endDate);
+                    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    rows += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${item.taskName}</td>
+                            <td>${item.startDate}</td>
+                            <td>${item.endDate}</td>
+                            <td>${diffDays}</td>
+                            <td>${item.status || '-'}</td>
+                        </tr>
+                    `;
+                });
+                $("#taskTable tbody").html(rows);
+            },
+            error: function () {
+                toastr.error('Error fetching timeline data');
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        loadProjectTimeline();
+    });
+</script>
