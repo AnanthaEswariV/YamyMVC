@@ -576,6 +576,17 @@ namespace YamyProject.Core.Models
         public double RemainingBudget { get; set; }
         public double Progress { get; set; }
     }
+    public class AccountNode
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal Balance { get; set; }
+        public int CurrLvl { get; set; }
+        public string State { get; set; } = "e";
+        public string LoadState { get; set; } = "u";
+        public List<AccountNode> Children { get; set; } = new List<AccountNode>();
+    }
+
 
 
 }

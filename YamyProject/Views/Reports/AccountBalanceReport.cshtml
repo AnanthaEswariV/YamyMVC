@@ -1,0 +1,184 @@
+﻿@{
+    ViewData["Title"] = "Balance Sheet Summary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- ================== CSS LINKS ================== -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+        }
+
+    .child-row {
+        display: none;
+    }
+
+    .toggle-icon {
+        cursor: pointer;
+        user-select: none;
+        font-weight: bold;
+    }
+</style>
+
+<!-- ================== PAGE CONTENT ================== -->
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Balance Sheet Summary</strong>
+    </div>
+    <div class="card-body">
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="reportDate" class="form-label">Select Date</label>
+                <input type="date" id="reportDate" class="form-control" />
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button class="btn btn-primary" id="btnLoadReport">Load Report</button>
+            </div>
+        </div>
+
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th style="width:60px;">S.No</th>
+                    <th>Account Name</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+</div>
+
+<!-- ================== SCRIPT SECTION ================== -->
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            const today = new Date().toISOString().split('T')[0];
+            $('#reportDate').val(today);
+            loadBalanceSheetReport();
+
+            $('#btnLoadReport').on('click', loadBalanceSheetReport);
+
+            // ====== Handle Toggle Click ======
+            $(document).on('click', '.toggle-icon', function () {
+                const tr = $(this).closest('tr');
+                const parentId = tr.data('id');
+                const isOpen = $(this).text() === '▼ ';
+                $(this).text(isOpen ? '► ' : '▼ ');
+
+                if (isOpen) {
+                    collapseChildren(parentId);
+                } else {
+                    expandChildren(parentId);
+                }
+            });
+
+            // Collapse all descendant rows of a parent
+            function collapseChildren(parentId) {
+                const children = $(`#table1 tbody tr[data-parent='${parentId}']`);
+                children.each(function () {
+                    $(this).addClass('d-none');
+                    $(this).find('.toggle-icon').text('► ');
+                    collapseChildren($(this).data('id'));
+                });
+            }
+
+            // Expand only direct children
+            function expandChildren(parentId) {
+                $(`#table1 tbody tr[data-parent='${parentId}']`).removeClass('d-none');
+            }
+
+            // ====== Load Report ======
+            function loadBalanceSheetReport() {
+                const reportDate = $('#reportDate').val();
+                if (!reportDate) {
+                    toastr.warning('Please select a date.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Reports/GetBalanceSheetReport',
+                    type: 'GET',
+                    data: { date: reportDate },
+                    beforeSend: function () {
+                        $('#table1 tbody').html('<tr><td colspan="3" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Loading...</td></tr>');
+                    },
+                    success: function (res) {
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
+
+                        if (!res.status || !res.data || res.data.length === 0) {
+                            tbody.html('<tr><td colspan="3" class="text-center py-4 text-muted">No records found</td></tr>');
+                            return;
+                        }
+
+                        let rowIndex = 0;
+
+                        // Recursive function to render hierarchy
+                        function renderRows(accounts, level = 1, parentId = 0) {
+                            accounts.forEach(acc => {
+                                rowIndex++;
+                                const indent = '&nbsp;'.repeat((level - 1) * 6);
+                                const hasChildren = acc.children && acc.children.length > 0;
+                                const icon = hasChildren ? '► ' : '';
+
+                                const tr = $(`
+                                    <tr data-id="${acc.id}" data-parent="${parentId}" data-level="${level}" class="${level > 1 ? 'child-row d-none' : ''}">
+                                        <td>${rowIndex}</td>
+                                        <td>${indent}<span class="toggle-icon">${icon}</span>${acc.name}</td>
+                                        <td class="text-end">${Number(acc.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    </tr>
+                                `);
+
+                                tbody.append(tr);
+
+                                if (hasChildren) renderRows(acc.children, level + 1, acc.id);
+                            });
+                        }
+
+                        // Render the table
+                        renderRows(res.data);
+
+                        // Initialize DataTable
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().clear().destroy();
+                        }
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', text: 'Excel', className: 'btn btn-primary btn-sm' },
+                                { extend: 'pdfHtml5', text: 'PDF', className: 'btn btn-primary btn-sm', orientation: 'portrait', pageSize: 'A4' }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 1000
+                        });
+                    },
+                    error: function () {
+                        toastr.error('Error loading balance sheet report');
+                    }
+                });
+            }
+        });
+    </script>
+}
