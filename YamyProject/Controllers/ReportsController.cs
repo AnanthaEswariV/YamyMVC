@@ -16,14 +16,12 @@ namespace YamyProject.Controllers
             _connection = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
         }
 
-
         #region Account Balance Report  
 
         public IActionResult AccountBalanceReport()
         {
             return View();
         }
-
 
         [HttpGet]
         public async Task<IActionResult> GetBalanceSheetReport(DateTime date)
@@ -154,6 +152,253 @@ ORDER BY l.code;
         }
 
         #endregion
+
+        #region Employee Balance Summary
+
+        public IActionResult EmployeeBalanceSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeeBalanceSummary(bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                // ✅ Build connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ✅ Prepare base query
+                var query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY v.id) AS SN,
+                v.id,
+                CONCAT(v.code, ' - ', v.name) AS Name,
+                IFNULL(SUM(
+                    CASE 
+                        WHEN t.type IN ('Employee Salary', 'Loan Request') THEN t.debit
+                        ELSE 0
+                    END
+                ), 0) AS Credit,
+                IFNULL(SUM(
+                    CASE 
+                        WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment') THEN t.debit
+                        ELSE 0
+                    END
+                ), 0) AS Debit,
+                IFNULL(SUM(
+                    CASE 
+                        WHEN t.type IN ('Employee Salary', 'Loan Request') THEN t.debit
+                        WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment') THEN -t.debit
+                        ELSE 0
+                    END
+                ), 0) AS Balance
+            FROM
+                tbl_employee v
+            INNER JOIN
+                tbl_transaction t ON v.id = t.hum_id AND t.state = 0
+            WHERE
+                v.state = 0
+        ";
+
+                var parameters = new List<MySqlParameter>();
+
+                // ✅ Apply date range filter only if showAll = false
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND t.date >= @dateFrom AND t.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                query += " GROUP BY v.id, v.code, v.name;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var employeeBalances = new List<object>();
+                int sn = 1;
+                decimal totalCredit = 0, totalDebit = 0, totalBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0;
+                    decimal debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0;
+                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                    employeeBalances.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader["id"],
+                        Account = reader["Name"]?.ToString(),
+                        Credit = credit.ToString("N2"),
+                        Debit = debit.ToString("N2"),
+                        Balance = balance.ToString("N2")
+                    });
+
+                    totalCredit += credit;
+                    totalDebit += debit;
+                    totalBalance += balance;
+                }
+
+                await reader.CloseAsync();
+                await conn.CloseAsync();
+
+                // ✅ Add TOTAL summary row
+                employeeBalances.Add(new
+                {
+                    SN = "",
+                    Id = "",
+                    Account = "TOTAL",
+                    Credit = totalCredit.ToString("N2"),
+                    Debit = totalDebit.ToString("N2"),
+                    Balance = totalBalance.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = employeeBalances });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
+
+        #region Employee Balance Details
+
+
+        public IActionResult EmployeeBalanceDetails()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeeTransactionDetails(int id, bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT 
+                DATE_FORMAT(t.date, '%M %d %Y') AS `Date`,
+                t.transaction_id,
+                CASE 
+                    WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment', 'Employee Petty Cash Payment') THEN 
+                        (SELECT code FROM tbl_payment_voucher WHERE id = t.transaction_id)
+                    ELSE '' 
+                END AS `Num`,
+                t.type AS `Type`,
+                coa.code AS `AccountCode`,
+                coa.name AS `AccountName`,
+                (t.debit - t.credit) AS `Amount`,
+                SUM(t.debit - t.credit) OVER (
+                    PARTITION BY t.hum_id 
+                    ORDER BY t.date, t.id
+                ) AS `Balance`
+            FROM 
+                tbl_transaction t
+            JOIN 
+                tbl_coa_level_4 coa ON t.account_id = coa.id
+            WHERE 
+                t.hum_id = @id
+                AND t.type IN (
+                    'Employee Salary Payment', 
+                    'Employee Loan Payment',
+                    'Employee Petty Cash Payment'
+                )
+                AND t.debit > 0
+                AND t.state = 0
+        ";
+
+                var parameters = new List<MySqlParameter> { new("@id", id) };
+
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND t.date >= @dateFrom AND t.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                query += " ORDER BY t.date, t.id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var transactionList = new List<object>();
+                decimal totalAmount = 0, totalBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    if (reader["Date"] == DBNull.Value) continue;
+
+                    decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
+                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                    transactionList.Add(new
+                    {
+                        Date = reader["Date"]?.ToString(),
+                        TransactionId = reader["transaction_id"]?.ToString(),
+                        Num = reader["Num"]?.ToString(),
+                        Type = reader["Type"]?.ToString(),
+                        Account = reader["AccountName"]?.ToString(),
+                        Amount = amount.ToString("N2"),
+                        Balance = balance.ToString("N2")
+                    });
+
+                    totalAmount += amount;
+                    totalBalance = balance;
+                }
+
+                await reader.CloseAsync();
+
+                transactionList.Add(new
+                {
+                    Date = "",
+                    TransactionId = "",
+                    Num = "",
+                    Type = "",
+                    Account = "TOTAL",
+                    Amount = totalAmount.ToString("N2"),
+                    Balance = totalBalance.ToString("N2")
+                });
+
+                await conn.CloseAsync();
+
+                return Ok(new { status = true, data = transactionList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+
+
 
     }
 }

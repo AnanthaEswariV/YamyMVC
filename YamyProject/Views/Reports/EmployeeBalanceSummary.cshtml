@@ -1,5 +1,6 @@
-﻿@{
-    ViewData["Title"] = "ProjectAssignReport";
+﻿
+@{
+    ViewData["Title"] = "EmployeeBalanceSummary";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -15,12 +16,11 @@
             color: #fff !important;
         }
 </style>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Project Assign Summary</strong>
+        <strong>Employee Balance Summary</strong>
     </div>
 
     <div class="card-body">
@@ -55,21 +55,16 @@
             <thead>
                 <tr>
                     <th>S.No</th>
-                    <th>Code</th>
-                    <th>Date</th>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Role</th>
-                    <th>Price / Unit</th>
-                    <th>Default Unit / Time</th>
-                    <th>Max Unit / Time</th>
+                    <th>Account</th>
+                    <th>Credit</th>
+                    <th>Debit</th>
+                    <th>Balance</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 </div>
-
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -81,36 +76,79 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
- 
 
     <script>
-        $(document).ready(function () {
-            // Initial load
-            loadActivitySummary();
 
-            // Checkbox change (enable/disable date filters)
+
+
+                   $(document).ready(function () {
+            // Initial load
+            loadEmployeeBalanceSummary();
+
+            // Checkbox change → enable/disable date fields
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
-                loadActivitySummary();
+                loadEmployeeBalanceSummary();
             });
 
             // Filter button click
             $('#filterBtn').click(function () {
-                loadActivitySummary();
+                loadEmployeeBalanceSummary();
+            });
+
+
+                    $('#table1 tbody').on('dblclick', 'tr', function () {
+            const id = $(this).data('id');
+            if (id) {
+                // Redirect to details view
+                window.location.href = `/Reports/EmployeeBalanceDetails?id=${id}`;
+            }
+        });
+
+
+            // ✅ Double-click event handler (delegated)
+            $('#table1 tbody').on('dblclick', 'tr', function () {
+                const row = $('#table1').DataTable().row(this).data();
+                if (!row) return;
+
+                // 🔍 Get the ID from the row data
+                const id = $(this).data('id'); // stored via data-id attribute below
+
+                if (id) {
+                    // ✅ Call your API with the selected ID
+                    $.ajax({
+                        url: `/Reports/GetEmployeeTransactionDetails`,
+                        type: 'GET',
+                        data: { id: id },
+                        success: function (res) {
+                            if (res.status) {
+                                toastr.success('Transaction details loaded successfully');
+                                console.log(res.data);
+                                // You can show it in modal or another table here
+                            } else {
+                                toastr.warning(res.message || 'No details found');
+                            }
+                        },
+                        error: function () {
+                            toastr.error('Error loading employee transaction details');
+                        }
+                    });
+                } else {
+                    toastr.warning('Invalid record (missing ID)');
+                }
             });
         });
 
-        // ✅ Main data loading function
-        function loadActivitySummary() {
+        // ✅ Main function to load Employee Balance Summary
+        function loadEmployeeBalanceSummary() {
             const showAll = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Construction/GetActivityAssignmentSummary',
+                url: '/Reports/GetEmployeeBalanceSummary',
                 type: 'GET',
                 data: {
                     showAll: showAll,
@@ -120,7 +158,7 @@
                 beforeSend: function () {
                     $('#table1 tbody').html(`
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="5" class="text-center text-muted py-4">
                                 <div class="spinner-border text-primary me-2"></div>Loading...
                             </td>
                         </tr>
@@ -128,11 +166,11 @@
                 },
                 success: function (res) {
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load activity summary');
+                        toastr.error(res.message || 'Failed to load employee balance summary');
                         return;
                     }
 
-                    // Destroy old table if exists
+                    // Destroy existing DataTable before reinitializing
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
                     }
@@ -143,21 +181,17 @@
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             const tr = `
-                                <tr>
-                                    <td>${row.sn}</td>
-                                    <td>${row.code ?? ''}</td>
-                                    <td>${row.date ?? ''}</td>
-                                    <td>${row.name ?? ''}</td>
-                                    <td>${row.type ?? ''}</td>
-                                    <td>${row.role ?? ''}</td>
-                                    <td>${row.pricePerUnit ?? '0.00'}</td>
-                                    <td>${row.defaultUnitTime ?? ''}</td>
-                                    <td>${row.maxUnitTime ?? ''}</td>
+                                <tr data-id="${row.id || ''}" ${row.account === 'TOTAL' ? 'class="fw-bold table-secondary"' : ''}>
+                                    <td>${row.sn ?? ''}</td>
+                                    <td>${row.account ?? ''}</td>
+                                    <td class="text-end">${row.credit ?? '0.00'}</td>
+                                    <td class="text-end">${row.debit ?? '0.00'}</td>
+                                    <td class="text-end">${row.balance ?? '0.00'}</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
 
-                        // Initialize DataTable with export buttons
+                        // ✅ Initialize DataTable with export buttons
                         $('#table1').DataTable({
                             dom: 'Bfrtip',
                             buttons: [
@@ -180,13 +214,18 @@
                             pageLength: 25
                         });
                     } else {
-                        tbody.append(`<tr><td colspan="9" class="text-center text-muted py-4">No records found</td></tr>`);
+                        tbody.append(`<tr><td colspan="5" class="text-center text-muted py-4">No records found</td></tr>`);
                     }
                 },
                 error: function () {
-                    toastr.error('Error fetching project assignment summary');
+                    toastr.error('Error fetching employee balance summary');
                 }
             });
         }
+
+
+
+
     </script>
-}
+
+    }

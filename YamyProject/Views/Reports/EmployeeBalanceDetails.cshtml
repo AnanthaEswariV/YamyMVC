@@ -1,0 +1,191 @@
+﻿
+@{
+    ViewData["Title"] = "EmployeeBalanceDetails";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Employee Balance Details</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Num</th>
+                    <th>Account</th>
+                    <th>Amount</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // Load data on page load
+        loadEmployeeTransactionDetails();
+
+        // Checkbox toggle
+        $('#chkAllData').change(function () {
+            const isChecked = $(this).is(':checked');
+            $('#startDate, #endDate').prop('disabled', isChecked);
+            loadEmployeeTransactionDetails();
+        });
+
+        // Filter button click
+        $('#filterBtn').click(function () {
+            loadEmployeeTransactionDetails();
+        });
+    });
+
+    function loadEmployeeTransactionDetails() {
+        const showAll = $('#chkAllData').is(':checked');
+        const startDate = $('#startDate').val();
+        const endDate = $('#endDate').val();
+
+        // You can get this "id" from query string or previous page
+        const urlParams = new URLSearchParams(window.location.search);
+        const employeeId = urlParams.get('id'); // example: ?id=123
+
+        if (!employeeId) {
+            toastr.warning('Employee ID missing in URL');
+            return;
+        }
+
+        $.ajax({
+            url: '/Reports/GetEmployeeTransactionDetails',
+            type: 'GET',
+            data: {
+                id: employeeId,
+                showAll: showAll,
+                startDate: startDate || null,
+                endDate: endDate || null
+            },
+            beforeSend: function () {
+                $('#table2 tbody').html(`
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <div class="spinner-border text-primary me-2"></div>Loading...
+                        </td>
+                    </tr>
+                `);
+            },
+            success: function (res) {
+                if (!res.status) {
+                    toastr.error(res.message || 'Failed to load employee transaction details');
+                    return;
+                }
+
+                // Destroy previous DataTable
+                if ($.fn.DataTable.isDataTable('#table2')) {
+                    $('#table2').DataTable().clear().destroy();
+                }
+
+                const tbody = $('#table2 tbody');
+                tbody.empty();
+
+                if (res.data && res.data.length > 0) {
+                    $.each(res.data, function (i, row) {
+                        const tr = `
+                            <tr ${row.Account === 'TOTAL' ? 'class="fw-bold table-secondary"' : ''}>
+                                <td>${row.Sn ?? ''}</td>
+                                <td>${row.Type ?? ''}</td>
+                                <td>${row.Date ?? ''}</td>
+                                <td>${row.Num ?? ''}</td>
+                                <td>${row.Account ?? ''}</td>
+                                <td class="text-end">${row.Amount ?? '0.00'}</td>
+                                <td class="text-end">${row.Balance ?? '0.00'}</td>
+                            </tr>`;
+                        tbody.append(tr);
+                    });
+
+                    $('#table2').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                className: 'btn btn-primary btn-sm'
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                className: 'btn btn-primary btn-sm',
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            }
+                        ],
+                        order: [[0, 'asc']],
+                        pageLength: 25
+                    });
+                } else {
+                    tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
+                }
+            },
+            error: function () {
+                toastr.error('Error loading transaction details');
+            }
+        });
+    }
+</script>
+}
