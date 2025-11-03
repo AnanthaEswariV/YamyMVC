@@ -1,0 +1,223 @@
+﻿
+@{
+    ViewData["Title"] = "TrialBalance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Trial Balance</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <select class="form-select" id="type">
+                    <option value="">-- Select Type --</option>
+                    <option value="All" selected>All</option>
+                    <option value="Summary">Summary</option>
+                    <option value="Detail">Detail</option>
+                </select>
+
+            </div>
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Account Name</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+<script>
+          $(document).ready(function () {
+            loadTrialBalance();
+
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+            });
+
+            $('#filterBtn').click(function () {
+                loadTrialBalance();
+            });
+
+             $('#type').change(function () {
+                    loadTrialBalance();
+             });
+
+             function loadTrialBalance() {
+            const type = $('#type').val();
+            const includeAllDates = $('#chkAllData').is(':checked');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            let reportType = 0; 
+            if (type === "Summary") reportType = 1;
+            else if (type === "Detail") reportType = 2;
+            else reportType = 0;
+
+         
+
+            if (!includeAllDates && (!startDate || !endDate)) {
+                toastr.warning('Please select both start and end dates.');
+                return;
+            }
+
+            $.ajax({
+                url: '/Reports/GetTrialBalanceReport',
+                type: 'GET',
+                data: {
+                    reportType: reportType,
+                    startDate: startDate || null,
+                    endDate: endDate || null,
+                    includeAllDates: includeAllDates
+                },
+                beforeSend: function () {
+                    $('#table2 tbody').html(`
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load trial balance report');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#table2')) {
+                        $('#table2').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table2 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const isTotal = row["Account Name"] === "TOTAL";
+                                const tr = `
+        <tr data-id="${row.id || ''}" ${isTotal ? 'class="fw-bold table-secondary"' : ''}>
+            <td>${i + 1}</td>
+            <td>${row["Account Name"] ?? ''}</td>
+            <td class="text-end">${(row.Debit ?? row.Opening ?? 0).toLocaleString()}</td>
+            <td class="text-end">${(row.Credit ?? 0).toLocaleString()}</td>
+            <td class="text-end">${(row.Balance ?? 0).toLocaleString()}</td>
+        </tr>`;
+
+                            tbody.append(tr);
+                        });
+
+                        $('#table2').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="5" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading trial balance data');
+                }
+            });
+        }
+                // Handle row click to redirect to TransactionByAccount view
+        $('#table2 tbody').on('click', 'tr', function () {
+            const accountId = $(this).data('id');
+            if (!accountId) {
+                toastr.warning('No account ID found for this row.');
+                return;
+            }
+
+            // Redirect to TransactionByAccount page with accountId as query parameter
+            window.location.href = `/Reports/TransactionByAccount?accountId=${accountId}`;
+        });
+
+
+      
+
+
+
+
+
+
+        });
+
+</script>
+}

@@ -397,6 +397,229 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Trial Balance
+
+        public IActionResult TrialBalance()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTrialBalanceReport(int reportType, DateTime startDate, DateTime endDate, bool includeAllDates = false)
+        {
+            try
+            {
+                // Get connection with selected database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string dateFilter = includeAllDates ? "" : " AND t.date >= @startDate AND t.date <= @endDate";
+                string query = string.Empty;
+
+                // Choose query by report type (similar to comboBox1.SelectedIndex)
+                if (reportType == 0)
+                {
+                    query = $@"
+                SELECT * FROM (
+                    SELECT 
+                        t4.id,
+                        CONCAT(t4.code, ' - ', t4.name) AS `Account Name`,
+                        SUM(CASE WHEN t.debit > t.credit THEN t.debit - t.credit ELSE 0 END) AS Debit,
+                        SUM(CASE WHEN t.debit < t.credit THEN t.credit - t.debit ELSE 0 END) AS Credit,
+                        SUM(CASE WHEN t.debit > t.credit THEN t.debit - t.credit ELSE 0 END) -
+                        SUM(CASE WHEN t.debit < t.credit THEN t.credit - t.debit ELSE 0 END) AS Balance
+                    FROM tbl_transaction t
+                    INNER JOIN tbl_coa_level_4 t4 ON t.account_id = t4.id AND t.state = 0 {dateFilter}
+                    GROUP BY t4.id, t4.code, t4.name
+                ) AS result
+                ORDER BY CASE WHEN result.id IS NULL THEN 1 ELSE 0 END, result.id;";
+                }
+                else if (reportType == 1)
+                {
+                    query = $@"
+                SELECT * FROM (
+                    SELECT 
+                        t4.id,
+                        CONCAT(t4.code, ' - ', t4.name) AS `Account Name`,
+                        CASE WHEN SUM(t.debit - t.credit) >= 0 THEN SUM(t.debit - t.credit) ELSE 0 END AS Debit,
+                        CASE WHEN SUM(t.debit - t.credit) < 0 THEN -SUM(t.debit - t.credit) ELSE 0 END AS Credit
+                    FROM tbl_transaction t
+                    INNER JOIN tbl_coa_level_4 t4 ON t.account_id = t4.id
+                    WHERE t.state = 0 {dateFilter}
+                    GROUP BY t4.id, t4.code, t4.name
+
+                    UNION ALL
+
+                    SELECT 
+                        NULL AS id,
+                        'TOTAL' AS `Account Name`,
+                        SUM(CASE WHEN Balance >= 0 THEN Balance ELSE 0 END) AS Debit,
+                        SUM(CASE WHEN Balance < 0 THEN -Balance ELSE 0 END) AS Credit
+                    FROM (
+                        SELECT 
+                            t.account_id,
+                            SUM(t.debit - t.credit) AS Balance
+                        FROM tbl_transaction t
+                        WHERE t.state = 0 {dateFilter}
+                        GROUP BY t.account_id
+                    ) AS balances
+                ) AS result
+                ORDER BY CASE WHEN result.id IS NULL THEN 1 ELSE 0 END, result.id;";
+                }
+                else if (reportType == 2)
+                {
+                    query = $@"
+                SELECT * FROM (
+                    SELECT 
+                        t2.id,
+                        CONCAT(t2.code, ' - ', t2.name) AS `Account Name`,
+                        IFNULL((
+                            SELECT SUM(tt.debit - tt.credit)
+                            FROM tbl_transaction tt
+                            WHERE tt.account_id = t2.id AND tt.state = 0 AND tt.date < @startDate
+                        ), 0) AS Opening,
+                        IFNULL(SUM(CASE WHEN t.date >= @startDate AND t.date <= @endDate THEN t.debit ELSE 0 END), 0) AS Debit,
+                        IFNULL(SUM(CASE WHEN t.date >= @startDate AND t.date <= @endDate THEN t.credit ELSE 0 END), 0) AS Credit,
+                        IFNULL((
+                            SELECT SUM(tt.debit - tt.credit)
+                            FROM tbl_transaction tt
+                            WHERE tt.account_id = t2.id AND tt.state = 0 AND tt.date <= @endDate
+                        ), 0) AS Balance
+                    FROM tbl_transaction t
+                    INNER JOIN tbl_coa_level_2 t2 ON t.account_id = t2.id AND t.state = 0
+                    WHERE t.id > 0
+                    GROUP BY t2.id, t2.code, t2.name
+
+                    UNION ALL
+                    SELECT 
+                        NULL,
+                        'TOTAL',
+                        IFNULL((SELECT SUM(debit - credit) FROM tbl_transaction WHERE state = 0 AND date < @startDate), 0),
+                        IFNULL((SELECT SUM(debit) FROM tbl_transaction WHERE state = 0 AND date >= @startDate AND date <= @endDate), 0),
+                        IFNULL((SELECT SUM(credit) FROM tbl_transaction WHERE state = 0 AND date >= @startDate AND date <= @endDate), 0),
+                        IFNULL((SELECT SUM(debit - credit) FROM tbl_transaction WHERE state = 0 AND date <= @endDate), 0)
+                ) AS result
+                ORDER BY CASE WHEN result.id IS NULL THEN 1 ELSE 0 END, result.id;";
+                }
+                else
+                {
+                    query = $@"
+                SELECT * FROM (
+                    SELECT 
+                        t4.id,
+                        CONCAT(t4.code, ' - ', t4.name) AS `Account Name`,
+                        SUM(CASE WHEN t.debit > t.credit THEN t.debit - t.credit ELSE 0 END) AS Debit,
+                        SUM(CASE WHEN t.debit < t.credit THEN t.credit - t.debit ELSE 0 END) AS Credit,
+                        SUM(CASE WHEN t.debit > t.credit THEN t.debit - t.credit ELSE 0 END) -
+                        SUM(CASE WHEN t.debit < t.credit THEN t.credit - t.debit ELSE 0 END) AS Balance
+                    FROM tbl_transaction t
+                    INNER JOIN tbl_coa_level_4 t4 ON t.account_id = t4.id AND t.state = 0 {dateFilter}
+                    GROUP BY t4.id, t4.code, t4.name
+                ) AS result
+                ORDER BY CASE WHEN result.id IS NULL THEN 1 ELSE 0 END, result.id;";
+                }
+
+                // Execute the query
+                var result = new List<Dictionary<string, object>>();
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                    cmd.Parameters.AddWithValue("@endDate", endDate.Date);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        result.Add(row);
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        public IActionResult TransactionByAccount()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetMasterTransactionByAccount(int accountId, DateTime startDate, DateTime endDate, bool includeAllDates = false)
+        {
+            try
+            {
+                // Build connection string based on active database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Handle optional date filter
+                string dateFilter = includeAllDates ? "" : " AND t.date >= @startDate AND t.date <= @endDate";
+
+                string query = $@"
+            SELECT 
+                t.date,
+                t.type,
+                t.hum_id,
+                t.description,
+                t.transaction_id,
+                t.debit,
+                t.credit,
+                SUM(t.debit - t.credit) OVER (PARTITION BY t.account_id ORDER BY t.date, t.id) AS Amount
+            FROM tbl_transaction t
+            WHERE t.account_id = @accountId
+            {dateFilter}
+            ORDER BY t.date, t.id;";
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@accountId", accountId);
+                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                    cmd.Parameters.AddWithValue("@endDate", endDate.Date);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        result.Add(row);
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
 
 
 

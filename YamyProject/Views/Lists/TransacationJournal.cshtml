@@ -1,50 +1,68 @@
-﻿
-@{
-    ViewData["Title"] = "TransacationJournal";
+﻿@{
+    ViewData["Title"] = "TransactionJournal";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
-
-
-
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 <div class="card">
     <div class="card-header text-center">
         <strong>Transaction Journal</strong>
     </div>
 
     <div class="card-body">
-        <!-- Center the dropdown -->
-        <div class="d-flex justify-content-center mb-4">
+
+        <!-- Filter Section -->
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox: Show All Data -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+
+            <!-- Selection Method -->
             <div style="min-width: 300px;">
                 <h6 class="text-center fw-bold">Selection Method</h6>
                 <select class="form-select text-center" id="transactionSelect">
                     <option>Default</option>
                     <option>General Ledger</option>
-                    <option>General Ledger Opening Balance</option>
                     <option>Customer Opening Balance</option>
                     <option>Vendor Opening Balance</option>
-                    <option>Subcontractor Opening Balance</option>
                     <option>Sales Invoice</option>
-                    <option>SalesReturn Invoice</option>
                     <option>Purchase Invoice</option>
                     <option>Customer Receipt</option>
                     <option>Vendor Payment</option>
-                    <option>Petty Cash</option>
                     <option>Employee Salary</option>
-                    <option>Leave Salary</option>
-                    <option>End Of Service</option>
-                    <option>Petty Cash Submition Approval</option>
-                    <option>Purchase Return Invoice</option>
-                    <option>Employee Petty Cash Payment</option>
-                    <option>Opening Qty</option>
-                    <option>Prepaid Expense</option>
                     <option>Fixed Assets</option>
-                    <option>Fixed Assets Depreciation</option>
-                    <option>PDC Payable</option>
-                    <option>PDC Receivable</option>
                     <option>Debit Note</option>
                     <option>Credit Note</option>
-                    <option>Employee Salary Payment</option>
                     <option>Loan Request</option>
                     <option>Vendor Advance Payment</option>
                     <option>Customer Advance Payment</option>
@@ -52,6 +70,7 @@
                     <option>Manufacturing</option>
                 </select>
             </div>
+
         </div>
 
         <!-- Table -->
@@ -68,10 +87,9 @@
                     <th>Credit</th>
                 </tr>
             </thead>
-            <tbody>
-                <!-- Rows will be loaded dynamically -->
-            </tbody>
+            <tbody></tbody>
         </table>
+
     </div>
 </div>
 
@@ -83,173 +101,122 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
+    <script>
+        $(document).ready(function () {
+            // --- 1. Read URL parameters ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const transactionId = urlParams.get('transactionId');
+            let selectionMethod = urlParams.get('selectionMethod') || 'Default';
+            let fromDate = urlParams.get('fromDate');
+            let toDate = urlParams.get('toDate');
 
+            console.log("URL Params:", { transactionId, selectionMethod, fromDate, toDate });
 
-<!-- Your script -->
-<script>
-            function loadJournal(selectionMethod) {
+            // --- 2. Set dropdown and date inputs based on URL params ---
+            $('#transactionSelect').val(selectionMethod);
+            if (fromDate && toDate) {
+                $('#chkAllData').prop('checked', false);
+                $('#startDate, #endDate').prop('disabled', false).val(fromDate);
+                $('#endDate').val(toDate);
+            }
+
+            // Enable/disable date inputs on checkbox change
+            $("#chkAllData").on("change", function () {
+                const checked = $(this).is(":checked");
+                $("#startDate, #endDate").prop("disabled", checked);
+            });
+
+            // --- 3. Filter button click ---
+            $("#filterBtn").on("click", function () {
+                const selectedMethod = $("#transactionSelect").val() || 'Default';
+                const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
+                const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
+                loadJournal(selectedMethod, transactionId, fDate, tDate);
+            });
+
+            // --- 4. Dropdown change ---
+            $("#transactionSelect").on("change", function () {
+                const selectedMethod = $(this).val() || 'Default';
+                const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
+                const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
+                loadJournal(selectedMethod, transactionId, fDate, tDate);
+            });
+
+            // --- 5. Initial load using dropdown value ---
+            loadJournal($('#transactionSelect').val(), transactionId, fromDate, toDate);
+
+                 function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
+            const filterByDate = !!(fromDate && toDate);
+
+            console.log("Calling GetJournal:", { selectionMethod, transactionId, fromDate, toDate, filterByDate });
+
+            // Build data object dynamically
+            const data = {};
+
+            if (selectionMethod) data.selectionMethod = selectionMethod; // only send if exists
+            if (transactionId) data.transactionId = parseInt(transactionId);
+            if (filterByDate) {
+                data.filterByDate = true;
+                data.fromDate = fromDate;
+                data.toDate = toDate;
+            }
+
             $.ajax({
-                url: "/Lists/GetJournal",
-                type: "GET",
-                data: { selectionMethod: selectionMethod },
+                url: '/Lists/GetJournal',
+                type: 'GET',
+                data: data,
+                beforeSend: function () {
+                    $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4">Loading...</td></tr>');
+                },
                 success: function (res) {
-                    if (res.status) {
-                        // Destroy old DataTable if exists
-                        if ($.fn.DataTable.isDataTable("#table1")) {
-                            $("#table1").DataTable().destroy();
-                        }
-
-                        // Populate tbody
-                        let tbody = $("#table1 tbody");
-                        tbody.empty();
-
-                        if (res.data && res.data.length > 0) {
-                            $.each(res.data, function (i, row) {
-                                // Handle the TOTAL row differently (it has null/empty SN)
-                                let isTotal = !row.sn || row.acName === "TOTAL";
-
-                                let tr = `
-                                    <tr ${isTotal ? 'style="font-weight: bold; background-color: #f8f9fa;"' : ''}>
-                                        <td>${row.sn ?? ""}</td>
-                                        <td>${row.refId ?? ""}</td>
-                                        <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
-                                        <td>${row.type ?? ""}</td>
-                                        <td>${row.acCode ?? ""}</td>
-                                        <td>${row.acName ?? ""}</td>
-                                        <td style="text-align: right;">${formatCurrency(row.debit ?? 0)}</td>
-                                        <td style="text-align: right;">${formatCurrency(row.credit ?? 0)}</td>
-                                    </tr>`;
-                                tbody.append(tr);
-                            });
-
-                            // Initialize DataTable ONLY when there is data
-                            journalTable = $("#table1").DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    {
-                                        extend: 'pdfHtml5',
-                                        title: 'Transaction Journal',
-                                        customize: function(doc) {
-                                            doc.defaultStyle.fontSize = 9;
-                                            doc.styles.tableHeader.fontSize = 10;
-                                            doc.styles.tableHeader.bold = true;
-                                        }
-                                    },
-                                    {
-                                        extend: 'excelHtml5',
-                                        title: 'Transaction Journal'
-                                    }
-                                ],
-                                order: [[0, 'asc']],
-                                paging: true,
-                                searching: true,
-                                pageLength: 25,
-                                columnDefs: [
-                                    {
-                                        targets: [6, 7], // Debit and Credit columns
-                                        className: 'text-right'
-                                    }
-                                ]
-                            });
-
-                        } else {
-                            // When no data, don't initialize DataTable
-                            // Just show the message in a simple table structure
+                    const tbody = $('#table1 tbody').empty();
+                    if (res.status && res.data && res.data.length > 0) {
+                        $.each(res.data, function(i,row) {
                             tbody.append(`
                                 <tr>
-                                    <td colspan="8" style="text-align:center; padding: 40px; color: #6c757d; font-style: italic;">
-                                        No records found for the selected criteria
-                                    </td>
+                                    <td>${row.sn ?? ""}</td>
+                                    <td>${row.transaction_id ?? row.refId ?? ""}</td>
+                                    <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
+                                    <td>${row.type ?? ""}</td>
+                                    <td>${row.acCode ?? ""}</td>
+                                    <td>${row.acName ?? ""}</td>
+                                    <td class="text-end">${row.debit ?? 0}</td>
+                                    <td class="text-end">${row.credit ?? 0}</td>
                                 </tr>
                             `);
+                        });
 
-                            // Hide DataTable buttons container if it exists
-                            $('.dt-buttons').hide();
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().clear().destroy();
                         }
-
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', className: 'btn btn-primary btn-sm', text: 'Excel' },
+                                { extend: 'pdfHtml5', className: 'btn btn-primary btn-sm', orientation: 'landscape', pageSize: 'A4', text: 'PDF' }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
                     } else {
-                        console.error("API returned error:", res.message);
-                        $("#table1 tbody").html(`
-                            <tr>
-                                <td colspan="8" style="text-align:center; color: red; padding: 40px;">
-                                    Error: ${res.message || 'Failed to load data'}
-                                </td>
-                            </tr>
-                        `);
-                        $('.dt-buttons').hide();
+                        tbody.append('<tr><td colspan="8" class="text-center py-4 text-muted">No records found</td></tr>');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error("Error loading journal:", error);
-
-                    // Destroy DataTable if exists
-                    if ($.fn.DataTable.isDataTable("#table1")) {
-                        $("#table1").DataTable().destroy();
-                    }
-
-                    $("#table1 tbody").html(`
-                        <tr>
-                            <td colspan="8" style="text-align:center; color: red; padding: 40px;">
-                                Error loading data: ${error}
-                            </td>
-                        </tr>
-                    `);
-                    $('.dt-buttons').hide();
+                error: function () {
+                    $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4 text-danger">Error loading data</td></tr>');
                 }
             });
         }
 
-        // Helper function to format currency
-        function formatCurrency(amount) {
-            if (amount === 0 || amount === "0" || !amount) {
-                return "0.00";
-            }
-            return parseFloat(amount).toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 4
-            });
-        }
-
-        // Enhanced initialization
-        $(document).ready(function () {
-            let journalTable;
-
-            // Load default on page load
-            loadJournal("Default");
-
-            // Change event with loading state
-            $("#transactionSelect").on("change", function () {
-                let selectedValue = $(this).val();
-
-                // Destroy existing DataTable first
-                if ($.fn.DataTable.isDataTable("#table1")) {
-                    $("#table1").DataTable().destroy();
-                }
-
-                // Show loading state
-                $("#table1 tbody").html(`
-                    <tr>
-                        <td colspan="8" style="text-align:center; padding: 40px;">
-                            <i class="fa fa-spinner fa-spin"></i> Loading...
-                        </td>
-                    </tr>
-                `);
-
-                loadJournal(selectedValue);
-            });
         });
-
-</script>
-
+    </script>
 
 
 
+    
 }

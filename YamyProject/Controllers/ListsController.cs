@@ -2722,16 +2722,17 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetJournal(
-    string? selectionMethod = "Default",
-    string? type = null,
-    int? transactionId = null,
-    bool filterByDate = false,
-    DateTime? fromDate = null,
-    DateTime? toDate = null)
+            [FromQuery] string? selectionMethod = "Default",
+            [FromQuery] int? transactionId = null,        // nullable int
+            [FromQuery] bool filterByDate = false,
+            [FromQuery] DateTime? fromDate = null,       // nullable DateTime
+            [FromQuery] DateTime? toDate = null)        // nullable DateTime
         {
+     
+
+            Console.WriteLine($"transactionId={transactionId}, filterByDate={filterByDate}");
             try
             {
                 // Build connection with dynamic DB from session
