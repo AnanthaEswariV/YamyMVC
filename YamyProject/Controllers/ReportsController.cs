@@ -620,10 +620,450 @@ ORDER BY l.code;
 
         #endregion
 
+        #region General Ledger
 
+        public IActionResult GeneralLedger()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSalesReport(
+      string reportType,
+      DateTime? startDate = null,
+      DateTime? endDate = null)
+        {
+            try
+            {
+                // 1️⃣ Build connection string dynamically (session-based database name)
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 2️⃣ Get all relevant chart-of-account (COA) entries with transactions
+                string sqlAccounts = @"
+            SELECT id, CONCAT(code, ' - ', name) AS name
+            FROM tbl_coa_level_4
+            WHERE id IN (SELECT DISTINCT account_id FROM tbl_transaction);";
+
+                var accounts = new List<AccountReport>();
+
+                await using (var cmd = new MySqlCommand(sqlAccounts, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        accounts.Add(new AccountReport
+                        {
+                            Id = reader.GetInt32("id"),
+                            Name = reader["name"].ToString(),
+                            Transactions = new List<TransactionRow>(),
+                            TotalDebit = 0,
+                            TotalCredit = 0,
+                            Balance = 0
+                        });
+                    }
+                }
+
+                // 3️⃣ Loop through each account and pull its transactions
+                foreach (var acc in accounts)
+                {
+                    string sqlTrans = @"
+                SELECT 
+                    DATE_FORMAT(t.date, '%M %d %Y') AS date,
+                    t.transaction_id AS Num,
+                    t.type AS Type,
+                    t.description,
+                    t.debit,
+                    t.credit
+                FROM tbl_transaction t
+                WHERE t.account_id = @id";
+
+                    if (startDate.HasValue && endDate.HasValue)
+                        sqlTrans += " AND t.date >= @startDate AND t.date <= @endDate";
+
+                    sqlTrans += " ORDER BY t.date;";
+
+                    await using var cmdTrans = new MySqlCommand(sqlTrans, conn);
+                    cmdTrans.Parameters.AddWithValue("@id", acc.Id);
+                    if (startDate.HasValue && endDate.HasValue)
+                    {
+                        cmdTrans.Parameters.AddWithValue("@startDate", startDate.Value.Date);
+                        cmdTrans.Parameters.AddWithValue("@endDate", endDate.Value.Date);
+                    }
+
+                    decimal runningDebit = 0, runningCredit = 0;
+
+                    await using var readerTrans = await cmdTrans.ExecuteReaderAsync();
+                    while (await readerTrans.ReadAsync())
+                    {
+                        decimal debit = readerTrans.GetDecimal("debit");
+                        decimal credit = readerTrans.GetDecimal("credit");
+
+                        runningDebit += debit;
+                        runningCredit += credit;
+
+                        acc.Transactions.Add(new TransactionRow
+                        {
+                            Num = readerTrans["Num"].ToString(),
+                            Type = readerTrans["Type"].ToString(),
+                            Date = readerTrans["date"].ToString(),
+                            Description = readerTrans["description"].ToString(),
+                            Debit = debit,
+                            Credit = credit,
+                            Balance = runningDebit - runningCredit
+                        });
+                    }
+
+                    acc.TotalDebit = runningDebit;
+                    acc.TotalCredit = runningCredit;
+                    acc.Balance = runningDebit - runningCredit;
+                }
+
+                // 4️⃣ Adjust logic for "Simple" report type (skip per-account totals if needed)
+                if (reportType?.Equals("Simple", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    // Flatten all transactions into one combined report
+                    var flatList = new List<TransactionRow>();
+                    foreach (var acc in accounts)
+                    {
+                        foreach (var t in acc.Transactions)
+                        {
+                            flatList.Add(new TransactionRow
+                            {
+                                Num = t.Num,
+                                Type = t.Type,
+                                Date = t.Date,
+                                Description = $"{acc.Name} - {t.Description}",
+                                Debit = t.Debit,
+                                Credit = t.Credit,
+                                Balance = t.Balance
+                            });
+                        }
+                    }
+
+                    return Ok(new
+                    {
+                        status = true,
+                        data = flatList,
+                        grandTotal = flatList.Sum(x => x.Balance)
+                    });
+                }
+
+                // 5️⃣ Compute grand total for Default type
+                decimal grandTotal = accounts.Sum(a => a.Balance);
+
+                // 6️⃣ Return JSON result
+                return Ok(new
+                {
+                    status = true,
+                    data = accounts,
+                    grandTotal
+                });
+            }
+            catch (Exception ex)
+            {
+                // Return clean error info to client
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        #endregion
+
+        #region General Ledger Details
+
+        public IActionResult GeneralLedgerDetails()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetGeneralLedger(int id, DateTime? fromDate = null, DateTime? toDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>
+        {
+            new("@id", id)
+        };
+
+                string query = @"
+            SELECT 
+                DATE_FORMAT(t.date, '%M %d %Y') AS date,
+                t.transaction_id AS Num,
+                t.type AS Type,
+                t.t_type,
+                t.description,
+                t.debit,
+                t.credit
+            FROM tbl_transaction t
+            INNER JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+            WHERE t.account_id = @id
+        ";
+
+                // If date filters are applied
+                if (!includeAllDates && fromDate.HasValue && toDate.HasValue)
+                {
+                    query += " AND t.date >= @fromDate AND t.date <= @toDate";
+                    parameters.Add(new("@fromDate", fromDate.Value.Date));
+                    parameters.Add(new("@toDate", toDate.Value.Date));
+                }
+
+                query += " ORDER BY t.date;";
+
+                var transactions = new List<object>();
+                decimal runningDebit = 0, runningCredit = 0;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        decimal debit = reader["debit"] != DBNull.Value ? Convert.ToDecimal(reader["debit"]) : 0;
+                        decimal credit = reader["credit"] != DBNull.Value ? Convert.ToDecimal(reader["credit"]) : 0;
+
+                        runningDebit += debit;
+                        runningCredit += credit;
+
+                        var balance = runningDebit - runningCredit;
+
+                        transactions.Add(new
+                        {
+                            Num = reader["Num"].ToString(),
+                            Type = reader["Type"].ToString(),
+                            Date = reader["date"].ToString(),
+                            Description = reader["description"].ToString(),
+                            Debit = debit.ToString("N2"),
+                            Credit = credit.ToString("N2"),
+                            Balance = balance.ToString("N2")
+                        });
+                    }
+                }
+
+                var totalRow = new
+                {
+                    Num = "",
+                    Type = "",
+                    Date = "",
+                    Description = "TOTAL",
+                    Debit = runningDebit.ToString("N2"),
+                    Credit = runningCredit.ToString("N2"),
+                    Balance = (runningDebit - runningCredit).ToString("N2")
+                };
+                transactions.Add(totalRow);
+
+
+                return Ok(new { status = true, data = transactions });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region VAT Report
+
+        public IActionResult VATReport()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetVatReport(string type, DateTime? fromDate = null, DateTime? toDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>();
+
+                string query = string.Empty;
+
+                if (type == "Vat Input")
+                {
+                    if (includeAllDates)
+                    {
+                        query = @"
+                    SELECT s.id, 'Purchase' AS Type, s.date AS Date, s.invoice_id AS `Inv No`, CONCAT(c.code,' - ',c.name) AS Name,
+                           s.payment_method AS `Payment Method`, s.total AS `Amount Before Vat`, s.vat AS `Vat Amount`, s.net AS `Total Amount`
+                    FROM tbl_purchase s
+                    JOIN tbl_vendor c ON s.vendor_id = c.id
+                    WHERE s.vat > 0
+                    UNION ALL
+                    SELECT s.id,'Sales Return', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           s.payment_method, s.total, s.vat, s.net
+                    FROM tbl_sales_return s
+                    JOIN tbl_customer c ON s.customer_id = c.id
+                    WHERE s.vat > 0
+                    UNION ALL
+                    SELECT s.id,'Debit Note', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           '', s.amount, s.vat, s.total
+                    FROM tbl_debit_note s
+                    JOIN tbl_purchase p ON p.invoice_id = s.invoice_id
+                    JOIN tbl_vendor c ON p.vendor_id = c.id
+                    WHERE s.vat > 0
+                    UNION ALL
+                    SELECT s.id,'Petty Cash', s.date, s.code, CONCAT(c.code,' - ',c.name),
+                           '', s.total_before_vat, s.total_vat, s.net_amount
+                    FROM tbl_petty_cash_submition s
+                    JOIN tbl_employee c ON s.name = c.id
+                    WHERE s.total_vat > 0
+                ";
+                    }
+                    else
+                    {
+                        query = @"
+                    SELECT s.id, 'Purchase' AS Type, s.date AS Date, s.invoice_id AS `Inv No`, CONCAT(c.code,' - ',c.name) AS Name,
+                           s.payment_method AS `Payment Method`, s.total AS `Amount Before Vat`, s.vat AS `Vat Amount`, s.net AS `Total Amount`
+                    FROM tbl_purchase s
+                    JOIN tbl_vendor c ON s.vendor_id = c.id
+                    WHERE s.vat > 0 AND s.date BETWEEN @fromDate AND @toDate
+                    UNION ALL
+                    SELECT s.id,'Sales Return', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           s.payment_method, s.total, s.vat, s.net
+                    FROM tbl_sales_return s
+                    JOIN tbl_customer c ON s.customer_id = c.id
+                    WHERE s.vat > 0 AND s.date BETWEEN @fromDate AND @toDate
+                    UNION ALL
+                    SELECT s.id,'Debit Note', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           '', s.amount, s.vat, s.total
+                    FROM tbl_debit_note s
+                    JOIN tbl_purchase p ON p.invoice_id = s.invoice_id
+                    JOIN tbl_vendor c ON p.vendor_id = c.id
+                    WHERE s.vat > 0 AND s.date BETWEEN @fromDate AND @toDate
+                    UNION ALL
+                    SELECT s.id,'Petty Cash', s.date, s.code, CONCAT(c.code,' - ',c.name),
+                           '', s.total_before_vat, s.total_vat, s.net_amount
+                    FROM tbl_petty_cash_submition s
+                    JOIN tbl_employee c ON s.name = c.id
+                    WHERE s.total_vat > 0 AND s.date BETWEEN @fromDate AND @toDate
+                ";
+
+                        parameters.Add(new MySqlParameter("@fromDate", fromDate?.Date));
+                        parameters.Add(new MySqlParameter("@toDate", toDate?.Date));
+                    }
+                }
+                else // Vat Output
+                {
+                    if (includeAllDates)
+                    {
+                        query = @"
+                    SELECT s.id,'Sales', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           s.payment_method, s.total, s.vat, s.net
+                    FROM tbl_sales s
+                    JOIN tbl_customer c ON s.customer_id = c.id
+                    WHERE s.vat>0
+                    UNION ALL
+                    SELECT s.id,'Purchase Return', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           s.payment_method, s.total, s.vat, s.net
+                    FROM tbl_purchase_return s
+                    JOIN tbl_vendor c ON s.vendor_id = c.id
+                    WHERE s.vat>0
+                    UNION ALL
+                    SELECT s.id,'Credit Note', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           '', s.amount, s.vat, s.total
+                    FROM tbl_credit_note s
+                    JOIN tbl_sales p ON p.invoice_id = s.invoice_id
+                    JOIN tbl_customer c ON p.customer_id = c.id
+                    WHERE s.vat>0
+                ";
+                    }
+                    else
+                    {
+                        query = @"
+                    SELECT s.id,'Sales', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           s.payment_method, s.total, s.vat, s.net
+                    FROM tbl_sales s
+                    JOIN tbl_customer c ON s.customer_id = c.id
+                    WHERE s.vat>0 AND s.date BETWEEN @fromDate AND @toDate
+                    UNION ALL
+                    SELECT s.id,'Purchase Return', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           s.payment_method, s.total, s.vat, s.net
+                    FROM tbl_purchase_return s
+                    JOIN tbl_vendor c ON s.vendor_id = c.id
+                    WHERE s.vat>0 AND s.date BETWEEN @fromDate AND @toDate
+                    UNION ALL
+                    SELECT s.id,'Credit Note', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
+                           '', s.amount, s.vat, s.total
+                    FROM tbl_credit_note s
+                    JOIN tbl_sales p ON p.invoice_id = s.invoice_id
+                    JOIN tbl_customer c ON p.customer_id = c.id
+                    WHERE s.vat>0 AND s.date BETWEEN @fromDate AND @toDate
+                ";
+
+                        parameters.Add(new MySqlParameter("@fromDate", fromDate?.Date));
+                        parameters.Add(new MySqlParameter("@toDate", toDate?.Date));
+                    }
+                }
+
+                var result = new List<object>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (parameters.Count > 0)
+                        cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        result.Add(new
+                        {
+                            Id = reader["id"],
+                            Type = reader["Type"],
+                            Date = reader["Date"],
+                            InvNo = reader["Inv No"],
+                            Name = reader["Name"],
+                            PaymentMethod = reader["Payment Method"],
+                            AmountBeforeVat = reader["Amount Before Vat"],
+                            VatAmount = reader["Vat Amount"],
+                            TotalAmount = reader["Total Amount"]
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
 
 
     }
+
+
+
 }
 
 

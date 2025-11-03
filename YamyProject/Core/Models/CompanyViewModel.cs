@@ -1,4 +1,6 @@
 ﻿
+using System.Collections.Generic;
+
 namespace YamyProject.Core.Models
 {
     public class CompanyViewModel
@@ -587,6 +589,26 @@ namespace YamyProject.Core.Models
         public List<AccountNode> Children { get; set; } = new List<AccountNode>();
     }
 
+    public class AccountReport
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public List<TransactionRow> Transactions { get; set; }
+        public decimal TotalDebit { get; set; }
+        public decimal TotalCredit { get; set; }
+        public decimal Balance { get; set; }
+    }
+
+    public class TransactionRow
+    {
+        public string Num { get; set; }
+        public string Type { get; set; }
+        public string Date { get; set; }
+        public string Description { get; set; }
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+        public decimal Balance { get; set; }
+    }
 
 
 }
