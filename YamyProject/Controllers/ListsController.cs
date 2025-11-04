@@ -2724,15 +2724,15 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
         [HttpGet]
         public async Task<IActionResult> GetJournal(
-            [FromQuery] string? selectionMethod = "Default",
-            [FromQuery] int? transactionId = null,        // nullable int
-            [FromQuery] bool filterByDate = false,
-            [FromQuery] DateTime? fromDate = null,       // nullable DateTime
-            [FromQuery] DateTime? toDate = null)        // nullable DateTime
+       [FromQuery] string? selectionMethod = "Default",
+       [FromQuery] string? type = null,
+       [FromQuery] int? transactionId = null,
+       [FromQuery] bool filterByDate = false,
+       [FromQuery] DateTime? fromDate = null,
+       [FromQuery] DateTime? toDate = null)
         {
-     
+            Console.WriteLine($"selectionMethod={selectionMethod}, type={type}, transactionId={transactionId}, filterByDate={filterByDate}");
 
-            Console.WriteLine($"transactionId={transactionId}, filterByDate={filterByDate}");
             try
             {
                 // Build connection with dynamic DB from session
@@ -2744,108 +2744,367 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Base query
-                string query = @"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS SN,
-                CONCAT('000', transaction_id) AS RefId,
-                tbl_transaction.date AS Date,
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS Type,
-                tbl_coa_level_4.code AS `ACCode`,
-                tbl_coa_level_4.name AS `ACName`,
-                tbl_transaction.description AS Description,
-                tbl_transaction.debit AS Debit,
-                tbl_transaction.credit AS Credit
-            FROM tbl_transaction
-            INNER JOIN tbl_coa_level_4 
-                ON tbl_transaction.account_id = tbl_coa_level_4.id
-            WHERE tbl_transaction.state = 0";
-
+                string query = "";
                 var parameters = new List<MySqlParameter>();
+                string condition = "";
 
-                // Build condition dynamically
+                // Build base condition based on selectionMethod
                 if (selectionMethod == "General Ledger")
                 {
-                    query += " AND tbl_transaction.hum_id != 0";
+                    condition = " AND tbl_transaction.state = 0 AND tbl_transaction.hum_id != 0 ";
                 }
                 else if (selectionMethod == "Default")
                 {
-                    // keep base
+                    condition = " AND tbl_transaction.state = 0 ";
                 }
                 else if (selectionMethod == "Inventory Opening Stock")
                 {
-                    query += " AND tbl_transaction.type = 'Opening Balance'";
+                    condition = " AND tbl_transaction.state = 0 AND tbl_transaction.type = 'Opening Balance' ";
                 }
                 else
                 {
-                    query += " AND tbl_transaction.type = @selType";
+                    condition = " AND tbl_transaction.state = 0 AND tbl_transaction.type = @selType";
                     parameters.Add(new MySqlParameter("@selType", selectionMethod));
                 }
 
-                if (filterByDate && fromDate.HasValue && toDate.HasValue)
-                {
-                    query += " AND tbl_transaction.date >= @fromDate AND tbl_transaction.date <= @toDate";
-                    parameters.Add(new MySqlParameter("@fromDate", fromDate.Value));
-                    parameters.Add(new MySqlParameter("@toDate", toDate.Value));
-                }
-
+                // Add transaction ID parameter if provided
                 if (transactionId.HasValue)
                 {
-                    query += " AND tbl_transaction.transaction_id = @id";
                     parameters.Add(new MySqlParameter("@id", transactionId.Value));
                 }
 
-                // Run query
+                // Add date filter if enabled
+                if (filterByDate && fromDate.HasValue && toDate.HasValue)
+                {
+                    condition += " AND tbl_transaction.date >= @fromDate AND tbl_transaction.date <= @toDate";
+                    parameters.Add(new MySqlParameter("@fromDate", fromDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@toDate", toDate.Value.Date));
+                }
+
+                // Build query based on selectionMethod or type
+                if (selectionMethod == "Sales Invoice")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,
+                tbl_coa_level_4.code AS 'ACCode',
+                tbl_coa_level_4.name AS `ACName`, 
+                tbl_transaction.description AS `Description`,
+                tbl_transaction.debit AS `Debit`, 
+                tbl_transaction.credit AS `Credit`
+            FROM tbl_transaction 
+            INNER JOIN tbl_coa_level_4 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            WHERE (tbl_transaction.type = 'Sales Invoice Cash' OR tbl_transaction.type = 'Sales Invoice') 
+                AND tbl_transaction.state = 0";
+                }
+                else if (selectionMethod == "Purchase Invoice")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,
+                tbl_coa_level_4.code AS 'ACCode',
+                tbl_coa_level_4.name AS `ACName`, 
+                tbl_transaction.description AS `Description`,
+                tbl_transaction.debit AS `Debit`, 
+                tbl_transaction.credit AS `Credit`
+            FROM tbl_transaction 
+            INNER JOIN tbl_coa_level_4 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            WHERE (tbl_transaction.type = 'Purchase Invoice Cash' OR tbl_transaction.type = 'Purchase Invoice') 
+                AND tbl_transaction.state = 0";
+                }
+                else if (type?.ToLower() == "sales")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,  
+                tbl_coa_level_4.code AS 'ACCode', 
+                tbl_coa_level_4.name AS 'ACName', 
+                tbl_transaction.description AS Description, 
+                tbl_transaction.debit AS Debit, 
+                tbl_transaction.credit AS Credit, 
+                tbl_customer.name AS Partner
+            FROM tbl_transaction  
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            INNER JOIN tbl_sales ON tbl_transaction.transaction_id = tbl_sales.id 
+            INNER JOIN tbl_customer ON tbl_sales.customer_id = tbl_customer.id 
+            WHERE transaction_id = @id AND tbl_transaction.t_type = 'SALES'";
+                }
+                else if (type?.ToLower() == "purchase")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,  
+                tbl_coa_level_4.code AS 'ACCode', 
+                tbl_coa_level_4.name AS 'ACName', 
+                tbl_transaction.description AS Description, 
+                tbl_transaction.debit AS Debit, 
+                tbl_transaction.credit AS Credit, 
+                tbl_vendor.name AS Partner
+            FROM tbl_transaction
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+            INNER JOIN tbl_purchase ON tbl_transaction.transaction_id = tbl_purchase.id
+            INNER JOIN tbl_vendor ON tbl_purchase.vendor_id = tbl_vendor.id
+            WHERE transaction_id = @id AND t_type = 'PURCHASE'";
+                }
+                else if (type?.ToLower() == "purchase return")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,  
+                tbl_coa_level_4.code AS 'ACCode', 
+                tbl_coa_level_4.name AS 'ACName', 
+                tbl_transaction.description AS Description, 
+                tbl_transaction.debit AS Debit, 
+                tbl_transaction.credit AS Credit, 
+                tbl_vendor.name AS Partner
+            FROM tbl_transaction
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+            INNER JOIN tbl_purchase_return ON tbl_transaction.transaction_id = tbl_purchase_return.id
+            INNER JOIN tbl_vendor ON tbl_purchase_return.vendor_id = tbl_vendor.id
+            WHERE transaction_id = @id AND t_type = 'PURCHASE RETURN'";
+                }
+                else if (type?.ToLower() == "payment")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,  
+                tbl_coa_level_4.code AS 'ACCode', 
+                tbl_coa_level_4.name AS 'ACName', 
+                tbl_transaction.description AS Description, 
+                tbl_transaction.debit AS Debit, 
+                tbl_transaction.credit AS Credit, 
+                CASE 
+                    WHEN tbl_payment_voucher.type = 'Vendor' THEN (
+                        SELECT name FROM tbl_vendor
+                        WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
+                                    WHERE payment_id = tbl_payment_voucher.id)
+                    )
+                    WHEN tbl_payment_voucher.type = 'Employee' THEN (
+                        SELECT name FROM tbl_employee
+                        WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
+                                    WHERE payment_id = tbl_payment_voucher.id)
+                    )
+                    WHEN tbl_payment_voucher.type = 'General' THEN (
+                        SELECT name FROM tbl_coa_level_4
+                        WHERE id = (SELECT hum_id FROM tbl_payment_voucher_details
+                                    WHERE payment_id = tbl_payment_voucher.id)
+                    )
+                    ELSE '' 
+                END AS Partner
+            FROM tbl_transaction
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+            INNER JOIN tbl_payment_voucher ON tbl_transaction.transaction_id = tbl_payment_voucher.id
+            WHERE transaction_id = @id AND t_type = 'PAYMENT'";
+                }
+                else if (type?.ToLower() == "receipt")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,  
+                tbl_coa_level_4.code AS 'ACCode', 
+                tbl_coa_level_4.name AS 'ACName', 
+                tbl_transaction.description AS Description, 
+                tbl_transaction.debit AS Debit, 
+                tbl_transaction.credit AS Credit, 
+                CASE 
+                    WHEN tbl_receipt_voucher.type = 'Customer' THEN (
+                        SELECT name FROM tbl_customer
+                        WHERE id = (SELECT hum_id FROM tbl_receipt_voucher_details
+                                    WHERE payment_id = tbl_receipt_voucher.id LIMIT 1)
+                    )
+                    WHEN tbl_receipt_voucher.type = 'General' THEN (
+                        SELECT name FROM tbl_coa_level_4
+                        WHERE id = (SELECT hum_id FROM tbl_receipt_voucher_details
+                                    WHERE payment_id = tbl_receipt_voucher.id)
+                    )
+                    ELSE '' 
+                END AS Partner
+            FROM tbl_transaction
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+            INNER JOIN tbl_receipt_voucher ON tbl_transaction.transaction_id = tbl_receipt_voucher.id
+            WHERE transaction_id = @id AND t_type = 'RECEIPT'";
+                }
+                else if (type?.ToLower() == "journal")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`, 
+                tbl_coa_level_4.code AS 'ACCode', 
+                tbl_coa_level_4.name AS 'ACName', 
+                tbl_transaction.description AS Description, 
+                tbl_transaction.debit AS Debit, 
+                tbl_transaction.credit AS Credit, 
+                (SELECT partner FROM tbl_journal_voucher_details
+                 WHERE inv_id = tbl_journal_voucher.id LIMIT 1) AS Partner
+            FROM tbl_transaction
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
+            INNER JOIN tbl_journal_voucher ON tbl_transaction.transaction_id = tbl_journal_voucher.id
+            WHERE transaction_id = @id AND t_type = 'JOURNAL'";
+                }
+                else if (type?.ToLower() == "inventory")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,
+                tbl_coa_level_4.code AS 'ACCode',
+                tbl_coa_level_4.name AS `ACName`, 
+                tbl_transaction.description AS `Description`,
+                tbl_transaction.debit AS `Debit`, 
+                tbl_transaction.credit AS `Credit`
+            FROM tbl_transaction 
+            INNER JOIN tbl_coa_level_4 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            WHERE description LIKE @itemCode";
+
+                    parameters.Add(new MySqlParameter("@itemCode", $"%- Item Code - {transactionId}"));
+                }
+                else if (type?.ToLower() == "vat input" || type?.ToLower() == "vat output")
+                {
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,
+                tbl_coa_level_4.code AS 'ACCode',
+                tbl_coa_level_4.name AS `ACName`, 
+                tbl_transaction.description AS `Description`,
+                tbl_transaction.debit AS `Debit`, 
+                tbl_transaction.credit AS `Credit`
+            FROM tbl_transaction 
+            INNER JOIN tbl_coa_level_4 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            WHERE 1=1 " + condition + @" 
+                AND tbl_transaction.account_id = (
+                    SELECT account_id FROM tbl_coa_config WHERE category = @vatType
+                )";
+
+                    parameters.Add(new MySqlParameter("@vatType", type));
+                }
+                else if (new[] { "Sales All", "Purchase All", "Purchase Return All", "Sales Return All",
+                         "Debit Note All", "Credit Note All", "Petty Cash All" }
+                         .Contains(type, StringComparer.OrdinalIgnoreCase))
+                {
+                    string typePrefix = type!.Replace(" All", "");
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,
+                tbl_coa_level_4.code AS 'ACCode',
+                tbl_coa_level_4.name AS `ACName`, 
+                tbl_transaction.description AS `Description`,
+                tbl_transaction.debit AS `Debit`, 
+                tbl_transaction.credit AS `Credit`
+            FROM tbl_transaction 
+            INNER JOIN tbl_coa_level_4 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            WHERE 1=1 " + condition + " AND tbl_transaction.type LIKE @typePattern";
+
+                    parameters.Add(new MySqlParameter("@typePattern", $"{typePrefix}%"));
+                }
+                else
+                {
+                    // Default query
+                    query = @"SELECT 
+                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
+                CONCAT('000', transaction_id) AS `RefId`,
+                tbl_transaction.date AS `Date`, 
+                tbl_transaction.transaction_id,
+                tbl_transaction.type AS `Type`,
+                tbl_coa_level_4.code AS 'ACCode',
+                tbl_coa_level_4.name AS `ACName`, 
+                tbl_transaction.description AS `Description`,
+                tbl_transaction.debit AS `Debit`, 
+                tbl_transaction.credit AS `Credit`
+            FROM tbl_transaction 
+            INNER JOIN tbl_coa_level_4 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            WHERE 1=1 " + condition;
+                }
+
+                // Execute query
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddRange(parameters.ToArray());
 
-                var journalEntries = new List<object>();
+                var journalEntries = new List<Dictionary<string, object?>>();
                 using var reader = await cmd.ExecuteReaderAsync();
+
                 while (await reader.ReadAsync())
                 {
-                    journalEntries.Add(new
+                    var entry = new Dictionary<string, object?>();
+                    for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        SN = reader["SN"] != DBNull.Value ? Convert.ToInt64(reader["SN"]) : (long?)null,
-                        RefId = reader["RefId"]?.ToString() ?? "",
-                        Date = reader["Date"] != DBNull.Value ? (DateTime)reader["Date"] : (DateTime?)null,
-                        //TransactionId = reader["transaction_id"]?.ToString() ?? "",
-                        Type = reader["Type"]?.ToString() ?? "",
-                        ACCode = reader["ACCode"]?.ToString() ?? "",
-                        ACName = reader["ACName"]?.ToString() ?? "",
-                        //Description = reader["Description"]?.ToString(),
-                        Debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0,
-                        Credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0
-                    });
+                        string fieldName = reader.GetName(i);
+                        object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        entry[fieldName] = value;
+                    }
+                    journalEntries.Add(entry);
                 }
 
-
-                // Add total row if data exists
+                // Calculate totals
                 if (journalEntries.Any())
                 {
-                    decimal totalDebit = journalEntries.Sum(x => (decimal)x.GetType().GetProperty("Debit")!.GetValue(x)!);
-                    decimal totalCredit = journalEntries.Sum(x => (decimal)x.GetType().GetProperty("Credit")!.GetValue(x)!);
+                    decimal totalDebit = journalEntries
+                        .Where(x => x.ContainsKey("Debit") && x["Debit"] != null)
+                        .Sum(x => Convert.ToDecimal(x["Debit"]));
 
-                    journalEntries.Add(new
+                    decimal totalCredit = journalEntries
+                        .Where(x => x.ContainsKey("Credit") && x["Credit"] != null)
+                        .Sum(x => Convert.ToDecimal(x["Credit"]));
+
+                    // Add total row
+                    var totalRow = new Dictionary<string, object?>();
+                    foreach (var key in journalEntries[0].Keys)
                     {
-                        SN = (int?)null,
-                        RefId = "",
-                        Date = (DateTime?)null,
-                        //TransactionId = (int?)null,
-                        Type = "",
-                        ACCode = "",
-                        ACName = "TOTAL",
-                        //Description = "",
-                        Debit = totalDebit,
-                        Credit = totalCredit
-                    });
+                        if (key == "ACName" || key == "Description")
+                            totalRow[key] = "TOTAL";
+                        else if (key == "Debit")
+                            totalRow[key] = totalDebit;
+                        else if (key == "Credit")
+                            totalRow[key] = totalCredit;
+                        else
+                            totalRow[key] = null;
+                    }
+                    journalEntries.Add(totalRow);
                 }
 
                 return Ok(new { status = true, data = journalEntries });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { status = false, message = ex.Message });
+                Console.WriteLine($"Error: {ex.Message}");
+                return StatusCode(500, new { status = false, message = ex.Message, stackTrace = ex.StackTrace });
             }
         }
 

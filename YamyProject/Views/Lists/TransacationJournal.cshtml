@@ -53,16 +53,31 @@
                 <select class="form-select text-center" id="transactionSelect">
                     <option>Default</option>
                     <option>General Ledger</option>
+                    <option>General Ledger Opening Balance</option>
                     <option>Customer Opening Balance</option>
                     <option>Vendor Opening Balance</option>
+                    <option>Subcontractor Opening Balance</option>
                     <option>Sales Invoice</option>
+                    <option>SalesReturn Invoice</option>
                     <option>Purchase Invoice</option>
                     <option>Customer Receipt</option>
                     <option>Vendor Payment</option>
+                    <option>Petty Cash</option>
                     <option>Employee Salary</option>
+                    <option>Leave Salary</option>
+                    <option>End Of Service</option>
+                    <option>Petty Cash Submition Approval</option>
+                    <option>Purchase Return Invoice</option>
+                    <option>Employee Petty Cash Payment</option>
+                    <option>Opening Qty</option>
+                    <option>Prepaid Expense</option>
                     <option>Fixed Assets</option>
+                    <option>Fixed Assets Depreciation</option>
+                    <option>PDC Payable</option>
+                    <option>PDC Receivable</option>
                     <option>Debit Note</option>
                     <option>Credit Note</option>
+                    <option>Employee Salary Payment</option>
                     <option>Loan Request</option>
                     <option>Vendor Advance Payment</option>
                     <option>Customer Advance Payment</option>
@@ -108,115 +123,194 @@
 
     <script>
         $(document).ready(function () {
-            // --- 1. Read URL parameters ---
+
+            // --- Read URL parameters ---
             const urlParams = new URLSearchParams(window.location.search);
             const transactionId = urlParams.get('transactionId');
             let selectionMethod = urlParams.get('selectionMethod') || 'Default';
             let fromDate = urlParams.get('fromDate');
             let toDate = urlParams.get('toDate');
 
-            console.log("URL Params:", { transactionId, selectionMethod, fromDate, toDate });
-
-            // --- 2. Set dropdown and date inputs based on URL params ---
-            $('#transactionSelect').val(selectionMethod);
-            if (fromDate && toDate) {
-                $('#chkAllData').prop('checked', false);
-                $('#startDate, #endDate').prop('disabled', false).val(fromDate);
-                $('#endDate').val(toDate);
+            // Set dropdown value if selectionMethod from URL
+            if (selectionMethod) {
+                $("#transactionSelect").val(selectionMethod);
             }
 
-            // Enable/disable date inputs on checkbox change
+            // Set date fields if provided in URL
+            if (fromDate && toDate) {
+                $("#chkAllData").prop("checked", false);
+                $("#startDate, #endDate").prop("disabled", false);
+                $("#startDate").val(fromDate);
+                $("#endDate").val(toDate);
+            }
+
+            // --- Dropdown change - automatically load data ---
+            $("#transactionSelect").on("change", function () {
+                const selectedMethod = $(this).val()?.trim() || 'Default';
+
+                // Get the current date filter values
+                const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
+                const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
+
+                // Automatically load data when dropdown changes
+                loadJournal(selectedMethod, transactionId, fDate, tDate);
+            });
+
+            // --- Enable/disable date inputs on checkbox change ---
             $("#chkAllData").on("change", function () {
                 const checked = $(this).is(":checked");
                 $("#startDate, #endDate").prop("disabled", checked);
+
+                // Optionally reload data when checkbox changes
+                // Uncomment below if you want to auto-reload on checkbox change
+                // const selectedMethod = $("#transactionSelect").val()?.trim() || 'Default';
+                // const fDate = checked ? null : $("#startDate").val();
+                // const tDate = checked ? null : $("#endDate").val();
+                // loadJournal(selectedMethod, transactionId, fDate, tDate);
             });
 
-            // --- 3. Filter button click ---
+            // --- Date input change - automatically reload ---
+            $("#startDate, #endDate").on("change", function () {
+                // Only trigger if both dates are filled
+                const fDate = $("#startDate").val();
+                const tDate = $("#endDate").val();
+
+                if (fDate && tDate && !$("#chkAllData").is(":checked")) {
+                    const selectedMethod = $("#transactionSelect").val()?.trim() || 'Default';
+                    loadJournal(selectedMethod, transactionId, fDate, tDate);
+                }
+            });
+
+            // --- Filter button click ---
             $("#filterBtn").on("click", function () {
-                const selectedMethod = $("#transactionSelect").val() || 'Default';
+                const selectedMethod = $("#transactionSelect").val()?.trim() || 'Default';
                 const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
                 const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
                 loadJournal(selectedMethod, transactionId, fDate, tDate);
             });
 
-            // --- 4. Dropdown change ---
-            $("#transactionSelect").on("change", function () {
-                const selectedMethod = $(this).val() || 'Default';
-                const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
-                const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
-                loadJournal(selectedMethod, transactionId, fDate, tDate);
-            });
+            // --- Initial load ---
+            loadJournal(selectionMethod, transactionId, fromDate, toDate);
 
-            // --- 5. Initial load using dropdown value ---
-            loadJournal($('#transactionSelect').val(), transactionId, fromDate, toDate);
+            // --- Load Journal Function ---
+            function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
+                console.log('Loading journal with:', { selectionMethod, transactionId, fromDate, toDate });
 
-                 function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
-            const filterByDate = !!(fromDate && toDate);
+                const data = {
+                    selectionMethod: selectionMethod || 'Default',
+                    transactionId: transactionId ? parseInt(transactionId) : null
+                };
 
-            console.log("Calling GetJournal:", { selectionMethod, transactionId, fromDate, toDate, filterByDate });
+                if (fromDate && toDate) {
+                    data.filterByDate = true;
+                    data.fromDate = fromDate;
+                    data.toDate = toDate;
+                } else {
+                    data.filterByDate = false;
+                }
 
-            // Build data object dynamically
-            const data = {};
-
-            if (selectionMethod) data.selectionMethod = selectionMethod; // only send if exists
-            if (transactionId) data.transactionId = parseInt(transactionId);
-            if (filterByDate) {
-                data.filterByDate = true;
-                data.fromDate = fromDate;
-                data.toDate = toDate;
-            }
-
-            $.ajax({
-                url: '/Lists/GetJournal',
-                type: 'GET',
-                data: data,
-                beforeSend: function () {
-                    $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4">Loading...</td></tr>');
-                },
-                success: function (res) {
-                    const tbody = $('#table1 tbody').empty();
-                    if (res.status && res.data && res.data.length > 0) {
-                        $.each(res.data, function(i,row) {
-                            tbody.append(`
-                                <tr>
-                                    <td>${row.sn ?? ""}</td>
-                                    <td>${row.transaction_id ?? row.refId ?? ""}</td>
-                                    <td>${row.date ? new Date(row.date).toLocaleDateString() : ""}</td>
-                                    <td>${row.type ?? ""}</td>
-                                    <td>${row.acCode ?? ""}</td>
-                                    <td>${row.acName ?? ""}</td>
-                                    <td class="text-end">${row.debit ?? 0}</td>
-                                    <td class="text-end">${row.credit ?? 0}</td>
-                                </tr>
-                            `);
-                        });
-
+                $.ajax({
+                    url: '/Lists/GetJournal',
+                    type: 'GET',
+                    data: data,
+                    beforeSend: function () {
+                        // Destroy existing DataTable before showing loading message
                         if ($.fn.DataTable.isDataTable("#table1")) {
                             $("#table1").DataTable().clear().destroy();
                         }
-                        $('#table1').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                { extend: 'excelHtml5', className: 'btn btn-primary btn-sm', text: 'Excel' },
-                                { extend: 'pdfHtml5', className: 'btn btn-primary btn-sm', orientation: 'landscape', pageSize: 'A4', text: 'PDF' }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 15
-                        });
-                    } else {
-                        tbody.append('<tr><td colspan="8" class="text-center py-4 text-muted">No records found</td></tr>');
+                        $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                    },
+                    success: function (res) {
+                        console.log('API Response:', res);
+                        const tbody = $('#table1 tbody').empty();
+
+                        if (res.status && res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                // Format numbers with 2 decimal places
+                                const debit = row.Debit != null ? parseFloat(row.Debit).toFixed(2) : '0.00';
+                                const credit = row.Credit != null ? parseFloat(row.Credit).toFixed(2) : '0.00';
+
+                                // Format date
+                                let dateStr = '';
+                                if (row.Date) {
+                                    const d = new Date(row.Date);
+                                    dateStr = d.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+                                }
+
+                                tbody.append(`
+                                    <tr>
+                                        <td>${row.SN ?? ""}</td>
+                                        <td>${row.RefId ?? ""}</td>
+                                        <td>${dateStr}</td>
+                                        <td>${row.Type ?? ""}</td>
+                                        <td>${row.ACCode ?? ""}</td>
+                                        <td>${row.ACName ?? ""}</td>
+                                        <td class="text-end">${debit}</td>
+                                        <td class="text-end">${credit}</td>
+                                    </tr>
+                                `);
+                            });
+
+                            // Initialize DataTable
+                            $('#table1').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        className: 'btn btn-primary btn-sm',
+                                        text: '<i class="fas fa-file-excel"></i> Excel',
+                                        title: 'Transaction Journal - ' + selectionMethod,
+                                        exportOptions: {
+                                            columns: ':visible'
+                                        }
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        className: 'btn btn-primary btn-sm',
+                                        orientation: 'landscape',
+                                        pageSize: 'A4',
+                                        text: '<i class="fas fa-file-pdf"></i> PDF',
+                                        title: 'Transaction Journal - ' + selectionMethod,
+                                        exportOptions: {
+                                            columns: ':visible'
+                                        }
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 15,
+                                lengthMenu: [[10, 15, 25, 50, 100, -1], [10, 15, 25, 50, 100, "All"]],
+                                language: {
+                                    search: "Search:",
+                                    lengthMenu: "Show _MENU_ entries",
+                                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                                    infoEmpty: "Showing 0 to 0 of 0 entries",
+                                    infoFiltered: "(filtered from _MAX_ total entries)",
+                                    paginate: {
+                                        first: "First",
+                                        last: "Last",
+                                        next: "Next",
+                                        previous: "Previous"
+                                    }
+                                },
+                                responsive: true
+                            });
+
+                            // Show success message
+                            toastr.success(`Loaded ${res.data.length} records`, 'Success');
+
+                        } else {
+                            tbody.append('<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-info-circle"></i> No records found</td></tr>');
+                            toastr.info('No records found', 'Info');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('API Error:', xhr.responseText);
+                        $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4 text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading data</td></tr>');
+                        toastr.error('Failed to load data: ' + error, 'Error');
                     }
-                },
-                error: function () {
-                    $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4 text-danger">Error loading data</td></tr>');
-                }
-            });
-        }
+                });
+            }
 
         });
     </script>
-
-
-
-    
 }

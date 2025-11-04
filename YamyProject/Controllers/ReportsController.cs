@@ -1573,6 +1573,265 @@ ORDER BY l.code;
 
         #endregion
 
+        #region VAT Category Report
+
+        public IActionResult MasterVAT()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMasterVATReport(string reportType)
+        {
+            try
+            {
+                // Build connection string based on active session database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = string.Empty;
+
+                // Handle all report types (matches your cmbState options)
+                switch (reportType.Trim())
+                {
+                    case "All":
+                        query = @"
+                    SELECT 
+                        'Purchase' AS `Type`,
+                        CONCAT(t.name,' ',t.value,' %') AS `Tax Name`,
+                        t.description AS `Tax Description`,
+                        IFNULL(SUM(p.total),0) AS `Amount`,
+                        IFNULL(SUM(p.vat),0) AS `VAT Amount`
+                    FROM tbl_purchase p
+                    JOIN tbl_purchase_details s ON p.id = s.purchase_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description
+
+                    UNION ALL
+
+                    SELECT 
+                        'Purchase Return',
+                        CONCAT(t.name,' ',t.value,' %'),
+                        t.description,
+                        IFNULL(SUM(p.total),0),
+                        IFNULL(SUM(p.vat),0)
+                    FROM tbl_purchase_return p
+                    JOIN tbl_purchase_return_details s ON p.id = s.purchase_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description
+
+                    UNION ALL
+
+                    SELECT 
+                        'Sales',
+                        CONCAT(t.name,' ',t.value,' %'),
+                        t.description,
+                        IFNULL(SUM(p.total),0),
+                        IFNULL(SUM(p.vat),0)
+                    FROM tbl_sales p
+                    JOIN tbl_sales_details s ON p.id = s.sales_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description
+
+                    UNION ALL
+
+                    SELECT 
+                        'Sales Return',
+                        CONCAT(t.name,' ',t.value,' %'),
+                        t.description,
+                        IFNULL(SUM(p.total),0),
+                        IFNULL(SUM(p.vat),0)
+                    FROM tbl_sales_return p
+                    JOIN tbl_sales_return_details s ON p.id = s.sales_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description
+
+                    UNION ALL
+
+                    SELECT 
+                        'Debit Note',
+                        'VAT 5 %',
+                        '',
+                        IFNULL(SUM(s.amount),0),
+                        IFNULL(SUM(s.vat),0)
+                    FROM tbl_debit_note_details s
+
+                    UNION ALL
+
+                    SELECT 
+                        'Credit Note',
+                        'VAT 5 %',
+                        '',
+                        IFNULL(SUM(s.amount),0),
+                        IFNULL(SUM(s.vat),0)
+                    FROM tbl_credit_note_details s
+
+                    UNION ALL
+
+                    SELECT 
+                        'Petty Cash',
+                        'VAT 5 %',
+                        '',
+                        SUM(total_before_vat),
+                        SUM(total_vat)
+                    FROM tbl_petty_cash_submition s;
+                ";
+                        break;
+
+                    case "Sales":
+                        query = @"
+                    SELECT 
+                        'Sales' AS `Type`,
+                        CONCAT(t.name,' ',t.value,' %') AS `Tax Name`,
+                        t.description AS `Tax Description`,
+                        IFNULL(SUM(p.total),0) AS `Amount`,
+                        IFNULL(SUM(p.vat),0) AS `VAT Amount`
+                    FROM tbl_sales p
+                    JOIN tbl_sales_details s ON p.id = s.sales_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description;";
+                        break;
+
+                    case "Sales Return":
+                        query = @"
+                    SELECT 
+                        'Sales Return' AS `Type`,
+                        CONCAT(t.name,' ',t.value,' %') AS `Tax Name`,
+                        t.description AS `Tax Description`,
+                        IFNULL(SUM(p.total),0) AS `Amount`,
+                        IFNULL(SUM(p.vat),0) AS `VAT Amount`
+                    FROM tbl_sales_return p
+                    JOIN tbl_sales_return_details s ON p.id = s.sales_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description;";
+                        break;
+
+                    case "Purchase":
+                        query = @"
+                    SELECT 
+                        'Purchase' AS `Type`,
+                        CONCAT(t.name,' ',t.value,' %') AS `Tax Name`,
+                        t.description AS `Tax Description`,
+                        IFNULL(SUM(p.total),0) AS `Amount`,
+                        IFNULL(SUM(p.vat),0) AS `VAT Amount`
+                    FROM tbl_purchase p
+                    JOIN tbl_purchase_details s ON p.id = s.purchase_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description;";
+                        break;
+
+                    case "Purchase Return":
+                        query = @"
+                    SELECT 
+                        'Purchase Return' AS `Type`,
+                        CONCAT(t.name,' ',t.value,' %') AS `Tax Name`,
+                        t.description AS `Tax Description`,
+                        IFNULL(SUM(p.total),0) AS `Amount`,
+                        IFNULL(SUM(p.vat),0) AS `VAT Amount`
+                    FROM tbl_purchase_return p
+                    JOIN tbl_purchase_return_details s ON p.id = s.purchase_id
+                    JOIN tbl_items i ON i.id = s.item_id
+                    JOIN tbl_tax t ON t.id = s.vat
+                    GROUP BY t.name,t.value, t.description;";
+                        break;
+
+                    case "Debit Note":
+                        query = @"
+                    SELECT 
+                        'Debit Note' AS `Type`,
+                        'VAT 5 %' AS `Tax Name`,
+                        '' AS `Tax Description`,
+                        IFNULL(SUM(s.amount),0) AS `Amount`,
+                        IFNULL(SUM(s.vat),0) AS `VAT Amount`
+                    FROM tbl_debit_note_details s;";
+                        break;
+
+                    case "Credit Note":
+                        query = @"
+                    SELECT 
+                        'Credit Note' AS `Type`,
+                        'VAT 5 %' AS `Tax Name`,
+                        '' AS `Tax Description`,
+                        IFNULL(SUM(s.amount),0) AS `Amount`,
+                        IFNULL(SUM(s.vat),0) AS `VAT Amount`
+                    FROM tbl_credit_note_details s;";
+                        break;
+
+                    case "Petty Cash":
+                        query = @"
+                    SELECT 
+                        'Petty Cash' AS `Type`,
+                        'VAT 5 %' AS `Tax Name`,
+                        '' AS `Tax Description`,
+                        SUM(total_before_vat) AS `Amount`,
+                        SUM(total_vat) AS `VAT Amount`
+                    FROM tbl_petty_cash_submition s;";
+                        break;
+
+                    default:
+                        return BadRequest(new { status = false, message = "Invalid report type." });
+                }
+
+                // Execute and build result
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0, totalVat = 0;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        decimal amount = reader["Amount"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Amount"]);
+                        decimal vatAmount = reader["VAT Amount"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["VAT Amount"]);
+
+                        totalAmount += amount;
+                        totalVat += vatAmount;
+
+                        var row = new Dictionary<string, object>
+                        {
+                            ["Type"] = reader["Type"].ToString(),
+                            ["TaxName"] = reader["Tax Name"].ToString(),
+                            ["TaxDescription"] = reader["Tax Description"].ToString(),
+                            ["Amount"] = amount.ToString("N2"),
+                            ["VatAmount"] = vatAmount.ToString("N2")
+                        };
+                        result.Add(row);
+                    }
+                }
+
+                // Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["Type"] = "",
+                    ["TaxName"] = "",
+                    ["TaxDescription"] = "TOTAL",
+                    ["Amount"] = totalAmount.ToString("N2"),
+                    ["VatAmount"] = totalVat.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
 
 
 
