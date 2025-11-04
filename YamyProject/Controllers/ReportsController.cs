@@ -975,49 +975,33 @@ ORDER BY l.code;
                 {
                     if (includeAllDates)
                     {
-                        query = @"
-                    SELECT s.id,'Sales', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
-                           s.payment_method, s.total, s.vat, s.net
-                    FROM tbl_sales s
-                    JOIN tbl_customer c ON s.customer_id = c.id
-                    WHERE s.vat>0
-                    UNION ALL
-                    SELECT s.id,'Purchase Return', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
-                           s.payment_method, s.total, s.vat, s.net
-                    FROM tbl_purchase_return s
-                    JOIN tbl_vendor c ON s.vendor_id = c.id
-                    WHERE s.vat>0
-                    UNION ALL
-                    SELECT s.id,'Credit Note', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
-                           '', s.amount, s.vat, s.total
-                    FROM tbl_credit_note s
-                    JOIN tbl_sales p ON p.invoice_id = s.invoice_id
-                    JOIN tbl_customer c ON p.customer_id = c.id
-                    WHERE s.vat>0
-                ";
+                        query = @"SELECT s.id,'Sales' type,s.date AS DATE, s.invoice_id AS 'Inv No', CONCAT(c.code,' - ',c.name) AS 'Name',
+                                                    s.payment_method AS 'Payment Method',s.total AS 'Amount Before Vat', s.vat AS 'Vat Amount', s.net AS 'Total Amount'
+                                                    FROM tbl_sales s, tbl_customer c WHERE s.customer_id = c.id AND s.vat>0
+                                                    UNION ALL
+                                                    SELECT s.id,'Purchase Return' type,s.date AS DATE, s.invoice_id AS 'Inv No', CONCAT(c.code,' - ',c.name) AS 'Name',
+                                                    s.payment_method AS 'Payment Method',s.total AS 'Amount Before Vat', s.vat AS 'Vat Amount', s.net AS 'Total Amount'
+                                                    FROM tbl_purchase_return s, tbl_vendor c WHERE s.vendor_id = c.id AND s.vat>0
+                                                    UNION ALL
+                                                    SELECT s.id,'Debit Note' TYPE,s.date AS DATE,s.invoice_id AS 'Inv No', CONCAT(c.code,' - ',c.name) AS 'Name',
+                                                    '' AS 'Payment Method',s.amount AS 'Amount Before Vat', s.vat AS 'Vat Amount', s.total AS 'Total Amount' 
+                                                    FROM tbl_credit_note s, tbl_customer c, tbl_sales p
+                                                    WHERE p.invoice_id = s.invoice_id and p.customer_id = c.id AND s.vat>0  ";
                     }
                     else
                     {
-                        query = @"
-                    SELECT s.id,'Sales', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
-                           s.payment_method, s.total, s.vat, s.net
-                    FROM tbl_sales s
-                    JOIN tbl_customer c ON s.customer_id = c.id
-                    WHERE s.vat>0 AND s.date BETWEEN @fromDate AND @toDate
-                    UNION ALL
-                    SELECT s.id,'Purchase Return', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
-                           s.payment_method, s.total, s.vat, s.net
-                    FROM tbl_purchase_return s
-                    JOIN tbl_vendor c ON s.vendor_id = c.id
-                    WHERE s.vat>0 AND s.date BETWEEN @fromDate AND @toDate
-                    UNION ALL
-                    SELECT s.id,'Credit Note', s.date, s.invoice_id, CONCAT(c.code,' - ',c.name),
-                           '', s.amount, s.vat, s.total
-                    FROM tbl_credit_note s
-                    JOIN tbl_sales p ON p.invoice_id = s.invoice_id
-                    JOIN tbl_customer c ON p.customer_id = c.id
-                    WHERE s.vat>0 AND s.date BETWEEN @fromDate AND @toDate
-                ";
+                        query = @"SELECT s.id,'Sales' type,s.date AS DATE, s.invoice_id AS 'Inv No', CONCAT(c.code,' - ',c.name) AS 'Name',
+                                                    s.payment_method AS 'Payment Method',s.total AS 'Amount Before Vat', s.vat AS 'Vat Amount', s.net AS 'Total Amount'
+                                                    FROM tbl_sales s, tbl_customer c WHERE s.customer_id = c.id AND s.vat>0
+                                                    UNION ALL
+                                                    SELECT s.id,'Purchase Return' type,s.date AS DATE, s.invoice_id AS 'Inv No', CONCAT(c.code,' - ',c.name) AS 'Name',
+                                                    s.payment_method AS 'Payment Method',s.total AS 'Amount Before Vat', s.vat AS 'Vat Amount', s.net AS 'Total Amount'
+                                                    FROM tbl_purchase_return s, tbl_vendor c WHERE s.vendor_id = c.id AND s.vat>0
+                                                    UNION ALL
+                                                    SELECT s.id,'Credit Note' TYPE,s.date AS DATE,s.invoice_id AS 'Inv No', CONCAT(c.code,' - ',c.name) AS 'Name',
+                                                    '' AS 'Payment Method',s.amount AS 'Amount Before Vat', s.vat AS 'Vat Amount', s.total AS 'Total Amount' 
+                                                    FROM tbl_credit_note s, tbl_customer c, tbl_sales p
+                                                    WHERE p.invoice_id = s.invoice_id and p.customer_id = c.id AND s.vat>0 AND s.DATE BETWEEN @fromDate AND @toDate";
 
                         parameters.Add(new MySqlParameter("@fromDate", fromDate?.Date));
                         parameters.Add(new MySqlParameter("@toDate", toDate?.Date));
@@ -1037,6 +1021,7 @@ ORDER BY l.code;
                         result.Add(new
                         {
                             Id = reader["id"],
+                            //Type = reader["Type"] == DBNull.Value ? "" : reader["Type"].ToString(),
                             Type = reader["Type"],
                             Date = reader["Date"],
                             InvNo = reader["Inv No"],
