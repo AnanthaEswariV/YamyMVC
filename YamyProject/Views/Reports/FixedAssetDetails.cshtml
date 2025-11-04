@@ -1,8 +1,9 @@
 ﻿
 @{
-    ViewData["Title"] = "TransactionByAccount";
+    ViewData["Title"] = "FixedAssetDetails";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
 <style>
     .dt-buttons .btn-primary {
         background-color: #435EBE !important;
@@ -16,15 +17,13 @@
         }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-
 <div class="card">
     <div class="card-header text-center">
-        <strong>Transaction By Account</strong>
+        <strong>Fixed Asset Details</strong>
     </div>
 
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
-
             <!-- Checkbox -->
             <div class="d-flex align-items-center gap-2">
                 <input type="checkbox" id="chkAllData" class="form-check-input" checked>
@@ -48,23 +47,25 @@
                 <button class="btn btn-primary" id="filterBtn">Filter</button>
             </div>
         </div>
+
         <!-- Table -->
         <table class="table table-striped" id="table3">
             <thead>
                 <tr>
                     <th>S.No</th>
                     <th>Date</th>
-                    <th>Type</th>
-                    <th>Description</th>
+                    <th>A/C Code</th>
+                    <th>A/C Name</th>
                     <th>Debit</th>
                     <th>Credit</th>
-                    <th>Balance</th>
+                    <th>Type</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 </div>
+
 
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -79,86 +80,57 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
-    <script>
-        $(document).ready(function () {
-            // ✅ Get accountId from query string
+   <script>
+           $(document).ready(function () {
+            // Read query parameters
             const urlParams = new URLSearchParams(window.location.search);
-            const accountId = urlParams.get('accountId');
+            const transactionId = urlParams.get('transactionId');
+            const startDate = urlParams.get('startDate');
+            const endDate = urlParams.get('endDate');
+            const includeAllDates = urlParams.get('includeAllDates') === 'true';
 
-            if (!accountId) {
-                toastr.warning('No account selected.');
-                return;
-            }
+            // Set date inputs
+            if (startDate) $('#startDate').val(startDate);
+            if (endDate) $('#endDate').val(endDate);
+            $('#chkAllData').prop('checked', includeAllDates);
+            $('#startDate, #endDate').prop('disabled', includeAllDates);
 
-            // Load data on page load
-            loadTransactionByAccount(accountId);
+            // Load data initially
+            loadFixedAssetDetails(transactionId);
+
+            // Reload on filter click
+            $('#filterBtn').click(function () {
+                loadFixedAssetDetails(transactionId);
+            });
 
             // Checkbox toggle
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
-                loadTransactionByAccount(accountId);
+                loadFixedAssetDetails(transactionId);
             });
+        });
 
-            // Filter button click
-            $('#filterBtn').click(function () {
-                loadTransactionByAccount(accountId);
-            });
-
-      
-
-                 $('#table3 tbody').on('click', 'tr', function () {
-            const transactionId = $(this).data('transaction-id');
-            const type = $(this).data('type'); // selectionMethod
-            let transactionDate = $(this).data('date');
-
+        function loadFixedAssetDetails(transactionId) {
             if (!transactionId) {
-                toastr.warning('No transaction ID found for this record.');
+                toastr.warning('Invalid transaction ID.');
                 return;
             }
 
-            if (transactionDate) {
-                const d = new Date(transactionDate);
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2,'0');
-                const dd = String(d.getDate()).padStart(2,'0');
-                transactionDate = `${yyyy}-${mm}-${dd}`;
-            }
-
-            // Build query string
-            const query = new URLSearchParams({
-                transactionId: transactionId,
-                selectionMethod: type || 'Default',
-                filterByDate: true,
-                fromDate: transactionDate,
-                toDate: transactionDate
-            }).toString();
-            console.log(query);
-            // Navigate to TransactionJournal
-            window.location.href = `/Lists/TransacationJournal?${query}`;
-        });
-         
-
-
-
-
-        });
-
-        function loadTransactionByAccount(accountId) {
             const includeAllDates = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetMasterTransactionByAccount',
+                url: '/Reports/GetFixedAssetDetails',
                 type: 'GET',
                 data: {
-                    accountId: accountId,
+                    transactionId: transactionId,
                     startDate: startDate || null,
                     endDate: endDate || null,
                     includeAllDates: includeAllDates
                 },
-               
+
                 beforeSend: function () {
                     $('#table3 tbody').html(`
                         <tr>
@@ -170,27 +142,28 @@
                 },
                 success: function (res) {
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load transaction details');
+                        toastr.error(res.message || 'Failed to load fixed asset details');
                         return;
                     }
+
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
                     }
-                  
+
                     const tbody = $('#table3 tbody');
                     tbody.empty();
 
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             const tr = `
-                               <tr data-transaction-id="${row.transaction_id}" data-date="${row.date}">
-                                    <td>${i + 1}</td>
-                                    <td>${row.date ? new Date(row.date).toISOString().split('T')[0] : ''}</td>
-                                    <td>${row.type ?? ''}</td>
-                                    <td>${row.description ?? ''}</td>
-                                    <td class="text-end">${(row.debit ?? 0).toLocaleString()}</td>
-                                    <td class="text-end">${(row.credit ?? 0).toLocaleString()}</td>
-                                    <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
+                                <tr>
+                                    <td>${row.SN || ''}</td>
+                                    <td>${row.Date || ''}</td>
+                                    <td>${row.AccountCode || ''}</td>
+                                    <td>${row.AccountName || ''}</td>
+                                    <td class="text-end">${row.Debit || '0.00'}</td>
+                                    <td class="text-end">${row.Credit || '0.00'}</td>
+                                    <td>${row.Type || ''}</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
@@ -215,14 +188,14 @@
                             pageLength: 15
                         });
                     } else {
-                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No transactions found</td></tr>`);
+                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No details found</td></tr>`);
                     }
                 },
                 error: function () {
-                    toastr.error('Error loading transaction data');
+                    toastr.error('Error loading fixed asset details');
                 }
             });
         }
-    </script>
 
+</script>
 }

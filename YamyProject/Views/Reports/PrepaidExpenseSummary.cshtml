@@ -1,8 +1,8 @@
-﻿
-@{
-    ViewData["Title"] = "TransactionByAccount";
+﻿@{
+    ViewData["Title"] = "PrepaidExpenseSummary";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
 <style>
     .dt-buttons .btn-primary {
         background-color: #435EBE !important;
@@ -15,16 +15,16 @@
             color: #fff !important;
         }
 </style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Transaction By Account</strong>
+        <strong>Prepaid Expense Summary</strong>
     </div>
 
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
-
             <!-- Checkbox -->
             <div class="d-flex align-items-center gap-2">
                 <input type="checkbox" id="chkAllData" class="form-check-input" checked>
@@ -48,17 +48,16 @@
                 <button class="btn btn-primary" id="filterBtn">Filter</button>
             </div>
         </div>
+
         <!-- Table -->
         <table class="table table-striped" id="table3">
             <thead>
                 <tr>
                     <th>S.No</th>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Debit</th>
-                    <th>Credit</th>
-                    <th>Balance</th>
+                    <th>Asset Name</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Total Price</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -81,88 +80,41 @@
 
     <script>
         $(document).ready(function () {
-            // ✅ Get accountId from query string
-            const urlParams = new URLSearchParams(window.location.search);
-            const accountId = urlParams.get('accountId');
-
-            if (!accountId) {
-                toastr.warning('No account selected.');
-                return;
-            }
-
             // Load data on page load
-            loadTransactionByAccount(accountId);
+            loadPrepaidExpenseSummary();
 
             // Checkbox toggle
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
-                loadTransactionByAccount(accountId);
+                loadPrepaidExpenseSummary();
             });
 
             // Filter button click
             $('#filterBtn').click(function () {
-                loadTransactionByAccount(accountId);
+                loadPrepaidExpenseSummary();
             });
-
-      
-
-                 $('#table3 tbody').on('click', 'tr', function () {
-            const transactionId = $(this).data('transaction-id');
-            const type = $(this).data('type'); // selectionMethod
-            let transactionDate = $(this).data('date');
-
-            if (!transactionId) {
-                toastr.warning('No transaction ID found for this record.');
-                return;
-            }
-
-            if (transactionDate) {
-                const d = new Date(transactionDate);
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2,'0');
-                const dd = String(d.getDate()).padStart(2,'0');
-                transactionDate = `${yyyy}-${mm}-${dd}`;
-            }
-
-            // Build query string
-            const query = new URLSearchParams({
-                transactionId: transactionId,
-                selectionMethod: type || 'Default',
-                filterByDate: true,
-                fromDate: transactionDate,
-                toDate: transactionDate
-            }).toString();
-            console.log(query);
-            // Navigate to TransactionJournal
-            window.location.href = `/Lists/TransacationJournal?${query}`;
-        });
-         
-
-
-
-
         });
 
-        function loadTransactionByAccount(accountId) {
+        // ✅ Load Prepaid Expense Summary
+        function loadPrepaidExpenseSummary() {
             const includeAllDates = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetMasterTransactionByAccount',
+                url: '/Reports/GetPrepaidExpenses',
                 type: 'GET',
                 data: {
-                    accountId: accountId,
                     startDate: startDate || null,
                     endDate: endDate || null,
                     includeAllDates: includeAllDates
                 },
-               
+
                 beforeSend: function () {
                     $('#table3 tbody').html(`
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="5" class="text-center text-muted py-4">
                                 <div class="spinner-border text-primary me-2"></div>Loading...
                             </td>
                         </tr>
@@ -170,31 +122,51 @@
                 },
                 success: function (res) {
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load transaction details');
+                        toastr.error(res.message || 'Failed to load prepaid expense data');
                         return;
                     }
+
+                    // Destroy existing DataTable
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
                     }
-                  
+
                     const tbody = $('#table3 tbody');
                     tbody.empty();
 
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             const tr = `
-                               <tr data-transaction-id="${row.transaction_id}" data-date="${row.date}">
+                                <tr data-id="${row.id}">
                                     <td>${i + 1}</td>
-                                    <td>${row.date ? new Date(row.date).toISOString().split('T')[0] : ''}</td>
-                                    <td>${row.type ?? ''}</td>
-                                    <td>${row.description ?? ''}</td>
-                                    <td class="text-end">${(row.debit ?? 0).toLocaleString()}</td>
-                                    <td class="text-end">${(row.credit ?? 0).toLocaleString()}</td>
-                                    <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
+                                    <td>${row.AssetName || ''}</td>
+                                    <td>${row.StartDate || ''}</td>
+                                    <td>${row.EndDate || ''}</td>
+                                    <td class="text-end">${row.TotalPrice || ''}</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
 
+                        // ✅ Row click redirect
+                        $('#table3 tbody').on('click', 'tr', function () {
+                            const id = $(this).data('id');
+                            if (!id) {
+                                toastr.warning('No prepaid expense ID found for this record.');
+                                return;
+                            }
+
+                            const query = new URLSearchParams({
+                                transactionId: id,
+                                startDate: startDate || '',
+                                endDate: endDate || '',
+                                includeAllDates: includeAllDates
+                            }).toString();
+
+                            // Redirect to prepaid expense details page
+                            window.location.href = `/Reports/PrepaidExpenseDetails?${query}`;
+                        });
+
+                        // ✅ Initialize DataTable
                         $('#table3').DataTable({
                             dom: 'Bfrtip',
                             buttons: [
@@ -215,14 +187,13 @@
                             pageLength: 15
                         });
                     } else {
-                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No transactions found</td></tr>`);
+                        tbody.append(`<tr><td colspan="5" class="text-center text-muted py-4">No prepaid expenses found</td></tr>`);
                     }
                 },
                 error: function () {
-                    toastr.error('Error loading transaction data');
+                    toastr.error('Error loading prepaid expense data');
                 }
             });
         }
     </script>
-
 }

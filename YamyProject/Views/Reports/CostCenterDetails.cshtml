@@ -65,13 +65,13 @@ Layout = "~/Views/Shared/_Layout.cshtml";
         <tbody></tbody>
     </table>
 </div>
-```
+
 
 </div>
 
 @section Scripts { <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"> <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 
-```
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
@@ -83,7 +83,6 @@ Layout = "~/Views/Shared/_Layout.cshtml";
 
 <script>
     $(document).ready(function () {
-        // Get costCenterId from query string
         const urlParams = new URLSearchParams(window.location.search);
         const costCenterId = urlParams.get('id');
 
@@ -92,25 +91,20 @@ Layout = "~/Views/Shared/_Layout.cshtml";
             return;
         }
 
-        // Set today's date for filters
         const today = new Date().toISOString().split('T')[0];
         $('#startDate, #endDate').val(today);
 
-        // Load transactions on page load
         loadTransactions(costCenterId);
 
-        // Checkbox toggle
         $('#chkAllData').change(function () {
             const isChecked = $(this).is(':checked');
             $('#startDate, #endDate').prop('disabled', isChecked);
         });
 
-        // Filter button click
         $('#filterBtn').click(function () {
             loadTransactions(costCenterId);
         });
 
-        // Function to load transactions
         function loadTransactions(id) {
             const includeAllDates = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();

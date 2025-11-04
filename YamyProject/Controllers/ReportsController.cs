@@ -1050,7 +1050,6 @@ ORDER BY l.code;
         {
             return View();
         }
-
         [HttpGet]
         public async Task<IActionResult> GetCostCenterReport(DateTime? fromDate = null, DateTime? toDate = null, bool includeAllDates = false, int? costCenterId = null)
         {
@@ -1141,7 +1140,6 @@ ORDER BY l.code;
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetCostCenterTransactions(
     int? costCenterId = null,
@@ -1226,6 +1224,346 @@ ORDER BY l.code;
                     data = result,
                     totalBalance = runningBalance.ToString("N2")
                 });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Fixed Asset Summary
+
+        public IActionResult FixedAssetSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetFixedAssets(DateTime startDate, DateTime endDate, bool includeAllDates = false)
+        {
+            try
+            {
+                // Build connection string based on active database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Handle optional date filter
+                string dateFilter = includeAllDates ? "" : "WHERE f.purchase_date BETWEEN @startDate AND @endDate";
+
+                string query = $@"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY f.id) AS SN,
+                f.id,
+                f.name AS `Asset Name`,
+                f.purchase_date AS `Date`,
+                f.purchase_price AS `Total Price`,
+                f.depreciation_life AS `Depreciation Life`
+            FROM tbl_fixed_assets f
+            {dateFilter};";
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    // Add parameters
+                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                    cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1)); 
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>
+                        {
+                            ["SN"] = reader["SN"],
+                            ["id"] = reader["id"],
+                            ["AssetName"] = reader["Asset Name"],
+                            ["Date"] = Convert.ToDateTime(reader["Date"]).ToString("MMM dd, yyyy"),
+                            ["TotalPrice"] = Convert.ToDecimal(reader["Total Price"]).ToString("N2"),
+                            ["DepreciationLife"] = reader["Depreciation Life"] 
+                        };
+                        result.Add(row);
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult FixedAssetDetails()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetFixedAssetDetails(string transactionId, DateTime startDate, DateTime endDate, bool includeAllDates = false)
+        {
+            try
+            {
+                // Build connection string dynamically based on active DB in session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Handle optional date filter
+                string dateFilter = includeAllDates ? "" : " AND t.date BETWEEN @startDate AND @endDate";
+
+                string query = $@"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY t.date) AS SN,
+                t.date,
+                t.transaction_id,
+                t.type AS `Type`,
+                c.code AS `A/C CODE`,
+                c.name AS `A/C NAME`,
+                t.debit AS `DEBIT`,
+                t.credit AS `CREDIT`
+            FROM 
+                tbl_transaction t
+            INNER JOIN 
+                tbl_coa_level_4 c ON t.account_id = c.id
+            WHERE 
+                t.transaction_id = @transaction_id
+                AND t.type = 'Fixed Assets'
+                {dateFilter};";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalDebit = 0;
+                decimal totalCredit = 0;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@transaction_id", transactionId);
+                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                    cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var debit = reader["DEBIT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DEBIT"]);
+                        var credit = reader["CREDIT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CREDIT"]);
+
+                        totalDebit += debit;
+                        totalCredit += credit;
+
+                        var row = new Dictionary<string, object>
+                        {
+                            ["SN"] = reader["SN"],
+                            ["Date"] = Convert.ToDateTime(reader["date"]).ToString("MMM dd, yyyy"),
+                            ["TransactionId"] = reader["transaction_id"].ToString(),
+                            ["AccountCode"] = reader["A/C CODE"].ToString(),
+                            ["AccountName"] = reader["A/C NAME"].ToString(),
+                            ["Debit"] = debit.ToString("N2"),
+                            ["Credit"] = credit.ToString("N2"),
+                            ["Type"] = reader["Type"].ToString()
+                        };
+
+                        result.Add(row);
+                    }
+                }
+
+                // Add total summary row at the end
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["Date"] = "",
+                    ["TransactionId"] = "",
+                    ["AccountCode"] = "TOTAL",
+                    ["AccountName"] = "",
+                    ["Debit"] = totalDebit.ToString("N2"),
+                    ["Credit"] = totalCredit.ToString("N2"),
+                    ["Type"] = ""
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Prepaid Expense Summary
+
+        public IActionResult PrepaidExpenseSummary()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetPrepaidExpenses(DateTime startDate, DateTime endDate, bool includeAllDates = false)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string dateFilter = includeAllDates ? "" : "WHERE p.start_date BETWEEN @startDate AND @endDate";
+
+                string query = $@"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY p.id) AS SN,
+                p.id,
+                p.name AS `Asset Name`,
+                p.start_date AS `Start Date`,
+                p.end_date AS `End Date`,
+                p.total AS `Total Price`
+            FROM tbl_prepaid_expense p
+            {dateFilter};";
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (!includeAllDates)
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>
+                        {
+                            ["SN"] = reader["SN"],
+                            ["id"] = reader["id"],
+                            ["AssetName"] = reader["Asset Name"]?.ToString(),
+                            ["StartDate"] = reader["Start Date"] != DBNull.Value
+                                ? Convert.ToDateTime(reader["Start Date"]).ToString("MMM dd, yyyy")
+                                : "",
+                            ["EndDate"] = reader["End Date"] != DBNull.Value
+                                ? Convert.ToDateTime(reader["End Date"]).ToString("MMM dd, yyyy")
+                                : "",
+                            ["TotalPrice"] = reader["Total Price"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["Total Price"]).ToString("N2")
+                                : "0.00"
+                        };
+
+                        result.Add(row);
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult PrepaidExpenseDetails()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPrepaidExpenseDetails(string transactionId, DateTime startDate, DateTime endDate, bool includeAllDates = false)
+        {
+            try
+            {
+                // Build connection string dynamically based on active database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Handle optional date filtering
+                string dateFilter = includeAllDates ? "" : " AND t.date BETWEEN @startDate AND @endDate";
+
+                string query = $@"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY t.date) AS SN,
+                t.date,
+                t.transaction_id,
+                t.type AS `Type`,
+                c.code AS `A/C CODE`,
+                c.name AS `A/C NAME`,
+                t.debit AS `DEBIT`,
+                t.credit AS `CREDIT`
+            FROM 
+                tbl_transaction t
+            INNER JOIN 
+                tbl_coa_level_4 c ON t.account_id = c.id
+            WHERE 
+                t.transaction_id = @transaction_id
+                AND t.type = 'Prepaid Expense'
+                {dateFilter};";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalDebit = 0;
+                decimal totalCredit = 0;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    // Add parameters
+                    cmd.Parameters.AddWithValue("@transaction_id", transactionId);
+                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                    cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var debit = reader["DEBIT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["DEBIT"]);
+                        var credit = reader["CREDIT"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CREDIT"]);
+
+                        totalDebit += debit;
+                        totalCredit += credit;
+
+                        var row = new Dictionary<string, object>
+                        {
+                            ["SN"] = reader["SN"],
+                            ["Date"] = Convert.ToDateTime(reader["date"]).ToString("MMM dd, yyyy"),
+                            ["TransactionId"] = reader["transaction_id"].ToString(),
+                            ["AccountCode"] = reader["A/C CODE"].ToString(),
+                            ["AccountName"] = reader["A/C NAME"].ToString(),
+                            ["Debit"] = debit.ToString("N2"),
+                            ["Credit"] = credit.ToString("N2"),
+                            ["Type"] = reader["Type"].ToString()
+                        };
+
+                        result.Add(row);
+                    }
+                }
+
+                // ✅ Add total summary row at the bottom
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["Date"] = "",
+                    ["TransactionId"] = "",
+                    ["AccountCode"] = "TOTAL",
+                    ["AccountName"] = "",
+                    ["Debit"] = totalDebit.ToString("N2"),
+                    ["Credit"] = totalCredit.ToString("N2"),
+                    ["Type"] = ""
+                });
+
+                return Ok(new { status = true, data = result });
             }
             catch (Exception ex)
             {
