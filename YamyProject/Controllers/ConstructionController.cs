@@ -145,9 +145,21 @@ namespace YamyProject.Controllers
                     int projectId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
                     // Optional: Insert cost center if enabled
-                    if (model.IsProjectOption)
+                    //if (model.IsProjectOption)
+                    //{
+
+
+                    // 🔹 Generate Cost Center Main Code
+                    int newMainCode = 101;
+                    string getMaxMainCode = "SELECT MAX(code) FROM tbl_cost_center";
+                    await using (var mainCodeCmd = new MySqlCommand(getMaxMainCode, conn))
                     {
-                        int mainId = 0;
+                        var result = await mainCodeCmd.ExecuteScalarAsync();
+                        if (result != DBNull.Value && result != null)
+                            newMainCode = Convert.ToInt32(result) + 1;
+                    }
+
+                    int mainId = 0;
                         string mainInsert = @"
                     INSERT INTO tbl_cost_center (name, code, project_id)
                     VALUES (@name, @code, @project_id);
@@ -156,24 +168,34 @@ namespace YamyProject.Controllers
                         await using (var mainCmd = new MySqlCommand(mainInsert, conn))
                         {
                             mainCmd.Parameters.AddWithValue("@name", model.Name);
-                            mainCmd.Parameters.AddWithValue("@code", projectCode);
+                            mainCmd.Parameters.AddWithValue("@code", newMainCode);
                             mainCmd.Parameters.AddWithValue("@project_id", projectId);
                             mainId = Convert.ToInt32(await mainCmd.ExecuteScalarAsync());
                         }
 
-                        string subInsert = @"
+                    // 🔹 Generate Sub Cost Center Code
+                    int newSubCode = 1001;
+                    string getMaxSubCode = "SELECT MAX(code) FROM tbl_sub_cost_center";
+                    await using (var subCodeCmd = new MySqlCommand(getMaxSubCode, conn))
+                    {
+                        var result = await subCodeCmd.ExecuteScalarAsync();
+                        if (result != DBNull.Value && result != null)
+                            newSubCode = Convert.ToInt32(result) + 1;
+                    }
+
+                    string subInsert = @"
                     INSERT INTO tbl_sub_cost_center (code, name, main_id, project_id)
                     VALUES (@code, @name, @main_id, @project_id);";
 
                         await using (var subCmd = new MySqlCommand(subInsert, conn))
                         {
-                            subCmd.Parameters.AddWithValue("@code", projectCode);
+                            subCmd.Parameters.AddWithValue("@code", newSubCode);
                             subCmd.Parameters.AddWithValue("@name", model.Name);
                             subCmd.Parameters.AddWithValue("@main_id", mainId);
                             subCmd.Parameters.AddWithValue("@project_id", projectId);
                             await subCmd.ExecuteNonQueryAsync();
                         }
-                    }
+                    //}
 
                     return Ok(new
                     {
@@ -185,16 +207,33 @@ namespace YamyProject.Controllers
                 }
                 else
                 {
-                    // Update existing project
+                   
+                    // 🔹 Get existing project code (to avoid overwriting with null)
+                    string existingCodeQuery = "SELECT code FROM tbl_projects WHERE id=@id";
+                    string existingCode = "";
+                    await using (var codeCmd = new MySqlCommand(existingCodeQuery, conn))
+                    {
+                        codeCmd.Parameters.AddWithValue("@id", model.Id);
+                        var codeResult = await codeCmd.ExecuteScalarAsync();
+                        if (codeResult != DBNull.Value && codeResult != null)
+                            existingCode = codeResult.ToString();
+                    }
+
+                    string finalProjectCode = string.IsNullOrWhiteSpace(model.Code)
+       ? existingCode
+       : model.Code;
+
+
+                    // 🔹 Update existing project
                     string updateQuery = @"
-                UPDATE tbl_projects
-                SET code=@code, name=@name, category=@category, description=@description,
-                    start_date=@start_date, end_date=@end_date, country_id=@country_id, city_id=@city_id
-                WHERE id=@id;";
+        UPDATE tbl_projects
+        SET code=@code, name=@name, category=@category, description=@description,
+            start_date=@start_date, end_date=@end_date, country_id=@country_id, city_id=@city_id
+        WHERE id=@id;";
 
                     await using var cmd = new MySqlCommand(updateQuery, conn);
                     cmd.Parameters.AddWithValue("@id", model.Id);
-                    cmd.Parameters.AddWithValue("@code", projectCode);
+                    cmd.Parameters.AddWithValue("@code", finalProjectCode);
                     cmd.Parameters.AddWithValue("@name", model.Name.Trim());
                     cmd.Parameters.AddWithValue("@category", model.Category);
                     cmd.Parameters.AddWithValue("@description", model.Description);
@@ -207,24 +246,27 @@ namespace YamyProject.Controllers
                     if (affected == 0)
                         return NotFound(new { status = false, message = "Project not found" });
 
-                    // Optional: Update Sub Cost Center if enabled
-                    if (model.IsProjectOption)
+                    // 🔹 Update cost center and sub cost center names
+                    string updateMain = @"
+        UPDATE tbl_cost_center 
+        SET name=@name 
+        WHERE project_id=@project_id;";
+                    await using (var mainCmd = new MySqlCommand(updateMain, conn))
                     {
-                        string checkSub = "SELECT id FROM tbl_sub_cost_center WHERE name=@name";
-                        await using (var checkCmd = new MySqlCommand(checkSub, conn))
-                        {
-                            checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                            var subIdObj = await checkCmd.ExecuteScalarAsync();
-                            if (subIdObj != null)
-                            {
-                                int subId = Convert.ToInt32(subIdObj);
-                                string updateSub = "UPDATE tbl_sub_cost_center SET name=@name WHERE id=@id";
-                                await using var updateCmd = new MySqlCommand(updateSub, conn);
-                                updateCmd.Parameters.AddWithValue("@id", subId);
-                                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                                await updateCmd.ExecuteNonQueryAsync();
-                            }
-                        }
+                        mainCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        mainCmd.Parameters.AddWithValue("@project_id", model.Id);
+                        await mainCmd.ExecuteNonQueryAsync();
+                    }
+
+                    string updateSub = @"
+        UPDATE tbl_sub_cost_center 
+        SET name=@name 
+        WHERE project_id=@project_id;";
+                    await using (var subCmd = new MySqlCommand(updateSub, conn))
+                    {
+                        subCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        subCmd.Parameters.AddWithValue("@project_id", model.Id);
+                        await subCmd.ExecuteNonQueryAsync();
                     }
 
                     return Ok(new
@@ -235,6 +277,7 @@ namespace YamyProject.Controllers
                         code = projectCode
                     });
                 }
+
             }
             catch (Exception ex)
             {

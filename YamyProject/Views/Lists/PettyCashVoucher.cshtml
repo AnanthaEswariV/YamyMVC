@@ -273,7 +273,11 @@
                                             <option value="">-- Select --</option>
                                         </select>
                                     </td>
-                                    <td><select class="form-select"></select></td>
+                                    <td>
+                                        <select class="form-select costCenterSelect">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </td>
                                     <td><input type="text" class="form-control" placeholder="Description"></td>
                                     <td><input type="number" class="form-control text-end" /></td>
                                     <td><input type="number" class="form-control text-end" readonly /></td>
@@ -438,7 +442,7 @@
                 success: function(res) {
                     const tbody = $("#table1 tbody");
                     tbody.empty();
-                    console.log(res);
+                  
                     if (res.status && res.data && res.data.details.length > 0) {
                         const voucher = res.data; // <-- Save the whole voucher object
 
@@ -576,6 +580,7 @@
             loadPettyCashCategories();
                     loadPettyCashForEmployee();
             populateAndSelectBankAccounts();
+                populateAndSelectCostCenter();
         });
 
         $(document).on("click", ".editPettyCashBtn", function () {
@@ -598,7 +603,7 @@
             $("#editPettyCashEmployeeName").val(voucher.voucher.employeeName || '');
             $('#editPettyCashEmployeeId').val(voucher.voucher.employeeId);
                     var emp =   $('#editPettyCashEmployeeId').val(voucher.voucher.employeeId);
-                    console.log(emp);
+                   
                     // Load petty cash dropdown and set selected value
             loadPettyCashCardsTo("#editPettyCashNameDropdown", voucher.voucher.cashAccountId);
 
@@ -804,7 +809,7 @@
                     if (res.status && res.data) {
                         const header = res.data.header;
                         const details = res.data.details;
-                      
+                      console.log(res);
                         // ✅ FIX: Fill Header Fields with proper fallbacks
                         $('#pettyCashCode').val(header.code ?? '');
 
@@ -834,7 +839,11 @@
                                                 <option value="">-- Select --</option>
                                             </select>
                                         </td>
-                                        <td><select class="form-select"><option>${row.costCenterId ?? ''}</option></select></td>
+                                        <td>
+                                              <select class="form-select costCenterSelect" data-selected-id="${row.accountId ?? row.AccountId ?? ''}">
+                                                    <option value="">-- Select --</option>
+                                                </select>
+                                       </td>
                                         <td><input type="text" class="form-control" value="${row.description ?? ''}"></td>
                                         <td><input type="number" class="form-control text-end" value="${row.amount ?? 0}"></td>
                                         <td><input type="number" class="form-control text-end" readonly value="${row.amount ?? 0}"></td>
@@ -845,6 +854,7 @@
 
                             // ✅ Populate bank accounts after rows are added
                             populateAndSelectBankAccounts();
+                                populateAndSelectCostCenter();
                         } else {
                             tbody.html(`<tr><td colspan="7" class="text-center text-muted">No details found</td></tr>`);
                         }
@@ -933,10 +943,11 @@
 
         $('#pettyCashSubmissionModal').on('shown.bs.modal', function () {
                     populateAndSelectBankAccounts();
+                    populateAndSelectCostCenter();
         });
 
 
-                $("#saveCloseBtn").on("click", function () {
+        $("#saveCloseBtn").on("click", function () {
             const voucherId = parseInt($("#submissionNo").val()) || 0;
             const pettyCashCode = $("#pettyCashCode").val();
             const voucherDate = $("#submissionDate").val();
@@ -977,7 +988,6 @@
                 Details: details
             };
 
-            console.log("Payload sent:", payload); 
 
             $.ajax({
                 url: "/Lists/SavePettyCashVoucherJournal",
@@ -999,6 +1009,42 @@
                 }
             });
         });
+
+
+            function populateAndSelectCostCenter() {
+                $.ajax({
+                        url: '/Lists/GetCostCenters',
+                    type: 'GET',
+                    success: function(res) {
+                        const data = Array.isArray(res) ? res : res.data || [];
+                        console.log(res);
+                        if (!data.length) return;
+
+                        // Target ALL elements with the class 'bankAccountSelect'
+                            $('.costCenterSelect').each(function () {
+                            const $select = $(this);
+                            // 1. Get the ID we need to select from the data attribute
+                            const selectedId = $select.data('selected-id');
+
+                            $select.empty().append('<option value="">-- Select --</option>');
+
+                            $.each(data, function(i, item) {
+                                const $option = $('<option>', {
+                                    value: item.id,
+                                    text: `${item.code} - ${item.name}`
+                                });
+
+                                // 2. Set the 'selected' attribute if the IDs match
+                                if (String(item.id) === String(selectedId)) {
+                                    $option.prop('selected', true);
+                                }
+
+                                $select.append($option);
+                            });
+                        });
+                    }
+                });
+            }
 
 
 

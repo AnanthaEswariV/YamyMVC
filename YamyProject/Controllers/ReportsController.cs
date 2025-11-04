@@ -1044,6 +1044,199 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Cost Center Summary
+
+        public IActionResult CostCenterSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCostCenterReport(DateTime? fromDate = null, DateTime? toDate = null, bool includeAllDates = false, int? costCenterId = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Prepare SQL query
+                string query = @"
+            SELECT 
+                c.id, 
+                c.name, 
+                COUNT(t.id) AS Num, 
+                SUM(t.debit) AS Total_Debit, 
+                SUM(t.credit) AS Total_Credit
+            FROM tbl_cost_center c 
+            JOIN tbl_cost_center_transaction t ON c.id = t.cost_center_id
+            WHERE c.id > 0";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Date filter
+                if (!includeAllDates && fromDate.HasValue && toDate.HasValue)
+                {
+                    query += " AND t.date >= @fromDate AND t.date <= @toDate";
+                    parameters.Add(new MySqlParameter("@fromDate", fromDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@toDate", toDate.Value.Date));
+                }
+
+                // Cost Center filter
+                if (costCenterId.HasValue && costCenterId > 0)
+                {
+                    query += " AND c.id = @cId";
+                    parameters.Add(new MySqlParameter("@cId", costCenterId.Value));
+                }
+
+                query += " GROUP BY c.id, c.name ORDER BY c.id";
+
+                var result = new List<object>();
+                decimal totalBalance = 0;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (parameters.Count > 0)
+                        cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal debit = reader["Total_Debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total_Debit"]);
+                        decimal credit = reader["Total_Credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total_Credit"]);
+                        decimal balance = debit - credit;
+                        totalBalance += balance;
+
+                        result.Add(new
+                        {
+                            Id = reader["id"],
+                            Name = reader["name"],
+                            VoucherNo = reader["Num"],
+                            Debit = debit.ToString("N2"),
+                            Credit = credit.ToString("N2"),
+                            Balance = balance.ToString("N2")
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    totalBalance = totalBalance.ToString("N2"),
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult CostCenterDetails()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetCostCenterTransactions(
+    int? costCenterId = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    bool includeAllDates = false)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                if (!costCenterId.HasValue || costCenterId.Value <= 0)
+                    return BadRequest(new { status = false, message = "Cost Center ID is required." });
+
+                // Prepare SQL query
+                string query = @"
+            SELECT 
+                t.id, 
+                c.name, 
+                DATE_FORMAT(t.date, '%M %d %Y') AS Date,
+                t.type,
+                t.debit, 
+                t.credit, 
+                t.ref_id AS VoucherNo, 
+                t.description,
+                0 AS Balance
+            FROM tbl_cost_center_transaction t
+            JOIN tbl_cost_center c ON c.id = t.cost_center_id
+            WHERE c.id = @cId";
+
+                var parameters = new List<MySqlParameter>
+        {
+            new MySqlParameter("@cId", costCenterId.Value)
+        };
+
+                if (!includeAllDates && fromDate.HasValue && toDate.HasValue)
+                {
+                    query += " AND t.date >= @fromDate AND t.date <= @toDate";
+                    parameters.Add(new MySqlParameter("@fromDate", fromDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@toDate", toDate.Value.Date));
+                }
+
+                query += " ORDER BY t.date, t.id";
+
+                var result = new List<object>();
+                decimal runningBalance = 0;
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Count > 0)
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    decimal debit = reader["debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["debit"]);
+                    decimal credit = reader["credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["credit"]);
+                    runningBalance += (debit - credit);
+
+                    result.Add(new
+                    {
+                        Id = reader["id"],
+                        Date = reader["Date"],
+                        Description = reader["name"].ToString(),
+                        VoucherNo = reader["VoucherNo"].ToString(),
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
+                        Balance = runningBalance.ToString("N2"),
+                        Type = reader["type"]?.ToString(),
+                        TransactionDescription = reader["description"]?.ToString()
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = result,
+                    totalBalance = runningBalance.ToString("N2")
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+
+
 
     }
 
