@@ -154,6 +154,17 @@
     #main {
         margin-left: 250px;
     }
+
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
 </style>
 
 <div class="employee-header">
@@ -245,7 +256,7 @@
             <div class="transactions-header">Transactions</div>
 
             <div class="table-responsive">
-                <table class="table table-striped" id="transactionsBody">
+                <table class="table table-striped" id="transactionsTable">
                     <thead class="table-light">
                         <tr>
                             <th>SN#</th>
@@ -258,11 +269,12 @@
                             <th>Balance</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- rows -->
+                    <tbody id="transactionsBody">
+                        <!-- Populated dynamically -->
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 </div>
@@ -327,11 +339,123 @@
 </div>
 
 @section Scripts {
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- DataTables -->
+    <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet">
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <!-- Buttons extension -->
+    <link href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" rel="stylesheet">
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+    <!-- Export dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
     <script>
+
+
+               $(document).on('click', '#employeeTable tbody tr', function (e) {
+            // Ignore button clicks inside the row
+            if ($(e.target).closest('button').length) return;
+
+            const employeeId = $(this).data('id');
+            if (!employeeId) {
+                toastr.warning('No employee ID found.');
+                return;
+            }
+
+            console.log("✅ Employee row clicked, ID:", employeeId);
+
+            // Optional: highlight
+            $('#employeeTable tbody tr').removeClass('table-active');
+            $(this).addClass('table-active');
+
+            loadEmployeeTransactions(employeeId);
+        });
+
+
+        function loadEmployeeTransactions(employeeId) {
+              $.ajax({
+                  url: '/HR/GetInvoiceByCustomerId',
+                  type: 'GET',
+                  data: { id: employeeId },
+                  beforeSend: function () {
+                      $('#transactionsBody').html(`
+                          <tr>
+                              <td colspan="8" class="text-center text-muted py-4">
+                                  <div class="spinner-border text-primary me-2"></div>Loading...
+                              </td>
+                          </tr>
+                      `);
+                  },
+                  success: function (res) {
+                      console.log(res);
+                      // Destroy existing DataTable before refreshing
+                      if ($.fn.DataTable.isDataTable('#transactionsTable')) {
+                          $('#transactionsTable').DataTable().clear().destroy();
+                      }
+
+                      const tbody = $('#transactionsBody');
+                      tbody.empty();
+
+                      if (!res.status || !res.data || res.data.length === 0) {
+                          tbody.html(`<tr><td colspan="8" class="text-center text-muted py-4">No transactions found</td></tr>`);
+                          return;
+                      }
+
+                      $.each(res.data, function (i, row) {
+                          tbody.append(`
+                              <tr>
+                                  <td>${row.sn ?? ''}</td>
+                                  <td>${row.voucherNo ?? ''}</td>
+                                  <td>${row.date ?? ''}</td>
+                                  <td>${row.accountName ?? ''}</td>
+                                  <td>${row.type ?? ''}</td>
+                                  <td class="text-end">${(row.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                  <td class="text-end">${(row.paidAmt ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                  <td class="text-end">${(row.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              </tr>
+                          `);
+                      });
+
+                      // ✅ Initialize DataTable with Excel / PDF export buttons
+                           $('#transactionsTable').DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-primary btn-sm'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    className: 'btn btn-primary btn-sm',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 5
+        });
+
+                  },
+                  error: function () {
+                      toastr.error('Error loading transactions data');
+                      $('#transactionsBody').html(`<tr><td colspan="8" class="text-center text-muted py-4">Error loading data</td></tr>`);
+                  }
+              });
+          }
+
 
         $(document).ready(function() {
 
@@ -404,6 +528,9 @@
                 let code = $(dropdown).val().split(" - ")[0];
                 $('#'+inputId).val(code);
             };
+
+
+
 
 
         });
@@ -509,7 +636,7 @@
                     Active: $('#employeeActive').is(':checked') ? 1 : 0
                 };
 
-                console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
+                
 
                 $.ajax({
                     url: url,
@@ -540,43 +667,41 @@
                  form.reset();
              });
 
-             // Render employee table
-            function renderEmployeeTable(employees){
-                let tbody = $("#employeeTable tbody");
-                tbody.empty();
+                 function renderEmployeeTable(employees) {
+            const tbody = $("#employeeTable tbody");
+            tbody.empty();
 
-                if(employees.length === 0){
-                    tbody.append('<tr><td colspan="3" class="text-center">No employees found</td></tr>');
-                    return;
-                }
-
-                employees.forEach(emp => {
-                    let totalSalary =
-                        (emp.basicSalary || 0) +
-                        (emp.housingAllowance || 0) +
-                        (emp.transportationAllowance || 0) +
-                        (emp.other || 0);
-
-                    tbody.append(`
-                        <tr data-id="${emp.id}">
-                            <td>${emp.name || ""}</td>
-                            <td>${totalSalary.toFixed(2)}</td>
-                                    <td>
-             <button type="button" class="btn btn-sm btn-primary edit-btn me-2"
-                            data-id="${emp.id}" title="Edit Employee">
-                             <i class="fas fa-pen"></i>
-                    </button>
-                    <!-- Delete Button with fallback styling -->
-                    <button type="button" class="btn btn-sm btn-danger delete-btn"
-                            data-id="${emp.id}" title="Delete Employee">
-                         <i class="fas fa-trash"></i>
-                    </button>
-            </td>
-
-                        </tr>
-                    `);
-                });
+            if (employees.length === 0) {
+                tbody.append('<tr><td colspan="3" class="text-center">No employees found</td></tr>');
+                return;
             }
+
+            employees.forEach(emp => {
+                const totalSalary =
+                    (emp.basicSalary || 0) +
+                    (emp.housingAllowance || 0) +
+                    (emp.transportationAllowance || 0) +
+                    (emp.other || 0);
+
+                tbody.append(`
+                    <tr data-id="${emp.id}">
+                        <td>${emp.name || ""}</td>
+                        <td>${totalSalary.toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary edit-btn me-2"
+                                    data-id="${emp.id}" title="Edit Employee">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger delete-btn"
+                                    data-id="${emp.id}" title="Delete Employee">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
 
             // Fetch employees from API
             function fetchEmployees(filter = "active", search = ""){
@@ -586,7 +711,7 @@
                     success: function(res){
                         if(res.status){
                             let data = res.data;
-                            console.log("Fetched Employees:", data);
+                          
 
                             // Apply search filter
                             if(search){
@@ -594,7 +719,7 @@
                                     (emp.name && emp.name.toLowerCase().includes(search.toLowerCase())) ||
                                     (emp.code && emp.code.toString().includes(search))
                                 );
-                                console.log("Filtered Employees:", data);
+                              
                             }
 
                             renderEmployeeTable(data);
@@ -672,7 +797,7 @@
                 $.getJSON(`/HR/GetEmployeeById?id=${empId}`, function (emp) {
                     if (!emp) return toastr.error("Employee not found");
 
-                    console.log("Employee Data:", emp);
+                   
 
                     // Employee Info
                     $('#EmployeeId').val(emp.id);
@@ -817,7 +942,8 @@
                             $ddl.on('change', function () {
                                 let selected = $(this).find(':selected');
                                 let code = selected.data('code');
-                                console.log("Selected in", set.ddl, ":", selected.text(), "Code:", code);
+                         
+
                                 $(set.codeBox).val(code || "");
                             });
                         });
@@ -841,7 +967,7 @@
                         select.append(`<option value="${dept.id}">${dept.name}</option>`);
                     });
 
-                    console.log("Departments loaded:", res.data);
+                   
                 } else {
                     console.error("Failed to load departments:", res.message);
                     toastr.error("Failed to load departments");
@@ -870,7 +996,7 @@
                         select.append(`<option value="${pos.id}" data-dept="${pos.departmentId}">${pos.name}</option>`);
                     });
 
-                    console.log("Positions loaded:", res.data);
+                    
                 } else {
                     console.error("Failed to load positions:", res.message);
                     toastr.error("Failed to load positions");
@@ -900,7 +1026,7 @@
                         select.append(`<option value="${dept.id}">${dept.name}</option>`);
                     });
 
-                    console.log("Departments loaded:", res.data);
+
                 } else {
                     console.error("Failed to load departments:", res.message);
                     toastr.error("Failed to load departments");
@@ -965,7 +1091,7 @@
                 DepartmentId: parseInt(deptVal)
             };
 
-            console.log("Sending data to API (Add):", data);
+
 
             // Always POST for Add
             $.ajax({
@@ -974,7 +1100,7 @@
                 contentType: 'application/json',
                 data: JSON.stringify(data),
                 success: function(res) {
-                    console.log("API response:", res);
+                    
                     if (res.status) {
                         $("#addPositionModal").modal('hide');
                         $("#positionName").val('');

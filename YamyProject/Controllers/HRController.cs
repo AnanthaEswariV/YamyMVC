@@ -582,7 +582,6 @@
             return Json(data);
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetAccruedSalaries()
         {
@@ -620,6 +619,120 @@
                 throw ex;
             }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetInvoiceByCustomerId(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid customer ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            WITH CTE AS (
+                SELECT 
+                    t.id,
+                    t.transaction_id AS `InvoiceId`,
+                    ROW_NUMBER() OVER (ORDER BY t.date, t.id) AS SN,
+                    t.voucher_no AS `VoucherNo`,
+                    t.date AS `Date`,
+                    CONCAT(ta.code, ' - ', ta.name) AS `AccountName`,
+                    t.type AS `Type`,
+                    CASE
+                        WHEN t.type = 'Employee Salary Payment' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Petty Cash' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Check Cancel (Employee)' THEN t.credit
+                        WHEN t.type = 'Employee Salary' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Employee Loan Payment' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Employee Petty Cash Payment' THEN IF(t.debit = 0, t.credit, t.debit)
+                        ELSE 0
+                    END AS `Amount`,
+                    CASE
+                        WHEN t.type = 'Employee Salary Payment' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Petty Cash' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Employee Loan Payment' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Employee Petty Cash Payment' THEN IF(t.debit = 0, t.credit, t.debit)
+                        WHEN t.type = 'Check Cancel (Employee)' THEN -t.credit
+                        ELSE 0
+                    END AS `PaidAmt`
+                FROM tbl_transaction t
+                INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+               WHERE t.hum_id = @id AND t.state = 0
+                  AND (
+                      t.type LIKE 'Employee%' OR 
+                      t.type = 'Employee Loan Payment' OR 
+                      t.type = 'Employee Salary Payment' OR 
+                      t.type = 'Petty Cash' OR 
+                      t.type = 'Check Cancel (Employee)' OR
+                      t.type = 'Employee Petty Cash Payment' OR 
+                      t.type LIKE 'Employee Salary'
+                  )
+            ),
+            Running_Balance AS (
+                SELECT *,
+                    SUM(`Amount` - `PaidAmt`) OVER (ORDER BY `Date`, id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS `Balance`
+                FROM CTE
+            )
+            SELECT 
+                `id`,
+                `InvoiceId`,
+                `SN` as `SN`,
+                `VoucherNo`,
+                `Date`,
+                `AccountName`,
+                `Type`,
+                `Amount`,
+                `PaidAmt`,
+                `Balance`
+            FROM Running_Balance
+            ORDER BY `Date`, id;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var invoices = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    var invoice = new
+                    {
+                        Id = reader.GetInt32("id"),
+                        InvoiceId = reader["InvoiceId"]?.ToString(),
+                        SN = reader.GetInt32("SN"),
+                        VoucherNo = reader["VoucherNo"]?.ToString(),
+                        Date = reader["Date"] as DateTime? != null
+                            ? ((DateTime)reader["Date"]).ToString("yyyy-MM-dd")
+                            : null,
+                        AccountName = reader["AccountName"]?.ToString(),
+                        Type = reader["Type"]?.ToString(),
+                        Amount = reader["Amount"] as decimal? ?? 0,
+                        PaidAmt = reader["PaidAmt"] as decimal? ?? 0,
+                        Balance = reader["Balance"] as decimal? ?? 0
+                    };
+                    invoices.Add(invoice);
+                }
+
+                if (invoices.Count == 0)
+                    return NotFound(new { status = false, message = "No invoices found for this customer" });
+
+                return Ok(new { status = true, data = invoices });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 
