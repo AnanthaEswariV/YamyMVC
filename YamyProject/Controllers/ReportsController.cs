@@ -1832,6 +1832,239 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Petty Cash Summary
+
+        public IActionResult PettyCashBalanceSummary()
+        {
+            return View();
+        }
+
+        //Already I have this API
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashReport(bool enableApproval, int id, DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query;
+                List<MySqlParameter> parameters = new List<MySqlParameter>();
+
+                if (!enableApproval)
+                {
+                    // Query for transactions without approval
+                    query = @"
+                SELECT 
+                    DATE_FORMAT(t.date, '%Y-%m-%d') AS `Date`,
+                    t.transaction_id,
+                    CASE 
+                        WHEN t.type = 'Petty Cash Request' THEN 
+                            (SELECT CONCAT('Petty Cash Approval - REF - ', pr.request_ref)
+                             FROM tbl_petty_cash_request pr 
+                             WHERE pr.id = t.transaction_id
+                             LIMIT 1)
+                        WHEN t.type = 'Petty Cash Submission' THEN 'Petty Cash Submission NO.'
+                        WHEN t.type = 'Employee Petty Cash Payment' THEN 'Employee Petty Cash Payment'
+                        ELSE ''
+                    END AS `Num`,
+                    t.type AS `Type`,
+                    coa.name AS `Account`,
+                    (t.credit - t.debit) AS `Amount`,
+                    SUM(t.credit - t.debit) OVER (PARTITION BY t.hum_id ORDER BY t.date, t.id) AS `Balance`
+                FROM tbl_transaction t
+                JOIN tbl_coa_level_4 coa ON t.account_id = coa.id
+                WHERE t.hum_id = @id
+                  AND t.type IN ('Petty Cash Request', 'Petty Cash Submission', 'Employee Petty Cash Payment')
+                  AND t.date >= @startDate AND t.date <= @endDate
+                ORDER BY t.date, t.id;
+            ";
+
+                    parameters.Add(new MySqlParameter("@id", id));
+                    parameters.Add(new MySqlParameter("@startDate", startDate));
+                    parameters.Add(new MySqlParameter("@endDate", endDate));
+                }
+                else
+                {
+                    // Query for transactions with approval
+                    query = @"
+                SELECT 
+                    p.id,
+                    p.voucher_date AS `Date`,
+                    'Petty Cash Request' AS `Type`,
+                    CONCAT('Petty Cash Approval - REF - ', p.id) AS `Num`,
+                    e.name AS `Account`,
+                    pd.amount AS `Amount`,
+                    '' AS `Balance`
+                FROM tbl_petty_cash p
+                INNER JOIN tbl_employee e ON p.employee_id = e.id
+                INNER JOIN tbl_petty_cash_details pd ON pd.petty_cash_id = p.id
+                INNER JOIN tbl_petty_cash_card pcc ON CAST(pcc.name AS UNSIGNED) = e.id
+                WHERE p.voucher_date >= @startDate AND p.voucher_date <= @endDate
+                ORDER BY p.voucher_date, p.id;
+            ";
+
+                    parameters.Add(new MySqlParameter("@startDate", startDate));
+                    parameters.Add(new MySqlParameter("@endDate", endDate));
+                }
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0, totalBalance = 0;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            if (reader["Date"] == DBNull.Value)
+                                continue;
+
+                            decimal amount = reader["Amount"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Amount"]);
+                            decimal balance = reader["Balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Balance"]);
+
+                            totalAmount += amount;
+                            totalBalance += balance;
+
+                            var row = new Dictionary<string, object>
+                            {
+                                ["TransactionId"] = reader["transaction_id"]?.ToString() ?? reader["id"]?.ToString(),
+                                ["Date"] = Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                                ["Type"] = reader["Type"].ToString(),
+                                ["Num"] = reader["Num"].ToString(),
+                                ["Account"] = reader["Account"].ToString(),
+                                ["Amount"] = amount.ToString("N2"),
+                                ["Balance"] = balance != 0 ? balance.ToString("N2") + " ◀" : ""
+                            };
+
+                            result.Add(row);
+                        }
+                    }
+                }
+
+                // Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["TransactionId"] = "",
+                    ["Date"] = "",
+                    ["Type"] = "",
+                    ["Num"] = "",
+                    ["Account"] = "TOTAL",
+                    ["Amount"] = totalAmount.ToString("N2"),
+                    ["Balance"] = totalBalance != 0 ? totalBalance.ToString("N2") : ""
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Item Moving Report
+        
+        public IActionResult ItemMovingReport()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItemMovingReport(DateTime? startDate = null, DateTime? endDate = null, bool isDateChecked = true)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY i.id) AS `SN`,
+                i.code,
+                i.name,
+                i.barcode,
+                i.cost_price AS CostPrice,
+                i.sales_price AS SalesPrice,
+                SUM(CASE WHEN t.type = 'Opening Qty' THEN t.qty_in ELSE 0 END) AS OpeningQty,
+                SUM(CASE WHEN t.type = 'Purchase Invoice' THEN t.qty_in ELSE 0 END) AS Purchase,
+                SUM(CASE WHEN t.type = 'Sales Invoice' THEN t.qty_out ELSE 0 END) AS Sales,
+                SUM(CASE WHEN t.type = 'Purchase Return Invoice' THEN t.qty_out ELSE 0 END) AS PurchaseReturn,
+                SUM(CASE WHEN t.type = 'Sales Return Invoice' THEN t.qty_in ELSE 0 END) AS SalesReturn,
+                SUM(CASE WHEN t.type = 'Damage' THEN t.qty_out ELSE 0 END) AS Damage,
+                SUM(t.qty_in - t.qty_out) AS BalanceQty
+            FROM tbl_items i
+            INNER JOIN tbl_item_transaction t ON i.id = t.item_id
+            WHERE i.type = '11 - Inventory Part' AND i.active = 0
+        ";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (isDateChecked && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND t.date >= @dateFrom AND t.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date));
+                }
+
+                query += @"
+            GROUP BY i.id, i.code, i.name, i.barcode, i.cost_price, i.sales_price
+            ORDER BY i.id;
+        ";
+
+                var invoices = new List<InvoiceDto>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        invoices.Add(new InvoiceDto
+                        {
+                            SN = reader.GetInt32("SN"),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            Barcode = reader["barcode"].ToString(),//   <td>${row.barcode ?? ''}</td>
+                            CostPrice = reader.GetDecimal("CostPrice"),
+                            SalesPrice = reader.GetDecimal("SalesPrice"),
+                            OpeningQty = reader.GetDecimal("OpeningQty"),
+                            Purchase = reader.GetDecimal("Purchase"),
+                            Sales = reader.GetDecimal("Sales"),
+                            PurchaseReturn = reader.GetDecimal("PurchaseReturn"),
+                            SalesReturn = reader.GetDecimal("SalesReturn"),
+                            Damage = reader.GetDecimal("Damage"),
+                            BalanceQty = reader.GetDecimal("BalanceQty")
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = invoices });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+     
+
+        #endregion
+
 
 
 

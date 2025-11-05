@@ -610,5 +610,20 @@ namespace YamyProject.Core.Models
         public decimal Balance { get; set; }
     }
 
-
+    public class InvoiceDto
+    {
+        public int SN { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public string Barcode { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal SalesPrice { get; set; }
+        public decimal OpeningQty { get; set; }
+        public decimal Purchase { get; set; }
+        public decimal Sales { get; set; }
+        public decimal PurchaseReturn { get; set; }
+        public decimal SalesReturn { get; set; }
+        public decimal Damage { get; set; }
+        public decimal BalanceQty { get; set; }
+    }
 }
