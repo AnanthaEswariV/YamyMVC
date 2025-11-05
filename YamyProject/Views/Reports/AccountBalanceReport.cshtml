@@ -14,15 +14,12 @@
         color: #fff !important;
         border: none !important;
     }
-
-        .dt-buttons .btn-primary:hover {
-            background-color: #3b51a0 !important;
-        }
-
+    .dt-buttons .btn-primary:hover {
+        background-color: #3b51a0 !important;
+    }
     .child-row {
         display: none;
     }
-
     .toggle-icon {
         cursor: pointer;
         user-select: none;
@@ -61,7 +58,6 @@
     </div>
 </div>
 
-<!-- ================== SCRIPT SECTION ================== -->
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -73,43 +69,67 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
     <script>
-        $(document).ready(function () {
+                      $(document).ready(function () {
             const today = new Date().toISOString().split('T')[0];
             $('#reportDate').val(today);
             loadBalanceSheetReport();
 
             $('#btnLoadReport').on('click', loadBalanceSheetReport);
 
-            // ====== Handle Toggle Click ======
-            $(document).on('click', '.toggle-icon', function () {
-                const tr = $(this).closest('tr');
-                const parentId = tr.data('id');
-                const isOpen = $(this).text() === '▼ ';
-                $(this).text(isOpen ? '► ' : '▼ ');
+            // Use event delegation on table body for better DataTables compatibility
+            $('#table1').on('click', '.toggle-icon', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                if (isOpen) {
-                    collapseChildren(parentId);
-                } else {
-                    expandChildren(parentId);
+                const tr = $(this).closest('tr');
+                const rowId = tr.attr('data-row-id');
+                const icon = $(this).text().trim();
+
+               
+
+                if (icon === '►') {
+                    // Expand
+                    $(this).text('▼');
+                    expandChildren(rowId);
+                } else if (icon === '▼') {
+                    // Collapse
+                    $(this).text('►');
+                    collapseChildren(rowId, new Set());
                 }
             });
 
-            // Collapse all descendant rows of a parent
-            function collapseChildren(parentId) {
-                const children = $(`#table1 tbody tr[data-parent='${parentId}']`);
+            // Collapse children with recursion guard
+            function collapseChildren(rowId, seen) {
+                if (seen.has(rowId)) return;
+                seen.add(rowId);
+
+                const children = $(`#table1 tbody tr[data-parent-row='${rowId}']`);
+               
+
                 children.each(function () {
-                    $(this).addClass('d-none');
-                    $(this).find('.toggle-icon').text('► ');
-                    collapseChildren($(this).data('id'));
+                    const childRowId = $(this).attr('data-row-id');
+
+                    // Hide this row
+                    $(this).hide();
+
+                    // Reset icon if it has children
+                    $(this).find('.toggle-icon').text('►');
+
+                    // Recursively collapse children
+                    collapseChildren(childRowId, seen);
                 });
             }
 
-            // Expand only direct children
-            function expandChildren(parentId) {
-                $(`#table1 tbody tr[data-parent='${parentId}']`).removeClass('d-none');
+            // Expand direct children only
+            function expandChildren(rowId) {
+                const children = $(`#table1 tbody tr[data-parent-row='${rowId}']`);
+           
+                children.each(function () {
+                    $(this).show();
+                });
             }
 
-            // ====== Load Report ======
+            // Load and render the balance sheet report
             function loadBalanceSheetReport() {
                 const reportDate = $('#reportDate').val();
                 if (!reportDate) {
@@ -125,6 +145,8 @@
                         $('#table1 tbody').html('<tr><td colspan="3" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Loading...</td></tr>');
                     },
                     success: function (res) {
+                      
+
                         const tbody = $('#table1 tbody');
                         tbody.empty();
 
@@ -134,36 +156,67 @@
                         }
 
                         let rowIndex = 0;
+                        let uniqueRowCounter = 0;
 
-                        // Recursive function to render hierarchy
-                        function renderRows(accounts, level = 1, parentId = 0) {
+                        // Recursive function to render rows
+                        function renderRows(accounts, level = 1, parentRowId = null, ancestorPath = []) {
                             accounts.forEach(acc => {
+                                // Create a unique identifier combining id and level to detect TRUE circular references
+                                const nodeKey = `${acc.id}_${acc.name}_${level}`;
+
+                                // Check if this exact node (id + name + level) already exists in ancestor path
+                                const isDuplicate = ancestorPath.some(ancestor =>
+                                    ancestor.id === acc.id &&
+                                    ancestor.name === acc.name &&
+                                    ancestor.level === level
+                                );
+
+                                if (isDuplicate) {
+                                    console.warn(`Skipping TRUE circular reference: ${acc.name} (id=${acc.id}) at level ${level}`);
+                                    return;
+                                }
+
                                 rowIndex++;
+                                uniqueRowCounter++;
+                                const currentRowId = `row_${uniqueRowCounter}`;
+
                                 const indent = '&nbsp;'.repeat((level - 1) * 6);
                                 const hasChildren = acc.children && acc.children.length > 0;
-                                const icon = hasChildren ? '► ' : '';
+                                const toggleIcon = hasChildren ? '<span class="toggle-icon" style="cursor:pointer;user-select:none;font-weight:bold;margin-right:4px;">►</span>' : '';
 
-                                const tr = $(`
-                                    <tr data-id="${acc.id}" data-parent="${parentId}" data-level="${level}" class="${level > 1 ? 'child-row d-none' : ''}">
+                                const parentAttr = parentRowId ? ` data-parent-row="${parentRowId}"` : '';
+                                const hideStyle = level > 1 ? ' style="display:none;"' : '';
+
+                                const rowHtml = `
+                                    <tr data-id="${acc.id}"
+                                        data-row-id="${currentRowId}"${parentAttr}
+                                        data-level="${level}"${hideStyle}>
                                         <td>${rowIndex}</td>
-                                        <td>${indent}<span class="toggle-icon">${icon}</span>${acc.name}</td>
+                                        <td>${indent}${toggleIcon}${acc.name}</td>
                                         <td class="text-end">${Number(acc.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                     </tr>
-                                `);
+                                `;
 
-                                tbody.append(tr);
+                                tbody.append(rowHtml);
 
-                                if (hasChildren) renderRows(acc.children, level + 1, acc.id);
+                                // Add current node to ancestor path for children
+                                const newAncestorPath = [...ancestorPath, { id: acc.id, name: acc.name, level: level }];
+
+                                if (hasChildren) {
+                                    renderRows(acc.children, level + 1, currentRowId, newAncestorPath);
+                                }
                             });
                         }
 
-                        // Render the table
+                        // Render the table rows
                         renderRows(res.data);
 
-                        // Initialize DataTable
+
+                        // Destroy and reinitialize DataTable
                         if ($.fn.DataTable.isDataTable('#table1')) {
-                            $('#table1').DataTable().clear().destroy();
+                            $('#table1').DataTable().destroy();
                         }
+
                         $('#table1').DataTable({
                             dom: 'Bfrtip',
                             buttons: [
@@ -171,14 +224,37 @@
                                 { extend: 'pdfHtml5', text: 'PDF', className: 'btn btn-primary btn-sm', orientation: 'portrait', pageSize: 'A4' }
                             ],
                             order: [[0, 'asc']],
-                            pageLength: 1000
+                            pageLength: 1000,
+                            ordering: false, // Disable ordering to maintain hierarchy
+                            searching: true,
+                            paging: true
                         });
                     },
-                    error: function () {
+                    error: function (xhr, status, error) {
+                        console.error('AJAX Error:', error); // Debug
                         toastr.error('Error loading balance sheet report');
                     }
                 });
             }
+
+
+                    // Handle row click for level 4 accounts
+        $('#table1 tbody').on('click', 'tr', function () {
+            const accountId = $(this).data('id');      // Get account id
+            const level = $(this).data('level');       // Get row level
+
+            // Only proceed if level is 4
+            if (level === 4) {
+                if (!accountId) {
+                    toastr.warning('No account ID found for this row.');
+                    return;
+                }
+
+                // Redirect to TransactionByAccount page with accountId
+                window.location.href = `/Reports/TransactionByAccount?accountId=${accountId}`;
+            }
+        });
+
         });
     </script>
 }

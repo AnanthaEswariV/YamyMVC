@@ -373,7 +373,6 @@
                 return;
             }
 
-            console.log("✅ Employee row clicked, ID:", employeeId);
 
             // Optional: highlight
             $('#employeeTable tbody tr').removeClass('table-active');
@@ -383,78 +382,89 @@
         });
 
 
-        function loadEmployeeTransactions(employeeId) {
-              $.ajax({
-                  url: '/HR/GetInvoiceByCustomerId',
-                  type: 'GET',
-                  data: { id: employeeId },
-                  beforeSend: function () {
-                      $('#transactionsBody').html(`
-                          <tr>
-                              <td colspan="8" class="text-center text-muted py-4">
-                                  <div class="spinner-border text-primary me-2"></div>Loading...
-                              </td>
-                          </tr>
-                      `);
-                  },
-                  success: function (res) {
-                      console.log(res);
-                      // Destroy existing DataTable before refreshing
-                      if ($.fn.DataTable.isDataTable('#transactionsTable')) {
-                          $('#transactionsTable').DataTable().clear().destroy();
-                      }
-
-                      const tbody = $('#transactionsBody');
-                      tbody.empty();
-
-                      if (!res.status || !res.data || res.data.length === 0) {
-                          tbody.html(`<tr><td colspan="8" class="text-center text-muted py-4">No transactions found</td></tr>`);
-                          return;
-                      }
-
-                      $.each(res.data, function (i, row) {
-                          tbody.append(`
-                              <tr>
-                                  <td>${row.sn ?? ''}</td>
-                                  <td>${row.voucherNo ?? ''}</td>
-                                  <td>${row.date ?? ''}</td>
-                                  <td>${row.accountName ?? ''}</td>
-                                  <td>${row.type ?? ''}</td>
-                                  <td class="text-end">${(row.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                  <td class="text-end">${(row.paidAmt ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                  <td class="text-end">${(row.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                              </tr>
-                          `);
-                      });
-
-                      // ✅ Initialize DataTable with Excel / PDF export buttons
-                           $('#transactionsTable').DataTable({
-            dom: 'Bfrtip',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                    className: 'btn btn-primary btn-sm'
+          function loadEmployeeTransactions(employeeId) {
+            $.ajax({
+                url: '/HR/GetInvoiceByCustomerId',
+                type: 'GET',
+                data: { id: employeeId },
+                beforeSend: function () {
+                    $('#transactionsBody').html(`
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
                 },
-                {
-                    extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                    className: 'btn btn-primary btn-sm',
-                    orientation: 'landscape',
-                    pageSize: 'A4'
-                }
-            ],
-            order: [[0, 'asc']],
-            pageLength: 5
-        });
+                success: function (res) {
+               
 
-                  },
-                  error: function () {
-                      toastr.error('Error loading transactions data');
-                      $('#transactionsBody').html(`<tr><td colspan="8" class="text-center text-muted py-4">Error loading data</td></tr>`);
-                  }
-              });
-          }
+                    // Destroy DataTable if exists
+                    if ($.fn.DataTable.isDataTable('#transactionsTable')) {
+                        $('#transactionsTable').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#transactionsBody');
+                    tbody.empty();
+
+                    // 🔹 Handle no data or error message
+                    if (!res.status || !res.data || res.data.length === 0) {
+                        const message = res.message || "No transactions found";
+                        tbody.html(`
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">${message}</td>
+                            </tr>
+                        `);
+                        return;
+                    }
+
+                    // 🔹 Render transaction rows
+                    $.each(res.data, function (i, row) {
+                        tbody.append(`
+                            <tr>
+                                <td>${row.sn ?? ''}</td>
+                                <td>${row.voucherNo ?? ''}</td>
+                                <td>${row.date ?? ''}</td>
+                                <td>${row.accountName ?? ''}</td>
+                                <td>${row.type ?? ''}</td>
+                                <td class="text-end">${(row.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="text-end">${(row.paidAmt ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                <td class="text-end">${(row.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                        `);
+                    });
+
+                    // ✅ Initialize DataTable with export buttons
+                    $('#transactionsTable').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                className: 'btn btn-primary btn-sm'
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                className: 'btn btn-primary btn-sm',
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            }
+                        ],
+                        order: [[0, 'asc']],
+                        pageLength: 5
+                    });
+                },
+                error: function () {
+                    $('#transactionsBody').html(`
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">Error loading data</td>
+                        </tr>
+                    `);
+                }
+            });
+        }
+
 
 
         $(document).ready(function() {

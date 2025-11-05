@@ -624,7 +624,7 @@
         public async Task<IActionResult> GetInvoiceByCustomerId(int id)
         {
             if (id <= 0)
-                return BadRequest(new { status = false, message = "Invalid customer ID" });
+                return Json(new { status = false, message = "Invalid customer ID" });
 
             try
             {
@@ -723,7 +723,7 @@
                 }
 
                 if (invoices.Count == 0)
-                    return NotFound(new { status = false, message = "No invoices found for this customer" });
+                    return Json(new { status = false, message = "No invoices found for this customer" });
 
                 return Ok(new { status = true, data = invoices });
             }
