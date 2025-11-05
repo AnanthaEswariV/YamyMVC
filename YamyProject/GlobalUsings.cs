@@ -19,3 +19,4 @@ global using System.Data;
 global using YamyProject.Core.Models.Enum;
 global using Microsoft.EntityFrameworkCore.Metadata.Internal;
 global using YamyProject.Core.Models;
+global using YamyProject.Controllers.InventoryDoc;

@@ -1,6 +1,6 @@
 ﻿namespace YamyProject.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : DbContext 
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -19,19 +19,15 @@
            .HasForeignKey(d => d.SalesId)
            .HasConstraintName("FK_TblSalesDetail_TblSale");
 
-
             //modelBuilder.Entity<TblTransaction>()
             //  .HasOne(t => t.Sale)
             //  .WithMany(s => s.TblTransactions)
             //  .HasForeignKey(t => t.TransactionId);
-
-
 
             modelBuilder.Entity<TblSale>()
            .HasOne(s => s.Customer)
            .WithMany()
            .HasForeignKey(s => s.CustomerId);
         }
-
     }
 }

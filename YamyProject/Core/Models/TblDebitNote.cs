@@ -6,6 +6,8 @@ namespace YamyProject.Core.Models;
 public partial class TblDebitNote
 {
     public int Id { get; set; }
+    [ForeignKey(nameof(Id))]
+    public virtual TblTransaction? Transaction { get; set; }
 
     public DateOnly? Date { get; set; }
 

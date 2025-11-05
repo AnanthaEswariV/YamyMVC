@@ -21,10 +21,17 @@ builder.Services.AddScoped<ISalesCreateService, SalesCreateService>();
 builder.Services.AddScoped<ISalesQuotationCenterService, SalesQuotationCenterService>();
 builder.Services.AddScoped<ISalesOrderCenterService, SalesOrderCenterService>();
 builder.Services.AddScoped<ISalesProformaCenterService, SalesProformaCenterService>();
+builder.Services.AddScoped<ISalesReturnService, SalesReturnService>();
+builder.Services.AddScoped<IReceiptVoucherService, ReceiptVoucherService>();
+builder.Services.AddScoped<ICreditNoteService, CreditNoteService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<ISalesServices, SalesServices>();
 builder.Services.AddScoped<ISalesCenterService, SalesCenterService>();
 builder.Services.AddScoped<IStockSettlementService, StockSettlementService>();
+builder.Services.AddScoped<IVendorsCenterService, VendorsCenterService>();
+builder.Services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
+builder.Services.AddScoped<IPaymentVoucherService, PaymentVoucherService>();
+builder.Services.AddScoped<IDebitNotesService, DebitNotesService>();
 
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();

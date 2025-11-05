@@ -265,11 +265,13 @@
         //  method to generate invoice number
         public async Task<string> GenerateInvoiceNoAsync()
             {
-            var prefix = "SP-0001"; // Prefix for Credit Note
-            var lastCodeValue = _context.TblSalesProformas
+            var prefix = "0000"; // Prefix for Credit Note
+            var lastCodeValue =await _context.TblSalesProformas
                .Select(s => s.InvoiceId.Substring(3))
                .MaxAsync();
-            return $"SP-{int.Parse(lastCodeValue.Result) + 1:D4}";
+            prefix = lastCodeValue ?? prefix;
+
+            return $"SP-{int.Parse(prefix ) + 1:D4}";
             }
     
       //method to create quotation from proforma + New quotation

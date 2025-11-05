@@ -1,0 +1,744 @@
+﻿@model ReceiptVoucherViewModel
+@{
+    ViewData["Title"] = "Receipt Voucher";
+    }
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<style>
+    .ribbon .btn {
+        min-width: 110px
+    }
+
+    .section-title {
+        font-weight: 600;
+        background: var(--bs-tertiary-bg);
+        padding: .5rem .75rem;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    .fieldset {
+        border: 1px solid var(--bs-border-color);
+        border-radius: .5rem;
+    }
+
+    .toolbar-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: .5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    .tiny {
+        font-size: .85rem
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <!-- Top Tabs -->
+    <ul class="nav nav-tabs mb-2">
+        <li class="nav-item"><a class="nav-link active" href="#">Main</a></li>
+        <li class="nav-item"><a class="nav-link disabled" tabindex="-1">Reports</a></li>
+    </ul>
+
+    <!-- Ribbon -->
+    <div class="ribbon card shadow-sm border-0 mb-3">
+        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-light border"><i class="bi bi-arrow-left-short"></i></button>
+                <div class="toolbar-icon">RV</div>
+                <button type="button" class="btn btn-light border"><i class="bi bi-arrow-right-short"></i></button>
+            </div>
+            <div class="vr"></div>
+
+            <button type="submit" form="rvForm" class="btn btn-primary" id="btnSave"><i class="bi bi-save"></i> Save</button>
+
+            <div class="vr"></div>
+            <button type="button" class="btn btn-outline-secondary" id="btnPrint"><i class="bi bi-printer"></i> Print</button>
+            <div class="form-check tiny">
+                <input class="form-check-input" type="checkbox" id="PrintAfterSave" checked>
+                <label class="form-check-label" for="PrintAfterSave">Print After Save</label>
+            </div>
+            <button type="button" class="btn btn-outline-secondary" id="btnEmail"><i class="bi bi-envelope"></i> Email</button>
+
+            <div class="ms-auto badge text-bg-secondary px-3 py-2">
+                @(Model?.VoucherNo ?? "RV-0000")
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="Create" asp-controller="ReceiptVouchers" method="post" id="rvForm" class="needs-validation" novalidate>
+        @Html.AntiForgeryToken()
+
+        <!-- Header -->
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Date</label>
+                        <input asp-for="Date" class="form-control" type="date" />
+                        <span class="text-danger small" asp-validation-for="Date"></span>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Payment Method</label>
+                        <!-- values: 1=Cash, 2=Cheque, 3=Transfer -->
+                        <select class="form-select" asp-for="PaymentMethod" asp-items="Model.PaymentMethods" id="PaymentMethod"></select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Amount</label>
+                        <input asp-for="Amount" id="Amount" class="form-control text-end" placeholder="0.000" readonly />
+                        <span class="text-danger small" asp-validation-for="Amount"></span>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Amount In Word</label>
+                        <input asp-for="AmountInWords" class="form-control" id="AmountInWords" readonly />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- hidden keys -->
+        <input type="hidden" asp-for="CreditAccountId" id="CreditAccountId" />
+        <input type="hidden" asp-for="CreditCostCenterId" id="CreditCostCenterId" />
+        <input type="hidden" asp-for="DebitAccountId" id="DebitAccountId" />
+        <input type="hidden" asp-for="DebitCostCenterId" id="DebitCostCenterId" />
+        <input type="hidden" asp-for="CustomerId" id="customidId" />
+
+        <!-- Received From - Credit -->
+        <div class="fieldset mb-3">
+            <div class="section-title">Received From - Credit</div>
+            <div class="p-3">
+                <div class="row g-3">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Account Code</label>
+                        <input asp-for="Credit.AccountCode" class="form-control" id="CreditAccountCode" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Account Name</label>
+                        <select class="form-select" asp-for="CreditAccountId"
+                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
+                                id="filterCreditAccount">
+                        </select>
+                        <span class="text-danger" asp-validation-for="CreditAccountId"></span>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Cost Center</label>
+                        <select class="form-select" asp-for="CreditCostCenterId"
+                                asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"
+                                id="filterCreditCostCenter">
+                        </select>
+                    </div>
+                    <div class="col-md-3"></div>
+
+                    <div class="col-12 col-md-2">
+                        <label class="form-label">Customer Code</label>
+                        <input asp-for="Credit.CustomerCode" class="form-control" id="customerCode" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Customer Name</label>
+                        <select class="form-select" asp-for="CustomerId"
+                                asp-items="@(new SelectList(Model.Customers, "Id", "Name"))"
+                                id="filterCustomer">
+                        </select>
+                        <span class="text-danger" asp-validation-for="CustomerId"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Note</label>
+                        <textarea asp-for="Credit.Note" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Received To - Debit -->
+        <div class="fieldset mb-3">
+            <div class="section-title">Received To - Debit</div>
+            <div class="p-3">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Account Code</label>
+                        <input asp-for="Debit.AccountCode" class="form-control" id="DebitAccountCode" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Account Name</label>
+                        <select class="form-select" asp-for="DebitAccountId"
+                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
+                                id="filterDebitAccount">
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Cost Center</label>
+                        <select class="form-select" asp-for="DebitCostCenterId"
+                                asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"
+                                id="filterDebitCostCenter">
+                        </select>
+                    </div>
+
+                    <div class="w-100"></div>
+
+                    <!-- Cheque (hidden by default) -->
+                    <div class="col-12 col-md-3 cheque-only d-none">
+                        <label class="form-label">Cheque Name</label>
+                        <input asp-for="Debit.ChequeName" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-2 cheque-only d-none">
+                        <label class="form-label d-block">Cheque</label>
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox" asp-for="Debit.IsCheque" />
+                            <label class="form-check-label tiny">Is Cheque</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-3 cheque-only d-none">
+                        <label class="form-label">Cheque No</label>
+                        <input asp-for="Debit.ChequeNo" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-3 cheque-only d-none">
+                        <label class="form-label">Cheque Date</label>
+                        <input asp-for="Debit.ChequeDate" type="date" class="form-control" />
+                    </div>
+
+                    <!-- Transfer (hidden by default) -->
+                    <div class="col-12 col-md-3 transfer-only d-none">
+                        <label class="form-label">Transfer Date</label>
+                        <input asp-for="Debit.transferDate" type="date" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-4 transfer-only d-none">
+                        <label class="form-label">TRNS / Name</label>
+                        <input class="form-control" asp-for="Debit.TRNSNAme" />
+                    </div>
+                    <div class="col-12 col-md-4 transfer-only d-none">
+                        <label class="form-label">TRNS / REF</label>
+                        <input class="form-control" asp-for="Debit.TRNSRef" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Grid (target for JS rendering) -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-0" id="invoiceTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:60px">SN#</th>
+                                <th style="width:140px">ID</th>
+                                <th style="width:140px">Date</th>
+                                <th style="width:140px">INV NO</th>
+                                <th style="width:140px" class="text-end">Total</th>
+                                <th style="width:70px" class="text-center">Pay</th>
+                                <th style="width:160px" class="text-end">Payment</th>
+                                <th style="width:140px" class="text-end">Description</th>
+                            
+                            </tr>
+                        </thead>
+                        <tbody><!-- filled by JS --></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Buttons -->
+        <div class="d-flex justify-content-end gap-2">
+            <button type="submit" name="close" value="1" class="btn btn-primary">Save &amp; Close</button>
+            <button type="submit" class="btn btn-secondary">Save</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Close</a>
+        </div>
+    </form>
+</div>
+
+@* @section Scripts {
+    <script>
+        (function(){
+          // -------- Helpers --------
+          function toWordsDemo(n){ return n ? (Number(n).toLocaleString(undefined,{maximumFractionDigits:3}) + ' only') : 'zero'; }
+
+          // Keep AmountInWords in sync
+          const $amount = $('#Amount');
+          const $amountWords = $('#AmountInWords');
+          function syncAmountWords(){
+            const n = parseFloat($amount.val() || '0') || 0;
+            $amountWords.val(toWordsDemo(n));
+          }
+          $amount.on('input', syncAmountWords);
+          syncAmountWords();
+
+          // Print
+          $('#btnPrint').on('click', ()=> window.open('@Url.Action("PrintPreview", "ReceiptVouchers", new { id = Model?.Id })','_blank'));
+
+          // PaymentMethod toggle: 1=Cash, 2=Cheque, 3=Transfer
+          (function () {
+            const $method   = $('#PaymentMethod');
+            const $cheque   = $('.cheque-only');
+            const $transfer = $('.transfer-only');
+
+            function setGroup($el, show){
+              $el.toggleClass('d-none', !show);
+              $el.find('input,select,textarea').prop('disabled', !show);
+              if(!show){
+                $el.find('input[type="text"], input[type="date"], input[type="number"], textarea').val('');
+                $el.find('input[type="checkbox"]').prop('checked', false);
+                $el.find('select').each(function(){ this.selectedIndex = 0; });
+              }
+            }
+            function onChange(val){
+              setGroup($cheque,   val === '2');
+              setGroup($transfer, val === '3');
+            }
+            onChange(String($method.val()));
+            $method.on('change', function(){ onChange(this.value); });
+          })();
+
+          // -------- Customer mirror & invoice loader --------
+          (function(){
+            const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                        Model.Customers.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+                    ));
+        const byId = Object.fromEntries(customers.map(x => [String(x.id), x]));
+        const $sel       = $('#filterCustomer');
+        const $hiddenId  = $('#customidId');
+        const $codeInput = $('#customerCode');
+
+            function syncFromSelect() {
+              const m = byId[String($sel.val())];
+              if (!m) {
+                $codeInput.val('');
+                $hiddenId.val('');
+                return;
+              }
+              $hiddenId.val(String(m.id));
+              $codeInput.val(m.code ?? '');
+            }
+
+            function getCurrentCustomerId(){
+              return Number($sel.val() || $hiddenId.val() || 0) || 0;
+            }
+
+            // 👉 Change action name here if your endpoint is different
+            async function loadInvoicesForCustomer(customerId) {
+              if (!customerId) { alert('Select a customer first.'); return; }
+           //   const url = '@Url.Action("GetInvoiceRowsAsync", "ReceiptVouchers")' + '?customerId=' + encodeURIComponent(customerId);
+            const url = '/ReceiptVouchers/GetInvoiceRowsAsync?customerId=' + encodeURIComponent(customerId);
+
+              debugger
+             const res = await fetch(url, { headers:{'Accept':'application/json'} });
+             if (!res.ok) { alert('Failed to load invoices.'); return; }
+              const rows = await res.json(); // expect [{ id,date,invoiceId,total,totalWithVAT,vat,remaining }]
+              renderInvoiceRows(rows || []);
+              recalcHeaderTotals();
+            }
+
+            // on init
+            (function init(){
+              const pre = $hiddenId.val();
+              if (pre && byId[pre]) $sel.val(pre);
+              syncFromSelect();
+
+              const initialId = getCurrentCustomerId();
+              if (initialId) loadInvoicesForCustomer(initialId);
+
+              // selection changes
+              $sel.on('change', function(){
+                syncFromSelect();
+                loadInvoicesForCustomer(getCurrentCustomerId());
+              });
+
+              // manual code entry
+              $codeInput.on('blur', function(){
+                const val = $(this).val()?.toString() ?? '';
+                if (!val) return;
+                const m = customers.find(c => String(c.code) === val);
+                if (m){
+                  $sel.val(String(m.id));
+                  syncFromSelect();
+                  loadInvoicesForCustomer(m.id);
+                }
+              });
+            })();
+          })();
+
+          // -------- Invoice table render & totals --------
+          function renderInvoiceRows(rows){
+            const $tbody = $('#invoiceTable tbody');
+            $tbody.empty();
+
+            if(!rows.length){
+              $tbody.append('<tr class="text-center text-muted"><td colspan="9">No invoices found for this customer.</td></tr>');
+              return;
+            }
+
+            rows.forEach((r,i)=>{
+              const date = r.date ? new Date(r.date).toISOString().slice(0,10) : '';
+              const total = Number(r.total ?? 0);
+              const net = Number(r.totalWithVAT ?? 0);
+              const remaining = Number(r.remaining ?? 0);
+              debugger
+              $tbody.append(`
+                <tr data-original-remaining="${remaining}">
+                  <td class="text-center">${i+1}</td>
+                  <td><input type="" class="form-control form-control-sm item-humId" name="Items[${i}].humId" value="${r.humId}" readonly></td>
+                  <td><input type="date" class="form-control form-control-sm item-date" name="Items[${i}].InvDate" value="${date}" readonly></td>
+                  <td><input type="text" class="form-control form-control-sm item-invno" name="Items[${i}].InvoiceNo" value="${r.InvoiceNo ?? ''}" readonly></td>
+
+                  <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-total" name="Items[${i}].Total" value="${total.toFixed(2)}" readonly></td>
+                  <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-net" name="Items[${i}].Net" value="${total}" readonly></td>
+                  <td class="text-center"><input type="checkbox" class="form-check-input row-select" name="Items[${i}].Selected"></td>
+                  <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end item-amount" name="tems[${i}].total" value="0.00" data-max="${remaining}" disabled></td>
+                  <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-remaining" name="Items[${i}].Description" value="${}" readonly></td>
+                  <td class="text-center"><a class="btn btn-link btn-sm" href="/Sales/Details/${r.id}" target="_blank">View</a></td>
+                </tr>
+              `);
+            });
+          } 
+
+          // allow only one row selected at a time; when checked, set payment = remaining
+          $('#invoiceTable').on('change', '.row-select', function(){
+            if (this.checked){
+              // uncheck others
+              $('.row-select').not(this).prop('checked', false).trigger('change');
+              // enable amount for this row, disable for others
+              const $tr = $(this).closest('tr');
+              $('.item-amount').prop('disabled', true).val('0.00');
+              const max = Number($tr.data('original-remaining') || 0);
+              $tr.find('.item-amount').prop('disabled', false).val(max.toFixed(2));
+              $tr.find('.item-remaining').val('0.00');
+            } else {
+              const $tr = $(this).closest('tr');
+              const max = Number($tr.data('original-remaining') || 0);
+              $tr.find('.item-amount').prop('disabled', true).val('0.00');
+              $tr.find('.item-remaining').val(max.toFixed(2));
+            }
+            recalcHeaderTotals();
+          });
+
+          // when user edits amount, cap it to remaining and adjust remaining
+          $('#invoiceTable').on('input', '.item-amount', function(){
+            const $tr = $(this).closest('tr');
+            const max = Number($tr.data('original-remaining') || 0);
+            let val = Number(this.value || 0);
+            if (val < 0) val = 0;
+            if (val > max) val = max;
+            this.value = val.toFixed(2);
+            $tr.find('.item-remaining').val((max - val).toFixed(2));
+            recalcHeaderTotals();
+          });
+
+          // header totals
+          window.recalcHeaderTotals = function(){
+            const sum = $('.row-select:checked').length
+              ? $('.row-select:checked').closest('tr').find('.item-amount').toArray().reduce((t,el)=> t + (parseFloat(el.value||'0')||0), 0)
+              : 0;
+            $('#Amount').val(sum.toFixed(3));
+            $('#AmountInWords').val(toWordsDemo(sum));
+          };
+        })();
+    </script>
+} *@
+@section Scripts {
+    <script>
+        (function(){
+          // -------- Helpers --------
+          function toWordsDemo(n){ 
+             // return n ? (Number(n).toLocaleString(undefined,{maximumFractionDigits:3}) + ' only') : 'zero';
+               const v = Number(String(n).replace(/,/g,''));
+              if (!isFinite(v)) return 'zero';
+              const [i, f=''] = v.toFixed(3).split('.');        // keep up to 3 decimals
+              const frac = f.replace(/0+$/,'');                 // trim trailing zeros
+              const fracPart = frac ? ` and ${frac}/${'1'.padEnd(frac.length+1,'0')}` : '';
+              return `${Number(i).toLocaleString()}${fracPart} only`;
+              }
+
+          const $amount = $('#Amount');
+          const $amountWords = $('#AmountInWords');
+          function syncAmountWords(){
+            const n = parseFloat($amount.val() || '0') || 0;
+            $amountWords.val(toWords(n));
+          }
+          $amount.on('input', syncAmountWords);
+          syncAmountWords();
+
+          // Print (leave as-is)
+          $('#btnPrint').on('click', ()=> window.open('@Url.Action("PrintPreview", "ReceiptVouchers", new { id = Model?.Id })','_blank'));
+
+          // PaymentMethod toggle: 1=Cash, 2=Cheque, 3=Transfer
+          (function () {
+            const $method   = $('#PaymentMethod');
+            const $cheque   = $('.cheque-only');
+            const $transfer = $('.transfer-only');
+
+            function setGroup($el, show){
+              $el.toggleClass('d-none', !show);
+              $el.find('input,select,textarea').prop('disabled', !show);
+              if(!show){
+                $el.find('input[type="text"], input[type="date"], input[type="number"], textarea').val('');
+                $el.find('input[type="checkbox"]').prop('checked', false);
+                $el.find('select').each(function(){ this.selectedIndex = 0; });
+              }
+            }
+            function onChange(val){
+              setGroup($cheque,   val === '2');
+              setGroup($transfer, val === '3');
+            }
+            onChange(String($method.val()));
+            $method.on('change', function(){ onChange(this.value); });
+          })();
+
+          // -------- Customer mirror & invoice loader --------
+          (function(){
+            const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                        Model.Customers.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+                    ));
+        const byId = Object.fromEntries(customers.map(x => [String(x.id), x]));
+        const $sel       = $('#filterCustomer');
+        const $hiddenId  = $('#customidId');
+        const $codeInput = $('#customerCode');
+
+            function syncFromSelect() {
+              const m = byId[String($sel.val())];
+              if (!m) {
+                $codeInput.val('');
+                $hiddenId.val('');
+                return;
+              }
+              $hiddenId.val(String(m.id));
+              $codeInput.val(m.code ?? '');
+            }
+
+            function getCurrentCustomerId(){
+              return Number($sel.val() || $hiddenId.val() || 0) || 0;
+            }
+
+            async function loadInvoicesForCustomer(customerId) {
+              if (!customerId) { alert('Select a customer first.'); return; }
+              const url = '/ReceiptVouchers/GetInvoiceRowsAsync?customerId=' + encodeURIComponent(customerId);
+              console.log('FETCH:', url);
+              const res = await fetch(url, { headers:{'Accept':'application/json'} });
+              if (!res.ok) {
+                alert('Failed to load invoices. HTTP ' + res.status);
+                return;
+              }
+              const rows = await res.json(); // expected: [{ sn, humId, date, invoiceNo, amount }]
+              renderInvoiceRows(rows || []);
+          //    recalcHeaderTotals();
+            }
+
+            // init
+            (function init(){
+              const pre = $hiddenId.val();
+              if (pre && byId[pre]) $sel.val(pre);
+              syncFromSelect();
+
+              const initialId = getCurrentCustomerId();
+              if (initialId) loadInvoicesForCustomer(initialId);
+
+              $sel.on('change', function(){
+                syncFromSelect();
+                loadInvoicesForCustomer(getCurrentCustomerId());
+              });
+
+              $codeInput.on('blur', function(){
+                const val = $(this).val()?.toString() ?? '';
+                if (!val) return;
+                const m = customers.find(c => String(c.code) === val);
+                if (m){
+                  $sel.val(String(m.id));
+                  syncFromSelect();
+                  loadInvoicesForCustomer(m.id);
+                }
+              });
+            })();
+          })();
+
+          // -------- Invoice table render & totals --------
+          function renderInvoiceRows(rows){
+            const $tbody = $('#invoiceTable tbody');
+            $tbody.empty();
+
+            if(!rows.length){
+              $tbody.append('<tr class="text-center text-muted"><td colspan="10">No invoices found for this customer.</td></tr>');
+              return;
+            }
+
+            rows.forEach((r,i)=>{
+              // API returns: Date, InvoiceNo, Amount, humId
+              const dateStr = r.date ? new Date(r.date).toISOString().slice(0,10) : '';
+              const amount  = Number(r.amount ?? 0);   // remaining amount from API
+              const idCol   = r.humId ?? '';           // you named it humId in the controller
+
+              $tbody.append(`
+                <tr data-original-remaining="${amount}">
+                  <td class="text-center">${i+1}</td>
+                  <td><input type="text"  class="form-control form-control-sm item-humId"    name="Items[${i}].HumId"     value="${idCol}" readonly></td>
+                  <td><input type="date"  class="form-control form-control-sm item-date"     name="Items[${i}].InvDate"   value="${dateStr}" readonly></td>
+                  <td><input type="text"  class="form-control form-control-sm item-invno"    name="Items[${i}].InvoiceNo" value="${r.invoiceNo ?? ''}" readonly></td>
+
+                  <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-total" name="Items[${i}].Total" value="${amount.toFixed(2)}" readonly></td>
+
+                  <td class="text-center"><input type="checkbox" class="form-check-input row-select" name="Items[${i}].Selected"></td>
+
+                  <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end item-Payment"    name="Items[${i}].Payment"   value="0.00" data-max="${amount}" disabled></td>
+                  <td><input type="text" class="form-control form-control-sm text-end item-Description" name="Items[${i}].Description" ></td>
+
+               
+                </tr>
+              `);
+            });
+          }
+
+             //     <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-net"   name="Items[${i}].Net"   value="${amount.toFixed(2)}" readonly></td>
+              //    <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-net"   name="Items[${i}].Net"   value="${amount.toFixed(2)}" readonly></td>
+          // <td class="text-center">
+                  //   <button type="button" class="btn btn-link btn-sm view-btn" data-invno="${r.invoiceNo ?? ''}">View</button>
+                  // </td>
+
+          // Single-select: only one invoice can be paid at a time
+          $('#invoiceTable').on('change', '.row-select', function(){
+            if (this.checked){
+              // uncheck others
+              
+              $('.row-select').not(this).prop('checked', false).trigger('change');
+              // enable amount for this row, disable others
+              const $tr = $(this).closest('tr');
+              $('.item-amount').prop('disabled', true).val('0.00');
+              const max = Number($tr.data('original-remaining') || 0);
+              $tr.find('.item-Payment').prop('disabled', false).val(max.toFixed(2));
+              $tr.find('.item-remaining').val('0.00');
+            } else {
+              const $tr = $(this).closest('tr');
+              const max = Number($tr.data('original-remaining') || 0);
+              $tr.find('.item-Payment').prop('disabled', true).val('0.00');
+         //     $tr.find('.item-Payment').val(max.toFixed(2));
+            }
+            recalcHeaderTotals();
+          });
+
+          // When user edits amount, cap it to remaining and adjust remaining
+          $('#invoiceTable').on('input', '.item-Payment', function(){
+            const $tr = $(this).closest('tr');
+            const max = Number($tr.data('original-remaining') || 0);
+            let val = Number(this.value || 0);
+            if (val < 0) val = 0;
+            if (val > max) val = max;
+            this.value = val.toFixed(2);
+            $tr.find('.item-remaining').val((max - val).toFixed(2));
+            recalcHeaderTotals();
+          });
+
+          // Header totals
+          window.recalcHeaderTotals = function(){
+            const sum = $('.row-select:checked').length
+              ? $('.row-select:checked').closest('tr').find('.item-Payment').toArray().reduce((t,el)=> t + (parseFloat(el.value||'0')||0), 0)
+              : 0;
+            $('#Amount').val(sum.toFixed(3));
+            $('#AmountInWords').val(toWords(sum));
+          };
+
+          // optional: handle "View" button (adjust to your real details URL)
+          $('#invoiceTable').on('click', '.view-btn', function(){
+            const inv = $(this).data('invno');
+            if (inv) window.open('/Sales/DetailsByInvNo?invNo=' + encodeURIComponent(inv), '_blank');
+          });
+
+        })();
+
+
+                function toWords(n){
+          n = Math.trunc(+String(n).replace(/,/g,'')) || 0;
+          if (n < 0) return 'minus ' + toWords(-n);
+          if (n === 0) return 'zero only';
+          const A=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+          const B=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+          function h(x){ return x<20?A[x]:x<100?B[(x/10|0)]+(x%10?'-'+A[x%10]:''):A[(x/100|0)]+' hundred'+(x%100?' '+h(x%100):''); }
+          function c(x,s){ return x? h(x)+' '+s : ''; }
+          return (c((n/1e12|0),'trillion')+' '+c((n%1e12/1e9|0),'billion')+' '+c((n%1e9/1e6|0),'million')+' '+c((n%1e6/1e3|0),'thousand')+' '+(n%1e3?h(n%1e3):'')).trim()+' only';
+        }
+
+    </script>
+    <script>
+             //get the user id to the input
+            // Build a lookup: id -> { id, code, name }
+                          const Accounts = @Html.Raw(JsonSerializer.Serialize(
+                                   Model.Accounts.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+                                                ));
+    const byAccountId = Object.fromEntries(Accounts.map(x => [String(x.id), x]));
+
+                    const CreditAccountsel       = document.getElementById('filterCreditAccount');
+                    const hiddenCreditId  = document.getElementById('CreditAccountId');   // note your current id is 'customidId'
+                    const CreditAccountcodeInput = document.getElementById('CreditAccountCode');
+          
+                function CreditsyncFromSelect() {
+                      const m = byAccountId[CreditAccountsel.value];
+                  if (!m) { CreditAccountcodeInput.value = ""; return; }
+                      if (hiddenCreditId) hiddenCreditId.value = String(m.id);
+                  CreditAccountcodeInput.value = m.code ?? "";
+            }
+
+            // If you have a pre-selected CustomerId in the hidden field, apply it to the <select> first.
+            (function init() {
+                  const pre = hiddenCreditId?.value;
+                      if (pre && byAccountId[pre]) CreditAccountsel.value = pre;   // set selection from model
+                  CreditsyncFromSelect();
+                      CreditAccountsel.addEventListener('change', CreditsyncFromSelect);
+            })();
+    </script>
+    <script>
+             //get the user id to the input
+            // Build a lookup: id -> { id, code, name }
+                          const Account = @Html.Raw(JsonSerializer.Serialize(
+                                   Model.Accounts.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+                                                ));
+    const byAccountsId = Object.fromEntries(Account.map(x => [String(x.id), x]));
+
+                    const DebitAccountsel       = document.getElementById('filterDebitAccount');
+                    const hiddenDebitId  = document.getElementById('DebitAccountId');   // note your current id is 'customidId'
+                    const DebitAccountcodeInput = document.getElementById('DebitAccountCode');
+          
+                function DebitsyncFromSelect() {
+                      const m = byAccountsId[DebitAccountsel.value];
+                  debugger
+                  if (!m) { DebitAccountcodeInput.value = ""; return; }
+                      if (hiddenDebitId) hiddenDebitId.value = String(m.id);
+                  DebitAccountcodeInput.value = m.code ?? "";
+            }
+
+            // If you have a pre-selected CustomerId in the hidden field, apply it to the <select> first.
+            (function init() {
+                  const pre = hiddenDebitId?.value;
+                      if (pre && byAccountsId[pre]) DebitAccountsel.value = pre;   // set selection from model
+                  DebitsyncFromSelect();
+                      DebitAccountsel.addEventListener('change', DebitsyncFromSelect);
+            })();
+    </script>
+    <script>
+             //get the user id to the input
+            // Build a lookup: id -> { id, code, name }
+            const CostCenters = @Html.Raw(JsonSerializer.Serialize(
+                                Model.CostCenters.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+                                 ));
+            const byCostId = Object.fromEntries(CostCenters.map(x => [String(x.id), x]));
+
+                    const Costsel       = document.getElementById('filterDebitCostCenter');
+                    const hiddenCostCenterId  = document.getElementById('DebitCostCenterId');   // note your current id is 'customidId'
+          
+            function syncFromSelect() {
+              const m = byCostId[Costsel.value];
+              if (!m) { codeInput.value = ""; return; }
+              if (hiddenCostCenterId) hiddenCostCenterId.value = String(m.id);
+            }
+
+            // If you have a pre-selected CustomerId in the hidden field, apply it to the <select> first.
+            (function init() {
+                  const pre = hiddenCostCenterId?.value;
+              if (pre && bybyCostId[pre]) Costsel.value = pre;   // set selection from model
+              syncFromSelect();
+          Costsel.addEventListener('change', syncFromSelect);
+            })();
+    </script>
+
+}

@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblPurchaseReturn
 {
     public int Id { get; set; }
+    public virtual TblTransaction? Transaction { get; set; }
 
     public DateOnly Date { get; set; }
 
     public int VendorId { get; set; }
 
+    [ForeignKey(nameof(VendorId))]
+    public virtual TblVendor? Vendor { get; set; }
     public string InvoiceId { get; set; } = null!;
 
     public int WarehouseId { get; set; }
@@ -28,6 +28,7 @@ public partial class TblPurchaseReturn
     public string? ShipVia { get; set; }
 
     public string ShipTo { get; set; } = null!;
+    public string Description { get; set; } = null!;
 
     public string PaymentMethod { get; set; } = null!;
 
@@ -36,6 +37,7 @@ public partial class TblPurchaseReturn
     public string PaymentTerms { get; set; } = null!;
 
     public DateOnly PaymentDate { get; set; }
+    public int PurchaseRefId { get; set; }
 
     public decimal Total { get; set; }
 
@@ -58,4 +60,6 @@ public partial class TblPurchaseReturn
     public int State { get; set; }
 
     public int ProjectId { get; set; }
-}
+    public virtual ICollection<TblPurchaseReturnDetail>? PurchaseReturnDetail { get; set; }
+
+    }

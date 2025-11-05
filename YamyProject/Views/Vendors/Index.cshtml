@@ -1,188 +1,372 @@
 ﻿@model IEnumerable<VendorIndexViewModel>
 @{
     ViewData["Title"] = "Vendor Center";
- }
+
+    // Optional dynamic payloads (so you can keep IEnumerable<> as the model)
+    var sel = ViewBag.SelectedVendor as VendorDetailViewModel;
+    var txns = ViewBag.Transactions as IEnumerable<VendorTxnViewModel>;
+    var cash = ViewBag.CashInvoices as IEnumerable<CashInvoiceListViewModel>;
+    }
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<style>
+    .vendor-wrap {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 14px;
+    }
+
+    .list-header {
+        background: #f8f9fb;
+        border: 1px solid #e9ecef;
+        border-radius: .5rem .5rem 0 0;
+    }
+
+    .vendor-list {
+        border: 1px solid #e9ecef;
+        border-top: 0;
+        height: calc(100vh - 220px);
+        overflow: auto;
+    }
+
+    .vendor-item {
+        cursor: pointer;
+        padding: .5rem .75rem;
+        border-bottom: 1px solid #f1f3f5;
+        display: flex;
+        justify-content: space-between;
+        gap: .5rem;
+    }
+
+        .vendor-item.active, .vendor-item:hover {
+            background: #eef4ff;
+        }
+
+    .amount {
+        min-width: 90px;
+        text-align: right;
+        color: #198754;
+    }
+
+    .table thead th {
+        background: #f1f3f5;
+        font-weight: 600;
+    }
+
+    .sticky-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .key {
+        width: 170px;
+        color: #6c757d;
+    }
+
+    .value {
+        font-weight: 500;
+    }
+</style>
 
 <div class="container-fluid mt-3">
     <!-- Top Menu -->
     <div class="d-flex justify-content-between align-items-center bg-light p-2 border rounded">
-        <div class="dropdown">
-            <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
-                Vender Operations
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item">New Vender</a></li>
-                <li><a class="dropdown-item">Edit Vender</a></li>
-                <li><a class="dropdown-item">Delete Vender</a></li>
+        <div class="d-flex gap-2">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+                    Vendor Operations
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" asp-action="Create" asp-controller="Vendor">New Vendor</a></li>
+                    <li><a class="dropdown-item" asp-action="Index" asp-controller="Vendor">Edit Vendor</a></li>
+                </ul>
+            </div>
 
-            </ul>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+                    New Transactions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" asp-controller="Purchase" asp-action="CreateInvoice">Purchase Invoice</a></li>
+                    <li><a class="dropdown-item" asp-controller="Cash" asp-action="ReceivePayment">Receive Payment</a></li>
+                </ul>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    Print
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Vendor List</a></li>
+                    <li><a class="dropdown-item" href="#">Transaction List – Credit & Payment</a></li>
+                    <li><a class="dropdown-item" href="#">Transaction List – Cash</a></li>
+                </ul>
+            </div>
         </div>
 
-        <div class="dropdown">
-            <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
-                New Transactions
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item">Create Invoice</a></li>
-                <li><a class="dropdown-item">Receive Payment</a></li>
-            </ul>
-        </div>
-
-        <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                Print
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Vender List</a></li>
-                <li class="dropdown-submenu">
-                    <a class="dropdown-item dropdown-toggle" href="#">Transaction List</a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Credit & Payment</a></li>
-                        <li><a class="dropdown-item" href="#">Cash</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-
-        <div>
-            <input type="text" class="form-control form-control-sm" placeholder="Search by Name, Code" />
+        <div class="input-group input-group-sm" style="max-width:360px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input id="txtSearch" class="form-control" placeholder="Search by Name, Code">
+            <button class="btn btn-outline-secondary" id="btnClear"><i class="bi bi-x-lg"></i></button>
         </div>
     </div>
 
-    <div class="row mt-3">
-        <!-- Left Panel: Vender List -->
-        <div class="col-md-3">
-            <div class="card">
-                <div class="card-header bg-light">
-                    Active Vender
+    <div class="vendor-wrap mt-3">
+        <!-- Left Panel: Vendor List -->
+        <div>
+            <div class="list-header p-2 rounded-top">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Active Vendor</span>
+                    <span class="text-muted small">(@(Model?.Count() ?? 0))</span>
                 </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                       @*  @foreach (var Vender in Model)
+            </div>
+
+            <!-- FIX: id="vendorList" -->
+            <div class="vendor-list bg-white" id="vendorList">
+                <div class="d-flex fw-semibold px-3 py-2 border-bottom">
+                    <div class="flex-grow-1">Name</div>
+                    <div class="amount">Amount</div>
+                </div>
+
+                @if (Model?.Any() == true)
+                    {
+                    foreach (var v in Model)
                         {
-                            <li class="list-group-item">
-                                <a href="@Url.Action("Details", "Vender", new { id = Vender.Id })">
-                                    @Vender.Name (@Vender.Code)
-                                </a>
-                            </li>
-                        } *@
-                    </ul>
-                </div>
+                        var isActive = (sel?.Id == v.Id) ? "active" : "";
+                        <!-- FIX: data-id with vendor id -->
+                        <div class="text-decoration-none text-body vendor-item @isActive" data-id="@v.Id">
+                            <span class="text-truncate flex-grow-1" title="@($"{v.Code} - {v.Name}")">
+                                @v.Code - @v.Name
+                            </span>
+                            <span class="amount">@v.Amount.ToString("N3")</span>
+                        </div>
+                        }
+                    }
+                else
+                    {
+                    <div class="p-3 text-muted">No vendors found.</div>
+                    }
             </div>
         </div>
 
-        <!-- Right Panel: Vender Info -->
-        <div class="col-md-9">
-            <div class="card mb-3">
-                <div class="card-header">
-                    Vender Information
-                </div>
-                <div class="card-body">
-                  @*   @foreach (var Vender in Model)
+        <!-- Right Panel: Vendor Info -->
+        <div class="card shadow-sm">
+           @*  <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Vendor Information</h6>
+                @if (sel != null)
                     {
-                        <div>
-                            <tr>
-                                <label>Vender Code     : @Vender.Code</label>
-                                <td>Vender Name     : @Vender.Name</td>
-                                <td>TRN               : @Vender.</td>
-                                <td>Email             : @Vender.Email</td>
-                                <td>Work Phone        : @Vender.WorkPhone</td>
-                                <td>Vender Category : @Vender.CatIdNavigation.Name</td>
-                                <td>Main Phone        : @Vender.MainPhone</td>
-                                 <td>Address           : @Vender.Balance</td>
-                                  <td>
-                                <a asp-action="Details" asp-route-id="@Vender.Id" class="btn btn-sm btn-primary">Details</a>
-                                <a asp-action="Edit" asp-route-id="@Vender.Id" class="btn btn-sm btn-warning">Edit</a>
-                                <form asp-action="Delete" asp-route-id="@Vender.Id" method="post" style="display:inline;">
-                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                </form>
-                            </td> 
-                             </tr>
-                        </div> 
-                    } *@
-                @*      <p><strong>Vender Code:</strong> @Model.SelectedVender.Code</p>
-                    <p><strong>Name:</strong> @Model.SelectedVender.Name</p>
-                    <p><strong>TRN:</strong> @Model.SelectedVender.TRN</p>
-                    <p><strong>Email:</strong> @Model.SelectedVender.Email</p>
-                    <p><strong>Work Phone:</strong> @Model.SelectedVender.WorkPhone</p>
-                    <p><strong>Category:</strong> @Model.SelectedVender.Category</p>
-                    <p><strong>Address:</strong> @Model.SelectedVender.Address</p>
-                   <p><strong>Main Phone:</strong> @Model.SelectedVender.MainPhone</p> *@
-                 </div>
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-controller="Vendor" asp-route-id="@sel.Id">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    }
+            </div> *@
+
+            <div class="card-body">
+             @*    @if (sel == null)
+                    {
+                    <div class="text-muted">Choose a vendor from the left to view details.</div>
+                    }
+                else
+                    { *@
+                    <div class="col-12">
+                        <div id="vendorHeader" class="mb-3">
+                            <!-- filled by JS -->
+                            <div class="placeholder-glow">
+                                <span class="placeholder col-3"></span>
+                                <span class="placeholder col-2"></span>
+                                <span class="placeholder col-4"></span>
+                            </div>
+                        </div>
+
+                        <ul class="nav nav-tabs" id="vendorTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="transactions-tab" data-bs-toggle="tab"
+                                        data-bs-target="#transactions-pane" type="button" role="tab">
+                                    Transactions
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="cash-tab" data-bs-toggle="tab"
+                                        data-bs-target="#cash-pane" type="button" role="tab">
+                                    Cash invoice
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content border-start border-end border-bottom p-2">
+                            <div class="tab-pane fade show active" id="transactions-pane" role="tabpanel">
+                                <div id="transactionsTable"></div>
+                            </div>
+                            <div class="tab-pane fade" id="cash-pane" role="tabpanel">
+                                <div id="cashTable"></div>
+                            </div>
+                        </div>
+                    </div>
+                    @* } *@
             </div>
-
-            <!-- Tabs -->
-            <ul class="nav nav-tabs" id="VenderTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" data-bs-toggle="tab" href="#transactions">Transactions</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#cashInvoice">Cash Invoice</a>
-                </li>
-            </ul>
-
-            <div class="tab-content border p-3">
-                <!-- Transactions -->
-                <div class="tab-pane fade show active" id="transactions">
-                    <table class="table table-striped table-sm">
-                        <thead>
-                            <tr>
-                                <th>SN#</th>
-                                <th>Date</th>
-                                <th>Voucher No</th>
-                                <th>Voucher Type</th>
-                                <th>Description</th>
-                                <th>Debit</th>
-                                <th>Credit</th>
-                                <th>Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @*  @foreach (var txn in Model.Transactions)
-                            {
-                                <tr>
-                                    <td>@txn.SerialNumber</td>
-                                    <td>@txn.Date.ToShortDateString()</td>
-                                    <td>@txn.VoucherNo</td>
-                                    <td>@txn.VoucherType</td>
-                                    <td>@txn.Description</td>
-                                    <td>@txn.Debit</td>
-                                    <td>@txn.Credit</td>
-                                    <td>@txn.Balance</td>
-                                </tr>
-                            } *@
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Cash Invoice -->
-                <div class="tab-pane fade" id="cashInvoice">
-                    <table class="table table-striped table-sm">
-                        <thead>
-                            <tr>
-                                <th>SN#</th>
-                                <th>Date</th>
-                                <th>Invoice No</th>
-                                <th>Description</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @*   @foreach (var invoice in Model.CashInvoices)
-                            {
-                                <tr>
-                                    <td>@invoice.SerialNumber</td>
-                                    <td>@invoice.Date.ToShortDateString()</td>
-                                    <td>@invoice.InvoiceNo</td>
-                                    <td>@invoice.Description</td>
-                                    <td>@invoice.Total</td>
-                                </tr> 
-                            }*@
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>
+
+    @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        (function () {
+          const $header = $('#vendorHeader');
+          const $trx = $('#transactionsTable');
+          const $cash = $('#cashTable');
+          let currentVendorId = null;
+          let isLoading = false;
+
+          // Search
+          $('#txtSearch').on('input', function(){
+            const q = this.value.toLowerCase();
+            $('#vendorList .vendor-item').each(function(){
+              const t = $(this).text().toLowerCase();
+              $(this).toggle(t.includes(q));
+            });
+          });
+          $('#btnClear').on('click', function(){ $('#txtSearch').val('').trigger('input'); });
+
+          // Delegated click on left rows (works for current/future rows)
+          $(document).on('click', '#vendorList .vendor-item', async function () {
+            if (isLoading) return;
+
+            const id = Number($(this).data('id'));
+            if (!id || id === currentVendorId) return;
+
+            currentVendorId = id;
+            $('#vendorList .vendor-item.active').removeClass('active');
+            $(this).addClass('active');
+            showLoading();
+
+            try {
+              const [hRes, tRes, cRes] = await Promise.all([
+                fetch(`/Vendors/Header?id=${encodeURIComponent(id)}`, { headers:{ 'Accept':'application/json' } }),
+                fetch(`/Vendors/Transactions?vendorId=${encodeURIComponent(id)}`, { headers:{ 'Accept':'application/json' } }),
+                fetch(`/Vendors/Cash?vendorId=${encodeURIComponent(id)}`, { headers:{ 'Accept':'application/json' } })
+              ]);
+              if (!hRes.ok || !tRes.ok || !cRes.ok) throw new Error('Load failed');
+
+              const [header, rowsTrx, rowsCash] = await Promise.all([hRes.json(), tRes.json(), cRes.json()]);
+              renderHeader(header);
+              renderTransactions(rowsTrx || []);
+              // supports either array or { rows: [...] }
+              renderCash(Array.isArray(rowsCash) ? rowsCash : (rowsCash?.rows || []));
+            } catch (e) {
+              console.error(e);
+              $header.html(`<div class="text-danger">Failed to load vendor data.</div>`);
+              $trx.empty(); $cash.empty();
+            } finally {
+              hideLoading();
+            }
+          });
+
+          function showLoading(){
+            isLoading = true;
+            $header.html(`<div class="spinner-border spinner-border-sm me-2"></div> Loading vendor...`);
+            $trx.html(`<div class="text-muted">Loading transactions...</div>`);
+            $cash.html(`<div class="text-muted">Loading cash invoices...</div>`);
+          }
+          function hideLoading(){ isLoading = false; }
+
+          function renderHeader(h){
+            const safe = s => (s ?? '-');
+            const num = n => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 });
+
+            $header.html(`
+              <div class="row g-2">
+                <div class="col-3"><strong>Vendor Code</strong><div>${safe(h.code)}</div></div>
+                <div class="col-5"><strong>Vendor Name</strong><div>${safe(h.name)}</div></div>
+                <div class="col-2"><strong>TRN</strong><div>${safe(h.trn)}</div></div>
+                <div class="col-2"><strong>Balance</strong><div>${num(h.balance)}</div></div>
+
+                <div class="col-3"><strong>Work Phone</strong><div>${safe(h.workPhone)}</div></div>
+                <div class="col-3"><strong>Main Phone</strong><div>${safe(h.mainPhone)}</div></div>
+                <div class="col-3"><strong>Vendor Category</strong><div>${safe(h.category)}</div></div>
+                <div class="col-3"><strong>Region</strong><div>${safe(h.region)}</div></div>
+
+                <div class="col-6"><strong>Email</strong><div>${safe(h.email)}</div></div>
+                <div class="col-6"><strong>Address</strong><div class="text-truncate">${safe(h.address)}</div></div>
+              </div>
+            `);
+          }
+
+          function renderTransactions(rows){
+            if (!rows.length) { $trx.html(`<div class="text-muted">No transactions.</div>`); return; }
+            let i = 0;
+            const html = [
+              `<div class="table-responsive"><table class="table table-sm table-striped align-middle">
+                <thead><tr>
+                  <th>SN#</th><th>Date</th><th>Voucher No</th><th>Voucher Type</th>
+                  <th>Description</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th>
+                </tr></thead><tbody>`
+            ];
+            for (const r of rows){
+              html.push(`<tr>
+                <td>${++i}</td>
+                <td>${fmtDate(r.date)}</td>
+                <td>${safe(r.voucherNo)}</td>
+                <td>${safe(r.voucherType)}</td>
+                <td>${safe(r.description)}</td>
+                <td class="text-end">${fmtAmt(r.debit)}</td>
+                <td class="text-end">${fmtAmt(r.credit)}</td>
+                <td class="text-end">${fmtAmt(r.balance)}</td>
+              </tr>`);
+            }
+            html.push(`</tbody></table></div>`);
+            $trx.html(html.join(''));
+          }
+
+          function renderCash(rows){
+            if (!rows.length) { $cash.html(`<div class="text-muted">No cash invoices.</div>`); return; }
+            let i = 0, total = 0;
+            const body = rows.map(r => {
+              const amt = Number(r.amount) || 0;
+              total += amt;
+              return `<tr>
+                <td>${++i}</td>
+                <td>${safe(r.voucherNo)}</td>
+                <td>${fmtDate(r.date)}</td>
+                <td>${safe(r.accountName)}</td>
+                <td>${safe(r.voucherType)}</td>
+                <td class="text-end">${fmtAmt(amt)}</td>
+              </tr>`;
+            }).join('');
+
+            $cash.html(`
+              <div class="table-responsive"><table class="table table-sm table-striped align-middle">
+                <thead><tr>
+                  <th>Sn</th><th>V - No</th><th>Date</th><th>Account Name</th><th>Type</th><th class="text-end">Amount</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+                <tfoot><tr>
+                  <th colspan="5" class="text-end">Total</th>
+                  <th class="text-end">${fmtAmt(total)}</th>
+                </tr></tfoot>
+              </table></div>
+            `);
+          }
+
+          // utils
+          function safe(v){ return (v ?? ''); }
+          function fmtAmt(n){ return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3}); }
+          function fmtDate(d){
+            if(!d) return '';
+            const dt = (typeof d === 'string' || d instanceof String) ? new Date(d) : d;
+            if(Number.isNaN(dt.getTime())) return '';
+            return dt.toLocaleDateString();
+          }
+
+          // Auto-select first vendor on load
+          $(function(){
+            const $first = $('#vendorList .vendor-item:first');
+            if($first.length) $first.trigger('click');
+          });
+        })();
+    </script>
+    }

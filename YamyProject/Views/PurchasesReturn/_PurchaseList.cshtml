@@ -1,0 +1,38 @@
+﻿@model IEnumerable<SalesListRowViewModel>
+
+<table class="table table-sm table-hover" id="salesListTable">
+    <thead class="table-light">
+        <tr>
+            <th style="width:140px">Inv</th>
+            <th style="width:140px">Date</th>
+            <th class="text-end" style="width:160px">Amount</th>
+            <th style="width:90px"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var r in Model)
+            {
+            <tr data-id="@r.Id" style="cursor:pointer">
+                <td>@r.Inv</td>
+                <td>@r.Date.ToString("M/d/yyyy")</td>
+                <td class="text-end">@r.Amount.ToString("0.###")</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-sm js-select">Select</button>
+                </td>
+            </tr>
+            }
+    </tbody>
+</table>
+
+<script>
+    (function(){
+      const $tbl = $('#salesListTable');
+      function choose(tr){
+        const id = $(tr).data('id');
+        window.dispatchEvent(new CustomEvent('sales:selected',{ detail:{ id } }));
+
+      }
+      $tbl.on('dblclick','tbody tr', function(){ choose(this);      });
+      $tbl.on('click','.js-select', function(){ choose($(this).closest('tr')); });
+    })();
+</script>

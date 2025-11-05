@@ -1,0 +1,371 @@
+﻿@model CreditNoteViewModel
+@{
+    ViewData["Title"] = "Credit Note";
+    }
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+<style>
+    .toolbar {
+        background: #f8f9fb;
+        border: 1px solid #e5e7eb
+    }
+
+        .toolbar .btn {
+            min-width: 86px
+        }
+
+    .strip {
+        background: #e9eff8;
+        border: 1px solid #d7e2f1
+    }
+
+    .table thead th {
+        background: #f1f3f5;
+        font-weight: 600
+    }
+
+    .w-120 {
+        width: 120px
+    }
+
+    .w-160 {
+        width: 160px
+    }
+
+    .w-90 {
+        width: 90px
+    }
+</style>
+
+<div class="container-fluid p-2">
+    <!-- Toolbar -->
+    <div class="toolbar rounded p-2 mb-2 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group">
+                <a class="btn btn-outline-secondary" asp-action="Prev" title="Previous"><i class="fa fa-arrow-left"></i></a>
+                <span class="px-3 text-muted small border rounded bg-white">…</span>
+                <a class="btn btn-outline-secondary" asp-action="Next" title="Next"><i class="fa fa-arrow-right"></i></a>
+            </div>
+            <button type="submit" form="creditForm" class="btn btn-outline-success">
+                <i class="fa fa-floppy-disk me-1"></i> Save
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="btnPrint">
+                <i class="fa fa-print me-1"></i> Print
+            </button>
+            <div class="form-check ms-2">
+                <input class="form-check-input" type="checkbox" asp-for="PrintCreditAfterSave" id="chkPrintAfter" />
+                <label class="form-check-label small" for="chkPrintAfter">Print Credit After Save</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer strip -->
+    <input type="hidden" asp-for="CustomerId" id="CustomerIdHidden" />
+
+    <div class="strip rounded px-3 py-2 mb-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap w-100">
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 small text-muted">Customer Code</label>
+                <input class="form-control form-control-sm w-160" asp-for="CustomerCode" id="customerCode" />
+            </div>
+
+            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                <label class="form-label mb-0 small text-muted">Customer</label>
+                <select class="form-select form-select-sm"
+                        asp-for="CustomerId"
+                        asp-items="@(new SelectList(Model?.Customers , "Id", "Name"))"
+                        id="filterCustomer"></select>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-sm ms-auto" id="btnShowBill">
+                Show Invoice
+            </button>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form id="creditForm" method="post" asp-action="Create" asp-controller="MasterCreditNote">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        @if (Model?.Id > 0)
+            {
+            <input type="hidden" asp-for="Id" />
+            }
+
+        <div class="row g-3 mb-2">
+            <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-control" asp-for="Date" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">INVOICE #</label>
+                <input type="text" class="form-control" asp-for="InvoiceNo" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Debit Account</label>
+                <select class="form-select" asp-for="DebitAccountId"
+                        asp-items="@(new SelectList(Model?.DebitAccounts , "Id", "Name"))">
+                    <option value="">-- select --</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">VAT %</label>
+                <input class="form-control" asp-for="Vat" step="0.01" id="Vat" value="5" readonly />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Amount</label>
+                <input type="number" step="0.01" class="form-control" asp-for="Amount" id="Amount" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Total Amount</label>
+                <input type="number" step="0.01" class="form-control" asp-for="TotalAmount" id="TotalAmount" readonly />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control" asp-for="Description" />
+            </div>
+        </div>
+
+        <!-- Grid -->
+        <div class="table-responsive border rounded">
+            <table class="table table-sm table-striped table-hover align-middle mb-0" id="invoiceTable">
+                <thead>
+                    <tr>
+                        <th class="text-center w-90">#</th>
+                        <th class="w-120">INV Date</th>
+                        <th class="w-160">Invoice No</th>
+                        <th>Total</th>
+                        <th>Balance</th>
+                        <th class="text-center w-90">Select</th>
+                        <th>Amount</th>
+                        <th>Remaining</th>
+                        <th class="text-center w-90">View</th>
+                        <th class="text-center w-90">DEL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="text-center text-muted">
+                        <td colspan="10">No invoices loaded. Click “Show Invoice”.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="fa fa-floppy-disk me-1"></i> Save
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary px-4">Close</a>
+        </div>
+    </form>
+</div>
+
+    @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        (()=>{
+
+          // ---------- Customer select <-> code sync ----------
+          const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                                    (Model?.Customers )
+                                                        .Select(c => new { id = c.Id, code = c.Code, name = c.Name })));
+      const byId = Object.fromEntries(customers.map(x => [String(x.id), x]));
+
+          const $sel = $('#filterCustomer');
+          const $hiddenId = $('#CustomerIdHidden');
+          const $code = $('#customerCode');
+
+          function syncFromSelect(){
+            const m = byId[$sel.val()];
+            if(!m){ $code.val(''); return; }
+            $hiddenId.val(String(m.id));
+            $code.val(m.code ?? '');
+          }
+
+          // init
+          (function(){
+            const pre = $hiddenId.val();
+            if (pre && byId[pre]) $sel.val(pre);
+            syncFromSelect();
+            $sel.on('change', syncFromSelect);
+          })();
+
+          // ---------- Totals ----------
+          function recalcHeaderTotals(){
+            let sum = 0;
+            $('#invoiceTable tbody .item-amount').each(function(){
+              const v = parseFloat($(this).val());
+              if(!Number.isNaN(v)) sum += v;
+            });
+            const vatPct = parseFloat($('#Vat').val() || 0);
+            const gross = sum + sum * (vatPct/100);
+            $('#Amount').val(sum.toFixed(2));
+            $('#TotalAmount').val(gross.toFixed(2));
+          }
+          $(document).on('input change', '#Vat', recalcHeaderTotals);
+
+          // ---------- Load invoices ----------
+          $(document).on('click', '#btnShowBill', async function(e){
+            e.preventDefault();
+            let customerId = $(this).data('customer-id')
+                          || $sel.val()
+                          || $('#CustomerId').val()
+                          || $hiddenId.val();
+            customerId = Number(customerId);
+            if(!customerId){ alert('Select a customer first.'); return; }
+
+            const url = '@Url.Action("GetInvoiceDetails", "CreditNotes")' + '?customerId=' + encodeURIComponent(customerId);
+            debugger
+            const res = await fetch(url, { headers:{'Accept':'application/json'} });
+            if(!res.ok){ alert('Failed to load invoices.'); return; }
+            const rows = await res.json(); // [{ id,date,invoiceId,total,totalWithVAT,vat,remaining }]
+
+            renderInvoiceRows(rows || []);
+            recalcHeaderTotals();
+          });
+
+          // ---------- Render rows ----------
+          function renderInvoiceRows(rows){
+            const $tbody = $('#invoiceTable tbody');
+            $tbody.empty();
+
+            if(rows.length === 0){
+              $tbody.append(`<tr class="text-center text-muted"><td colspan="10">No invoices found for this customer.</td></tr>`);
+              return;
+            }
+
+            rows.forEach((r,i)=>{
+              const date = r.date ? new Date(r.date).toISOString().slice(0,10) : '';
+              const total = Number(r.total ?? 0);
+              const balance = Number(r.totalWithVAT ?? 0); // Net
+              const remaining = Number(r.remaining ?? 0);
+              const vat = Number(r.vat ?? 0);
+
+              $tbody.append(`
+                <tr data-original-remaining="${remaining}">
+                  <td class="text-center">${i+1}</td>
+
+                  <td>
+                    <input type="date" class="form-control form-control-sm item-date"
+                           name="Items[${i}].InvDate" value="${date}" readonly>
+                  </td>
+
+                  <td>
+                    <input type="text" class="form-control form-control-sm item-invno"
+                           name="Items[${i}].InvoiceNo" value="${r.invoiceId ?? ''}" readonly>
+                  </td>
+
+                  <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm item-total"
+                           name="Items[${i}].Total" value="${total.toFixed(2)}" readonly>
+                  </td>
+
+                  <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm item-balance"
+                           name="Items[${i}].Balance" value="${balance.toFixed(2)}" readonly>
+                  </td>
+
+                  <td class="text-center">
+                    <input type="checkbox" class="form-check-input row-select" name="Items[${i}].Selected">
+                  </td>
+
+                  <td>
+                    <input step="0.01" min="0" class="form-control form-control-sm item-amount"
+                           name="Items[${i}].Amount" value="0.00" data-max="${remaining}" disabled>
+                  </td>
+
+                  <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm item-remaining"
+                           name="Items[${i}].Remaining" value="${remaining.toFixed(2)}" readonly>
+                  </td>
+
+                  <td class="text-center">
+                    <a class="btn btn-link btn-sm" href="/Sales/Details/${r.id}" target="_blank">View</a>
+                  </td>
+
+                  <td class="text-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-del-row" title="Remove row">
+                      <i class="fa fa-trash-can"></i>
+                    </button>
+                  </td>
+
+                  <td style="display:none">
+                    <input type="hidden" name="Items[${i}].SaleId" value="${r.id}">
+                    <input type="hidden" name="Items[${i}].Vat"    value="${vat}">
+                  </td>
+                </tr>
+              `);
+            });
+          }
+
+          // ---------- Row interactions ----------
+          $(document).on('change', '#invoiceTable .row-select', function(){
+            const $tr = $(this).closest('tr');
+            const $amt = $tr.find('.item-amount');
+            const $rem = $tr.find('.item-remaining');
+            const original = Number($tr.data('original-remaining') || 0);
+               const $changed = $(this).closest('tr');
+
+            if(this.checked){
+                $amt.prop('disabled', false).focus();
+                      $('#invoiceTable tbody tr').not($changed).each(function(){
+              resetRow($(this));
+            });
+        }
+              else { $amt.val('0.00').prop('disabled', true);  resetRow($changed);}
+
+            const val = Number($amt.val() || 0);
+            $rem.val(Math.max(0, original - val).toFixed(2));
+            recalcHeaderTotals();
+          });
+
+          $(document).on('input', '#invoiceTable .item-amount', function(){
+            const $tr = $(this).closest('tr');
+            const max = Number($(this).data('max') || 0);
+            let val = Number($(this).val() || 0);
+            if(val < 0) val = 0;
+            if(val > max) val = max;
+            $(this).val(val.toFixed(2));
+
+            const original = Number($tr.data('original-remaining') || 0);
+            $tr.find('.item-remaining').val(Math.max(0, original - val).toFixed(2));
+            recalcHeaderTotals();
+          });
+
+          $(document).on('click', '#invoiceTable .btn-del-row', function(){
+            $(this).closest('tr').remove();
+            reindexRows();
+                toggleDelBtns();
+            recalcHeaderTotals();
+          });
+
+          function reindexRows(){
+            $('#invoiceTable tbody tr').each(function(i){
+              $(this).find('td:first').text(i+1);
+              $(this).find('input,select,textarea').each(function(){
+                const name = $(this).attr('name'); if(!name) return;
+                $(this).attr('name', name.replace(/Items\[\d+\]\./, `Items[${i}].`));
+              });
+            });
+          }
+          function toggleDelBtns(){
+          const $rows = $('#invoiceTable tbody tr');
+          const disable = $rows.length <= 1;        // only one row -> disable
+          $rows.find('.btn-del-row').prop('disabled', disable).toggleClass('disabled', disable);
+        }
+          function resetRow($tr){
+          const original = Number($tr.data('original-remaining') || 0);
+          $tr.find('.row-select').prop('checked', false);
+          $tr.find('.item-amount').val('0.00').prop('disabled', true);
+          $tr.find('.item-remaining').val(original.toFixed(2));
+        }
+
+          // Print
+          $('#btnPrint').on('click', ()=> window.print());
+
+        })();
+
+    </script>
+}

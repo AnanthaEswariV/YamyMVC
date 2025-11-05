@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblVendor
 {
-    public int Id { get; set; }
+    public int Id { get; set; }   
 
     public int Code { get; set; }
 

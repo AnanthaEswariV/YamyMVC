@@ -6,7 +6,7 @@ public partial class TblCostCenterTransaction
 
     public string Type { get; set; } = null!;
 
-    public DateTime? Date { get; set; }
+    public DateOnly? Date { get; set; }
 
     public int? RefId { get; set; }
 

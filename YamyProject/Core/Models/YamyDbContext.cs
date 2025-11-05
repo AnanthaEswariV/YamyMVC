@@ -10,9 +10,7 @@ public partial class YamyDbContext : DbContext
     public YamyDbContext()
     {
     }
-
-    public YamyDbContext(DbContextOptions<YamyDbContext> options)
-        : base(options)
+    public YamyDbContext(DbContextOptions<YamyDbContext> options) : base(options)
     {
     }
 
@@ -904,7 +902,7 @@ public partial class YamyDbContext : DbContext
                 .HasDefaultValueSql("'0.0000'")
                 .HasColumnName("credit");
             entity.Property(e => e.Date)
-                .HasColumnType("datetime")
+                .HasColumnType("DateOnly")
                 .HasColumnName("date");
             entity.Property(e => e.Debit)
                 .HasPrecision(20, 4)
@@ -3457,6 +3455,7 @@ public partial class YamyDbContext : DbContext
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'0'")
                 .HasColumnName("city");
+            entity.Property(e => e.PurchaseRefId).HasColumnName("Purchase_Ref_Id");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CreatedDate).HasColumnName("created_date");
             entity.Property(e => e.Date).HasColumnName("date");
@@ -4238,6 +4237,7 @@ public partial class YamyDbContext : DbContext
                 .HasDefaultValueSql("'0'")
                 .HasColumnName("city");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.CreatedDate).HasColumnName("created_date");
             entity.Property(e => e.CustomerId).HasColumnName("customer_id");
             entity.Property(e => e.Date).HasColumnName("date");
@@ -4250,6 +4250,8 @@ public partial class YamyDbContext : DbContext
             entity.Property(e => e.Net)
                 .HasPrecision(20, 4)
                 .HasColumnName("net");
+            entity.Property(e => e.SalesRefId)
+                .HasColumnName("sales_ref_id");
             entity.Property(e => e.Pay)
                 .HasPrecision(20, 4)
                 .HasColumnName("pay");

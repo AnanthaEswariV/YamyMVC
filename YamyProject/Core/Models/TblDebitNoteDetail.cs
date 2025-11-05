@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblDebitNoteDetail
 {
     public int Id { get; set; }
@@ -18,6 +14,7 @@ public partial class TblDebitNoteDetail
     public string InvoiceType { get; set; } = null!;
 
     public decimal Amount { get; set; }
+    public bool Selected { get; set; }
 
     public decimal Vat { get; set; }
 

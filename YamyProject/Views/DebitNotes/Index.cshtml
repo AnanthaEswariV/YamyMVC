@@ -1,0 +1,182 @@
+﻿@model MasterDebitNoteViewModel
+@{
+    ViewData["Title"] = "Debit Note";
+    }
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Debit Note</h3>
+    <!-- Toolbar + Filters -->
+    <div class="card shadow-sm">
+        <div class="card-header align-items-center py-4 gap-2 gap-md-5 d-flex justify-content-between">
+            <div class="card-title fw-semibold mb-0">Search</div>
+            <div class="card-toolbar text-end">
+                <a asp-controller="DebitNotes" asp-action="Create" class="btn btn-primary btn-sm">New</a>
+            </div>
+        </div>
+        <div class="card-body pt-3">
+            <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
+                <!-- Customer -->
+              @*   <div class="col-md-4 col-12">
+                    <label class="form-label small mb-1">Customer</label>
+                    <select name="customerId" asp-items="@(new SelectList(Model?.Customers, "Id", "Name"))" class="form-select form-select-sm">
+                        <option value="">-- All Customers --</option>
+                    </select>
+                </div>
+ *@
+                <!-- From -->
+                <div class="col-md-3 col-6">
+                    <label class="form-label small mb-1">From</label>
+                    <input type="date"
+                           name="fromDate"
+                           class="form-control form-control-sm"
+                           value="@(DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <!-- To -->
+                <div class="col-md-3 col-6">
+                    <label class="form-label small mb-1">To</label>
+                    <input type="date"
+                           name="toDate"
+                           class="form-control form-control-sm"
+                           value="@(DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <!-- All Dates -->
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check mt-3">
+                        <input type="checkbox" name="allDates" class="form-check-input" id="allDatesChk" />
+                        <label class="form-check-label" for="allDatesChk">All Dates</label>
+                    </div>
+                </div>
+
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Apply</button>
+                </div>
+            </form>
+
+            <!-- Master Grid -->
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-secondary text-center">
+                        <tr>
+                            <th style="width:60px;">SN</th>
+                            <th style="width:80px;">ID</th>
+                            <th>Date</th>
+                            <th>JV No</th>
+                            @* <th>INV</th> *@
+                            <th>INV No</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end">VAT</th>
+                            <th class="text-end">Total</th>
+                            <th>Credit Account</th>
+                            <th>Debit Account</th>
+                            <th style="width:90px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model?.MasterDebit != null && Model.MasterDebit.Any())
+                            {
+                            var sn = 1;
+                            foreach (var sale in Model.MasterDebit)
+                                {
+                                <tr>
+                                    <td class="text-center">@sn</td>
+                                    <td class="text-center">@sale.Id</td>
+                                    <td>@sale.Date</td>
+                                    <td>@sale.JvNo</td>
+                                    @* <td>@sale.Inv</td> *@
+                                    <td>@sale.InvNo</td>
+                                    <td class="text-end">@sale.Amount</td>
+                                    <td class="text-end">@sale.Vat</td>
+                                    <td class="text-end">@sale.Total</td>
+                                    <td>@sale.CreditAccount</td>
+                                    <td>@sale.DebitAccount</td>
+                                    <td class="text-center">
+                                        <a class="menu-link px-2 js-render-modal"
+                                           asp-controller="DebitNotes"
+                                           asp-action="Edit"
+                                           asp-route-id="@sale.Id">Edit</a>
+                                    </td>
+                                </tr>
+                                sn++;
+                                }
+                            }
+                        else
+                            {
+                            <tr>
+                                <td colspan="12" class="text-center">No records found</td>
+                            </tr>
+                            }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Details Grid -->
+            @if (Model?.Items != null && Model.Items.Count > 0)
+                {
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header py-3">
+                        <div class="fw-semibold">Details</div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0" id="detailsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:90px">ID</th>
+                                        <th style="width:120px">INV NO</th>
+                                        <th style="width:140px">Invoice Date</th>
+                                        <th style="width:140px">Invoice Type</th>
+                                        <th style="width:120px" class="text-end">Total</th>
+                                        <th style="width:100px" class="text-end">VAT</th>
+                                        <th style="width:120px" class="text-end">Amount</th>
+                                        <th style="width:120px" class="text-end">Balance</th>
+                                        <th style="width:140px" class="text-end">Remaining</th>
+                                        <th style="width:120px" class="text-end">Project ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (var i = 0; i < Model.Items.Count; i++)
+                                        {
+                                        <tr>
+                                            <td>
+                                                <input asp-for="Items[i].ID" class="form-control form-control-sm" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].InvNo" class="form-control form-control-sm" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].InvoiceDate" type="date" class="form-control form-control-sm" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].InvoiceType" class="form-control form-control-sm" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].Total" class="form-control form-control-sm text-end" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].vat" class="form-control form-control-sm text-end" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].Amount" class="form-control form-control-sm text-end" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].Balance" class="form-control form-control-sm text-end" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].Remaining" class="form-control form-control-sm text-end" readonly />
+                                            </td>
+                                            <td>
+                                                <input asp-for="Items[i].ProjectId" class="form-control form-control-sm text-end" readonly />
+                                            </td>
+                                        </tr>
+                                        }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                }
+        </div>
+    </div>
+</div>

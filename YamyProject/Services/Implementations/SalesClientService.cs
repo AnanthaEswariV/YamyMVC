@@ -1,6 +1,4 @@
-﻿using YamyProject.Services.Interfaces;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
 {
     public class SalesClientService : ISalesClientService
     {

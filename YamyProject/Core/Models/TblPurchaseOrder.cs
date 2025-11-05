@@ -10,6 +10,8 @@ public partial class TblPurchaseOrder
     public DateOnly Date { get; set; }
 
     public int VendorId { get; set; }
+    [ForeignKey(nameof(VendorId))]
+    public virtual TblVendor? Vendors { get; set; }
 
     public string InvoiceId { get; set; } = null!;
 
@@ -62,4 +64,6 @@ public partial class TblPurchaseOrder
     public int PurchaseId { get; set; }
 
     public int ProjectId { get; set; }
-}
+    public virtual ICollection<TblPurchaseOrderDetail>? PurchaseOrderDetail { get; set; }
+
+    }

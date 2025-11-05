@@ -113,18 +113,18 @@
             var vm = await _SalesOrder.GetSalesProformaDataAsync(id);
             return View("SalesOrder", vm);
             }
-        [HttpPost]
-        public async Task<IActionResult> CreateQuotationFromProforma(TaxInvoiceViewModel model)
-            {
-            if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
-            if (model.CustomerId is null) return BadRequest("Customer is required.");
-            if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
+        //[HttpPost]
+        //public async Task<IActionResult> CreateQuotationFromProforma(TaxInvoiceViewModel model)
+        //    {
+        //    if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
+        //    if (model.CustomerId is null) return BadRequest("Customer is required.");
+        //    if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
 
-            var userId = 1;
+        //    var userId = 1;
 
-            // await _SalesCreateService.CreateTaxInvoiceAsync(model, userId);
-            return RedirectToAction(nameof(Index));
-            }
+        //    // await _SalesCreateService.CreateTaxInvoiceAsync(model, userId);
+        //    return RedirectToAction(nameof(Index));
+        //    }
 
         public async Task<IActionResult> GetItems(string term, int warehouseId)
             {
