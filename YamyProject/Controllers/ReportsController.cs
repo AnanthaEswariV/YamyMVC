@@ -2061,10 +2061,96 @@ ORDER BY l.code;
             }
         }
 
-     
-
         #endregion
 
+        #region Item Wise Profit Statement
+
+        public IActionResult ItemWiseProfitStatement()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItemWiseProfit(DateTime? startDate = null, DateTime? endDate = null, bool isDateChecked = true)
+        {
+            try
+            {
+                // Build connection string dynamically using session or default database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                string query = @"
+            SELECT 
+                ts.date AS `Date`,
+                ts.invoice_id AS `InvNo`,
+                CONCAT(tc.code,' - ',tc.name) AS `CustomerName`,
+                CONCAT(ti.code,' - ',ti.name) AS `ItemName`,
+                tsd.cost_price AS `CostPrice`, 
+                tsd.price AS `SalesPrice`,
+                tsd.qty AS `Qty`,
+                tsd.cost_price * tsd.qty AS `CostAmount`,
+                tsd.price * tsd.qty AS `SalesAmount`,
+                (tsd.price - tsd.cost_price) * tsd.qty AS `Profit`
+            FROM tbl_sales_details tsd
+            INNER JOIN tbl_items ti ON tsd.item_id = ti.id
+            INNER JOIN tbl_sales ts ON tsd.sales_id = ts.id
+            INNER JOIN tbl_customer tc ON ts.customer_id = tc.id
+            WHERE 1=1
+        ";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Apply date filter if checkbox is unchecked
+                if (isDateChecked && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND ts.date >= @dateFrom AND ts.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date));
+                }
+
+                var result = new List<ItemMovingDto>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (parameters.Any())
+                        cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        result.Add(new ItemMovingDto
+                        {
+                            Date = reader.GetDateTime("Date"),
+                            InvNo = reader["InvNo"].ToString(),
+                            CustomerName = reader["CustomerName"].ToString(),
+                            ItemName = reader["ItemName"].ToString(),
+                            CostPrice = reader.GetDecimal("CostPrice"),
+                            SalesPrice = reader.GetDecimal("SalesPrice"),
+                            Qty = reader.GetDecimal("Qty"),
+                            CostAmount = reader.GetDecimal("CostAmount"),
+                            SalesAmount = reader.GetDecimal("SalesAmount"),
+                            Profit = reader.GetDecimal("Profit")
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+      
+
+        #endregion
 
 
 

@@ -626,4 +626,19 @@ namespace YamyProject.Core.Models
         public decimal Damage { get; set; }
         public decimal BalanceQty { get; set; }
     }
+
+    public class ItemMovingDto
+    {
+        public DateTime Date { get; set; }
+        public string InvNo { get; set; }
+        public string CustomerName { get; set; }
+        public string ItemName { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal SalesPrice { get; set; }
+        public decimal Qty { get; set; }
+        public decimal CostAmount { get; set; }
+        public decimal SalesAmount { get; set; }
+        public decimal Profit { get; set; }
+    }
+
 }
