@@ -2148,7 +2148,99 @@ ORDER BY l.code;
             }
         }
 
-      
+
+
+        #endregion
+
+        #region Item Transaction
+
+        public IActionResult ItemTransaction()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Warehouse Summary
+
+        public IActionResult WareHouseSummary()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetWarehouseItems(int? warehouseId = null)
+        {
+            try
+            {
+                // Build connection string dynamically using session or default database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY wt.id DESC) AS SN,
+                wt.id AS Id,
+                w.Name AS WarehouseName,
+                i.id AS ItemId,
+                CONCAT(i.code,' - ',i.name) AS ItemName,
+                wt.qty AS Qty
+            FROM tbl_items_warehouse wt
+            INNER JOIN tbl_warehouse w ON wt.warehouse_id = w.id
+            INNER JOIN tbl_items i ON wt.item_id = i.id AND i.state = 0
+            WHERE 1=1
+        ";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (warehouseId.HasValue)
+                {
+                    query += " AND wt.warehouse_id = @warehouseId";
+                    parameters.Add(new MySqlParameter("@warehouseId", warehouseId.Value));
+                }
+
+                query += " ORDER BY wt.id DESC";
+
+                var result = new List<WarehouseItemDto>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (parameters.Any())
+                        cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        result.Add(new WarehouseItemDto
+                        {
+                            SN = reader.GetInt32("SN"),
+                            Id = reader.GetInt32("Id"),
+                            WarehouseName = reader["WarehouseName"].ToString(),
+                            ItemId = reader.GetInt32("ItemId"),
+                            ItemName = reader["ItemName"].ToString(),
+                            Qty = reader.GetDecimal("Qty")
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult WareHouseHistory()
+        {
+            return View();
+        }
 
         #endregion
 

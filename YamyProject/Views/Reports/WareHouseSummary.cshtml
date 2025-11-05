@@ -1,0 +1,183 @@
+﻿@{
+    ViewData["Title"] = "WareHouseSummary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Warehouse Summary</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+            <div style="min-width: 250px;">
+                <select class="form-select" id="warehouseDropdown">
+                    <option value="">-- Select Warehouse --</option>
+                </select>
+            </div>
+        </div>
+
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Warehouse Name</th>
+                    <th>Item Name</th>
+                    <th>QTY</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            loadWarehouses();
+            loadWarehouseItems();
+
+            $('#warehouseDropdown').on('change', function () {
+                loadWarehouseItems();
+            });
+
+            function loadWarehouses() {
+                $.ajax({
+                    url: '/Inventory/GetWarehouses',
+                    type: 'GET',
+                    success: function(result) {
+                        const dropdown = $('#warehouseDropdown');
+                        dropdown.empty().append('<option value="">-- Select Warehouse --</option>');
+
+                        if (result.status) {
+                            result.data.forEach(w => {
+                                dropdown.append(`<option value="${w.id}">${w.display}</option>`);
+                            });
+                        } else {
+                            toastr.error(result.message || 'Failed to load warehouses');
+                        }
+                    },
+                    error: function(err) {
+                        console.error(err);
+                        toastr.error('Error loading warehouse data');
+                    }
+                });
+            }
+
+                           function loadWarehouseItems() {
+            const warehouseId = $('#warehouseDropdown').val();
+
+            $.ajax({
+                url: '/Reports/GetWarehouseItems',
+                type: 'GET',
+                data: { warehouseId: warehouseId },
+
+                beforeSend: function () {
+                    $('#table2 tbody').html(`
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+
+                success: function(res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load warehouse items');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#table2')) {
+                        $('#table2').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table2 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function(i, row) {
+                            const tr = $(`
+                                <tr data-id="${row.id}" data-item-id="${row.itemId}">
+                                    <td>${i + 1}</td>
+                                    <td>${row.warehouseName}</td>
+                                    <td>${row.itemName}</td>
+                                    <td class="text-end">${row.qty}</td>
+                                </tr>
+                            `);
+                            tbody.append(tr);
+                        });
+
+                        // ✅ Row click fetch & redirect
+                        $('#table2 tbody').on('click', 'tr', function () {
+                            const id = $(this).data('id');        // warehouse record ID
+                            const itemId = $(this).data('item-id'); // item ID
+
+                            if (!id || !itemId) {
+                                toastr.warning('Missing warehouse or item ID.');
+                                return;
+                            }
+
+                            const query = new URLSearchParams({
+                                id: id,
+                                itemId: itemId
+                            }).toString();
+
+                            // // Redirect to Warehouse History (calls GetWarehouseTransfers)
+                            // window.location.href = `/Reports/WareHouseHistory?${query}`;
+                             window.location.href = `/Reports/WareHouseHistory`;
+                        });
+
+                        // ✅ Initialize DataTable
+                        $('#table2').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm' },
+                                { extend: 'pdfHtml5', text: '<i class="fas fa-file-pdf me-1"></i> PDF', className: 'btn btn-primary btn-sm', orientation: 'landscape', pageSize: 'A4' }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
+                    } else {
+                        tbody.append(`<tr><td colspan="4" class="text-center text-muted py-4">No warehouse items found</td></tr>`);
+                    }
+                },
+
+                error: function () {
+                    toastr.error('Error loading warehouse items');
+                }
+            });
+        }
+
+
+        });
+    </script>
+}

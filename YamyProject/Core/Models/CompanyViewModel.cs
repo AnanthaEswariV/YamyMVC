@@ -640,5 +640,15 @@ namespace YamyProject.Core.Models
         public decimal SalesAmount { get; set; }
         public decimal Profit { get; set; }
     }
+    // DTO class
+    public class WarehouseItemDto
+    {
+        public int SN { get; set; }
+        public int Id { get; set; }
+        public string WarehouseName { get; set; }
+        public int ItemId { get; set; }
+        public string ItemName { get; set; }
+        public decimal Qty { get; set; }
+    }
 
 }
