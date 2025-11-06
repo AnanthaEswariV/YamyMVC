@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblPurchase
 {
     public int Id { get; set; }
-
+   
     public DateOnly Date { get; set; }
 
     public int VendorId { get; set; }
+    [ForeignKey(nameof(VendorId))]
+    public virtual TblVendor? Vendors { get; set; }
+    public virtual TblTransaction? Transaction { get; set; }
 
     public string InvoiceId { get; set; } = null!;
 
@@ -56,10 +55,14 @@ public partial class TblPurchase
     public DateOnly? ModifiedDate { get; set; }
 
     public int State { get; set; }
+    public string Description { get; set; } = null!;
+
 
     public string PurchaseType { get; set; } = null!;
 
     public int FixedAssetCategoryId { get; set; }
 
     public int ProjectId { get; set; }
-}
+    public virtual ICollection<TblPurchaseDetail>? PurchaseDetails { get; set; }
+
+    }

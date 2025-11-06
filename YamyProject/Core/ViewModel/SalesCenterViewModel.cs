@@ -5,9 +5,7 @@
 
         //column used in the table to count the row number
         //Na
-
         public int SN { get; set; }         // tbl_sales.id
-
         public DateOnly Date { get; set; }  // tbl_sales.date
         public int Id { get; set; }         // tbl_sales.id
         public int TranferStatus { get; set; }         // tbl_sales.id

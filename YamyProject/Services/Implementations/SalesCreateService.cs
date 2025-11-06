@@ -183,7 +183,7 @@
                         if (r.CostCenterId is not null)
                             {
                             await InsertCostCenterTransactionAsync(
-                                vm.Date.ToDateTime(TimeOnly.MinValue),
+                                vm.Date,
                                 debit: 0m,
                                 credit: (decimal)lineTot,
                                 refId: saleId.ToString(),
@@ -200,7 +200,7 @@
                     }
                 }
             }
-        public async Task InsertCostCenterTransactionAsync(DateTime date, decimal debit, decimal credit, string refId, string type, string description, int costCenterId)
+        public async Task InsertCostCenterTransactionAsync(DateOnly date, decimal debit, decimal credit, string refId, string type, string description, int costCenterId)
             {
             var trx = new TblCostCenterTransaction
                 {
@@ -624,6 +624,7 @@
         private static TaxInvoiceViewModel MapQuotationsToViewModel(TblSalesQuotation s)
         {
             // Coalesce details to an empty list to avoid NRE on OrderBy/Select
+            
             var details = s.SalesQuotationDetails ?? new List<TblSalesQuotationDetail>();
 
             return new TaxInvoiceViewModel
@@ -947,10 +948,9 @@
                       .ToListAsync();
             _context.TblSalesDetails.RemoveRange(SalesDetails);
             await _context.SaveChangesAsync();
-
             
             var ItemTransactions = await _context.TblItemTransactions
-                     .Where(d => d.Reference == salesId.ToString())
+                     .Where(d => d.Reference == salesId.ToString() && d.Type == "Sales Invoice")
                      .ToListAsync();
             _context.TblItemTransactions.RemoveRange(ItemTransactions);
             await _context.SaveChangesAsync();

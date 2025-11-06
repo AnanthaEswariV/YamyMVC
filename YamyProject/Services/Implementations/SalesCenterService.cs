@@ -20,14 +20,14 @@ namespace YamyProject.Services.Implementations
                 Customer = selectCustomer;
             if (Date == true)
             {
-                //if (From==default )
-                //{ 
-                //    From = DateOnly.FromDateTime(DateTime.Today);
-                //}
-                // if( To==default)
-                //{
-                //    To = DateOnly.FromDateTime(DateTime.Today);
-                //}
+                if (From == default)
+                    {
+                    From = DateOnly.FromDateTime(DateTime.Today);
+                    }
+                if (To == default)
+                    {
+                    To = DateOnly.FromDateTime(DateTime.Today);
+                    }
 
                 Starting = From;
                 Ending = To;
@@ -126,9 +126,7 @@ namespace YamyProject.Services.Implementations
                     Vat = s.Vat,
                     Net = s.Net,
                     JvNo = s.Jv_No
-                });
-
-          
+                });          
 
                 sn = sn + 1;
             }
@@ -268,11 +266,13 @@ namespace YamyProject.Services.Implementations
 
         public async Task<string> GenerateInvoiceNoAsync()
         {
-            var prefix =  "SI-0001"; // Prefix for Credit Note
-            var lastCodeValue = _context.TblSales
+            var prefix =  "0000"; // Prefix for Credit Note
+            var lastCodeValue =await _context.TblSales
                .Select(s => s.InvoiceId.Substring(3))
                .MaxAsync();
-            return $"SI-{int.Parse(lastCodeValue.Result) + 1:D4}";        
+            prefix = lastCodeValue ?? prefix;
+
+            return $"SI-{int.Parse(prefix) + 1:D4}";        
         }
     }
 }

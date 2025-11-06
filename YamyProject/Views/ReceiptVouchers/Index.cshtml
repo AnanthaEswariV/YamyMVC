@@ -1,0 +1,122 @@
+﻿@model ReceiptVoucherCenterViewModel
+
+@{
+    ViewData["Title"] = "Receipt Voucher Center";
+    }
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+   
+ <!-- Filter Section -->
+    <form method="get" asp-action="Index" class="row g-3 align-items-end">
+   
+        <div class="col-md-3">
+            <label for="FromDate" class="form-label">From</label>
+            <input type="date" id="FromDate" name="FromDate" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <label for="ToDate" class="form-label">To</label>
+            <input type="date" id="ToDate" name="ToDate" class="form-control" />
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="All" name="All" checked />
+                <label class="form-check-label" for="All">All</label>
+            </div>
+        </div>    
+    </form>
+    <a class="btn d-flex gap-2 mt-3" asp-action="Create">
+        <i class="bi bi-plus-circle-dotted"></i>
+        New Settlement
+    </a>
+    <!-- Data Grid -->
+    <div class="table-responsive mt-4">
+        @if (Model != null)
+            {
+            <table class="table table-bordered table-striped table-hover text-center align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Sn</th>
+                        <th>Id</th>
+                        <th>Date</th>
+                        <th>JV No</th>
+                        <th>Payment Code</th>
+                        <th>Amount</th>
+                        <th>Debit Account</th>
+                        <th>Credit Account</th>
+                        <th>Edite</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.ReceiptVouchers)
+                        {
+                        <tr>                           
+                            <td>@item.SN</td>
+                            <td>@item.Id</td>
+                            <td>@item.Date</td>
+                            <td>@item.JVNO</td>
+                            <td>@item.ReceiptCode</td>
+                            <td>@item.Amount</td>
+                            <td>@item.DebitAccount</td>
+                            <td>@item.CreditAccount</td>
+                            <td>
+                            <a class="menu-link px-3 js-render-modal" asp-controller="SalesReturns" asp-action="Edit" asp-route-id="@item.Id">Edit</a>
+                            </td>
+                        </tr>
+                        }
+                </tbody>
+            </table>
+            }
+    </div>
+    <!-- Items Section -->
+    <div class="mt-4" hidden>
+       @if (Model != null)
+        {
+          <table class="table table-bordered table-sm table-hover">
+               <thead class="table-secondary">
+               <tr>
+                           <th>Id</th>
+                           <th>Date</th>
+                           <th>Payment Id</th>
+                           <th>Inv Id</th>
+                           <th>InvCode</th>
+                           <th>Total</th>
+                           <th>Payment</th>
+                           <th>Description</th>
+                           <th>CostCenterId</th>
+                           <th>ProjectId</th>
+               </tr>
+               </thead>
+               <tbody>
+                 @*    @foreach (var item in Model.ReceiptVouchers)
+                       {
+                       foreach (var sub in item.ReceiptVoucherDetail)
+                           {
+                               <tr>
+                                   <td>@sub.Id</td>
+                                   <td>@sub.Date</td>
+                                   <td>@sub.PaymentId</td>
+                                   <td>@sub.InvId</td>
+                                   <td>@sub.HumId</td>
+                                   <td>@sub.InvCode</td>
+                                   <td>@sub.Total</td>
+                                   <td>@sub.Payment</td>
+                                   <td>@sub.Description</td>
+                                   <td>@sub.CostCenterId</td>
+                                   <td>@sub.ProjectId</td>
+                               </tr>
+                           } 
+                       } *@
+               </tbody>
+          </table>
+          }
+
+    </div>   
+</div>
+    @section Scripts {
+ @*    <script>
+        function loadInvoiceItems(id) {
+            $.get('/Stock/InvoiceItems/' + id, function (data) {
+                $('#invoiceItems').html(data);
+            });
+        }
+    </script> *@
+    }

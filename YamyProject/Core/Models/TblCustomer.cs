@@ -2,6 +2,8 @@
 public partial class TblCustomer
 {
     public int Id { get; set; }
+    [ForeignKey(nameof(Id))]
+    public virtual TblCreditNote? CreditNotes { get; set; }
 
     public int Code { get; set; }
 

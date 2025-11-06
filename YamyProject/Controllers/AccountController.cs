@@ -1,6 +1,5 @@
 ﻿namespace YamyProject.Controllers
 {
-
     public class AccountController : Controller
     {
         private readonly IHttpClientFactory _httpClientFactory;

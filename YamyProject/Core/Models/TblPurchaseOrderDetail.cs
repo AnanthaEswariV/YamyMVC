@@ -11,6 +11,8 @@ public partial class TblPurchaseOrderDetail
 
     public int? ItemId { get; set; }
 
+    [ForeignKey(nameof(ItemId))]
+    public virtual TblItem Items { get; set; }
     public decimal? Qty { get; set; }
 
     public decimal? CostPrice { get; set; }

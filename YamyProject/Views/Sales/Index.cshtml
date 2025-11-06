@@ -3,16 +3,7 @@
 @{
     ViewData["Title"] = "Sales Center";
     Layout = "_Layout"; // or null if you don't use a layout
-    // Helper to choose customer select source: Model.Customers -> ViewBag.Customers -> empty
-    // var customerSelect = Model?.Customers ?? (ViewBag.Customers as IEnumerable<System.Web.Mvc.SelectListItem>);
-}
-
- 
-@*   Index.cshtml - Sales Center
-  - Server-rendered invoice table
-  - Item-detail panel populated by JavaScript when user selects a row
-  - Buttons wired with unobtrusive JS (Edit navigates using route with selected id)
- *@ 
+ }
 
 <div class="container-fluid bg-light p-3 rounded shadow-sm">
     <h3 class="text-center mb-3">Sales Center</h3>

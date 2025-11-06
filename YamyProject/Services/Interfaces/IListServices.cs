@@ -1,20 +1,28 @@
-﻿using YamyProject.Core.Models;
-
-namespace YamyProject.Services.Interfaces
+﻿namespace YamyProject.Services.Interfaces
 {
     public interface IListServices
     {
+        //Customer
+        Task<IEnumerable<TblCustomer>> GetCustomersAsync();
         Task<IEnumerable<TblCustomerCategory>> GetCustomerCategorysAsync();
+        Task<IEnumerable<TblCustomer>> GetCustomersRetrunAsync();
+        //Vendor
+        Task<IEnumerable<TblVendor>> GetVendorsAsync();
+        Task<IEnumerable<TblVendor>> GetVendorSubcontractorsAsync();
         Task<IEnumerable<TblVendorCategory>> GetVenderCategorysAsync();
+        Task<IEnumerable<TblVendor>> GetVendorsRetrunAsync();
+        Task<IEnumerable<TblEmployee>> GetEmployeeAsync();
+        //other
         Task<IEnumerable<TblWarehouse>> GetWarehousesAsync();
         Task<IEnumerable<TblCountry>> GetCountriesAsync();
         Task<IEnumerable<TblCity>> GetCitysAsync();
         Task<IEnumerable<TblCoaLevel4>> GetAccountsAsync();
-        Task<IEnumerable<TblVendor>> GetVendorsAsync();
-        Task<IEnumerable<TblCustomer>> GetCustomersAsync();
         Task<IEnumerable<TblTax>> GetVatAsync();
         Task<IEnumerable<TblSubCostCenter>> GetCostCenterAsync();
+        Task<IEnumerable<TblFixedAssetsCategory>> GetFixedAssetAsync();
+        Task<IEnumerable<TblBank>> BindCombosBindBankAccount();
 
+        Task AreDefaultAccountsSet(List<string> list);
 
+        }
     }
-}

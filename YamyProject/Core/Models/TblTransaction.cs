@@ -18,7 +18,14 @@ public partial class TblTransaction
     [ForeignKey("TransactionId")]
     public virtual TblSale? Sale { get; set; }
     [ForeignKey("TransactionId")]
-    public virtual TblItemStockSettlement? lItemStockSettlement { get; set; }
+    public virtual TblSalesReturn? SalesReturn { get; set; }
+    [ForeignKey("TransactionId")]
+    public virtual TblItemStockSettlement? LitemStockSettlement { get; set; }
+    [ForeignKey("TransactionId")]
+    public virtual TblPurchase? Purchase { get; set; }
+ 
+    [ForeignKey("TransactionId")]
+    public virtual TblPurchaseReturn? PurchaseReturn { get; set; }
 
     public int? HumId { get; set; }
 

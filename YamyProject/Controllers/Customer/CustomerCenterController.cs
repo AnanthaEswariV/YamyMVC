@@ -150,7 +150,6 @@ namespace YamyProject.Controllers
 
             return View("_CustomerForm", vm);
         }
-
         // POST: Save Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -162,7 +161,6 @@ namespace YamyProject.Controllers
             await _service.SaveCustomerAsync(vm.Customer);
             return RedirectToAction(nameof(Index));
         }
-
         // GET: Delete Customer
         public async Task<IActionResult> Delete(int id)
         {

@@ -1,0 +1,133 @@
+﻿@model PurchasesCenterViewModel
+@{
+    ViewData["Title"] = "Purchases Order";
+    var selectedMode = (Context?.Request?.Query["defaultMode"].FirstOrDefault() ?? "").Trim();
+ }
+
+<div class="container-fluid bg-light p-3 rounded shadow-sm">
+    <h3 class="text-center mb-3">Purchases Order</h3>
+    <!-- Filters -->
+    <div class="card shadow-sm">
+        <div class="card-header align-items-center py-5 gap-2 gap-md-5">
+            <div class="card-toolbar text-end">
+                <a asp-controller="PurchasesCenter" asp-action="Create" class="btn btn-primary btn-sm">New</a>
+            </div>
+            <form method="get" asp-action="Index" class="row g-3 align-items-end mb-3">
+                <!-- Customer Dropdown -->
+                <div class="col-md-4 col-4">
+                    <label class="form-label small mb-1">Vendors Name</label>
+                    <select asp-for="VendorId" asp-items="Model.Vendors"
+                            class="form-select form-select-sm">
+                        <option value="All">-- Select Vendors --</option>
+                    </select>
+                </div>
+                <!-- Date Filters -->
+                <div class="col-md-3">
+                    <label class="form-label">From</label>
+                    <input type="date" value="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" name="fromDate" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To</label>
+                    <input type="date" value="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" name="toDate" class="form-control form-control-sm" />
+                </div>
+                <!-- Checkboxes -->
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check mt-4">
+                        <input type="checkbox" name="allDates" class="form-check-input" />
+                        <label class="form-check-label">All Dates</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"> Selection Method</label>
+                    <select id="defaultMode" name="defaultMode" class="form-select">
+                        <option value="Default" selected="@(selectedMode == "Default" ? "selected" : null)">Default</option>
+                        <option value="ItemWise" selected="@(selectedMode == "ItemWise" ? "selected" : null)">Item Wise</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"> Invoice Type</label>
+                    <select class="form-select" aria-label="Select Payment Method">
+                        <option value="Cash">Cash</option>
+                        <option value="Credit">Credit</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check mt-4">
+                        <input type="checkbox" name="allRecords" class="form-check-input" />
+                        <label class="form-check-label">All Records</label>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        <!-- Grid -->
+        <div class="card-body pt-0">
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-secondary text-center">
+                        <tr>
+                            <th>SN</th>
+                            <th>Date</th>
+                            @if (selectedMode != "ItemWise")
+                                {
+                                <th>JV No</th>
+                                }
+                            <th>INV No</th>
+                            <th>Amount</th>
+                            <th>VAT</th>
+                            <th>Customer</th>
+                            @if (selectedMode == "ItemWise")
+                                {
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Item VAT</th>
+                                <th>Item Total</th>
+                                }
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Purchases.Any())
+                            {
+                            int sn = 1;
+                            foreach (var Purchases in Model.Purchases)
+                                {
+                                <tr>
+                                    <td class="text-center">@sn</td>
+                                    <td>@Purchases.Date.ToShortDateString()</td>
+                                    @if (selectedMode != "ItemWise")
+                                        {
+                                        <td>@Purchases.JvNo</td>
+                                        }
+                                    <td>@Purchases.InvoiceNo</td>
+                                    <td>@Purchases.Total.ToString("C")</td>
+                                    <td>@Purchases.Vat.ToString("C")</td>
+                                    <td>@Purchases.VendorName</td>
+                                    @if (selectedMode == "ItemWise")
+                                        {
+                                        <td>@Purchases.ItemName</td>
+                                        <td>@Purchases.Qty</td>
+                                        <td>@Purchases.CostPrice</td>
+                                        <td>@Purchases.ItemVat</td>
+                                        <td>@Purchases.ItemTotal</td>
+                                        }
+                                    <td>
+                                        <a class="menu-link px-3 js-render-modal" asp-controller="PurchasesCenter" asp-action="Edit" asp-route-id="@Purchases.Id">Edit</a>
+                                    </td>
+                                </tr>
+                                sn++;
+                                }
+                            }
+                        else
+                            {
+                            <tr>
+                                <td colspan="12" class="text-center">No records found</td>
+                            </tr>
+                            }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

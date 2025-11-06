@@ -23,7 +23,7 @@
                 }
                 <input type="hidden" asp-for="From" />
                 <input type="hidden" asp-for="IdFromOtherTybe" />
-
+                
                 <!-- Header: Customer Code/ Customer / Invoice Date/Invoice -->
                 <input type="hidden" class="form-control" asp-for="CustomerId" id="customidId" value="@Model.CustomerId" readonly />
 
@@ -427,7 +427,6 @@
           $(this).closest('tr').remove();          
         NewRow();
         updateRowIndexes();});
-
 
     </script>
     <script>

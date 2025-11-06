@@ -1,20 +1,13 @@
 ﻿namespace YamyProject.Controllers.Customer
 {
-    public class MasterCreditNoteController : Controller
+    public class MasterCreditNoteController(ISalesCenterService salesService, IListServices listServices, YamyDbContext context, ISalesCreateService salesCreateService) : Controller
     {
-        private readonly ISalesCenterService _SalesService;
-        private readonly IListServices _ListServices;
-        private readonly ISalesCreateService _SalesCreateService;
-        private readonly YamyDbContext _Context;
+        private readonly ISalesCenterService _SalesService=salesService;
+        private readonly IListServices _ListServices=listServices;
+        private readonly ISalesCreateService _SalesCreateService=salesCreateService;
+        private readonly YamyDbContext _Context=context;
 
-        public MasterCreditNoteController(ISalesCenterService salesService, IListServices listServices, YamyDbContext context, ISalesCreateService salesCreateService)
-        {
-            _SalesService = salesService;
-            _ListServices = listServices;
-            _Context = context;
-            _SalesCreateService = salesCreateService;
-        }
-        public async Task<IActionResult> Index()
+         public async Task<IActionResult> Index()
         {
             var Sales = await _SalesService.GetSalesAsync();
             var customers = await _ListServices.GetCustomersAsync();    
@@ -86,12 +79,9 @@
         [HttpPost]
         public async Task<IActionResult> Create(TaxInvoiceViewModel model)
         {
-            //if (!ModelState.IsValid)
-            //  return View("TaxInvoice", PopulateViewModel(model));
             if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
             if (model.CustomerId is null) return BadRequest("Customer is required.");
             if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
-
             var userId = 1;
 
             await _SalesCreateService.CreateTaxInvoiceAsync(model, userId);
@@ -113,11 +103,11 @@
                }).ToListAsync();
             return Json(result);
         }
-        private async Task<IActionResult> PopulateViewModel(TaxInvoiceViewModel? model = null)
-        {
-            TaxInvoiceViewModel viewModel = model is null ? new TaxInvoiceViewModel() : model;
-            return View("StockSettelment", viewModel);
-        }
+        //private async Task<IActionResult> PopulateViewModel(TaxInvoiceViewModel? model = null)
+        //{
+        //    TaxInvoiceViewModel viewModel = model is null ? new TaxInvoiceViewModel() : model;
+        //    return View("StockSettelment", viewModel);
+        //}
         [HttpGet]
         public async Task<IActionResult> Edit(int id, string formType = "")
         {

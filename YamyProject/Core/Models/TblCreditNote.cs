@@ -7,9 +7,15 @@ public partial class TblCreditNote
 {
     public int Id { get; set; }
 
+    [ForeignKey(nameof(Id))]
+    public virtual TblTransaction? Transaction { get; set; }
     public DateOnly? Date { get; set; }
 
     public int? CreditAccount { get; set; }
+
+
+    [ForeignKey(nameof(CreditAccount))]
+    public virtual TblCustomer? CreditCustomer { get; set; }
 
     public int DebitAccount { get; set; }
 

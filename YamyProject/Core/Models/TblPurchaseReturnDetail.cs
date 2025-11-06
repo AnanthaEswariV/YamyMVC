@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblPurchaseReturnDetail
 {
     public int Id { get; set; }
@@ -11,6 +7,8 @@ public partial class TblPurchaseReturnDetail
 
     public int? ItemId { get; set; }
 
+    [ForeignKey(nameof(ItemId))]
+    public virtual TblItem Items { get; set; }
     public decimal? Qty { get; set; }
 
     public decimal? CostPrice { get; set; }

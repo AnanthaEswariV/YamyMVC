@@ -1,0 +1,853 @@
+﻿@model PurchaseInvoiceViewModel
+@{
+    ViewData["Title"] = "Purchases Return";
+}
+
+<div class="container-fluid mt-3">
+    <div class="card shadow-sm border-0">
+        <div class="card-header justify-content-between align-items-center">
+            <h5 class="mb-0">Purchases Return</h5>
+        </div>
+
+        <div class="card-body">
+            <div class="mb-3">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+
+            <form enctype="multipart/form-data" id="invoiceForm" method="post">
+                @Html.AntiForgeryToken()
+
+                @if (Model?.Id > 0)
+                {
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="PurchasesRefId" id="PurchasesRefId" />
+                }
+
+                <!-- Toolbar -->
+                <div class="border rounded bg-light p-2 d-flex align-items-center justify-content-between mb-3">
+                    <div class="btn-group" role="group" aria-label="toolbar">
+                        <a class="btn btn-outline-primary"
+                           asp-action="Create"
+                           asp-controller="PurchasesReturn">
+                            <i class="bi bi-file-earmark-plus"></i> New
+                        </a>
+
+                        <button type="button" class="btn btn-outline-success" id="btnAjaxSave">
+                            <i class="bi bi-save"></i> Save
+                        </button>
+                        @* delete later if you need *@
+                        @* <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@Model?.Id">
+                            <i class="bi bi-trash"></i> Delete
+                        </a> *@
+                    </div>
+
+                    <div class="btn-group" role="group">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="chkPrint" checked />
+                            <label class="form-check-label" for="chkPrint">Print</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="chkEmail" />
+                            <label class="form-check-label" for="chkEmail">Email</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hidden VendorId that actually posts -->
+                <input type="hidden" asp-for="VendorId" id="VendorId" />
+
+                <!-- Row: Vendor / Bill lookup -->
+                <div class="row g-5">
+                    <div class="col-md-2">
+                        <label class="form-label">Vendor Code</label>
+                        <input class="form-control" asp-for="VendorCode" id="VendorCode" readonly />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Vendor</label>
+                        <select class="form-select"
+                                asp-for="VendorId"
+                                asp-items="@(new SelectList(Model?.Vendors ?? Enumerable.Empty<TblVendor>(), "Id", "Name"))"
+                                id="filterVendor">
+                        </select>
+                        <span class="text-danger" asp-validation-for="VendorId"></span>
+                    </div>
+
+                    <div class="col-md-3 d-grid">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="button"
+                                class="btn btn-outline-primary"
+                                id="btnShowBill"
+                                data-customer-id="@Model?.VendorId">
+                            Show Bill
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Purchases Lookup Modal -->
+                <div class="modal fade" id="lookupModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Purchases List</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="lookupModalBody"><!-- filled by AJAX --></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bill To / Warehouse / DueTo / ShipDate / InvoiceNo -->
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label">Bill To</label>
+                        <input class="form-control" asp-for="VendorName" id="customerName" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Warehouse</label>
+                        <select class="form-select js-select2"
+                                asp-for="WarehouseId"
+                                asp-items="@(new SelectList(Model?.Warehouses ?? Enumerable.Empty<TblWarehouse>(), "Id", "Name"))"
+                                id="filterWarehouse">
+                        </select>
+                        <span class="text-danger" asp-validation-for="WarehouseId"></span>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Due To</label>
+                        <input asp-for="DueTo" type="date" class="form-control" />
+                        <span class="text-danger" asp-validation-for="DueTo"></span>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Ship Date</label>
+                        <input asp-for="ShipDate" type="date" class="form-control" />
+                        <span class="text-danger" asp-validation-for="ShipDate"></span>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice No</label>
+                        <!-- we keep hidden value, but still show text somewhere if you like -->
+                        <input type="hidden" id="InvoiceId" name="InvoiceId" value="@Model?.InvoiceNo" />
+                        <input type="text" class="form-control" value="@Model?.InvoiceNo" readonly />
+                    </div>
+                </div>
+
+                <!-- Purchases Man / Account / Via / ShipTo / PONO -->
+                <div class="row g-3 mt-1">
+                    <div class="col-md-2">
+                        <label class="form-label">Purchases Man</label>
+                        <input asp-for="SalesMen" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Account Name</label>
+                        <select class="form-select"
+                                asp-for="AccountId"
+                                asp-items="@(new SelectList(Model?.Accounts ?? Enumerable.Empty<TblCoaLevel4>(), "Id", "Name"))">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                        <span class="text-danger" asp-validation-for="AccountId"></span>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Via</label>
+                        <input asp-for="Via" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Ship To</label>
+                        <input asp-for="ShipTo" class="form-control" />
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">S.No</label>
+                        <input asp-for="PONO" class="form-control" />
+                    </div>
+                </div>
+
+                <!-- Items Grid -->
+                <div class="table-responsive mt-4">
+                    <table id="itemsTable" class="table table-striped table-bordered table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th style="display:none">Id</th>
+                                <th>#</th>
+                                <th>Item Code</th>
+                                <th>Item Name</th>
+                                <th>Select To Return</th>
+                                <th>Qty</th>
+                                <th>Return Qty</th>
+                                <th>Unit Cost</th>
+                                <th>Disc</th>
+                                <th>VAT %</th>
+                                <th>VAT Amount</th>
+                                <th>Amount</th>
+                                <th>Cost Center</th>
+
+                                <th style="display:none">Price</th>
+                                <th style="display:none">Type</th>
+                                <th style="display:none">Method</th>
+                                <th style="display:none">WarehouseId</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @if (Model?.Items != null && Model.Items.Any())
+                        {
+                            for (var i = 0; i < Model.Items.Count; i++)
+                            {
+                                <tr>
+                                    <!-- hidden item id -->
+                                    <td style="display:none;">
+                                        <input type="hidden"
+                                               asp-for="Items[i].ItemId"
+                                               class="form-control item-id" />
+                                    </td>
+
+                                    <!-- row number -->
+                                    <td>@(i + 1)</td>
+
+                                    <!-- code -->
+                                    <td>
+                                        <input type="text"
+                                               asp-for="Items[i].ItemCode"
+                                               class="form-control item-code"
+                                               readonly />
+                                    </td>
+
+                                    <!-- name -->
+                                    <td>
+                                        <input type="text"
+                                               asp-for="Items[i].ItemName"
+                                               class="form-control item-name"
+                                               readonly />
+                                    </td>
+
+                                    <!-- select to return -->
+                                    <td class="text-center">
+                                        <input type="hidden" name="Items[@i].SelectedROw" value="false" />
+                                        <input type="checkbox"
+                                               class="form-check-input row-select"
+                                               name="Items[@i].SelectedROw"
+                                               value="true"/>
+                                               @* @(Model.Items[i].SelectedROw ? "checked" : "") /> *@
+                                    </td>
+
+                                    <!-- original qty -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-QTY"
+                                               asp-for="Items[i].QTY"
+                                               readonly />
+                                    </td>
+
+                                    <!-- return qty (editable when checkbox is checked) -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-ReturnQTY"
+                                               asp-for="Items[i].QTY"
+                                               disabled />
+                                    </td>
+
+                                    <!-- cost/unit price -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-CostPrice"
+                                               asp-for="Items[i].CostPrice"
+                                               readonly />
+                                    </td>
+
+                                    <!-- discount -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-Disc"
+                                               asp-for="Items[i].Disc"
+                                               readonly />
+                                    </td>
+
+                                    <!-- VAT % -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-VatPersint"
+                                               asp-for="Items[i].VatPersint"
+                                               readonly />
+                                    </td>
+
+                                    <!-- VAT Amount -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-VatAmonut"
+                                               asp-for="Items[i].VatAmonut"
+                                               readonly />
+                                    </td>
+
+                                    <!-- Line Amount -->
+                                    <td>
+                                        <input class="form-control form-control-sm item-Amount"
+                                               asp-for="Items[i].Amount"
+                                               readonly />
+                                    </td>
+
+                                    <!-- Cost Center -->
+                                    <td>
+                                        <select class="form-select form-select-sm"
+                                                asp-for="Items[i].CostCenterId"
+                                                asp-items="@(new SelectList(Model?.CostCenters ?? Enumerable.Empty<TblCostCenter>(), "Id", "Code"))">
+                                            <option value="">--</option>
+                                        </select>
+                                    </td>
+
+                                    <!-- hidden extras -->
+                                    <td style="display:none;">
+                                        <input type="hidden"
+                                               asp-for="Items[i].Price"
+                                               class="item-Price" />
+                                    </td>
+                                    <td style="display:none;">
+                                        <input type="hidden"
+                                               asp-for="Items[i].Type"
+                                               class="item-Type" />
+                                    </td>
+                                    <td style="display:none;">
+                                        <input type="hidden"
+                                               asp-for="Items[i].Method"
+                                               class="item-Method" />
+                                    </td>
+                                    <td style="display:none;">
+                                        <input type="hidden"
+                                               asp-for="Items[i].WarehouseId"
+                                               class="item-WarehouseId" />
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totals + Description -->
+                <div class="row g-3 mt-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 bg-light">
+                            <div class="mb-2 d-flex justify-content-between">
+                                <strong>Total Before VAT:</strong>
+                                <span class="total-BeforeVat">@Model?.TotalBeforeVat</span>
+                                <input type="hidden" asp-for="TotalBeforeVat" class="totalBeforeVat" />
+                            </div>
+
+                            <div class="mb-2 d-flex justify-content-between">
+                                <strong>Total VAT:</strong>
+                                <span class="total-Vat">@Model?.TotalVat</span>
+                                <input type="hidden" asp-for="TotalVat" class="totalVat" />
+                            </div>
+
+                            <div class="mb-2 d-flex justify-content-between">
+                                <strong>Total Discount:</strong>
+                                <span class="tota-Discount">@Model?.TotaDiscount</span>
+                                <input type="hidden" asp-for="TotaDiscount" class="totaDiscount" />
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <strong>Net Amount:</strong>
+                                <span class="fw-bold net-Amount">@Model?.TotaAmount</span>
+                                <input type="hidden" asp-for="TotaAmount" class="netAmount" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom buttons -->
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" id="btnAjaxSave" class="btn btn-primary">Save</button>
+                    <button type="button" id="btnAjaxSaveClose" class="btn btn-success">Save &amp; Close</button>
+                    <a asp-action="Index" asp-controller="PurchasesReturn" class="btn btn-secondary">Close</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Server-side option templates for JS -->
+    <select id="tpl-vat" class="d-none"
+            asp-items="@(new SelectList(Model?.Vat ?? Enumerable.Empty<SelectListItem>(), "Value", "Text"))">
+    </select>
+
+    <select id="tpl-cc" class="d-none"
+            asp-items="@(new SelectList(Model?.CostCenters ?? Enumerable.Empty<TblCostCenter>(), "Id", "Code"))">
+    </select>
+</div>
+
+@section Scripts {
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script>
+    // ---------- helpers shared ----------
+    function toNum(v){
+        const n = parseFloat(String(v ?? '').replace(/,/g,''));
+        return Number.isFinite(n)? n : 0;
+    }
+    function num(v){
+        if (v == null) return 0;
+        const n = parseFloat(String(v).replace(/,/g,''));
+        return Number.isFinite(n)? n : 0;
+    }
+    function fmt(n){
+        return Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+    function clearInvalid($el){
+        $el.removeClass('is-invalid');
+        $el.siblings('.invalid-feedback').remove();
+    }
+    function setInvalid($el, message){
+        $el.addClass('is-invalid');
+        let $fb = $el.siblings('.invalid-feedback');
+        if ($fb.length === 0){
+            $fb = $('<div class="invalid-feedback"></div>');
+            $el.after($fb);
+        }
+        $fb.text(message||'Invalid');
+    }
+    function showMessagesSpread(messages){
+        if (!messages.length) return;
+        if (window.toastr){
+            toastr.options = Object.assign({}, toastr.options, {
+                positionClass: "toast-top-center",
+                closeButton: true,
+                progressBar: true,
+                timeOut: 4500
+            });
+            messages.forEach((m,i)=>setTimeout(()=>toastr.error(m), i*200));
+        } else {
+            alert(messages.join('\\n'));
+        }
+    }
+    function isTemplateRow($tr){
+        return $tr.hasClass('template') || $tr.is('[data-template="true"]');
+    }
+
+    // ---------- row math ----------
+    function calcRow($tr){
+        let disc = 0;
+        const qty     = num($tr.find('.item-ReturnQTY').val());
+        const price   = num($tr.find('.item-CostPrice').val());
+        if (qty > 0 && price > 0){
+            disc = num($tr.find('.item-Disc').val());
+        }
+        const vatPct  = num($tr.find('.item-VatPersint').val());
+
+        const net     = (qty * price) - disc;
+        const vatAmt  = net * (vatPct / 100.0);
+        const amount  = net + vatAmt;
+
+        $tr.find('.item-VatAmonut').val(fmt(vatAmt));
+        $tr.find('.item-Amount').val(fmt(amount));
+        $tr.find('.item-Disc').val(fmt(disc));
+
+        return { net, vatAmt, amount, Discount: disc };
+    }
+
+    function calcTotals(){
+        let totalBeforeVat = 0,
+            totalVat       = 0,
+            totalAmount    = 0,
+            totalDiscount  = 0;
+
+        $('#itemsTable tbody tr').each(function(){
+            const r = calcRow($(this));
+            totalBeforeVat += r.net;
+            totalVat       += r.vatAmt;
+            totalDiscount  += r.Discount;
+            totalAmount    += r.amount;
+        });
+
+        $('.total-BeforeVat').text(fmt(totalBeforeVat));
+        $('.total-Vat').text(fmt(totalVat));
+        $('.tota-Discount').text(fmt(totalDiscount));
+        $('.net-Amount').text(fmt(totalAmount));
+
+        $('[name="TotalBeforeVat"]').val(totalBeforeVat);
+        $('[name="TotalVat"]').val(totalVat);
+        $('[name="TotaDiscount"]').val(totalDiscount);
+        $('[name="TotaAmount"]').val(totalAmount);
+    }
+
+    // Recalc on ReturnQTY edit
+    $(document).on('input change', '#itemsTable tbody .item-ReturnQTY', function(){
+        const $tr = $(this).closest('tr');
+        calcRow($tr);
+        calcTotals();
+    });
+
+    // ---------- Vendor dropdown sync (VendorId, VendorCode, VendorName) ----------
+    (function(){
+        const vendors =  @Html.Raw(JsonSerializer.Serialize( Model.Vendors.Select(c => new { id = c.Id, code = c.Code, name = c.Name })));
+   
+
+        const byId = Object.fromEntries(vendors.map(x=>[String(x.id), x]));
+
+        const sel       = document.getElementById('filterVendor');
+        const hiddenId  = document.getElementById('VendorId');
+        const codeInput = document.getElementById('VendorCode');
+        const nameInput = document.getElementById('customerName');
+
+        function syncFromSelect(){
+            const m = byId[sel.value];
+            if(!m){
+                if(hiddenId) hiddenId.value = "";
+                codeInput.value = "";
+                nameInput.value = "";
+                return;
+            }
+            if(hiddenId) hiddenId.value = String(m.id);
+            codeInput.value = m.code ?? "";
+            nameInput.value = m.name ?? "";
+        }
+
+        (function init(){
+            // use current VendorId from model to preselect
+            if (hiddenId && hiddenId.value && byId[hiddenId.value]){
+                sel.value = hiddenId.value;
+            }
+            syncFromSelect();
+            sel.addEventListener('change', syncFromSelect);
+        })();
+    })();
+
+    // ---------- ReturnQTY enable/disable when row-select toggles ----------
+    function toggleReturnQty($tr, checked){
+        const $ret = $tr.find('.item-ReturnQTY');
+        if(!checked){
+            $ret.val('0')
+                .prop('disabled', true)
+                .prop('readonly', true)
+                .removeClass('is-invalid')
+                .siblings('.invalid-feedback').remove();
+        } else {
+            if(!toNum($ret.val())) $ret.val('1');
+            $ret.prop('disabled', false)
+                .prop('readonly', false)
+                .removeClass('is-invalid')
+                .siblings('.invalid-feedback').remove();
+        }
+        calcRow($tr);
+        calcTotals();
+    }
+
+    $(document).on('change', '#itemsTable tbody .row-select', function(){
+        const $tr = $(this).closest('tr');
+        toggleReturnQty($tr, $(this).is(':checked'));
+    });
+
+    // Guard ReturnQTY vs available QTY
+    $(document).on('input change', '#itemsTable tbody .item-ReturnQTY', function(){
+        const $tr    = $(this).closest('tr');
+        const avail  = toNum($tr.find('.item-QTY').val());
+        let   v      = toNum($(this).val());
+
+        const $itemId = $tr.find('.item-id');
+        const itemIdVal = ($itemId.val() ?? '').toString().trim();
+
+        if(!itemIdVal){
+            $(this).val('0');
+            if(window.toastr) toastr.error('Please choose an item first.');
+            else alert('Please choose an item first.');
+            return;
+        }
+
+        if(v < 0){
+            $(this).val('0');
+            if(window.toastr) toastr.error('Return Qty cannot be negative.');
+            else alert('Return Qty cannot be negative.');
+            return;
+        }
+
+        if(v > avail){
+            $(this).val('0');
+            if(window.toastr) toastr.error('Qty not available in purchase.');
+            else alert('Qty not available in purchase.');
+            return;
+        }
+    });
+
+    // ---------- validation before save ----------
+    function validateSelectedWithQty(){
+        let any = false;
+        let ok = true;
+
+        $('#itemsTable tbody tr').each(function(){
+            const $tr = $(this);
+            const sel = $tr.find('.row-select').is(':checked');
+            const qty = toNum($tr.find('.item-ReturnQTY').val());
+            if(sel){
+                any = true;
+                if(qty <= 0){
+                    ok = false;
+                    $tr.find('.item-ReturnQTY').addClass('is-invalid');
+                }
+            }
+        });
+
+        if(!any){
+            if(window.toastr) toastr.error('Please tick “Select To Return” for at least one row.');
+            else alert('Please tick “Select To Return” for at least one row.');
+        }
+
+        return any && ok;
+    }
+
+    function validateForm(){
+        const $rows = $('#itemsTable tbody tr').filter((_,tr)=>!isTemplateRow($(tr)));
+        const messages = [];
+
+        if($rows.length === 0){
+            messages.push('At least one item row is required.');
+        }
+
+        // first row must have item-id
+        const $first = $rows.first();
+        const $firstId = $first.find('.item-id');
+        if ($firstId.length && !$firstId.val()?.trim()){
+            setInvalid($firstId, 'Item ID is required for the first row.');
+            messages.push('First row: Item ID is required.');
+        }
+
+        // per-row qty>0 if row checked
+        $rows.each(function(i){
+            const rowNo = i + 1;
+            const $tr  = $(this);
+            const $ret = $tr.find('.item-ReturnQTY');
+            const checked = $tr.find('.row-select').is(':checked');
+
+            // highlight only failing rows
+            $tr.removeClass('table-danger');
+
+            if(checked){
+                const qv = toNum($ret.val());
+                if(qv <= 0){
+                    setInvalid($ret, `Return Qty must be > 0 (row ${rowNo}).`);
+                    messages.push(`Row ${rowNo}: Return Qty must be > 0.`);
+                    $tr.addClass('table-danger');
+                }
+            }
+        });
+
+        if(messages.length){
+            showMessagesSpread(messages);
+            const $firstInvalid = $('.is-invalid').first();
+            if($firstInvalid.length){
+                $firstInvalid.get(0)?.focus?.();
+                $firstInvalid.get(0)?.scrollIntoView({behavior:'smooth', block:'center'});
+            }
+            return false;
+        }
+        return true;
+    }
+
+    // ---------- AJAX SAVE ----------
+    (function(){
+        const $form = $('#invoiceForm');
+        const token = $form.find('input[name="__RequestVerificationToken"]').val();
+
+        // block Enter from accidental submit
+        $form.on('keydown', 'input,select,textarea', function(e){
+            if(e.key === 'Enter') e.preventDefault();
+        });
+
+        function getUrlFromId(){
+            const idVal = Number($form.find('input[name="Id"]').val() || 0);
+            // We'll point both to PurchasesReturnController.
+            return idVal > 0
+                ? '@Url.Action("Edit", "PurchasesReturn")'
+                : '@Url.Action("Create", "PurchasesReturn")';
+        }
+
+        function postAjax(saveAndClose){
+            // ensure totals fresh
+            calcTotals();
+
+            // serialize whole form
+            const payload = $form.serialize();
+            const url = getUrlFromId();
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: payload,
+                headers: { 'RequestVerificationToken': token },
+                success: function(res){
+                    if (saveAndClose){
+                        window.location.href = (res && res.redirectUrl)
+                            || '@Url.Action("Index", "PurchasesReturn")';
+                    } else {
+                        if(window.toastr) toastr.success((res && res.message) || 'Saved.');
+                        else alert((res && res.message) || 'Saved.');
+                    }
+                },
+                error: function(xhr){
+                    try{
+                        const r = JSON.parse(xhr.responseText);
+                        showMessagesSpread([r.message || 'Error while saving.']);
+                        console.error(r.errors || r);
+                    }catch{
+                        showMessagesSpread(['Error while saving.']);
+                    }
+                }
+            });
+        }
+
+        $('#btnAjaxSave').on('click', function(){
+            if (!validateForm()) return;
+            if (!validateSelectedWithQty()) return;
+            postAjax(false);
+        });
+
+        $('#btnAjaxSaveClose').on('click', function(){
+            if (!validateForm()) return;
+            if (!validateSelectedWithQty()) return;
+            postAjax(true);
+        });
+    })();
+
+    // ---------- Purchases picker modal ----------
+    $(document).on('click', '#btnShowBill', function(e){
+        e.preventDefault();
+        let vendorId = $(this).data('customer-id')
+                    || $('#filterVendor').val()
+                    || $('#VendorId').val();
+
+        openPurchasesList(vendorId);
+    });
+
+    async function openPurchasesList(vendorId){
+        if(!vendorId || Number(vendorId) <= 0){
+            vendorId = $('#filterVendor').val() || $('#VendorId').val();
+        }
+        vendorId = Number(vendorId);
+        if(!vendorId || vendorId <= 0){
+            alert('Select a vendor first.');
+            return;
+        }
+
+        const url = '@Url.Action("PurchaseListModal","PurchasesReturn")'
+                  + '?VendorId=' + encodeURIComponent(vendorId);
+
+        $('#lookupModalBody').load(url, function(){
+            const m = new bootstrap.Modal(document.getElementById('lookupModal'));
+            m.show();
+        });
+    }
+
+    // listen for row selection from modal (you will dispatch this event in _PurchaseList partial)
+    window.addEventListener('sales:selected', async (e) => {
+        const purchaseId = e.detail.id;
+
+        const modalEl = document.getElementById('lookupModal');
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+
+        const url = '@Url.Action("GetSaleDetails", "PurchasesReturn")'
+                  + '?id=' + encodeURIComponent(purchaseId);
+
+        const res = await fetch(url, { headers: { 'Accept':'application/json' }});
+        if(!res.ok){
+            alert('Failed to load purchase.');
+            return;
+        }
+        const data = await res.json();
+
+        // --- Fill header fields from returned JSON shape ---
+        $('#PurchasesRefId').val(data.header.id ?? '');
+        $('#InvoiceId').val(data.header.invoiceId ?? '');
+        $('#PONO').val(data.header.invoiceId ?? '');
+        $('#VendorId').val(data.header.vendorId ?? '').trigger('change');
+        $('#VendorCode').val(data.header.customerCode ?? '');
+        $('#customerName').val(data.header.billTo ?? '');
+        $('#SalesMen').val(data.header.salesMan ?? '');
+        $('#Via').val(data.header.shipVia ?? '');
+        $('#ShipTo').val(data.header.shipTo ?? '');
+        $('#ShipDate').val(data.header.shipDate ?? '');
+        $('#DueTo').val(data.header.date ?? '');
+        // etc... adjust Date/DueTo mapping as needed
+
+        // --- Fill items grid ---
+        const $tbody = $('#itemsTable tbody');
+        $tbody.empty();
+
+        (data.items || []).forEach((it, i) => {
+            $tbody.append(`
+<tr>
+    <td style="display:none;">
+        <input type="hidden" name="Items[${i}].ItemId" value="${it.itemId ?? ''}" class="item-id"/>
+    </td>
+
+    <td>${i + 1}</td>
+
+    <td><input type="text" name="Items[${i}].ItemCode" class="form-control item-code" value="${it.itemCode ?? ''}" readonly></td>
+
+    <td><input type="text" name="Items[${i}].ItemName" class="form-control item-name" value="${it.itemName ?? ''}" readonly></td>
+
+    <td class="text-center">
+        <input type="hidden" name="Items[${i}].SelectedROw" value="false"/>
+        <input type="checkbox"
+               class="form-check-input row-select"
+               name="Items[${i}].SelectedROw"
+               value="true">
+    </td>
+
+    <td><input class="form-control form-control-sm item-QTY" name="Items[${i}].QTY" value="${it.qty ?? 0}" readonly></td>
+
+    <td>
+        <input class="form-control form-control-sm item-ReturnQTY"
+               name="Items[${i}].ReturnQTY"
+               value="0"
+               disabled
+               readonly>
+    </td>
+
+    <td><input class="form-control form-control-sm item-CostPrice" name="Items[${i}].CostPrice" value="${it.price ?? 0}" readonly></td>
+
+    <td><input class="form-control form-control-sm item-Disc" name="Items[${i}].Disc" value="${it.discount ?? 0}" readonly></td>
+
+    <td><input class="form-control form-control-sm item-VatPersint" name="Items[${i}].VatPersint" value="${it.vatp ?? 0}" readonly></td>
+
+    <td><input class="form-control form-control-sm item-VatAmonut" name="Items[${i}].VatAmonut" value="${it.vat ?? 0}" readonly></td>
+
+    <td><input class="form-control form-control-sm item-Amount" name="Items[${i}].Amount" value="${it.total ?? 0}" readonly></td>
+
+    <td>
+        <select class="form-select form-select-sm" name="Items[${i}].CostCenterId">
+            ${$('#tpl-cc').html()}
+        </select>
+    </td>
+
+    <td style="display:none;"><input type="hidden" name="Items[${i}].Price" class="item-Price" value="${it.price ?? 0}"></td>
+    <td style="display:none;"><input type="hidden" name="Items[${i}].Type" class="item-Type" value="${it.type ?? ''}"></td>
+    <td style="display:none;"><input type="hidden" name="Items[${i}].Method" class="item-Method" value="${it.method ?? ''}"></td>
+    <td style="display:none;"><input type="hidden" name="Items[${i}].WarehouseId" class="item-WarehouseId" value="${it.warehouseId ?? ''}"></td>
+</tr>
+            `);
+        });
+
+        // after rebuilding rows, re-hook numbering/index etc if needed:
+        updateRowIndexes();
+        calcTotals();
+    });
+
+    // keep row indexes consistent after loading from modal
+    function updateRowIndexes(){
+        $('#itemsTable tbody tr').each(function(i){
+            // col[1] is our visible row number
+            $(this).find('td').eq(1).text(i+1);
+            // fix each name="Items[x].Prop" to current i
+            $(this).find('input, select, textarea').each(function(){
+                const name = $(this).attr('name');
+                if(!name) return;
+                $(this).attr('name', name.replace(/Items\[\d+\]/, `Items[${i}]`));
+            });
+        });
+    }
+
+    // first calc on load
+    $(function(){
+        calcTotals();
+    });
+</script>
+}

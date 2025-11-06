@@ -266,11 +266,13 @@
         //  method to generate invoice number
         public async Task<string> GenerateInvoiceNoAsync()
             {
-            var prefix = "QU-0001"; // Prefix for Credit Note
-            var lastCodeValue = _context.TblSalesQuotations
+            var prefix = "0000"; // Prefix for Credit Note
+            var lastCodeValue =await _context.TblSalesQuotations
                .Select(s => s.InvoiceId.Substring(3))
-               .MaxAsync();
-            return $"QU-{int.Parse(lastCodeValue.Result) + 1:D4}";
+               .MaxAsync(); 
+            prefix = lastCodeValue ?? prefix;
+
+            return $"QU-{int.Parse(prefix ) + 1:D4}";
             }
         //method to map sales proforma to view model
         private static TaxInvoiceViewModel MapToViewProformaModel(TblSalesProforma s)
@@ -516,7 +518,6 @@
                     .Include(s => s.Customer)
                     .FirstOrDefaultAsync(s => s.Id == id);
                  vm = MapToViewModel(sale);
-
                 }
           //  if (sale == null) throw new KeyNotFoundException($"Sale {id} not found.");
 
@@ -619,7 +620,6 @@
                     }).ToList()
                 };
             }
-
         private static TaxInvoiceViewModel MapToViewModel(TblSalesQuotation s)
             {
             // Coalesce details to an empty list to avoid NRE on OrderBy/Select

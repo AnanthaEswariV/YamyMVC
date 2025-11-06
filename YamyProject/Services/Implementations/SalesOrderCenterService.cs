@@ -264,11 +264,13 @@
         //  method to generate invoice number
         public async Task<string> GenerateInvoiceNoAsync()
             {
-            var prefix = "SO-0001"; // Prefix for Credit Note
-            var lastCodeValue = _context.TblSalesOrders
+            var prefix = "0000"; // Prefix for Credit Note
+            var lastCodeValue = await _context.TblSalesOrders
                .Select(s => s.InvoiceId.Substring(3))
                .MaxAsync();
-            return $"SO-{int.Parse(lastCodeValue.Result) + 1:D4}";
+            prefix = lastCodeValue ?? prefix;
+
+            return $"SO-{int.Parse(prefix) + 1:D4}";
             }
         //method to map sales proforma to view model
         private static TaxInvoiceViewModel MapToViewProformaModel(TblSalesProforma s)

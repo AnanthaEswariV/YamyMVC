@@ -1,23 +1,14 @@
-﻿
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
 {
-    public class SalesServices : ISalesServices
+    public class SalesServices(YamyDbContext context, IMicroserviceClient microserviceClient) : ISalesServices
     {
-        private readonly YamyDbContext _db;
-        private readonly IMicroserviceClient _microserviceClient;
-
-        public SalesServices(YamyDbContext db, IMicroserviceClient microserviceClient)
-        {
-            _db = db;
-            _microserviceClient = microserviceClient;
-        }
-
+        private readonly YamyDbContext _context = context;
+        private readonly IMicroserviceClient _microserviceClient = microserviceClient;
         public async Task<SalesEditViewModel?> GetSaleForEditAsync(int id)
         {
-            var sale = await _db.TblSales
+            var sale = await _context.TblSales
                 .Include(s => s.TblSalesDetails) // depends on your EF navigation properties
                 .FirstOrDefaultAsync(s => s.Id == id && s.State == 0);
-
             if (sale == null) return null;
 
             var vm = new SalesEditViewModel
@@ -43,7 +34,7 @@ namespace YamyProject.Services.Implementations
                 Net = sale.Net,
                 Pay = sale.Pay,
                 Change = sale.Change,
-                Details = sale.TblSalesDetails.Select(d => new SalesDetailViewModel
+                Details = [.. sale.TblSalesDetails.Select(d => new SalesDetailViewModel
                 {
                     Id = d.Id,
                     ItemId = d.ItemId ?? 0,
@@ -55,8 +46,8 @@ namespace YamyProject.Services.Implementations
                     Total = d.Total,
                     Discount = d.Discount,
                     CostCenterId = d.CostCenterId
-                }).ToList()
-            };
+                })]
+                };
 
             return vm;
         }
@@ -64,10 +55,10 @@ namespace YamyProject.Services.Implementations
         public async Task<int> CreateSaleAsync(SalesEditViewModel vm)
         {
             // Basic validation
-            if (vm.Details == null || !vm.Details.Any())
+            if (vm.Details == null || vm.Details.Count == 0)
                 throw new InvalidOperationException("Can't save empty invoice");
 
-            using var tx = await _db.Database.BeginTransactionAsync();
+            using var tx = await _context.Database.BeginTransactionAsync();
             try
             {
                 // map VM to entity
@@ -101,11 +92,11 @@ namespace YamyProject.Services.Implementations
                     ProjectId = 0
                 };
 
-                _db.TblSales.Add(entity);
-                await _db.SaveChangesAsync();
+                _context.TblSales.Add(entity);
+                await _context.SaveChangesAsync();
 
                 // Insert details and handle inventory / item transactions
-                decimal totalInventoryCost = 0m;
+               // decimal totalInventoryCost = 0m;
                 foreach (var d in vm.Details)
                 {
                     var detail = new TblSalesDetail
@@ -121,36 +112,36 @@ namespace YamyProject.Services.Implementations
                         Total = d.Total,
                         CostCenterId = d.CostCenterId
                     };
-                    _db.TblSalesDetails.Add(detail);
-                    await _db.SaveChangesAsync();
+                    _context.TblSalesDetails.Add(detail);
+                    await _context.SaveChangesAsync();
 
                     // Inventory handling for non-service items
                     // Read item type & method from tbl_items (I use raw query assuming Items DbSet exists)
-                    var item = await _db.TblItems.FindAsync(d.ItemId);
+                    var item = await _context.TblItems.FindAsync(d.ItemId);
                     if (item != null && item.Type != "12 - Service")
                     {
                         // reduce on_hand
                         item.OnHand -= d.Qty;
-                        _db.TblItems.Update(item);
+                        _context.TblItems.Update(item);
 
                         // call the FIFO/LIFO/AVG cost calculation helper (extracted from frmSales.InsertItemTransaction)
-                        var cost = await ProcessItemTransactionAsync(entity.Id, d.ItemId, d.Qty, item.Method, vm.Date, d.Price);
-                        totalInventoryCost += cost;
+                  //      var cost = await ProcessItemTransactionAsync(entity.Id, d.ItemId, d.Qty, item.Method, vm.Date, d.Price);
+                  //      totalInventoryCost += cost;
                     }
                 }
 
                 // Accounting transactions
                 // Recreate the Transaction() logic: add transaction entries via CommonInsert (or local methods)
-                if (vm.Net > 0)
-                {
-                    // Example: create transaction entries - these would call accounting submodule/repository
-                    await AddTransactionEntriesAsync(entity.Id, vm);
-                    if (totalInventoryCost > 0)
-                    {
-                        // Create COGS and inventory entries
-                        await AddCogsInventoryEntriesAsync(entity.Id, totalInventoryCost, vm);
-                    }
-                }
+                //if (vm.Net > 0)
+                //{
+                //    // Example: create transaction entries - these would call accounting submodule/repository
+                //    await AddTransactionEntriesAsync(entity.Id, vm);
+                //    if (totalInventoryCost > 0)
+                //    {
+                //        // Create COGS and inventory entries
+                //        await AddCogsInventoryEntriesAsync(entity.Id, totalInventoryCost, vm);
+                //    }
+                //}
 
                 await tx.CommitAsync();
 
@@ -169,10 +160,10 @@ namespace YamyProject.Services.Implementations
         public async Task<bool> UpdateSaleAsync(SalesEditViewModel vm)
         {
             if (!vm.Id.HasValue) throw new ArgumentException("Id required for update");
-            using var tx = await _db.Database.BeginTransactionAsync();
+            using var tx = await _context.Database.BeginTransactionAsync();
             try
             {
-                var sale = await _db.TblSales.Include(s => s.TblSalesDetails).FirstOrDefaultAsync(s => s.Id == vm.Id.Value);
+                var sale = await _context.TblSales.Include(s => s.TblSalesDetails).FirstOrDefaultAsync(s => s.Id == vm.Id.Value);
                 if (sale == null) return false;
 
                 // simple mapping of header fields
@@ -203,22 +194,22 @@ namespace YamyProject.Services.Implementations
                 // Here we shall: for each old detail -> increase on_hand back, reverse item transactions (domain logic)
                 foreach (var old in sale.TblSalesDetails.ToList())
                 {
-                    var item = await _db.TblItems.FindAsync(old.ItemId);
+                    var item = await _context.TblItems.FindAsync(old.ItemId);
                     if (item != null && item.Type != "12 - Service")
                     {
                         item.OnHand += old.Qty ?? 0;
-                        _db.TblItems.Update(item);
+                        _context.TblItems.Update(item);
 
                         // revert item transactions (complex) - for brevity, call a helper:
-                        await RevertItemTransactionsAsync(sale.Id, old.ItemId.Value, old.Qty ?? 0);
+              //          await RevertItemTransactionsAsync(sale.Id, old.ItemId.Value, old.Qty ?? 0);
                     }
                 }
                 // delete old details
-                _db.TblSalesDetails.RemoveRange(sale.TblSalesDetails);
-                await _db.SaveChangesAsync();
+                _context.TblSalesDetails.RemoveRange(sale.TblSalesDetails);
+                await _context.SaveChangesAsync();
 
                 // insert new details (similar to Create)
-                decimal totalInventoryCost = 0;
+              ///  decimal totalInventoryCost = 0;
                 foreach (var d in vm.Details)
                 {
                     var detail = new TblSalesDetail
@@ -234,24 +225,24 @@ namespace YamyProject.Services.Implementations
                         Total = d.Total,
                         CostCenterId = d.CostCenterId
                     };
-                    _db.TblSalesDetails.Add(detail);
-                    await _db.SaveChangesAsync();
+                    _context.TblSalesDetails.Add(detail);
+                    await _context.SaveChangesAsync();
 
-                    var item = await _db.TblItems.FindAsync(d.ItemId);
-                    if (item != null && item.Type != "12 - Service")
+                    var item = await _context.TblItems.FindAsync(d.ItemId);
+                    if (item != null && item.Type != "12 - Service" && item.Type != "13 - Inventory Assembly")
                     {
                         item.OnHand -= d.Qty;
-                        _db.TblItems.Update(item);
+                        _context.TblItems.Update(item);
 
-                        var cost = await ProcessItemTransactionAsync(sale.Id, d.ItemId, d.Qty, item.Method, vm.Date, d.Price);
-                        totalInventoryCost += cost;
+          //              var cost = await ProcessItemTransactionAsync(sale.Id, d.ItemId, d.Qty, item.Method, vm.Date, d.Price);
+            //            totalInventoryCost += cost;
                     }
                 }
 
                 // Recreate accounting entries (delete previous entries and add new ones)
-                await RecreateAccountingEntriesAsync(sale.Id, vm, totalInventoryCost);
+        //        await RecreateAccountingEntriesAsync(sale.Id, vm, totalInventoryCost);
 
-                await _db.SaveChangesAsync();
+                await _context.SaveChangesAsync();
                 await tx.CommitAsync();
 
                 // notify microservice
@@ -266,44 +257,44 @@ namespace YamyProject.Services.Implementations
             }
         }
 
-        #region Helper private methods (sketches)
-        private async Task<decimal> ProcessItemTransactionAsync(int saleId, int itemId, decimal qty, string method, DateTime saleDate, decimal salePrice)
-        {
-            // This helper implements the FIFO/LIFO/AVG logic from frmSales.InsertItemTransaction
-            // For brevity: return computed cost based on available item transactions, and create item transaction entries in tbl_item_transaction using a repository
-            // Pseudocode steps:
-            // 1. if method == fifo/lifo: read item transactions ordered asc/desc and consume qty, compute cost
-            // 2. else compute average cost from item transactions
-            // 3. insert new item_transaction record(s) for this sale (CommonInsert.InsertItemTransaction equivalent)
-            // 4. return total cost (qty * cost_price)
-            //
-            // Implement according to your exact tbl_item_transaction schema.
+        //#region Helper private methods (sketches)
+        //private async Task<decimal> ProcessItemTransactionAsync(int saleId, int itemId, decimal qty, string method, DateTime saleDate, decimal salePrice)
+        //{
+        //    // This helper implements the FIFO/LIFO/AVG logic from frmSales.InsertItemTransaction
+        //    // For brevity: return computed cost based on available item transactions, and create item transaction entries in tbl_item_transaction using a repository
+        //    // Pseudocode steps:
+        //    // 1. if method == fifo/lifo: read item transactions ordered asc/desc and consume qty, compute cost
+        //    // 2. else compute average cost from item transactions
+        //    // 3. insert new item_transaction record(s) for this sale (CommonInsert.InsertItemTransaction equivalent)
+        //    // 4. return total cost (qty * cost_price)
+        //    //
+        //    // Implement according to your exact tbl_item_transaction schema.
 
-            decimal totalCost = 0m;
-            // ... implement DB logic here using _db.Database.ExecuteSqlRawAsync or EF entities for item_transaction
-            return totalCost;
-        }
+        //    decimal totalCost = 0m;
+        //    // ... implement DB logic here using _context.Database.ExecuteSqlRawAsync or EF entities for item_transaction
+        //    return totalCost;
+        //}
 
-        private async Task RevertItemTransactionsAsync(int saleId, int itemId, decimal qty)
-        {
-            // Revert earlier commitments to qty_inc etc. Implement per your business rules (mirrors ReturnItemsToInventory and ProcessInventoryReturn)
-        }
+        //private async Task RevertItemTransactionsAsync(int saleId, int itemId, decimal qty)
+        //{
+        //    // Revert earlier commitments to qty_inc etc. Implement per your business rules (mirrors ReturnItemsToInventory and ProcessInventoryReturn)
+        //}
 
-        private async Task AddTransactionEntriesAsync(int saleId, SalesEditViewModel vm)
-        {
-            // map to CommonInsert.addTransactionEntry in your WinForms code.
-            // This likely inserts rows into tbl_transactions. Implement repository call or direct SQL as per your project.
-        }
+        //private async Task AddTransactionEntriesAsync(int saleId, SalesEditViewModel vm)
+        //{
+        //    // map to CommonInsert.addTransactionEntry in your WinForms code.
+        //    // This likely inserts rows into tbl_transactions. Implement repository call or direct SQL as per your project.
+        //}
 
-        private async Task AddCogsInventoryEntriesAsync(int saleId, decimal totalInventoryCost, SalesEditViewModel vm)
-        {
-            // Add COGS and inventory accounting entries similar to frmSales.Transaction().
-        }
+        //private async Task AddCogsInventoryEntriesAsync(int saleId, decimal totalInventoryCost, SalesEditViewModel vm)
+        //{
+        //    // Add COGS and inventory accounting entries similar to frmSales.Transaction().
+        //}
 
-        private async Task RecreateAccountingEntriesAsync(int saleId, SalesEditViewModel vm, decimal totalInventoryCost)
-        {
-            // Delete existing transaction entries for saleId and re-add based on new totals.
-        }
-        #endregion
+        ////private async Task RecreateAccountingEntriesAsync(int saleId, SalesEditViewModel vm, decimal totalInventoryCost)
+        //{
+        //    // Delete existing transaction entries for saleId and re-add based on new totals.
+        //}
+        //#endregion
     }
 }

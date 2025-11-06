@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblCountry
 {
     public int Id { get; set; }
