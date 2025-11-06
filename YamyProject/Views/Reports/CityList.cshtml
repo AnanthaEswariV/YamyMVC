@@ -1,0 +1,168 @@
+﻿@{
+    ViewData["Title"] = "City List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>City List</strong>
+    </div>
+
+    <div class="card-body">
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>City</th>
+                    <th>Country Id</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            loadCities();
+
+            function loadCities() {
+                $.ajax({
+                    url: '/Reports/GetCitys',
+                    type: 'GET',
+
+                    beforeSend: function () {
+                        $('#table2 tbody').html(`
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <div class="spinner-border text-primary me-2"></div>Loading...
+                                </td>
+                            </tr>
+                        `);
+                    },
+
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to load city list');
+                            return;
+                        }
+
+                        if ($.fn.DataTable.isDataTable('#table2')) {
+                            $('#table2').DataTable().clear().destroy();
+                        }
+
+                        const tbody = $('#table2 tbody');
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                const tr = $(`
+                                    <tr data-id="${row.id}">
+                                        <td>${i + 1}</td>
+                                        <td>${row.name}</td>
+                                        <td>${row.country_Id}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary edit-btn">Edit</button>
+                                            <button class="btn btn-sm btn-outline-danger delete-btn">Delete</button>
+                                        </td>
+                                    </tr>
+                                `);
+                                tbody.append(tr);
+                            });
+
+                            // ✅ Initialize DataTable
+                            $('#table2').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm',
+                                        orientation: 'landscape',
+                                        pageSize: 'A4'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 15
+                            });
+
+                            // ✅ Row click or edit/delete handlers
+                            $('#table2 tbody').on('click', '.edit-btn', function () {
+                                const id = $(this).closest('tr').data('id');
+                                toastr.info(`Edit clicked for City ID: ${id}`);
+                                // Example redirect:
+                                // window.location.href = `/City/Edit/${id}`;
+                            });
+
+                            $('#table2 tbody').on('click', '.delete-btn', function () {
+                                const id = $(this).closest('tr').data('id');
+                                if (confirm('Are you sure you want to delete this city?')) {
+                                    deleteCity(id);
+                                }
+                            });
+
+                        } else {
+                            tbody.append(`<tr><td colspan="4" class="text-center text-muted py-4">No cities found</td></tr>`);
+                        }
+                    },
+
+                    error: function () {
+                        toastr.error('Error loading city list');
+                    }
+                });
+            }
+
+            function deleteCity(id) {
+                $.ajax({
+                    url: `/Reports/DeleteCity/${id}`,
+                    type: 'DELETE',
+                    success: function (res) {
+                        if (res.status) {
+                            toastr.success('City deleted successfully');
+                            loadCities();
+                        } else {
+                            toastr.error(res.message || 'Failed to delete city');
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error deleting city');
+                    }
+                });
+            }
+        });
+    </script>
+}

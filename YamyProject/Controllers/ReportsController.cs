@@ -2152,15 +2152,6 @@ ORDER BY l.code;
 
         #endregion
 
-        #region Item Transaction
-
-        public IActionResult ItemTransaction()
-        {
-            return View();
-        }
-
-        #endregion
-
         #region Warehouse Summary
 
         public IActionResult WareHouseSummary()
@@ -2244,7 +2235,158 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Inventory Transaction Report
 
+        public IActionResult InventoryTransaction()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetInvoices(
+    int? itemId = null,
+    DateTime? dateFrom = null,
+    DateTime? dateTo = null,
+    bool includeAllItems = true,
+    bool includeAllDates = true)
+        {
+            try
+            {
+                // Build connection string dynamically using session or fallback to default
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY it.date) AS SN,
+                DATE_FORMAT(it.date, '%d/%m/%Y') AS `Date`,
+                it.type AS Type,
+                CONCAT('000', it.reference) AS `RefId`,
+                i.name AS Name,
+                i.code AS Code,
+                it.item_id AS ItemId,
+                i.cost_price AS CostPrice,
+                i.sales_price AS SellingPrice,
+                it.qty_in AS QtyIn,
+                it.qty_out AS QtyOut,
+                it.description AS Description
+            FROM 
+                tbl_item_transaction it
+            INNER JOIN 
+                tbl_items i ON it.item_id = i.id
+            WHERE 
+                i.state = 0
+                AND (@itemId IS NULL OR i.id = @itemId)
+                AND (@dateFilter = 0 OR (it.date BETWEEN @dateFrom AND @dateTo))
+            ORDER BY 
+                it.date;
+        ";
+
+                // Prepare parameters
+                var parameters = new List<MySqlParameter>
+        {
+            new("@itemId", includeAllItems ? DBNull.Value : (object?)itemId ?? DBNull.Value),
+            new("@dateFrom", dateFrom ?? DateTime.MinValue),
+            new("@dateTo", dateTo ?? DateTime.MaxValue),
+            new("@dateFilter", includeAllDates ? 0 : 1)
+        };
+
+                var result = new List<InvoiceViewModels>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        result.Add(new InvoiceViewModels
+                        {
+                            SN = reader.GetInt32("SN"),
+                            Date = reader["Date"].ToString(),
+                            Type = reader["Type"].ToString(),
+                            RefId = reader["RefId"].ToString(),
+                            Name = reader["Name"].ToString(),
+                            Code = reader["Code"].ToString(),
+                            ItemId = reader.GetInt32("ItemId"),
+                            CostPrice = reader.GetDecimal("CostPrice"),
+                            SellingPrice = reader.GetDecimal("SellingPrice"),
+                            QtyIn = reader.GetDecimal("QtyIn"),
+                            QtyOut = reader.GetDecimal("QtyOut"),
+                            Description = reader["Description"].ToString()
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region City List
+
+        public IActionResult CityList()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCitys()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+               *
+            FROM tbl_city
+            ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                        Country_Id = reader.GetInt32("country_id"),
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
 
     }
 

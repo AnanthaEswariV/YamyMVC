@@ -3108,6 +3108,263 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
+        public IActionResult GeneralJournal()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetJournalDetails(int refId, string vType, string date)
+        {
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Prepare the query based on voucher type
+                string query = string.Empty;
+                if (vType == "Sales Invoice" || vType == "Sales Invoice Cash")
+                {
+                    query = @"
+                SELECT t.*, 
+                       ac.*, 
+                       ac.code AS `Account Code`,
+                        ac.name AS 'Account Name',
+                       CASE 
+                           WHEN t.type IN ('Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Check Cancel (Customer)', 'Customer%', 'Sales%') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_customer WHERE id = hum_id), '')
+                           WHEN t.type IN ('Vendor Payment', 'Purchase Invoice', 'Purchase Invoice Cash', 'Vendor Opening Balance', 'Check Cancel (Vendor)', 'Vendor%', 'Purchase%') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_vendor WHERE id = hum_id), '')
+                           WHEN t.type IN ('Employee Salary', 'Employee Payment') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_employee WHERE id = hum_id), '')
+                           ELSE '' 
+                       END AS `hum name`
+                FROM tbl_transaction t 
+                INNER JOIN tbl_coa_level_4 ac ON ac.id = t.account_id
+                WHERE (t.type = 'Sales Invoice Cash' or t.type = 'Sales Invoice') 
+                  AND t.transaction_id = @id;";
+                }
+                else if (vType == "Purchase Invoice" || vType == "Purchase Invoice Cash")
+                {
+                    query = @"
+                SELECT t.*, 
+                       ac.*, 
+                       ac.code AS `Account Code`,
+                       ac.name AS 'Account Name',
+                       CASE 
+                           WHEN t.type IN ('Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Check Cancel (Customer)', 'Customer%', 'Sales%') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_customer WHERE id = hum_id), '')
+                           WHEN t.type IN ('Vendor Payment', 'Purchase Invoice', 'Purchase Invoice Cash', 'Vendor Opening Balance', 'Check Cancel (Vendor)', 'Vendor%', 'Purchase%') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_vendor WHERE id = hum_id), '')
+                           WHEN t.type IN ('Employee Salary', 'Employee Payment') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_employee WHERE id = hum_id), '')
+                           ELSE '' 
+                       END AS `hum name`
+                FROM tbl_transaction t 
+                INNER JOIN tbl_coa_level_4 ac ON ac.id = t.account_id
+                WHERE (t.type = 'Purchase Invoice Cash' or t.type = 'Purchase Invoice')
+                  AND t.transaction_id = @id;";
+                }
+                else
+                {
+                    query = @"
+                SELECT t.*, 
+                       ac.*, 
+                       ac.code AS `Account Code`,
+                       ac.name AS 'Account Name',
+                       CASE 
+                           WHEN t.type IN ('Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Check Cancel (Customer)', 'Customer%', 'Sales%') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_customer WHERE id = hum_id), '')
+                           WHEN t.type IN ('Vendor Payment', 'Purchase Invoice', 'Purchase Invoice Cash', 'Vendor Opening Balance', 'Check Cancel (Vendor)', 'Vendor%', 'Purchase%') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_vendor WHERE id = hum_id), '')
+                           WHEN t.type IN ('Employee Salary', 'Employee Payment') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_employee WHERE id = hum_id), '')
+                           WHEN t.type IN ('SubContract Payment','Subcontractor Opening Balance','Check Cancel (SubContract)') 
+                                THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_vendor WHERE id = hum_id), '')
+                           ELSE '' 
+                       END AS `hum name`
+                FROM tbl_transaction t 
+                INNER JOIN tbl_coa_level_4 ac ON ac.id = t.account_id
+                WHERE t.TYPE = @type 
+                  AND t.transaction_id = @id AND t.date = @date;";
+                }
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", refId);
+                cmd.Parameters.AddWithValue("@type", vType);
+                cmd.Parameters.AddWithValue("@date", DateTime.Parse(date));
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var journalDetailsList = new List<object>();
+                int count = 1;
+                while (await reader.ReadAsync())
+                {
+                    journalDetailsList.Add(new
+                    {
+                        SN = count++,
+                        Date = reader["date"].ToString(),
+                        TransactionId = reader["transaction_id"].ToString(),
+                        HumName = reader["hum name"].ToString(),
+                        AccountId = reader["account_id"].ToString(),
+                        AccountCode = reader["Account Code"].ToString(),
+                        AccountName = reader["Account Name"].ToString(),
+                        Debit = reader.IsDBNull(reader.GetOrdinal("Debit")) ? 0 : reader.GetDecimal(reader.GetOrdinal("Debit")),
+                        Credit = reader.IsDBNull(reader.GetOrdinal("Credit")) ? 0 : reader.GetDecimal(reader.GetOrdinal("Credit")),
+                        Description = reader["Description"].ToString(),
+                        Id = reader["id"].ToString(),
+                        HumId = reader["hum_id"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = journalDetailsList });
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateJournal([FromBody] JournalUpdateRequest request)
+        {
+
+            if (request == null || request.Entries == null || request.Entries.Count == 0)
+                return Json(new { status = false, message = "No journal entries provided." });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                using var transaction = await conn.BeginTransactionAsync();
+
+                decimal totalDebit = 0, totalCredit = 0;
+
+                foreach (var row in request.Entries)
+                {
+                    if (string.IsNullOrEmpty(row.AccountId))
+                        continue;
+
+                    decimal debit = row.Debit ?? 0;
+                    decimal credit = row.Credit ?? 0;
+                    totalDebit += debit;
+                    totalCredit += credit;
+
+                    string updateQuery = @"
+                UPDATE tbl_transaction 
+                SET 
+                    date = @date,
+                    account_id = @accountId,
+                    debit = @debit,
+                    credit = @credit,
+                    transaction_id = @transactionId,
+                    hum_id = @humId,
+                    type = @type,
+                    description = @description,
+                    modified_by = @modifiedBy,
+                    modified_date = NOW()
+                WHERE id = @id;
+            ";
+
+                    await using (var cmd = new MySqlCommand(updateQuery, conn, (MySqlTransaction)transaction))
+                    {
+                        cmd.Parameters.AddWithValue("@date", row.Date);
+                        cmd.Parameters.AddWithValue("@accountId", row.AccountId);
+                        cmd.Parameters.AddWithValue("@debit", debit);
+                        cmd.Parameters.AddWithValue("@credit", credit);
+                        cmd.Parameters.AddWithValue("@transactionId", request.TransactionId);
+                        cmd.Parameters.AddWithValue("@humId", row.HumId ?? "0");
+                        cmd.Parameters.AddWithValue("@type", request.VoucherType);
+                        cmd.Parameters.AddWithValue("@description", row.Description ?? "");
+                       cmd.Parameters.AddWithValue("@modifiedBy", userId);
+                        cmd.Parameters.AddWithValue("@id", row.Id); 
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // --- Handle type-specific account updates ---
+                    string type = request.VoucherType;
+                    string secondaryQuery = type switch
+                    {
+                        "Customer Opening Balance" => "UPDATE tbl_customer SET account_id = @acId WHERE id = @hId;",
+                        "Vendor Opening Balance" => "UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId;",
+                        "Subcontractor Opening Balance" => "UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId;",
+                        _ => ""
+                    };
+
+                    if (!string.IsNullOrEmpty(secondaryQuery))
+                    {
+                        await using var cmd2 = new MySqlCommand(secondaryQuery, conn, (MySqlTransaction)transaction);
+                        cmd2.Parameters.AddWithValue("@acId", row.AccountId);
+                        cmd2.Parameters.AddWithValue("@hId", row.HumId);
+                        await cmd2.ExecuteNonQueryAsync();
+                    }
+
+                }
+
+                // --- Update Balance Table ---
+                decimal amount = totalDebit > totalCredit ? totalDebit : totalCredit;
+                await UpdateVoucherTablesAsync(conn, transaction, request.VoucherType, amount, request.CurrentHumId, request.CurrentVoucherId, request.ModifiedBy);
+
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Journal updated successfully",
+                    totalDebit,
+                    totalCredit
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task UpdateVoucherTablesAsync(MySqlConnection conn, MySqlTransaction transaction, string type, decimal amount, string humId, string voucherId, int modifiedBy)
+        {
+            try
+            {
+                string query = type switch
+                {
+                    "Customer Opening Balance" => "UPDATE tbl_customer SET Balance=@amount WHERE id=@hId;",
+                    "Vendor Opening Balance" => "UPDATE tbl_vendor SET Balance=@amount WHERE id=@hId;",
+                    "Subcontractor Opening Balance" => "UPDATE tbl_vendor SET Balance=@amount WHERE id=@hId;",
+                    _ => ""
+                };
+
+                if (!string.IsNullOrEmpty(query))
+                {
+                    await using var cmd = new MySqlCommand(query, conn, transaction);
+                    cmd.Parameters.AddWithValue("@amount", amount);
+                    cmd.Parameters.AddWithValue("@hId", humId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+     
+        }
+
 
         #endregion
 

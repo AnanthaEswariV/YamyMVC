@@ -1,0 +1,252 @@
+﻿@{
+    ViewData["Title"] = "Inventory Transaction";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+
+    .filter-container div {
+        min-width: 180px;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Inventory Transaction</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3 align-items-end mb-4 text-center">
+
+            <!-- All Items Checkbox -->
+            <div class="col-md-2 col-lg-1 d-flex justify-content-center align-items-center">
+                <div class="form-check">
+                    <input type="checkbox" id="chkAll" class="form-check-input" checked>
+                    <label for="chkAll" class="form-check-label fw-bold">All</label>
+                </div>
+            </div>
+
+            <!-- Item Dropdown -->
+            <div class="col-md-3 col-lg-2">
+                <label for="itemSelect" class="fw-bold mb-1">Item Name</label>
+                <select class="form-select" id="itemSelect" disabled>
+                    <option value="">-- Select Item --</option>
+                </select>
+            </div>
+
+            <!-- Show All Data Checkbox -->
+            <div class="col-md-3 col-lg-2 d-flex justify-content-center align-items-center">
+                <div class="form-check">
+                    <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                    <label for="chkAllData" class="form-check-label fw-bold">Show All Data</label>
+                </div>
+            </div>
+
+            <!-- Start Date -->
+            <div class="col-md-3 col-lg-2">
+                <label for="startDate" class="fw-bold mb-1">Start Date</label>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div class="col-md-3 col-lg-2">
+                <label for="endDate" class="fw-bold mb-1">End Date</label>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div class="col-md-2 col-lg-1">
+                <button class="btn btn-primary w-100" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Ref Id</th>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Item Id</th>
+                    <th>Cost Price</th>
+                    <th>Selling Price</th>
+                    <th>Qty In</th>
+                    <th>Qty Out</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            // Load dropdown items
+            loadItems();
+
+            function loadItems() {
+                $.ajax({
+                    url: '/Lists/GetItems',
+                    type: 'GET',
+                    success: function (res) {
+                        const dropdown = $('#itemSelect');
+                        dropdown.empty().append('<option value="">-- Select Item --</option>');
+                        if (res.status && res.data) {
+                            res.data.forEach(item => {
+                                dropdown.append(`<option value="${item.id}">${item.itemName}</option>`);
+                            });
+                        } else {
+                            toastr.error(res.message || 'Failed to load items');
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading items');
+                    }
+                });
+            }
+
+            // Enable/disable dropdown based on checkbox
+            $('#chkAll').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#itemSelect').prop('disabled', isChecked);
+            });
+
+            // Enable/disable dates based on checkbox
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+            });
+
+            // Load data when filter button clicked
+            $('#filterBtn').click(function () {
+                loadInvoices();
+            });
+
+            // Initial load
+            loadInvoices();
+
+            function loadInvoices() {
+                const includeAllItems = $('#chkAll').is(':checked');
+                const includeAllDates = $('#chkAllData').is(':checked');
+                const itemId = includeAllItems ? null : $('#itemSelect').val();
+                const dateFrom = $('#startDate').val();
+                const dateTo = $('#endDate').val();
+
+                if (!includeAllDates && (!dateFrom || !dateTo)) {
+                    toastr.warning('Please select both start and end dates.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Reports/GetInvoices',
+                    type: 'GET',
+                    data: {
+                        itemId: itemId,
+                        dateFrom: dateFrom || null,
+                        dateTo: dateTo || null,
+                        includeAllItems: includeAllItems,
+                        includeAllDates: includeAllDates
+                    },
+                    beforeSend: function () {
+                        $('#table2 tbody').html(`
+                            <tr>
+                                <td colspan="12" class="text-center text-muted py-4">
+                                    <div class="spinner-border text-primary me-2"></div>Loading...
+                                </td>
+                            </tr>
+                        `);
+                    },
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to load invoice data');
+                            return;
+                        }
+
+                        if ($.fn.DataTable.isDataTable('#table2')) {
+                            $('#table2').DataTable().clear().destroy();
+                        }
+
+                        const tbody = $('#table2 tbody');
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                const tr = `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>${row.date}</td>
+                                        <td>${row.type}</td>
+                                        <td>${row.refId}</td>
+                                        <td>${row.name}</td>
+                                        <td>${row.code}</td>
+                                        <td>${row.itemId}</td>
+                                        <td class="text-end">${row.costPrice.toLocaleString()}</td>
+                                        <td class="text-end">${row.sellingPrice.toLocaleString()}</td>
+                                        <td class="text-end">${row.qtyIn.toLocaleString()}</td>
+                                        <td class="text-end">${row.qtyOut.toLocaleString()}</td>
+                                        <td>${row.description}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            $('#table2').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm',
+                                        orientation: 'landscape',
+                                        pageSize: 'A4'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 15
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="12" class="text-center text-muted py-4">No records found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading invoice data');
+                    }
+                });
+            }
+        });
+    </script>
+}
