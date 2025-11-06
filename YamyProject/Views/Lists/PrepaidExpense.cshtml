@@ -119,6 +119,7 @@
                             <label for="feesAmount" class="form-label text-muted">Fees Amount</label>
                             <input type="text" class="form-control" id="feesAmount">
                         </div>
+                        
                         <div class="col-md-4">
                             <label for="agreementTotal" class="form-label text-muted">Agreement Total</label>
                             <input type="text" class="form-control" id="agreementTotal" disabled>
@@ -274,7 +275,6 @@
             });
         }
 
-           
                 $(document).ready(function() {
 
                    
@@ -312,6 +312,31 @@
             });
             populateCategories();
              populateBankAccounts();
+
+
+                  const urlParams = new URLSearchParams(window.location.search);
+        const prepaidId = urlParams.get('Id');
+
+        if (prepaidId) {
+            console.log('Auto-opening prepaid ID:', prepaidId);
+
+            // Wait for the table to load, then trigger edit
+            setTimeout(function() {
+                // Find the edit button with matching ID
+                const $editBtn = $(`.editPrepaidBtn`).filter(function() {
+                    const prepaidData = $(this).data('prepaid');
+                    return prepaidData && String(prepaidData.id) === String(prepaidId);
+                });
+
+                if ($editBtn.length > 0) {
+                    console.log('Found edit button, clicking...');
+                    $editBtn.click();
+                } else {
+                    console.log('Edit button not found for ID:', prepaidId);
+                    toastr.info(`Loading prepaid expense #${prepaidId}...`);
+                }
+            }, 1500);
+        }
 
                      // 🖊️ Edit Prepaid Expense Button Click
         $(document).on("click", ".editPrepaidBtn", function () {
@@ -406,7 +431,7 @@
                         return;
                     }
                
-
+                    console.log(res);
                     // Destroy existing DataTable if exists
                     if ($.fn.DataTable.isDataTable("#table1")) {
                         $("#table1").DataTable().destroy();

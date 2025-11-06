@@ -125,7 +125,6 @@
                         toastr.error(res.message || 'Failed to load prepaid expense data');
                         return;
                     }
-
                     // Destroy existing DataTable
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
