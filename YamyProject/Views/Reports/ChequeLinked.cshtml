@@ -1,0 +1,187 @@
+﻿
+@{
+    ViewData["Title"] = "ChequeLinked";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Cheque Linked to Payment/Receipt</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table3">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Check No</th>
+                    <th>Check Date</th>
+                    <th>Amount</th>
+                    <th>Check Type</th>
+                    <th>Payment Voucher</th>
+                    <th>Receipt Voucher</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Load data on page load
+            loadChequeLinkedHistory();
+
+            // Checkbox toggle (enable/disable date filters)
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+                loadChequeLinkedHistory();
+            });
+
+            // Filter button click
+            $('#filterBtn').click(function () {
+                loadChequeLinkedHistory();
+            });
+        });
+
+        function loadChequeLinkedHistory() {
+            const includeAllDates = $('#chkAllData').is(':checked');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            $.ajax({
+                url: '/Reports/GetAllChecks', 
+                type: 'GET',
+                data: {
+                    startDate: startDate || null,
+                    endDate: endDate || null,
+                    includeAllDates: includeAllDates
+                },
+                beforeSend: function () {
+                    $('#table3 tbody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load Cheque data');
+                        return;
+                    }
+
+                    // Destroy existing DataTable if any
+                    if ($.fn.DataTable.isDataTable('#table3')) {
+                        $('#table3').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table3 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr>
+                                    <td>${row.SN || ''}</td>
+                                    <td>${row.CheckNo || ''}</td>
+                                    <td>${row.CheckDate || ''}</td>
+                                    <td class="text-end fw-bold">${row.Amount || ''}</td>
+                                    <td>${row.CheckType || ''}</td>
+                                    <td>${row.PaymentVoucher || ''}</td>
+                                    <td>${row.ReceiptVoucher || ''}</td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $('#table3').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+                    } else {
+                        tbody.append(`
+                            <tr><td colspan="7" class="text-center text-muted py-4">No Cheque data found</td></tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading Cheque data');
+                }
+            });
+        }
+    </script>
+
+
+}
