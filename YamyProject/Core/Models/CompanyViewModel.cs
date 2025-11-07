@@ -654,6 +654,7 @@ namespace YamyProject.Core.Models
     public class InvoiceViewModels
     {
         public int SN { get; set; }
+        public int Id { get; set; }
         public string Date { get; set; }
         public string Type { get; set; }
         public string RefId { get; set; }

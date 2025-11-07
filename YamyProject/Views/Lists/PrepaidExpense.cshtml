@@ -318,8 +318,7 @@
         const prepaidId = urlParams.get('Id');
 
         if (prepaidId) {
-            console.log('Auto-opening prepaid ID:', prepaidId);
-
+           
             // Wait for the table to load, then trigger edit
             setTimeout(function() {
                 // Find the edit button with matching ID
@@ -329,10 +328,9 @@
                 });
 
                 if ($editBtn.length > 0) {
-                    console.log('Found edit button, clicking...');
+                    
                     $editBtn.click();
                 } else {
-                    console.log('Edit button not found for ID:', prepaidId);
                     toastr.info(`Loading prepaid expense #${prepaidId}...`);
                 }
             }, 1500);

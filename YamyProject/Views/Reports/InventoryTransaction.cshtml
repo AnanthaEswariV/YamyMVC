@@ -191,7 +191,6 @@
                             toastr.error(res.message || 'Failed to load invoice data');
                             return;
                         }
-
                         if ($.fn.DataTable.isDataTable('#table2')) {
                             $('#table2').DataTable().clear().destroy();
                         }
@@ -202,7 +201,7 @@
                         if (res.data && res.data.length > 0) {
                             $.each(res.data, function (i, row) {
                                 const tr = `
-                                    <tr>
+                                   <tr data-id="${row.id}">
                                         <td>${i + 1}</td>
                                         <td>${row.date}</td>
                                         <td>${row.type}</td>
@@ -238,6 +237,16 @@
                                 order: [[0, 'asc']],
                                 pageLength: 15
                             });
+
+                              // ✅ Add click handler AFTER DataTable initialization
+                        $('#table2 tbody').on('click', 'tr', function() {
+                            const Id = $(this).data('id');
+                            if (Id) {
+                                // Redirect to PrepaidExpense view with ID parameter
+                                window.location.href = `/Lists/ItemList?Id=${Id}`;
+                            }
+                        });
+
                         } else {
                             tbody.append(`<tr><td colspan="12" class="text-center text-muted py-4">No records found</td></tr>`);
                         }

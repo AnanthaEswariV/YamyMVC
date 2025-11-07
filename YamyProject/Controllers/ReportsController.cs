@@ -2268,6 +2268,7 @@ ORDER BY l.code;
                 DATE_FORMAT(it.date, '%d/%m/%Y') AS `Date`,
                 it.type AS Type,
                 CONCAT('000', it.reference) AS `RefId`,
+                i.id AS Id,
                 i.name AS Name,
                 i.code AS Code,
                 it.item_id AS ItemId,
@@ -2309,6 +2310,7 @@ ORDER BY l.code;
                         result.Add(new InvoiceViewModels
                         {
                             SN = reader.GetInt32("SN"),
+                            Id = reader.GetInt32("Id"),
                             Date = reader["Date"].ToString(),
                             Type = reader["Type"].ToString(),
                             RefId = reader["RefId"].ToString(),
