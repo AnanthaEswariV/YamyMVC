@@ -280,8 +280,6 @@
 </div>
 
 
-
-
 <!-- 🔽 Modal Partial View goes here -->
 @Html.Partial("_Employee")
 
@@ -800,6 +798,35 @@
                 $('#saveOrUpdateBtn').text('Save');          // optional visual cue
                 $('#newEmployeeModal').modal('show');
             });
+
+
+
+
+                         const urlParams = new URLSearchParams(window.location.search);
+        const empId = urlParams.get('Id');
+        if (empId) {
+            setTimeout(function() {
+                const $editBtn = $('.edit-btn').filter(function() {
+                    return String($(this).data('id')) === String(empId);
+                });
+
+                if ($editBtn.length > 0) {
+                    $editBtn.click();
+                } else {
+                    toastr.info(`Loading item #${empId}...`);
+                    setTimeout(function() {
+                        const $retryBtn = $('.edit-btn').filter(function() {
+                            return String($(this).data('id')) === String(empId);
+                        });
+                        if ($retryBtn.length > 0) {
+                            $retryBtn.click();
+                        } else {
+                            toastr.warning(`emp #${empId} not found`);
+                        }
+                    }, 2000);
+                }
+            }, 1500);
+        }
 
                   $(document).on('click', '.edit-btn', function () {
                 const empId = $(this).data('id');

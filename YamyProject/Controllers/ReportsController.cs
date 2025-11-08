@@ -2563,6 +2563,32 @@ ORDER BY l.code;
         {
             return View();
         }
+        #endregion
+
+        #region Item List
+
+        public IActionResult ItemList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Item Warehouse List
+
+        public IActionResult ItemWarehouseList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Employee List
+
+        public IActionResult EmployeeList()
+        {
+            return View();
+        }
 
         #endregion
 

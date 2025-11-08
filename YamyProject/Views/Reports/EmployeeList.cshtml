@@ -1,0 +1,206 @@
+﻿@{
+    ViewData["Title"] = "EmployeeList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+
+    .table-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    table.dataTable {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    th, td {
+        white-space: nowrap;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Employee List</strong>
+    </div>
+    <div class="table-container">
+        <table class="table table-striped" id="employeeListTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>City Id</th>
+                    <th>Address</th>
+                    <th>Phone</th>
+                    <th>Birth Day</th>
+                    <th>Social Status</th>
+                    <th>Email</th>
+                    <th>Social Insurance No</th>
+                    <th>Emergency Name</th>
+                    <th>Emergency Address</th>
+                    <th>Emergency Phone</th>
+                    <th>Relation</th>
+                    <th>Basic Salary</th>
+                    <th>Housing Allowance</th>
+                    <th>Transport Allowance</th>
+                    <th>Other</th>
+                    <th>Bank Id</th>
+                    <th>Iban No</th>
+                    <th>Bank Account No</th>
+                    <th>Emirates ID File Number</th>
+                    <th>Emirates ID Issue Date</th>
+                    <th>Emirates ID Expiry Date</th>
+                    <th>Passport No</th>
+                    <th>Country Of Issue</th>
+                    <th>Passport Issue Date</th>
+                    <th>Passport Expiry Date</th>
+                    <th>Position Id</th>
+                    <th>Department Id</th>
+                    <th>Active</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        function loadEmployees() {
+            $.ajax({
+                url: '/HR/GetEmployees',
+                type: 'GET',
+                beforeSend: function () {
+                    $('#employeeListTable tbody').html(`
+                        <tr>
+                            <td colspan="30" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div> Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load employee list');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#employeeListTable')) {
+                        $('#employeeListTable').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#employeeListTable tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = $(`
+                                <tr data-id="${row.id}" style="cursor:pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.code || '-'}</td>
+                                    <td>${row.name || '-'}</td>
+                                    <td>${row.city_id || '-'}</td>
+                                    <td>${row.address || '-'}</td>
+                                    <td>${row.phone || '-'}</td>
+                                    <td>${row.birth_day ? new Date(row.birth_day).toLocaleDateString() : '-'}</td>
+                                    <td>${row.Social_Status || '-'}</td>
+                                    <td>${row.Email || '-'}</td>
+                                    <td>${row.Social_Insurance_Number || '-'}</td>
+                                    <td>${row.EmergencyName || '-'}</td>
+                                    <td>${row.EmergencyAddress || '-'}</td>
+                                    <td>${row.EmergencyPhone || '-'}</td>
+                                    <td>${row.Relation || '-'}</td>
+                                    <td>${row.BasicSalary || '-'}</td>
+                                    <td>${row.HousingAllowance || '-'}</td>
+                                    <td>${row.TransportationAllowance || '-'}</td>
+                                    <td>${row.Other || '-'}</td>
+                                    <td>${row.bank_id || '-'}</td>
+                                    <td>${row.Iban_Number || '-'}</td>
+                                    <td>${row.Bank_account_Number || '-'}</td>
+                                    <td>${row.EmiratesIDFileNumber || '-'}</td>
+                                    <td>${row.EmiratesIDIssueDate ? new Date(row.EmiratesIDIssueDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.EmiratesIDExpiryDate ? new Date(row.EmiratesIDExpiryDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.PassportNumber || '-'}</td>
+                                    <td>${row.CountryOfIssue || '-'}</td>
+                                    <td>${row.PassportIssueDate ? new Date(row.PassportIssueDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.PassportExpiryDate ? new Date(row.PassportExpiryDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.Position_Id || '-'}</td>
+                                    <td>${row.Department_Id || '-'}</td>
+                                    <td>${row.active ? 'Yes' : 'No'}</td>
+                                </tr>
+                            `);
+                            tbody.append(tr);
+                        });
+
+                        $('#employeeListTable').DataTable({
+                            dom: 'Bfrtip',
+                            scrollX: true,
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
+                        $('#employeeListTable tbody').on('click', 'tr', function () {
+                            const id = $(this).data('id');
+                            if (id) {
+                                window.location.href = `/HR/Employee?Id=${id}`;
+                            }
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="30" class="text-center text-muted py-4">No employees found</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Error loading employee list');
+                    console.error(xhr.responseText);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            loadEmployees();
+        });
+    </script>
+}
