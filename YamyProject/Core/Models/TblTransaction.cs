@@ -26,6 +26,8 @@ public partial class TblTransaction
  
     [ForeignKey("TransactionId")]
     public virtual TblPurchaseReturn? PurchaseReturn { get; set; }
+    [ForeignKey("TransactionId")]
+    public virtual TblAdvancePaymentVoucher? AdvancePaymentVoucher { get; set; }
 
     public int? HumId { get; set; }
 

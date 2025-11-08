@@ -347,6 +347,8 @@
                 Description = Description,
                 CostCenterId = CostCenterId
                 };
+            _context.TblCostCenterTransactions.Add(CostCenter);
+            await _context.SaveChangesAsync();
             }
 
         // Update Payment Voucher

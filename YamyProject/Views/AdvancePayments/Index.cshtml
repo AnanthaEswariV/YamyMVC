@@ -1,0 +1,417 @@
+﻿ @model YamyProject.Core.ViewModel.AdvancePaymentVoucherViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Advance Payment Voucher Center";
+    var jsonRows = JsonSerializer.Serialize(Model.Rows);
+    var jsonTypes = JsonSerializer.Serialize(Model.Types);
+    }
+
+<style>
+    .apvc-wrap {
+        font-family: Segoe UI, Roboto, Arial, sans-serif;
+        background: #f7f7fc;
+        padding: 10px;
+    }
+    .apvc-window {
+        background: #fff;
+        border: 1px solid #cfd3e1;
+        border-top: 6px solid #3b82f6;
+        border-radius: 6px;
+    }
+    .apvc-title {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .6rem .8rem;
+        color: #1f2a44;
+        font-weight: 600;
+        border-bottom: 1px solid #e5e7f2;
+    }
+    .apvc-toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 10px;
+        background: #fafbff;
+        border-bottom: 1px solid #e5e7f2;
+    }
+        .apvc-toolbar label {
+            font-size: .85rem;
+            color: #333;
+            margin-right: 6px;
+        }
+
+        .apvc-toolbar select, .apvc-toolbar input[type="date"] {
+            height: 30px;
+            padding: 4px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: #fff;
+        }
+
+        .apvc-toolbar .spacer {
+            flex: 1;
+        }
+
+    .apvc-grid, .apvc-detail-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .apvc-grid thead th, .apvc-detail-grid thead th {
+            background: #edf2ff;
+            color: #1f2a44;
+            font-weight: 600;
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #dbe3f5;
+            font-size: .9rem;
+        }
+
+        .apvc-grid tbody tr {
+            cursor: pointer;
+        }
+
+            .apvc-grid tbody tr:hover {
+                background: #f5f7ff;
+            }
+
+        .apvc-grid td, .apvc-detail-grid td {
+            padding: 8px;
+            border-bottom: 1px solid #eef2ff;
+            font-size: .92rem;
+            color: #1f2937;
+        }
+
+    .apvc-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .apvc-btn {
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+        .apvc-btn.primary {
+            background: #3b82f6;
+            color: #fff;
+            border-color: #3b82f6;
+        }
+
+        .apvc-btn.danger {
+            background: #ef4444;
+            color: #fff;
+            border-color: #ef4444;
+        }
+
+        .apvc-btn.ghost {
+            background: #f1f5f9;
+        }
+
+    .apvc-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 6px;
+    }
+
+    .amount {
+        text-align: right;
+    }
+
+    .muted {
+        color: #6b7280;
+    }
+</style>
+
+<div class="apvc-wrap">
+    <div class="apvc-window">
+        <div class="apvc-title">
+            <span>Advance Payment Voucher Center</span>
+        </div>
+
+        <div class="apvc-toolbar">
+            <div>
+                <label for="typeFilter">Type</label>
+                <select asp-for="SelectedType" asp-items="Model.TypesList" id="typeFilter"></select>
+            </div>
+
+            <div>
+                <label for="fromDate">From</label>
+                <input asp-for="From" id="fromDate" type="date" />
+            </div>
+
+            <div>
+                <label for="toDate">To</label>
+                <input asp-for="To" id="toDate" type="date" />
+            </div>
+
+            <label class="apvc-checkbox">
+                <input type="checkbox" id="chkAll" />
+                <span>All</span>
+            </label>
+
+            <div class="spacer"></div>
+
+            <a a asp-controller="AdvancePayments" asp-action="Create" class="apvc-btn primary" id="btnNew">New AP</a>
+          @*   <button class="apvc-btn" id="btnEdit">Edit AP</button>
+            <button class="apvc-btn danger" id="btnDelete">Delete</button>
+            <button class="apvc-btn ghost" id="btnRecycle">Recycle</button> *@
+        </div>
+
+        <div style="overflow:auto; max-height:420px;">
+            <table class="apvc-grid" id="mainGrid">
+                <thead>
+                    <tr>
+                        <th style="width:120px;">Date</th>
+                        <th style="width:120px;">Payment Code</th>
+                        <th style="width:90px;">JV No</th>
+                        <th style="width:140px;">Amount</th>
+                        <th>Debit Account</th>
+                        <th>Credit Account</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                       @foreach (var r in Model.Rows)
+                        {
+                        <tr data-id="@r.Id">
+                            <td>@r.Date</td>
+                            <td>@r.PaymentCode</td>
+                            <td>@r.JvNo</td>
+                            <td >@r.Amount.ToString("C")</td>
+                            <td>@r.DebitAccount</td>
+                            <td>@r.CreditAccount</td>
+                            <td>@r.Type</td>
+                        </tr>
+                        }
+                        </tbody>
+            </table>
+        </div>
+
+        <div style="border-top:1px solid #e5e7f2; margin-top:6px;">
+            <table class="apvc-detail-grid" id="detailGrid">
+                <thead>
+                    <tr>
+                        <th style="width:40%;">Name</th>
+                        <th style="width:20%;">Amount</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- rows injected by JS -->
+                </tbody>
+            </table>
+        </div>
+        <div class="apvc-footer">
+            <span class="muted" id="statusText">0 record(s)</span>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          // --- Data from server (serialized by Razor) ---
+          const DATA = @Html.Raw(jsonRows ?? "[]");
+          const TYPES = @Html.Raw(jsonTypes ?? "[]");
+              const TypesList = System.Text.Json.JsonSerializer.Serialize((Model?.TypesList ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>())
+                .Select(c => new { value = c.Value, text = string.IsNullOrWhiteSpace(c.Text) ? c.Value : c.Text }));
+
+      // --- Elements ---
+      const typeFilter = document.getElementById('typeFilter');
+      const fromDate   = document.getElementById('fromDate');
+      const toDate     = document.getElementById('toDate');
+      const chkAll     = document.getElementById('chkAll');
+      const mainBody   = document.querySelector('#mainGrid tbody');
+      const detailBody = document.querySelector('#detailGrid tbody');
+      const statusText = document.getElementById('statusText');
+
+          // Guard if any essential element is missing
+          if (!typeFilter || !fromDate || !toDate || !chkAll || !mainBody || !detailBody || !statusText) {
+            console.error('One or more required elements not found');
+            return;
+          }
+          // --- Helpers ---
+          const pad = n => n.toString().padStart(2, '0');
+
+          // Parse "YYYY-MM-DD" as local date at midnight
+          function parseLocalDateInput(value) {
+            if (!value) return null;
+            const [y, m, d] = value.split('-').map(Number);
+            if (!y || !m || !d) return null;
+            return new Date(y, m - 1, d, 0, 0, 0, 0);
+          }
+          function toDateInputValue(date) {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          }
+          // Safe access for either camelCase or PascalCase
+          const get = (obj, ...keys) => keys.find(k => k in obj);
+
+          function g(obj, camel, pascal) {
+            const key = get(obj, camel, pascal);
+            return key ? obj[key] : undefined;
+          }
+          function initFilters() {
+            // Build types dropdown
+            typeFilter.innerHTML = `<option value="">(All types)</option>` +
+              TypesList.map(t => `<option value="${t.value}">${t.text}</option>`).join('');
+            typeFilter.value = '@Model.SelectedType';
+
+            // Dates from server (force local date)
+            const serverFrom = new Date('@Model.From.ToString("yyyy-MM-dd")T00:00:00');
+            const serverTo   = new Date('@Model.To.ToString("yyyy-MM-dd")T00:00:00');
+            fromDate.value = toDateInputValue(serverFrom);
+            toDate.value   = toDateInputValue(serverTo);
+
+            // All = unchecked by default
+            chkAll.checked = false;
+            toggleDateEnabled();
+          }
+          function toggleDateEnabled() {
+            const disabled = chkAll.checked;
+            fromDate.disabled = disabled;
+            toDate.disabled = disabled;
+          }
+
+          chkAll.addEventListener('change', () => { toggleDateEnabled(); render(); });
+          typeFilter.addEventListener('change', render);
+          fromDate.addEventListener('change', render);
+          toDate.addEventListener('change', render);
+
+          // --- Rendering ---
+          let currentSelectionIndex = -1;
+
+          function filterRows() {
+            const selType = typeFilter.value;
+            const all = chkAll.checked;
+          //       const TypesList = System.Text.Json.JsonSerializer.Serialize((Model?.TypesList ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>())
+          //         .Select(c => new { value = c.Value, text = string.IsNullOrWhiteSpace(c.Text) ? c.Value : c.Text })
+          // );
+              debugger
+
+            const from = parseLocalDateInput(fromDate.value);
+            const to   = parseLocalDateInput(toDate.value);
+            if (!all && (!from || !to)) return []; // invalid dates -> nothing
+
+            // normalize end of day for inclusive filter
+            if (to) to.setHours(23, 59, 59, 999);
+
+            return (DATA || []).filter(r => {
+              const typeVal = g(r, 'types', 'TYPES') ?? g(r, 'type', 'Type') ?? g(r, 'typeName', 'TypeName');
+                  if (TypesList && typeVal !== TypesList) return false;
+
+              if (!all) {
+                const rawDate = g(r, 'date', 'Date') ?? g(r, 'txnDate', 'TxnDate');
+                const d = rawDate ? new Date(rawDate) : null;
+                if (!d || isNaN(d)) return false;
+                // compare by local time
+                if (d < from || d > to) return false;
+              }
+              return true;
+            });
+          }
+
+          function fmtMoney(n) {
+            const num = Number(n);
+            return isFinite(num)
+              ? num.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+              : '';
+          }
+
+          function fmtDate(s) {
+            const d = s ? new Date(s) : null;
+            return d && !isNaN(d) ? d.toLocaleDateString() : '';
+          }
+
+          function render() {
+              debugger
+
+            const rows = filterRows();
+            debugger
+            mainBody.innerHTML = rows.map((r, idx) => {
+              const date   = g(r, 'date', 'Date');
+              const code   = g(r, 'paymentCode', 'PaymentCode');
+              const jvNo   = g(r, 'jvNo', 'JvNo') ?? g(r, 'JVNo', 'JVNO');
+              const amt    = g(r, 'amount', 'Amount');
+              const debit  = g(r, 'debitAccount', 'DebitAccount');
+              const credit = g(r, 'creditAccount', 'CreditAccount');
+              debugger
+
+              return `
+                <tr data-index="${idx}">
+                  <td>${fmtDate(date)}</td>
+                  <td>${code ?? ''}</td>
+                  <td>${jvNo ?? ''}</td>
+                  <td class="amount">${fmtMoney(amt)}</td>
+                  <td>${debit ?? ''}</td>
+                  <td>${credit ?? ''}</td>
+                </tr>
+              `;
+            }).join('');
+              debugger
+
+            statusText.textContent = `${rows.length} record(s)`;
+            detailBody.innerHTML = '';
+            currentSelectionIndex = -1;
+
+            // Row click -> show details grid
+            mainBody.querySelectorAll('tr').forEach(tr => {
+              tr.addEventListener('click', () => {
+                mainBody.querySelectorAll('tr').forEach(x => x.style.background = '');
+                tr.style.background = '#eef3ff';
+                const idx = Number(tr.getAttribute('data-index'));
+                currentSelectionIndex = idx;
+                const r = rows[idx];
+                const details = g(r, 'details', 'Details') || [];
+                detailBody.innerHTML = details.map(d => `
+                  <tr>
+                    <td>${g(d, 'name', 'Name') ?? ''}</td>
+                    <td class="amount">${fmtMoney(g(d, 'amount', 'Amount'))}</td>
+                    <td>${g(d, 'description', 'Description') ?? ''}</td>
+                  </tr>
+                `).join('');
+              });
+            });
+          }
+
+          // --- Toolbar buttons ---
+          document.getElementById('btnNew')?.addEventListener('click', () => {
+            window.location.href = '@Url.Action("Create", "AdvancePayments")';
+          });
+
+          document.getElementById('btnEdit')?.addEventListener('click', () => {
+            if (currentSelectionIndex < 0) { alert('Select a voucher to edit.'); return; }
+            const selected = filterRows()[currentSelectionIndex];
+            const jv = g(selected, 'jvNo', 'JvNo') ?? g(selected, 'JVNo', 'JVNO');
+            window.location.href = '@Url.Action("Edit", "AdvancePayments")' + '?jvNo=' + encodeURIComponent(jv ?? '');
+          });
+
+          document.getElementById('btnDelete')?.addEventListener('click', () => {
+            if (currentSelectionIndex < 0) { alert('Select a voucher to delete.'); return; }
+            const selected = filterRows()[currentSelectionIndex];
+            const paymentCode = g(selected, 'paymentCode', 'PaymentCode') ?? '(unknown)';
+            if (confirm(`Delete voucher ${paymentCode}?`)) {
+              alert('Demo: would call DELETE for ' + paymentCode);
+            }
+          });
+
+          document.getElementById('btnRecycle')?.addEventListener('click', () => {
+            alert('Demo: recycle bin / restore logic goes here.');
+          });
+
+          // --- Boot ---
+          initFilters();
+          render();
+        });
+    </script>
+
+}

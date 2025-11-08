@@ -18,6 +18,7 @@
         Task<IEnumerable<TblCity>> GetCitysAsync();
         Task<IEnumerable<TblCoaLevel4>> GetAccountsAsync();
         Task<IEnumerable<TblTax>> GetVatAsync();
+        Task<IEnumerable<TblBank>> GetBanksAsync();
         Task<IEnumerable<TblSubCostCenter>> GetCostCenterAsync();
         Task<IEnumerable<TblFixedAssetsCategory>> GetFixedAssetAsync();
         Task<IEnumerable<TblBank>> BindCombosBindBankAccount();

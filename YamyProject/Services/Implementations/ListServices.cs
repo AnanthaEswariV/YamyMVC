@@ -66,6 +66,10 @@
             {
             return await _context.TblCities.ToListAsync();
             }
+        public async Task<IEnumerable<TblBank>> GetBanksAsync()
+            {
+            return await _context.TblBanks.ToListAsync();
+            }
         public async Task<IEnumerable<TblCountry>> GetCountriesAsync()
             {
             return await _context.TblCountries.ToListAsync();

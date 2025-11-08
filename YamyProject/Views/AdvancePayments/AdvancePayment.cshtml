@@ -1,0 +1,707 @@
+﻿@model AdvancePaymentViewModel
+@{
+    ViewData["Title"] = "Advance Payment Voucher";
+}
+
+<div class="container-fluid px-3 py-2">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge text-bg-secondary fs-6 px-3 py-2">Advance Payment Voucher</span>
+        <div class="ms-auto d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary">New</button>
+            <button type="submit" form="apForm" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-outline-danger">Delete</button>
+            <button type="button" class="btn btn-outline-secondary">Create a Copy</button>
+            <button type="button" class="btn btn-outline-secondary">Print</button>
+            <button type="button" class="btn btn-outline-secondary">Email</button>
+            <div class="form-check d-flex align-items-center ms-2">
+                <input class="form-check-input" type="checkbox" id="chkPrintAfterSave">
+                <label class="form-check-label small ms-1" for="chkPrintAfterSave">Print After Save</label>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" asp-for="PaymentType" id="PaymentType" />
+    <input type="hidden" asp-for="PaymentMethod" id="PaymentMethodd" />
+
+   
+    <form asp-action="Create" asp-controller="AccountsPayable" method="post" id="apForm">
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Basic Data</h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label asp-for="Date" class="form-label">Date</label>
+                        <input asp-for="Date" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label asp-for="Amount" class="form-label">Amount</label>
+                        <input asp-for="Amount" class="form-control text-end" placeholder="0.000" readonly id="Amount" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label asp-for="AmountInWords" class="form-label">Amount In Word</label>
+                        <input asp-for="AmountInWords" class="form-control" id="AmountInWords" readonly />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Pay To</label>
+                        <select asp-for="PaymentType" asp-items="Model.PaymentTypes" class="form-select">
+                            @* <option value="0">Vendor</option> *@
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label asp-for="PaymentMethod" class="form-label">Payment Method</label>
+                        <select asp-for="PaymentMethod" asp-items="Model.PaymentMethods"  class="form-select" id="paymentMethod">                          
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Pay To - Debit</h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label" >Account Name</label>
+                        <select class="form-select" asp-for="DebitAccountId"
+                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))">
+                            </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" asp-for="DebitAccountCode">Account Code</label>
+                        <input class="form-control" asp-for="DebitAccountCode" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" >Cost Center</label>
+                        <select class="form-select" asp-for="DebitCostCenterId"
+                                asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"></select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" asp-for="Note">Note</label>
+                        <textarea class="form-control" asp-for="Note" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Pay From - Credit</h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label" >Account Name</label>
+                        <select class="form-select" asp-for="CreditAccountId" id="creditAccountName"
+                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))">
+                            
+                            </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" asp-for="CreditAccountCode">Account Code</label>
+                        <input class="form-control" asp-for="CreditAccountCode" id="creditAccountCode"/>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" >Cost Center</label>
+                        <select class="form-select" asp-for="CreditCostCenterId"
+                                asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ---------------- Bottom grids (switch by payment method) ---------------- *@
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="table-responsive">
+
+                    <table class="table align-middle table-sm" id="grid-check">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="display:none;">Id</th>
+                                <th style="width:40px">#</th>
+                                <th style="min-width:220px">Name</th>
+
+                                <!-- CHECK-only -->
+                                <th class="th-check">Bank Name</th>
+                                <th class="th-check">Check Name</th>
+                                <th class="th-check">Check No</th>
+                                <th class="th-check">Check Date</th>
+                                <th class="th-check">Bank Account …</th>
+                                <th class="th-check">Book NO</th>
+
+                                <!-- TRANSFER-only -->
+                                <th class="th-transfer">Trans Date</th>
+                                <th class="th-transfer">TRNS / Name</th>
+                                <th class="th-transfer">TRNS / REF</th>
+
+                                <!-- Shared -->
+                                <th style="min-width:220px">Description</th>
+                                <th class="text-end" style="width:120px">Amount</th>
+                                <th style="width:70px">DEL</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="grid-body">
+                                 @if (Model?.Rows != null && Model.Rows.Any())
+                                {
+                                @for (var i = 0; i < Model.Rows.Count; i++)
+                                    {
+                                    <tr data-row>
+                                        <td style="display:none;"><input class="form-control form-control-sm Rows-Id" name="Rows[i].Id" asp-for="Rows[i].Id" /></td>
+                                        <td>@(i+1)</td>
+                                        <!-- Name -->
+                                        <td>
+                                            <input type="text" asp-for="Rows[i].partnerId" list="NameOptions[i]" placeholder="select Name" class="form-control Rows-Name RowsName" />
+                                            <datalist id="NameOptions[i]"></datalist>
+                                        </td>                                       
+                                        <!-- CHECK cells -->
+                                        <td class="col-check">
+                                            @* <input class="form-control form-control-sm" /> *@
+                                            <input type="text" asp-for="Rows[i].BankId" list="BankOptions[i]" placeholder="select Bank " class="form-control Rows-BankId BankId" />
+                                            <datalist id="BankOptions[i]"></datalist>
+                                        </td>
+                                        <td class="col-check"><input class="form-control form-control-sm Rows-CheckName" name="Rows[i].CheckName" asp-for="Rows[i].CheckName" />
+                                        </td>  <!-- Check Name -->
+                                        <td class="col-check"><input class="form-control form-control-sm Rows-CheckNo" name="Rows[i].CheckNo" asp-for="Rows[i].CheckNo" />
+                                        </td>  <!-- Check No -->
+                                        <td class="col-check">
+                                            <input class="form-control  form-control-sm Rows-CheckDate" type="date"  name="Rows[i].CheckDate" asp-for="Rows[i].CheckDate" />
+                                        </td> <!-- Check Date -->
+                                        <td class="col-check">
+                                            <input class="form-control form-control-sm Rows-BankAccount" name="Rows[i].BankAccount" asp-for="Rows[i].BankAccount" />
+                                        </td>  <!-- Bank Account -->
+                                        <td class="col-check">
+                                            <input class="form-control form-control-sm  Rows-BookNo" name="Rows[i].BookNo" asp-for="Rows[i].BookNo" />
+                                        </td>  <!-- Book No -->
+                                        <!-- TRANSFER cells -->
+                                        <td class="col-transfer"><input class="form-control form-control-sm Rows-TransDate" type="date" name="Rows[i].TransDate" asp-for="Rows[i].TransDate" /></td> <!-- Trans Date -->
+                                        <td class="col-transfer"><input class="form-control form-control-sm Rows-TransName" name="Rows[i].TransName" asp-for="Rows[i].TransName" /></td><!-- TRNS / Name -->
+                                        <td class="col-transfer"><input class="form-control form-control-sm Rows-TransRef" name="Rows[i].TransRef" asp-for="Rows[i].TransRef" /></td><!-- TRNS / REF -->
+                                        <!-- Shared -->
+                                        <td><input class="form-control form-control-sm Rows-Description" name="Rows[i].Description" asp-for="Rows[i].Description" /> </td><!-- Description -->
+                                        <td><input class="form-control form-control-sm text-end Rows-Amount" name="Rows[i].Amount" asp-for="Rows[i].Amount" inputmode="decimal" step="0.01" value="0" /></td>
+                                        <td><button type="button" class="btn btn-sm btn-outline-danger" data-action="del">Del</button></td>
+                                    </tr>
+                                    }
+                                }
+                            else
+                                {
+                                <tr data-row>
+                                    <td style="display:none;"><input class="form-control form-control-sm Rows-Id" name="Rows[i].Id"/></td>
+                                    <td>1</td>
+                                    <!-- Name -->
+                                   
+                                    <td>
+                                        <input type="text" list="RowsOptions$[i]" placeholder="select Name" class="form-control Rows-Name RowsName" />
+                                        <datalist id="RowsOptions$[i]"></datalist>
+                                    </td>
+                                    <!-- CHECK cells -->
+                                    <td class="col-check">
+                                        @* <input class="form-control form-control-sm" /> *@
+                                        <input type="text" list="BankOptions[0]" placeholder="select Bank " class="form-control Rows-BankId BankId" />
+                                        <datalist id="BankOptions[0]"></datalist>
+                                    </td>
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm Rows-CheckName" name="Rows[0].CheckName" />
+                                    </td>  <!-- Check Name -->
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm Rows-CheckNo" name="Rows[0].CheckNo" />
+                                    </td>  <!-- Check No -->
+                                    <td class="col-check">
+                                        <input class="form-control  form-control-sm Rows-CheckDate" type="date" name="Rows[0].CheckDate" />
+                                    </td> <!-- Check Date -->
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm Rows-BankAccount" name="Rows[0].BankAccount" />
+                                    </td>  <!-- Bank Account -->
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm  Rows-BookNo" name="Rows[0].BookNo"/>
+                                    </td>  <!-- Book No -->
+                                    <!-- TRANSFER cells -->
+                                    <td class="col-transfer"><input class="form-control form-control-sm Rows-TransDate" type="date" name="Rows[0].TransDate" /></td> <!-- Trans Date -->
+                                    <td class="col-transfer"><input class="form-control form-control-sm Rows-TransName" name="Rows[0].TransName" /></td><!-- TRNS / Name -->
+                                    <td class="col-transfer"><input class="form-control form-control-sm Rows-TransRef" name="Rows[0].TransRef" /></td><!-- TRNS / REF -->
+                                    <!-- Shared -->
+                                    <td><input class="form-control form-control-sm Rows-Description" name="Rows[0].Description" /> </td><!-- Description -->
+                                    <td><input class="form-control form-control-sm text-end Rows-Amount" name="Rows[0].Amount" inputmode="decimal" step="0.01" value="0" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" data-action="del">Del</button></td>
+                                </tr>
+                                }
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="submit" id="btnAjaxSaveClose" class="btn btn-primary">Save &amp; Close</button>
+                    <button type="submit" id="btnAjaxSave" class="btn btn-outline-primary">Save</button>
+                    <a asp-action="Index" asp-controller="AccountsPayable" class="btn btn-outline-secondary">Close</a>
+                </div>
+            </div>
+        </div>
+    </form>
+    <select id="tpl-Customer" class="d-none" asp-items="@(new SelectList(Model.customers, "Value", "Text"))"></select>
+    <select id="tpl-Vendors" class="d-none" asp-items="@(new SelectList(Model.vendors, "Value", "Text"))"></select>
+    <select id="tpl-Vendors" class="d-none" asp-items="@(new SelectList(Model.vendors, "Value", "Text"))"></select>
+
+</div>
+
+@section Scripts{
+    <script>
+        (() => {
+          const table = document.getElementById('grid-check');
+          const thead = table.querySelector('thead');
+          const tbody = table.querySelector('tbody');
+          const method = document.getElementById('paymentMethod'); // outside dropdown
+
+          // map your dropdown values to a mode
+          function normalize(val) {              
+            // accept "check/transfer/cash" or "0/1/2"
+            if (val === '1' || val === 1) return 'cash';
+            if (val === '2' || val === 2) return 'check';
+            if (val === '3' || val === 3) return 'transfer';
+            return String(val || '').toLowerCase(); // assume already a word
+          }
+
+          // PUBLIC: call setTableView('check' | 'transfer' | 'cash' | 'all')
+          function setTableView(mode) {
+            const showCheck    = mode === 'check'   ;
+            const showTransfer = mode === 'transfer';
+            // header
+            toggleHeader('.th-check', showCheck);
+            toggleHeader('.th-transfer', showTransfer);
+            if (mode === 'cash') { // hide both when cash
+              toggleHeader('.th-check', false);
+              toggleHeader('.th-transfer', false);
+            }
+
+            // body
+            toggleBody('.col-check', showCheck);
+            toggleBody('.col-transfer', showTransfer);
+            if (mode === 'cash') {
+              toggleBody('.col-check', false);
+              toggleBody('.col-transfer', false);
+            }
+          }
+
+          function toggleHeader(selector, visible) {
+            thead.querySelectorAll(selector).forEach(th => {
+              th.classList.toggle('d-none', !visible);
+            });
+          }
+
+          function toggleBody(selector, visible) {
+            tbody.querySelectorAll(selector).forEach(td => {
+              td.classList.toggle('d-none', !visible);
+              // prevent posting hidden values
+              td.querySelectorAll('input, select, textarea').forEach(el => {
+                el.disabled = !visible;
+              });
+            });
+          }
+          // hook the external dropdown
+          if (method) {
+            method.addEventListener('change', () => setTableView(normalize(method.value)));
+            // initial
+            setTableView(normalize(method.value));
+          } else {
+            // fallback: default to 'all' if no dropdown present
+            setTableView('all');
+          }
+          // expose for manual calls if needed (optional)
+          window.setTableView = setTableView;
+        })();
+    </script>
+    <script>
+        (function () {
+          const T_BODY    = document.getElementById('grid-body');
+          const AMOUNT    = document.getElementById('Amount');          // header input
+          const AMT_WORDS = document.getElementById('AmountInWords');   // header input
+
+          // ===== PUBLIC: recalc the full table totals =====
+          window.recalcHeaderTotals = function () {
+            const sum = Array.from(T_BODY.querySelectorAll('.Rows-Amount:enabled'))
+              .reduce((t, el) => {
+                const v = parseFloat(String(el.value || '').replace(/,/g, ''));
+                return t + (isNaN(v) ? 0 : v);
+              }, 0);
+
+            if (AMOUNT)    AMOUNT.value    = sum.toFixed(3);  // 3 decimals
+            if (AMT_WORDS) AMT_WORDS.value = toWords(sum);
+            return sum;
+          };
+
+          // Recalc when any amount cell changes (covers typing, paste, wheel on number, etc.)
+          T_BODY.addEventListener('input', (e) => {
+            if (e.target.classList.contains('Rows-Amount')) recalcHeaderTotals();
+          });
+
+          // Recalc when a row is deleted (button with data-action="del")
+          T_BODY.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="del"]');
+            if (!btn) return;
+            const tr = btn.closest('tr[data-row]');
+            if (tr) tr.remove();
+            recalcHeaderTotals();
+          });
+        window.addEventListener('DOMContentLoaded', recalcHeaderTotals);
+
+          // --- toWords (unchanged from your snippet) ---
+          function toWords(n){
+            n = Math.trunc(+String(n).replace(/,/g,'')) || 0;
+            if (n < 0) return 'minus ' + toWords(-n);
+            if (n === 0) return 'zero only';
+            const A=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+            const B=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+            function h(x){ return x<20?A[x]:x<100?B[(x/10|0)]+(x%10?'-'+A[x%10]:''):A[(x/100|0)]+' hundred'+(x%100?' '+h(x%100):''); }
+            function c(x,s){ return x? h(x)+' '+s : ''; }
+            return (c((n/1e12|0),'trillion')+' '+c((n%1e12/1e9|0),'billion')+' '+c((n%1e9/1e6|0),'million')+' '+c((n%1e6/1e3|0),'thousand')+' '+(n%1e3?h(n%1e3):'')).trim()+' only';
+          }
+        })();
+    </script>
+    <script>
+        //new Row
+           function NewRow(){
+
+                  var index = $('#grid-check tbody tr').length;
+                  const Customerptions = $('#tpl-Customer').html() || '';
+                  const Vendorsptions = $('#tpl-Vendors').html() || '';
+                  var newRow = $(`
+                               <tr data-row>
+                                    <td style="display:none;"><input class="form-control form-control-sm Rows-Id" name="Rows[i].Id"/></td>
+                                    <td>1</td>
+                                    <!-- Name -->
+                                    <td>
+                                        <input type="text" list="RowsOptions[${index}]" placeholder="select Name" class="form-control Rows-Name RowsName" />
+                                        <datalist id="RowsOptions[${index}]"></datalist>
+                                    </td>
+                                    <!-- CHECK cells -->
+                                    <td class="col-check">
+                                        @* <input class="form-control form-control-sm" /> *@
+                                        <input type="text" list="BankOptions[${index}]" placeholder="select Bank " class="form-control Rows-BankId BankId" />
+                                        <datalist id="BankOptions[${index}]"></datalist>
+                                    </td>
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm Rows-CheckName" name="Rows[${index}].CheckName" />
+                                    </td>  <!-- Check Name -->
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm Rows-CheckNo" name="Rows[${index}].CheckNo" />
+                                    </td>  <!-- Check No -->
+                                    <td class="col-check">
+                                        <input class="form-control  form-control-sm Rows-CheckDate" type="date" name="Rows[${index}].CheckDate" />
+                                    </td> <!-- Check Date -->
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm Rows-BankAccount" name="Rows[${index}].BankAccount" />
+                                    </td>  <!-- Bank Account -->
+                                    <td class="col-check">
+                                        <input class="form-control form-control-sm  Rows-BookNo" name="Rows[${index}].BookNo"/>
+                                    </td>  <!-- Book No -->
+                                    <!-- TRANSFER cells -->
+                                    <td class="col-transfer"><input class="form-control form-control-sm Rows-TransDate" type="date" name="Rows[${index}].TransDate" /></td> <!-- Trans Date -->
+                                    <td class="col-transfer"><input class="form-control form-control-sm Rows-TransName" name="Rows[${index}].TransName" /></td><!-- TRNS / Name -->
+                                    <td class="col-transfer"><input class="form-control form-control-sm Rows-TransRef" name="Rows[${index}].TransRef" /></td><!-- TRNS / REF -->
+                                    <!-- Shared -->
+                                    <td><input class="form-control form-control-sm Rows-Description" name="Rows[${index}].Description" /> </td><!-- Description -->
+                                    <td><input class="form-control form-control-sm text-end Rows-Amount" name="Rows[${index}].Amount" inputmode="decimal" step="0.01" value="0" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" data-action="del">Del</button></td>
+                                </tr>`
+                    );
+                  $('#grid-check tbody').append(newRow);
+                    const $row = newRow;
+                   }
+    </script>
+     <script>
+        $(function () {
+
+          // helper: is last row?
+          function isLastRow($row) { return $row.is(':last-child'); }
+
+          // current PaymentType (select with id="PaymentType")
+          function PaymentType() {
+            const el = document.getElementById('PaymentType') ;
+            const v = el ? parseInt(el.value, 10) : NaN;
+            return Number.isFinite(v) ? v : 0;
+          }
+
+          // current PaymentMethod (select with id="paymentMethod")
+          function PaymentMethod() {
+            const el = document.getElementById('paymentMethod') ||
+                       document.getElementById('PaymentMethod');
+            const v = el ? parseInt(el.value, 10) : NaN;
+            return Number.isFinite(v) ? v : 0;
+          }
+
+          // get the <datalist> an input is wired to (row-scoped first, then global)
+          function getDatalist($input, $scope = $(document)) {
+            const el = $input[0];
+            if (!el) return $();
+            if (el.list) return $(el.list);        // native reference
+            const id = $input.attr('list');
+            if (!id) return $();
+            const $scoped = $scope.find('#' + id);
+            return $scoped.length ? $scoped : $('#' + id);
+          }
+
+          // normalize server objects with either PascalCase or camelCase keys
+          function norm(o) {
+            return {
+              id:   o.Id   ?? o.id   ?? o.Value ?? o.value,
+              code: o.Code ?? o.code ?? '',
+              name: o.Name ?? o.name ?? o.Text  ?? o.text ?? ''
+            };
+          }
+
+          function populateDatalist($dl, arr, makeLabel) {
+            if (!$dl || !$dl.length) return;
+            $dl.empty();
+            arr.slice(0, 50).forEach(item => {
+              const n = norm(item);
+              const label = makeLabel(n);
+              $('<option/>', { value: label, text: label, 'data-id': n.id }).appendTo($dl);
+            });
+          }
+
+          // ---- AJAX fetchers (NO semicolons inside the data object) ----
+          function fetchPartners(term, cb) {
+            $.getJSON('@Url.Action("GetPartners")',
+              { term: term, paymentType: PaymentType() },
+              function (data) {
+                cb(Array.isArray(data) ? data : (data?.items ?? []));
+              }
+            );
+          }
+
+          function fetchBanks(term, cb) {
+            $.getJSON('@Url.Action("GetBanks")',
+              { term: term, paymentMethod: PaymentMethod() },
+              function (data) {
+                cb(Array.isArray(data) ? data : (data?.items ?? []));
+              }
+            );
+          }
+
+          // ---- Fill helpers for your row ----
+          function fillPartner($row, item) {
+            const p = norm(item);
+            $row.find('.RowsName').val(p.name); // visible
+            const $hid = $row.find('.Rows-PartnerId'); // only if you actually have this hidden input
+            if ($hid.length) $hid.val(p.id);
+          }
+
+          function fillBank($row, item) {
+            const b = norm(item);
+            const label = b.code ? (b.code + ' - ' + b.name) : b.name;
+            $row.find('.BankId').val(label); // visible
+            const $hid = $row.find('.Rows-BankIdValue'); // only if present
+            if ($hid.length) $hid.val(b.id);
+          }
+
+          // ---- Main per-row setup ----
+          function setupAutocompleteRow($row) {
+            const $nameInput = $row.find('.RowsName');
+            const $bankInput = $row.find('.BankId');
+
+            const $nameDL = getDatalist($nameInput, $row);
+            const $bankDL = getDatalist($bankInput, $row);
+
+            let cachePartners = [];
+            let cacheBanks = [];
+
+            // PARTNER (RowsName)
+            if ($nameDL.length) {
+              $nameInput.off('.ac')
+                .on('input.ac', function () {
+                  const term = (this.value || '').trim();
+                  if (term.length < 1) { $nameDL.empty(); return; }
+                  fetchPartners(term, function (arr) {
+                    cachePartners = arr;
+                    populateDatalist($nameDL, arr, p => p.code ? `${p.code} - ${p.name}` : p.name);
+                  });
+                })
+                .on('change.ac blur.ac', function () {
+                  const typed = ($(this).val() || '').trim();
+                  if (!typed || !cachePartners.length) return;
+                  const chosen = cachePartners.map(norm).find(p =>
+                    typed === p.name || typed === (p.code ? `${p.code} - ${p.name}` : p.name)
+                  );
+                  if (chosen) {
+                    fillPartner($row, chosen);
+                    if (isLastRow($row) && typeof NewRow === 'function') NewRow();
+                         const sel = document.getElementById('paymentMethodd');
+                      const raw = sel ? sel.value : '';
+                      const mode =
+                        ({ '1': 'cash', '2': 'check', '3': 'transfer' }[raw]) ??
+                        (String(raw || '').toLowerCase() || 'all');
+
+                      if (typeof window.setTableView === 'function') {
+                        window.setTableView(mode);
+                      }
+                  }
+                });
+            }
+
+            // BANK (BankId)
+            if ($bankDL.length) {
+              $bankInput.off('.ac')
+                .on('input.ac', function () {
+                  const term = (this.value || '').trim();
+                  if (term.length < 1) { $bankDL.empty(); return; }
+                  fetchBanks(term, function (arr) {
+                    cacheBanks = arr;
+                    populateDatalist($bankDL, arr, b => b.code ? `${b.code} - ${b.name}` : b.name);
+                  });
+                })
+                .on('change.ac blur.ac', function () {
+                  const typed = ($(this).val() || '').trim();
+                  if (!typed || !cacheBanks.length) return;
+                  const chosen = cacheBanks.map(norm).find(b =>
+                    typed === b.name || typed === (b.code ? `${b.code} - ${b.name}` : b.name)
+                  );
+                  if (chosen) fillBank($row, chosen);
+                });
+            }
+          }
+
+          // ---- Wire existing rows on load (your tbody is #grid-body) ----
+          $('#grid-body tr').each(function () {
+            setupAutocompleteRow($(this));
+          });
+
+          // Optional: if user changes PT/PM, rewire (fetch calls will use new values)
+          $('#PaymentType, #paymentMethod').on('change', function () {
+            $('#grid-body tr').each(function () { setupAutocompleteRow($(this)); });
+          });
+
+        });
+    </script>
+    <script>
+        (function () {
+          const $form = $('#apForm'); // your form id
+          const token = $form.find('input[name="__RequestVerificationToken"]').val();
+
+          // prevent Enter from native-submit
+          $form.on('keydown', 'input,select,textarea', function (e) {
+            if (e.key === 'Enter') e.preventDefault();
+          });
+
+          // Create vs Edit endpoint for AdvancePayments controller
+          function getUrlFromId() {
+            const idVal = Number($form.find('input[name="Id"]').val() || 0);
+            return idVal > 0
+              ? '@Url.Action("Edit", "AdvancePayments")'
+              : '@Url.Action("Create", "AdvancePayments")';
+          }
+
+          // Only validate: at least one non-template row with Name and Amount>0
+          function toNum(v) {
+            const n = parseFloat((v ?? '').toString().replace(/,/g, ''));
+            return Number.isFinite(n) ? n : NaN;
+          }
+          function clearInvalid($el) {
+            $el.removeClass('is-invalid').siblings('.invalid-feedback').remove();
+          }
+          function setInvalid($el, message) {
+            $el.addClass('is-invalid');
+            let $fb = $el.siblings('.invalid-feedback');
+            if ($fb.length === 0) {
+              $fb = $('<div class="invalid-feedback"></div>');
+              $el.after($fb);
+            }
+            $fb.text(message);
+          }
+          function isTemplateRow($tr) {
+            return $tr.hasClass('template') || $tr.is('[data-template="true"]');
+          }
+
+          function validateRows() {
+            const $rows = $('#grid-body tr').filter((_, tr) => !isTemplateRow($(tr)));
+            let ok = false;
+            let firstInvalid = null;
+
+            // require at least one row
+            if ($rows.length === 0) {
+              alert('At least one row is required.');
+              return false;
+            }
+
+            $rows.each(function (i) {
+              const $tr = $(this);
+              const rowNo = i + 1;
+
+              const $name   = $tr.find('.RowsName');
+              const $amount = $tr.find('.Rows-Amount');
+
+              // clear any previous state
+              $tr.removeClass('table-danger');
+              if ($name.length)   clearInvalid($name);
+              if ($amount.length) clearInvalid($amount);
+
+              // Name required
+              if ($name.length && !($name.val() || '').trim()) {
+                setInvalid($name, `Name is required (row ${rowNo}).`);
+                $tr.addClass('table-danger');
+                firstInvalid = firstInvalid || $name.get(0);
+                ok = false;
+                return false; // break .each on first error
+              }
+
+              // Amount > 0 required
+              const amt = toNum($amount.val());
+              if (!Number.isFinite(amt) || amt <= 0) {
+                setInvalid($amount, `Amount must be greater than 0 (row ${rowNo}).`);
+                $tr.addClass('table-danger');
+                firstInvalid = firstInvalid || $amount.get(0);
+                ok = false;
+                return false;
+              }
+
+              ok = true; // so far so good
+            });
+
+            if (!ok && firstInvalid) {
+              firstInvalid.focus?.();
+              firstInvalid.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+            }
+            return ok;
+          }
+
+          function postAjax(saveAndClose) {
+            const payload = $form.serialize();
+            const url = getUrlFromId();
+
+            $.ajax({
+              url,
+              type: 'POST',
+              data: payload,
+              headers: { 'RequestVerificationToken': token },
+              success: function (res) {
+                if (saveAndClose) {
+                  // if server returns redirectUrl, use it; else go back to index
+                  window.location.href = (res && res.redirectUrl) || '@Url.Action("Index", "AdvancePayments")';
+                } else {
+                  alert((res && res.message) || 'Saved.');
+                }
+              },
+              error: function (xhr) {
+                try {
+                  const r = JSON.parse(xhr.responseText);
+                  alert(r.message || 'Error while saving.');
+                  console.error(r.errors || r);
+                } catch {
+                  alert('Error while saving.');
+                }
+              }
+            });
+          }
+
+          // Hook buttons (prevent native submit)
+          $('#btnAjaxSave').on('click', function (e) {
+            e.preventDefault();
+            if (!validateRows()) return;
+            postAjax(false);
+          });
+          $('#btnAjaxSaveClose').on('click', function (e) {
+            e.preventDefault();
+            if (!validateRows()) return;
+            postAjax(true);
+          });
+        })();
+    </script>
+
+}
