@@ -3617,7 +3617,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         ExpenceAccountId = reader["expence_account_id"].ToString(),
                         Date = reader["date"] != DBNull.Value ? DateTime.Parse(reader["date"].ToString()) : (DateTime?)null,
                         Manufacture = reader["manufacture"] != DBNull.Value && int.Parse(reader["manufacture"].ToString()) == 1,
-                        ManufactureStatus = reader["manufactureStatus"].ToString()
+                        ManufactureStatus = reader["manufactureStatus"].ToString(),
+                        CreatedBy = reader["created_by"],
+                        ModifiedBy = reader["modified_by"],
+                        CreatedDate= reader["created_date"] != DBNull.Value ? DateTime.Parse(reader["created_date"].ToString()) : (DateTime?)null,
+                        ModifiedDate= reader["modified_date"] != DBNull.Value ? DateTime.Parse(reader["modified_date"].ToString()) : (DateTime?)null,
+                        State= reader["state"],
+
                     });
                 }
 

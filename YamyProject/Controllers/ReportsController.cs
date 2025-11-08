@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using YamyProject.Core.Models;
 using YamyProject.Core.Models.DTOs;
 
 namespace YamyProject.Controllers
@@ -2387,6 +2388,181 @@ ORDER BY l.code;
             }
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> GetCountry()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+               *
+            FROM tbl_country
+            ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveCity([FromBody] CityRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter City Name First" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check for duplicate city
+                string checkQuery = "SELECT id FROM tbl_city WHERE name = @name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                    {
+                        return BadRequest(new { status = false, message = "City already exists. Please enter another name." });
+                    }
+                }
+
+                if (model.Id == 0)
+                {
+                    // 🔹 Insert new city
+                    string insertQuery = "INSERT INTO tbl_city (name, country_id) VALUES (@name, @cId); SELECT LAST_INSERT_ID();";
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    insertCmd.Parameters.AddWithValue("@cId", model.CountryId);
+
+                    var insertedId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+
+                  
+
+                    return Ok(new { status = true, message = "City created successfully", id = insertedId });
+                }
+                else
+                {
+                    // 🔹 Update existing city
+                    string updateQuery = "UPDATE tbl_city SET name=@name, country_id=@cId WHERE id=@id";
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@cId", model.CountryId);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "City not found" });
+
+
+                    return Ok(new { status = true, message = "City updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region Country List
+
+        public IActionResult CountryList()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCountrys()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+               *
+            FROM tbl_country
+            ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        #endregion
+
+        #region Fixed Asset List
+
+        public IActionResult FixedAssetList()
+        {
+            return View();
+        }
 
         #endregion
 

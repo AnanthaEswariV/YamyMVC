@@ -690,5 +690,12 @@ namespace YamyProject.Core.Models
         public string Description { get; set; }
     }
 
+    public class CityRequest
+    {
+        public int Id { get; set; } = 0; 
+        public string Name { get; set; }
+        public int CountryId { get; set; }
+    }
+
 
 }

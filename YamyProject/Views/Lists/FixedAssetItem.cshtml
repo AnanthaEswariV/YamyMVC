@@ -80,10 +80,10 @@
                             alert(res.message);
                             return;
                         }
-
+                        console.log(res);
                         let rows = "";
                         $.each(res.data, function (i, item) {
-                            rows += `<tr>
+                            rows += `<tr data-id="${item.id}">
                                 <td>${item.sn}</td>
                                 <td>${item.date}</td>
                                 <td>${item.refId}</td>
@@ -110,6 +110,15 @@
                 { extend: 'print', title: 'Fixed Assets Item List' }
             ]
         });
+
+               // ✅ Add click handler AFTER DataTable initialization
+                        $('#fixedAssetTable tbody').on('click', 'tr', function() {
+                            const Id = $(this).data('id');
+                            if (Id) {
+                                // Redirect to PrepaidExpense view with ID parameter
+                                window.location.href = `/Lists/ItemList?Id=${Id}`;
+                            }
+                        });
 
 
                         // Hook your existing buttons to DataTable exports
