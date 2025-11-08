@@ -287,6 +287,36 @@
         }
 
 
+                     const urlParams = new URLSearchParams(window.location.search);
+        const WarehouseId = urlParams.get('Id');
+        if (WarehouseId) {
+            setTimeout(function() {
+                const $editBtn = $('.edit-warehouse').filter(function() {
+                    return String($(this).data('id')) === String(WarehouseId);
+                });
+
+                if ($editBtn.length > 0) {
+                    $editBtn.click();
+                } else {
+                    toastr.info(`Loading item #${WarehouseId}...`);
+                    setTimeout(function() {
+                        const $retryBtn = $('.edit-warehouse').filter(function() {
+                            return String($(this).data('id')) === String(WarehouseId);
+                        });
+                        if ($retryBtn.length > 0) {
+                            $retryBtn.click();
+                        } else {
+                            toastr.warning(`Item #${WarehouseId} not found`);
+                        }
+                    }, 2000);
+                }
+            }, 1500);
+        }
+
+
+
+
+
         $(document).on("click", ".edit-warehouse", function() {
             const btn = $(this);
 
@@ -394,7 +424,7 @@
         $('#newEmployeeForm').on('submit', function (e) {
             e.preventDefault();
 
-            const form = this;                      // <<--- fix for "form is not defined"
+            const form = this;                     
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
@@ -405,7 +435,6 @@
             const isEdit = idVal && parseInt(idVal) > 0;
             const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
 
-            // Build payload - prefer explicit IDs. Keep this list in sync with your modal IDs.
             const employeeData = {
                 Id: isEdit ? parseInt(idVal) : 0,
                 Name: $('input[name="EmployeeName"]').val() || '',
@@ -481,8 +510,7 @@
         });
 
 
-
-               $(document).ready(function () {
+           $(document).ready(function () {
                 $.ajax({
                     url: '/HR/GetAccruedSalaries',
                     type: 'GET',

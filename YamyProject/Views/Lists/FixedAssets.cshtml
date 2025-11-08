@@ -343,46 +343,120 @@
                     });
                 }
 
-            function loadAllFixedAssets() {
-        $.ajax({
-            url: '/Lists/GetAllFixedAssets', 
-            type: 'GET',
-            success: function(res) {
-                if (!res.status) {
-                    alert(res.message || "Failed to load assets");
-                    return;
-                }
+                    function loadAllFixedAssets() {
+            $.ajax({
+                url: '/Lists/GetAllFixedAssets',
+                type: 'GET',
+                success: function(res) {
+                    if (!res.status) {
+                        alert(res.message || "Failed to load assets");
+                        return;
+                    }
+                    console.log('✅ Loaded assets:', res.data);
 
-                const assets = res.data;
-                const $tableBody = $('#fixedassetTable tbody');
-                $tableBody.empty();
+                    const assets = res.data;
+                    const $tableBody = $('#fixedassetTable tbody');
+                    $tableBody.empty();
 
-                assets.forEach(asset => {
-                    // const PurchasePrice = asset.purchasePrice ? parseFloat(asset.purchasePrice).toFixed(2) : '0.00';
-                    const PurchaseDate = asset.purchaseDate ? formatDate(asset.purchaseDate) : '';
-                    const EndDate = asset.endDate ? formatDate(asset.endDate) : '';
+                    assets.forEach(asset => {
+                        const PurchaseDate = asset.purchaseDate ? formatDate(asset.purchaseDate) : '';
+                        const EndDate = asset.endDate ? formatDate(asset.endDate) : '';
 
-                    const row = `<tr data-id="${asset.id}">
-                        <td>${asset.name}</td>
-                        <td>${PurchaseDate}</td>
-                        <td>${EndDate}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary editAsset"  data-asset='${JSON.stringify(asset).replace(/'/g, "&apos;")}' style="font-size: 10px; padding: 2px 6px;"> <i class="fas fa-pen"></i>
-        </button>
-                            <button class="btn btn-sm btn-danger deleteAsset" data-id="${asset.id}" style="font-size: 10px; padding: 2px 6px;">   <i class="fas fa-prescription-bottle-alt"></i></button>
-                        </td>
-                    </tr>`;
-                    $tableBody.append(row);
-                });
+                        // ✅ Properly escape JSON for HTML attribute
+                        const assetJsonForAttr = JSON.stringify(asset)
+                            .replace(/&/g, '&amp;')
+                            .replace(/'/g, '&#39;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;');
+
+                        const row = `<tr data-id="${asset.id}">
+                            <td>${asset.name || '-'}</td>
+                            <td>${PurchaseDate}</td>
+                            <td>${EndDate}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary editAsset"
+                                        data-id="${asset.id}"
+                                        data-asset="${assetJsonForAttr}"
+                                        style="font-size: 10px; padding: 2px 6px;">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger deleteAsset"
+                                        data-id="${asset.id}"
+                                        style="font-size: 10px; padding: 2px 6px;">
+                                    <i class="fas fa-prescription-bottle-alt"></i>
+                                </button>
+                            </td>
+                        </tr>`;
+                        $tableBody.append(row);
+                    });
+
+                    console.log('✅ Table populated with', assets.length, 'rows');
+
+                    // ✅ Auto-open edit modal if ID is in URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const AssetId = urlParams.get('Id');
+
+                    if (AssetId) {
+                        console.log('🔍 Looking for asset ID:', AssetId);
+
+                        // Wait for DOM to be fully updated
+                        setTimeout(function() {
+                            // Find all edit buttons
+                            const allButtons = $('.editAsset');
+                            console.log('📋 Found', allButtons.length, 'edit buttons');
+
+                            // Log all button IDs
+                            allButtons.each(function() {
+                                console.log('  - Button ID:', $(this).data('id'));
+                            });
+
+                            // Find the matching button
+                            const editButton = $('.editAsset').filter(function() {
+                                const btnId = String($(this).data('id'));
+                                const targetId = String(AssetId);
+                                console.log(`Comparing: "${btnId}" === "${targetId}"`, btnId === targetId);
+                                return btnId === targetId;
+                            });
+
+                            if (editButton.length > 0) {
+                                console.log('✅ Found matching button for ID', AssetId);
+                                console.log('Asset data:', editButton.data('asset'));
+                                editButton.trigger('click');
+                            } else {
+                                console.log('❌ No button found on first attempt, retrying...');
+                                toastr.info(`Loading item #${AssetId}...`);
+
+                                // Retry after 1.5 seconds
+                                setTimeout(function() {
+                                    const $retryBtn = $('.editAsset').filter(function() {
+                                        return String($(this).data('id')) === String(AssetId);
+                                    });
+
+                                    if ($retryBtn.length > 0) {
+                                        console.log('✅ Found button on retry for ID', AssetId);
+                                        $retryBtn.trigger('click');
+                                    } else {
+                                        console.log('❌ Asset ID', AssetId, 'not found after retry');
+                                        console.log('Available IDs:', $('.editAsset').map(function() {
+                                            return $(this).data('id');
+                                        }).get());
+                                        toastr.warning(`Asset #${AssetId} not found`);
+                                    }
+                                }, 1500);
+                            }
+                        }, 300);
+                    }
                 },
                 error: function(err) {
-                    console.error("Failed to fetch assets", err);
+                    console.error("❌ Failed to fetch assets", err);
+                    toastr.error("Failed to load assets");
                 }
             });
         }
 
-            // Helper to format Date for table display
-            function formatDate(dateStr) {
+        // Helper to format Date for table display
+        function formatDate(dateStr) {
             const d = new Date(dateStr);
             const month = ('0' + (d.getMonth() + 1)).slice(-2);
             const day = ('0' + d.getDate()).slice(-2);
@@ -514,6 +588,11 @@
                 '#totalDays'
             );
         });
+
+
+
+    
+
 
               $(document).on("click", ".editAsset", function () {
             let asset = $(this).data("asset"); // make sure data-asset contains full JSON object
@@ -659,56 +738,126 @@
         });
 
 
-                // Update submit
-           $("#editFixedAssetForm").on("submit", function (e) {
-            e.preventDefault();
-            updateFixedAsset();
-        });
-
-         // ✅ Update Function
+              // ✅ Update Fixed Asset Function
         function updateFixedAsset() {
+            // Get form values
+            const id = parseInt($("#editFixedAssetId").val());
+            const categoryId = parseInt($("#editAssetCategory").val());
+            const purchasePrice = parseFloat($("#editTotalInvoice").val());
+            const depreciationLife = parseInt($("#editDepreciationLife").val());
+            const name = $("#editAssetName").val()?.trim();
+
+            // Frontend validation
+            if (!id || id <= 0) {
+                toastr.error("Invalid asset ID");
+                return;
+            }
+
+            if (!name) {
+                toastr.error("Please enter asset name");
+                $("#editAssetName").focus();
+                return;
+            }
+
+            if (!categoryId || categoryId <= 0) {
+                toastr.error("Please select a category");
+                $("#editAssetCategory").focus();
+                return;
+            }
+
+            if (!purchasePrice || purchasePrice <= 0) {
+                toastr.error("Please enter a valid purchase price");
+                $("#editTotalInvoice").focus();
+                return;
+            }
+
+            if (!depreciationLife || depreciationLife <= 0) {
+                toastr.error("Please enter depreciation life");
+                $("#editDepreciationLife").focus();
+                return;
+            }
+
+            // Build payload matching exact C# model properties
             let payload = {
-                Id: $("#editFixedAssetId").val(),
-                Code: $("#editAssetCode").val(),
-                Date: $("#editAssetDate").val(),
-                CategoryId: $("#editAssetCategory").val(),
-                Name: $("#editAssetName").val(),
-                Brand: $("#editAssetBrand").val(),
-                Model: $("#editModelEngNo").val(),
-                Supplier: $("#editSupplierName").val(),
-                Status: $("#editAssetStatus").val(),
-                InvoiceNumber: $("#editInvoiceNumber").val(),
-                PurchasePrice: parseFloat($("#editTotalInvoice").val()) || 0,
-                PurchaseDate: $("#editPurchaseDate").val(),
-                DepreciationLife: parseInt($("#editDepreciationLife").val()) || 0,
-                DepreciationValue: parseFloat($("#editDepreciationValue").val()) || 0,
-                EndDate: $("#editEndDate").val(),
-                TotalDays: parseInt($("#editTotalDays").val()) || 0,
-                DebitAccountId: $("#editFixedAssetsAccount").val(),
-                CreditAccountId: $("#editAccumulatedDepreciation").val(),
-                ExpenceAccountId: $("#editDepreciationExpense").val(),
-                MakeJournal: $("#editMakeJournal").is(":checked")
+                Id: id,
+                Name: name,
+                Brand: $("#editAssetBrand").val() || "",
+                CategoryId: categoryId,
+                Model: $("#editModelEngNo").val() || "",
+                Supplier: $("#editSupplierName").val() || "",
+                Status: $("#editAssetStatus").val() || "",
+                InvoiceNumber: $("#editInvoiceNumber").val() || "",
+                PurchaseDate: $("#editPurchaseDate").val() || null,
+                EndDate: $("#editEndDate").val() || null,
+                DepreciationLife: depreciationLife,
+                PurchasePrice: purchasePrice,
+                DebitAccountId: parseInt($("#editFixedAssetsAccount").val()) || 0,
+                CreditAccountId: parseInt($("#editAccumulatedDepreciation").val()) || 0,
+                ExpenceAccountId: parseInt($("#editDepreciationExpense").val()) || 0,
+                CreateJournal: $("#editMakeJournal").is(":checked"),
+                CreatedBy: 0,
+                ManufactureId: 0  // ✅ Changed from false to 0 (int)
             };
-            console.log(payload);
+
+            console.log("📤 Sending update payload:", payload);
 
             $.ajax({
                 url: "/Lists/UpdateFixedAsset",
                 type: "POST",
                 data: JSON.stringify(payload),
                 contentType: "application/json",
+                beforeSend: function() {
+                    // Disable submit button to prevent double submission
+                    $("#editFixedAssetForm button[type='submit']").prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Updating...');
+                },
                 success: function(res) {
+                    console.log("✅ Update response:", res);
                     if (res.status) {
                         $("#editFixedAssetModal").modal("hide");
-                        toastr.success("FixedAssets updated Successfully!");
-                        setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+                        toastr.success(res.message || "Fixed Asset updated successfully!");
+
+                        // Reload after short delay
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.error(res.message || "Failed to update asset");
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Update failed:", xhr);
+
+                    // Parse error response
+                    let errorMessage = "Failed to update asset";
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseText) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMessage = response.message || errorMessage;
+                        } catch (e) {
+                            errorMessage = xhr.responseText;
+                        }
+                    }
+
+                    toastr.error(errorMessage);
+                    console.error("Full error:", {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        response: xhr.responseText,
+                        payload: payload
+                    });
+                },
+                complete: function() {
+                    // Re-enable submit button
+                    $("#editFixedAssetForm button[type='submit']").prop("disabled", false).html('Update Asset');
                 }
             });
         }
-            
 
+        // Attach to form submit
+        $("#editFixedAssetForm").on("submit", function (e) {
+            e.preventDefault();
+            updateFixedAsset();
+        });
         });
 
          let fixedTable;

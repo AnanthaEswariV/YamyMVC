@@ -1,0 +1,177 @@
+﻿
+@{
+    ViewData["Title"] = "ItemWarehouseList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+
+    .table-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    table.dataTable {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    th, td {
+        white-space: nowrap;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Item Warehouse List</strong>
+    </div>
+    <div class="table-container">
+        <table class="table table-striped" id="itemWarehouseTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>EMP Id</th>
+                    <th>City</th>
+                    <th>Building Name</th>
+                    <th>Account Id</th>
+                    <th>State</th>
+                    <th>Created By</th>
+                    <th>Created Date</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+        function loadFixedAssets() {
+            $.ajax({
+                url: '/Inventory/GetWarehouses',
+                type: 'GET',
+                beforeSend: function () {
+                    $('#itemWarehouseTable tbody').html(`
+                        <tr>
+                            <td colspan="24" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load fixed asset list');
+                        return;
+                    }
+                    console.log(res);
+                    // Destroy existing DataTable if it exists
+                    if ($.fn.DataTable.isDataTable('#itemWarehouseTable')) {
+                        $('#itemWarehouseTable').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#itemWarehouseTable tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = $(`
+                                <tr data-id="${row.id}" style="cursor: pointer;">
+                                    <td>${i + 1}</td>
+                                       <td>${row.code || '-'}</td>
+                                    <td>${row.display || '-'}</td>
+                                    <td>${row.empId || '-'}</td>
+                                    <td>${row.city || '-'}</td>
+                                    <td>${row.buildingName || '-'}</td>
+                                    <td>${row.accountId || '-'}</td>
+                                    <td>${row.State || '-'}</td>
+                                    <td>${row.created_By || '-'}</td>
+                                    <td>${row.created_Date || '-'}</td>
+                                </tr>
+                            `);
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $('#itemWarehouseTable').DataTable({
+                            dom: 'Bfrtip',
+                            scrollX: true,
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
+
+                        $('#itemWarehouseTable tbody').on('click', 'tr', function() {
+                    const id = $(this).data('id');
+                    if (id) {
+                        window.location.href = `/Inventory/Warehouse?Id=${id}`;
+                    }
+                });
+
+
+                    } else {
+                        tbody.append(`<tr><td colspan="24" class="text-center text-muted py-4">No fixed assets found</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Error loading fixed asset list');
+                    console.error(xhr.responseText);
+                }
+            });
+        }
+
+        // Load data automatically when the page loads
+        $(document).ready(function () {
+            loadFixedAssets();
+        });
+    </script>
+
+
+}
+

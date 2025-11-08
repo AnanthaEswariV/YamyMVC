@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using YamyProject.Core.Models;
 using YamyProject.Core.Models.DTOs;
 
 namespace YamyProject.Controllers
@@ -2152,15 +2153,6 @@ ORDER BY l.code;
 
         #endregion
 
-        #region Item Transaction
-
-        public IActionResult ItemTransaction()
-        {
-            return View();
-        }
-
-        #endregion
-
         #region Warehouse Summary
 
         public IActionResult WareHouseSummary()
@@ -2244,11 +2236,1015 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Inventory Transaction Report
+
+        public IActionResult InventoryTransaction()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetInvoices(
+    int? itemId = null,
+    DateTime? dateFrom = null,
+    DateTime? dateTo = null,
+    bool includeAllItems = true,
+    bool includeAllDates = true)
+        {
+            try
+            {
+                // Build connection string dynamically using session or fallback to default
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY it.date) AS SN,
+                DATE_FORMAT(it.date, '%d/%m/%Y') AS `Date`,
+                it.type AS Type,
+                CONCAT('000', it.reference) AS `RefId`,
+                i.id AS Id,
+                i.name AS Name,
+                i.code AS Code,
+                it.item_id AS ItemId,
+                i.cost_price AS CostPrice,
+                i.sales_price AS SellingPrice,
+                it.qty_in AS QtyIn,
+                it.qty_out AS QtyOut,
+                it.description AS Description
+            FROM 
+                tbl_item_transaction it
+            INNER JOIN 
+                tbl_items i ON it.item_id = i.id
+            WHERE 
+                i.state = 0
+                AND (@itemId IS NULL OR i.id = @itemId)
+                AND (@dateFilter = 0 OR (it.date BETWEEN @dateFrom AND @dateTo))
+            ORDER BY 
+                it.date;
+        ";
+
+                // Prepare parameters
+                var parameters = new List<MySqlParameter>
+        {
+            new("@itemId", includeAllItems ? DBNull.Value : (object?)itemId ?? DBNull.Value),
+            new("@dateFrom", dateFrom ?? DateTime.MinValue),
+            new("@dateTo", dateTo ?? DateTime.MaxValue),
+            new("@dateFilter", includeAllDates ? 0 : 1)
+        };
+
+                var result = new List<InvoiceViewModels>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        result.Add(new InvoiceViewModels
+                        {
+                            SN = reader.GetInt32("SN"),
+                            Id = reader.GetInt32("Id"),
+                            Date = reader["Date"].ToString(),
+                            Type = reader["Type"].ToString(),
+                            RefId = reader["RefId"].ToString(),
+                            Name = reader["Name"].ToString(),
+                            Code = reader["Code"].ToString(),
+                            ItemId = reader.GetInt32("ItemId"),
+                            CostPrice = reader.GetDecimal("CostPrice"),
+                            SellingPrice = reader.GetDecimal("SellingPrice"),
+                            QtyIn = reader.GetDecimal("QtyIn"),
+                            QtyOut = reader.GetDecimal("QtyOut"),
+                            Description = reader["Description"].ToString()
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region City List
+
+        public IActionResult CityList()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCitys()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+               *
+            FROM tbl_city
+            ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                        Country_Id = reader.GetInt32("country_id"),
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetCountry()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+               *
+            FROM tbl_country
+            ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveCity([FromBody] CityRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter City Name First" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check for duplicate city
+                string checkQuery = "SELECT id FROM tbl_city WHERE name = @name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                    {
+                        return BadRequest(new { status = false, message = "City already exists. Please enter another name." });
+                    }
+                }
+
+                if (model.Id == 0)
+                {
+                    // 🔹 Insert new city
+                    string insertQuery = "INSERT INTO tbl_city (name, country_id) VALUES (@name, @cId); SELECT LAST_INSERT_ID();";
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    insertCmd.Parameters.AddWithValue("@cId", model.CountryId);
+
+                    var insertedId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+
+                  
+
+                    return Ok(new { status = true, message = "City created successfully", id = insertedId });
+                }
+                else
+                {
+                    // 🔹 Update existing city
+                    string updateQuery = "UPDATE tbl_city SET name=@name, country_id=@cId WHERE id=@id";
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@cId", model.CountryId);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "City not found" });
+
+
+                    return Ok(new { status = true, message = "City updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region Country List
+
+        public IActionResult CountryList()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCountrys()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+               *
+            FROM tbl_country
+            ORDER BY id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        #endregion
+
+        #region Fixed Asset List
+
+        public IActionResult FixedAssetList()
+        {
+            return View();
+        }
+        #endregion
+
+        #region Item List
+
+        public IActionResult ItemList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Item Warehouse List
+
+        public IActionResult ItemWarehouseList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Employee List
+
+        public IActionResult EmployeeList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Cheque Report
+
+        public IActionResult ChequeReport()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetChequeNumbers()
+        {
+            try
+            {
+                // Build connection string dynamically using session or fallback
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT DISTINCT check_no 
+            FROM tbl_check_details 
+            WHERE check_no > 0;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var chequeList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    chequeList.Add(new
+                    {
+                        SN = sn++,
+                        CheckNo = reader["check_no"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = chequeList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetChequeDetails(int? chequeNo)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                cd.pvc_no AS id,
+                cd.check_type AS type,
+                cd.date,
+                coa.name AS account_name,
+                cd.amount AS amount,
+                b.name AS bank_name
+            FROM tbl_check_details cd
+            JOIN tbl_bank_card bc ON cd.check_id = bc.id
+            JOIN tbl_bank b ON bc.bank_id = b.id
+            JOIN tbl_coa_level_4 coa ON coa.id = bc.account_id
+        ";
+
+                if (chequeNo.HasValue)
+                {
+                    query += " WHERE cd.check_no = @id";
+                }
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (chequeNo.HasValue)
+                {
+                    cmd.Parameters.AddWithValue("@id", chequeNo.Value);
+                }
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var resultList = new List<object>();
+                int rowIndex = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    resultList.Add(new
+                    {
+                        SN = rowIndex++,
+                        Id = reader["id"].ToString(),
+                        Type = reader["type"].ToString(),
+                        Date = Convert.ToDateTime(reader["date"]).ToShortDateString(),
+                        AccountName = reader["account_name"].ToString(),
+                       Amount = Convert.ToDecimal(reader["amount"]).ToString("N2"),
+                        BankName = reader["bank_name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = resultList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
+
+        #region Bank Balance Summary
+
+        public IActionResult BankBalanceSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetBankBalances()
+        {
+            try
+            {
+                // Build connection string based on active database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                b.name AS Bank,
+                bc.account_name AS Account,
+                SUM(t.debit - t.credit) AS Balance
+            FROM tbl_transaction t
+            JOIN tbl_bank_card bc ON t.account_id = bc.account_id
+            JOIN tbl_bank b ON bc.bank_id = b.id
+            WHERE t.`type` IN ('PDC Payable', 'PDC Receivable')
+            GROUP BY b.name, bc.account_name;
+        ";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalBalance = 0;
+                int rowId = 1;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        string bankName = reader["Bank"].ToString();
+                        string accountName = reader["Account"].ToString();
+                        decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = rowId++,
+                            ["Bank"] = bankName,
+                            ["Account"] = accountName,
+                            ["Balance"] = balance.ToString("N2")
+                        });
+
+                        totalBalance += balance;
+                    }
+                }
+
+                // Add total row at the end
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["Bank"] = "",
+                    ["Account"] = "TOTAL",
+                    ["Balance"] = totalBalance.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region PDC Outstanding Summary
+        //It returns only future-dated checks
+
+        public IActionResult PDCOutstandingSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetHoldChecks(DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                // Build connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ✅ Base query
+                string query = @"
+            SELECT 
+                cd.id,
+                cd.check_no,
+                cd.check_date,
+                cd.amount,
+                cd.check_type,
+                cd.state
+            FROM tbl_check_details cd
+            WHERE cd.state = 'Hold'
+        ";
+
+                // ✅ Apply date filter only when includeAllDates is false
+                if (!includeAllDates && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND cd.check_date BETWEEN @startDate AND @endDate";
+                }
+                else if (!includeAllDates && startDate.HasValue)
+                {
+                    query += " AND cd.check_date >= @startDate";
+                }
+                else if (!includeAllDates && endDate.HasValue)
+                {
+                    query += " AND cd.check_date <= @endDate";
+                }
+
+                query += " ORDER BY cd.check_date ASC;";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0;
+                int rowId = 1;
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (!includeAllDates)
+                    {
+                        if (startDate.HasValue)
+                            cmd.Parameters.AddWithValue("@startDate", startDate.Value);
+
+                        if (endDate.HasValue)
+                            cmd.Parameters.AddWithValue("@endDate", endDate.Value);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        string checkNo = reader["check_no"].ToString();
+                        string checkDate = Convert.ToDateTime(reader["check_date"]).ToString("dd/MM/yyyy");
+                        decimal amount = reader["amount"] != DBNull.Value ? Convert.ToDecimal(reader["amount"]) : 0;
+                        string checkType = reader["check_type"].ToString();
+                        string state = reader["state"].ToString();
+
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = rowId++,
+                            ["CheckNo"] = checkNo,
+                            ["CheckDate"] = checkDate,
+                            ["Amount"] = amount.ToString("N2"),
+                            ["CheckType"] = checkType,
+                            ["State"] = state
+                        });
+
+                        totalAmount += amount;
+                    }
+                }
+
+                // ✅ Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["CheckNo"] = "",
+                    ["CheckDate"] = "TOTAL",
+                    ["Amount"] = totalAmount.ToString("N2"),
+                    ["CheckType"] = "",
+                    ["State"] = ""
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region PDC Cleared History
+        //It returns only Cleared(Pass Status) Cheque
+
+        public IActionResult PDCClearedHistory()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPassChecks(DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                // 🔹 Build connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Base query — only "Pass" state
+                string query = @"
+            SELECT 
+                cd.id,
+                cd.check_no,
+                cd.check_date,
+                cd.pass_date,
+                cd.amount
+            FROM tbl_check_details cd
+            WHERE cd.state = 'Pass'
+        ";
+
+                // 🔹 Apply optional date filters
+                if (!includeAllDates && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND cd.pass_date BETWEEN @startDate AND @endDate";
+                }
+                else if (!includeAllDates && startDate.HasValue)
+                {
+                    query += " AND cd.pass_date >= @startDate";
+                }
+                else if (!includeAllDates && endDate.HasValue)
+                {
+                    query += " AND cd.pass_date <= @endDate";
+                }
+
+                query += " ORDER BY cd.pass_date ASC;";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0;
+                int rowId = 1;
+
+                // 🔹 Execute query
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (!includeAllDates)
+                    {
+                        if (startDate.HasValue)
+                            cmd.Parameters.AddWithValue("@startDate", startDate.Value);
+
+                        if (endDate.HasValue)
+                            cmd.Parameters.AddWithValue("@endDate", endDate.Value);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        string checkNo = reader["check_no"]?.ToString();
+                        string checkDate = reader["check_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["check_date"]).ToString("dd/MM/yyyy")
+                            : "";
+                        string passDate = reader["pass_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["pass_date"]).ToString("dd/MM/yyyy")
+                            : "";
+                        decimal amount = reader["amount"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["amount"])
+                            : 0;
+
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = rowId++,
+                            ["CheckNo"] = checkNo,
+                            ["CheckDate"] = checkDate,
+                            ["PassDate"] = passDate,
+                            ["Amount"] = amount.ToString("N2")
+                        });
+
+                        totalAmount += amount;
+                    }
+                }
+
+                // 🔹 Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["CheckNo"] = "",
+                    ["CheckDate"] = "TOTAL",
+                    ["PassDate"] = "",
+                    ["Amount"] = totalAmount.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region PDC Returned Cheque Report
+        //It returns only Returned Cheque
+
+        public IActionResult ReturnedChequeReport()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetReturnChecks(DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                // 🔹 Build connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Base query — only "Return" state
+                string query = @"
+            SELECT 
+                cd.id,
+                cd.check_no,
+                cd.check_date,
+                cd.return_date,
+                cd.amount
+            FROM tbl_check_details cd
+            WHERE cd.state = 'Return'
+        ";
+
+                // 🔹 Apply optional date filters
+                if (!includeAllDates && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND cd.return_date BETWEEN @startDate AND @endDate";
+                }
+                else if (!includeAllDates && startDate.HasValue)
+                {
+                    query += " AND cd.return_date >= @startDate";
+                }
+                else if (!includeAllDates && endDate.HasValue)
+                {
+                    query += " AND cd.return_date <= @endDate";
+                }
+
+                query += " ORDER BY cd.return_date ASC;";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0;
+                int rowId = 1;
+
+                // 🔹 Execute query
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (!includeAllDates)
+                    {
+                        if (startDate.HasValue)
+                            cmd.Parameters.AddWithValue("@startDate", startDate.Value);
+                        if (endDate.HasValue)
+                            cmd.Parameters.AddWithValue("@endDate", endDate.Value);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        string checkNo = reader["check_no"]?.ToString();
+                        string checkDate = reader["check_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["check_date"]).ToString("dd/MM/yyyy")
+                            : "";
+                        string returnDate = reader["return_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["return_date"]).ToString("dd/MM/yyyy")
+                            : "";
+                        decimal amount = reader["amount"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["amount"])
+                            : 0;
+
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = rowId++,
+                            ["CheckNo"] = checkNo,
+                            ["CheckDate"] = checkDate,
+                            ["ReturnDate"] = returnDate,
+                            ["Amount"] = amount.ToString("N2")
+                        });
+
+                        totalAmount += amount;
+                    }
+                }
+
+                // 🔹 Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["CheckNo"] = "",
+                    ["CheckDate"] = "",
+                    ["ReturnDate"] = "TOTAL",
+                    ["Amount"] = totalAmount.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region Cheque Linked to Payment/Receipt
+
+        public IActionResult ChequeLinked()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllChecks(DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                // 🔹 Build connection string dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Base query
+                string query = @"
+            SELECT 
+                IFNULL(cd.check_no, '') AS check_no,
+                cd.check_date,
+                cd.amount,
+                cd.check_type,
+                IFNULL(pv.code, '') AS PaymentVoucher,
+                IFNULL(rv.code, '') AS ReceiptVoucher
+            FROM tbl_check_details cd
+            LEFT JOIN tbl_payment_voucher pv ON cd.pvc_no = pv.id AND cd.check_type = 'Payment'
+            LEFT JOIN tbl_receipt_voucher rv ON cd.pvc_no = rv.id AND cd.check_type = 'Receipt'
+            WHERE 1=1
+        ";
+
+                // 🔹 Optional date filters on check_date
+                if (!includeAllDates && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND cd.check_date BETWEEN @startDate AND @endDate";
+                }
+                else if (!includeAllDates && startDate.HasValue)
+                {
+                    query += " AND cd.check_date >= @startDate";
+                }
+                else if (!includeAllDates && endDate.HasValue)
+                {
+                    query += " AND cd.check_date <= @endDate";
+                }
+
+                query += " ORDER BY cd.check_date ASC;";
+
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0;
+                int rowId = 1;
+
+                // 🔹 Execute query
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (!includeAllDates)
+                    {
+                        if (startDate.HasValue)
+                            cmd.Parameters.AddWithValue("@startDate", startDate.Value);
+                        if (endDate.HasValue)
+                            cmd.Parameters.AddWithValue("@endDate", endDate.Value);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        string checkNo = reader["check_no"]?.ToString();
+                        string checkDate = reader["check_date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["check_date"]).ToString("dd/MM/yyyy")
+                            : "";
+                        decimal amount = reader["amount"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["amount"])
+                            : 0;
+                        string checkType = reader["check_type"]?.ToString() ?? "";
+                        string paymentVoucher = reader["PaymentVoucher"]?.ToString() ?? "";
+                        string receiptVoucher = reader["ReceiptVoucher"]?.ToString() ?? "";
+
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = rowId++,
+                            ["CheckNo"] = checkNo,
+                            ["CheckDate"] = checkDate,
+                            ["Amount"] = amount.ToString("N2"),
+                            ["CheckType"] = checkType,
+                            ["PaymentVoucher"] = paymentVoucher,
+                            ["ReceiptVoucher"] = receiptVoucher
+                        });
+
+                        totalAmount += amount;
+                    }
+                }
+
+                // 🔹 Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["CheckNo"] = "",
+                    ["CheckDate"] = "TOTAL",
+                    ["Amount"] = totalAmount.ToString("N2"),
+                    ["CheckType"] = "",
+                    ["PaymentVoucher"] = "",
+                    ["ReceiptVoucher"] = ""
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
 
 
     }
-
-
 
 }
 

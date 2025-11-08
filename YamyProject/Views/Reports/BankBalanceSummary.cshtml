@@ -1,5 +1,6 @@
-﻿@{
-    ViewData["Title"] = "PrepaidExpenseSummary";
+﻿
+@{
+    ViewData["Title"] = "BankBalanceSummary";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -15,12 +16,10 @@
             color: #fff !important;
         }
 </style>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-
 <div class="card">
     <div class="card-header text-center">
-        <strong>Prepaid Expense Summary</strong>
+        <strong>Bank Balance Summary</strong>
     </div>
 
     <div class="card-body">
@@ -54,10 +53,9 @@
             <thead>
                 <tr>
                     <th>S.No</th>
-                    <th>Asset Name</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Total Price</th>
+                    <th>Bank</th>
+                    <th>Account</th>
+                    <th>Balance</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -80,41 +78,40 @@
 
     <script>
         $(document).ready(function () {
-            // Load data on page load
-            loadPrepaidExpenseSummary();
 
-            // Checkbox toggle
+            // Load data on page load
+            loadBankBalanceSummary();
+
+            // Checkbox toggle (Enable/Disable date filters)
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
-                loadPrepaidExpenseSummary();
+                loadBankBalanceSummary();
             });
 
             // Filter button click
             $('#filterBtn').click(function () {
-                loadPrepaidExpenseSummary();
+                loadBankBalanceSummary();
             });
         });
 
-        // ✅ Load Prepaid Expense Summary
-        function loadPrepaidExpenseSummary() {
+        function loadBankBalanceSummary() {
             const includeAllDates = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetPrepaidExpenses',
+                url: '/Reports/GetBankBalances',
                 type: 'GET',
                 data: {
                     startDate: startDate || null,
                     endDate: endDate || null,
                     includeAllDates: includeAllDates
                 },
-
                 beforeSend: function () {
                     $('#table3 tbody').html(`
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="4" class="text-center text-muted py-4">
                                 <div class="spinner-border text-primary me-2"></div>Loading...
                             </td>
                         </tr>
@@ -122,10 +119,10 @@
                 },
                 success: function (res) {
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load prepaid expense data');
+                        toastr.error(res.message || 'Failed to load bank balance data');
                         return;
                     }
-                    // Destroy existing DataTable
+               
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
                     }
@@ -136,36 +133,15 @@
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             const tr = `
-                                <tr data-id="${row.id}">
-                                    <td>${i + 1}</td>
-                                    <td>${row.AssetName || ''}</td>
-                                    <td>${row.StartDate || ''}</td>
-                                    <td>${row.EndDate || ''}</td>
-                                    <td class="text-end">${row.TotalPrice || ''}</td>
+                                <tr>
+                                    <td>${row.SN || ''}</td>
+                                    <td>${row.Bank || ''}</td>
+                                    <td>${row.Account || ''}</td>
+                                    <td class="text-end fw-bold">${row.Balance || ''}</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
 
-                        // ✅ Row click redirect
-                        $('#table3 tbody').on('click', 'tr', function () {
-                            const id = $(this).data('id');
-                            if (!id) {
-                                toastr.warning('No prepaid expense ID found for this record.');
-                                return;
-                            }
-
-                            const query = new URLSearchParams({
-                                transactionId: id,
-                                startDate: startDate || '',
-                                endDate: endDate || '',
-                                includeAllDates: includeAllDates
-                            }).toString();
-
-                            // Redirect to prepaid expense details page
-                            window.location.href = `/Reports/PrepaidExpenseDetails?${query}`;
-                        });
-
-                        // ✅ Initialize DataTable
                         $('#table3').DataTable({
                             dom: 'Bfrtip',
                             buttons: [
@@ -186,13 +162,14 @@
                             pageLength: 15
                         });
                     } else {
-                        tbody.append(`<tr><td colspan="5" class="text-center text-muted py-4">No prepaid expenses found</td></tr>`);
+                        tbody.append(`<tr><td colspan="4" class="text-center text-muted py-4">No bank balance data found</td></tr>`);
                     }
                 },
                 error: function () {
-                    toastr.error('Error loading prepaid expense data');
+                    toastr.error('Error loading bank balance data');
                 }
             });
         }
     </script>
-}
+
+   }

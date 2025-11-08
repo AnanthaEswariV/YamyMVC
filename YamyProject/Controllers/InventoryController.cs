@@ -249,7 +249,7 @@
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                var query = @"SELECT Id, Code, Name, emp_id AS EmpId, City, building_name AS BuildingName, account_id AS AccountId
+                var query = @"SELECT Id, Code,State, Created_By, Created_Date, Name, emp_id AS EmpId, City, building_name AS BuildingName, account_id AS AccountId
                          FROM tbl_warehouse
                          ORDER BY Id DESC";
                 using var cmd = new MySqlCommand(query, conn);
@@ -268,6 +268,10 @@
                         City = reader["City"],
                         BuildingName = reader["BuildingName"],
                         AccountId = reader["AccountId"],
+                        State = reader["State"],
+                        Created_By = reader["Created_By"],
+                        Created_Date = reader["Created_Date"]
+
                     });
                 }
 

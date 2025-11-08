@@ -1,0 +1,344 @@
+﻿@{
+    ViewData["Title"] = "General Journal Transaction";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<form id="journalForm" novalidate>
+    <div class="container-fluid mt-3">
+        <div class="card shadow-sm">
+            <div class="card-header text-center">
+                <strong>General Journal Transaction</strong>
+            </div>
+            <div class="card-body">
+                <!-- Date, Voucher No, Name -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="date" class="form-label">Date</label>
+                        <input type="date" id="date" class="form-control" readonly required />
+                    </div>
+                    <div class="col-md-3">
+                        <label for="voucherNo" class="form-label">Voucher No</label>
+                        <input type="text" id="voucherNo" class="form-control" readonly required />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" id="name" class="form-control" placeholder="Name" readonly required />
+                    </div>
+                </div>
+
+                <!-- Journal Table -->
+                <div class="table-responsive">
+                    <table class="table table-striped" id="journalTable">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>AC Code</th>
+                                <th>Account Name</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Totals -->
+                <div class="row mt-3">
+                    <div class="col-md-2 offset-md-8 text-end">
+                        <input type="text" id="totalDebit" class="form-control text-end" readonly />
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" id="totalCredit" class="form-control text-end" readonly />
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="submit" class="btn btn-primary me-2">Save</button>
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+             $(document).ready(function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refId = urlParams.get('refId');
+            const vType = urlParams.get('vType');
+            const date = urlParams.get('date');
+
+            if (refId && vType && date) {
+                $('#voucherNo').val(refId);
+                $('#date').val(formatDateForInput(date));
+
+                // 🔹 Load account list first, then journal details
+                loadAccountList(() => loadJournalDetails(refId, vType, date));
+            } else {
+                toastr.warning('Missing parameters.');
+            }
+
+                  $('#journalForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const refId = $('#voucherNo').val();
+            const vType = 'General Journal';
+            const modifiedBy = parseInt($('#userId').val()) || 1;
+
+            const entries = [];
+            let valid = true; // define valid flag
+
+            $('#journalTable tbody tr').each(function(index) {
+                const row = $(this);
+                const sn = row.find('td:eq(0)').text().trim();
+                const accountId = row.find('.account-name').val() || '';
+                const debit = parseFloat(row.find('.debit').val() || 0);
+                const credit = parseFloat(row.find('.credit').val() || 0);
+                const description = row.find('.description').val() || '';
+
+                if (!accountId || (debit === 0 && credit === 0)) {
+                    toastr.warning('Row ' + (index + 1) + ' must have an account and Debit or Credit greater than 0');
+                    valid = false;
+                    return false; // break out of each loop
+                }
+
+                entries.push({
+                    Id: row.data('id') || 0,
+                    TransactionId: sn,
+                    AccountId: accountId,
+                    HumId: "0",
+                    Date: new Date($('#date').val()).toISOString(), // send ISO string
+                    Debit: debit,
+                    Credit: credit,
+                    Description: description
+                });
+            });
+
+            if (!valid) return; // stop submission if any row is invalid
+
+            if (!entries.length) {
+                toastr.warning('No journal entries found to save.');
+                return;
+            }
+
+            const payload = {
+                TransactionId: refId,
+                VoucherType: vType,
+                ModifiedBy: modifiedBy,
+                CurrentHumId: "0",
+                CurrentVoucherId: refId,
+                Entries: entries
+            };
+
+            $.ajax({
+                url: '/Lists/UpdateJournal',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                beforeSend: function() {
+                    $(form).find('button[type=submit]').prop('disabled', true).text('Saving...');
+                },
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success(res.message || 'Journal saved successfully!');
+                        $('#totalDebit').val(parseFloat(res.totalDebit).toFixed(2));
+                        $('#totalCredit').val(parseFloat(res.totalCredit).toFixed(2));
+                    } else {
+                        toastr.error(res.message || 'Failed to save journal.');
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                },
+                complete: function() {
+                    $(form).find('button[type=submit]').prop('disabled', false).text('Save');
+                }
+            });
+        });
+
+        });
+
+
+        function loadAccountList(callback) {
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function (data) {
+                    accountList = data || [];
+                   
+                    if (typeof callback === 'function') callback();
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                    toastr.error("Failed to load account list", "Error");
+                }
+            });
+        }
+
+        function formatDateForInput(dateStr) {
+            const [day, month, year] = dateStr.split('/');
+            if (year) return `${year}-${month}-${day}`;
+            return dateStr;
+        }
+
+        function loadJournalDetails(refId, vType, date) {
+
+            const data = {
+                refId: refId,
+                vType: vType,
+                date: date
+            };
+            $.ajax({
+                url: '/Lists/GetJournalDetails',
+                type: 'GET',
+                data: data,
+                beforeSend: function () {
+                    // Destroy existing DataTable before showing loading message
+                    if ($.fn.DataTable.isDataTable("#journalTable")) {
+                        $("#journalTable").DataTable().clear().destroy();
+                    }
+                    $('#journalTable tbody').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                },
+                success: function (res) {
+                    const tbody = $('#journalTable tbody').empty();
+                    let totalDebit = 0, totalCredit = 0;
+                    console.log(res);
+                    if (res.status && res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            // Format numbers
+                            const debit = row.debit != null ? parseFloat(row.debit).toFixed(2) : '0.00';
+                            const credit = row.credit != null ? parseFloat(row.credit).toFixed(2) : '0.00';
+
+                            // Increment totals
+                            totalDebit += parseFloat(row.debit || 0);
+                            totalCredit += parseFloat(row.credit || 0);
+
+                                   tbody.append(`
+           <tr data-id="${row.id ?? ''}">
+                <td>${row.sn ?? i + 1}</td>
+                <td>
+                    <select class="form-select form-select-sm account-code">
+                        <option value="">-- Select --</option>
+                        ${accountList.map(acc =>
+                            `<option value="${acc.id}" data-code="${acc.code}" ${acc.code == row.accountCode ? 'selected' : ''}>${acc.code}</option>`
+                        ).join('')}
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm account-name">
+                        <option value="">-- Select --</option>
+                        ${accountList.map(acc =>
+                            `<option value="${acc.id}" data-code="${acc.code}" ${acc.id == row.accountId ? 'selected' : ''}>${acc.name}</option>`
+                        ).join('')}
+                    </select>
+                </td>
+                      <td class="text-end">
+            <input type="number" class="form-control form-control-sm debit text-end" value="${row.debit}" step="0.01" />
+        </td>
+        <td class="text-end">
+            <input type="number" class="form-control form-control-sm credit text-end" value="${row.credit}" step="0.01" />
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm description" value="${row.description ?? ''}" />
+        </td>
+            </tr>
+        `);
+
+                        });
+
+                        // Update totals
+                        $('#totalDebit').val(totalDebit.toFixed(2));
+                        $('#totalCredit').val(totalCredit.toFixed(2));
+                        $('#name').val(res.data[0].humName || '');
+
+                        // Initialize DataTable
+                        $('#journalTable').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    className: 'btn btn-primary btn-sm',
+                                    text: '<i class="fas fa-file-excel"></i> Excel',
+                                    title: 'General Journal Details',
+                                    exportOptions: { columns: ':visible' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    text: '<i class="fas fa-file-pdf"></i> PDF',
+                                    title: 'General Journal Details',
+                                    exportOptions: { columns: ':visible' }
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15,
+                        });
+
+
+                    } else {
+                        tbody.append('<tr><td colspan="6" class="text-center py-4 text-muted"><i class="fas fa-info-circle"></i> No records found</td></tr>');
+                        toastr.info('No records found', 'Info');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('API Error:', xhr.responseText);
+                    $('#journalTable tbody').html('<tr><td colspan="6" class="text-center py-4 text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading data</td></tr>');
+                    toastr.error('Failed to load journal details: ' + error, 'Error');
+                }
+            });
+        }
+
+
+        $('#journalTable').off('change', '.account-name').on('change', '.account-name', function () {
+            const selectedId = $(this).val();
+            const row = $(this).closest('tr');
+            const acc = accountList.find(a => a.id == selectedId);
+            row.find('.account-code').val(acc?.id || '');
+        });
+
+        $('#journalTable').off('change', '.account-code').on('change', '.account-code', function () {
+            const selectedId = $(this).val();
+            const row = $(this).closest('tr');
+            const acc = accountList.find(a => a.id == selectedId);
+            row.find('.account-name').val(acc?.id || '');
+        });
+
+
+    </script>
+}

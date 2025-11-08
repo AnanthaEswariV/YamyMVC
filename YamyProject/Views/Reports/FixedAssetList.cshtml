@@ -1,0 +1,202 @@
+﻿
+@{
+    ViewData["Title"] = "FixedAssetList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+
+    .table-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+
+    table.dataTable {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    th, td {
+        white-space: nowrap;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Fixed Asset List</strong>
+    </div>
+    <div class="table-container">
+        <table class="table table-striped" id="fixedassetTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Brand</th>
+                    <th>Category Id</th>
+                    <th>Model</th>
+                    <th>Supplier</th>
+                    <th>Status</th>
+                    <th>Invoice Number</th>
+                    <th>Purchase Date</th>
+                    <th>End Date</th>
+                    <th>Depreciation Life</th>
+                    <th>Purchase Price</th>
+                    <th>Debit Account Id</th>
+                    <th>Credit Account Id</th>
+                    <th>Expense Account Id</th>
+                    <th>Created By</th>
+                    <th>Created Date</th>
+                    <th>Modified Date</th>
+                    <th>State</th>
+                    <th>Manufacture</th>
+                    <th>Manufacture Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+</div>
+@Html.Partial("~/Views/Lists/_FixedAssets.cshtml")
+
+
+   @section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+        function loadFixedAssets() {
+            $.ajax({
+                url: '/Lists/GetAllFixedAssets',
+                type: 'GET',
+                beforeSend: function () {
+                    $('#fixedassetTable tbody').html(`
+                        <tr>
+                            <td colspan="24" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load fixed asset list');
+                        return;
+                    }
+                    console.log(res);
+                    // Destroy existing DataTable if it exists
+                    if ($.fn.DataTable.isDataTable('#fixedassetTable')) {
+                        $('#fixedassetTable').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#fixedassetTable tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = $(`
+                                <tr data-id="${row.id}" style="cursor: pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.date ? new Date(row.date).toLocaleDateString() : '-'}</td>
+                                    <td>${row.code || '-'}</td>
+                                    <td>${row.name || '-'}</td>
+                                    <td>${row.brand || '-'}</td>
+                                    <td>${row.categoryId || '-'}</td>
+                                    <td>${row.model || '-'}</td>
+                                    <td>${row.supplier || '-'}</td>
+                                    <td>${row.status || '-'}</td>
+                                    <td>${row.invoiceNumber || '-'}</td>
+                                    <td>${row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.endDate ? new Date(row.endDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.depreciationLife || '-'}</td>
+                                    <td>${row.purchasePrice || '-'}</td>
+                                    <td>${row.debitAccountId || '-'}</td>
+                                    <td>${row.creditAccountId || '-'}</td>
+                                    <td>${row.expenceAccountId || '-'}</td>
+                                    <td>${row.createdBy || '-'}</td>
+                                    <td>${row.createdDate ? new Date(row.createdDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.modifiedDate ? new Date(row.modifiedDate).toLocaleDateString() : '-'}</td>
+                                    <td>${row.state || '-'}</td>
+                                    <td>${row.manufacture ? 'Yes' : 'No'}</td>
+                                    <td>${row.manufactureStatus || '-'}</td>
+                                </tr>
+                            `);
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $('#fixedassetTable').DataTable({
+                            dom: 'Bfrtip',
+                            scrollX: true,
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
+
+                        $('#fixedassetTable tbody').on('click', 'tr', function() {
+                    const id = $(this).data('id');
+                    if (id) {
+                        window.location.href = `/Lists/FixedAssets?Id=${id}`;
+                    }
+                });
+
+
+                    } else {
+                        tbody.append(`<tr><td colspan="24" class="text-center text-muted py-4">No fixed assets found</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Error loading fixed asset list');
+                    console.error(xhr.responseText);
+                }
+            });
+        }
+
+        // Load data automatically when the page loads
+        $(document).ready(function () {
+            loadFixedAssets();
+        });
+    </script>
+
+   
+   }

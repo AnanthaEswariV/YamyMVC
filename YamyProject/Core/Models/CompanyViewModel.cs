@@ -651,4 +651,51 @@ namespace YamyProject.Core.Models
         public decimal Qty { get; set; }
     }
 
+    public class InvoiceViewModels
+    {
+        public int SN { get; set; }
+        public int Id { get; set; }
+        public string Date { get; set; }
+        public string Type { get; set; }
+        public string RefId { get; set; }
+        public string Name { get; set; }
+        public string Code { get; set; }
+        public int ItemId { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal SellingPrice { get; set; }
+        public decimal QtyIn { get; set; }
+        public decimal QtyOut { get; set; }
+        public string Description { get; set; }
+    }
+    public class JournalUpdateRequest
+    {
+        
+        public int TransactionId { get; set; }
+        public string VoucherType { get; set; }
+        public int ModifiedBy { get; set; }
+        public string CurrentHumId { get; set; }
+        public string CurrentVoucherId { get; set; }
+        public List<JournalEntry> Entries { get; set; }
+    }
+
+    public class JournalEntry
+    {
+        public int Id { get; set; }
+        public string TransactionId { get; set; }
+        public string AccountId { get; set; }
+        public string HumId { get; set; }
+        public DateTime? Date { get; set; }
+        public decimal? Debit { get; set; }
+        public decimal? Credit { get; set; }
+        public string Description { get; set; }
+    }
+
+    public class CityRequest
+    {
+        public int Id { get; set; } = 0; 
+        public string Name { get; set; }
+        public int CountryId { get; set; }
+    }
+
+
 }

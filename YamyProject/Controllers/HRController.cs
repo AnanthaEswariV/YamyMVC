@@ -167,7 +167,6 @@
 
             return code.ToString("D5"); // always 5 digits
         }
-
         [HttpGet]
         public async Task<IActionResult> GetEmployees([FromQuery] string filter = "all")
         {
@@ -183,9 +182,15 @@
                 await conn.OpenAsync();
 
                 string query = @"SELECT 
-                            id, code, name, phone, email, active,
+                            id, code, name, city_id, address, birth_day, Social_Status, Social_Insurance_Number, Email, EmergencyName,
+                            EmergencyAddress, EmergencyPhone, Relation, BasicSalary, bank_id, Iban_Number, Bank_account_Number, EmiratesIDFileNumber, 
+                            EmiratesIDIssuingAuthority, EmiratesIDIssueDate, EmiratesIDExpiryDate, PassportNumber, CountryOfIssue,
+                            PassportIssueDate, PassportExpiryDate, WorkContractNumber, Position_Id, Department_Id, WorkDays, workinghours, ContractIssueDate,
+                            ContractExpiryDate, ResidencyFileNumber, ResidencyIssuingAuthority, ResidencyIssueDate, ResidencyExpiryDate, account_id, Accrued_Salaries_id,
+                            Employee_Recivable_Id, Acroal_Leave_Salary_Id, Gratuit_Id, Petty_Cash_Id,
+                            phone, email, active,
                             BasicSalary, HousingAllowance, TransportationAllowance, Other
-                         FROM tbl_employee";
+                        FROM tbl_employee";
 
                 if (filter.Equals("active", StringComparison.OrdinalIgnoreCase))
                     query += " WHERE Active = 1";
@@ -197,22 +202,16 @@
                 using var cmd = new MySqlCommand(query, conn);
                 using var reader = await cmd.ExecuteReaderAsync();
 
-                var employees = new List<object>();
+                var employees = new List<Dictionary<string, object>>();
+
                 while (await reader.ReadAsync())
                 {
-                    employees.Add(new
+                    var employee = new Dictionary<string, object>();
+                    for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        id = reader["id"],
-                        code = reader["code"],
-                        name = reader["name"],
-                        phone = reader["phone"],
-                        email = reader["email"],
-                        active = Convert.ToInt32(reader["active"]) == 1,
-                        basicSalary = reader["BasicSalary"] != DBNull.Value ? Convert.ToDecimal(reader["BasicSalary"]) : 0,
-                        housingAllowance = reader["HousingAllowance"] != DBNull.Value ? Convert.ToDecimal(reader["HousingAllowance"]) : 0,
-                        transportationAllowance = reader["TransportationAllowance"] != DBNull.Value ? Convert.ToDecimal(reader["TransportationAllowance"]) : 0,
-                        other = reader["Other"] != DBNull.Value ? Convert.ToDecimal(reader["Other"]) : 0
-                    });
+                        employee[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    }
+                    employees.Add(employee);
                 }
 
                 return Ok(new { status = true, data = employees });
@@ -222,6 +221,13 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        //city_id, address, birth_day, Social_Status, Social_Insurance_Number, Email, EmergencyName,
+        //                    EmergencyAddress, EmergencyPhone, Relation, BasicSalary, bank_id,  Iban_Number, Bank_account_Number, EmiratesIDFileNumber, 
+        //                    EmiratesIDIssuingAuthority, EmiratesIDIssueDate, EmiratesIDExpiryDate, PassportNumber, CountryOfIssue,
+        //                    PassportIssueDate, PassportExpiryDate, WorkContractNumber, Position_Id, Department_Id, WorkDays , workinghours,  ContractIssueDate,
+        //                    ContractExpiryDate, ResidencyFileNumber, ResidencyIssuingAuthority, ResidencyIssueDate, ResidencyExpiryDate,  account_id,  Accrued_Salaries_id,
+        //                    Employee_Recivable_Id,  Acroal_Leave_Salary_Id, Gratuit_Id, Petty_Cash_Id,
 
         [IgnoreAntiforgeryToken]
         [HttpPost]

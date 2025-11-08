@@ -678,7 +678,7 @@
                 success: function (res) {
                     if (res.status && res.data.length > 0) {
                         assemblyItems = res.data; 
-                        console.log(res.data);
+                       
                     } else {
                         assemblyItems = [];
                     }
@@ -796,7 +796,6 @@
                 success: function (result) {
                     const tbody = $('#itemsTable tbody');
                     tbody.empty();
-
                     if (result.status && result.data.length > 0) {
                         $.each(result.data, function (i, item) {
                             const editBtn = `
@@ -996,6 +995,32 @@
         });
 
 
+                    const urlParams = new URLSearchParams(window.location.search);
+        const ItemId = urlParams.get('Id');
+        if (ItemId) {
+            setTimeout(function() {
+                const $editBtn = $('.edit-item').filter(function() {
+                    return String($(this).data('id')) === String(ItemId);
+                });
+
+                if ($editBtn.length > 0) {
+                    $editBtn.click();
+                } else {
+                    toastr.info(`Loading item #${ItemId}...`);
+                    setTimeout(function() {
+                        const $retryBtn = $('.edit-item').filter(function() {
+                            return String($(this).data('id')) === String(ItemId);
+                        });
+                        if ($retryBtn.length > 0) {
+                            $retryBtn.click();
+                        } else {
+                            toastr.warning(`Item #${ItemId} not found`);
+                        }
+                    }, 2000);
+                }
+            }, 1500);
+        }
+
 
                 $(document).on("click", ".edit-item", function () {
             const data = $(this).data();  // grab all data-* attributes
@@ -1098,7 +1123,7 @@
                 });
             }
 
-            console.log("Payload:", item);
+         
 
             $.ajax({
                 url: '/Lists/SaveItem',

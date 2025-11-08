@@ -20,7 +20,6 @@
     </div>
 
     <div class="card-body">
-
         <!-- Filter Section -->
         <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
 
@@ -124,19 +123,16 @@
     <script>
         $(document).ready(function () {
 
-            // --- Read URL parameters ---
             const urlParams = new URLSearchParams(window.location.search);
             const transactionId = urlParams.get('transactionId');
             let selectionMethod = urlParams.get('selectionMethod') || 'Default';
             let fromDate = urlParams.get('fromDate');
             let toDate = urlParams.get('toDate');
 
-            // Set dropdown value if selectionMethod from URL
             if (selectionMethod) {
                 $("#transactionSelect").val(selectionMethod);
             }
 
-            // Set date fields if provided in URL
             if (fromDate && toDate) {
                 $("#chkAllData").prop("checked", false);
                 $("#startDate, #endDate").prop("disabled", false);
@@ -148,30 +144,19 @@
             $("#transactionSelect").on("change", function () {
                 const selectedMethod = $(this).val()?.trim() || 'Default';
 
-                // Get the current date filter values
                 const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
                 const tDate = $("#chkAllData").is(":checked") ? null : $("#endDate").val();
 
-                // Automatically load data when dropdown changes
                 loadJournal(selectedMethod, transactionId, fDate, tDate);
             });
 
-            // --- Enable/disable date inputs on checkbox change ---
             $("#chkAllData").on("change", function () {
                 const checked = $(this).is(":checked");
                 $("#startDate, #endDate").prop("disabled", checked);
 
-                // Optionally reload data when checkbox changes
-                // Uncomment below if you want to auto-reload on checkbox change
-                // const selectedMethod = $("#transactionSelect").val()?.trim() || 'Default';
-                // const fDate = checked ? null : $("#startDate").val();
-                // const tDate = checked ? null : $("#endDate").val();
-                // loadJournal(selectedMethod, transactionId, fDate, tDate);
             });
 
-            // --- Date input change - automatically reload ---
             $("#startDate, #endDate").on("change", function () {
-                // Only trigger if both dates are filled
                 const fDate = $("#startDate").val();
                 const tDate = $("#endDate").val();
 
@@ -181,7 +166,6 @@
                 }
             });
 
-            // --- Filter button click ---
             $("#filterBtn").on("click", function () {
                 const selectedMethod = $("#transactionSelect").val()?.trim() || 'Default';
                 const fDate = $("#chkAllData").is(":checked") ? null : $("#startDate").val();
@@ -194,8 +178,7 @@
 
             // --- Load Journal Function ---
             function loadJournal(selectionMethod, transactionId, fromDate, toDate) {
-                console.log('Loading journal with:', { selectionMethod, transactionId, fromDate, toDate });
-
+              
                 const data = {
                     selectionMethod: selectionMethod || 'Default',
                     transactionId: transactionId ? parseInt(transactionId) : null
@@ -221,7 +204,7 @@
                         $('#table1 tbody').html('<tr><td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
                     },
                     success: function (res) {
-                        console.log('API Response:', res);
+                      
                         const tbody = $('#table1 tbody').empty();
 
                         if (res.status && res.data && res.data.length > 0) {
@@ -310,6 +293,24 @@
                     }
                 });
             }
+
+                    // Inside loadJournal success after DataTable initialization:
+        $('#table1 tbody').on('click', 'tr', function () {
+            const row = $(this).find('td');
+            const refId = row.eq(1).text().trim();   
+            const vType = row.eq(3).text().trim();   
+            const date = row.eq(2).text().trim();   
+        
+            if (refId && vType && date) {
+                const params = new URLSearchParams({
+                    refId: refId,
+                    vType: vType,
+                    date: date
+                });
+                window.location.href = `/Lists/GeneralJournal?${params.toString()}`;
+            }
+        });
+
 
         });
     </script>

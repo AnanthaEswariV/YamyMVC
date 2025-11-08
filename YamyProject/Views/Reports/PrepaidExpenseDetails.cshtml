@@ -109,19 +109,36 @@
                 $('#startDate, #endDate').prop('disabled', isChecked);
                 loadPrepaidExpenseDetails(transactionId);
             });
+
+                    if (res.data && res.data.length > 0) {
+            $.each(res.data, function (i, row) {
+                const tr = `
+                    <tr data-transaction-id="${row.TransactionId || ''}" style="cursor: pointer;">
+                        <td>${row.SN || ''}</td>
+                        <td>${row.Date || ''}</td>
+                        <td>${row.AccountCode || ''}</td>
+                        <td>${row.AccountName || ''}</td>
+                        <td class="text-end">${row.Debit || '0.00'}</td>
+                        <td class="text-end">${row.Credit || '0.00'}</td>
+                        <td>${row.Type || ''}</td>
+                    </tr>`;
+                tbody.append(tr);
+            });
+
+         
+      
+        }
         });
 
-        // ✅ Load Prepaid Expense Details
+             // ✅ Load Prepaid Expense Details
         function loadPrepaidExpenseDetails(transactionId) {
             if (!transactionId) {
                 toastr.warning('Invalid transaction ID.');
                 return;
             }
-
             const includeAllDates = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
-
             $.ajax({
                 url: '/Reports/GetPrepaidExpenseDetails',
                 type: 'GET',
@@ -131,7 +148,6 @@
                     endDate: endDate || null,
                     includeAllDates: includeAllDates
                 },
-
                 beforeSend: function () {
                     $('#table3 tbody').html(`
                         <tr>
@@ -147,17 +163,17 @@
                         return;
                     }
 
+
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
                     }
-
                     const tbody = $('#table3 tbody');
                     tbody.empty();
-
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
+                            // ✅ ADD data-transaction-id attribute here
                             const tr = `
-                                <tr>
+                                <tr data-transaction-id="${row.TransactionId || transactionId}" style="cursor: pointer;">
                                     <td>${row.SN || ''}</td>
                                     <td>${row.Date || ''}</td>
                                     <td>${row.AccountCode || ''}</td>
@@ -169,6 +185,7 @@
                             tbody.append(tr);
                         });
 
+                        // Initialize DataTable
                         $('#table3').DataTable({
                             dom: 'Bfrtip',
                             buttons: [
@@ -188,6 +205,17 @@
                             order: [[0, 'asc']],
                             pageLength: 15
                         });
+
+                        // ✅ Add click handler AFTER DataTable initialization
+                        $('#table3 tbody').on('click', 'tr', function() {
+                            const transId = $(this).data('transaction-id');
+                            console.log('Clicked row with transaction ID:', transId); // Debug log
+                            if (transId) {
+                                // Redirect to PrepaidExpense view with ID parameter
+                                window.location.href = `/Lists/PrepaidExpense?Id=${transId}`;
+                            }
+                        });
+
                     } else {
                         tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No details found</td></tr>`);
                     }

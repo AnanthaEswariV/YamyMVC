@@ -1,7 +1,9 @@
-﻿@{
-    ViewData["Title"] = "PrepaidExpenseSummary";
+﻿
+@{
+    ViewData["Title"] = "ChequeLinked";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
 
 <style>
     .dt-buttons .btn-primary {
@@ -15,12 +17,10 @@
             color: #fff !important;
         }
 </style>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-
 <div class="card">
     <div class="card-header text-center">
-        <strong>Prepaid Expense Summary</strong>
+        <strong>Cheque Linked to Payment/Receipt</strong>
     </div>
 
     <div class="card-body">
@@ -54,16 +54,19 @@
             <thead>
                 <tr>
                     <th>S.No</th>
-                    <th>Asset Name</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Total Price</th>
+                    <th>Check No</th>
+                    <th>Check Date</th>
+                    <th>Amount</th>
+                    <th>Check Type</th>
+                    <th>Payment Voucher</th>
+                    <th>Receipt Voucher</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 </div>
+
 
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -81,40 +84,38 @@
     <script>
         $(document).ready(function () {
             // Load data on page load
-            loadPrepaidExpenseSummary();
+            loadChequeLinkedHistory();
 
-            // Checkbox toggle
+            // Checkbox toggle (enable/disable date filters)
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
-                loadPrepaidExpenseSummary();
+                loadChequeLinkedHistory();
             });
 
             // Filter button click
             $('#filterBtn').click(function () {
-                loadPrepaidExpenseSummary();
+                loadChequeLinkedHistory();
             });
         });
 
-        // ✅ Load Prepaid Expense Summary
-        function loadPrepaidExpenseSummary() {
+        function loadChequeLinkedHistory() {
             const includeAllDates = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetPrepaidExpenses',
+                url: '/Reports/GetAllChecks', 
                 type: 'GET',
                 data: {
                     startDate: startDate || null,
                     endDate: endDate || null,
                     includeAllDates: includeAllDates
                 },
-
                 beforeSend: function () {
                     $('#table3 tbody').html(`
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <div class="spinner-border text-primary me-2"></div>Loading...
                             </td>
                         </tr>
@@ -122,10 +123,11 @@
                 },
                 success: function (res) {
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load prepaid expense data');
+                        toastr.error(res.message || 'Failed to load Cheque data');
                         return;
                     }
-                    // Destroy existing DataTable
+
+                    // Destroy existing DataTable if any
                     if ($.fn.DataTable.isDataTable('#table3')) {
                         $('#table3').DataTable().clear().destroy();
                     }
@@ -136,36 +138,19 @@
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             const tr = `
-                                <tr data-id="${row.id}">
-                                    <td>${i + 1}</td>
-                                    <td>${row.AssetName || ''}</td>
-                                    <td>${row.StartDate || ''}</td>
-                                    <td>${row.EndDate || ''}</td>
-                                    <td class="text-end">${row.TotalPrice || ''}</td>
+                                <tr>
+                                    <td>${row.SN || ''}</td>
+                                    <td>${row.CheckNo || ''}</td>
+                                    <td>${row.CheckDate || ''}</td>
+                                    <td class="text-end fw-bold">${row.Amount || ''}</td>
+                                    <td>${row.CheckType || ''}</td>
+                                    <td>${row.PaymentVoucher || ''}</td>
+                                    <td>${row.ReceiptVoucher || ''}</td>
                                 </tr>`;
                             tbody.append(tr);
                         });
 
-                        // ✅ Row click redirect
-                        $('#table3 tbody').on('click', 'tr', function () {
-                            const id = $(this).data('id');
-                            if (!id) {
-                                toastr.warning('No prepaid expense ID found for this record.');
-                                return;
-                            }
-
-                            const query = new URLSearchParams({
-                                transactionId: id,
-                                startDate: startDate || '',
-                                endDate: endDate || '',
-                                includeAllDates: includeAllDates
-                            }).toString();
-
-                            // Redirect to prepaid expense details page
-                            window.location.href = `/Reports/PrepaidExpenseDetails?${query}`;
-                        });
-
-                        // ✅ Initialize DataTable
+                        // Initialize DataTable
                         $('#table3').DataTable({
                             dom: 'Bfrtip',
                             buttons: [
@@ -186,13 +171,17 @@
                             pageLength: 15
                         });
                     } else {
-                        tbody.append(`<tr><td colspan="5" class="text-center text-muted py-4">No prepaid expenses found</td></tr>`);
+                        tbody.append(`
+                            <tr><td colspan="7" class="text-center text-muted py-4">No Cheque data found</td></tr>
+                        `);
                     }
                 },
                 error: function () {
-                    toastr.error('Error loading prepaid expense data');
+                    toastr.error('Error loading Cheque data');
                 }
             });
         }
     </script>
+
+
 }
