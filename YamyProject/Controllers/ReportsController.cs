@@ -3242,6 +3242,426 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Petty Cash Summary
+
+        public IActionResult PettyCashSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSalesData(
+        int id,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        bool includeAllDates = false)
+        {
+            try
+            {
+                // 🔹 Dynamic database connection based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Get ENABLE PETTYCASH APPROVAL dynamically from DB
+                string barcodeS = await GeneralSettingsStateAsync("ENABLE PETTYCASH APPROVAL", connStrBuilder.ConnectionString);
+                bool enableApproval = !string.IsNullOrEmpty(barcodeS)
+                                       && int.TryParse(barcodeS, out int statusValue)
+                                       && statusValue > 0;
+
+                // 🔹 Prepare result variables
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0, totalBalance = 0;
+                int rowId = 1;
+
+                string query;
+
+                // 🔹 Set default dates if null (helps with parameters)
+                var start = startDate ?? DateTime.MinValue;
+                var end = endDate ?? DateTime.MaxValue;
+
+                if (!enableApproval)
+                {
+                    // 🔹 Query when approval is not enabled
+                    query = @"
+                SELECT 
+                    DATE_FORMAT(t.date, '%Y-%m-%d') AS `Date`,
+                    t.transaction_id,
+                    CASE 
+                        WHEN t.type = 'Petty Cash Request' THEN 
+                            (SELECT CONCAT('Petty Cash Approval - REF - ', pr.request_ref)
+                             FROM tbl_petty_cash_request pr 
+                             WHERE pr.id = t.transaction_id
+                             LIMIT 1)
+                        WHEN t.type = 'Petty Cash Submission' THEN 
+                            'Petty Cash Submission NO.'
+                        WHEN t.type = 'Employee Petty Cash Payment' THEN 
+                            'Employee Petty Cash Payment'
+                        ELSE ''
+                    END AS `Num`,
+                    t.type AS `Type`,
+                    coa.code AS `A/C CODE`,
+                    coa.name AS `A/C NAME`,
+                    (t.credit - t.debit) AS `Amount`,
+                    SUM(t.credit - t.debit) OVER (
+                        PARTITION BY t.hum_id
+                        ORDER BY t.date, t.id
+                    ) AS `Balance`
+                FROM tbl_transaction t
+                JOIN tbl_coa_level_4 coa ON t.account_id = coa.id
+                WHERE t.hum_id = @id
+                  AND t.type IN ('Petty Cash Request', 'Petty Cash Submission', 'Employee Petty Cash Payment')
+            ";
+
+                    if (!includeAllDates)
+                    {
+                        query += " AND t.date BETWEEN @startDate AND @endDate";
+                    }
+
+                    query += " ORDER BY t.date, t.id;";
+                }
+                else
+                {
+                    // 🔹 Query when approval is enabled
+                    query = @"
+                SELECT 
+                    p.id,
+                    p.voucher_date AS `Date`,
+                    'Petty Cash Request' AS `Type`,
+                    CONCAT('Petty Cash Approval - REF - ', p.id) AS `Num`,
+                    e.name AS `Account`,
+                    pd.amount AS `Amount`,
+                    '' AS `Balance`
+                FROM tbl_petty_cash p
+                INNER JOIN tbl_employee e ON p.employee_id = e.id
+                INNER JOIN tbl_petty_cash_details pd ON pd.petty_cash_id = p.id
+                INNER JOIN tbl_petty_cash_card pcc ON CAST(pcc.name AS UNSIGNED) = e.id
+                WHERE p.voucher_date BETWEEN @startDate AND @endDate
+                ORDER BY p.voucher_date, p.id;
+            ";
+                }
+
+                // 🔹 Execute the query
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    if (!includeAllDates || enableApproval)
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", start);
+                        cmd.Parameters.AddWithValue("@endDate", end);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    if (!enableApproval)
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            if (reader["Date"] == DBNull.Value) continue;
+
+                            decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
+                            decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                            result.Add(new Dictionary<string, object>
+                            {
+                                ["SN"] = rowId++,
+                                ["id"] = reader["transaction_id"].ToString(),
+                                ["Type"] = reader["Type"].ToString(),
+                                ["Date"] = reader["Date"].ToString(),
+                                ["Num"] = reader["Num"].ToString(),
+                                ["Account"] = reader["A/C NAME"].ToString(),
+                                ["Amount"] = amount.ToString("N2"),
+                                ["Balance"] = balance.ToString("N2") + " ◀"
+                            });
+
+                            totalAmount += amount;
+                            totalBalance += balance;
+                        }
+
+                        // 🔹 Add total row
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = "",
+                            ["Date"] = "TOTAL",
+                            ["Num"] = "",
+                            ["Type"] = "",
+                            ["Account"] = "",
+                            ["Amount"] = totalAmount.ToString("N2"),
+                            ["Balance"] = totalBalance.ToString("N2")
+                        });
+                    }
+                    else
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            if (reader["Date"] == DBNull.Value) continue;
+
+                            decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
+
+                            result.Add(new Dictionary<string, object>
+                            {
+                                ["SN"] = rowId++,
+                                ["id"] = reader["id"].ToString(),
+                                ["Type"] = reader["Type"].ToString(),
+                                ["Date"] = Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                                ["Num"] = reader["Num"].ToString(),
+                                ["Account"] = reader["Account"].ToString(),
+                                ["Amount"] = amount.ToString("N2"),
+                                ["Balance"] = "" // No balance here
+                            });
+
+                            totalAmount += amount;
+                        }
+
+                        // 🔹 Add total row
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = "",
+                            ["Date"] = "TOTAL",
+                            ["Num"] = "",
+                            ["Type"] = "",
+                            ["Account"] = "",
+                            ["Amount"] = totalAmount.ToString("N2"),
+                            ["Balance"] = ""
+                        });
+                    }
+                }
+
+                // 🔹 Include current date/time in response
+                var now = DateTime.Now;
+
+                return Ok(new
+                {
+                    status = true,
+                    currentDate = now.ToString("dd/MM/yyyy"),
+                    currentTime = now.ToString("hh:mm tt"),
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GeneralSettingsStateAsync(string name, string connectionString)
+        {
+            await using var conn = new MySqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            string query = "SELECT status FROM tbl_general_settings WHERE name = @name LIMIT 1";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@name", name);
+
+            var result = await cmd.ExecuteScalarAsync();
+            return result?.ToString() ?? "";
+        }
+
+        #endregion
+
+        #region PettyCashDetails
+
+        public IActionResult PettyCashDetails()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashData(
+    int humId,
+    int? empId = null,
+    DateTime? startDate = null,
+    DateTime? endDate = null,
+    bool includeAllDates = false)
+        {
+            try
+            {
+                // 🔹 Database connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check if approval is enabled
+                string approvalStatus = await GeneralSettingsStateAsync("ENABLE PETTYCASH APPROVAL", connStrBuilder.ConnectionString);
+                bool enableApproval = !string.IsNullOrEmpty(approvalStatus)
+                                       && int.TryParse(approvalStatus, out int statusValue)
+                                       && statusValue > 0;
+
+                // 🔹 Result list and totals
+                var result = new List<Dictionary<string, object>>();
+                decimal totalAmount = 0, totalBalance = 0;
+                int rowId = 1;
+
+                // 🔹 Default date filters
+                var start = startDate ?? DateTime.MinValue;
+                var end = endDate ?? DateTime.MaxValue;
+
+                string query;
+                List<MySqlParameter> parameters = new();
+
+                if (!enableApproval)
+                {
+                    query = @"
+                SELECT 
+                    DATE_FORMAT(t.date, '%Y-%m-%d') AS `Date`,
+                    t.transaction_id,
+                    CASE 
+                        WHEN t.type = 'Petty Cash Request' THEN 
+                            (SELECT CONCAT('Petty Cash Approval - REF - ', pr.request_ref)
+                             FROM tbl_petty_cash_request pr 
+                             WHERE pr.id = t.transaction_id
+                             LIMIT 1)
+                        WHEN t.type = 'Petty Cash Submission' THEN 
+                            'Petty Cash Submission NO.'
+                        WHEN t.type = 'Employee Petty Cash Payment' THEN 
+                            'Employee Petty Cash Payment'
+                        ELSE ''
+                    END AS `Num`,
+                    t.type AS `Type`,
+                    coa.code AS `A/C CODE`,
+                    coa.name AS `A/C NAME`,
+                    (t.credit - t.debit) AS `Amount`,
+                    SUM(t.credit - t.debit) OVER (
+                        PARTITION BY t.hum_id
+                        ORDER BY t.date, t.id
+                    ) AS `Balance`
+                FROM tbl_transaction t
+                JOIN tbl_coa_level_4 coa ON t.account_id = coa.id
+                WHERE t.hum_id = @humId
+                  AND t.type IN ('Petty Cash Request', 'Petty Cash Submission', 'Employee Petty Cash Payment')
+            ";
+
+                    parameters.Add(new MySqlParameter("@humId", humId));
+
+                    if (!includeAllDates)
+                    {
+                        query += " AND t.date BETWEEN @startDate AND @endDate";
+                        parameters.Add(new MySqlParameter("@startDate", start));
+                        parameters.Add(new MySqlParameter("@endDate", end));
+                    }
+
+                    if (empId.HasValue)
+                    {
+                        query += @"
+                    AND t.transaction_id IN (
+                        SELECT ps.id 
+                        FROM tbl_petty_cash_submition ps 
+                        WHERE ps.name = @empId
+                    )";
+                        parameters.Add(new MySqlParameter("@empId", empId.Value));
+                    }
+
+                    query += " ORDER BY t.date, t.id;";
+                }
+                else
+                {
+                    query = @"
+                SELECT 
+                    p.id,
+                    p.voucher_date AS `Date`,
+                    'Petty Cash Request' AS `Type`,
+                    CONCAT('Petty Cash Approval - REF - ', p.id) AS `Num`,
+                    e.name AS `Account`,
+                    pd.amount AS `Amount`,
+                    '' AS `Balance`
+                FROM tbl_petty_cash p
+                INNER JOIN tbl_employee e ON p.employee_id = e.id
+                INNER JOIN tbl_petty_cash_details pd ON pd.petty_cash_id = p.id
+                INNER JOIN tbl_petty_cash_card pcc ON CAST(pcc.name AS UNSIGNED) = e.id
+                WHERE p.voucher_date BETWEEN @startDate AND @endDate
+            ";
+
+                    parameters.Add(new MySqlParameter("@startDate", start));
+                    parameters.Add(new MySqlParameter("@endDate", end));
+
+                    if (empId.HasValue)
+                    {
+                        query += " AND e.id = @empId";
+                        parameters.Add(new MySqlParameter("@empId", empId.Value));
+                    }
+
+                    query += " ORDER BY p.voucher_date, p.id;";
+                }
+
+                // 🔹 Execute query
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    if (reader["Date"] == DBNull.Value) continue;
+
+                    decimal amount = 0;
+                    decimal balance = 0;
+
+                    var amountValue = reader["Amount"];
+                    if (amountValue != DBNull.Value && !string.IsNullOrWhiteSpace(amountValue.ToString()))
+                    {
+                        amount = Convert.ToDecimal(amountValue);
+                    }
+
+                    var balanceValue = reader["Balance"];
+                    if (balanceValue != DBNull.Value && !string.IsNullOrWhiteSpace(balanceValue.ToString()))
+                    {
+                        balance = Convert.ToDecimal(balanceValue);
+                    }
+
+
+                    result.Add(new Dictionary<string, object>
+                    {
+                        ["SN"] = rowId++,
+                        ["id"] = enableApproval ? reader["id"].ToString() : reader["transaction_id"].ToString(),
+                        ["Type"] = reader["Type"].ToString(),
+                        ["Date"] = Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
+                        ["Num"] = reader["Num"].ToString(),
+                        ["Account"] = reader["Account"] != DBNull.Value ? reader["Account"].ToString() : reader["A/C NAME"].ToString(),
+                        ["Amount"] = amount.ToString("N2"),
+                        ["Balance"] = enableApproval ? "" : balance.ToString("N2") + " ◀"
+                    });
+
+                    totalAmount += amount;
+                    totalBalance += balance;
+                }
+
+                // 🔹 Add total row
+                result.Add(new Dictionary<string, object>
+                {
+                    ["SN"] = "",
+                    ["Date"] = "TOTAL",
+                    ["Num"] = "",
+                    ["Type"] = "",
+                    ["Account"] = "",
+                    ["Amount"] = totalAmount.ToString("N2"),
+                    ["Balance"] = enableApproval ? "" : totalBalance.ToString("N2")
+                });
+
+                return Ok(new
+                {
+                    status = true,
+                    currentDate = DateTime.Now.ToString("dd/MM/yyyy"),
+                    currentTime = DateTime.Now.ToString("hh:mm tt"),
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
 
 
     }

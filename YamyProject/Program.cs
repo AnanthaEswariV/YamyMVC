@@ -54,8 +54,6 @@ builder.Services.AddHttpClient("ApiClient", client =>
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
-
-
 // ? Register Session services
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

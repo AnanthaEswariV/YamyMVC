@@ -1,4 +1,6 @@
-﻿<div class="top-navbar">
+﻿
+
+<div class="top-navbar">
     <div class="d-flex align-items-center  w-100">
 
         <!-- Left: Navigation Menu -->
@@ -212,13 +214,19 @@
                         <a href="">Account</a>
                         <ul class="submenu">
                             <li><a href="/Reports/TrialBalance">Trial Balance</a></li>
-                            <li class="dropdown has-submenu">
-                                <a href="">Petty Cash</a>
+                           @*  <li class="submenu-item has-sub">
+                                <a href="#" class="submenu-link">Petty Cash</a>
                                 <ul class="submenu">
-                                    <li><a href="/Reports/PettyCashBalanceSummary">Summary</a></li>
-                                    <li><a href="">Detail</a></li>
+                                    <li class="submenu-item">
+                                        <a href="/Reports/PettyCashSummary">Summary</a>
+                                    </li>
+                                    <li class="submenu-item">
+                                        <a href="/Reports/PettyCashDetails">Details</a>
+                                    </li>
                                 </ul>
-                            </li>
+                            </li> *@
+                            <li><a href="/Reports/PettyCashSummary">Petty Cash Summary</a></li>
+                            <li><a href="/Reports/PettyCashDetails">Petty Cash Details</a></li>
                             <li><a href="/Lists/TransacationJournal">Transactions Journal</a></li>
                             <li><a href="/Reports/GeneralLedger">General Ledger</a></li>
                             <li><a href="/Reports/CostCenterSummary">Cost Center</a></li>
