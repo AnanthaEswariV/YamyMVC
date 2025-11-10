@@ -321,7 +321,7 @@
 
               // your own function
               if (typeof recalcRow === 'function') recalcRow($row);
-            }
+          }
           function setupAutocomplete($row) {
           // --- helper: get the <datalist> for an input (scoped to row, then global) ---
           function getDatalist($input, $scope = $(document)) {
@@ -353,11 +353,7 @@
               cb(arr);
             });
           }
-
-          // fill <datalist> with "code - name" label, but value differs:
-          // - for code field: option.value = code
-          // - for name field: option.value = name
-          function populateDatalist($dl, arr, valueKey) {
+     function populateDatalist($dl, arr, valueKey) {
             if (!$dl || !$dl.length) return;
             $dl.empty();
             arr.slice(0, 50).forEach(item => {
@@ -367,7 +363,6 @@
               $('<option />', { value: value, text: `${code} - ${name}` }).appendTo($dl);
             });
           }
-          // Try resolve from whichever input triggered (code or name)
           function resolveAndFill($input) {
             if (!cacheItems.length) return;
 
@@ -388,8 +383,6 @@
               }
             }
           }
-
-          // -- wiring: CODE input --
           if ($codeDL.length) {
             $code.on('input', function () {
               const term = this.value || '';
@@ -418,7 +411,6 @@
           $(this).closest('tr').remove();
         NewRow();
         updateRowIndexes();});
-
 
     </script>
     <script>
@@ -596,7 +588,7 @@
 
           // nice UX: only clear error if the field becomes valid
           $(document).on('input change',
-              '#itemsTable tbody tr .item-id, '+
+            '#itemsTable tbody tr .item-id, '+
             '#itemsTable tbody tr .item-code, '+
             '#itemsTable tbody tr .item-name, '+
             '#itemsTable tbody tr .item-QTY, #itemsTable tbody tr .qty, '+
@@ -698,7 +690,6 @@
     <script>
         //new Row
            function NewRow(){
-
                   var index = $('#itemsTable tbody tr').length;
                   const vatOptions = $('#tpl-vat').html() || '';
                   const ccOptions  = $('#tpl-cc').html()  || '';
@@ -760,24 +751,18 @@
             return Number.isFinite(n) ? n : 0;
           };
           const fmt = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
           function calcRow($tr) {
-
             const qty   = num($tr.find('.item-QTY').val());
             const price = num($tr.find('.item-Price').val());
             const vatPct = num($tr.find('.item-VatPersint').val());
-
             const net    = (qty * price) ;
             const vatAmt = net * (vatPct / 100);
             const amount = net + vatAmt;
-
             $tr.find('.item-NetPrice').val(fmt(net));
             $tr.find('.item-VatAmonut').val(fmt(vatAmt));
             $tr.find('.item-Amount').val(fmt(amount));
-
             return { net, vatAmt, amount };
           }
-
           function calcTotals() {
             let totalPrice = 0, totalVat = 0, totalAmount = 0;
             $('#itemsTable tbody tr').each(function () {
@@ -786,11 +771,9 @@
               totalVat   += r.vatAmt;
               totalAmount+= r.amount;
             });
-
             $('.total-BeforeVat').text(fmt(totalPrice));
             $('.total-Vat').text(fmt(totalVat));
             $('.net-Amount').text(fmt(totalAmount));
-
             const set = (name, val) => {
               const el = document.querySelector(`input[name="${name}"]`);
               if (el) el.value = val;
@@ -799,14 +782,12 @@
             set('TotalVat', totalVat);
             set('TotaAmount', totalAmount);
           }
-
           // recalc when user edits numeric fields
           $('#itemsTable').on('input change', '.item-QTY,.item-Price,.item-VatPersint', function () {
             calcRow($(this).closest('tr'));
             calcTotals();
           });
           $(function(){ calcTotals(); });
-
           // ---- validation reused by both buttons
           function toNum(v){
             const n = parseFloat((v ?? '').toString().replace(/,/g, ''));
@@ -845,12 +826,10 @@
           function validateForm(){
             const $rows = $('#itemsTable tbody tr').filter((_, tr)=> !isTemplateRow($(tr)));
             const messages = [];
-
             // FIX: require at least one row (was ===1)
             if ($rows.length === 0){
               messages.push('At least one item row is required.');
             }
-
             // Require first-row ItemId
             const $first = $rows.first();
             const $firstId = $first.find('.item-id');
@@ -858,7 +837,6 @@
               setInvalid($firstId, 'Item ID is required for the first row.');
               messages.push('First row: Item ID is required.');
             }
-
             // Per-row checks; skip the very last row only if it's a template you append later
             $rows.each(function(i){
               const rowNo = i + 1;
@@ -901,7 +879,6 @@
               // row ok
               $tr.removeClass('table-danger');
             });
-
             if (messages.length){
               showMessagesSpread(messages);
               const $firstInvalid = $('.is-invalid').first();
@@ -911,15 +888,12 @@
             }
             return true;
           }
-
           function postAjax(saveAndClose){
             // make sure totals are up-to-date before serialize
             calcTotals();
-
             // If you reindex to contiguous: updateRowIndexes();
             const payload = $form.serialize();
             const url = getUrlFromId();
-
             $.ajax({
               url,
               type: 'POST',
@@ -954,6 +928,4 @@
           });
         })();
     </script>
-
-
 }

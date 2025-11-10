@@ -32,6 +32,7 @@ builder.Services.AddScoped<IVendorsCenterService, VendorsCenterService>();
 builder.Services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
 builder.Services.AddScoped<IPaymentVoucherService, PaymentVoucherService>();
 builder.Services.AddScoped<IDebitNotesService, DebitNotesService>();
+builder.Services.AddScoped<IAdvancePaymentService, AdvancePaymentService>();
 
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();

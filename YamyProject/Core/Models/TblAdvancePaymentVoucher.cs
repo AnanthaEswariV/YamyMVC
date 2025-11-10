@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblAdvancePaymentVoucher
 {
     public int Id { get; set; }
+    [ForeignKey(nameof(Id))]
+    public virtual TblTransaction? Transaction { get; set; }
+    [ForeignKey(nameof(Id))]
+    public virtual TblAdvancePaymentVoucherDetail? AdvancePaymentVoucherDetail  { get; set; }
 
     public DateOnly? Date { get; set; }
 
@@ -18,14 +18,20 @@ public partial class TblAdvancePaymentVoucher
     public decimal? Amount { get; set; }
 
     public int? DebitAccountId { get; set; }
-
+    [ForeignKey(nameof(DebitAccountId))]
+    public virtual TblCoaLevel4? DebitAccount { get; set; }
     public int? DebitCostCenterId { get; set; }
 
     public string? Description { get; set; }
 
     public int? CreditAccountId { get; set; }
+    [ForeignKey(nameof(CreditAccountId))]
+    public virtual TblCoaLevel4? CreditAccount { get; set; }
+
 
     public int? CreditCostCenterId { get; set; }
+
+
 
     public int? CreatedBy { get; set; }
 
