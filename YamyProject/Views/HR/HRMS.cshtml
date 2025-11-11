@@ -1,0 +1,115 @@
+﻿
+@{
+    ViewData["Title"] = "HRMS";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <img src="~/assets/images/dash.jpg" alt="Dashboard Banner" class="img-fluid w-100" style="max-height: 500px; object-fit: cover;" />
+</div>
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary animate__animated animate__fadeInDown">Welcome to HRMS Dashboard</h1>
+        <p class="lead text-muted animate__animated animate__fadeInUp">Manage your employees, departments, and payroll with ease.</p>
+        <hr class="w-25 mx-auto">
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-1s">
+                <div class="card-body text-center">
+                    <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
+                    <h5 class="card-title fw-bold">Employees</h5>
+                    <p class="card-text">View, add, and manage employee records.</p>
+                    <a href="/HR/EmployeeList" class="btn btn-primary btn-sm">Go</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-2s">
+                <div class="card-body text-center">
+                    <i class="bi bi-building text-success fs-1 mb-3"></i>
+                    <h5 class="card-title fw-bold">Departments</h5>
+                    <p class="card-text">Organize and manage departments efficiently.</p>
+                    <a href="/Department/Index" class="btn btn-success btn-sm">Go</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-3s">
+                <div class="card-body text-center">
+                    <i class="bi bi-calendar-check text-warning fs-1 mb-3"></i>
+                    <h5 class="card-title fw-bold">Attendance</h5>
+                    <p class="card-text">Track daily attendance records.</p>
+                    <a href="/Attendance/Index" class="btn btn-warning btn-sm text-white">Go</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-4s">
+                <div class="card-body text-center">
+                    <i class="bi bi-cash-coin text-danger fs-1 mb-3"></i>
+                    <h5 class="card-title fw-bold">Payroll</h5>
+                    <p class="card-text">Manage salaries and pay slips easily.</p>
+                    <a href="/Salary/Index" class="btn btn-danger btn-sm">Go</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hover & Spacing -->
+<style>
+    .hover-card {
+        transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+        margin-bottom: 20px;
+    }
+
+        .hover-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0px 12px 25px rgba(0, 0, 0, 0.15);
+        }
+</style>
+
+<!-- Animate.css -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            @if (TempData["LoginSuccess"] != null)
+            {
+                    <text>
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Login Successful!',
+                            text: '@TempData["LoginSuccess"]',
+                            confirmButtonColor: '#3085d6',
+                            showClass: { popup: 'animate__animated animate__fadeInDown' },
+                            hideClass: { popup: 'animate__animated animate__fadeOutUp' }
+                        });
+                    </text>
+            }
+
+            @if (TempData["LogoutMessage"] != null)
+            {
+                    <text>
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Logged Out',
+                            text: '@TempData["LogoutMessage"]',
+                            confirmButtonColor: '#3085d6',
+                            showClass: { popup: 'animate__animated animate__fadeInDown' },
+                            hideClass: { popup: 'animate__animated animate__fadeOutUp' }
+                        });
+                    </text>
+            }
+        });
+    </script>
+}
+
+

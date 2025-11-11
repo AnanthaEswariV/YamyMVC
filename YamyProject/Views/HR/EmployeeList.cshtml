@@ -1,0 +1,688 @@
+﻿
+@{
+    ViewData["Title"] = "EmployeeList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="card">
+    <div class="card-header text-center">
+        <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
+        <h5 class="card-title fw-bold">Employees</h5>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" id="btnNew" data-bs-toggle="modal" data-bs-target="#newEmployeeModal">
+                <i class="bi bi-plus-circle me-2"></i>Employee
+            </button>
+            
+
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Employee Name</th>
+                    <th>Phone No</th>
+                    <th>Date Of Birth</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+@Html.Partial("_Employee")
+
+<!-- Add/Edit Position Modal -->
+<div class="modal fade" id="addPositionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Position</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="positionId">
+                <div class="mb-3">
+                    <label for="departmentSelectforpos" class="form-label">Department</label>
+                    <select id="departmentSelectforpos" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label for="positionName" class="form-label">Position Name</label>
+                    <input type="text" id="positionName" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" onclick="savePosition()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Department Modal -->
+<div class="modal fade" id="addDepartmentModal" tabindex="-1" aria-labelledby="addDepartmentLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addDepartmentLabel">Add New Department</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDepartmentForm">
+                    <div class="mb-3">
+                        <label for="addDepartmentName" class="col-form-label">Department Name</label>
+                        <input type="text" class="form-control" id="addDepartmentName" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveDepartment()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
+    <script>
+         $(document).ready(function () {
+
+             loadEmployees();
+             loadDepartments();
+             loadPositionsDropdown();
+             function loadEmployees() {
+            $.ajax({
+                url: "/HR/GetEmployees",
+                type: "GET",
+                success: function (res) {
+                    if (res.status) {
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+                        console.log(res);
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, emp) {
+                                let tr = `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>${emp.code ?? "-"}</td>
+                                        <td>${emp.name ?? "-"}</td>
+                                        <td>${emp.phone ?? "-"}</td>
+                                        <td>${emp.birth_day ?? "-"}</td>
+                                        <td>${emp.email ?? "-"}</td>
+                                                                       <td>
+                   <button type="button" class="btn btn-sm btn-primary edit-btn me-2"
+                                    data-id="${emp.id}" title="Edit Employee">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger delete-btn"
+                                    data-id="${emp.id}" title="Delete Employee">
+                                <i class="fas fa-trash"></i>
+                            </button>
+
+        </td>
+                                    </tr>
+                                `;
+                                tbody.append(tr);
+                            });
+
+                            $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+                        } else {
+                            tbody.append(`<tr><td colspan="7" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+                    } else {
+                        $("#table1 tbody").html(`<tr><td colspan="7" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+                    $("#table1 tbody").html(`<tr><td colspan="7" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+               let countryCities = []; // global storage for countries and cities
+
+            // Function to load country & city dropdowns
+            function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+                const $country = $(countryIdSelector);
+                const $city = $(cityIdSelector);
+
+                $.getJSON(apiUrl, function (data) {
+                    countryCities = data; // store globally
+
+                    // Populate country dropdown
+                    $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
+                });
+
+                // Event: When country changes, populate cities
+                $country.on('change', function () {
+                    const selectedCountryId = $(this).val();
+
+                    // Reset city dropdown
+                    $city.html('<option value="">-- Select --</option>');
+
+                    if (selectedCountryId) {
+                        const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
+                        $city.append(cities.map(city => `<option value="${city.id}">${city.name}</option>`));
+                    }
+                });
+            }
+
+
+             loadCountryCityDropdowns('/HR/GetCountryCities', '#countryDropdown', '#cityDropdown');
+
+               $.ajax({
+                    url: '/HR/GetCountryOfIssue', 
+                    type: 'GET',
+                    success: function (data) {
+                        let $ddl = $('#countryOfIssue');
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function (i, country) {
+                            $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
+                        });
+                    },
+                    error: function () {
+                        alert("Error loading countries");
+                    }
+                });
+
+                  $.ajax({
+                    url: '/HR/GetAccruedSalaries',
+                    type: 'GET',
+                    success: function (data) {
+
+                        // List of dropdowns with their matching code textbox
+                        const dropdowns = [
+                            { ddl: '#accruedSalaries', codeBox: '#code1' },
+                            { ddl: '#employeeReceivable', codeBox: '#code2' },
+                            { ddl: '#accrualLeave', codeBox: '#code3' },
+                            { ddl: '#gratuity', codeBox: '#code4' }
+                        ];
+
+                        dropdowns.forEach(set => {
+                            let $ddl = $(set.ddl);
+
+
+                            $ddl.empty().append('<option value="">-- Select --</option>');
+
+                            $.each(data, function (i, item) {
+                                $ddl.append(
+                                    $('<option>', {
+                                        value: item.id,
+                                        text: item.code + ' - ' + item.name,
+                                        'data-code': item.code
+                                    })
+                                );
+                            });
+
+
+
+                            // On change, update the code textbox
+                            $ddl.on('change', function () {
+                                let selected = $(this).find(':selected');
+                                let code = selected.data('code');
+
+
+                                $(set.codeBox).val(code || "");
+                            });
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("❌ Error loading accounts:", status, error);
+                    }
+                });
+
+                   function loadDepartments() {
+            $.get('/Lists/GetDepartments', function(res) {
+                if (res.status) {
+                    const select = $("#departmentSelect");
+                    select.empty(); // Clear existing options
+                    select.append('<option value="">-- Select --</option>'); // Default option
+
+                    res.data.forEach(dept => {
+                        select.append(`<option value="${dept.id}">${dept.name}</option>`);
+                    });
+
+
+                } else {
+                    console.error("Failed to load departments:", res.message);
+                    toastr.error("Failed to load departments");
+                }
+            }).fail(function(err) {
+                console.error("AJAX error loading departments:", err);
+                toastr.error("Server error while loading departments");
+            });
+        }
+                  // Load positions for dropdown
+        function loadPositionsDropdown() {
+            $.get('/Lists/GetPositions', function(res) {
+                if (res.status) {
+                    const select = $("#positionSelect");
+                    select.empty(); // Clear existing options
+                    select.append('<option value="">-- Select --</option>'); // Default option
+
+                    res.data.forEach(pos => {
+                        select.append(`<option value="${pos.id}" data-dept="${pos.departmentId}">${pos.name}</option>`);
+                    });
+
+
+                } else {
+                    console.error("Failed to load positions:", res.message);
+                    toastr.error("Failed to load positions");
+                }
+            }).fail(function(err) {
+                console.error("AJAX error loading positions:", err);
+                toastr.error("Server error while loading positions");
+            });
+        }
+
+        loadDepartmentsforpos();
+         // Load departments for dropdown
+        function loadDepartmentsforpos() {
+            $.get('/Lists/GetDepartments', function(res) {
+                if (res.status) {
+                    const select = $("#departmentSelectforpos");
+                    select.empty(); // Clear existing options
+                    select.append('<option value="">-- Select --</option>'); // Default option
+
+                    res.data.forEach(dept => {
+                        select.append(`<option value="${dept.id}">${dept.name}</option>`);
+                    });
+
+
+                } else {
+                    console.error("Failed to load departments:", res.message);
+                    toastr.error("Failed to load departments");
+                }
+            }).fail(function(err) {
+                console.error("AJAX error loading departments:", err);
+                toastr.error("Server error while loading departments");
+            });
+        }
+
+
+
+
+                     $('#btnNew').on('click', function () {
+            $('#newEmployeeForm')[0].reset();
+            $('#EmployeeId').val('');
+            $('#cityDropdown').html('<option value="">-- Select --</option>');
+            $('#saveOrUpdateBtn').text('Save');
+            $('#newEmployeeModal').modal('show');
+        });
+
+        $('#saveEmployeeBtn').click(function() {
+            saveEmployee();
+        });
+
+        // Form submit handler
+        $('#newEmployeeForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            // Decide create vs update by EmployeeId presence (robust)
+            const idVal = $('#EmployeeId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+            const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
+
+            // Build payload
+            const employeeData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: $('input[name="EmployeeName"]').val() || '',
+                BirthDay: $('#BirthDay').val() || null,
+                SocialStatus: $('#SocialStatus').val() || '',
+                CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
+                CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
+                CountryOfIssue: $('#countryOfIssue').val() ? parseInt($('#countryOfIssue').val()) : null,
+                Address: $('#Address').val() || '',
+                Phone: $('#Phone').val() || '',
+                Email: $('#Email').val() || '',
+                SocialInsuranceNumber: $('#SocialInsuranceNumber').val() || '',
+                EmergencyName: $('#EmergencyName').val() || '',
+                EmergencyAddress: $('#EmergencyAddress').val() || '',
+                EmergencyPhone: $('#EmergencyPhone').val() || '',
+                Relation: $('#Relation').val() || '',
+                PassportNumber: $('#PassportNumber').val() || '',
+                PassportIssueDate: $('#PassportIssueDate').val() || null,
+                PassportExpiryDate: $('#PassportExpiryDate').val() || null,
+                WorkContractNumber: $('#ContractNumber').val() || '',
+                PositionId: $('#positionSelect').val() ? parseInt($('#positionSelect').val()) : null,
+                DepartmentId: $('#departmentSelect').val() ? parseInt($('#departmentSelect').val()) : null,
+                WorkContractType: $('#ContractType').val() || '',
+                WorkDays: $('input[name="WorkDays"]').val() || '',
+                WorkingHours: $('input[name="WorkingHours"]').val() || '',
+                ContractIssueDate: $('#ContractIssueDate').val() || null,
+                ContractExpiryDate: $('#ContractExpiryDate').val() || null,
+                ResidencyFileNumber: $('#ResidencyFileNumber').val() || '',
+                ResidencyIssuingAuthority: $('#ResidencyIssuingAuthority').val() || '',
+                ResidencyIssueDate: $('#ResidencyIssueDate').val() || null,
+                ResidencyExpiryDate: $('#ResidencyExpiryDate').val() || null,
+                EmiratesIdfileNumber: $('#EmiratesIdFileNumber').val() || '',
+                EmiratesIdissuingAuthority: $('#EmiratesIdIssuingAuthority').val() || '',
+                EmiratesIdissueDate: $('#EmiratesIdIssueDate').val() || null,
+                EmiratesIdexpiryDate: $('#EmiratesIdExpiryDate').val() || null,
+                BasicSalary: parseFloat($('#basicSalary').val()) || 0,
+                HousingAllowance: parseFloat($('#houseAllowance').val()) || 0,
+                TransportationAllowance: parseFloat($('#transportAllowance').val()) || 0,
+                Other: parseFloat($('#otherAllowance').val()) || 0,
+                AccountId: $('#code1').val() ? parseInt($('#code1').val()) : null,
+                BankId: $('#BankId').val() ? parseInt($('#BankId').val()) : null,
+                IbanNumber: $('#IbanNumber').val() || '',
+                BankAccountNumber: $('#BankAccountNumber').val() || '',
+                EmployeeRecivableId: $('#code2').val() ? parseInt($('#code2').val()) : null,
+                AccruedSalariesId: $('#code1').val() ? parseInt($('#code1').val()) : null,
+                AcroalLeaveSalaryId: $('#code3').val() ? parseInt($('#code3').val()) : null,
+                GratuitId: $('#code4').val() ? parseInt($('#code4').val()) : null,
+                PettyCashId: 0,
+                Active: $('#employeeActive').is(':checked') ? 1 : 0
+            };
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(employeeData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
+                        $('#newEmployeeModal').modal('hide');
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res.message || 'Operation failed');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
+                }
+            });
+        });
+
+        // Optional: remove validation styles on modal hide
+        $('#newEmployeeModal').on('hidden.bs.modal', function () {
+            let form = $('#newEmployeeForm')[0];
+            form.classList.remove('was-validated');
+            form.reset();
+        });
+
+                   const urlParams = new URLSearchParams(window.location.search);
+        const empId = urlParams.get('Id');
+        if (empId) {
+            setTimeout(function() {
+                const $editBtn = $('.edit-btn').filter(function() {
+                    return String($(this).data('id')) === String(empId);
+                });
+
+                if ($editBtn.length > 0) {
+                    $editBtn.click();
+                } else {
+                    toastr.info(`Loading item #${empId}...`);
+                    setTimeout(function() {
+                        const $retryBtn = $('.edit-btn').filter(function() {
+                            return String($(this).data('id')) === String(empId);
+                        });
+                        if ($retryBtn.length > 0) {
+                            $retryBtn.click();
+                        } else {
+                            toastr.warning(`emp #${empId} not found`);
+                        }
+                    }, 2000);
+                }
+            }, 1500);
+        }
+
+                  $(document).on('click', '.edit-btn', function () {
+                const empId = $(this).data('id');
+
+                $.getJSON(`/HR/GetEmployeeById?id=${empId}`, function (emp) {
+                    if (!emp) return toastr.error("Employee not found");
+
+
+
+                    // Employee Info
+                    $('#EmployeeId').val(emp.id);
+                    $('#EmployeeName').val(emp.name);
+                    $('#BirthDay').val(emp.birthDay || "");
+                    $('#SocialStatus').val(emp.socialStatus);
+                    $('#Address').val(emp.address);
+                    $('#Phone').val(emp.phone);
+                    $('#Email').val(emp.email);
+                    $('#SocialInsuranceNumber').val(emp.socialInsuranceNumber);
+
+                    // Emergency Info
+                    $('#EmergencyName').val(emp.emergencyName);
+                    $('#EmergencyAddress').val(emp.emergencyAddress);
+                    $('#EmergencyPhone').val(emp.emergencyPhone);
+                    $('#Relation').val(emp.relation);
+
+                    // Legal Documents
+                    $('#PassportNumber').val(emp.passportNumber);
+                    $('#PassportIssueDate').val(emp.passportIssueDate || "");
+                    $('#PassportExpiryDate').val(emp.passportExpiryDate || "");
+                    $('#ResidencyFileNumber').val(emp.residencyFileNumber);
+                    $('#ResidencyIssuingAuthority').val(emp.residencyIssuingAuthority);
+                    $('#ResidencyIssueDate').val(emp.residencyIssueDate || "");
+                    $('#ResidencyExpiryDate').val(emp.residencyExpiryDate || "");
+                    $('#ContractNumber').val(emp.contractNumber);
+                    $('#ContractType').val(emp.contractType);
+                    $('#ContractIssueDate').val(emp.contractIssueDate || "");
+                    $('#ContractExpiryDate').val(emp.contractExpiryDate || "");
+
+                $('input[name="WorkDays"]').val(emp.workDays);
+                $('input[name="WorkingHours"]').val(emp.workingHours);
+
+                    // Salary Info
+                    $('#basicSalary').val(emp.basicSalary || 0);
+                    $('#houseAllowance').val(emp.housingAllowance || 0);
+                    $('#transportAllowance').val(emp.transportationAllowance || 0);
+                    $('#otherAllowance').val(emp.other || 0);
+                    $('#totalSalary').val(
+                        (emp.basicSalary || 0) +
+                        (emp.housingAllowance || 0) +
+                        (emp.transportationAllowance || 0) +
+                        (emp.other || 0)
+                    );
+
+                    // Expense Accounts
+                    $('#code1').val(emp.accruedSalariesId);
+                    $('#code2').val(emp.employeeRecivableId);
+                    $('#code3').val(emp.acroalLeaveSalaryId);
+                    $('#code4').val(emp.gratuitId);
+
+                    // Active
+                    $('#employeeActive').prop('checked', emp.active == 1);
+                           // Change button to Update mode
+                $('#saveOrUpdateBtn').text("Update").data("action", "update");
+
+                $('#newEmployeeModal').modal('show');
+                });
+            });
+
+
+                    // Delete Employee
+            $(document).on('click', '.delete-btn', function () {
+                const empId = $(this).data('id');
+                if (!empId) return toastr.error('Invalid employee id');
+
+                if (!confirm('Are you sure you want to delete this employee?')) return;
+
+                $.ajax({
+                    url: '/HR/DeleteEmployee',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(empId),
+                    success: function (res) {
+                        if (res.status) {
+                                toastr.success('Employee deleted successfully'); // Optional: reload page or table
+                                setTimeout(function () {
+                                    location.reload(); // or call a function to reload table/dropdown
+                                }, 1500);
+                        } else {
+                            toastr.error(res.message || 'Failed to delete employee');
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Something went wrong');
+                    }
+                });
+            });
+
+         });
+
+          function saveDepartment() {
+            const name = $("#addDepartmentName").val().trim();
+
+            if (!name) {
+                toastr.warning("Please enter Department Name");
+                return;
+            }
+
+            $.ajax({
+                url: '/Lists/AddDepartment',
+                type: 'POST',
+                contentType: 'application/json', // important
+                data: JSON.stringify({ name: name }), // send JSON body
+                success: function(res) {
+                    if (res.status) {
+                        // Hide modal
+                        const modalEl = document.getElementById("addDepartmentModal");
+                        bootstrap.Modal.getInstance(modalEl)?.hide();
+
+                        // Reset form
+                        $("#addDepartmentForm")[0].reset();
+
+
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message || "Error saving department");
+                    }
+                },
+                error: function(err) {
+                    console.error(err);
+                    toastr.error("Server error occurred while saving department");
+                }
+            });
+        }
+
+          function savePosition() {
+            // Get values from modal
+            const name = $("#positionName").val().trim();
+            const deptVal = $("#departmentSelectforpos").val(); // new dropdown
+
+            if (!name || !deptVal) {
+                toastr.warning("Please fill all fields");
+                return;
+            }
+
+            // Prepare data
+            const data = {
+                Id: 0, // always new add
+                Name: name,
+                DepartmentId: parseInt(deptVal)
+            };
+
+
+
+            // Always POST for Add
+            $.ajax({
+                url: '/Lists/AddPosition',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(res) {
+
+                    if (res.status) {
+                        $("#addPositionModal").modal('hide');
+                        $("#positionName").val('');
+                        $("#departmentSelectforpos").val('');
+                        setTimeout(() => location.reload(), 1500);
+
+                    } else {
+                        toastr.error(res.message || "Error saving position");
+                    }
+                },
+                error: function(err) {
+                    console.error("AJAX error:", err);
+                    toastr.error("Server error occurred while saving position");
+                }
+            });
+        }
+    </script>
+    }

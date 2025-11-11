@@ -15,6 +15,15 @@
             _applicationDbContext = applicationDbContext;
         }
 
+        #region HR Login
+
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        #endregion
+
         #region Employee
 
         public IActionResult Employee()
@@ -739,6 +748,24 @@
             }
         }
 
+
+        #endregion
+
+        #region HRMS Dashboard
+
+        public IActionResult HRMS()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Employee List
+         
+        public IActionResult EmployeeList()
+        {
+            return View();
+        }
 
         #endregion
 
