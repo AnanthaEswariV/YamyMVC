@@ -705,4 +705,23 @@ namespace YamyProject.Core.Models
         //[Required(ErrorMessage = "Password is required.")]
         public string Password { get; set; }
     }
+
+    public class AttendanceSaveRequest
+    {
+        public string EmpName { get; set; }
+        public bool IsAllDataSucceed { get; set; }
+        public int CreatedBy { get; set; }
+        public List<AttendanceRow> AttendanceRows { get; set; }
+    }
+
+    public class AttendanceRow
+    {
+        public string EmpId { get; set; }
+        public DateTime WorkDate { get; set; }
+        public string DayOfWeek { get; set; }
+        public string TimeIn { get; set; }
+        public string TimeOut { get; set; }
+        public string Status { get; set; }
+    }
+
 }

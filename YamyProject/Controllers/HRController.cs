@@ -769,5 +769,259 @@
 
         #endregion
 
+        #region Attendance 
+
+        public IActionResult AttendanceSheet()
+        {
+            return View();
+        }
+        [HttpPost]
+        public async Task<IActionResult> SaveAttendance([FromBody] AttendanceSaveRequest model)
+        {
+            if (model == null || model.AttendanceRows == null || model.AttendanceRows.Count == 0)
+                return BadRequest(new { status = false, message = "Invalid attendance data" });
+
+            if (!model.IsAllDataSucceed)
+                return BadRequest(new { status = false, message = "Check All Data Required First..." });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                using var tran = await conn.BeginTransactionAsync();
+
+                var firstRow = model.AttendanceRows.First();
+                string empCode = firstRow.EmpId;
+                DateTime workDate = firstRow.WorkDate;
+
+                // --- Duplicate Check ---
+                var dupQuery = "SELECT COUNT(*) FROM tbl_attendancesheet WHERE code = @code AND WorkDate = @date";
+                using (var cmdDup = new MySqlCommand(dupQuery, conn, tran))
+                {
+                    cmdDup.Parameters.AddWithValue("@code", empCode);
+                    cmdDup.Parameters.AddWithValue("@date", workDate.ToString("yyyy-MM-dd"));
+                    var exists = Convert.ToInt32(await cmdDup.ExecuteScalarAsync()) > 0;
+                    if (exists)
+                    {
+                        await tran.RollbackAsync();
+                        return BadRequest(new { status = false, message = "Employee month already saved before" });
+                    }
+                }
+
+                // --- Check Missing Time In/Out ---
+                foreach (var row in model.AttendanceRows)
+                {
+                    if ((string.IsNullOrWhiteSpace(row.TimeIn) || string.IsNullOrWhiteSpace(row.TimeOut)) && row.Status.ToLower() == "p")
+                    {
+                        await tran.RollbackAsync();
+                        return BadRequest(new
+                        {
+                            status = false,
+                            message = $"Date {row.WorkDate:yyyy-MM-dd} does not contain time, please check it."
+                        });
+                    }
+                }
+
+                // --- Start Salary Record Insert ---
+                DateTime endOfMonth = new DateTime(workDate.Year, workDate.Month, DateTime.DaysInMonth(workDate.Year, workDate.Month));
+                var salaryInsertQuery = @"
+            INSERT INTO tbl_attendance_salary (date, emp_code, created_by, created_date)
+            VALUES (@date, @emp_code, @created_by, @created_date);
+            SELECT LAST_INSERT_ID();";
+
+                decimal attendanceSalaryId;
+                using (var cmdSalary = new MySqlCommand(salaryInsertQuery, conn, tran))
+                {
+                    cmdSalary.Parameters.AddWithValue("@emp_code", empCode);
+                    cmdSalary.Parameters.AddWithValue("@date", endOfMonth);
+                    cmdSalary.Parameters.AddWithValue("@created_by", model.CreatedBy);
+                    cmdSalary.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    attendanceSalaryId = Convert.ToDecimal(await cmdSalary.ExecuteScalarAsync());
+                }
+
+                // --- Fetch deduction config ---
+                TimeSpan defaultTimeIn = TimeSpan.Zero;
+                decimal deductionRate = 0;
+                using (var cmdCfg = new MySqlCommand("SELECT delaytime, latearrivaldeduction FROM tbl_setting_deduction_config LIMIT 1", conn, tran))
+                using (var reader = await cmdCfg.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        defaultTimeIn = TimeSpan.Parse(reader["delaytime"].ToString());
+                        deductionRate = Convert.ToDecimal(reader["latearrivaldeduction"]);
+                    }
+                }
+
+                // --- Fetch employee salary ---
+                decimal basicSalary = 0, housingAllowance = 0, transportationAllowance = 0, otherAllowance = 0, totalSalary = 0;
+                int workDays = 30;
+                DateTime contractIssueDate = DateTime.Now;
+
+                using (var cmdEmp = new MySqlCommand(
+                    "SELECT BasicSalary, HousingAllowance, TransportationAllowance, Other, WorkDays, contractIssueDate FROM tbl_employee WHERE code = @code",
+                    conn, tran))
+                {
+                    cmdEmp.Parameters.AddWithValue("@code", empCode);
+                    using var rdr = await cmdEmp.ExecuteReaderAsync();
+                    if (await rdr.ReadAsync())
+                    {
+                        workDays = Convert.ToInt32(rdr["WorkDays"]);
+                        basicSalary = Convert.ToDecimal(rdr["BasicSalary"]);
+                        housingAllowance = Convert.ToDecimal(rdr["HousingAllowance"]);
+                        transportationAllowance = Convert.ToDecimal(rdr["TransportationAllowance"]);
+                        otherAllowance = Convert.ToDecimal(rdr["Other"]);
+                        contractIssueDate = Convert.ToDateTime(rdr["contractIssueDate"]);
+                        totalSalary = basicSalary + housingAllowance + transportationAllowance + otherAllowance;
+                    }
+                }
+
+                int totalAbsence = 0, totalDelayMinutes = 0;
+                decimal totalDeduction = 0, dailyDeduction = 0;
+                int workingDays = model.AttendanceRows.Count(r => r.Status.ToUpper() is "P" or "V");
+
+                // --- Generate Ref_Code ---
+                int ref_no;
+                var refResult = await new MySqlCommand(
+                    "SELECT Ref_Code FROM tbl_attendancesheet WHERE YEAR(WorkDate)=@y AND MONTH(WorkDate)=@m LIMIT 1",
+                    conn, tran)
+                {
+                    Parameters = { new("@y", workDate.Year), new("@m", workDate.Month) }
+                }.ExecuteScalarAsync();
+
+                if (refResult != null && refResult != DBNull.Value && Convert.ToInt32(refResult) > 0)
+                    ref_no = Convert.ToInt32(refResult);
+                else
+                {
+                    var maxRes = await new MySqlCommand("SELECT MAX(Ref_Code) FROM tbl_attendancesheet", conn, tran).ExecuteScalarAsync();
+                    ref_no = ((maxRes != DBNull.Value && maxRes != null) ? Convert.ToInt32(maxRes) : 600000) + 1;
+                }
+
+                // --- Insert Attendance Rows ---
+                foreach (var row in model.AttendanceRows)
+                {
+                    if (row.Status.ToUpper() == "A")
+                    {
+                        dailyDeduction = Math.Round(totalSalary / workingDays, 3);
+                        totalDeduction += dailyDeduction;
+                        totalAbsence++;
+                    }
+                    else if (row.Status.ToUpper() == "P")
+                    {
+                        TimeSpan actualIn = TimeSpan.Parse(row.TimeIn + ":00");
+                        int delayMinutes = actualIn > defaultTimeIn ? (int)(actualIn - defaultTimeIn).TotalMinutes : 0;
+                        decimal deduction = delayMinutes * deductionRate;
+                        totalDelayMinutes += delayMinutes;
+                        totalDeduction += deduction;
+                    }
+
+                    var insertRow = @"
+                INSERT INTO tbl_attendancesheet (attendance_salary_id, code, WorkDate, TimeIn, TimeOut, DayOfWeek, Status, Reference, Ref_Code)
+                VALUES (@salaryId, @code, @workDate, @timeIn, @timeOut, @dow, @status, @ref, @refCode);";
+                    using var cmdRow = new MySqlCommand(insertRow, conn, tran);
+                    cmdRow.Parameters.AddWithValue("@salaryId", attendanceSalaryId);
+                    cmdRow.Parameters.AddWithValue("@code", empCode);
+                    cmdRow.Parameters.AddWithValue("@workDate", row.WorkDate);
+                    cmdRow.Parameters.AddWithValue("@timeIn", row.TimeIn + ":00");
+                    cmdRow.Parameters.AddWithValue("@timeOut", row.TimeOut + ":00");
+                    cmdRow.Parameters.AddWithValue("@dow", row.DayOfWeek);
+                    cmdRow.Parameters.AddWithValue("@status", row.Status);
+                    cmdRow.Parameters.AddWithValue("@ref", workDate.ToString("yyMM"));
+                    cmdRow.Parameters.AddWithValue("@refCode", ref_no);
+                    await cmdRow.ExecuteNonQueryAsync();
+                }
+
+                // --- Calculate Loan ---
+                var loanCmd = new MySqlCommand(
+                    "SELECT SUM(amount) FROM tbl_loan WHERE YEAR(loandates)=@y AND MONTH(loandates)=@m AND employeeId=@e",
+                    conn, tran);
+                loanCmd.Parameters.AddWithValue("@y", workDate.Year);
+                loanCmd.Parameters.AddWithValue("@m", workDate.Month);
+                loanCmd.Parameters.AddWithValue("@e", empCode);
+                var loanVal = await loanCmd.ExecuteScalarAsync();
+                decimal loanAmount = (loanVal != DBNull.Value && loanVal != null) ? Convert.ToDecimal(loanVal) : 0;
+
+                decimal totalAdditions = basicSalary + housingAllowance + transportationAllowance + otherAllowance;
+                decimal totalDeductions = totalDeduction + loanAmount;
+                decimal netSalary = totalAdditions - totalDeductions;
+
+                // --- Update Salary Summary ---
+                var updateSalary = @"
+            UPDATE tbl_attendance_salary SET
+                absence_days=@ad,
+                total_absence=@ta,
+                delay_minutes=@dm,
+                total_delay=@td,
+                total_loan=@loan,
+                net_salary=@net,
+                pay=0,
+                `change`=@net
+            WHERE id=@id;";
+                using (var cmdUp = new MySqlCommand(updateSalary, conn, tran))
+                {
+                    cmdUp.Parameters.AddWithValue("@ad", totalAbsence);
+                    cmdUp.Parameters.AddWithValue("@ta", totalAbsence * dailyDeduction);
+                    cmdUp.Parameters.AddWithValue("@dm", totalDelayMinutes);
+                    cmdUp.Parameters.AddWithValue("@td", totalDelayMinutes * deductionRate);
+                    cmdUp.Parameters.AddWithValue("@loan", loanAmount);
+                    cmdUp.Parameters.AddWithValue("@net", netSalary);
+                    cmdUp.Parameters.AddWithValue("@id", attendanceSalaryId);
+                    await cmdUp.ExecuteNonQueryAsync();
+                }
+
+                // --- Insert Leave Salary ---
+                decimal leaveDays = ((decimal)workDays - totalAbsence) / 365 * 30;
+                decimal leaveAmount = (basicSalary * 12 / 365) * leaveDays;
+                using (var cmdLeave = new MySqlCommand(@"
+            INSERT INTO tbl_leave_salary(date,code,name,Reference,description,leave_days,credit,created_by,created_date)
+            VALUES(@date,@code,@name,@ref,@desc,@ld,@credit,@by,@cd);", conn, tran))
+                {
+                    cmdLeave.Parameters.AddWithValue("@date", workDate.ToString("MMM-yy"));
+                    cmdLeave.Parameters.AddWithValue("@code", empCode);
+                    cmdLeave.Parameters.AddWithValue("@name", model.EmpName);
+                    cmdLeave.Parameters.AddWithValue("@ref", workDate.ToString("yyMM"));
+                    cmdLeave.Parameters.AddWithValue("@desc", "Leave Salary");
+                    cmdLeave.Parameters.AddWithValue("@ld", Math.Round(leaveDays, 3));
+                    cmdLeave.Parameters.AddWithValue("@credit", Math.Round(leaveAmount, 3));
+                    cmdLeave.Parameters.AddWithValue("@by", model.CreatedBy);
+                    cmdLeave.Parameters.AddWithValue("@cd", DateTime.Now);
+                    await cmdLeave.ExecuteNonQueryAsync();
+                }
+
+                // --- Insert EOS ---
+                int yearsOfService = (int)((DateTime.Now - contractIssueDate).TotalDays / 365);
+                decimal eosDays = (yearsOfService < 5 ? (workDays - totalAbsence) / 365m * 21 : (workDays - totalAbsence) / 365m * 30);
+                decimal eosAmount = (basicSalary * 12 / 365m) * eosDays;
+                using (var cmdEos = new MySqlCommand(@"
+            INSERT INTO tbl_end_of_service(date,code,name,Reference,description,debit,leave_days,credit,created_by,created_date)
+            VALUES(@date,@code,@name,@ref,@desc,0,@ld,@credit,@by,@cd);", conn, tran))
+                {
+                    cmdEos.Parameters.AddWithValue("@date", workDate.ToString("MMM-yy"));
+                    cmdEos.Parameters.AddWithValue("@code", empCode);
+                    cmdEos.Parameters.AddWithValue("@name", model.EmpName);
+                    cmdEos.Parameters.AddWithValue("@ref", workDate.ToString("yyMM"));
+                    cmdEos.Parameters.AddWithValue("@desc", "End Of Service");
+                    cmdEos.Parameters.AddWithValue("@ld", Math.Round(eosDays, 3));
+                    cmdEos.Parameters.AddWithValue("@credit", Math.Round(eosAmount, 3));
+                    cmdEos.Parameters.AddWithValue("@by", model.CreatedBy);
+                    cmdEos.Parameters.AddWithValue("@cd", DateTime.Now);
+                    await cmdEos.ExecuteNonQueryAsync();
+                }
+
+                await tran.CommitAsync();
+                return Ok(new { status = true, message = "Employee Month Saved Successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
     }
 }

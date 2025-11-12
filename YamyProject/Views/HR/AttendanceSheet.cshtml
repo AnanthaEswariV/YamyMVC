@@ -1,0 +1,250 @@
+﻿@{
+    ViewData["Title"] = "AttendanceSheet";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
+        <h5 class="card-title fw-bold">Attendance Management</h5>
+    </div>
+
+    <div class="card-body">
+        <!-- Bulk Upload Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-primary shadow-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <!-- Left Section: Icon & Info -->
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="bi bi-cloud-upload fs-1 text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Bulk Attendance Upload</h6>
+                                        <p class="text-muted small mb-0">Download template, fill data, and upload Excel file</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Section: Buttons -->
+                            <div class="col-md-6">
+                                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-md-end">
+                                    <a href="~/Attendance Sheet.xlsx"
+                                       class="btn btn-outline-primary"
+                                       id="btnDownloadTemplate"
+                                       download>
+                                        <i class="bi bi-download me-2"></i>Download Template
+                                    </a>
+                                    <button type="button" class="btn btn-success" id="btnUploadExcel">
+                                        <i class="bi bi-file-earmark-excel me-2"></i>Upload Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden File Input -->
+                        <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;">
+
+                        <!-- Upload Progress Bar (Hidden by default) -->
+                        <div id="uploadProgress" class="mt-3" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">Uploading...</small>
+                                <small class="text-muted" id="uploadPercent">0%</small>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                     role="progressbar"
+                                     id="progressBar"
+                                     style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-info-circle me-1"></i>Total Records: <span id="totalRecords">0</span>
+                </span>
+            </div>
+            <button type="button" class="btn btn-primary" id="btnNew" data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Attendance
+            </button>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Emp Id</th>
+                    <th>Employee Name</th>
+                    <th>Work Date</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Day of week</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Attendance Management Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Attendance Management</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="attendanceForm">
+                    <input type="hidden" id="attendanceId">
+
+                    <div class="row g-3">
+                        <!-- Employee Code -->
+                        <div class="col-md-6">
+                            <label for="empCode" class="form-label">Employee Code</label>
+                            <input type="text" id="empCode" class="form-control" required>
+                        </div>
+
+                        <!-- Employee Name -->
+                        <div class="col-md-6">
+                            <label for="empName" class="form-label">Employee Name</label>
+                            <select id="empName" class="form-select" required>
+                                <option value="">Select Employee</option>
+                            </select>
+                        </div>
+
+                        <!-- Work Date -->
+                        <div class="col-md-4">
+                            <label for="workDate" class="form-label">Work Date</label>
+                            <input type="date" id="workDate" class="form-control" required>
+                        </div>
+
+                        <!-- Day of the Week -->
+                        <div class="col-md-4">
+                            <label for="dayOfWeek" class="form-label">Day of the Week</label>
+                            <input type="text" id="dayOfWeek" class="form-control" readonly>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Status</label>
+                            <select id="status" class="form-select" required>
+                                <option value="Present">Present</option>
+                                <option value="Absent">Absent</option>
+                                <option value="Leave">Leave</option>
+                                <option value="Half-Day">Half-Day</option>
+                                <option value="Late">Late</option>
+                            </select>
+                        </div>
+
+                        <!-- Time In -->
+                        <div class="col-md-6">
+                            <label for="timeIn" class="form-label">Time In</label>
+                            <input type="time" id="timeIn" class="form-control" required>
+                        </div>
+
+                        <!-- Time Out -->
+                        <div class="col-md-6">
+                            <label for="timeOut" class="form-label">Time Out</label>
+                            <input type="time" id="timeOut" class="form-control" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveAttendance()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        document.getElementById('workDate').addEventListener('change', function () {
+            const date = new Date(this.value);
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            document.getElementById('dayOfWeek').value = days[date.getDay()];
+        });
+
+        function loadEmployeeDropdown(selectedId = null) {
+            $.getJSON('/Inventory/GetAllEmployees', function (employees) {
+                const $employeeSelect = $('#empName');
+                $employeeSelect.empty().append('<option value="">Select Employee</option>');
+
+                employees.forEach(emp => {
+                    const selected = selectedId && emp.id === selectedId ? 'selected' : '';
+                    $employeeSelect.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
+                });
+            });
+        }
+
+        $(document).ready(function () {
+            $('#attendanceModal').on('shown.bs.modal', function () {
+                loadEmployeeDropdown();
+            });
+
+         
+
+            // Upload Excel Button
+            $('#btnUploadExcel').click(function () {
+                $('#excelFileInput').click();
+            });
+
+            // File Input Change Event
+            $('#excelFileInput').change(function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    uploadExcelFile(file);
+                }
+            });
+        });
+
+        
+    </script>
+}

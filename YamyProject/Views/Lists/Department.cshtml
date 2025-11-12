@@ -2,37 +2,51 @@
     ViewData["Title"] = "Department";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-<div class="page-heading">
-    <div class="row">
-        <div class="col-6">
-            <h3>Department List</h3>
-        </div>
-        <div class="col-6 text-end">
+
+
+<div class="card">
+    <div class="card-header text-center">
+        <i class="bi bi-building text-success fs-1 mb-3"></i>
+        <h5 class="card-title fw-bold">Department</h5>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDepartmentModal">
-                <i class="bi bi-plus-lg"></i> Add Department
+                <i class="bi bi-plus-lg"></i> Department
             </button>
+
+
         </div>
+        <!-- Table -->
+        <table class="table table-striped" id="departmentTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Department</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
 </div>
 
-<section class="section">
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped" id="departmentTable">
-                <thead>
-                    <tr>
-                        <th>Department</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</section>
 
 
 <!-- Add Department Modal -->
@@ -161,50 +175,79 @@
         }
 
 
-        function loadDepartments() {
+              function loadDepartments() {
             $.ajax({
-                url: '/Lists/GetDepartments',
-                type: 'GET',
-                success: function(res) {
+                url: "/Lists/GetDepartments",
+                type: "GET",
+                success: function (res) {
                     if (res.status) {
-                        const tbody = $("#departmentTable tbody");
-                        tbody.empty();
-
-                        res.data.forEach(dept => {
-                            const row = `<tr>
-                                <td>${dept.name}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary edit-btn" data-id="${dept.id}"><i class="fas fa-pen"></i></button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${dept.id}"><i class="fas fa-prescription-bottle-alt"></i></button>
-                                </td>
-                            </tr>`;
-                            tbody.append(row);
-                        });
-
-                        // Destroy old DataTable if exists
                         if ($.fn.DataTable.isDataTable("#departmentTable")) {
                             $("#departmentTable").DataTable().destroy();
                         }
 
-                        // Initialize DataTable with Excel & PDF buttons
-                        taxDataTable = $("#departmentTable").DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                { extend: 'excelHtml5', title: 'Departments' },
-                                { extend: 'pdfHtml5', title: 'Departments' }
-                            ]
-                        });
+                        let tbody = $("#departmentTable tbody");
+                        tbody.empty();
+                        console.log(res);
 
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, dept) {
+                                let tr = `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>${dept.name ?? "-"}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-primary edit-btn me-2"
+                                                data-id="${dept.id}" title="Edit Department">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger delete-btn"
+                                                data-id="${dept.id}" title="Delete Department">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                                tbody.append(tr);
+                            });
+
+                            $("#departmentTable").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm',
+                                        orientation: 'landscape',
+                                        pageSize: 'A4'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 15
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="3" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
                     } else {
-                        toastr.error(res.message || "Failed to fetch departments");
+                        $("#departmentTable tbody").html(`<tr><td colspan="3" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
                     }
                 },
-                error: function(err) {
-                    console.error(err);
-                    toastr.error("Server error occurred while fetching departments");
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#departmentTable")) {
+                        $("#departmentTable").DataTable().destroy();
+                    }
+                    $("#departmentTable tbody").html(`<tr><td colspan="3" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
                 }
             });
         }
+
 
         $(document).ready(function() {
             loadDepartments();
