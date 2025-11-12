@@ -23,13 +23,11 @@
                     }
                 <!-- Header: Customer Code/ Customer / Invoice Date/Invoice -->
                 <input type="hidden" class="form-control" asp-for="CustomerId" id="customidId" value="@Model.CustomerId" readonly />
-
                 <div class="row g-5">
                     <div class="col-md-2">
                         <label class="form-label">Customer Code</label>
                         <input class="form-control" asp-for="CustomerCode" id="customerCode" value="@Model.CustomerCode" readonly />
                     </div>
-
                     <div class="col-md-3">
                         <label class="form-label">Customer</label>
                         <select class="form-select" asp-for="CustomerId"

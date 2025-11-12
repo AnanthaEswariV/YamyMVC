@@ -147,14 +147,14 @@
                         await _context.SaveChangesAsync();
                         }
                 await AddTransactionEntry(model.Date, model.DebitAccountId, i.Amount, 0m, voucherId, i.partnerId , type,
-                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, 1, model.Date, model.VoucherNo);
+                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, 1, model.Date);
                 await AddTransactionEntry(model.Date, model.CreditAccountId,  0m, i.Amount, voucherId, 0 , type,
-                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, 1, model.Date, model.VoucherNo);
+                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, 1, model.Date);
 
 
                 }
             }
-        public async Task AddTransactionEntry(DateOnly Date, int? accountId, decimal debit, decimal credit, int transactionId, int humId, string type, string voucher_name,string description, int createdBy, DateOnly createdDate, string VoucherNo)
+        public async Task AddTransactionEntry(DateOnly Date, int? accountId, decimal debit, decimal credit, int transactionId, int humId, string type, string voucher_name,string description, int createdBy, DateOnly createdDate)
             {
             var trx = new TblTransaction
                 {

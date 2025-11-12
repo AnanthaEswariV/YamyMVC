@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblJournalVoucherDetail
 {
@@ -14,12 +11,16 @@ public partial class TblJournalVoucherDetail
     public decimal Credit { get; set; }
 
     public int InvId { get; set; }
+    [ForeignKey(nameof(InvId))]
+    public virtual TblJournalVoucher JournalVoucher { get; set; } = null!; // nav
 
     public string Description { get; set; } = null!;
 
     public string Partner { get; set; } = null!;
 
     public int AccountId { get; set; }
+    [ForeignKey(nameof(AccountId))]
+    public virtual TblCoaLevel4? Account { get; set; }
 
     public int ProjectId { get; set; }
 }

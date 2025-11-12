@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblJournalVoucher
 {
     public int Id { get; set; }
+  //  [ForeignKey("Id")]
+    public virtual TblTransaction Transaction { get; set; }
 
     public DateOnly? Date { get; set; }
 
@@ -26,4 +24,6 @@ public partial class TblJournalVoucher
     public int? State { get; set; }
 
     public int ProjectId { get; set; }
-}
+    public virtual ICollection<TblJournalVoucherDetail> JournalDetils { get; set; } = new List<TblJournalVoucherDetail>();
+
+    }

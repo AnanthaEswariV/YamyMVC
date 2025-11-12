@@ -33,6 +33,7 @@ builder.Services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
 builder.Services.AddScoped<IPaymentVoucherService, PaymentVoucherService>();
 builder.Services.AddScoped<IDebitNotesService, DebitNotesService>();
 builder.Services.AddScoped<IAdvancePaymentService, AdvancePaymentService>();
+builder.Services.AddScoped<IGeneralJournalVouchersService, GeneralJournalVouchersService>();
 
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
@@ -55,6 +56,8 @@ builder.Services.AddHttpClient("ApiClient", client =>
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
+
+
 // ? Register Session services
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -74,11 +77,11 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
-{
+    {
     app.UseExceptionHandler("/Home/Error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-}
+    }
 
 
 app.UseHttpsRedirection();
