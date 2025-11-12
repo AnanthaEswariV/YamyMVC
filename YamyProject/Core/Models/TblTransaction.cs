@@ -1,5 +1,4 @@
 ﻿namespace YamyProject.Core.Models;
-
 public partial class TblTransaction
 {
     public int Id { get; set; }
@@ -28,6 +27,8 @@ public partial class TblTransaction
     public virtual TblPurchaseReturn? PurchaseReturn { get; set; }
     [ForeignKey("TransactionId")]
     public virtual TblAdvancePaymentVoucher? AdvancePaymentVoucher { get; set; }
+    [ForeignKey("TransactionId")]
+    public virtual TblJournalVoucher? JournalVoucher { get; set; }
 
     public int? HumId { get; set; }
 

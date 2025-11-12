@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-namespace YamyProject.Controllers.Customer
+﻿namespace YamyProject.Controllers.Customer
 {
     public class MasterSalesQuotationController : Controller
     {

@@ -2,28 +2,22 @@
 {
     public class MasterStockManagementController : Controller
     {
-
         private readonly YamyDbContext _context;
-
         private readonly ILogger<MasterStockManagementController> _logger;
-
         private const string CategoryInventory = "Inventory";
         private const string CategoryStockSettlement = "Stock Settlement";
-
         public MasterStockManagementController(YamyDbContext context, ILogger<MasterStockManagementController> logger)
         {
             _context = context;
             _logger = logger;
         }
-        public async Task<IActionResult> Index(string selectionMethod = "Default", bool chkDate = false,
-                                               DateTime? dateFrom = null, DateTime? dateTo = null)
+        public async Task<IActionResult> Index(string selectionMethod = "Default", bool chkDate = false,DateTime? dateFrom = null, DateTime? dateTo = null)
         {
             try
             {
                 var settlementsQuery = _context.TblItemStockSettlements
                                                .AsNoTracking()
                                                .Where(s => s.State == 0);
-
                 // apply date filter only if checkbox is checked and both dates provided
                 if (chkDate && dateFrom.HasValue && dateTo.HasValue)
                 {
@@ -31,7 +25,6 @@
                     var to = DateOnly.FromDateTime(dateTo.Value.Date);
                     settlementsQuery = settlementsQuery.Where(s => s.Date >= from && s.Date <= to);
                 }
-
                 if (selectionMethod == "Default")
                 {
                     // Summary per settlement (equivalent to your Default SQL)
@@ -51,7 +44,6 @@
                             //               .FirstOrDefault()
                         })
                         .ToListAsync();
-
                     // add row numbers and apply the "000" prefix like your original concat('000', ...)
                     for (var i = 0; i < list.Count; i++)
                     {
@@ -59,13 +51,11 @@
                         if (!string.IsNullOrEmpty(list[i].JvNo))
                             list[i].JvNo = $"000{list[i].JvNo}";
                     }
-
                     var vm = new ItemStockSettlementListViewModel
                     {
                         SelectionMethod = selectionMethod,
                         Settlements = list
                     };
-
                     return View(vm); // Views/MasterStockManagement/Index.cshtml
                 }
                 else

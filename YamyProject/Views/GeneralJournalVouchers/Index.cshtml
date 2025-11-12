@@ -1,0 +1,270 @@
+﻿@model JournalVoucherMasterViewModel
+@{
+    ViewData["Title"] = "Master Journal Voucher";
+    }
+
+ 
+    <style>
+        /* ===== Classic desktop styling to match the attachment ===== */
+        :root {
+            --chrome: #3b5cff;
+            --line: #d5d7df;
+            --ink: #1f2a44;
+            --muted: #6b7280;
+        }
+        .mjv {
+            background: #eef2ff;
+            min-height: calc(100vh - 80px);
+            padding: 8px
+        }
+        .win {
+            background: #fff;
+            border: 1px solid #cfd3e1;
+            border-top: 6px solid var(--chrome);
+            border-radius: 6px;
+            overflow: hidden
+        }
+        /* Toolbar */
+        .bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 8px 10px;
+            background: #f0f4ff;
+            border-bottom: 1px solid #e5e7f2
+        }
+        .menu {
+            position: relative;
+        }
+        .menu-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            color: #0f172a
+        }
+        .menu-list {
+            position: absolute;
+            left: 0;
+            top: 100%;
+            margin-top: 6px;
+            background: #fff;
+            border: 1px solid #e5e7f2;
+            border-radius: 6px;
+            min-width: 220px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.06);
+            display: none;
+            z-index: 10
+        }
+        .menu.open .menu-list {
+            display: block
+        }
+        .menu-list a {
+            display: block;
+            padding: 8px 10px;
+            color: #111827;
+            text-decoration: none
+        }
+        .menu-list a:hover {
+                background: #eef2ff
+        }
+        .bar label {
+            font-size: .85rem;
+            color: #111827;
+            margin-right: 6px
+        }
+        .bar input[type=date] {
+            height: 30px;
+            padding: 4px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: #fff
+        }
+        .chk {
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+        .spacer {
+            flex: 1
+        }
+        /* Grids */
+        .pane {
+            display: grid;
+            grid-template-rows: 1fr auto;
+            height: 70vh
+        }
+        .top {
+            overflow: auto;
+        }
+        .bottom {
+            border-top: 1px solid #e5e7f2;
+            height: 260px;
+            overflow: auto
+        }
+        table.grid {
+            width: 100%;
+            border-collapse: collapse
+        }
+        .grid thead th {
+            background: #cfd3dd;
+            color: #111827;
+            border-bottom: 1px solid #b8becd;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600
+        }
+        .grid tbody td {
+            padding: 8px;
+            border-bottom: 1px solid #eef2ff;
+            color: #1f2937;
+            font-size: .95rem
+        }
+        .grid tbody tr {
+            cursor: pointer
+        }
+        .grid tbody tr:hover {
+                background: #f5f7ff
+        }
+        .right {
+            text-align: right
+        }
+        .selected {
+            background: #e6f0ff !important
+        }
+        .muted {
+            color: var(--muted)
+        }
+    </style>
+ 
+<div class="mjv">
+    <div class="win">
+        <!-- Toolbar -->
+        <div class="bar">
+          
+             @*    <div class="menu-list" role="menu" aria-label="JV Operations">
+                    <a asp-controller="JournalVoucher" asp-action="Create" role="menuitem">New Journal Voucher</a>
+                    <a asp-controller="JournalVoucher" asp-action="Edit" asp-route-id="@Model.SelectedVoucherId" role="menuitem">Edit Journal Voucher</a>
+                    <a asp-controller="JournalVoucher" asp-action="Delete" asp-route-id="@Model.SelectedVoucherId" role="menuitem">Delete Journal Voucher</a>
+                    <a asp-controller="JournalVoucher" asp-action="Restore" asp-route-id="@Model.SelectedVoucherId" role="menuitem">Restore Journal Voucher</a>
+                </div> *@
+            </div>
+            <div class="card-header align-items-center py-4 gap-2 gap-md-5 d-flex justify-content-between">
+
+                <label>From</label>
+            <input @* asp-for="Filters.From" *@ type="date" />
+            <label>To</label>
+            <input @* asp-for="Filters.To" *@ type="date" />
+            <label class="chk"><input type="checkbox" /> <span>All</span></label>
+            <div class="spacer"></div>
+                <div class="card-toolbar text-end">
+                    <a asp-controller="GeneralJournalVouchers" asp-action="Create" class="btn btn-primary btn-sm">New</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Master / Detail -->
+        <div class="pane">
+            <div class="top">
+                <table class="grid" aria-label="Vouchers">
+                    <thead>
+                        <tr>
+                            <th style="display:none;">Id</t>
+                            <th style="width:140px">Date</th>
+                            <th style="width:180px">Journal Code</th>
+                            <th style="width:110px">JV No</th>
+                            <th style="width:180px">Debit Amount</th>
+                            <th style="width:180px">Credit Amount</th>
+                            <th style="width:180px">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Customer?.Any() == true)
+                            {
+                            foreach (var v in Model.Customer)
+                                {
+                              //  var sel = v.Id == Model.Customer.Id ? "selected" : null;
+                                <tr>
+                                    <td style="display:none;">@v.Id</td>
+                                    <td>@v.Date</td>
+                                    <td>@v.JournalCode</td>
+                                    <td>
+                                    @v.JVNo
+                                      @*   < class="link-row" asp-action="Index" asp-controller="JournalVoucher"
+                                        asp-route-id="@v.Id" >@v.JVNo *@
+                                       @* asp-route-from="@Model.Filters.From?.ToString("yyyy-MM-dd")"
+                                         asp-route-to="@Model.Filters.To?.ToString("yyyy-MM-dd")"
+                                        asp-route-all="@Model.Filters.ShowAll"> *@
+                                    </td>
+                                    <td class="right">@v.DebitAmount</td>
+                                    <td class="right">@v.CreditAmount</td>
+                                </tr>
+                                }
+                            }
+                        else
+                            {
+                            <tr><td colspan="5" class="muted">No vouchers found.</td></tr>
+                            }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bottom">
+                <table class="grid" aria-label="Voucher details">
+                    <thead>
+                        <tr>
+                            <th style="width:140px">Date</th>
+                            <th>Name</th>
+                            <th class="right" style="width:180px">Debit Amount</th>
+                            <th class="right" style="width:180px">Credit Amount</th>
+                            <th style="width:220px">Partner</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Details?.Any() == true)
+                            {
+                            foreach (var d in Model.Details!)
+                                {
+                                <tr>
+                                    <td>@d.Date.ToString("M/d/yyyy")</td>
+                                    <td>@d.Name</td>
+                                    <td class="right">@d.DebitAmount.ToString("N3")</td>
+                                    <td class="right">@d.CreditAmount.ToString("N3")</td>
+                                    <td>@d.Partner</td>
+                                    <td>@d.Description</td>
+                                </tr>
+                                }
+                            }
+                        else
+                            {
+                            <tr><td colspan="6" class="muted">Select a voucher to see details.</td></tr>
+                            }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+        <script>
+            // Simple dropdown behavior
+            const ops = document.getElementById('opsMenu');
+            if(ops){
+              const btn = ops.querySelector('.menu-btn');
+              btn?.addEventListener('click',()=>{
+                ops.classList.toggle('open');
+              });
+              document.addEventListener('click',e=>{
+                if(!ops.contains(e.target)) ops.classList.remove('open');
+              });
+            }
+        </script>
+}

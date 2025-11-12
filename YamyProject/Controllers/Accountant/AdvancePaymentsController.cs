@@ -1,7 +1,4 @@
-﻿
-using Microsoft.EntityFrameworkCore;
-
-namespace YamyProject.Controllers.Accountant
+﻿namespace YamyProject.Controllers.Accountant
     {
     public class AdvancePaymentsController (IAdvancePaymentService AdvancePaymentService, IListServices listServices, YamyDbContext context) : Controller
         {
