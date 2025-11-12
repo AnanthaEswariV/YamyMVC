@@ -297,7 +297,7 @@
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                string query = "SELECT Id, Name FROM tbl_employee ORDER BY Name";
+                string query = "SELECT Id, Name, Code FROM tbl_employee ORDER BY Name";
 
                 using var cmd = new MySqlCommand(query, conn);
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -308,7 +308,8 @@
                     employees.Add(new
                     {
                         id = reader.GetInt32("Id"),
-                        name = reader["Name"]?.ToString()
+                        name = reader["Name"]?.ToString(),
+                        code = reader.GetInt32("Code")
                     });
                 }
 

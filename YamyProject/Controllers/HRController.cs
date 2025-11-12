@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Controllers
+﻿using System.Globalization;
+
+namespace YamyProject.Controllers
 {
     [Route("HR/[action]")]
     public class HRController : Controller
@@ -775,14 +777,42 @@
         {
             return View();
         }
+
+        private TimeSpan ParseFlexibleTime(object time)
+        {
+            if (time == null) return TimeSpan.Zero;
+
+            // Handle TimeSpan or DateTime
+            if (time is TimeSpan ts) return ts;
+            if (time is DateTime dt) return dt.TimeOfDay;
+
+            // Handle Excel numeric times (fractions of day)
+            if (double.TryParse(time.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            {
+                if (val >= 0 && val < 1) return TimeSpan.FromDays(val);
+                return TimeSpan.FromDays(val % 1);
+            }
+
+            // Handle normal time strings
+            if (TimeSpan.TryParse(time.ToString(), out var t)) return t;
+            if (DateTime.TryParse(time.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+                return d.TimeOfDay;
+
+            return TimeSpan.MinValue;
+        }
+
         [HttpPost]
         public async Task<IActionResult> SaveAttendance([FromBody] AttendanceSaveRequest model)
         {
             if (model == null || model.AttendanceRows == null || model.AttendanceRows.Count == 0)
-                return BadRequest(new { status = false, message = "Invalid attendance data" });
+                return Json(new { status = false, message = "Invalid attendance data" });
 
             if (!model.IsAllDataSucceed)
-                return BadRequest(new { status = false, message = "Check All Data Required First..." });
+                return Json(new { status = false, message = "Check All Data Required First..." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in" });
 
             try
             {
@@ -800,23 +830,33 @@
                 DateTime workDate = firstRow.WorkDate;
 
                 // --- Duplicate Check ---
-                var dupQuery = "SELECT COUNT(*) FROM tbl_attendancesheet WHERE code = @code AND WorkDate = @date";
+                var dupQuery = @"SELECT COUNT(*) 
+                 FROM tbl_attendancesheet 
+                 WHERE code = @code 
+                   AND DAY(WorkDate) = @day 
+                   AND MONTH(WorkDate) = @month 
+                   AND YEAR(WorkDate) = @year";
+
                 using (var cmdDup = new MySqlCommand(dupQuery, conn, tran))
                 {
                     cmdDup.Parameters.AddWithValue("@code", empCode);
-                    cmdDup.Parameters.AddWithValue("@date", workDate.ToString("yyyy-MM-dd"));
+                    cmdDup.Parameters.AddWithValue("@day", workDate.Day);
+                    cmdDup.Parameters.AddWithValue("@month", workDate.Month);
+                    cmdDup.Parameters.AddWithValue("@year", workDate.Year);
+
                     var exists = Convert.ToInt32(await cmdDup.ExecuteScalarAsync()) > 0;
                     if (exists)
                     {
                         await tran.RollbackAsync();
-                        return BadRequest(new { status = false, message = "Employee month already saved before" });
+                        return BadRequest(new { status = false, message = $"Attendance already saved for {workDate:yyyy-MM-dd}" });
                     }
                 }
+
 
                 // --- Check Missing Time In/Out ---
                 foreach (var row in model.AttendanceRows)
                 {
-                    if ((string.IsNullOrWhiteSpace(row.TimeIn) || string.IsNullOrWhiteSpace(row.TimeOut)) && row.Status.ToLower() == "p")
+                    if ((string.IsNullOrWhiteSpace(row.TimeIn) || string.IsNullOrWhiteSpace(row.TimeOut)) && row.Status.ToUpper() == "P")
                     {
                         await tran.RollbackAsync();
                         return BadRequest(new
@@ -839,7 +879,7 @@
                 {
                     cmdSalary.Parameters.AddWithValue("@emp_code", empCode);
                     cmdSalary.Parameters.AddWithValue("@date", endOfMonth);
-                    cmdSalary.Parameters.AddWithValue("@created_by", model.CreatedBy);
+                    cmdSalary.Parameters.AddWithValue("@created_by", userId);
                     cmdSalary.Parameters.AddWithValue("@created_date", DateTime.Now);
                     attendanceSalaryId = Convert.ToDecimal(await cmdSalary.ExecuteScalarAsync());
                 }
@@ -875,7 +915,7 @@
                         housingAllowance = Convert.ToDecimal(rdr["HousingAllowance"]);
                         transportationAllowance = Convert.ToDecimal(rdr["TransportationAllowance"]);
                         otherAllowance = Convert.ToDecimal(rdr["Other"]);
-                        contractIssueDate = Convert.ToDateTime(rdr["contractIssueDate"]);
+                        contractIssueDate = rdr["contractIssueDate"] == DBNull.Value ? DateTime.Now : Convert.ToDateTime(rdr["contractIssueDate"]);
                         totalSalary = basicSalary + housingAllowance + transportationAllowance + otherAllowance;
                     }
                 }
@@ -904,34 +944,65 @@
                 // --- Insert Attendance Rows ---
                 foreach (var row in model.AttendanceRows)
                 {
+                    dailyDeduction = 0;
+                    TimeSpan timeInSpan = TimeSpan.Zero;
+                    TimeSpan timeOutSpan = TimeSpan.Zero;
+
+                    // Absent employee
                     if (row.Status.ToUpper() == "A")
                     {
                         dailyDeduction = Math.Round(totalSalary / workingDays, 3);
                         totalDeduction += dailyDeduction;
                         totalAbsence++;
                     }
-                    else if (row.Status.ToUpper() == "P")
+
+                    // Present employee - parse time
+                    if (row.Status.ToUpper() == "P")
                     {
-                        TimeSpan actualIn = TimeSpan.Parse(row.TimeIn + ":00");
-                        int delayMinutes = actualIn > defaultTimeIn ? (int)(actualIn - defaultTimeIn).TotalMinutes : 0;
+                        string timeInStr = row.TimeIn?.Trim() ?? "00:00";
+                        string timeOutStr = row.TimeOut?.Trim() ?? "00:00";
+
+                        // Parse TimeIn
+                        timeInSpan = ParseFlexibleTime(timeInStr);
+                        if (timeInSpan == TimeSpan.MinValue)
+                        {
+                            await tran.RollbackAsync();
+                            return BadRequest(new { status = false, message = $"Invalid TimeIn format: {timeInStr} for date {row.WorkDate:yyyy-MM-dd}. Expected formats: HH:mm (24-hour) or h.mm AM/PM" });
+                        }
+
+                        // Parse TimeOut
+                        timeOutSpan = ParseFlexibleTime(timeOutStr);
+                        if (timeOutSpan == TimeSpan.MinValue)
+                        {
+                            await tran.RollbackAsync();
+                            return BadRequest(new { status = false, message = $"Invalid TimeOut format: {timeOutStr} for date {row.WorkDate:yyyy-MM-dd}. Expected formats: HH:mm (24-hour) or h.mm AM/PM" });
+                        }
+
+                        // Calculate delay and deduction
+                        int delayMinutes = timeInSpan > defaultTimeIn ? (int)(timeInSpan - defaultTimeIn).TotalMinutes : 0;
                         decimal deduction = delayMinutes * deductionRate;
+
                         totalDelayMinutes += delayMinutes;
                         totalDeduction += deduction;
                     }
 
+                    // Insert into MySQL
                     var insertRow = @"
-                INSERT INTO tbl_attendancesheet (attendance_salary_id, code, WorkDate, TimeIn, TimeOut, DayOfWeek, Status, Reference, Ref_Code)
+                INSERT INTO tbl_attendancesheet 
+                (attendance_salary_id, code, WorkDate, TimeIn, TimeOut, DayOfWeek, Status, Reference, Ref_Code)
                 VALUES (@salaryId, @code, @workDate, @timeIn, @timeOut, @dow, @status, @ref, @refCode);";
+
                     using var cmdRow = new MySqlCommand(insertRow, conn, tran);
                     cmdRow.Parameters.AddWithValue("@salaryId", attendanceSalaryId);
                     cmdRow.Parameters.AddWithValue("@code", empCode);
                     cmdRow.Parameters.AddWithValue("@workDate", row.WorkDate);
-                    cmdRow.Parameters.AddWithValue("@timeIn", row.TimeIn + ":00");
-                    cmdRow.Parameters.AddWithValue("@timeOut", row.TimeOut + ":00");
+                    cmdRow.Parameters.AddWithValue("@timeIn", timeInSpan.ToString(@"hh\:mm\:ss"));
+                    cmdRow.Parameters.AddWithValue("@timeOut", timeOutSpan.ToString(@"hh\:mm\:ss"));
                     cmdRow.Parameters.AddWithValue("@dow", row.DayOfWeek);
                     cmdRow.Parameters.AddWithValue("@status", row.Status);
                     cmdRow.Parameters.AddWithValue("@ref", workDate.ToString("yyMM"));
                     cmdRow.Parameters.AddWithValue("@refCode", ref_no);
+
                     await cmdRow.ExecuteNonQueryAsync();
                 }
 
@@ -1007,7 +1078,7 @@
                     cmdEos.Parameters.AddWithValue("@desc", "End Of Service");
                     cmdEos.Parameters.AddWithValue("@ld", Math.Round(eosDays, 3));
                     cmdEos.Parameters.AddWithValue("@credit", Math.Round(eosAmount, 3));
-                    cmdEos.Parameters.AddWithValue("@by", model.CreatedBy);
+                    cmdEos.Parameters.AddWithValue("@by", userId);
                     cmdEos.Parameters.AddWithValue("@cd", DateTime.Now);
                     await cmdEos.ExecuteNonQueryAsync();
                 }
@@ -1020,6 +1091,85 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAttendance(string? employeeName = null, string? month = null, string? year = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY a.WorkDate) AS Sn,
+                a.code AS EmployeeCode,
+                e.name AS EmployeeName,
+                DATE_FORMAT(a.WorkDate, '%Y-%m-%d') AS WorkDate,
+                TIME_FORMAT(a.TimeIn, '%h:%i %p') AS TimeIn,
+                TIME_FORMAT(a.TimeOut, '%h:%i %p') AS TimeOut,
+                a.DayOfWeek,
+                a.Status
+            FROM tbl_attendancesheet a
+            INNER JOIN tbl_employee e ON a.code = e.code
+            WHERE 1 = 1";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Filter by employee name (case-insensitive)
+                if (!string.IsNullOrEmpty(employeeName))
+                {
+                    query += " AND LOWER(e.name) = LOWER(@empName)";
+                    parameters.Add(new MySqlParameter("@empName", employeeName.Trim()));
+                }
+
+                // Filter by month and year
+                if (!string.IsNullOrEmpty(month) && !string.IsNullOrEmpty(year))
+                {
+                    int monthInt = int.Parse(month.TrimStart('0'));
+                    int yearInt = int.Parse(year);
+
+                    query += " AND MONTH(a.WorkDate) = @month AND YEAR(a.WorkDate) = @year";
+                    parameters.Add(new MySqlParameter("@month", monthInt));
+                    parameters.Add(new MySqlParameter("@year", yearInt));
+                }
+
+                query += " ORDER BY a.WorkDate";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                var attendanceList = new List<object>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    attendanceList.Add(new
+                    {
+                        Sn = reader["Sn"],
+                        EmployeeCode = reader["EmployeeCode"],
+                        EmployeeName = reader["EmployeeName"],
+                        WorkDate = reader["WorkDate"],
+                        TimeIn = reader["TimeIn"],
+                        TimeOut = reader["TimeOut"],
+                        DayOfWeek = reader["DayOfWeek"],
+                        Status = reader["Status"]
+                    });
+                }
+
+                return Ok(new { status = true, data = attendanceList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

@@ -19,7 +19,7 @@
 
 <div class="card">
     <div class="card-header text-center">
-        <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
+        <i class="bi bi-calendar-check text-warning fs-1 mb-3"></i>
         <h5 class="card-title fw-bold">Attendance Management</h5>
     </div>
 
@@ -65,7 +65,7 @@
                         <!-- Upload Progress Bar (Hidden by default) -->
                         <div id="uploadProgress" class="mt-3" style="display: none;">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="text-muted">Uploading...</small>
+                                <small class="text-muted">Processing...</small>
                                 <small class="text-muted" id="uploadPercent">0%</small>
                             </div>
                             <div class="progress">
@@ -87,6 +87,17 @@
                     <i class="bi bi-info-circle me-1"></i>Total Records: <span id="totalRecords">0</span>
                 </span>
             </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select" id="employeeName" style="min-width: 180px;">
+                    <option value="">Select Employee</option>
+                </select>
+
+                <input type="month" class="form-control" id="monthYearPicker" style="min-width: 180px;" />
+
+           
+            </div>
+
             <button type="button" class="btn btn-primary" id="btnNew" data-bs-toggle="modal" data-bs-target="#attendanceModal">
                 <i class="bi bi-plus-circle me-2"></i>Add Attendance
             </button>
@@ -157,24 +168,24 @@
                         <div class="col-md-4">
                             <label for="status" class="form-label">Status</label>
                             <select id="status" class="form-select" required>
-                                <option value="Present">Present</option>
-                                <option value="Absent">Absent</option>
-                                <option value="Leave">Leave</option>
-                                <option value="Half-Day">Half-Day</option>
-                                <option value="Late">Late</option>
+                                <option value="P">Present</option>
+                                <option value="A">Absent</option>
+                                <option value="V">Leave</option>
+                                <option value="H">Half-Day</option>
+                                <option value="L">Late</option>
                             </select>
                         </div>
 
                         <!-- Time In -->
                         <div class="col-md-6">
                             <label for="timeIn" class="form-label">Time In</label>
-                            <input type="time" id="timeIn" class="form-control" required>
+                            <input type="time" id="timeIn" class="form-control">
                         </div>
 
                         <!-- Time Out -->
                         <div class="col-md-6">
                             <label for="timeOut" class="form-label">Time Out</label>
-                            <input type="time" id="timeOut" class="form-control" required>
+                            <input type="time" id="timeOut" class="form-control">
                         </div>
                     </div>
                 </form>
@@ -201,37 +212,403 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
+        // Auto-calculate day of week when date changes
         document.getElementById('workDate').addEventListener('change', function () {
             const date = new Date(this.value);
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             document.getElementById('dayOfWeek').value = days[date.getDay()];
         });
 
+        // Load employee dropdown
         function loadEmployeeDropdown(selectedId = null) {
             $.getJSON('/Inventory/GetAllEmployees', function (employees) {
                 const $employeeSelect = $('#empName');
+                const $employeesSelect = $('#employeeName');
                 $employeeSelect.empty().append('<option value="">Select Employee</option>');
+                $employeesSelect.empty().append('<option value="">Select Employee</option>');
 
                 employees.forEach(emp => {
                     const selected = selectedId && emp.id === selectedId ? 'selected' : '';
-                    $employeeSelect.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
+                    $employeeSelect.append(`<option value="${emp.id}" data-code="${emp.code}" data-name="${emp.name}" ${selected}>${emp.name}</option>`);
+                    $employeesSelect.append(`<option value="${emp.name}" ${selected}>${emp.name}</option>`);
                 });
             });
         }
 
+        // When employee is selected, auto-fill employee code
+        $('#empName').on('change', function() {
+            const selectedOption = $(this).find('option:selected');
+            const empCode = selectedOption.data('code');
+            if (empCode) {
+                $('#empCode').val(empCode);
+            }
+        });
+
+        // Save single attendance
+        function saveAttendance() {
+            const empCode = $("#empCode").val().trim();
+            const empNameOption = $("#empName option:selected");
+            const empName = empNameOption.data('name') || empNameOption.text();
+            const workDate = $("#workDate").val();
+            const dayOfWeek = $("#dayOfWeek").val();
+            const status = $("#status").val();
+            const timeIn = $("#timeIn").val();
+            const timeOut = $("#timeOut").val();
+
+            // Validation
+            if (!empCode) {
+                toastr.warning("Please enter Employee Code");
+                return;
+            }
+            if (!empName || empName === "Select Employee") {
+                toastr.warning("Please select Employee Name");
+                return;
+            }
+            if (!workDate) {
+                toastr.warning("Please select Work Date");
+                return;
+            }
+            if (!status) {
+                toastr.warning("Please select Status");
+                return;
+            }
+
+            if (status.toUpperCase() === "P" && (!timeIn || !timeOut)) {
+                toastr.warning("Present status requires Time In and Time Out");
+                return;
+            }
+
+            const createdBy = 1;
+
+            // Convert 24-hour time to 12-hour format with AM/PM
+            const formatTime = (time24) => {
+                if (!time24) return "00:00";
+                const [hours, minutes] = time24.split(':');
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const hour12 = hour % 12 || 12;
+                return `${hour12}.${minutes} ${ampm}`;
+            };
+
+            const attendanceData = {
+                EmpName: empName,
+                CreatedBy: createdBy,
+                IsAllDataSucceed: true,
+                AttendanceRows: [
+                    {
+                        EmpId: empCode,
+                        WorkDate: workDate,
+                        TimeIn: status.toUpperCase() === "P" ? formatTime(timeIn) : "00:00",
+                        TimeOut: status.toUpperCase() === "P" ? formatTime(timeOut) : "00:00",
+                        DayOfWeek: dayOfWeek,
+                        Status: status
+                    }
+                ]
+            };
+
+            console.log("Sending attendance data:", JSON.stringify(attendanceData, null, 2));
+
+            // Send AJAX request
+            $.ajax({
+                url: '/HR/SaveAttendance',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(attendanceData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Attendance saved successfully!");
+
+                        const modalEl = document.getElementById("attendanceModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+
+                        // Reset form
+                        $("#attendanceForm")[0].reset();
+
+                        // Reload datatable
+                        setTimeout(() => {
+                            loadAttendance();
+                        }, 1500);
+                    } else {
+                        toastr.error(res.message || "Error saving attendance");
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr);
+                    const errorMsg = xhr.responseJSON?.message || "Server error occurred while saving attendance";
+                    toastr.error(errorMsg);
+                }
+            });
+        }
+
+        // Upload Excel file and process
+        function uploadExcelFile(file) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                try {
+                    // Show progress
+                    $('#uploadProgress').show();
+                    $('#progressBar').css('width', '30%');
+                    $('#uploadPercent').text('30%');
+
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    // Progress update
+                    $('#progressBar').css('width', '50%');
+                    $('#uploadPercent').text('50%');
+
+                    // Skip header row and process data
+                    const attendanceRows = [];
+                    let empCode = "";
+                    let empName = "";
+
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (!row || row.length === 0) continue;
+
+                        // Map Excel columns to object
+                        const attendanceRow = {
+                            EmpId: row[0]?.toString().trim() || "",
+                            WorkDate: excelDateToJSDate(row[2]),
+                            TimeIn: row[3]?.toString().trim() || "00:00",
+                            TimeOut: row[4]?.toString().trim() || "00:00",
+                            DayOfWeek: row[5]?.toString().trim() || "",
+                            Status: row[6]?.toString().trim().toUpperCase() || "P"
+                        };
+
+                        // Validate required fields
+                        if (!attendanceRow.EmpId || !attendanceRow.WorkDate) {
+                            continue;
+                        }
+
+                        // Store first employee info
+                        if (i === 1) {
+                            empCode = attendanceRow.EmpId;
+                            empName = row[1]?.toString().trim() || "";
+                        }
+
+                        attendanceRows.push(attendanceRow);
+                    }
+
+                    // Progress update
+                    $('#progressBar').css('width', '70%');
+                    $('#uploadPercent').text('70%');
+
+                    if (attendanceRows.length === 0) {
+                        $('#uploadProgress').hide();
+                        toastr.error("No valid attendance data found in the Excel file");
+                        $('#excelFileInput').val('');
+                        return;
+                    }
+
+                    // Prepare data for API
+                    const attendanceData = {
+                        EmpName: empName,
+                        CreatedBy: 1,
+                        IsAllDataSucceed: true,
+                        AttendanceRows: attendanceRows
+                    };
+                    console.log("Excel Upload Data:", JSON.stringify(attendanceData, null, 2));
+
+                    // Send to API
+                    $.ajax({
+                        url: '/HR/SaveAttendance',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(attendanceData),
+                        success: function (res) {
+                            $('#progressBar').css('width', '100%');
+                            $('#uploadPercent').text('100%');
+
+                            setTimeout(() => {
+                                $('#uploadProgress').hide();
+                                $('#excelFileInput').val('');
+
+                                if (res.status) {
+                                    toastr.success(res.message || "Attendance uploaded successfully!");
+                                    setTimeout(() => {
+                                        loadAttendance();
+                                    }, 1500);
+                                } else {
+                                    toastr.error(res.message || "Upload failed!");
+                                }
+                            }, 500);
+                        },
+                        error: function (xhr) {
+                            $('#uploadProgress').hide();
+                            $('#excelFileInput').val('');
+                            console.error(xhr);
+                            const errorMsg = xhr.responseJSON?.message || "Server error occurred while uploading";
+                            toastr.error(errorMsg);
+                        }
+                    });
+
+                } catch (error) {
+                    $('#uploadProgress').hide();
+                    $('#excelFileInput').val('');
+                    console.error(error);
+                    toastr.error("Error processing Excel file: " + error.message);
+                }
+            };
+
+            reader.onerror = function (error) {
+                $('#uploadProgress').hide();
+                $('#excelFileInput').val('');
+                toastr.error("Error reading file");
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Helper function to convert Excel date to JavaScript date
+        function excelDateToJSDate(excelDate) {
+            if (!excelDate) return "";
+
+            // If already in string format (YYYY-MM-DD or DD/MM/YYYY)
+            if (typeof excelDate === 'string') {
+                // Try to parse DD/MM/YYYY format
+                if (excelDate.includes('/')) {
+                    const parts = excelDate.split('/');
+                    if (parts.length === 3) {
+                        const day = parts[0].padStart(2, '0');
+                        const month = parts[1].padStart(2, '0');
+                        const year = parts[2];
+                        return `${year}-${month}-${day}`;
+                    }
+                }
+                return excelDate;
+            }
+
+            // If Excel serial date number
+            if (typeof excelDate === 'number') {
+                const date = new Date((excelDate - 25569) * 86400 * 1000);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            return "";
+        }
+
+        // Load attendance data with filters
+        function loadAttendance(employeeName = '', month = '', year = '') {
+            console.log('Loading attendance with filters:', { employeeName, month, year });
+
+            $.ajax({
+                url: '/HR/GetAttendance',
+                type: 'GET',
+                data: {
+                    employeeName: employeeName,
+                    month: month,
+                    year: year
+                },
+                success: function (res) {
+                    console.log('Attendance response:', res);
+
+                    if (!res.status) {
+                        toastr.error('Failed to load attendance');
+                        return;
+                    }
+
+                    // Destroy existing DataTable if exists
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        // Update total records
+                        $('#totalRecords').text(res.data.length);
+
+                        // Populate table
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr>
+                                    <td>${row.sn || i + 1}</td>
+                                    <td>${row.employeeCode || ''}</td>
+                                    <td>${row.employeeName || ''}</td>
+                                    <td>${row.workDate || ''}</td>
+                                    <td>${row.timeIn || ''}</td>
+                                    <td>${row.timeOut || ''}</td>
+                                    <td>${row.dayOfWeek || ''}</td>
+                                    <td>${row.status || ''}</td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm' },
+                                { extend: 'pdfHtml5', text: '<i class="fas fa-file-pdf me-1"></i> PDF', className: 'btn btn-primary btn-sm' }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15,
+                            language: {
+                                emptyTable: "No records found"
+                            }
+                        });
+
+                    } else {
+                        $('#totalRecords').text(0);
+                        tbody.append(`<tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    console.error('Error loading attendance:', xhr);
+                    toastr.error('Error loading attendance');
+                }
+            });
+        }
+
         $(document).ready(function () {
-            $('#attendanceModal').on('shown.bs.modal', function () {
-                loadEmployeeDropdown();
+            // Load initial data
+            loadEmployeeDropdown();
+            loadAttendance();
+
+            // Filter by employee name
+            $('#employeeName').on('change', function () {
+                const empName = $(this).val();
+                const monthYear = $('#monthYearPicker').val();
+                let year = '', month = '';
+
+                if (monthYear) {
+                    [year, month] = monthYear.split('-');
+                }
+
+                console.log('Employee filter changed:', { empName, month, year });
+                loadAttendance(empName, month, year);
             });
 
-         
+            // Filter by month/year
+            $('#monthYearPicker').on('change', function () {
+                const empName = $('#employeeName').val();
+                const monthYear = $(this).val();
+                let year = '', month = '';
 
-            // Upload Excel Button
+                if (monthYear) {
+                    [year, month] = monthYear.split('-');
+                }
+
+                console.log('Month/Year filter changed:', { empName, month, year });
+                loadAttendance(empName, month, year);
+            });
+
+            // Upload Excel Button click
             $('#btnUploadExcel').click(function () {
                 $('#excelFileInput').click();
             });
@@ -240,11 +617,16 @@
             $('#excelFileInput').change(function (e) {
                 const file = e.target.files[0];
                 if (file) {
+                    // Validate file type
+                    const fileName = file.name.toLowerCase();
+                    if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+                        toastr.error("Please select a valid Excel file (.xlsx or .xls)");
+                        $(this).val('');
+                        return;
+                    }
                     uploadExcelFile(file);
                 }
             });
         });
-
-        
     </script>
 }
