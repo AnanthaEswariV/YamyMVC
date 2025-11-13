@@ -1173,5 +1173,477 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Salary
+
+        public IActionResult SalarySheet()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSalarySheet(int month, int year)
+        {
+            try
+            {
+                // Validate month and year
+                if (month < 1 || month > 12)
+                {
+                    return BadRequest(new { status = false, message = "Invalid month. Must be between 1 and 12." });
+                }
+
+                if (year < 2000 || year > 2050)
+                {
+                    return BadRequest(new { status = false, message = "Invalid year. Must be between 2000 and 2050." });
+                }
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Get Reference Code
+                string refCode = "";
+                try
+                {
+                    string refQuery = @"SELECT CONCAT(Ref_Code, ' - ', YEAR(WorkDate)) AS Ref_Code 
+                               FROM tbl_attendancesheet 
+                               WHERE YEAR(WorkDate) = @year AND MONTH(WorkDate) = @month 
+                               LIMIT 1";
+
+                    await using (var cmd = new MySqlCommand(refQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@year", year);
+                        cmd.Parameters.AddWithValue("@month", month);
+                        var refResult = await cmd.ExecuteScalarAsync();
+                        refCode = (refResult != null && refResult != DBNull.Value) ? refResult.ToString() : "";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+
+                // Get SS Number
+                string ssNo = "";
+                try
+                {
+                    string ssNoQuery = @"SELECT ss_no FROM tbl_attendance_salary 
+                                WHERE YEAR(date) = @year AND MONTH(date) = @month 
+                                LIMIT 1";
+
+                    await using (var cmd = new MySqlCommand(ssNoQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@year", year);
+                        cmd.Parameters.AddWithValue("@month", month);
+                        var ssResult = await cmd.ExecuteScalarAsync();
+                        ssNo = (ssResult != null && ssResult != DBNull.Value) ? ssResult.ToString() : "";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+
+                // Get Max Work Date
+                string dated = "";
+                try
+                {
+                    string dateQuery = @"SELECT MAX(WorkDate) AS dated FROM tbl_attendancesheet 
+                                WHERE YEAR(WorkDate) = @year AND MONTH(WorkDate) = @month 
+                                LIMIT 1";
+
+                    await using (var cmd = new MySqlCommand(dateQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@year", year);
+                        cmd.Parameters.AddWithValue("@month", month);
+                        var dateResult = await cmd.ExecuteScalarAsync();
+                        if (dateResult != null && dateResult != DBNull.Value)
+                        {
+                            DateTime workDate = Convert.ToDateTime(dateResult);
+                            dated = workDate.ToString("dd-MM-yyyy");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+
+                // Get Employee Data - First load all employees into memory
+                var employees = new List<Dictionary<string, object>>();
+
+                try
+                {
+                    string employeeQuery = @"SELECT 
+                                    ROW_NUMBER() OVER(ORDER BY e.code) AS SN, 
+                                    e.code,
+                                    e.name,
+                                    e.basicSalary,
+                                    e.HousingAllowance,
+                                    e.TransportationAllowance,
+                                    e.Other,
+                                    p.name AS PositionName
+                                    FROM tbl_employee e
+                                    LEFT JOIN tbl_position p ON e.Position_id = p.id
+                                    WHERE e.state = 0";
+
+                    await using (var empCmd = new MySqlCommand(employeeQuery, conn))
+                    {
+                        await using var empReader = await empCmd.ExecuteReaderAsync();
+
+                        while (await empReader.ReadAsync())
+                        {
+                            var employee = new Dictionary<string, object>
+                            {
+                                ["SN"] = Convert.ToInt32(empReader["SN"]),
+                                ["code"] = empReader["code"].ToString(),
+                                ["name"] = empReader["name"].ToString(),
+                                ["PositionName"] = empReader["PositionName"]?.ToString() ?? "",
+                                ["basicSalary"] = empReader["basicSalary"] != DBNull.Value
+                                    ? Convert.ToDecimal(empReader["basicSalary"]) : 0m,
+                                ["HousingAllowance"] = empReader["HousingAllowance"] != DBNull.Value
+                                    ? Convert.ToDecimal(empReader["HousingAllowance"]) : 0m,
+                                ["TransportationAllowance"] = empReader["TransportationAllowance"] != DBNull.Value
+                                    ? Convert.ToDecimal(empReader["TransportationAllowance"]) : 0m,
+                                ["Other"] = empReader["Other"] != DBNull.Value
+                                    ? Convert.ToDecimal(empReader["Other"]) : 0m
+                            };
+                            employees.Add(employee);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { status = false, message = "Error loading employees: " + ex.Message });
+                }
+
+                // Now process each employee
+                var salaryData = new List<Dictionary<string, object>>();
+
+                foreach (var employee in employees)
+                {
+                    try
+                    {
+                        string empCode = employee["code"].ToString();
+                        string empName = employee["name"].ToString();
+                        string positionName = employee["PositionName"].ToString();
+                        int serialNumber = Convert.ToInt32(employee["SN"]);
+
+                        decimal basicSalary = Convert.ToDecimal(employee["basicSalary"]);
+                        decimal housingAllowance = Convert.ToDecimal(employee["HousingAllowance"]);
+                        decimal transportAllowance = Convert.ToDecimal(employee["TransportationAllowance"]);
+                        decimal other = Convert.ToDecimal(employee["Other"]);
+
+                        
+
+                        string workDays = "";
+                        int refId = 0;
+                        bool hasAttendance = false;
+
+                        try
+                        {
+                            string attendanceQuery = @"SELECT DayOfWeek, Ref_Code FROM tbl_attendancesheet 
+                                              WHERE YEAR(WorkDate) = @year 
+                                              AND MONTH(WorkDate) = @month 
+                                              AND code = @id
+                                              LIMIT 1";
+
+                            await using (var attCmd = new MySqlCommand(attendanceQuery, conn))
+                            {
+                                attCmd.Parameters.AddWithValue("@year", year);
+                                attCmd.Parameters.AddWithValue("@month", month);
+                                attCmd.Parameters.AddWithValue("@id", empCode);
+
+                                await using var attReader = await attCmd.ExecuteReaderAsync();
+
+                                if (await attReader.ReadAsync())
+                                {
+                                    hasAttendance = true;
+                                    workDays = attReader["DayOfWeek"]?.ToString() ?? "";
+                                    refId = attReader["Ref_Code"] != DBNull.Value
+                                        ? Convert.ToInt32(attReader["Ref_Code"]) : 0;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        // Skip if no attendance record
+                        if (!hasAttendance)
+                            continue;
+
+                        // Calculate allowance
+                        decimal allowance = housingAllowance + transportAllowance;
+
+                        // Get absence days
+                        int absDays = 0;
+                        try
+                        {
+                            absDays = await GetAbsenceDays(conn, empCode, year, month);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        // Get total loan
+                        decimal totalLoan = 0;
+                        try
+                        {
+                            totalLoan = await GetTotalLoan(conn, empCode, year, month);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        // Get total delay
+                        decimal totalDelay = 0;
+                        try
+                        {
+                            totalDelay = await GetTotalDelay(conn, empCode, year, month);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        // Get total work absence
+                        decimal totalWorkAbsence = 0;
+                        try
+                        {
+                            totalWorkAbsence = await GetTotalAbsence(conn, empCode, year, month);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        // Get salary adjustments
+                        decimal additions = 0;
+                        try
+                        {
+                            additions = await GetSalaryAdjustment(conn, empCode, refId, "Additions");
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        decimal salik = 0;
+                        try
+                        {
+                            salik = await GetSalaryAdjustment(conn, empCode, refId, "Salik");
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        decimal otherDeductions = 0;
+                        try
+                        {
+                            otherDeductions = await GetSalaryAdjustment(conn, empCode, refId, "othersDeductions");
+                        }
+                        catch (Exception ex)
+                        {
+                            throw ex;
+                        }
+
+                        // Calculate totals
+                        decimal totalEarnings = basicSalary + allowance + other + additions;
+                        decimal totalDeductions = totalLoan + totalDelay + totalWorkAbsence + salik + otherDeductions;
+                        decimal netSalary = totalEarnings - totalDeductions;
+
+                        var row = new Dictionary<string, object>
+                        {
+                            ["SN"] = serialNumber,
+                            ["EmployeeCode"] = empCode,
+                            ["EmployeeName"] = empName,
+                            ["Position"] = positionName,
+                            ["WorkDays"] = workDays,
+                            ["AbsenceDays"] = absDays,
+                            ["BasicSalary"] = basicSalary.ToString("N2"),
+                            ["Allowance"] = allowance.ToString("N2"),
+                            ["Other"] = other.ToString("N2"),
+                            ["Additions"] = additions.ToString("N2"),
+                            ["TotalEarnings"] = totalEarnings.ToString("N2"),
+                            ["EmployeeAdvance"] = totalLoan.ToString("N2"),
+                            ["Delay"] = totalDelay.ToString("N2"),
+                            ["WorkAbsence"] = totalWorkAbsence.ToString("N2"),
+                            ["Salik"] = salik.ToString("N2"),
+                            ["OtherDeductions"] = otherDeductions.ToString("N2"),
+                            ["TotalDeductions"] = totalDeductions.ToString("N2"),
+                            ["NetSalary"] = netSalary.ToString("N2")
+                        };
+
+                        salaryData.Add(row);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex;
+                    }
+                }
+
+                var response = new
+                {
+                    status = true,
+                    refCode = refCode,
+                    ssNo = ssNo,
+                    date = dated,
+                    month = month.ToString("D2"),
+                    year = year.ToString(),
+                    data = salaryData
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<int> GetAbsenceDays(MySqlConnection conn, string empCode, int year, int month)
+        {
+            try
+            {
+                string query = @"SELECT COUNT(attendance_salary_id) AS count 
+                        FROM tbl_attendancesheet 
+                        WHERE YEAR(WorkDate) = @year 
+                        AND MONTH(WorkDate) = @month 
+                        AND attendance_salary_id = @code 
+                        AND status = 'A'";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@year", year);
+                cmd.Parameters.AddWithValue("@month", month);
+                cmd.Parameters.AddWithValue("@code", empCode);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync() && reader["count"] != DBNull.Value)
+                {
+                    return Convert.ToInt32(reader["count"]);
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        private async Task<decimal> GetTotalLoan(MySqlConnection conn, string empCode, int year, int month)
+        {
+            try
+            {
+                string query = @"SELECT SUM(amount) AS totalLoan 
+                        FROM tbl_loan 
+                        WHERE YEAR(loandates) = @year 
+                        AND MONTH(loandates) = @month 
+                        AND employeeId = @code";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@year", year);
+                cmd.Parameters.AddWithValue("@month", month);
+                cmd.Parameters.AddWithValue("@code", empCode);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync() && reader["totalLoan"] != DBNull.Value)
+                {
+                    return Convert.ToDecimal(reader["totalLoan"]);
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        private async Task<decimal> GetTotalDelay(MySqlConnection conn, string empCode, int year, int month)
+        {
+            try
+            {
+                string query = @"SELECT total_delay FROM tbl_attendance_salary 
+                        WHERE YEAR(date) = @year 
+                        AND MONTH(date) = @month 
+                        AND emp_code = @code";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@year", year);
+                cmd.Parameters.AddWithValue("@month", month);
+                cmd.Parameters.AddWithValue("@code", empCode);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync() && reader["total_delay"] != DBNull.Value)
+                {
+                    return Convert.ToDecimal(reader["total_delay"]);
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        private async Task<decimal> GetTotalAbsence(MySqlConnection conn, string empCode, int year, int month)
+        {
+            try
+            {
+                string query = @"SELECT total_absence FROM tbl_attendance_salary 
+                        WHERE YEAR(date) = @year 
+                        AND MONTH(date) = @month 
+                        AND emp_code = @code";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@year", year);
+                cmd.Parameters.AddWithValue("@month", month);
+                cmd.Parameters.AddWithValue("@code", empCode);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync() && reader["total_absence"] != DBNull.Value)
+                {
+                    return Convert.ToDecimal(reader["total_absence"]);
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        private async Task<decimal> GetSalaryAdjustment(MySqlConnection conn, string empCode, int refId, string adjustmentType)
+        {
+            try
+            {
+                string query = @"SELECT SUM(amount) FROM tbl_salary_adjustments 
+                        WHERE code = @code 
+                        AND ref_id = @id 
+                        AND adjustment_type = @adjustment_type";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@code", empCode);
+                cmd.Parameters.AddWithValue("@adjustment_type", adjustmentType);
+                cmd.Parameters.AddWithValue("@id", refId);
+
+                var result = await cmd.ExecuteScalarAsync();
+                return (result != null && result != DBNull.Value) ? Convert.ToDecimal(result) : 0m;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        #endregion
+
     }
 }

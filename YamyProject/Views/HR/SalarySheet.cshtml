@@ -1,0 +1,247 @@
+﻿@{
+    ViewData["Title"] = "SalarySheet";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <i class="bi bi-cash-coin text-danger fs-1 mb-3"></i>
+        <h5 class="card-title fw-bold">Payroll</h5>
+    </div>
+
+    <div class="card-body">
+        <!-- Top Section: Date, REF, Month/Year Selection, User Info -->
+        <div class="row mb-4 align-items-center border-bottom pb-3">
+            <!-- Left Side: Date & REF -->
+            <div class="col-md-3">
+                <div>
+                    @* <strong>Date:</strong> <span id="currentDate"></span> *@
+                </div>
+            </div>
+
+            <!-- Center: Month & Year Selection -->
+            <div class="col-md-6 text-center">
+                <div class="row justify-content-center">
+                    <div class="col-auto">
+                        <label class="form-label fw-bold mb-1">Month</label>
+                        <select id="cmbMonth" class="form-select"></select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label fw-bold mb-1">Year</label>
+                        <select id="cmbYear" class="form-select"></select>
+                    </div>
+                    <div class="col-auto d-flex align-items-end">
+                        <button class="btn btn-primary" onclick="loadSalarySheet()">
+                            <i class="bi bi-search me-1"></i> Load
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Table Sections -->
+        <div class="table-responsive">
+            <table class="table table-striped" id="table1">
+                <thead>
+                    <tr class="table-light">
+                        <th colspan="5" class="text-primary fw-bold">Employee Information</th>
+                        <th colspan="5" class="text-primary fw-bold">Salary Information</th>
+                        <th colspan="6" class="text-danger fw-bold">DEDUCTION</th>
+                        <th colspan="4" class="text-success fw-bold">SALARY PAYMENT</th>
+                    </tr>
+                    <tr class="table-secondary">
+                        <th>S.No</th>
+                        <th>EMP ID</th>
+                        <th>Employee</th>
+                        <th>Position</th>
+                        <th>Work Days</th>
+                        <th>Basic Salary</th>
+                        <th>Allowance</th>
+                        <th>Other</th>
+                        <th>Additions</th>
+                        <th>TotalAddition</th>
+                        <th>Loan</th>
+                        <th>Work</th>
+                        <th>Fines & Salik</th>
+                        <th>Others</th>
+                        <th>Total</th>
+                        <th>Net Salary</th>
+                        <th>Cash</th>
+                        <th>Bank</th>
+                        <th>WPS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        function updateDate() {
+            const year = $('#cmbYear').val();
+            const month = $('#cmbMonth').val();
+
+            if (year && month) {
+                // Get last day of the selected month
+                const lastDay = new Date(year, month, 0).getDate();
+                const dateStr = `${lastDay}-${month}-${year}`;
+                $('#currentDate').text(dateStr);
+            }
+        }
+        // Load Salary Sheet
+        function loadSalarySheet() {
+            const year = $('#cmbYear').val();
+            const month = $('#cmbMonth').val();
+
+            if (!year || !month) {
+                toastr.warning('Please select both Month and Year');
+                return;
+            }
+
+            $.ajax({
+                url: '/HR/GetSalarySheet',
+                type: 'GET',
+                data: { year: year, month: month },
+
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="19" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load salary data');
+                        return;
+                    }
+
+                    // Destroy existing DataTable
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${row.EmployeeCode || ''}</td>
+                                    <td>${row.EmployeeName || ''}</td>
+                                    <td>${row.Position || ''}</td>
+                                    <td class="text-center">${row.WorkDays || ''}</td>
+                                    <td class="text-end">${parseFloat(row.BasicSalary || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.Allowance || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.Other || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.Additions || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.TotalEarnings || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.EmployeeAdvance || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.WorkAbsence || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.Salik || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.OtherDeductions || 0).toFixed(2)}</td>
+                                    <td class="text-end">${parseFloat(row.TotalDeductions || 0).toFixed(2)}</td>
+                                    <td class="text-end fw-bold">${parseFloat(row.NetSalary || 0).toFixed(2)}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                      $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            scrollX: true,
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+                        toastr.success('Salary sheet loaded successfully');
+                    } else {
+                        tbody.append(`<tr><td colspan="19" class="text-center text-muted py-4">No salary records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading salary data');
+                }
+            });
+        }
+
+        // On page load
+        $(document).ready(function () {
+            const cmbMonth = $('#cmbMonth');
+            const cmbYear = $('#cmbYear');
+            const currentYear = new Date().getFullYear();
+            const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+
+            // Populate Year dropdown
+            for (let y = 2000; y <= 2050; y++) {
+                cmbYear.append(`<option value="${y}">${y}</option>`);
+            }
+
+            // Populate Month dropdown
+            for (let m = 1; m <= 12; m++) {
+                const mm = String(m).padStart(2, '0');
+                cmbMonth.append(`<option value="${mm}">${mm}</option>`);
+            }
+
+            cmbYear.val(currentYear);
+            cmbMonth.val(currentMonth);
+
+            // Load salary sheet initially
+            loadSalarySheet();
+
+            // Reload when filters change
+            $('#cmbMonth, #cmbYear').change(loadSalarySheet);
+        });
+    </script>
+}
