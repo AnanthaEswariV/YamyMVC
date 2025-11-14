@@ -25,6 +25,12 @@ namespace YamyProject.Core.Models
         public int Id { get; set; }
         public string CategoryName { get; set; } = string.Empty;
     }
+
+    public class UnitViewModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
     public class TaxViewModel
     {
         public int Id { get; set; }           // for edit/delete

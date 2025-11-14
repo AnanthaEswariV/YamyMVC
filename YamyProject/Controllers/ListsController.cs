@@ -490,101 +490,173 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+
         [HttpGet]
         public async Task<IActionResult> GetUnit()
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                          ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
-                var response = await client.GetAsync($"api/Lists/GetUnit?databaseName={database}");
-                var result = await response.Content.ReadAsStringAsync();
 
-                return Content(result, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"select id,name from tbl_unit";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var categories = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    categories.Add(new
+                    {
+                        Id = reader["id"],
+                        UnitName = reader["Name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = categories });
             }
-            catch (Exception ex)
+           catch(Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddUnit(string name)
+        public async Task<IActionResult> AddUnit([FromBody] UnitViewModel model)
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return BadRequest(new { status = false, message = "Unit is required" });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var payload = new { Name = name };
-                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload),
-                                                System.Text.Encoding.UTF8, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                var response = await client.PostAsync($"api/Lists/AddUnit?databaseName={database}", content);
-                var result = await response.Content.ReadAsStringAsync();
-
-                return Content(result, "application/json");
+                // ✅ Check if unit already exists (case-insensitive)
+                string existsQuery = "SELECT COUNT(*) FROM tbl_unit WHERE LOWER(Name) = LOWER(@name)";
+                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                {
+                    existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Conflict(new { status = false, message = "Unit already exists" });
+                }
+                var query = "INSERT INTO tbl_unit (Name) VALUES (@name)";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@name", model.Name);
+                await cmd.ExecuteNonQueryAsync();
+                return Ok(new { status = true, message = "Unit added successfully" });
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> EditUnit(int id, string name)
+        public async Task<IActionResult> EditUnit([FromBody] UnitViewModel model)
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                if (model.Id <= 0 || string.IsNullOrWhiteSpace(model.Name))
+                    return BadRequest(new { status = false, message = "Invalid data." });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                              ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var payload = new { Id = id, Name = name };
-                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload),
-                                                System.Text.Encoding.UTF8, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                var response = await client.PutAsync($"api/Lists/EditUnit?databaseName={database}", content);
-                var result = await response.Content.ReadAsStringAsync();
+                // ✅ Check if the name already exists in another row
+                string existsQuery = "SELECT COUNT(*) FROM tbl_unit WHERE LOWER(Name) = LOWER(@name) AND id != @id";
+                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                {
+                    existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    existsCmd.Parameters.AddWithValue("@id", model.Id);
+                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Conflict(new { status = false, message = "Unit name already exists" });
+                }
 
-                return Content(result, "application/json");
+                // ✅ Update unit
+                var query = "UPDATE tbl_unit SET Name = @name WHERE id = @id";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                cmd.Parameters.AddWithValue("@id", model.Id);
+
+                var rows = await cmd.ExecuteNonQueryAsync();
+                return rows > 0
+                    ? Ok(new { status = true, message = "Unit updated successfully." })
+                    : NotFound(new { status = false, message = "Unit not found." });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
-
 
         [HttpPost]
-        public async Task<IActionResult> DeleteUnit(int id)
+        public async Task<IActionResult> DeleteUnit([FromQuery] int id)
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                if (id <= 0)
+                    return BadRequest(new { status = false, message = "Invalid unit id." });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
-                var response = await client.DeleteAsync($"api/Lists/DeleteUnit?id={id}&databaseName={database}");
-                var result = await response.Content.ReadAsStringAsync();
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                                 ?? _config.GetConnectionString("DefaultDatabase")
+                };
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                return Content(result, "application/json");
+                // Check if unit is used
+                var checkQuery = "SELECT COUNT(1) FROM tbl_items WHERE unit_id = @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+
+                    if (count > 0)
+                        return Ok(new { status = false, message = "Unit is already used in items and cannot be deleted." });
+                }
+
+                // Delete if not used
+                var deleteQuery = "DELETE FROM tbl_unit WHERE id = @id";
+                using (var delCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    delCmd.Parameters.AddWithValue("@id", id);
+                    var rows = await delCmd.ExecuteNonQueryAsync();
+
+                    return rows > 0
+                        ? Ok(new { status = true, message = "Unit deleted successfully." })
+                        : Ok(new { status = false, message = "Unit not found." });
+                }
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
-
         #endregion
 
         #region ChartOfAccount

@@ -130,14 +130,20 @@
                                 {
                                     extend: 'excelHtml5',
                                     text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm'
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                columns: ':not(:last-child)'
+            }
                                 },
                                 {
                                     extend: 'pdfHtml5',
                                     text: '<i class="fas fa-file-pdf me-1"></i> PDF',
                                     className: 'btn btn-primary btn-sm',
                                     orientation: 'landscape',
-                                    pageSize: 'A4'
+                                    pageSize: 'A4',
+                                    exportOptions: {
+                columns: ':not(:last-child)'
+            }
                                 }
                             ],
                             order: [[0, 'asc']],

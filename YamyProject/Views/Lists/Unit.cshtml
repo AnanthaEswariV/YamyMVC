@@ -3,124 +3,203 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css">
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-<div class="page-heading">
-    <div class="row">
-        <div class="col-6">
-            <h3>Unit List</h3>
-        </div>
-        <div class="col-6 text-end">
+
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Unit List</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUnitModal">
                 <i class="bi bi-plus-lg"></i> Add Unit
             </button>
         </div>
-    </div>
-</div>
 
-<section class="section">
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped" id="unitTable">
-                <thead>
-                    <tr>
-                        <th>Unit Name</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="unitTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Unit Name</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
-</section>
+
+</div>
 
 @Html.Partial("_Unit")  
 
 @section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
-          let unitTable;
-                  // Configure Toastr options
-          toastr.options = {
-                 "closeButton": true,
-                 "debug": false,
-                 "newestOnTop": false,
-                 "progressBar": true,
-                 "positionClass": "toast-top-right",
-                 "preventDuplicates": false,
-                 "onclick": null,
-                 "showDuration": "300",
-                 "hideDuration": "1000",
-                 "timeOut": "5000", // Adjust to desired display duration
-                 "extendedTimeOut": "1000",
-                 "showEasing": "swing",
-                 "hideEasing": "linear",
-                 "showMethod": "fadeIn",
-                 "hideMethod": "fadeOut"
-             };
+
+         $(document).ready(function () {
+                loadUnits
+         });
 
           function loadUnits() {
-            $.get('/Lists/GetUnit', function (res) {
-                if (res && res.length > 0) {
-                          const rows = res.map(u => [
-            u.id,
-            u.unitName,
-            `
-            <button class="btn btn-sm btn-primary" onclick="openEditModal(${u.id}, '${u.unitName}')"><i class="fas fa-pen"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="deleteUnit(${u.id})"><i class="fas fa-prescription-bottle-alt"></i></button>
-            `
-        ]);
+            $.ajax({
+                url: '/Lists/GetUnit',
+                type: 'GET',
 
+                beforeSend: function () {
+                    $('#unitTable tbody').html(`
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading Units...
+                            </td>
+                        </tr>
+                    `);
+                },
 
-                    if (unitTable) {
-                        unitTable.rows().remove();
-                        unitTable.rows().add(rows);
-                        unitTable.update();
-                    } else {
-                        unitTable = new simpleDatatables.DataTable("#unitTable", {
-                            searchable: true,
-                            fixedHeight: true,
-                            perPage: 5,
-                            data: {
-                                headings: ["ID", "Unit Name", "Action"],
-                                data: rows
-                            }
-                        });
+                success: function (res) {
+                    console.log(res);
+                    if (!res || res.length === 0) {
+                        const tbody = $('#unitTable tbody');
+                        tbody.html(`
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">
+                                    No units found
+                                </td>
+                            </tr>
+                        `);
+                        return;
                     }
+
+                    // Destroy existing DataTable if initialized
+                    if ($.fn.DataTable.isDataTable('#unitTable')) {
+                        $('#unitTable').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#unitTable tbody');
+                    tbody.empty();
+
+                          $.each(res.data, function (i, u) {
+            const tr = `
+                <tr data-id="${u.id}">
+                    <td>${i + 1}</td>
+                    <td>${u.unitName}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-primary editUnitBtn"
+                                data-unit='${JSON.stringify(u)}'>
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger deleteUnitBtn"
+                                onclick="deleteUnit(${u.id})">
+                            <i class="fas fa-prescription-bottle-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(tr);
+        });
+
+
+                    $('#unitTable').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                className: 'btn btn-primary btn-sm',
+                                  exportOptions: {
+                columns: ':not(:last-child)'
+            }
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                className: 'btn btn-primary btn-sm',
+                                orientation: 'landscape',
+                                pageSize: 'A4',
+                                  exportOptions: {
+                columns: ':not(:last-child)' 
+            }
+                            }
+                        ],
+                        order: [[0, 'asc']],
+                        pageLength: 15
+                    });
+                },
+
+                error: function () {
+                    toastr.error('Error loading units data');
                 }
             });
         }
 
-
           function saveUnit() {
             const name = $("#addUnitName").val();
+
             if (!name.trim()) {
-                alert("Please enter a unit name.");
+                toastr.warning("Please enter a unit name.");
                 return;
             }
 
-            $.post('/Lists/AddUnit', { name: name }, function (res) {
-                     if (res.status) {
-                            const modalEl = document.getElementById("addUnitModal");
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    modal.hide();
-                    $("#addUnitForm")[0].reset();
-                             toastr.success('Unit Added Successfully!');
-                              // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                         } else {
-                              toastr.error(result.message);
-                         }
-            }).fail(function (xhr) {
-                alert("Error: " + xhr.statusText);
+            $.ajax({
+                url: '/Lists/AddUnit',
+                type: 'POST',
+                contentType: 'application/json',  
+                data: JSON.stringify({ Name: name }),
+                success: function (res) {
+                    if (res.status) {
+                        const modalEl = document.getElementById("addUnitModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        modal.hide();
+                        $("#addUnitForm")[0].reset();
+                        toastr.success('Unit Added Successfully!');
+                        // Optional reload after short delay
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res.message || 'Failed to add unit');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error("Error: " + xhr.responseText);
+                }
             });
         }
 
+          $(document).on('click', '.editUnitBtn', function () {
+            const unit = $(this).data('unit'); // parses the data-unit JSON automatically
+            openEditModal(unit.id, unit.unitName);
+        });
 
           function openEditModal(id, name) {
             $("#editUnitId").val(id);
@@ -129,7 +208,7 @@
             modal.show();
         }
 
-          function updateUnit() {
+           function updateUnit() {
             const id = $("#editUnitId").val();
             const name = $("#editUnitName").val();
 
@@ -138,39 +217,51 @@
                 return;
             }
 
-            $.post('/Lists/EditUnit', { id: id, name: name }, function (res) {
-                     if (res.status) {
-                           const modalEl = document.getElementById("editUnitModal");
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    modal.hide();
-                             toastr.success('Unit Edited Successfully!');
-                              // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                         } else {
-                              toastr.error(res.message);
-                         }
-            });
-        }
-
-
-           function deleteUnit(id) {
-            if (!confirm("Are you sure you want to delete this unit?")) return;
-
-            $.post('/Lists/DeleteUnit', { id: id }, function (res) {
-                if (res.status) {
-                   toastr.success('Unit Deleted Successfully!');
-                              // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                } else {
-                    toastr.error(result.message);
+            $.ajax({
+                url: '/Lists/EditUnit',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: id, name: name }),
+                success: function(res) {
+                    if (res.status) {
+                        const modalEl = document.getElementById("editUnitModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        modal.hide();
+                        toastr.success('Unit Edited Successfully!');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    if (xhr.status === 409) {
+                        toastr.warning('Unit name already exists.');
+                    } else {
+                        toastr.error('Error updating unit.');
+                    }
                 }
             });
         }
 
+          function deleteUnit(id) {
+            if (!confirm("Are you sure you want to delete this unit?")) return;
+
+            $.ajax({
+                url: '/Lists/DeleteUnit?id=' + id, 
+                type: 'POST',
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success('Unit Deleted Successfully!');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message); 
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error('Error deleting unit.');
+                }
+            });
+        }
 
            document.addEventListener("DOMContentLoaded", loadUnits);
     </script>
