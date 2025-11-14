@@ -3,42 +3,55 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-<div class="page-heading">
-    <div class="row">
-        <div class="col-6">
-            <h3>Tax List</h3>
-        </div>
-        <div class="col-6 text-end">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaxModal">
-                <i class="bi bi-plus-lg"></i> Add Tax
-            </button>
-            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#recycleTaxModal" onclick="loadDeletedTaxes()">
-                <i class="bi bi-recycle"></i> Recycle Bin
-            </button>
 
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Tax List</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addTaxModal">
+                <i class="bi bi-plus-circle me-2"></i> Add Tax
+            </button>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#recycleTaxModal" onclick="loadDeletedTaxes()">
+                <i class="fas fa-recycle me-2"></i> Recycle Bin
+            </button>
         </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="taxTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Tax Name</th>
+                    <th>Rate (%)</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
     </div>
 </div>
 
-<section class="section">
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped" id="taxTable">
-                <thead>
-                    <tr>
-                        <th>Tax Name</th>
-                        <th>Rate (%)</th>
-                        <th>Description</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</section>
 
 <!-- ✅ Add Tax Modal -->
 <div class="modal fade" id="addTaxModal" tabindex="-1" aria-labelledby="addTaxLabel" aria-hidden="true">
@@ -56,7 +69,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="addTaxValue" class="col-form-label">Rate (%)</label>
-                        <input type="number" step="0.01" class="form-control" id="addTaxValue" required />
+                        <input type="number"  class="form-control" id="addTaxValue" required />
                     </div>
                     <div class="mb-3">
                         <label for="addTaxDescription" class="col-form-label">Description</label>
@@ -134,106 +147,138 @@
 
 
 @section Scripts {
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
-        let taxDataTable; // global reference
-                  // Configure Toastr options
-             toastr.options = {
-                 "closeButton": true,
-                 "debug": false,
-                 "newestOnTop": false,
-                 "progressBar": true,
-                 "positionClass": "toast-top-right",
-                 "preventDuplicates": false,
-                 "onclick": null,
-                 "showDuration": "300",
-                 "hideDuration": "1000",
-                 "timeOut": "5000", // Adjust to desired display duration
-                 "extendedTimeOut": "1000",
-                 "showEasing": "swing",
-                 "hideEasing": "linear",
-                 "showMethod": "fadeIn",
-                 "hideMethod": "fadeOut"
-             };
-        function loadTaxes() {
-            $.ajax({
-                url: '/Lists/GetTaxes',
-                type: 'GET',
-                success: function (res) {
-                    if (res.status) {
-                        const rows = res.data.map(tax => [
-                            tax.id,
-                            tax.name,
-                            Number(tax.value).toFixed(2) + "%",
-                            tax.description ?? "",
-                            `
-                                <button class="btn btn-sm btn-primary" onclick="editTax(${tax.id})"><i class="fas fa-pen"></i> </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteTax(${tax.id})"><i class="fas fa-prescription-bottle-alt"></i></button>
-                     
-                            `
-                        ]);
 
-                        if (taxDataTable) {
-                            // ✅ Clear old data & reload
-                            taxDataTable.rows().remove();
-                            taxDataTable.rows().add(rows);
-                            taxDataTable.update();
-                        } else {
-                            // ✅ Initialize datatable first time
-                            taxDataTable = new simpleDatatables.DataTable("#taxTable", {
-                                searchable: true,
-                                fixedHeight: true,
-                                perPage: 5,          // default rows per page
-                                perPageSelect: [5, 10, 20, 50],
-                                data: {
-                                    headings: ["ID", "Tax Name", "Rate (%)", "Description", "Actions"],
-                                    data: rows
+          function loadTaxes() {
+            $.ajax({
+                url: "/Lists/GetTaxes",
+                type: "GET",
+                success: function (res) {
+                    if ($.fn.DataTable.isDataTable("#taxTable")) {
+                        $("#taxTable").DataTable().destroy();
+                    }
+
+                    let tbody = $("#taxTable tbody");
+                    tbody.empty();
+
+                    if (res.status && res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, tax) {
+                            let tr = `
+                                <tr>
+                                    <td>${tax.id}</td>
+                                    <td>${tax.name ?? ""}</td>
+                                    <td>${Number(tax.value).toFixed(2)}%</td>
+                                    <td>${tax.description ?? ""}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="editTax(${tax.id})">
+                                        <i class="fas fa-pen"></i> 
+                                        </button> 
+                                        <button class="btn btn-sm btn-danger" onclick="deleteTax(${tax.id})">
+                                        <i class="fas fa-prescription-bottle-alt">
+                                        </i></button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(tr);
+                        });
+
+                         $('#taxTable').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':not(:last-child)' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    exportOptions: { columns: ':not(:last-child)' }
                                 }
-                            });
-                        }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
                     } else {
-                        alert(res.message);
+                        tbody.append(`<tr><td colspan="5" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                        $('.dt-buttons').hide();
                     }
                 },
                 error: function (xhr, status, error) {
-                    alert("Error: " + error);
+                    if ($.fn.DataTable.isDataTable("#taxTable")) {
+                        $("#taxTable").DataTable().destroy();
+                    }
+                    $("#taxTable tbody").html(`<tr><td colspan="5" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
                 }
             });
         }
 
-        // ✅ Save tax
-         function saveTax() {
-             const name = $("#addTaxName").val();
-             const value = $("#addTaxValue").val();
-             const description = $("#addTaxDescription").val();
 
-             if (!name.trim() || !value) {
-                 toastr.warning("Please fill required fields");
-                 return;
-             }
 
-             $.post('/Lists/AddTax', { name, value, description })
-                 .done(function (res) {
-                     if (res.status) {
-                         bootstrap.Modal.getInstance(document.getElementById("addTaxModal")).hide();
-                         $("#addTaxForm")[0].reset();
-                         toastr.success("Tax Added Successfully!");
-                          // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                     } else {
-                         toastr.error(res.message);
-                     }
-                 })
-                 .fail(err => toastr.error("Error saving tax"));
-         }
+                // Save tax
+        function saveTax() {
+            const name = $("#addTaxName").val().trim();
+            const value = $("#addTaxValue").val();
+            const description = $("#addTaxDescription").val().trim();
 
+            if (!name || !value) {
+                toastr.warning("Please fill required fields");
+                return;
+            }
+
+            const taxData = {
+                Name: name,
+                Value: parseFloat(value),
+                Description: description
+            };
+
+            $.ajax({
+                url: '/Lists/AddTax',
+                type: 'POST',
+                contentType: 'application/json',  // ✅ Important: send JSON
+                data: JSON.stringify(taxData),     // ✅ Convert JS object to JSON
+                success: function (res) {
+                    if (res.status) {
+                        // Hide modal
+                        bootstrap.Modal.getInstance(document.getElementById("addTaxModal")).hide();
+                        $("#addTaxForm")[0].reset();
+                        toastr.success("Tax Added Successfully!");
+
+                        // Optional reload after short delay
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Error saving tax");
+                }
+            });
+        }
+
+       
 
         // ✅ Edit modal fill
             function editTax(id) {
@@ -250,34 +295,50 @@
                 new bootstrap.Modal(document.getElementById("editTaxModal")).show();
             }
 
-            // ✅ Update tax
-            function updateTax() {
-                const id = $("#editTaxId").val();
-                const name = $("#editTaxName").val();
-                const value = $("#editTaxValue").val();
-                const description = $("#editTaxDescription").val();
+                   // ✅ Update tax
+        function updateTax() {
+            const id = $("#editTaxId").val();
+            const name = $("#editTaxName").val().trim();
+            const value = $("#editTaxValue").val().trim();
+            const description = $("#editTaxDescription").val().trim();
 
-                if (!name.trim() || value === "") {
-                    toastr.warning("Please fill required fields");
-                    return;
-                }
-
-                $.post('/Lists/EditTax', { id, name, value, description })
-                    .done(function (res) {
-                        if (res.status) {
-                            bootstrap.Modal.getInstance(document.getElementById("editTaxModal")).hide();
-                            $("#editTaxForm")[0].reset();
-                            toastr.success("Tax Updated Successfully!");
-                            // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                        } else {
-                            toastr.error(res.message);
-                        }
-                    })
-                    .fail(err => toastr.error("Error updating tax"));
+            if (!name || value === "") {
+                toastr.warning("Please fill required fields");
+                return;
             }
+
+            const taxData = {
+                Id: parseInt(id),
+                Name: name,
+                Value: parseFloat(value),
+                Description: description
+            };
+
+            $.ajax({
+                url: '/Lists/EditTax',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(taxData),
+                success: function (res) {
+                    if (res.status) {
+                        // Hide modal and reset form
+                        bootstrap.Modal.getInstance(document.getElementById("editTaxModal")).hide();
+                        $("#editTaxForm")[0].reset();
+
+                        toastr.success("Tax updated successfully!");
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        // Duplicate or other error returned from API
+                        toastr.error(res.message || "Failed to update tax");
+                    }
+                },
+                error: function (xhr) {
+                    let msg = xhr.responseJSON?.message || "Error updating tax";
+                    toastr.error(msg);
+                }
+            });
+        }
+
 
             // ✅ Delete tax
             function deleteTax(id) {
@@ -324,23 +385,32 @@
                     .fail(err => toastr.error("Error loading deleted taxes"));
             }
 
-            // ✅ Restore tax
-            function restoreTax(id) {
-                $.post('/Lists/RestoreTax/' + id)
-                    .done(function (res) {
-                        if (res.status) {
-                            toastr.success(res.message);
-                            loadDeletedTaxes();
-                             // Redirect to dashboard after a short delay
-                             setTimeout(function () {
-                                location.reload();
-                             }, 1500); // Optional delay before redirect
-                        } else {
-                            toastr.error(res.message);
-                        }
-                    })
-                    .fail(err => toastr.error("Error restoring tax"));
-            }
+                 // ✅ Restore tax
+        function restoreTax(id) {
+             console.log("Restore Tax called with ID:", id);
+            $.ajax({
+                url: '/Lists/RestoreTax',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: id }),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        loadDeletedTaxes();
+                        // Optional: reload after delay
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function () {
+                    toastr.error("Error restoring tax");
+                }
+            });
+        }
+
 
 
         document.addEventListener("DOMContentLoaded", loadTaxes);

@@ -259,141 +259,227 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+
         [HttpGet]
         public async Task<IActionResult> GetTaxes()
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                // Build connection string using session database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
 
-                var response = await client.GetAsync($"api/Lists/GetTaxes?databaseName={database}");
-                var result = await response.Content.ReadAsStringAsync();
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                return Content(result, "application/json");
+                var query = "SELECT id, Name, value, Description FROM tbl_tax WHERE state = 0";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var taxes = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    taxes.Add(new
+                    {
+                        Id = reader["id"],
+                        Name = reader["Name"],
+                        Value = reader["value"],
+                        Description = reader["Description"]
+                    });
+                }
+
+                return Ok(new { status = true, data = taxes });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpPost]
-        public async Task<IActionResult> AddTax(string name, decimal value, string description)
+        public async Task<IActionResult> AddTax([FromBody] TaxViewModel model)
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return BadRequest(new { status = false, message = "Tax name is required" });
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                var requestObj = new { Name = name, Value = value, Description = description };
-                var json = JsonConvert.SerializeObject(requestObj);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                // ✅ Check if tax already exists
+                string existsQuery = "SELECT COUNT(*) FROM tbl_tax WHERE LOWER(Name) = LOWER(@name)";
+                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                {
+                    existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Conflict(new { status = false, message = "Tax name already exists" });
+                }
 
-                var response = await client.PostAsync($"api/Lists/AddTax?databaseName={database}", content);
+                var query = "INSERT INTO tbl_tax (Name, Value, Description, state) VALUES (@name, @value, @description, 0)";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@name", model.Name);
+                cmd.Parameters.AddWithValue("@value", model.Value);
+                cmd.Parameters.AddWithValue("@description", model.Description ?? "");
 
-                var result = await response.Content.ReadAsStringAsync();
-                return Content(result, "application/json");
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Tax added successfully" });
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
+
         [HttpPost]
-        public async Task<IActionResult> EditTax(int id, string name, decimal value, string description)
+        public async Task<IActionResult> EditTax( [FromBody] TaxViewModel model)
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return BadRequest(new { status = false, message = "Tax name is required" });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                                              ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var requestObj = new { Id = id, Name = name, Value = value, Description = description };
-                var json = JsonConvert.SerializeObject(requestObj);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                var response = await client.PutAsync($"api/Lists/EditTax?databaseName={database}", content);
+                // ✅ Check if tax already exists
+                string existsQuery = "SELECT COUNT(*) FROM tbl_tax WHERE LOWER(Name) = LOWER(@name) AND id <> @id";
+                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                {
+                    existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    existsCmd.Parameters.AddWithValue("@id", model.Id);
+                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Conflict(new { status = false, message = "Tax name already exists" });
+                }
 
-                var result = await response.Content.ReadAsStringAsync();
-                return Content(result, "application/json");
+                var query = "UPDATE tbl_tax SET Name=@name, Value=@value, Description=@description WHERE id=@id";
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", model.Id);
+                cmd.Parameters.AddWithValue("@name", model.Name);
+                cmd.Parameters.AddWithValue("@value", model.Value);
+                cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                var rows = await cmd.ExecuteNonQueryAsync();
+                if (rows == 0)
+                    return NotFound(new { status = false, message = "Tax not found" });
+
+                return Ok(new { status = true, message = "Tax updated successfully" });
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
+
         [HttpPost]
         public async Task<IActionResult> DeleteTax(int id)
         {
-            try
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid tax ID" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                Database = HttpContext.Session.GetString("DatabaseName")
+                                               ?? _config.GetConnectionString("DefaultDatabase")
+            };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
 
-                var content = new StringContent(JsonConvert.SerializeObject(id), Encoding.UTF8, "application/json");
+            // ✅ Soft delete tax (state = -1)
+            var deleteQuery = "UPDATE tbl_tax SET state = -1 WHERE id = @id";
+            await using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+            deleteCmd.Parameters.AddWithValue("@id", id);
 
-                var response = await client.PostAsync($"api/Lists/DeleteTax/{id}?databaseName={database}", content);
-                var result = await response.Content.ReadAsStringAsync();
+            var rows = await deleteCmd.ExecuteNonQueryAsync();
 
-                return Content(result, "application/json");
+            if (rows > 0)
+            {
+                return Ok(new { status = true, message = "Tax deleted successfully." });
             }
-            catch (Exception ex)
+            else
             {
-                return Json(new { status = false, message = ex.Message });
+                return NotFound(new { status = false, message = "Tax not found." });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetDeletedTaxes()
         {
-            try
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                Database = HttpContext.Session.GetString("DatabaseName")
+                                               ?? _config.GetConnectionString("DefaultDatabase")
+            };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
 
-                var response = await client.GetAsync($"api/Lists/GetDeletedTaxes?databaseName={database}");
-                var result = await response.Content.ReadAsStringAsync();
+            var query = "SELECT id, Name, value, Description FROM tbl_tax WHERE state = -1";
+            using var cmd = new MySqlCommand(query, conn);
 
-                return Content(result, "application/json");
-            }
-            catch (Exception ex)
+            var deletedTaxes = new List<object>();
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
-                return Json(new { status = false, message = ex.Message });
+                while (await reader.ReadAsync())
+                {
+                    deletedTaxes.Add(new
+                    {
+                        id = reader["id"],
+                        name = reader["Name"],
+                        value = reader["value"],
+                        description = reader["Description"]
+                    });
+                }
             }
+
+            return Ok(new { status = true, data = deletedTaxes });
         }
         [HttpPost]
-        public async Task<IActionResult> RestoreTax(int id)
+        public async Task<IActionResult> RestoreTax([FromBody] RestoreTaxViewModel model)
         {
-            try
+            if (model == null || model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid tax ID" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                Database = HttpContext.Session.GetString("DatabaseName")
+                          ?? _config.GetConnectionString("DefaultDatabase")
+            };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
 
-                var response = await client.PostAsync($"api/Lists/RestoreTax/{id}?databaseName={database}", null);
-                var result = await response.Content.ReadAsStringAsync();
+            var query = "UPDATE tbl_tax SET state = 0 WHERE id = @id";
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", model.Id);
 
-                return Content(result, "application/json");
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
+            var rows = await cmd.ExecuteNonQueryAsync();
+
+            if (rows > 0)
+                return Ok(new { status = true, message = "Tax restored successfully." });
+            else
+                return NotFound(new { status = false, message = "Tax not found." });
         }
 
         #endregion

@@ -25,6 +25,19 @@ namespace YamyProject.Core.Models
         public int Id { get; set; }
         public string CategoryName { get; set; } = string.Empty;
     }
+    public class TaxViewModel
+    {
+        public int Id { get; set; }           // for edit/delete
+        public string Name { get; set; }      // Tax Name
+        public decimal Value { get; set; }    // Tax Rate (%)
+        public string Description { get; set; } // Optional
+        public int State { get; set; }        // 0 = active, 1 = deleted (for recycle)
+    }
+    public class RestoreTaxViewModel
+    {
+        public int Id { get; set; }
+    }
+
     public class ChangePasswordRequest
     {
         public string? UserName { get; set; }
