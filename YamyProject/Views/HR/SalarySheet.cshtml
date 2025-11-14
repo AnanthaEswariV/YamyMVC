@@ -24,9 +24,16 @@
         <i class="bi bi-cash-coin text-danger fs-1 mb-3"></i>
         <h5 class="card-title fw-bold">Payroll</h5>
     </div>
-
+    <div class="dropdown position-absolute top-0 end-0 mt-2 me-2">
+        <button class="btn btn-light btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots-vertical fw-bold"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/HR/LeaveSalary"><i class="bi bi-calendar-x me-2"></i>Leave Salary</a></li>
+            <li><a class="dropdown-item" href="/HR/EndOfService"><i class="bi bi-person-x me-2"></i>End Of Service</a></li>
+        </ul>
+    </div>
     <div class="card-body">
-        <!-- Top Section: Date, REF, Month/Year Selection, User Info -->
         <div class="row mb-4 align-items-center border-bottom pb-3">
             <!-- Left Side: Date & REF -->
             <div class="col-md-3">
@@ -58,39 +65,36 @@
 
         <!-- Table Sections -->
         <div class="table-responsive">
-            <table class="table table-striped" id="table1">
-                <thead>
-                    <tr class="table-light">
-                        <th colspan="5" class="text-primary fw-bold">Employee Information</th>
-                        <th colspan="5" class="text-primary fw-bold">Salary Information</th>
-                        <th colspan="6" class="text-danger fw-bold">DEDUCTION</th>
-                        <th colspan="4" class="text-success fw-bold">SALARY PAYMENT</th>
-                    </tr>
-                    <tr class="table-secondary">
+            <table class="table table-striped align-middle w-100" id="table1">
+                <thead class="table-light">
+                    <tr>
                         <th>S.No</th>
-                        <th>EMP ID</th>
                         <th>Employee</th>
-                        <th>Position</th>
-                        <th>Work Days</th>
                         <th>Basic Salary</th>
-                        <th>Allowance</th>
-                        <th>Other</th>
-                        <th>Additions</th>
-                        <th>TotalAddition</th>
-                        <th>Loan</th>
-                        <th>Work</th>
-                        <th>Fines & Salik</th>
-                        <th>Others</th>
-                        <th>Total</th>
+                        <th>Total Additions</th>
+                        <th>Total Deductions</th>
                         <th>Net Salary</th>
-                        <th>Cash</th>
-                        <th>Bank</th>
-                        <th>WPS</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
-                <tbody>
-                </tbody>
+                <tbody></tbody>
             </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- Payslip Modal -->
+<div class="modal fade" id="payslipModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="payslipModalLabel">Salary Slip</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="payslipContent">
+                <!-- Payslip details will be appended here dynamically -->
+            </div>
         </div>
     </div>
 </div>
@@ -149,7 +153,7 @@
                         toastr.error(res.message || 'Failed to load salary data');
                         return;
                     }
-
+                    console.log(res);
                     // Destroy existing DataTable
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
@@ -160,52 +164,51 @@
 
                     if (res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
-                            const tr = `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${row.EmployeeCode || ''}</td>
-                                    <td>${row.EmployeeName || ''}</td>
-                                    <td>${row.Position || ''}</td>
-                                    <td class="text-center">${row.WorkDays || ''}</td>
-                                    <td class="text-end">${parseFloat(row.BasicSalary || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.Allowance || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.Other || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.Additions || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.TotalEarnings || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.EmployeeAdvance || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.WorkAbsence || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.Salik || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.OtherDeductions || 0).toFixed(2)}</td>
-                                    <td class="text-end">${parseFloat(row.TotalDeductions || 0).toFixed(2)}</td>
-                                    <td class="text-end fw-bold">${parseFloat(row.NetSalary || 0).toFixed(2)}</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                </tr>`;
+                   const tr = `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${row.EmployeeName || ''}</td>
+            <td class="text-end">${cleanNumber(row.BasicSalary).toFixed(2)}</td>
+            <td class="text-end">${cleanNumber(row.Additions).toFixed(2)}</td>
+            <td class="text-end">${cleanNumber(row.TotalDeductions).toFixed(2)}</td>
+            <td class="text-end fw-bold">${cleanNumber(row.NetSalary).toFixed(2)}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-primary" onclick='viewPayslip(${JSON.stringify(row)})'>
+                    <i class="bi bi-eye"></i> View
+                </button>
+            </td>
+        </tr>`;
+
                             tbody.append(tr);
                         });
 
-                      $('#table1').DataTable({
-                            dom: 'Bfrtip',
-                            scrollX: true,
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm'
-                                },
-                                {
-                                    extend: 'pdfHtml5',
-                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                    className: 'btn btn-primary btn-sm',
-                                    orientation: 'landscape',
-                                    pageSize: 'A4'
-                                }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 15
-                        });
-                        toastr.success('Salary sheet loaded successfully');
+                           $('#table1').DataTable({
+            dom: 'Bfrtip',
+            scrollX: true, 
+            autoWidth: false, 
+            responsive: false, 
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-primary btn-sm'
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    className: 'btn btn-primary btn-sm',
+                    orientation: 'landscape',
+                    pageSize: 'A4'
+                }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 15,
+            drawCallback: function () {
+                // Adjust columns when table fully drawn
+                $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+            }
+        });
+
                     } else {
                         tbody.append(`<tr><td colspan="19" class="text-center text-muted py-4">No salary records found</td></tr>`);
                     }
@@ -214,6 +217,63 @@
                     toastr.error('Error loading salary data');
                 }
             });
+        }
+
+                function cleanNumber(value) {
+            if (!value) return 0;
+            return parseFloat(String(value).replace(/,/g, '')) || 0;
+        }
+
+                function viewPayslip(row) {
+            const payslipHtml = `
+            <div class="text-center mb-3">
+                <h5 class="fw-bold">Company Name</h5>
+                <p>Salary Slip for ${$('#cmbMonth option:selected').text()} ${$('#cmbYear').val()}</p>
+            </div>
+            <table class="table table-bordered">
+                <tr>
+                    <td><strong>Name</strong></td><td>${row.EmployeeName || ''}</td>
+                    <td><strong>Department</strong></td><td>${row.Department || ''}</td>
+                </tr>
+                <tr>
+                    <td><strong>Emp. No</strong></td><td>${row.EmployeeCode || ''}</td>
+                    <td><strong>Designation</strong></td><td>${row.Position || ''}</td>
+                </tr>
+            </table>
+
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th colspan="2" class="text-center text-primary">Earnings</th>
+                        <th colspan="2" class="text-center text-danger">Deductions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Basic Salary</td><td>${row.BasicSalary || 0}</td>
+                        <td>Loan</td><td>${row.EmployeeAdvance || 0}</td>
+                    </tr>
+                    <tr>
+                        <td>Allowances</td><td>${row.Allowance || 0}</td>
+                        <td>Work Absence</td><td>${row.WorkAbsence || 0}</td>
+                    </tr>
+                    <tr>
+                        <td>Other</td><td>${row.Other || 0}</td>
+                        <td>Fines & Salik</td><td>${row.Salik || 0}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Total Earnings</td><td class="fw-bold">${row.TotalEarnings || 0}</td>
+                        <td class="fw-bold">Total Deductions</td><td class="fw-bold">${row.TotalDeductions || 0}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="text-end fw-bold fs-5 mt-3">
+                Net Pay: ${row.NetSalary || 0}
+            </div>`;
+
+            $('#payslipContent').html(payslipHtml);
+            $('#payslipModal').modal('show');
         }
 
         // On page load

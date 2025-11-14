@@ -1645,5 +1645,324 @@ namespace YamyProject.Controllers
         }
         #endregion
 
+        #region Leave Salary
+
+        public IActionResult LeaveSalary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLeaveSalary()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                CODE AS 'Employee Code',
+                NAME AS 'Employee Name',
+                SUM(leave_days) AS 'Leave Salary Days',
+                SUM(credit) AS 'Leave Salary Amount',
+                SUM(debit) / (SUM(credit) / SUM(leave_days)) AS 'L.S Used Days',
+                SUM(leave_days) - (SUM(debit) / (SUM(credit) / SUM(leave_days))) AS 'L.S Remaining Days',
+                SUM(debit) AS 'L.S Received Amount',
+                SUM(credit) - SUM(debit) AS 'L.S Remaining Amount'
+            FROM tbl_leave_salary
+            GROUP BY CODE, NAME;
+        ";
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>
+                        {
+                            ["EmployeeCode"] = reader["Employee Code"]?.ToString(),
+                            ["EmployeeName"] = reader["Employee Name"]?.ToString(),
+                            ["LeaveSalaryDays"] = reader["Leave Salary Days"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["Leave Salary Days"]).ToString("N2")
+                                : "0.00",
+                            ["LeaveSalaryAmount"] = reader["Leave Salary Amount"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["Leave Salary Amount"]).ToString("N2")
+                                : "0.00",
+                            ["LSUsedDays"] = reader["L.S Used Days"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["L.S Used Days"]).ToString("N2")
+                                : "0.00",
+                            ["LSRemainingDays"] = reader["L.S Remaining Days"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["L.S Remaining Days"]).ToString("N2")
+                                : "0.00",
+                            ["LSReceivedAmount"] = reader["L.S Received Amount"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["L.S Received Amount"]).ToString("N2")
+                                : "0.00",
+                            ["LSRemainingAmount"] = reader["L.S Remaining Amount"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["L.S Remaining Amount"]).ToString("N2")
+                                : "0.00"
+                        };
+
+                        result.Add(row);
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        public IActionResult LeaveSalaryStatement()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetLeaveSalaryStatement(string id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY id) AS SN, 
+                code AS EmployeeCode, 
+                name AS EmployeeName, 
+                Reference, 
+                description, 
+                leave_days, 
+                debit, 
+                credit,
+                SUM(credit - debit) OVER (PARTITION BY code ORDER BY id) AS Balance
+            FROM tbl_leave_salary
+            WHERE code = @code
+            ORDER BY id";
+
+                var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@code", id);
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        result.Add(new Dictionary<string, object>
+                        {
+                            ["SN"] = reader["SN"]?.ToString(),
+                            ["EmployeeCode"] = reader["EmployeeCode"]?.ToString(),
+                            ["EmployeeName"] = reader["EmployeeName"]?.ToString(),
+                            ["Reference"] = reader["Reference"]?.ToString(),
+                            ["Description"] = reader["description"]?.ToString(),
+
+                            ["LeaveDays"] = reader["leave_days"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["leave_days"]).ToString("N2")
+                                : "0.00",
+
+                            ["Debit"] = reader["debit"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["debit"]).ToString("N2")
+                                : "0.00",
+
+                            ["Credit"] = reader["credit"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["credit"]).ToString("N2")
+                                : "0.00",
+
+                            ["Balance"] = reader["Balance"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["Balance"]).ToString("N2")
+                                : "0.00"
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region End Of Service
+
+        public IActionResult EndOfService()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEndOfService()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                CODE AS 'Employee Code',
+                NAME AS 'Employee Name',
+                SUM(leave_days) AS 'End Of Service Days',
+                SUM(credit) AS 'End Of Service Amount',
+                SUM(leave_days) - (SUM(debit) / (SUM(credit) / SUM(leave_days))) AS 'EOS Remaining Days',
+                SUM(debit) AS 'EOS Received Amount',
+                SUM(credit) - SUM(debit) AS 'EOS Remaining Amount'
+            FROM tbl_end_of_service
+            GROUP BY CODE, NAME;
+        ";
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>
+                        {
+                            ["EmployeeCode"] = reader["Employee Code"]?.ToString(),
+                            ["EmployeeName"] = reader["Employee Name"]?.ToString(),
+
+                            ["EndOfServiceDays"] = reader["End Of Service Days"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["End Of Service Days"]).ToString("N2")
+                                : "0.00",
+
+                            ["EndOfServiceAmount"] = reader["End Of Service Amount"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["End Of Service Amount"]).ToString("N2")
+                                : "0.00",
+
+                            ["EOSRemainingDays"] = reader["EOS Remaining Days"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["EOS Remaining Days"]).ToString("N2")
+                                : "0.00",
+
+                            ["EOSReceivedAmount"] = reader["EOS Received Amount"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["EOS Received Amount"]).ToString("N2")
+                                : "0.00",
+
+                            ["EOSRemainingAmount"] = reader["EOS Remaining Amount"] != DBNull.Value
+                                ? Convert.ToDecimal(reader["EOS Remaining Amount"]).ToString("N2")
+                                : "0.00"
+                        };
+
+                        result.Add(row);
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult EndOfServiceStatement()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEndOfServiceStatement(string id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY id) AS SN, 
+                code AS EmployeeCode, 
+                name AS EmployeeName, 
+                Reference, 
+                description, 
+                leave_days, 
+                debit, 
+                credit,
+                SUM(credit - debit) OVER (PARTITION BY code ORDER BY id) AS Balance
+            FROM tbl_end_of_service
+            WHERE code = @code
+            ORDER BY id;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@code", id);
+
+                var result = new List<Dictionary<string, object>>();
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    result.Add(new Dictionary<string, object>
+                    {
+                        ["SN"] = reader["SN"]?.ToString(),
+                        ["EmployeeCode"] = reader["EmployeeCode"]?.ToString(),
+                        ["EmployeeName"] = reader["EmployeeName"]?.ToString(),
+                        ["Reference"] = reader["Reference"]?.ToString(),
+                        ["Description"] = reader["description"]?.ToString(),
+
+                        ["LeaveDays"] = reader["leave_days"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["leave_days"]).ToString("N2")
+                            : "0.00",
+
+                        ["Debit"] = reader["debit"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["debit"]).ToString("N2")
+                            : "0.00",
+
+                        ["Credit"] = reader["credit"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["credit"]).ToString("N2")
+                            : "0.00",
+
+                        ["Balance"] = reader["Balance"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["Balance"]).ToString("N2")
+                            : "0.00"
+                    });
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
     }
 }

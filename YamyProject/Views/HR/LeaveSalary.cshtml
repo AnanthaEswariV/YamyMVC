@@ -1,0 +1,157 @@
+﻿
+@{
+    ViewData["Title"] = "LeaveSalary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <h5 class="card-title fw-bold">Leave Salary</h5>
+    </div>
+
+    <div class="card-body">
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Emp Code</th>
+                    <th>Employee Name</th>
+                    <th>L.S Salary Days</th>
+                    <th>L.S Salary Amount</th>
+                    <th>L.S Used Days</th>
+                    <th>L.S Remaining Days</th>
+                    <th>L.S Received Amount</th>
+                    <th>L.S Remaining Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+
+        function loadLeaveSalarySummary() {
+            $.ajax({
+                url: '/HR/GetLeaveSalary',
+                type: 'GET',
+
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading Leave Salary Data...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load leave salary data');
+                        return;
+                    }
+
+                    // Destroy existing DataTable
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr data-id="${row.EmployeeCode}">
+                                    <td>${i + 1}</td>
+                                    <td>${row.EmployeeCode || ''}</td>
+                                    <td>${row.EmployeeName || ''}</td>
+                                    <td class="text-end">${row.LeaveSalaryDays || '0.00'}</td>
+                                    <td class="text-end">${row.LeaveSalaryAmount || '0.00'}</td>
+                                    <td class="text-end">${row.LSUsedDays || '0.00'}</td>
+                                    <td class="text-end">${row.LSRemainingDays || '0.00'}</td>
+                                    <td class="text-end">${row.LSReceivedAmount || '0.00'}</td>
+                                    <td class="text-end">${row.LSRemainingAmount || '0.00'}</td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        // ✅ Row click redirect
+                        $('#table1 tbody').off('click').on('click', 'tr', function () {
+                            const id = $(this).data('id');
+                            if (!id) {
+                                toastr.warning('No leave salary ID found for this record.');
+                                return;
+                            }
+                        console.log("Redirecting with ID:", id);
+                          window.location.href = `/HR/LeaveSalaryStatement?id=${id}`;
+                        });
+
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+                    } else {
+                        tbody.append(`<tr><td colspan="9" class="text-center text-muted py-4">No leave salary records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading leave salary data');
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            loadLeaveSalarySummary();
+        });
+
+
+
+
+    </script>
+    }
