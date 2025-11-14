@@ -20,114 +20,234 @@ namespace YamyProject.Controllers
         {
             return View();
         }
+
         [HttpGet]
         public async Task<IActionResult> GetItemCategory()
         {
             try
             {
-                var client = _httpClientFactory.CreateClient("ApiClient");
-
-                // ✅ read from session
-                var databaseName = HttpContext.Session.GetString("DatabaseName");
-
-                if (string.IsNullOrEmpty(databaseName))
+                // Build connection string using session database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    return Json(new { status = false, message = "No database selected. Please login again." });
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"SELECT id, name,code 
+                      FROM tbl_item_category 
+                      ORDER BY id DESC";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var categories = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    categories.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),     // PURE NAME
+                        CategoryName = reader["code"] + " - " + reader["name"]   // DISPLAY NAME
+                    });
                 }
 
-                // ✅ pass database name in query string
-                var response = await client.GetAsync($"api/Lists/GetCategories?databaseName={databaseName}");
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return Json(new { status = false, message = "Failed to fetch categories" });
-                }
-
-                var data = await response.Content.ReadAsStringAsync();
-                var categories = JsonConvert.DeserializeObject<List<ItemCatoryViewModel>>(data);
-
-                return Json(new { status = true, data = categories });
+                return Ok(new { status = true, data = categories });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = "Error: " + ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
-
         [HttpPost]
-        public async Task<IActionResult> AddCategory(string categoryName)
+        public async Task<IActionResult> AddCategory([FromBody] ItemCatoryViewModel model)
         {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.CategoryName))
+                return BadRequest(new { status = false, message = "Category name is required" });
+
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var requestObj = new { CategoryName = categoryName };
-                var json = JsonConvert.SerializeObject(requestObj);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                var response = await client.PostAsync($"api/Lists/AddCategory?databaseName={database}", content);
+                // 🚫 CHECK: Category already exists?
+                string existsQuery = "SELECT COUNT(*) FROM tbl_item_category WHERE LOWER(name) = LOWER(@name)";
+                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                {
+                    existsCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Conflict(new { status = false, message = "Category name already exists" });
+                }
 
-                var result = await response.Content.ReadAsStringAsync();
-                return Content(result, "application/json");
+                // STEP 1: Insert category without code
+                string insertQuery = @"
+            INSERT INTO tbl_item_category (name)
+            VALUES (@name);
+            SELECT LAST_INSERT_ID();";
+
+                using var insertCmd = new MySqlCommand(insertQuery, conn);
+                insertCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+
+                int newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+
+                // STEP 2: Generate code
+                string categoryCode = newId.ToString("D3");
+
+                // STEP 3: Update category with generated code
+                string updateQuery = "UPDATE tbl_item_category SET code=@code WHERE id=@id;";
+                using var updateCmd = new MySqlCommand(updateQuery, conn);
+                updateCmd.Parameters.AddWithValue("@code", categoryCode);
+                updateCmd.Parameters.AddWithValue("@id", newId);
+                await updateCmd.ExecuteNonQueryAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Category created successfully",
+                    id = newId,
+                    code = categoryCode
+                });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
-
         [HttpPost]
-        public async Task<IActionResult> EditCategory(int id, string categoryName)
+        public async Task<IActionResult> EditCategory([FromBody] ItemCatoryViewModel model)
         {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid category ID" });
+
+            if (string.IsNullOrWhiteSpace(model.CategoryName))
+                return BadRequest(new { status = false, message = "Category name is required" });
+
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var requestObj = new { Id = id, CategoryName = categoryName };
-                var json = JsonConvert.SerializeObject(requestObj);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                // Call API (PUT method)
-                var response = await client.PutAsync($"api/Lists/EditCategory?databaseName={database}", content);
+                // 🚫 CHECK: Duplicate name (excluding current item)
+                string existsQuery = @"
+            SELECT COUNT(*)
+            FROM tbl_item_category
+            WHERE LOWER(name) = LOWER(@name)
+              AND id <> @id";
 
-                var result = await response.Content.ReadAsStringAsync();
-                return Content(result, "application/json");
+                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                {
+                    existsCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+                    existsCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Conflict(new { status = false, message = "Category name already exists" });
+                }
+
+                // UPDATE
+                string updateQuery = @"
+            UPDATE tbl_item_category
+            SET name=@name
+            WHERE id=@id;";
+
+                using var cmd = new MySqlCommand(updateQuery, conn);
+                cmd.Parameters.AddWithValue("@id", model.Id);
+                cmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+             
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Category not found" });
+
+                return Ok(new { status = true, message = "Category updated successfully" });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
         [HttpPost]
         public async Task<IActionResult> DeleteCategory(int id)
         {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid category ID" });
+
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var response = await client.DeleteAsync($"api/Lists/DeleteCategory/{id}?databaseName={database}");
-                var result = await response.Content.ReadAsStringAsync();
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
 
-                return Content(result, "application/json");
+                // ✅ Check if category is used in tbl_items
+                string checkQuery = "SELECT COUNT(1) FROM tbl_items WHERE category_id = @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    int count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+
+                    if (count > 0)
+                        return Ok(new { status = false, message = "Category already used in items." });
+                }
+
+                // ✅ Delete category
+                string deleteQuery = "DELETE FROM tbl_item_category WHERE id = @id";
+                using var deleteCmd = new MySqlCommand(deleteQuery, conn);
+                deleteCmd.Parameters.AddWithValue("@id", id);
+
+                int rows = await deleteCmd.ExecuteNonQueryAsync();
+
+                if (rows > 0)
+                    return Ok(new { status = true, message = "Category deleted successfully." });
+                else
+                    return NotFound(new { status = false, message = "Category not found." });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 

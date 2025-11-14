@@ -2,201 +2,223 @@
     ViewData["Title"] = "ItemCategory";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
-<link rel="stylesheet" href="~/assets/vendors/simple-datatables/style.css">
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
-<div class="page-heading">
-    <div class="row">
-        <div class="col-6">
-            <h3>Item Category</h3>
-        </div>
-        <div class="col-6 text-end">
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Item Category</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                 <i class="bi bi-plus-lg"></i> Add Category
             </button>
         </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Category Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
+
 </div>
-
-<section class="section">
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped" id="table1">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Category Name</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</section>
-
 
 
 @Html.Partial("_ItemCategory.cshtml")
 
 @section Scripts {
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/js/MainJs.js"></script>
-    <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script>
-         let dataTable;
-                 // Configure Toastr options
-              toastr.options = {
-                  "closeButton": true,
-                  "debug": false,
-                  "newestOnTop": false,
-                  "progressBar": true,
-                  "positionClass": "toast-top-right",
-                  "preventDuplicates": false,
-                  "onclick": null,
-                  "showDuration": "300",
-                  "hideDuration": "1000",
-                  "timeOut": "5000", // Adjust to desired display duration
-                  "extendedTimeOut": "1000",
-                  "showEasing": "swing",
-                  "hideEasing": "linear",
-                  "showMethod": "fadeIn",
-                  "hideMethod": "fadeOut"
-              };
 
-                      $(document).ready(function () {
+    <script>
+       
+
+         $(document).ready(function () {
              if (document.getElementById("table1")) {
                  loadCategories();
              }
          });
 
-               async function loadCategories() {
-              const response = await fetch('/Lists/GetItemCategory');
-              const result = await response.json();
-
-              if (result.status) {
-                  if (dataTable) {
-                      dataTable.destroy(); // 🔥 fully reset
-                      document.querySelector("#table1 tbody").innerHTML = "";
-                  }
-
-                  dataTable = new simpleDatatables.DataTable("#table1", {
-                      data: {
-                          headings: ["ID", "Category Name", "Actions"],
-                          data: result.data.map(cat => [
-                              cat.id,
-                              cat.categoryName,
-                              `
-                                  <button class="btn btn-sm btn-primary" onclick="editCategory(${cat.id})"> <i class="fas fa-pen"></i> </button>
-                                  <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})"><i class="fas fa-prescription-bottle-alt"></i></button>
-                              `
-                          ])
-                      }
-                  });
-              } else {
-                  alert(result.message);
-              }
-          }
-                  function saveCategory() {
-            var categoryName = $("#categoryName").val();
-
-            if (!categoryName.trim()) {
-                alert("Please enter a category name.");
-                return;
-            }
-
+        function loadCategories() {
             $.ajax({
-                url: '/Lists/AddCategory',
-                type: 'POST',
-                data: { categoryName: categoryName },
-                success: function (result) {
-                    if (result.status) {
-                        var modalEl = document.getElementById("addCategoryModal");
-                        var modal = bootstrap.Modal.getInstance(modalEl);
-                        modal.hide();
+                url: '/Lists/GetItemCategory',  
+                type: 'GET',
 
-                        $("#addCategoryForm")[0].reset();
-                        toastr.success('Category Added Successfully!');
-                        // ✅ Refresh the category table/grid
-                        if (typeof loadCategories === "function") {
-                            loadCategories();
-                        }
-                        // setTimeout(function () {
-                        //     location.reload();
-                        // }, 1500);
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading Categories...
+                            </td>
+                        </tr>
+                    `);
+                },
+
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load categories');
+                        return;
+                    }
+
+                    // Destroy the existing DataTable if already initialized
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    // Check if the data is available and has records
+                    if (res.data && res.data.length > 0) {
+                        console.log(res);
+                        $.each(res.data, function (i, cat) {
+                            const tr = `
+                                <tr data-id="${cat.id}">
+                                    <td>${i + 1}</td>
+                                   <td>${cat.code} - ${cat.name}</td>
+                                    <td class="text-center">
+                                                <button class="btn btn-sm btn-primary editCategoryBtn"
+                data-category='${JSON.stringify(cat)}'>
+            <i class="fas fa-pen"></i>
+        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">
+                                            <i class="fas fa-prescription-bottle-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
                     } else {
-                        toastr.error(result.message);
+                        tbody.append(`
+                            <tr><td colspan="3" class="text-center text-muted py-4">
+                                No categories found
+                            </td></tr>
+                        `);
                     }
                 },
-                error: function (xhr, status, error) {
-                    alert("Error: " + error);
+
+                error: function () {
+                    toastr.error('Error loading categories data');
                 }
             });
         }
 
+        $(document).on("click", ".editCategoryBtn", function () {
+
+            const cat = $(this).data("category");
+
+            $("#categoryId").val(cat.id);
+           $("#categoryName").val(cat.name); 
 
 
-         // ✅ Edit category (fixed version)
-         function editCategory(id) {
-             // Grab table row by matching first cell text
-             let rows = document.querySelectorAll("#table1 tbody tr");
-             let targetRow = Array.from(rows).find(r => r.cells[0].innerText == id);
+            $("#addCategoryModalLabel").text("Edit Category");
+            $("#addCategoryModal").modal("show");
+        });
 
-             if (!targetRow) {
-                 alert("Category not found!");
-                 return;
-             }
+        $("#categoryForm").on("submit", function (e) {
+            e.preventDefault();
 
-             let catId = targetRow.cells[0].innerText;
-             let catName = targetRow.cells[1].innerText;
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add("was-validated");
+                return;
+            }
 
-             $("#editCategoryId").val(catId);
-             $("#editCategoryName").val(catName);
+            const idVal = $("#categoryId").val();
+            const isEdit = idVal && parseInt(idVal) > 0;
 
-             var modalEl = document.getElementById("editCategoryModal");
-             var modal = new bootstrap.Modal(modalEl);
-             modal.show();
-         }
+            const categoryData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                CategoryName: $("#categoryName").val().trim()
+            };
 
-         // ✅ Update category
-         function updateCategory() {
-             var id = $("#editCategoryId").val();
-             var categoryName = $("#editCategoryName").val();
+            $.ajax({
+                url: isEdit ? "/Lists/EditCategory" : "/Lists/AddCategory",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(categoryData),
 
-             if (!categoryName.trim()) {
-                 alert("Please enter a category name.");
-                 return;
-             }
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? "Category updated successfully" : "Category added successfully");
+                        $("#addCategoryModal").modal("hide");
 
-             $.ajax({
-                 url: '/Lists/EditCategory',
-                 type: 'POST',
-                 data: { id: id, categoryName: categoryName },
-                 success: function (result) {
-                       if (result.status) {
-                               var modalEl = document.getElementById("editCategoryModal");
-                           var modal = bootstrap.Modal.getInstance(modalEl);
-                           modal.hide();
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
 
-                            $("#editCategoryForm")[0].reset();
-                               toastr.success('Category Updated Successfully!');
-                                // Redirect to dashboard after a short delay
-                               setTimeout(function () {
-                                  location.reload();
-                               }, 1500); // Optional delay before redirect
-                           } else {
-                                toastr.error(result.message);
-                           }
-                 },
-                 error: function (xhr, status, error) {
-                     alert("Error: " + error);
-                 }
-             });
-         }
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Request error");
+                }
+            });
+        });
+
+        $("#addCategoryBtn").on("click", function () {
+            $("#categoryModalLabel").text("Add Category");
+            $("#categoryForm")[0].reset();
+            $("#categoryId").val(0);
+            $("#categoryModal").modal("show");
+        });
 
         function deleteCategory(id) {
              if (!confirm("Are you sure you want to delete category ID " + id + "?")) {
@@ -222,6 +244,7 @@
                  }
              });
          }
+
     </script>
 }
 
