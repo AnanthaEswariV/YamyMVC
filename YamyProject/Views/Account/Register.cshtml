@@ -83,17 +83,14 @@
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(formData),  // 👈 must stringify
-                success: function (response) {
-                    if (response.status) {
-                        toastr.success(response.message || 'Company created successfully!');
+                       success: function (response) {
+            toastr.success(response.message || 'Company created successfully!');
 
-                        setTimeout(function () {
-                            window.location.href = '@Url.Action("CompanyList", "Account")';
-                        }, 1500);
-                    } else {
-                        toastr.error(response.message || 'Failed to create company.');
-                    }
-                },
+            setTimeout(function () {
+                window.location.href = '@Url.Action("CompanyList", "Account")';
+            }, 1500);
+        },
+
                 error: function (xhr) {
                     toastr.error('An error occurred: ' + xhr.responseText);
                 }

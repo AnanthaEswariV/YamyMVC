@@ -69,7 +69,48 @@ namespace YamyProject.Core.Models
     {
         public int Id { get; set; }
     }
-
+    public class CompanyModels
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+        public string? DatabaseName { get; set; }
+        public string CompanyName { get; set; }
+        public string Name { get; set; }
+        public string? Code { get; set; }
+        public string? Descriptions { get; set; }
+        public string Phone1 { get; set; }
+        public string? Phone2 { get; set; }
+        public string Gmail { get; set; }
+        public string Password { get; set; }
+        public string ConfirmPassword { get; set; }
+        public string? MobileNumber { get; set; }
+        public string? Website { get; set; }
+        public string Address { get; set; }
+        public string? TrnNo { get; set; }
+        public byte[]? LogoComp { get; set; }
+        public int? DefaultCompany { get; set; }
+        public string? CustomerCode { get; set; }
+    }
+    public class UserResponse
+    {
+        public int Id { get; set; }
+        public int RoleId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string UserName { get; set; }
+        public List<UserPermissionDto> Permissions { get; set; }
+    }
+    public class UserPermissionDto
+    {
+        public int SubMenuId { get; set; }
+        public string SubMenuName { get; set; }
+        public int MainMenuId { get; set; }
+        public string MainMenuName { get; set; }
+        public bool CanView { get; set; }
+        public bool CanEdit { get; set; }
+        public bool CanDelete { get; set; }
+    }
     public class ChangePasswordRequest
     {
         public string? UserName { get; set; }

@@ -59,28 +59,38 @@
     </div>
 
     <script>
-        let selectedDb = null; // will hold db name
+        let selectedDb = null;
 
         $(document).ready(function () {
+
             $.ajax({
                 url: '@Url.Action("GetCompanyList", "Account")',
                 type: 'GET',
+                dataType: 'json',
                 success: function (response) {
+
                     let table = $("#companyTable tbody");
                     table.empty();
 
-                    if (response.status && response.data.length > 0) {
-                        $.each(response.data, function (i, company) {
-                            let row = `<tr class="hover:bg-gray-700 cursor-pointer"
-                                         data-db="${company.databaseName || company.DatabaseName}">
-                                <td class="px-4 py-2">${company.code || company.Code}</td>
-                                <td class="px-4 py-2">${company.name || company.Name}</td>
-                                <td class="px-4 py-2">${company.descriptions || company.Descriptions || ""}</td>
-                            </tr>`;
+                    // response is an array
+                    if (Array.isArray(response) && response.length > 0) {
+
+                        $.each(response, function (i, company) {
+
+                            let row = `
+                                <tr class="hover:bg-gray-700 cursor-pointer"
+                                    data-db="${company.databaseName}">
+
+                                    <td class="px-4 py-2">${company.code}</td>
+                                    <td class="px-4 py-2">${company.name}</td>
+                                    <td class="px-4 py-2">${company.descriptions ?? ""}</td>
+                                </tr>
+                            `;
+
                             table.append(row);
                         });
 
-                        // ✅ select row
+                        // row click select
                         $("#companyTable tbody tr").on("click", function () {
                             $("#companyTable tbody tr").removeClass("bg-blue-700");
                             $(this).addClass("bg-blue-700");
@@ -88,18 +98,26 @@
                             selectedDb = $(this).data("db");
                             $("#openCompanyBtn").prop("disabled", false);
                         });
+
                     } else {
-                        table.append(`<tr><td colspan="3" class="text-center py-4 text-gray-400">${response.message || "No companies found"}</td></tr>`);
+                        table.append(`<tr>
+                            <td colspan="3" class="text-center py-4 text-gray-400">
+                                No companies found
+                            </td>
+                        </tr>`);
                     }
                 },
+
                 error: function (xhr) {
-                    $("#companyTable tbody").html(
-                        `<tr><td colspan="3" class="text-center py-4 text-red-400">Error: ${xhr.statusText}</td></tr>`
-                    );
+                    $("#companyTable tbody").html(`
+                        <tr><td colspan="3" class="text-center py-4 text-red-400">
+                            Error: ${xhr.statusText}
+                        </td></tr>
+                    `);
                 }
             });
 
-            // ✅ Open company
+            // Open company
             $("#openCompanyBtn").on("click", function () {
                 if (selectedDb) {
                     sessionStorage.setItem("selectedDatabase", selectedDb);
@@ -110,5 +128,6 @@
             });
         });
     </script>
+
 </body>
 </html>
