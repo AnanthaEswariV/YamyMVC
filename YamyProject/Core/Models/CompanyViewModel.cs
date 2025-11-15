@@ -31,6 +31,32 @@ namespace YamyProject.Core.Models
         public int Id { get; set; }
         public string Name { get; set; }
     }
+
+    public class InvoiceViewModel
+    {
+        public int Id { get; set; }
+        public int SN { get; set; }
+        public string Date { get; set; }
+        public string RefId { get; set; }
+        public string Name { get; set; }
+        public string Code { get; set; }
+        public int ItemId { get; set; }
+        public string Account { get; set; }
+        public decimal CostPrice { get; set; }
+        public string Description { get; set; }
+    }
+
+
+    public class CoaNode
+    {
+        public int Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public decimal Credit { get; set; }
+        public decimal Debit { get; set; }
+        public DateTime? Date { get; set; }
+        public List<CoaNode> Children { get; set; } = new List<CoaNode>();
+    }
     public class TaxViewModel
     {
         public int Id { get; set; }           // for edit/delete

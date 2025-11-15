@@ -855,26 +855,152 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
+
         [HttpGet]
         public async Task<IActionResult> GetCOA()
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                // Build connection string using session database
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
+                string connStr = connStrBuilder.ConnectionString;
 
-                // call your API
-                var response = await client.GetAsync($"api/Lists/GetCOAHierarchy?databaseName={database}");
-                var result = await response.Content.ReadAsStringAsync();
+                // ---------------- Level 1 ----------------
+                List<CoaNode> level1 = new();
+                using (var conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = "SELECT id, code, name FROM tbl_coa_level_1 ORDER BY id";
 
-                return Content(result, "application/json");
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        level1.Add(new CoaNode
+                        {
+                            Id = reader.GetInt32("id"),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            Children = new List<CoaNode>()
+                        });
+                    }
+                }
+
+                // ---------------- Level 2 ----------------
+                var level2Dict = new Dictionary<int, List<CoaNode>>();
+                using (var conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = "SELECT id, code, name, main_id FROM tbl_coa_level_2 ORDER BY id";
+
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        var node = new CoaNode
+                        {
+                            Id = reader.GetInt32("id"),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            Children = new List<CoaNode>()
+                        };
+
+                        int parent = reader.GetInt32("main_id");
+                        if (!level2Dict.ContainsKey(parent))
+                            level2Dict[parent] = new List<CoaNode>();
+
+                        level2Dict[parent].Add(node);
+                    }
+                }
+
+                // Attach level 2
+                foreach (var l1 in level1)
+                    if (level2Dict.ContainsKey(l1.Id))
+                        l1.Children.AddRange(level2Dict[l1.Id]);
+
+                // ---------------- Level 3 ----------------
+                var level3Dict = new Dictionary<int, List<CoaNode>>();
+                using (var conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = "SELECT id, code, name, main_id FROM tbl_coa_level_3 ORDER BY id";
+
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        var node = new CoaNode
+                        {
+                            Id = reader.GetInt32("id"),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            Children = new List<CoaNode>()
+                        };
+
+                        int parent = reader.GetInt32("main_id");
+                        if (!level3Dict.ContainsKey(parent))
+                            level3Dict[parent] = new List<CoaNode>();
+
+                        level3Dict[parent].Add(node);
+                    }
+                }
+
+                // Attach level 3
+                foreach (var l1 in level1)
+                    foreach (var l2 in l1.Children)
+                        if (level3Dict.ContainsKey(l2.Id))
+                            l2.Children.AddRange(level3Dict[l2.Id]);
+
+                // ---------------- Level 4 ----------------
+                var level4Dict = new Dictionary<int, List<CoaNode>>();
+                using (var conn = new MySqlConnection(connStr))
+                {
+                    await conn.OpenAsync();
+                    string query = "SELECT id, code, name, main_id, debit, credit, date FROM tbl_coa_level_4 ORDER BY id";
+
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        var node = new CoaNode
+                        {
+                            Id = reader.GetInt32("id"),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            Debit = reader["debit"] != DBNull.Value ? reader.GetDecimal("debit") : 0,
+                            Credit = reader["credit"] != DBNull.Value ? reader.GetDecimal("credit") : 0,
+                            Date = reader["date"] != DBNull.Value ? reader.GetDateTime("date") : null
+                        };
+
+                        int parent = reader.GetInt32("main_id");
+                        if (!level4Dict.ContainsKey(parent))
+                            level4Dict[parent] = new List<CoaNode>();
+
+                        level4Dict[parent].Add(node);
+                    }
+                }
+
+                // Attach level 4
+                foreach (var l1 in level1)
+                    foreach (var l2 in l1.Children)
+                        foreach (var l3 in l2.Children)
+                            if (level4Dict.ContainsKey(l3.Id))
+                                l3.Children.AddRange(level4Dict[l3.Id]);
+
+                return Ok(new { status = true, data = level1 });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
@@ -1790,32 +1916,88 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             return View();
         }
 
-        // Fetch data from API
         [HttpGet]
         public async Task<IActionResult> GetFixedAssetItem(DateTime? dateFrom, DateTime? dateTo, bool ignoreDate = false)
         {
             try
             {
-                var database = HttpContext.Session.GetString("DatabaseName");
-                if (string.IsNullOrEmpty(database))
-                    return Json(new { status = false, message = "No database selected. Please login first." });
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                var client = _httpClientFactory.CreateClient("ApiClient");
 
-                string url = $"api/Lists/fixed-assets?databaseName={database}&ignoreDate={ignoreDate}";
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY t.date DESC) AS SN,
+                DATE_FORMAT(t.date, '%d/%m/%Y') AS `Date`,
+                t.reference AS `RefId`,
+                i.id As 'Id',
+                i.name AS `Name`,
+                i.code AS `Code`,
+                i.id AS `ItemId`,
+                (SELECT name FROM tbl_coa_level_4 WHERE id = i.asset_account_id) AS `Account`,
+                t.cost_price AS `CostPrice`,
+                t.description AS `Description`
+            FROM tbl_items i
+            LEFT JOIN tbl_item_transaction t ON t.id = (
+                SELECT id 
+                FROM tbl_item_transaction 
+                WHERE item_id = i.id
+                /**DATE_FILTER**/
+                ORDER BY date DESC 
+                LIMIT 1
+            )
+            WHERE i.item_type = 'Fixed Assets'
+              AND i.state = 0
+            ORDER BY t.date DESC;
+        ";
+
+                var parameters = new List<MySqlParameter>();
                 if (!ignoreDate && dateFrom.HasValue && dateTo.HasValue)
                 {
-                    url += $"&dateFrom={dateFrom:yyyy-MM-dd}&dateTo={dateTo:yyyy-MM-dd}";
+                    query = query.Replace("/**DATE_FILTER**/", "AND date BETWEEN @dateFrom AND @dateTo");
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value));
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value));
+                }
+                else
+                {
+                    query = query.Replace("/**DATE_FILTER**/", "");
                 }
 
-                var response = await client.GetAsync(url);
-                var result = await response.Content.ReadAsStringAsync();
+                var results = new List<InvoiceViewModel>();
 
-                return Content(result, "application/json");
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Count > 0)
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    results.Add(new InvoiceViewModel
+                    {
+                        Id = Convert.ToInt32(reader["id"]),
+                        SN = Convert.ToInt32(reader["SN"]),
+                        Date = reader["Date"].ToString(),
+                        RefId = reader["RefId"].ToString(),
+                        Name = reader["Name"].ToString(),
+                        Code = reader["Code"].ToString(),
+                        ItemId = Convert.ToInt32(reader["ItemId"]),
+                        Account = reader["Account"].ToString(),
+                        CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                        Description = reader["Description"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = results });
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                throw ex;
             }
         }
 

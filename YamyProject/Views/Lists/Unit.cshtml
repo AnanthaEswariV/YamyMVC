@@ -46,7 +46,7 @@
 
 </div>
 
-@Html.Partial("_Unit")  
+@Html.Partial("_Unit")
 
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -147,7 +147,7 @@
                                 orientation: 'landscape',
                                 pageSize: 'A4',
                                   exportOptions: {
-                columns: ':not(:last-child)' 
+                columns: ':not(:last-child)'
             }
                             }
                         ],
@@ -173,7 +173,7 @@
             $.ajax({
                 url: '/Lists/AddUnit',
                 type: 'POST',
-                contentType: 'application/json',  
+                contentType: 'application/json',
                 data: JSON.stringify({ Name: name }),
                 success: function (res) {
                     if (res.status) {
@@ -247,14 +247,14 @@
             if (!confirm("Are you sure you want to delete this unit?")) return;
 
             $.ajax({
-                url: '/Lists/DeleteUnit?id=' + id, 
+                url: '/Lists/DeleteUnit?id=' + id,
                 type: 'POST',
                 success: function(res) {
                     if (res.status) {
                         toastr.success('Unit Deleted Successfully!');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        toastr.error(res.message); 
+                        toastr.error(res.message);
                     }
                 },
                 error: function(xhr) {
