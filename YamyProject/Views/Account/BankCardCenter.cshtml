@@ -3,7 +3,18 @@
     ViewData["Title"] = "BankCardCenter";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
@@ -268,13 +279,13 @@
                                 let tr = `
                                     <tr>
                                         <td>${row.sn}</td>
-                                        <td>${row.bankName ?? ""}</td>
-                                        <td>${row.acName ?? ""}</td>
-                                        <td>${row.acType ?? ""}</td>
-                                        <td>${row.acNo ?? ""}</td>
-                                        <td>${row.swift ?? ""}</td>
-                                        <td>${row.ibanNo ?? ""}</td>
-                                        <td>${row.branchName ?? ""}</td>
+                                        <td>${row.bankName ?? "-"}</td>
+                                        <td>${row.acName ?? "-"}</td>
+                                        <td>${row.acType ?? "-"}</td>
+                                        <td>${row.acNo ?? "-"}</td>
+                                        <td>${row.swift ?? "-"}</td>
+                                        <td>${row.ibanNo ?? "-"}</td>
+                                        <td>${row.branchName ?? "-"}</td>
                                              <td>
                     <button class="btn btn-sm btn-primary editCardBtn"
                 data-card='${JSON.stringify(row)}'>
@@ -291,15 +302,31 @@
                                 tbody.append(tr);
                             });
 
-                            $("#table1").DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
-                                ],
-                                order: [[0, 'asc']],
-                                pageLength: 25
-                            });
+                         $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                columns: ':not(:last-child)'
+            }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    exportOptions: {
+                columns: ':not(:last-child)'
+            }
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
                         } else {
                             tbody.append(`<tr><td colspan="9" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
                             $('.dt-buttons').hide();

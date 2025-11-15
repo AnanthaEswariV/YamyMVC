@@ -2,36 +2,46 @@
     ViewData["Title"] = "Position";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
-<div class="page-heading">
-    <div class="row">
-        <div class="col-6">
-            <h3>Position List</h3>
-        </div>
-        <div class="col-6 text-end">
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Position List</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPositionModal">
                 <i class="bi bi-plus-lg"></i> Add Position
             </button>
         </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="positionTable">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Position Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
+
 </div>
 
-<section class="section">
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped" id="positionTable">
-                <thead>
-                    <tr>
-                        <th>Department</th>
-                        <th>Position Name</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</section>
 
 <!-- Add/Edit Position Modal -->
 <div class="modal fade" id="addPositionModal" tabindex="-1" aria-hidden="true">
@@ -123,43 +133,95 @@
                 }
             });
         }
-
-            // Load positions table
+        // Load positions table
         function loadPositions() {
-            $.get('/Lists/GetPositions', function(res) {
-                if (res.status) {
+            $.ajax({
+                url: '/Lists/GetPositions',
+                type: 'GET',
+
+                beforeSend: function () {
+                    $('#positionTable tbody').html(`
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading Positions...
+                            </td>
+                        </tr>
+                    `);
+                },
+
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load positions');
+                        return;
+                    }
+
+                    // Destroy the existing DataTable if already initialized
+                    if ($.fn.DataTable.isDataTable("#positionTable")) {
+                        $("#positionTable").DataTable().clear().destroy();
+                    }
+
                     const tbody = $("#positionTable tbody");
                     tbody.empty();
 
-                    res.data.forEach(pos => {
-                        const row = `<tr>
-                            <td>${pos.departmentName}</td>
-                            <td>${pos.name}</td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-primary edit-btn" data-id="${pos.id}" data-dept="${pos.departmentId}" data-name="${pos.name}">
-                                   <i class="fas fa-pen"></i>
-                                </button>
-                                <button class="btn btn-sm btn-danger delete-btn" data-id="${pos.id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>`;
-                        tbody.append(row);
-                    });
+                    // Check if the data is available and has records
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, pos) {
+                            const row = `
+                                <tr data-id="${pos.id}">
+                                    <td>${pos.departmentName}</td>
+                                    <td>${pos.name}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-primary edit-btn" data-id="${pos.id}" data-dept="${pos.departmentId}" data-name="${pos.name}">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger delete-btn" data-id="${pos.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(row);
+                        });
 
-                    // Destroy old DataTable if exists
-                    if ($.fn.DataTable.isDataTable("#positionTable")) {
-                        $("#positionTable").DataTable().destroy();
+                        // Initialize DataTable with Excel & PDF export buttons
+                        $("#positionTable").DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    title: 'Positions',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                                    }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    title: 'Positions',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'  // Exclude the last column (Actions)
+                                    }
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
+                    } else {
+                        tbody.append(`
+                            <tr><td colspan="3" class="text-center text-muted py-4">
+                                No positions found
+                            </td></tr>
+                        `);
                     }
+                },
 
-                    // Initialize DataTable with Excel & PDF export buttons
-                    $("#positionTable").DataTable({
-                        dom: 'Bfrtip',
-                        buttons: [
-                            { extend: 'excelHtml5', title: 'Positions' },
-                            { extend: 'pdfHtml5', title: 'Positions' }
-                        ]
-                    });
+                error: function () {
+                    toastr.error('Error loading positions data');
                 }
             });
         }

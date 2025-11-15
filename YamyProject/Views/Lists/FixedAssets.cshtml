@@ -58,11 +58,7 @@
             border: 1px solid #ccc;
         }
 
-    .employee-list {
-        flex: 1;
-        overflow-y: auto;
-    }
-
+ 
     .employee-list-header {
         background: #f8f9fa;
         padding: 6px 12px;
@@ -97,10 +93,7 @@
         position: relative;
     }
 
-    .modal-body {
-        max-height: 70vh;
-        overflow-y: auto;
-    }
+  
 
 }
 
@@ -134,7 +127,7 @@
     <div class="fixed-sidebar p-3 border rounded">
         <!-- Employee Table -->
         <div class="employee-list">
-            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <div class="table-responsive" style="max-height: 500px; overflow-x: auto; overflow-y: auto;">
                 <table class="table table-striped custom-table mb-0" id="fixedassetTable" style="font-size: 12px;">
                     <thead class="table-light">
                         <tr>
@@ -149,8 +142,8 @@
                     </tbody>
                 </table>
             </div>
-
         </div>
+
     </div>
 
     <div class="employee-content">
@@ -190,11 +183,8 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
 
-
-
                 $(document).ready(function () {
 
-            // 🔹 Load Categories into Add + Edit dropdowns
             function loadFixedAssetCategories() {
                 $.ajax({
                     url: '/Lists/GetFixedAssetsCategoryList',
@@ -230,7 +220,6 @@
                 });
             }
 
-            // 🔹 Handle Category Change → Auto-assign linked accounts
             function bindCategoryChangeHandlers() {
                 // Add form
                 $('#assetCategory').on('change', function () {
@@ -253,7 +242,6 @@
                 });
             }
 
-            // 🔹 Load Accounts into dropdowns + bind to code boxes
             function loadAccounts() {
                 $.ajax({
                     url: '/HR/GetAccruedSalaries', // make sure this is your accounts API
@@ -296,15 +284,11 @@
                 });
             }
 
-            // ✅ Init on page load
             loadFixedAssetCategories();
             loadAccounts();
             bindCategoryChangeHandlers();
 
         });
-
-
-
 
          function addFixedAssetsCategory() {
                     let model = {
@@ -343,7 +327,7 @@
                     });
                 }
 
-                    function loadAllFixedAssets() {
+        function loadAllFixedAssets() {
             $.ajax({
                 url: '/Lists/GetAllFixedAssets',
                 type: 'GET',
@@ -455,7 +439,6 @@
             });
         }
 
-        // Helper to format Date for table display
         function formatDate(dateStr) {
             const d = new Date(dateStr);
             const month = ('0' + (d.getMonth() + 1)).slice(-2);
@@ -465,8 +448,6 @@
 
             $(document).ready(function () {
 
-
-            // ===== Load Fixed Assets Categories into dropdown =====
             $.ajax({
             url: '/Lists/GetFixedAssetsCategory',
             type: 'GET',
@@ -500,7 +481,6 @@
             }
         });
 
-            // ===== Load Accounts for Add Modal dropdowns =====
             $.ajax({
             url: '/HR/GetAccruedSalaries',
             type: 'GET',
@@ -578,7 +558,6 @@
             const totalDays = Math.round((endDate - purchaseDate) / (1000 * 60 * 60 * 24)) + 1;
             totalDaysInput.val(totalDays);
         }
-            // ✅ Call for main depreciation input
             $('#depreciationLife').on('input', function () {
             calculateDepreciation(
                 '#depreciationLife',
@@ -589,13 +568,8 @@
             );
         });
 
-
-
-    
-
-
               $(document).on("click", ".editAsset", function () {
-            let asset = $(this).data("asset"); // make sure data-asset contains full JSON object
+            let asset = $(this).data("asset"); 
 
             if (!asset) return;
 
@@ -738,7 +712,6 @@
         });
 
 
-              // ✅ Update Fixed Asset Function
         function updateFixedAsset() {
             // Get form values
             const id = parseInt($("#editFixedAssetId").val());
@@ -777,7 +750,6 @@
                 return;
             }
 
-            // Build payload matching exact C# model properties
             let payload = {
                 Id: id,
                 Name: name,
@@ -799,7 +771,7 @@
                 ManufactureId: 0  // ✅ Changed from false to 0 (int)
             };
 
-            console.log("📤 Sending update payload:", payload);
+          
 
             $.ajax({
                 url: "/Lists/UpdateFixedAsset",
@@ -807,16 +779,13 @@
                 data: JSON.stringify(payload),
                 contentType: "application/json",
                 beforeSend: function() {
-                    // Disable submit button to prevent double submission
                     $("#editFixedAssetForm button[type='submit']").prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Updating...');
                 },
                 success: function(res) {
-                    console.log("✅ Update response:", res);
                     if (res.status) {
                         $("#editFixedAssetModal").modal("hide");
                         toastr.success(res.message || "Fixed Asset updated successfully!");
 
-                        // Reload after short delay
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.error(res.message || "Failed to update asset");
@@ -825,7 +794,6 @@
                 error: function(xhr, status, error) {
                     console.error("❌ Update failed:", xhr);
 
-                    // Parse error response
                     let errorMessage = "Failed to update asset";
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
@@ -847,13 +815,11 @@
                     });
                 },
                 complete: function() {
-                    // Re-enable submit button
                     $("#editFixedAssetForm button[type='submit']").prop("disabled", false).html('Update Asset');
                 }
             });
         }
 
-        // Attach to form submit
         $("#editFixedAssetForm").on("submit", function (e) {
             e.preventDefault();
             updateFixedAsset();
@@ -914,9 +880,6 @@
             });
         });
 
-
-
-                // Delete Fixed Asset
         $(document).on("click", ".deleteAsset", function () {
             const assetId = $(this).data("id");
 
@@ -945,8 +908,6 @@
                 }
             });
         });
-
-
 
 
     </script>

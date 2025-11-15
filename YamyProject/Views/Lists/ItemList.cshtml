@@ -12,262 +12,37 @@
     .inventory-header {
         background: #4472c4;
         color: white;
+        margin: -15px -15px 0 -15px;
         padding: 8px 15px;
         font-weight: bold;
         text-align: center;
-        font-size: 14px;
     }
 
-    .mt-4 {
-        margin-top: 2.0rem !important;
-    }
-
-    .toolbar {
+    .employee-toolbar {
         background: #e7e6e6;
+        margin: 0 -15px;
         padding: 5px 15px;
         border-bottom: 1px solid #ccc;
         font-size: 12px;
     }
 
-        .toolbar .nav-link {
+        .employee-toolbar .nav-link {
             color: #333;
             padding: 2px 8px;
             font-size: 12px;
-            text-decoration: none;
-            border: 1px solid transparent;
         }
 
-            .toolbar .nav-link:hover {
-                background-color: rgba(0,0,0,0.1);
-                border-radius: 3px;
-            }
-
-    .main-container {
-        display: flex;
-        height: calc(100vh - 80px);
-        background: white;
+    .dataTables_wrapper {
+        padding: 50px;
     }
-    /* Left Panel Styling */
-    .left-panel {
-        width: 330px;
-        background: #f8f9fa;
-        border-right: 2px solid #ddd;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .filter-section {
-        padding: 12px;
-        border-bottom: 1px solid #ddd;
-    }
-
-    .filter-row {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-        font-size: 11px;
-    }
-
-    .filter-label {
-        width: 60px;
-        font-weight: 600;
-        color: #333;
-        text-align: right;
-        margin-right: 10px;
-    }
-
-    .filter-control {
-        flex: 1;
-        display: flex;
-        align-items: center;
-    }
-
-        .filter-control select {
-            flex: 1;
-            font-size: 11px;
-            padding: 2px 4px;
-            border: 1px solid #ccc;
-            background: white;
-        }
-
-        .filter-control input[type="text"] {
-            flex: 1;
-            font-size: 11px;
-            padding: 3px 6px;
-            border: 1px solid #ccc;
-        }
-
-    .checkbox-container {
-        display: flex;
-        align-items: center;
-        margin-left: 8px;
-        font-size: 11px;
-    }
-
-        .checkbox-container input {
-            margin-right: 4px;
-            transform: scale(0.8);
-        }
-
-    /* Items List */
-    .items-list {
-        flex: 1;
-        margin: 8px;
-        overflow: hidden;
-    }
-
-        .items-list .card {
-            height: 100%;
-        }
-
-        .items-list .table-responsive {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-    .custom-table {
-        font-size: 11px;
-    }
-
-        .custom-table th {
-            font-size: 11px;
-            font-weight: 600;
-            padding: 6px 8px;
-        }
-
-        .custom-table td {
-            padding: 4px 8px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-
-        .custom-table tbody tr:hover {
-            background-color: #e3f2fd;
-        }
-
-        .custom-table tbody tr.selected {
-            background-color: #b3d9ff !important;
-        }
-
-    .item-code {
-        font-weight: 600;
-        color: #000;
-    }
-
-    .item-type {
-        color: #666;
-    }
-
-    /* Right Panel */
-    .right-panel {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background: white;
-    }
-
-    .right-header {
-        background: #f8f9fa;
-        padding: 8px 12px;
-        border-bottom: 1px solid #ddd;
-        font-size: 11px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .header-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-        .header-info span {
-            font-size: 11px;
-            color: #555;
-        }
-
     .go-to-link {
         color: #0066cc;
         text-decoration: none;
         font-size: 11px;
+        float: right;
     }
 
-    /* Right Panel Data Grid */
-    .right-panel .card {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .right-panel .card-body {
-        flex: 1;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .data-grid {
-        flex: 1;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-
-        .data-grid .table-responsive {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .data-grid .custom-table {
-            font-size: 11px;
-            margin: 0;
-        }
-
-            .data-grid .custom-table th {
-                font-size: 10px;
-                font-weight: 600;
-                padding: 6px 8px;
-                white-space: nowrap;
-            }
-
-            .data-grid .custom-table td {
-                padding: 6px 8px;
-                font-size: 11px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            .data-grid .custom-table tbody tr:hover {
-                background-color: #e3f2fd;
-            }
-
-    .modal-body {
-        max-height: calc(90vh - 120px); 
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    #dataTable {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-        #dataTable tbody {
-            display: block;
-            max-height: 500px;
-            overflow-y: auto;
-            width: 100%;
-        }
-
-            #dataTable thead,
-            #dataTable tbody tr {
-                display: table;
-                width: 100%;
-                table-layout: fixed;
-            }
+  
 
 </style>
 
@@ -276,139 +51,86 @@
     Inventory Center
 </div>
 
-<div class="toolbar">
-    <div class="container-fluid p-0">
-        <ul class="nav nav-pills">
-            <li class="nav-item dropdown me-2">
-                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-                    <i class="bi bi-gear-fill me-1"></i> Item Operations
-                </a>
-                <ul class="dropdown-menu">
-                    <li>
-                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#newItemModal">
-                            <i class="bi bi-plus-circle me-2"></i> New Item
+<div class="employee-toolbar">
+    <div class="container">
+
+        <!-- Top Controls -->
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-8">
+                <ul class="nav nav-pills">
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                            <i class="bi bi-gear-fill me-1"></i> Item Operation
                         </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newItemModal">
+                                    <i class="bi bi-plus-circle me-2"></i> New Item
+                                </a>
+                            </li>
+                        </ul>
                     </li>
-
                 </ul>
-            </li>
-            <li class="nav-item me-2">
-                <a class="nav-link" href="#" id="btnPrint">
-                    <i class="bi bi-printer me-1"></i> Print
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#" id="btnExcel">
-                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
-                </a>
-            </li>
-        </ul>
-    </div>
-</div>
-
-<div class="main-container">
-    <!-- Left Panel -->
-    <div class="left-panel">
-        <div class="filter-section">
-
-
-            <div class="filter-row">
-                <div class="filter-label">State</div>
-                <div class="filter-control">
-                    <select id="stateFilter">
-                        <option value="All">All</option>
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                    </select>
-                </div>
             </div>
-
-            <div class="filter-row">
-                <div class="filter-label">Category</div>
-                <div class="filter-control">
-                    <select id="categoryDropdown" class="form-select">
-                        <option value="">Loading...</option>
-                    </select>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="allCat" checked>
-                        <label for="allCat">All</label>
-                    </div>
-                </div>
-
+            <div class="col-md-4">
+                <button type="button" class="btn btn-primary go-to-link">
+                    <i class="fas fa-cart-plus"></i> Go To Item
+                </button>
             </div>
+        </div>
 
-            <div class="filter-row">
-                <div class="filter-label">Type</div>
-                <div class="filter-control">
-                    <select id="typeDropdown">
-                        <option value="11">11 - Inventory Part</option>
-                        <option value="12">12 - Service</option>
-                        <option value="13">13 - Inventory Assembly</option>
-                    </select>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="allType" checked>
-                        <label for="allType">All</label>
+        <div class="row">
+            <!-- Warehouse Table -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped custom-table mb-0" id="itemsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Item Name</th>
+                                        <th>Type</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
-
-        </div>
-
-        <div class="items-list">
-            <div class="card shadow-sm h-100">
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-striped custom-table mb-0" id="itemsTable">
-                            <thead>
-                                <tr>
-                                    <th>Item Name</th>
-                                    <th>Type</th>
-                                    <th class="text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+            <!-- Items Table -->
+            <div class="col-md-8">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped custom-table mb-0" id="dataTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Item Name</th>
+                                        <th>Barcode</th>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>INV NO</th>
+                                        <th>Type</th>
+                                        <th>Qty In</th>
+                                        <th>Qty Out</th>
+                                        <th>Cost Price</th>
+                                        <th>Sales Price</th>
+                                        <th>Qty Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Right Panel -->
-    <div class="right-panel">
-        <div class="right-header d-flex justify-content-end mb-2">
-            <button type="button" class="btn btn-primary go-to-link">
-                <i class="fas fa-cart-plus"></i> Go To Item
-            </button>
-        </div>
-        <div class="card shadow-sm h-100">
-            <div class="card-body p-0">
-                <div class="data-grid">
-                    <div class="table-responsive">
-                        <table class="table table-striped custom-table mb-0" id="dataTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Item Name</th>
-                                    <th>Barcode</th>
-                                    <th>Type</th>
-                                    <th>Date</th>
-                                    <th>INV NO</th>
-                                    <th>Type</th>
-                                    <th>Qty In</th>
-                                    <th>Qty Out</th>
-                                    <th>Cost Price</th>
-                                    <th>Sales Price</th>
-                                    <th>Qty Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+
     </div>
 </div>
 
@@ -664,12 +386,15 @@
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
     <script>
         let selectedItem = null;
-        let assemblyItems = []; // loaded from API
+        let assemblyItems = []; 
 
         function loadAssemblyItems() {
             $.ajax({
@@ -1023,7 +748,7 @@
 
 
                 $(document).on("click", ".edit-item", function () {
-            const data = $(this).data();  // grab all data-* attributes
+            const data = $(this).data();  
 
             // Fill modal inputs
             $("#itemId").val(data.id);

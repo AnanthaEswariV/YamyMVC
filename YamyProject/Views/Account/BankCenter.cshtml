@@ -3,7 +3,18 @@
     ViewData["Title"] = "BankCenter";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
@@ -180,11 +191,11 @@
                             $("#table1").DataTable({
                                 dom: 'Bfrtip',
                                 buttons: [
-                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
+                                    { extend: 'excelHtml5', className: 'btn btn-primary btn-sm',text: '<i class="fas fa-file-excel me-1"></i> Excel', exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5',className: 'btn btn-primary btn-sm',text: '<i class="fas fa-file-pdf me-1"></i> PDF', exportOptions: { columns: ':not(:last-child)' } }
                                 ],
                                 order: [[0, 'asc']],
-                                pageLength: 25
+                                pageLength: 15
                             });
                         } else {
                             tbody.append(`<tr><td colspan="7" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);

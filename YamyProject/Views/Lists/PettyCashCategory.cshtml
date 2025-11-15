@@ -4,7 +4,18 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
@@ -97,9 +108,6 @@
 
         $(document).ready(function () {
 
-
-
-
         function loadPettyCashCategories() {
             $.ajax({
                 url: "/Lists/GetPettyCashCategories",
@@ -130,15 +138,32 @@
                                 tbody.append(tr);
                             });
 
-                            $("#pcCategoryTable").DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
-                                ],
-                                order: [[0, 'asc']],
-                                pageLength: 25
-                            });
+
+                             $('#pcCategoryTable').DataTable({
+                                    dom: 'Bfrtip',
+                                    buttons: [
+                                        {
+                                            extend: 'excelHtml5',
+                                            text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                            className: 'btn btn-primary btn-sm',
+                                            exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                                        },
+                                        {
+                                            extend: 'pdfHtml5',
+                                            text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                            className: 'btn btn-primary btn-sm',
+                                            orientation: 'landscape',
+                                            pageSize: 'A4',
+                                            exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                                        }
+                                    ],
+                                    order: [[0, 'asc']],
+                                    pageLength: 15
+                                });
                         } else {
                             tbody.append(`<tr><td colspan="4" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
                             $('.dt-buttons').hide();
@@ -222,7 +247,7 @@
             $('#pcCategoryModalLabel').text("P.C Category - New Category"); // reset title
         });
 
-              });
+        });
 
 
    </script>

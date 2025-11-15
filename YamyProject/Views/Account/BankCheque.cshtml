@@ -2,7 +2,18 @@
     ViewData["Title"] = "BankCheque";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <div class="card">
     <div class="card-header text-center">
@@ -31,7 +42,6 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Rows will be loaded dynamically -->
             </tbody>
         </table>
     </div>
@@ -160,16 +170,31 @@
                                 tbody.append(tr);
                             });
 
-                            // Initialize DataTable
-                            $("#table1").DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
-                                ],
-                                order: [[0, 'asc']],
-                                pageLength: 25
-                            });
+                                     $('#table1').DataTable({
+                                    dom: 'Bfrtip',
+                                    buttons: [
+                                        {
+                                            extend: 'excelHtml5',
+                                            text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                            className: 'btn btn-primary btn-sm',
+                                            exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                                        },
+                                        {
+                                            extend: 'pdfHtml5',
+                                            text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                            className: 'btn btn-primary btn-sm',
+                                            orientation: 'landscape',
+                                            pageSize: 'A4',
+                                            exportOptions: {
+                        columns: ':not(:last-child)'
+                    }
+                                        }
+                                    ],
+                                    order: [[0, 'asc']],
+                                    pageLength: 15
+                                });
                         } else {
                             tbody.append(`<tr><td colspan="8" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
                             $('.dt-buttons').hide();
@@ -352,7 +377,7 @@
         });
 
                    // ===== Single Submit Handler for Add / Edit =====
-        $('#checkBookForm').on('submit', function(e) {
+               $('#checkBookForm').on('submit', function(e) {
             e.preventDefault();
 
             const chequeId = parseInt($('#chequeBookId').val()) || 0; // 0 = new, >0 = edit

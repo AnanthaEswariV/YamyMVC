@@ -2,36 +2,46 @@
     ViewData["Title"] = "FixedAssetsCategory";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
 
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-<div class="page-heading">
-    <div class="row">
-        <div class="col-6">
-            <h3>Fixed Assets Category List</h3>
-        </div>
-        <div class="col-6 text-end">
+
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Fixed Assets Category List</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFixedAssetsCategoryModal">
-                <i class="bi bi-plus-lg"></i> Add Fixed Assets Category
+                <i class="bi bi-plus-lg"></i>Fixed Assets Category
             </button>
         </div>
-    </div>
-</div>
 
-<section class="section">
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-striped" id="fixedAssetCategoryTable">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="fixedAssetCategoryTable">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
-</section>
+
+</div>
 
 
 
@@ -58,67 +68,103 @@
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
+
     <script>
 
-                function loadFixedAssetCategories() {
+                       function loadFixedAssetCategories() {
             $.ajax({
                 url: "/Lists/GetFixedAssetsCategory",
                 type: "GET",
+
+                beforeSend: function () {
+                    $('#fixedAssetCategoryTable tbody').html(`
+                        <tr>
+                            <td colspan="2" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading Asset Categories...
+                            </td>
+                        </tr>
+                    `);
+                },
+
                 success: function (res) {
-                    if (res.status) {
-                        if ($.fn.DataTable.isDataTable("#fixedAssetCategoryTable")) {
-                            $("#fixedAssetCategoryTable").DataTable().destroy();
-                        }
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load asset categories');
+                        return;
+                    }
 
-                        let tbody = $("#fixedAssetCategoryTable tbody");
-                        tbody.empty();
+                    // Destroy the existing DataTable if already initialized
+                    if ($.fn.DataTable.isDataTable("#fixedAssetCategoryTable")) {
+                        $("#fixedAssetCategoryTable").DataTable().clear().destroy();
+                    }
 
-                        if (res.data && res.data.length > 0) {
-                            $.each(res.data, function (i, cat) {
-                                let rowData = JSON.stringify(cat);
+                    const tbody = $("#fixedAssetCategoryTable tbody");
+                    tbody.empty();
 
-                                let tr = `
-                                    <tr>
-                                        <td>${cat.category_name ?? ""}</td>
-                                        <td>
-                                           <button class="btn btn-sm btn-primary edit-btn" data-id="${cat.id}" data-name="${cat.category_name}" 
-                                           data-assets="${cat.assets_account_id}" data-assets-code="${cat.assets_account_id}" 
-                                           data-depreciation="${cat.depreciation_account_id}" data-depreciation-code="${cat.depreciation_account_id}" 
-                                           data-expence="${cat.expence_account_id}" data-expence-code="${cat.expence_account_id}"> <i class="fas fa-pen"></i> 
-                                           </button>
-                                           <button class="btn btn-sm btn-danger delete-btn" data-id="${cat.id}"><i class="fas fa-prescription-bottle-alt"></i></button>
-                                        </td>
-                                    </tr>`;
-                                tbody.append(tr);
-                            });
+                    // Check if the data is available and has records
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, cat) {
+                            const tr = `
+                                <tr data-id="${cat.id}">
+                                    <td>${cat.category_name ?? ''}</td>
+                                    <td class="text-center">
+                                                <button class="btn btn-sm btn-primary edit-btn" data-id="${cat.id}"
+                data-name="${cat.category_name}" data-assets="${cat.assets_account_id}"
+                data-assets-code="${cat.assets_account_id}" data-depreciation="${cat.depreciation_account_id}"
+                data-depreciation-code="${cat.depreciation_account_id}" data-expence="${cat.expence_account_id}"
+                data-expence-code="${cat.expence_account_id}">
+            <i class="fas fa-pen"></i>
+        </button>
 
-                            $("#fixedAssetCategoryTable").DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    { extend: 'excelHtml5', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5', exportOptions: { columns: ':not(:last-child)' } }
-                                ],
-                                order: [[0, 'asc']],
-                                pageLength: 25
-                            });
-                        } else {
-                            tbody.append(`<tr><td colspan="2" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
-                            $('.dt-buttons').hide();
-                        }
+                                        <button class="btn btn-sm btn-danger delete-btn"
+                                                data-id="${cat.id}">
+                                            <i class="fas fa-prescription-bottle-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        $('#fixedAssetCategoryTable').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'
+                                    }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'
+                                    }
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 10
+                        });
+
                     } else {
-                        $("#fixedAssetCategoryTable tbody").html(`<tr><td colspan="2" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
-                        $('.dt-buttons').hide();
+                        tbody.append(`
+                            <tr><td colspan="2" class="text-center text-muted py-4">
+                                No asset categories found
+                            </td></tr>
+                        `);
                     }
                 },
-                error: function (xhr, status, error) {
-                    if ($.fn.DataTable.isDataTable("#fixedAssetCategoryTable")) {
-                        $("#fixedAssetCategoryTable").DataTable().destroy();
-                    }
-                    $("#fixedAssetCategoryTable tbody").html(`<tr><td colspan="2" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
-                    $('.dt-buttons').hide();
+
+                error: function () {
+                    toastr.error('Error loading asset categories data');
                 }
             });
         }
+
 
 
            function addFixedAssetsCategory() {
@@ -209,75 +255,79 @@
         });
 
            $(document).ready(function() {
+                       function loadEditDropdowns(selectedAssets, selectedDepreciation, selectedExpence, codes = {}) {
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function (data) {
+                    const dropdowns = [
+                        { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2', selected: selectedAssets, code: codes.assetsCode },
+                        { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3', selected: selectedDepreciation, code: codes.depreciationCode },
+                        { ddl: '#editDepreciationExpence', codeBox: '#editCode4', selected: selectedExpence, code: codes.expenceCode }
+                    ];
 
-                 function loadEditDropdowns(selectedAssets, selectedDepreciation, selectedExpence, codes = {}) {
-                $.ajax({
-                    url: '/HR/GetAccruedSalaries',
-                    type: 'GET',
-                    success: function (data) {
-                        const dropdowns = [
-                            { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2', selected: selectedAssets, code: codes.assetsCode },
-                            { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3', selected: selectedDepreciation, code: codes.depreciationCode },
-                            { ddl: '#editDepreciationExpence', codeBox: '#editCode4', selected: selectedExpence, code: codes.expenceCode }
-                        ];
+                    dropdowns.forEach(set => {
+                        let $ddl = $(set.ddl);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
 
-                        dropdowns.forEach(set => {
-                            let $ddl = $(set.ddl);
-                            $ddl.empty().append('<option value="">-- Select --</option>');
-
-                            $.each(data, function (i, item) {
-                                $ddl.append(
-                                    $('<option>', {
-                                        value: item.id,
-                                        text: item.code + ' - ' + item.name,
-                                        'data-code': item.code
-                                    })
-                                );
-                            });
-
-                            // Set selected value AFTER options are added
-                            $ddl.val(set.selected);
-
-                            // Set code textbox
-                            $(set.codeBox).val(set.code || '');
-
-                            // On change, update code box
-                            $ddl.off("change").on('change', function () {
-                                let selectedOption = $(this).find(':selected');
-                                $(set.codeBox).val(selectedOption.data('code') || '');
-                            });
+                        $.each(data, function (i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
                         });
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("❌ Error loading accounts:", status, error);
-                    }
-                });
-            }
 
-                 $(document).on("click", ".edit-btn", function () {
-                const id = $(this).data("id");
-                const name = $(this).data("name");
-                const assets = $(this).data("assets");
-                const assetsCode = $(this).data("assets-code");
-                const depreciation = $(this).data("depreciation");
-                const depreciationCode = $(this).data("depreciation-code");
-                const expence = $(this).data("expence");
-                const expenceCode = $(this).data("expence-code");
+                        // Set the selected value AFTER the options are added
+                        $ddl.val(set.selected);
 
-                      console.log("Depreciation:", depreciation, "Code:", depreciationCode);
-        console.log("Expence:", expence, "Code:", expenceCode); 
+                        // Set the code textbox value
+                        $(set.codeBox).val(set.code || '');
 
-                $("#editCategoryId").val(id);
-                $("#editCategoryName").val(name);
-
-                loadEditDropdowns(assets, depreciation, expence, {
-                    assetsCode: assetsCode,
-                    depreciationCode: depreciationCode,
-                    expenceCode: expenceCode
-                });
-
-                $("#editFixedAssetsCategoryModal").modal("show");
+                        // On change, update the code box
+                        $ddl.off("change").on('change', function () {
+                            let selectedOption = $(this).find(':selected');
+                            $(set.codeBox).val(selectedOption.data('code') || '');
+                        });
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                }
             });
+        }
+
+                       $(document).on("click", ".edit-btn", function () {
+            const id = $(this).data("id");
+            const name = $(this).data("name");
+            const assets = $(this).data("assets");
+            const assetsCode = $(this).data("assets-code");
+            const depreciation = $(this).data("depreciation");
+            const depreciationCode = $(this).data("depreciation-code");
+            const expence = $(this).data("expence");
+            const expenceCode = $(this).data("expence-code");
+
+            // Log the values to verify what is being passed (you can remove this later)
+            console.log("Depreciation:", depreciation, "Code:", depreciationCode);
+            console.log("Expense:", expence, "Code:", expenceCode);
+
+            // Set the values in the modal
+            $("#editCategoryId").val(id);
+            $("#editCategoryName").val(name);  // This should populate the Category Name input field
+
+            // Load the dropdowns and set selected values based on passed data
+            loadEditDropdowns(assets, depreciation, expence, {
+                assetsCode: assetsCode,
+                depreciationCode: depreciationCode,
+                expenceCode: expenceCode
+            });
+
+            // Show the modal
+            $("#editFixedAssetsCategoryModal").modal("show");
+        });
+
 
                  $("#updateBtn").on("click", function () {
                 const model = {
