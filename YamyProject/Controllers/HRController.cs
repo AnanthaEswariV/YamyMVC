@@ -1964,5 +1964,16 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Loan
+
+        public IActionResult Loan()
+        {
+            return View();
+        }
+
+
+
+        #endregion
+
     }
 }

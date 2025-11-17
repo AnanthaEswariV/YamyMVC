@@ -4,6 +4,36 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<style>
+    .carousel-control-prev,
+    .carousel-control-next {
+        width: auto !important;
+        height: auto !important;
+        background: none !important;
+        border: none !important;
+        opacity: 1 !important;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    /* Make the arrow icons only */
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+        width: 35px;
+        height: 35px;
+        background-size: 35px 35px;
+        filter: invert(1); /* makes arrows white */
+    }
+
+    /* Remove hover background */
+    .carousel-control-prev:hover,
+    .carousel-control-next:hover {
+        background: none !important;
+    }
+
+</style>
+<script src="~/assets/js/bootstrap.bundle.min.js"></script>
+
 <div class="container">
     <img src="~/assets/images/2.png" alt="Dashboard Banner" class="img-fluid w-100" style="max-height: 500px; object-fit: cover;" />
 </div>
@@ -15,51 +45,140 @@
     </div>
 
     <!-- Dashboard Cards -->
-    <div class="row g-4 mb-5">
-        <div class="col-md-3 col-sm-6">
-            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-1s">
-                <div class="card-body text-center">
-                    <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
-                    <h5 class="card-title fw-bold">Employees</h5>
-                    <p class="card-text">View, add, and manage employee records.</p>
-                    <a href="/HR/EmployeeList" class="btn btn-primary btn-sm">Go</a>
+
+    <div id="cardCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
+
+        <!-- Indicators -->
+        <ol class="carousel-indicators">
+            <li data-bs-target="#cardCarousel" data-bs-slide-to="0" class="active"></li>
+            <li data-bs-target="#cardCarousel" data-bs-slide-to="1"></li>
+        </ol>
+
+        <div class="carousel-inner">
+
+            <!-- ========== SLIDE 1 ========== -->
+            <div class="carousel-item active">
+                <div class="row g-4 mb-5">
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-people-fill text-primary fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Employees</h5>
+                                <p class="card-text">View, add, and manage employee records.</p>
+                                <a href="/HR/EmployeeList" class="btn btn-primary btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-building text-success fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Departments</h5>
+                                <p class="card-text">Organize and manage departments efficiently.</p>
+                                <a href="/Lists/Department" class="btn btn-success btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-calendar-check text-warning fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Attendance</h5>
+                                <p class="card-text">Track daily attendance records.</p>
+                                <a href="/HR/AttendanceSheet" class="btn btn-warning btn-sm text-white">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-cash-coin text-danger fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Payroll</h5>
+                                <p class="card-text">Manage salaries and pay slips easily.</p>
+                                <a href="/HR/SalarySheet" class="btn btn-danger btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
+
+            <!-- ========== SLIDE 2 ========== -->
+            <div class="carousel-item">
+                <div class="row g-4 mb-5">
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-calendar2-week text-danger fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Leave Salary</h5>
+                                <p class="card-text">Handle employee leave encashment and payouts.</p>
+                                <a href="/HR/LeaveSalary" class="btn btn-danger btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-file-earmark-check text-danger fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">End of Service</h5>
+                                <p class="card-text">Manage final settlements, gratuity, and service termination details.</p>
+                                <a href="/HR/EndOfService" class="btn btn-danger btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-wallet2 text-warning fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Loan</h5>
+                                <p class="card-text">Manage employee loans and repayments easily.</p>
+                                <a href="/HR/Loan" class="btn btn-warning btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card shadow-lg border-0 h-100 hover-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-file-earmark-check text-success fs-1 mb-3"></i>
+                                <h5 class="card-title fw-bold">Final Settlement</h5>
+                                <p class="card-text">Handle employee final settlements smoothly.</p>
+                                <a href="/HR/FinalSettlement" class="btn btn-success btn-sm">Go</a>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Add more cards if needed -->
+
+                </div>
+            </div>
+
         </div>
 
-        <div class="col-md-3 col-sm-6">
-            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-2s">
-                <div class="card-body text-center">
-                    <i class="bi bi-building text-success fs-1 mb-3"></i>
-                    <h5 class="card-title fw-bold">Departments</h5>
-                    <p class="card-text">Organize and manage departments efficiently.</p>
-                    <a href="/Lists/Department" class="btn btn-success btn-sm">Go</a>
-                </div>
-            </div>
-        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#cardCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
 
-        <div class="col-md-3 col-sm-6">
-            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-3s">
-                <div class="card-body text-center">
-                    <i class="bi bi-calendar-check text-warning fs-1 mb-3"></i>
-                    <h5 class="card-title fw-bold">Attendance</h5>
-                    <p class="card-text">Track daily attendance records.</p>
-                    <a href="/HR/AttendanceSheet" class="btn btn-warning btn-sm text-white">Go</a>
-                </div>
-            </div>
-        </div>
+        <button class="carousel-control-next" type="button" data-bs-target="#cardCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
 
-        <div class="col-md-3 col-sm-6">
-            <div class="card shadow-lg border-0 h-100 hover-card animate__animated animate__fadeInUp animate__delay-4s">
-                <div class="card-body text-center">
-                    <i class="bi bi-cash-coin text-danger fs-1 mb-3"></i>
-                    <h5 class="card-title fw-bold">Payroll</h5>
-                    <p class="card-text">Manage salaries and pay slips easily.</p>
-                    <a href="/HR/SalarySheet" class="btn btn-danger btn-sm">Go</a>
-                </div>
-            </div>
-        </div>
+
     </div>
+
+   
+
 </div>
 
 <!-- Hover & Spacing -->
@@ -74,10 +193,8 @@
             box-shadow: 0px 12px 25px rgba(0, 0, 0, 0.15);
         }
 </style>
-
 <!-- Animate.css -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-
 @section Scripts {
     <script>
         $(document).ready(function () {
