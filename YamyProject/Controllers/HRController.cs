@@ -233,13 +233,6 @@ namespace YamyProject.Controllers
             }
         }
 
-        //city_id, address, birth_day, Social_Status, Social_Insurance_Number, Email, EmergencyName,
-        //                    EmergencyAddress, EmergencyPhone, Relation, BasicSalary, bank_id,  Iban_Number, Bank_account_Number, EmiratesIDFileNumber, 
-        //                    EmiratesIDIssuingAuthority, EmiratesIDIssueDate, EmiratesIDExpiryDate, PassportNumber, CountryOfIssue,
-        //                    PassportIssueDate, PassportExpiryDate, WorkContractNumber, Position_Id, Department_Id, WorkDays , workinghours,  ContractIssueDate,
-        //                    ContractExpiryDate, ResidencyFileNumber, ResidencyIssuingAuthority, ResidencyIssueDate, ResidencyExpiryDate,  account_id,  Accrued_Salaries_id,
-        //                    Employee_Recivable_Id,  Acroal_Leave_Salary_Id, Gratuit_Id, Petty_Cash_Id,
-
         [IgnoreAntiforgeryToken]
         [HttpPost]
         public async Task<IActionResult> EditEmployee([FromBody] EmployeeRequest model)
@@ -1971,9 +1964,268 @@ namespace YamyProject.Controllers
             return View();
         }
 
+        [HttpPost]
+        public async Task<IActionResult> CreateLoan([FromBody] LoanRequestDto model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request data" });
 
+            if (model.RequestAmount <= 0 || model.Installments <= 0)
+                return BadRequest(new { status = false, message = "Invalid amount or installments" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ??
+                           _config.GetConnectionString("DefaultDatabase")
+            };
+
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+            using var transaction = await conn.BeginTransactionAsync();
+
+            try
+            {
+                // Generate new loan code
+                int nextCodeNumber = 10001;
+                string code = "LO" + nextCodeNumber;
+
+                var getCodeCmd = new MySqlCommand(
+                    "SELECT code FROM tbl_loan ORDER BY CAST(SUBSTRING(code, 3) AS UNSIGNED) DESC LIMIT 1;",
+                    conn, transaction);
+
+                using var reader = await getCodeCmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var lastCode = reader.GetString("code");
+                    if (lastCode.StartsWith("LO"))
+                    {
+                        int num = int.Parse(lastCode.Substring(2));
+                        nextCodeNumber = num + 1;
+                        code = "LO" + nextCodeNumber;
+                    }
+                }
+                await reader.CloseAsync();
+
+                // Insert schedule + loan rows
+                foreach (var item in model.Schedule)
+                {
+                    var insertLoanCmd = new MySqlCommand(@"
+                INSERT INTO tbl_loan 
+                    (code, LoanDate, EmployeeID, EmployeeName, RequestAmount, Installments, 
+                     StartDate, EndDate, loanDates, Months, Description, Amount, 
+                     debit_account_id, credit_account_id, `change`) 
+                VALUES
+                    (@code, @loanDate, @employeeID, @employeeName, @requestAmount, @installments,
+                     @startDate, @endDate, @loanDates, @months, @description, @amount,
+                     @debitAccount, @creditAccount, @changeValue);
+            ", conn, transaction);
+
+                    insertLoanCmd.Parameters.AddWithValue("@code", code);
+                    insertLoanCmd.Parameters.AddWithValue("@loanDate", model.RequestDate.ToString("yyyy-MM-dd"));
+                    insertLoanCmd.Parameters.AddWithValue("@employeeID", model.EmployeeCode);
+                    insertLoanCmd.Parameters.AddWithValue("@employeeName", model.EmployeeName);
+                    insertLoanCmd.Parameters.AddWithValue("@requestAmount", model.RequestAmount);
+                    insertLoanCmd.Parameters.AddWithValue("@installments", model.Installments);
+                    insertLoanCmd.Parameters.AddWithValue("@startDate", model.StartDate.ToString("yyyy-MM-dd"));
+                    insertLoanCmd.Parameters.AddWithValue("@endDate", model.EndDate.ToString("yyyy-MM-dd"));
+                    insertLoanCmd.Parameters.AddWithValue("@loanDates", item.Date.ToString("yyyy-MM-dd"));
+                    insertLoanCmd.Parameters.AddWithValue("@months", item.Month);
+                    insertLoanCmd.Parameters.AddWithValue("@description", model.Description);
+                    insertLoanCmd.Parameters.AddWithValue("@amount", item.Amount);
+                    insertLoanCmd.Parameters.AddWithValue("@debitAccount", model.DebitAccountId);
+                    insertLoanCmd.Parameters.AddWithValue("@creditAccount", model.CreditAccountId);
+                    insertLoanCmd.Parameters.AddWithValue("@changeValue", model.RequestAmount);
+
+                    var insertedId = Convert.ToInt32(await insertLoanCmd.ExecuteScalarAsync());
+
+                    // JOURNAL: Debit
+                    var insertJournalDebit = new MySqlCommand(@"
+                INSERT INTO tbl_transaction
+                    (`date`, account_id, debit, credit, transaction_id, hum_id, 
+                     t_type, `type`, description, created_by, created_date, 
+                     state, voucher_no)
+                VALUES
+                    (@date, @accountId, @debit, @credit, @transactionId, @humId,
+                     @voucherType, @type, @description, @createdBy, @createdDate,
+                     0, @voucherNo);
+            ", conn, transaction);
+
+                    insertJournalDebit.Parameters.AddWithValue("@date", model.RequestDate);
+                    insertJournalDebit.Parameters.AddWithValue("@accountId", model.DebitAccountId);
+                    insertJournalDebit.Parameters.AddWithValue("@debit", model.RequestAmount);
+                    insertJournalDebit.Parameters.AddWithValue("@credit", 0);
+                    insertJournalDebit.Parameters.AddWithValue("@transactionId", insertedId);
+                    insertJournalDebit.Parameters.AddWithValue("@humId", model.EmployeeCode);
+                    insertJournalDebit.Parameters.AddWithValue("@voucherType", "Loan Request");
+                    insertJournalDebit.Parameters.AddWithValue("@type", "Employee LOAN");
+                    insertJournalDebit.Parameters.AddWithValue("@description", $"Loan Request {code}");
+                    insertJournalDebit.Parameters.AddWithValue("@createdBy", 0);
+                    insertJournalDebit.Parameters.AddWithValue("@createdDate", DateTime.UtcNow);
+                    insertJournalDebit.Parameters.AddWithValue("@voucherNo", code);
+
+                    await insertJournalDebit.ExecuteNonQueryAsync();
+
+                    // JOURNAL: Credit
+                    var insertJournalCredit = new MySqlCommand(@"
+                INSERT INTO tbl_transaction
+                    (`date`, account_id, debit, credit, transaction_id, hum_id, 
+                     t_type, `type`, description, created_by, created_date, 
+                     state, voucher_no)
+                VALUES
+                    (@date, @accountId, @debit, @credit, @transactionId, @humId,
+                     @voucherType, @type, @description, @createdBy, @createdDate,
+                     0, @voucherNo);
+            ", conn, transaction);
+
+                    insertJournalCredit.Parameters.AddWithValue("@date", model.RequestDate);
+                    insertJournalCredit.Parameters.AddWithValue("@accountId", model.CreditAccountId);
+                    insertJournalCredit.Parameters.AddWithValue("@debit", 0);
+                    insertJournalCredit.Parameters.AddWithValue("@credit", model.RequestAmount);
+                    insertJournalCredit.Parameters.AddWithValue("@transactionId", insertedId);
+                    insertJournalCredit.Parameters.AddWithValue("@humId", model.EmployeeCode);
+                    insertJournalCredit.Parameters.AddWithValue("@voucherType", "Loan Request");
+                    insertJournalCredit.Parameters.AddWithValue("@type", "Employee LOAN");
+                    insertJournalCredit.Parameters.AddWithValue("@description", $"Loan Request {code}");
+                    insertJournalCredit.Parameters.AddWithValue("@createdBy", 0);
+                    insertJournalCredit.Parameters.AddWithValue("@createdDate", DateTime.UtcNow);
+                    insertJournalCredit.Parameters.AddWithValue("@voucherNo", code);
+
+                    await insertJournalCredit.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Loan and journal entries saved",
+                    code = code
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeeLoan(string employeeCode)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(employeeCode))
+                    return BadRequest(new { status = false, message = "Employee code is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var loanQuery = @"
+            WITH loan_data AS (
+                SELECT 
+                    l.id, 
+                    l.code, 
+                    l.LoanDate, 
+                    l.EmployeeID, 
+                    e.name AS EmployeeName, 
+                    l.RequestAmount, 
+                    l.Installments, 
+                    l.StartDate, 
+                    l.EndDate, 
+                    l.Description, 
+                    l.Amount AS MonthlyAmount, 
+                    l.`change`,
+                    ROW_NUMBER() OVER (PARTITION BY l.code ORDER BY l.id) AS rn
+                FROM tbl_loan l
+                JOIN tbl_employee e ON e.code = l.EmployeeID
+                WHERE l.EmployeeID = @employeeCode
+            )
+            SELECT 
+                id,
+                code,
+                LoanDate,
+                EmployeeID,
+                EmployeeName,
+                RequestAmount,
+                Installments,
+                StartDate,
+                EndDate,
+                Description,
+                MonthlyAmount,
+                `change`,
+                ROW_NUMBER() OVER (ORDER BY LoanDate) AS rn
+            FROM loan_data
+            WHERE rn = 1;";
+
+                using var loanCmd = new MySqlCommand(loanQuery, conn);
+                loanCmd.Parameters.AddWithValue("@employeeCode", employeeCode);
+
+                var loanReader = await loanCmd.ExecuteReaderAsync();
+                var loans = new List<object>();
+                decimal finalBalance = 0;
+
+                while (await loanReader.ReadAsync())
+                {
+                    finalBalance = loanReader.GetDecimal("RequestAmount");
+
+                    loans.Add(new
+                    {
+                        Date = loanReader["LoanDate"],
+                        Code = loanReader["Code"],
+                        LoanDate = loanReader["LoanDate"],
+                        EmployeeName = loanReader["EmployeeName"],
+                        Type = "Loan",
+                        LoanAmount = loanReader["RequestAmount"],
+                        Installments = loanReader["Installments"],
+                        StartDate = loanReader["StartDate"],
+                        EndDate = loanReader["EndDate"],
+                        MonthlyAmount = loanReader["MonthlyAmount"],
+                        Balance = finalBalance,
+                    });
+                }
+
+                loanReader.Close();
+
+                if (loans.Count > 0)
+                {
+                    loans.Add(new
+                    {
+                        Date = (object)null,
+                        Id = (object)null,
+                        Type = "Total",
+                        Description = (object)null,
+                        ReceivedAmount = (object)null,
+                        PayAmount = (object)null,
+                        Balance = finalBalance
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    loanRecords = loans
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 
+        #region Final Settlement
+
+        public IActionResult FinalSettlement()
+        {
+            return View();
+        }
+
+        #endregion
     }
 }

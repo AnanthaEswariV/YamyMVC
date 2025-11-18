@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "Loan";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -28,7 +27,7 @@
 
     <div class="card-body">
         <div class="d-flex justify-content-end align-items-center mb-4">
-            <button type="button" class="btn btn-primary" id="addCategoryBtn" data-bs-toggle="modal" data-bs-target="#bankModal">
+            <button type="button" class="btn btn-primary" id="addLoanBtn" data-bs-toggle="modal" data-bs-target="#bankModal">
                 <i class="bi bi-plus-circle me-2"></i>Add Loan
             </button>
         </div>
@@ -51,4 +50,605 @@
     </div>
 </div>
 
+<div class="modal fade" id="bankModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <form id="bankForm" class="modal-content">
 
+            <!-- HEADER -->
+            <div class="modal-header bg-white border-bottom">
+                <h4 class="modal-title w-100 text-center fw-bold">Loan</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- BODY -->
+            <div class="modal-body">
+
+                <!-- Row 1 -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Request Date</label>
+                        <input type="date" class="form-control" id="date">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Employee Code</label>
+                        <input type="text" id="employeeCode" class="form-control" disabled>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Employee Name</label>
+                        <select id="employeeName" class="form-control">
+                            <option value="">-- Select Name --</option>
+                        </select>
+                    </div>
+
+
+                </div>
+
+                <!-- Row 2 -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Debit Account</label>
+                        <select class="form-select" id="debitAccount">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Credit Account</label>
+                        <select class="form-select" id="creditAccount">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Request Amount</label>
+                        <input type="text" class="form-control" id="totalDays">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Installments</label>
+                        <input type="text" class="form-control" id="agreementAmount">
+                    </div>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" disabled>
+                    </div>
+                </div>
+
+                <!-- TABLE -->
+                <div class="table-responsive border mt-4">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>SN</th>
+                                <th>Date</th>
+                                <th>Month</th>
+                                <th>Description</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTable">
+                            <!-- Rows load dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <!-- FOOTER -->
+            <div class="modal-footer justify-content-center">
+                <button type="submit" class="btn btn-primary px-4">Save</button>
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="loanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header bg-white border-bottom">
+                <h5 class="modal-title w-100 text-center fw-bold">
+                    Employee Loan Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <table id="loanTable" class="table table-bordered table-striped table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>S.No</th>
+                            <th>Code</th>
+                            <th>Loan Date</th>
+                            <th>Employee Name</th>
+                            <th>Type</th>
+                            <th>Loan Amount</th>
+                            <th>Installments</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Monthly Amount</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="loanDetailsBody">
+                        <tr><td colspan="12" class="text-center text-muted py-3">No records found</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+        function loadEmployees() {
+            $.ajax({
+                url: '/HR/GetEmployees',
+                type: 'GET',
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div> Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load employee list');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            const tr = $(`
+                                <tr data-id="${row.id}" style="cursor:pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.code || '-'}</td>
+                                    <td>${row.name || '-'}</td>
+                                    <td>${row.Email || '-'}</td>
+                                    <td>${row.phone || '-'}</td>
+                                    <td>${row.address || '-'}</td>
+                                           <td>
+                                            <button class="btn btn-sm btn-primary viewEmpLoanBtn" data-id="${row.code}" title="View Employee Loan">
+                                            <i class="bi bi-eye"></i>
+                                         </button>
+                                            </td>
+
+                                </tr>
+                            `);
+                            tbody.append(tr);
+                        });
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15
+                        });
+
+                    } else {
+                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No employees found</td></tr>`);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Error loading employee list');
+                    console.error(xhr.responseText);
+                }
+            });
+        }
+
+        function populateBankAccounts() {
+            $.ajax({
+                url: '/HR/GetAccruedSalaries',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : res.data || [];
+
+                    if (!data.length) return;
+
+                    // Target both debit and credit selects
+                    const accountSelectors = ['#debitAccount', '#creditAccount'];
+
+                    accountSelectors.forEach(function(selector) {
+                        const $select = $(selector);
+                        const selectedId = $select.data('selected-id');
+
+                        // Clear existing options and add default
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        // Append new options
+                        $.each(data, function(i, item) {
+                            const $option = $('<option>', {
+                                value: item.id,
+                                text: `${item.code} - ${item.name}`,
+                                selected: String(item.id) === String(selectedId)
+                            });
+
+                            $select.append($option);
+                        });
+                    });
+                },
+                error: function(err) {
+                    console.error('Failed to fetch bank accounts:', err);
+                }
+            });
+        }
+
+        let employeesData = [];
+
+        function populateEmployeeNameDropdown(selectedId = null) {
+            $.ajax({
+                url: '/Inventory/GetAllEmployees',
+                type: 'GET',
+                success: function(res) {
+                    employeesData = Array.isArray(res) ? res : (res.data || []);
+
+                    const $nameSelect = $('#employeeName');
+                    $nameSelect.empty().append('<option value="">-- Select Name --</option>');
+
+                            $.each(employeesData, function(i, emp) {
+          const selected = (selectedId && emp.id == selectedId) ? ' selected' : '';
+          $nameSelect.append(`
+            <option value="${emp.id}" data-code="${emp.code}"${selected}>
+              ${emp.name}
+            </option>
+          `);
+        });
+
+
+                    if (selectedId) {
+                        $nameSelect.trigger('change');
+                    }
+                },
+                error: function(err) {
+                    console.error('Failed to fetch employees:', err);
+                }
+            });
+        }
+
+        $(document).on('change', '#employeeName', function() {
+            const selectedId = $(this).val();
+            const employee = employeesData.find(emp => emp.id == selectedId);
+            $('#employeeCode').val(employee ? employee.code : '');
+        });
+
+        $('#employeeName').on('change', function() {
+            const selectedId = $(this).val();
+            const employee = employeesData.find(emp => emp.id == selectedId);
+            $('#employeeCode').val(employee ? employee.code : '');
+        });
+
+        $(document).on('click', '.viewEmpLoanBtn', function () {
+
+            var employeeCode = $(this).data('id');
+
+            // Destroy DataTable FIRST before loading new data
+            if ($.fn.DataTable.isDataTable('#loanTable')) {
+                $('#loanTable').DataTable().clear().destroy();
+            }
+
+            // Show loading spinner
+            $('#loanDetailsBody').html(`
+                <tr>
+                    <td colspan="12" class="text-center text-muted py-4">
+                        <div class="spinner-border text-primary me-2"></div> Loading...
+                    </td>
+                </tr>
+            `);
+
+            $.ajax({
+                url: '/HR/GetEmployeeLoan',
+                type: 'GET',
+                data: { employeeCode: employeeCode },
+                success: function (res) {
+
+                    const tbody = $('#loanDetailsBody');
+                    tbody.empty();
+
+                    // IF NO DATA — SHOW MESSAGE (NO DATATABLE)
+                    if (!res.status || !res.loanRecords || res.loanRecords.length === 0) {
+                        tbody.html(`
+                            <tr>
+                                <td colspan="12" class="text-center text-muted py-3">
+                                    No loan details found
+                                </td>
+                            </tr>
+                        `);
+
+                        $('#loanModal').modal('show');
+                        return;
+                    }
+
+                    // Append rows
+                    $.each(res.loanRecords, function (index, loan) {
+
+                        if (loan.type === "Total") return;
+
+                        function fmt(d) {
+                            return d ? new Date(d).toLocaleDateString('en-GB') : '-';
+                        }
+
+                        tbody.append(`
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${loan.code || '-'}</td>
+                                <td>${fmt(loan.loanDate)}</td>
+                                <td>${loan.employeeName || '-'}</td>
+                                <td>${loan.type || '-'}</td>
+                                <td>${loan.loanAmount?.toFixed(2) || '-'}</td>
+                                <td>${loan.installments || '-'}</td>
+                                <td>${fmt(loan.startDate)}</td>
+                                <td>${fmt(loan.endDate)}</td>
+                                <td>${loan.monthlyAmount?.toFixed(2) || '-'}</td>
+                            </tr>
+                        `);
+                    });
+
+                    // Initialize DataTable ONLY when records exist
+                    $('#loanTable').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                className: 'btn btn-primary btn-sm'
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                className: 'btn btn-primary btn-sm',
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            }
+                        ],
+                        pageLength: 15,
+                        order: [[0, 'asc']]
+                    });
+
+                    $('#loanModal').modal('show');
+                },
+
+                error: function () {
+                    toastr.error('Error loading loan details');
+                    $('#loanDetailsBody').html(`
+                        <tr>
+                            <td colspan="12" class="text-center text-muted">Error loading loan details</td>
+                        </tr>
+                    `);
+                }
+            });
+        });
+
+        $(document).ready(function () {
+            loadEmployees();
+            populateBankAccounts();
+            populateEmployeeNameDropdown();
+
+           $('#bankForm').on('submit', function(e) {
+          e.preventDefault();
+          const form = this;
+          if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+          }
+
+          const payload = {
+            RequestDate: $('#date').val(),
+            EmployeeName: $('#employeeName option:selected').text(),
+            EmployeeID: parseInt($('#employeeName').val(), 10),
+            EmployeeCode: $('#employeeName option:selected').data('code'),
+            RequestAmount: parseFloat($('#totalDays').val()),
+            Installments: parseInt($('#agreementAmount').val(), 10),
+            DebitAccountId: parseInt($('#debitAccount').val(), 10),
+            CreditAccountId: parseInt($('#creditAccount').val(), 10),
+            StartDate: $('#startDate').val(),
+            EndDate: $('#endDate').val(),
+            Description: $('#description').val(),
+            Schedule: []
+          };
+
+          $('#scheduleTable tr').each(function() {
+            const $tds = $(this).find('td');
+            if ($tds.length === 5) {
+              payload.Schedule.push({
+                Date: $tds.eq(1).text(),
+                Month: $tds.eq(2).text(),
+                Description: $tds.eq(3).text(),
+                Amount: parseFloat($tds.eq(4).text())
+              });
+            }
+          });
+
+          $.ajax({
+            url: '/HR/CreateLoan',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function(res) {
+              if (res.status) {
+                toastr.success('Loan saved successfully');
+                $('#bankModal').modal('hide');
+                setTimeout(() => location.reload(), 1500);
+              } else {
+                toastr.error(res.message || 'Error saving loan');
+              }
+            },
+            error: function(xhr) {
+              const err = xhr.responseJSON?.message || xhr.statusText;
+              toastr.error('Error: ' + err);
+            }
+          });
+        });
+
+
+              const today = new Date();
+          const year = today.getFullYear();
+          let month = today.getMonth() + 1;
+          let day = today.getDate();
+
+          if (month < 10) month = '0' + month;
+          if (day < 10) day = '0' + day;
+
+          const todayStr = `${year}-${month}-${day}`;
+
+          $('#date').val(todayStr);
+          $('#startDate').val(todayStr);
+
+
+
+            // Function to generate the installment schedule table
+          function generateScheduleAndEndDate() {
+            const totalAmount = parseFloat($('#totalDays').val());        // Request Amount
+            const numInstallments = parseInt($('#agreementAmount').val(), 10); // Number of installments
+            const startDateStr = $('#startDate').val();
+            const $schedule = $('#scheduleTable');
+            $schedule.empty();
+
+            // Calculate end date automatically
+            calculateEndDate(startDateStr, numInstallments);
+
+            // If inputs invalid, skip schedule generation
+            if (isNaN(totalAmount) || isNaN(numInstallments) || numInstallments <= 0) {
+              return;
+            }
+
+            // Installment amount per row
+            const installmentAmount = (totalAmount / numInstallments).toFixed(2);
+
+            // Base date to generate installments from
+            let baseDate = startDateStr ? new Date(startDateStr) : new Date();
+
+            for (let i = 0; i < numInstallments; i++) {
+              const instDate = new Date(baseDate);
+              instDate.setMonth(baseDate.getMonth() + i);
+
+              // Format YYYY-MM-DD
+              const year = instDate.getFullYear();
+              let month = instDate.getMonth() + 1;
+              let day = instDate.getDate();
+              if (month < 10) month = '0' + month;
+              if (day < 10) day = '0' + day;
+              const dateStr = `${year}-${month}-${day}`;
+
+              // Month name
+              const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              const monthName = monthNames[instDate.getMonth()];
+
+              // Row description
+              const description = `Installment ${i + 1}`;
+
+              // Build row
+              const tr = $(`
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${dateStr}</td>
+                  <td>${monthName}</td>
+                  <td>${description}</td>
+                  <td class="text-end">${installmentAmount}</td>
+                </tr>
+              `);
+
+              $schedule.append(tr);
+            }
+          }
+
+          // Function to calculate and set end date
+          function calculateEndDate(startDateStr, numInstallments) {
+            const $endDate = $('#endDate');
+
+            if (!startDateStr || isNaN(numInstallments) || numInstallments <= 0) {
+              $endDate.val('');
+              return;
+            }
+
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(startDate);
+            // Add (numInstallments - 1) months
+            endDate.setMonth(endDate.getMonth() + (numInstallments - 1));
+
+            // Format YYYY-MM-DD
+            const year = endDate.getFullYear();
+            let month = endDate.getMonth() + 1;
+            let day = endDate.getDate();
+            if (month < 10) month = '0' + month;
+            if (day < 10) day = '0' + day;
+            const endDateStr = `${year}-${month}-${day}`;
+
+            $endDate.val(endDateStr);
+          }
+
+          // Disable editing of endDate input
+          $('#endDate').prop('disabled', true);
+
+          // Re-generate schedule and end date when relevant fields change
+          $('#totalDays, #agreementAmount, #startDate').on('input change', function(){
+            generateScheduleAndEndDate();
+          });
+
+          // Trigger generation on load in case fields are pre-filled
+          generateScheduleAndEndDate();
+
+          // On form submit — just re-generate (you can also serialize table here)
+          $('#bankForm').on('submit', function(e) {
+            e.preventDefault();
+            generateScheduleAndEndDate();
+
+          });
+
+        });
+
+    </script>
+}

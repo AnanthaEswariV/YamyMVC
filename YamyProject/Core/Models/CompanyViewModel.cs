@@ -811,5 +811,28 @@ namespace YamyProject.Core.Models
     }
 
 
+    public class LoanScheduleItemDto
+    {
+        public DateTime Date { get; set; }
+        public string Month { get; set; }
+        public string Description { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    public class LoanRequestDto
+    {
+        public string EmployeeName { get; set; }
+        public int EmployeeCode { get; set; }
+        public DateTime RequestDate { get; set; }
+        public decimal RequestAmount { get; set; }
+        public int Installments { get; set; }
+        public string Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public int DebitAccountId { get; set; }
+        public int CreditAccountId { get; set; }
+
+        public List<LoanScheduleItemDto> Schedule { get; set; }
+    }
 
 }
