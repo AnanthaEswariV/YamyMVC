@@ -835,4 +835,19 @@ namespace YamyProject.Core.Models
         public List<LoanScheduleItemDto> Schedule { get; set; }
     }
 
+
+    public class FinalSettlementSaveRequest
+    {
+        public string EmployeeName { get; set; }
+        public int EmployeeId { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime DateCommencement { get; set; }
+        public DateTime DateLastWork { get; set; }
+        public decimal TotalSalary { get; set; }
+        public decimal TotalAdditions { get; set; }
+        public decimal TotalDeductions { get; set; }
+        public decimal NetAccruals { get; set; }
+    }
+
+
 }

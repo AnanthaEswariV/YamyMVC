@@ -1,6 +1,692 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "FinalSettlement";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="container-fluid py-4">
+    <div class="card shadow-lg border-0" style="border-radius: 15px; overflow: hidden;">
+        <!-- Card Header with Gradient -->
+        <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            <h4 class="card-title fw-bold mb-1" style="font-size: 1.75rem; letter-spacing: 0.5px;">
+                <i class="bi bi-calculator me-2"></i>Employee Final Settlement Details
+            </h4>
+            <p class="mb-0" style="font-size: 0.9rem; opacity: 0.95;">Manage and track employee settlement records</p>
+        </div>
+
+        <div class="card-body p-4" style="background-color: #f8f9fa;">
+            <!-- Action Button Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4 p-3" style="background-color: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <div>
+                    <h6 class="mb-0 text-muted" style="font-size: 0.95rem;">
+                        <i class="bi bi-list-check me-2"></i>Settlement Records
+                    </h6>
+                </div>
+                <button type="button" class="btn btn-primary px-4 py-2" id="addLoanBtn" data-bs-toggle="modal" data-bs-target="#bankModal"
+                        style="background: linear-gradient(135deg, #435EBE 0%, #5a7fd6 100%); border: none; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(67, 94, 190, 0.3);">
+                    <i class="bi bi-plus-circle me-2"></i>Add New Settlement
+                </button>
+            </div>
+
+            <!-- Table Container with Shadow -->
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="table1">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Employee Code</th>
+                            <th>Employee Name</th>
+                            <th>Date Commencement</th>
+                            <th>Last Working Day</th>
+                            <th>Total Salary</th>
+                            <th>Total Additions</th>
+                            <th>Total Deductions</th>
+                            <th>Net Accruals</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Final Settlement Modal -->
+<div class="modal fade" id="bankModal" tabindex="-1" aria-labelledby="settlementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="max-width: 900px;">
+        <div class="modal-content" style="border-radius: 10px; border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.2);">
+
+            <!-- Modal Header -->
+            <div class="modal-header text-white"
+                 style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 15px 20px;">
+                <h5 class="modal-title fw-bold" id="settlementModalLabel" style="font-size: 1.2rem;">
+                    <i class="bi bi-calculator-fill me-2"></i>Final Settlement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body" style="padding: 15px; background-color: #f8f9fa;">
+                <form id="settlementForm">
+                    <div class="row g-3">
+
+                        <!-- Left Column -->
+                        <div class="col-md-6">
+
+                            <!-- Basic Data -->
+                            <div class="card mb-3" style="border-radius: 10px;">
+                                <div class="card-header text-white"
+                                     style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 10px 15px;">
+                                    <h6 class="fw-bold mb-0" style="font-size: 0.95rem;">
+                                        <i class="bi bi-person-badge me-2"></i>Basic Data
+                                    </h6>
+                                </div>
+                                <div class="card-body" style="padding: 12px;">
+                                    <div class="mb-2">
+                                        <label class="form-label">Date</label>
+                                        <input type="date" class="form-control" id="settlementDate">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Employee Name</label>
+                                        <select id="employeeName" class="form-control">
+                                            <option value="">-- Select Name --</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Employee Code</label>
+                                        <input type="text" id="employeeCode" class="form-control" disabled>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Date of Commencement</label>
+                                        <input type="date" class="form-control" id="dateCommencement">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Date of Last Working Day</label>
+                                        <input type="date" class="form-control" id="dateLastWorkingDay">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additions -->
+                            <div class="card mb-3" style="border-radius: 10px;">
+                                <div class="card-header text-white"
+                                     style="background: linear-gradient(135deg, #11998e, #38ef7d); padding: 10px 15px;">
+                                    <h6 class="fw-bold mb-0" style="font-size: 0.95rem;">
+                                        <i class="bi bi-plus-circle me-2"></i>Additions
+                                    </h6>
+                                </div>
+                                <div class="card-body" style="padding: 12px;">
+                                    <div class="mb-2">
+                                        <label class="form-label">Salaries</label>
+                                        <input type="number" class="form-control" id="salaries" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">End Of Services Allowance</label>
+                                        <input type="number" class="form-control" id="endOfServicesAllowance" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Leave Salary Allowance</label>
+                                        <input type="number" class="form-control" id="leaveSalaryAllowance" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Others</label>
+                                        <input type="number" class="form-control" id="additionsOthers">
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label fw-bold">Total Additions</label>
+                                        <input type="number" class="form-control fw-bold"
+                                               id="totalAdditions" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="col-md-6">
+
+                            <!-- Salary Information -->
+                            <div class="card mb-3" style="border-radius: 10px;">
+                                <div class="card-header text-white"
+                                     style="background: linear-gradient(135deg, #f093fb, #f5576c); padding: 10px 15px;">
+                                    <h6 class="fw-bold mb-0" style="font-size: 0.95rem;">
+                                        <i class="bi bi-wallet2 me-2"></i>Salary Information
+                                    </h6>
+                                </div>
+                                <div class="card-body" style="padding: 12px;">
+                                    <div class="mb-2">
+                                        <label class="form-label">Basic Salary</label>
+                                        <input type="number" class="form-control" id="basicSalary" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Transportation Allowance</label>
+                                        <input type="number" class="form-control" id="transportationAllowance" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Housing Allowance</label>
+                                        <input type="number" class="form-control" id="housingAllowance" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Others</label>
+                                        <input type="number" class="form-control" id="salaryOthers" readonly>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label fw-bold">Total Salary</label>
+                                        <input type="number" class="form-control fw-bold"
+                                               id="totalSalary" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Deductions -->
+                            <div class="card mb-3" style="border-radius: 10px;">
+                                <div class="card-header text-white"
+                                     style="background: linear-gradient(135deg, #ff6b6b, #ee5a6f); padding: 10px 15px;">
+                                    <h6 class="fw-bold mb-0" style="font-size: 0.95rem;">
+                                        <i class="bi bi-dash-circle me-2"></i>Deductions
+                                    </h6>
+                                </div>
+                                <div class="card-body" style="padding: 12px;">
+                                    <div class="mb-2">
+                                        <label class="form-label">Employee Advances</label>
+                                        <input type="number" class="form-control" id="employeeAdvances" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Payments</label>
+                                        <input type="number" class="form-control" id="payments" readonly>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label">Others</label>
+                                        <input type="number" class="form-control" id="deductionsOthers">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Total Deductions</label>
+                                        <input type="number" class="form-control fw-bold"
+                                               id="totalDeductions" readonly>
+                                    </div>
+
+                                    <!-- Net Accruals -->
+                                    <div class="p-3"
+                                         style="background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 8px;">
+                                        <label class="form-label fw-bold text-white">Net Accruals</label>
+                                        <input type="number" class="form-control fw-bold"
+                                               id="netAccruals" readonly
+                                               style="font-size: 1.2rem; text-align: right;">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div> <!-- END RIGHT COLUMN -->
+
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer" style="padding: 12px 15px;">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    Close
+                </button>
+                <button class="btn btn-primary btn-sm" id="saveSettlement">
+                    Save
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatCurrency(amount) {
+            if (!amount && amount !== 0) return '-';
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function loadFinalSettlements() {
+            $.ajax({
+                url: '/HR/GetFinalSettlement',
+                type: 'GET',
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-5" style="padding: 3rem;">
+                                <div class="spinner-border text-primary me-2" style="width: 2rem; height: 2rem;"></div>
+                                <div class="mt-2" style="font-size: 1rem;">Loading settlement records...</div>
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load final settlements');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+                   
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.finalSettlements && res.finalSettlements.length > 0) {
+                        $.each(res.finalSettlements, function (i, row) {
+                            const tr = $(`
+                                <tr data-id="${row.id}" style="cursor:pointer; border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem; font-weight: 600; color: #667eea;">${i + 1}</td>
+                                    <td style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem;"><span style="background-color: #e3f2fd; color: #1976d2; padding: 6px 12px; border-radius: 6px; font-weight: 600; display: inline-block;">${row.empCode || '-'}</span></td>
+                                    <td style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem; font-weight: 500; color: #2c3e50;">${row.employeeName || '-'}</td>
+                                    <td style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem;"><i class="bi bi-calendar3 me-1" style="color: #999;"></i>${formatDate(row.dateCommencement)}</td>
+                                    <td style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem;"><i class="bi bi-calendar3 me-1" style="color: #999;"></i>${formatDate(row.dateLastWork)}</td>
+                                    <td class="text-end" style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem; font-weight: 600; color: #2e7d32;">${formatCurrency(row.totalSalary)}</td>
+                                    <td class="text-end" style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem; font-weight: 600; color: #1565c0;">${formatCurrency(row.totalAdditions)}</td>
+                                    <td class="text-end" style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem; font-weight: 600; color: #c62828;">${formatCurrency(row.totalDeductions)}</td>
+                                    <td class="text-end" style="padding: 15px; vertical-align: middle; border: none; font-size: 1rem; font-weight: 700; color: #4a148c;">${formatCurrency(row.netAccruals)}</td>
+                                   
+                                </tr>
+                            `);
+                            tbody.append(tr);
+                        });
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Export Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    title: 'Final Settlement Report'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> Export PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    title: 'Final Settlement Report'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15,
+                            language: {
+                                search: "Search settlements:",
+                                lengthMenu: "Show _MENU_ settlements per page",
+                                info: "Showing _START_ to _END_ of _TOTAL_ settlements",
+                                emptyTable: "No settlement records available"
+                            },
+                            drawCallback: function() {
+                                // Apply inline styles to buttons after table draw
+                                $('.dt-buttons .btn-primary').each(function() {
+                                    $(this).attr('style', 'background: linear-gradient(135deg, #435EBE 0%, #5a7fd6 100%) !important; color: #fff !important; border: none !important; border-radius: 6px !important; padding: 8px 16px !important; font-weight: 600 !important; box-shadow: 0 3px 10px rgba(67, 94, 190, 0.3) !important;');
+                                });
+                            }
+                        });
+
+                        // Apply button styles immediately after initialization
+                        $('.dt-buttons .btn-primary').each(function() {
+                            $(this).attr('style', 'background: linear-gradient(135deg, #435EBE 0%, #5a7fd6 100%) !important; color: #fff !important; border: none !important; border-radius: 6px !important; padding: 8px 16px !important; font-weight: 600 !important; box-shadow: 0 3px 10px rgba(67, 94, 190, 0.3) !important;');
+                        });
+
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="10" class="text-center py-5" style="padding: 3rem;">
+                                    <div style="color: #9e9e9e;">
+                                        <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                                        <p class="mt-3 mb-0">No final settlements found</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Error loading final settlements');
+                    console.error(xhr.responseText);
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="10" class="text-center text-danger py-4" style="padding: 2rem;">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Failed to load data
+                            </td>
+                        </tr>
+                    `);
+                }
+            });
+        }
+
+        function populateEmployeeNameDropdown(selectedId = null) {
+            $.ajax({
+                url: '/Inventory/GetAllEmployees',
+                type: 'GET',
+                success: function(res) {
+                    employeesData = Array.isArray(res) ? res : (res.data || []);
+
+                    const $nameSelect = $('#employeeName');
+                    $nameSelect.empty().append('<option value="">-- Select Name --</option>');
+
+                            $.each(employeesData, function(i, emp) {
+          const selected = (selectedId && emp.id == selectedId) ? ' selected' : '';
+          $nameSelect.append(`
+            <option value="${emp.id}" data-code="${emp.code}"${selected}>
+              ${emp.name}
+            </option>
+          `);
+        });
+
+                    if (selectedId) {
+                        $nameSelect.trigger('change');
+                    }
+                },
+                error: function(err) {
+                    console.error('Failed to fetch employees:', err);
+                }
+            });
+        }
+
+        $(document).on('change', '#employeeName', function () {
+            const employeeId = $(this).val();
+
+            if (!employeeId) {
+                clearSettlementFields();
+                return;
+            }
+
+            // Access selected employee code
+            const employee = employeesData.find(emp => emp.id == employeeId);
+            $('#employeeCode').val(employee ? employee.code : '');
+
+            // Call Final Settlement API
+            loadEmployeeSettlementData(employeeId);
+        });
+
+        function loadEmployeeSettlementData(employeeId) {
+            $.ajax({
+                url: `/HR/GetEmployeeFinalSettlementData?employeeId=${employeeId}`,
+                type: 'GET',
+                success: function (res) {
+
+                    if (!res.status) {
+                        alert(res.message);
+                        return;
+                    }
+
+                    const data = res.employee;
+
+                    // ============================
+                    // BASIC INFORMATION
+                    // ============================
+
+                    $('#employeeName').val(data.employeeId);  // select employee
+                    $('#employeeCode').val(data.employeeCode);
+
+                    // ============================
+                    // SALARY INFORMATION
+                    // ============================
+
+                    $('#basicSalary').val(data.basicSalary);
+                    $('#transportationAllowance').val(data.transportationAllowance);
+                    $('#housingAllowance').val(data.housingAllowance);
+                    $('#salaryOthers').val(data.otherAllowance);
+
+                    $('#totalSalary').val(data.totalSalary);
+
+                    // ============================
+                    // ADDITIONS
+                    // ============================
+
+                    $('#salaries').val(data.salaryCalculatedValue);
+                    $('#endOfServicesAllowance').val(data.endOfService);
+                    $('#leaveSalaryAllowance').val(data.leaveSalary);
+
+                    $('#additionsOthers').val(0); // user input field
+
+                    $('#totalAdditions').val(data.totalAdditions);
+
+                    // ============================
+                    // DEDUCTIONS
+                    // ============================
+
+                    $('#employeeAdvances').val(data.loanAmount);
+                    $('#payments').val(0);
+                    $('#deductionsOthers').val(0);
+
+                    $('#totalDeductions').val(data.loanAmount);
+
+                    // ============================
+                    // NET ACCRUALS
+                    // ============================
+
+                    $('#netAccruals').val(data.netAccruals);
+                },
+                error: function (xhr) {
+                    console.error(xhr);
+                    alert("Error loading employee settlement data.");
+                }
+            });
+        }
+
+        $(document).on('input', '#salaryOthers, #additionsOthers, #deductionsOthers', function () {
+            calculateTotals();
+        });
+
+        function calculateTotals() {
+
+            // SALARY INFO
+            let basic = parseFloat($('#basicSalary').val()) || 0;
+            let trans = parseFloat($('#transportationAllowance').val()) || 0;
+            let housing = parseFloat($('#housingAllowance').val()) || 0;
+            let salaryOthers = parseFloat($('#salaryOthers').val()) || 0;
+
+            let totalSalary = basic + trans + housing + salaryOthers;
+            $('#totalSalary').val(totalSalary.toFixed(2));
+
+            // ADDITIONS
+            let salaries = parseFloat($('#salaries').val()) || 0;
+            let eos = parseFloat($('#endOfServicesAllowance').val()) || 0;
+            let leave = parseFloat($('#leaveSalaryAllowance').val()) || 0;
+            let addOthers = parseFloat($('#additionsOthers').val()) || 0;
+
+            let totalAdditions = salaries + eos + leave + addOthers;
+            $('#totalAdditions').val(totalAdditions.toFixed(2));
+
+            // DEDUCTIONS
+            let adv = parseFloat($('#employeeAdvances').val()) || 0;
+            let payments = parseFloat($('#payments').val()) || 0;
+            let dedOthers = parseFloat($('#deductionsOthers').val()) || 0;
+
+            let totalDeductions = adv + payments + dedOthers;
+            $('#totalDeductions').val(totalDeductions.toFixed(2));
+
+            // NET ACCRUALS
+            let net = totalAdditions - totalDeductions;
+            $('#netAccruals').val(net.toFixed(2));
+        }
+
+        function clearSettlementFields() {
+            $('#employeeCode').val('');
+
+            $('#basicSalary').val('');
+            $('#transportationAllowance').val('');
+            $('#housingAllowance').val('');
+            $('#salaryOthers').val('');
+
+            $('#totalSalary').val('');
+
+            $('#salaries').val('');
+            $('#endOfServicesAllowance').val('');
+            $('#leaveSalaryAllowance').val('');
+            $('#additionsOthers').val('');
+
+            $('#totalAdditions').val('');
+
+            $('#employeeAdvances').val('');
+            $('#payments').val('');
+            $('#deductionsOthers').val('');
+
+            $('#totalDeductions').val('');
+
+            $('#netAccruals').val('');
+        }
+
+        $(document).on("click", ".deleteSettlementBtn", function () {
+            var id = $(this).data("id");
+            deleteSettlement(id);
+        });
+
+        function deleteSettlement(id) {
+            if (!confirm("Are you sure you want to delete Final Settlement ID " + id + "?")) {
+                return;
+            }
+
+            $.ajax({
+                url: '/HR/DeleteFinalSettlement',
+                type: 'POST',
+                data: { id: id },      
+                success: function (res) {
+
+                    if (res.status) {
+                        toastr.success('Final Settlement Deleted Successfully!');
+
+                        setTimeout(function () {
+                            location.reload();  // refresh grid
+                        }, 1200);
+
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    const msg = xhr.responseJSON?.message || "Error deleting settlement.";
+                    toastr.error(msg);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            loadFinalSettlements();
+            populateEmployeeNameDropdown();
+
+           const today = new Date();
+          const year = today.getFullYear();
+          let month = today.getMonth() + 1;
+          let day = today.getDate();
+
+          if (month < 10) month = '0' + month;
+          if (day < 10) day = '0' + day;
+
+          const todayStr = `${year}-${month}-${day}`;
+
+          $('#settlementDate').val(todayStr);
+          $('#dateCommencement').val(todayStr);
+          $('#dateLastWorkingDay').val(todayStr);
+
+          $('#saveSettlement').click(function () {
+            $('#settlementForm').submit();
+        });
+
+          $('#settlementForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const payload = {
+                Date: $('#settlementDate').val(),
+                EmployeeName: $('#employeeName option:selected').text(),
+                EmployeeId: parseInt($('#employeeName').val(), 10),
+                DateCommencement: $('#dateCommencement').val(),
+                DateLastWork: $('#dateLastWorkingDay').val(),
+
+                // Salary Information
+                TotalSalary: parseFloat($('#totalSalary').val()) || 0,
+
+                // Additions
+                TotalAdditions: parseFloat($('#totalAdditions').val()) || 0,
+
+                // Deductions
+                TotalDeductions: parseFloat($('#totalDeductions').val()) || 0,
+
+                // Net
+                NetAccruals: parseFloat($('#netAccruals').val()) || 0
+            };
+
+            console.log("Final Settlement Payload:", payload);
+
+            $.ajax({
+                url: '/HR/SaveFinalSettlement',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Final Settlement saved successfully');
+                        $('#bankModal').modal('hide');
+
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        toastr.error(res.message || 'Error saving settlement');
+                    }
+                },
+                error: function (xhr) {
+                    const err = xhr.responseJSON?.message || xhr.statusText;
+                    toastr.error('Error: ' + err);
+                }
+            });
+
+        });
+
+           
+
+
+        });
+    </script>
+}
+
+@* <td class="text-center" style="padding: 15px; vertical-align: middle; border: none; font-size: 0.9rem;">
+    <div class="btn-group" role="group">
+        <button class="btn btn-sm btn-warning editSettlementBtn" data-id="${row.Id}" title="Edit Settlement" style="background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%); border: none; border-radius: 6px 0 0 6px; padding: 6px 12px;">
+            <i class="bi bi-pencil-square"></i>
+        </button>
+        <button class="btn btn-sm btn-danger deleteSettlementBtn" data-id="${row.id}" title="Delete Settlement" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); border: none; border-radius: 0 6px 6px 0; padding: 6px 12px;">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+</td> *@

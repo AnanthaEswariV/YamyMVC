@@ -2226,6 +2226,344 @@ namespace YamyProject.Controllers
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetFinalSettlement()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT 
+                e.id,
+                e.code AS EmpCode, 
+                e.name AS EmployeeName,
+                tf.DateCommencement, 
+                tf.DateLastWork,
+                tf.TotalSalary, 
+                tf.TotalAdditions, 
+                tf.TotalDeductions,
+                tf.NetAccruals
+            FROM tbl_final_settlement tf
+            INNER JOIN tbl_employee e ON tf.emp_id = e.id";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var settlements = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    settlements.Add(new
+                    {
+                        Id = reader["id"],
+                        EmpCode = reader["EmpCode"],
+                        EmployeeName = reader["EmployeeName"],
+                        DateCommencement = reader["DateCommencement"],
+                        DateLastWork = reader["DateLastWork"],
+                        TotalSalary = reader["TotalSalary"],
+                        TotalAdditions = reader["TotalAdditions"],
+                        TotalDeductions = reader["TotalDeductions"],
+                        NetAccruals = reader["NetAccruals"]
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    finalSettlements = settlements
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployeeFinalSettlementData(int employeeId)
+        {
+            if (employeeId <= 0)
+                return Json(new { status = false, message = "Invalid employee ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+
+                // ---------------------------------------------------------
+                // 1) GET EMPLOYEE DETAILS (salary info + employee code)
+                // ---------------------------------------------------------
+                var empQuery = @"SELECT code, BasicSalary, HousingAllowance, TransportationAllowance, Other
+                         FROM tbl_employee WHERE id = @id";
+
+                string empCode = "";
+                decimal basicSalary = 0, housing = 0, transport = 0, other = 0;
+
+                using (var cmd = new MySqlCommand(empQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", employeeId);
+
+                    using var r = await cmd.ExecuteReaderAsync();
+                    if (await r.ReadAsync())
+                    {
+                        empCode = r["code"]?.ToString();
+                        basicSalary = r["BasicSalary"] == DBNull.Value ? 0 : Convert.ToDecimal(r["BasicSalary"]);
+                        housing = r["HousingAllowance"] == DBNull.Value ? 0 : Convert.ToDecimal(r["HousingAllowance"]);
+                        transport = r["TransportationAllowance"] == DBNull.Value ? 0 : Convert.ToDecimal(r["TransportationAllowance"]);
+                        other = r["Other"] == DBNull.Value ? 0 : Convert.ToDecimal(r["Other"]);
+                    }
+                    else
+                    {
+                        return Json(new { status = false, message = "Employee not found." });
+                    }
+                }
+
+
+                // ---------------------------------------------------------
+                // 2) GET LEAVE SALARY
+                // ---------------------------------------------------------
+                decimal leaveSalary = 0;
+
+                using (var cmd = new MySqlCommand(
+                    "SELECT SUM(credit) - SUM(debit) AS Sum FROM tbl_leave_salary WHERE code=@code", conn))
+                {
+                    cmd.Parameters.AddWithValue("@code", empCode);
+                    var val = await cmd.ExecuteScalarAsync();
+                    leaveSalary = val == DBNull.Value ? 0 : Convert.ToDecimal(val);
+                }
+
+
+                // ---------------------------------------------------------
+                // 3) GET END OF SERVICE
+                // ---------------------------------------------------------
+                decimal eosAmount = 0;
+
+                using (var cmd = new MySqlCommand(
+                     "SELECT SUM(credit) - SUM(debit) AS EOS FROM tbl_end_of_service WHERE code=@code", conn))
+                {
+                    cmd.Parameters.AddWithValue("@code", empCode);
+                    var val = await cmd.ExecuteScalarAsync();
+                    eosAmount = val == DBNull.Value ? 0 : Convert.ToDecimal(val);
+                }
+
+
+                // ---------------------------------------------------------
+                // 4) GET LOANS
+                // ---------------------------------------------------------
+                decimal loanAmount = 0;
+
+                using (var cmd = new MySqlCommand(
+                    "SELECT SUM(amount) FROM tbl_loan WHERE EmployeeID=@id AND loanDates >= CURDATE()", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", empCode);
+                    var val = await cmd.ExecuteScalarAsync();
+                    loanAmount = val == DBNull.Value ? 0 : Convert.ToDecimal(val);
+                }
+
+
+                // ---------------------------------------------------------
+                // 5) CALCULATE TOTAL SALARY
+                // ---------------------------------------------------------
+                decimal totalSalary = basicSalary + housing + transport + other;
+
+
+                // ---------------------------------------------------------
+                // 6) CALCULATE (totalSalary / 31) * 29  (your formula)
+                // ---------------------------------------------------------
+                decimal salaryCalculatedValue = (totalSalary / 31) * 29;
+
+
+                // ---------------------------------------------------------
+                // 7) TOTAL ADDITIONS = salary + leaveSalary + eos + otherAdditions
+                // ---------------------------------------------------------
+                decimal totalAdditions = salaryCalculatedValue + leaveSalary + eosAmount;
+
+
+                // ---------------------------------------------------------
+                // 8) NET ACCRUALS = totalAdditions - loanAmount
+                // ---------------------------------------------------------
+                decimal netAccruals = totalAdditions - loanAmount;
+
+
+                // ---------------------------------------------------------
+                // FINAL RESPONSE
+                // ---------------------------------------------------------
+                return Ok(new
+                {
+                    status = true,
+                    employee = new
+                    {
+                        EmployeeId = employeeId,
+                        EmployeeCode = empCode,
+                        BasicSalary = basicSalary,
+                        HousingAllowance = housing,
+                        TransportationAllowance = transport,
+                        OtherAllowance = other,
+                        LeaveSalary = leaveSalary,
+                        EndOfService = eosAmount,
+                        LoanAmount = loanAmount,
+                        TotalSalary = totalSalary,
+                        SalaryCalculatedValue = Math.Round(salaryCalculatedValue, 2),
+                        TotalAdditions = Math.Round(totalAdditions, 2),
+                        NetAccruals = Math.Round(netAccruals, 2)
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveFinalSettlement([FromBody] FinalSettlementSaveRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid data." });
+
+            if (string.IsNullOrWhiteSpace(model.EmployeeName))
+                return Json(new { status = false, message = "Please choose an employee first." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                using var tran = await conn.BeginTransactionAsync();
+
+
+                string checkEmp = @"SELECT COUNT(*) FROM tbl_final_settlement WHERE emp_id = @emp_id";
+
+                using (var cmdCheck = new MySqlCommand(checkEmp, conn, tran))
+                {
+                    cmdCheck.Parameters.AddWithValue("@emp_id", model.EmployeeId);
+
+                    int count = Convert.ToInt32(await cmdCheck.ExecuteScalarAsync());
+
+                    if (count > 0)
+                    {
+                        return Json(new { status = false, message = "Final Settlement already exists for this employee." });
+                    }
+                }
+
+
+                string code = "FS-0001";
+                var dupQuery = @"SELECT code FROM tbl_final_settlement 
+                         ORDER BY CAST(SUBSTRING_INDEX(code, '-', -1) AS UNSIGNED) DESC LIMIT 1";
+
+                using (var cmdDup = new MySqlCommand(dupQuery, conn, tran))
+                using (var reader = await cmdDup.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync() && !string.IsNullOrWhiteSpace(reader["code"].ToString()))
+                    {
+                        code = "FS-000" + (int.Parse(reader["code"].ToString().Replace("FS-", "")) + 1);
+                    }
+                }
+
+                // --- Insert Final Settlement Record ---
+                var insertQuery = @"
+            INSERT INTO tbl_final_settlement
+            (code, Date, emp_id, DateCommencement, DateLastWork, TotalSalary, TotalAdditions, TotalDeductions, NetAccruals)
+            VALUES (@code, @Date, @emp_id, @DateCommencement, @DateLastWork, @TotalSalary, @TotalAdditions, @TotalDeductions, @NetAccruals);
+            SELECT LAST_INSERT_ID();";
+
+                int refId;
+                using (var cmdInsert = new MySqlCommand(insertQuery, conn, tran))
+                {
+                    cmdInsert.Parameters.AddWithValue("@code", code);
+                    cmdInsert.Parameters.AddWithValue("@Date", model.Date);
+                    cmdInsert.Parameters.AddWithValue("@emp_id", model.EmployeeId);
+                    cmdInsert.Parameters.AddWithValue("@DateCommencement", model.DateCommencement);
+                    cmdInsert.Parameters.AddWithValue("@DateLastWork", model.DateLastWork);
+                    cmdInsert.Parameters.AddWithValue("@TotalSalary", model.TotalSalary);
+                    cmdInsert.Parameters.AddWithValue("@TotalAdditions", model.TotalAdditions);
+                    cmdInsert.Parameters.AddWithValue("@TotalDeductions", model.TotalDeductions);
+                    cmdInsert.Parameters.AddWithValue("@NetAccruals", model.NetAccruals);
+
+                    refId = Convert.ToInt32(await cmdInsert.ExecuteScalarAsync());
+                }
+
+                await tran.CommitAsync();
+
+                return Json(new { status = true, message = "Final Settlement saved successfully." });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteFinalSettlement(int id)
+        {
+            if (id <= 0)
+                return Json(new { status = false, message = "Invalid settlement ID." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if record exists
+                string checkSql = "SELECT emp_id FROM tbl_final_settlement WHERE id = @id";
+                int empId = 0;
+
+                using (var cmd = new MySqlCommand(checkSql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    var result = await cmd.ExecuteScalarAsync();
+                    if (result == null)
+                        return Json(new { status = false, message = "Final settlement not found." });
+
+                    empId = Convert.ToInt32(result);
+                }
+
+                // Perform soft delete
+                string updateSql = "UPDATE tbl_final_settlement SET state = -1 WHERE id = @id";
+                using (var cmd = new MySqlCommand(updateSql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "Final Settlement deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
     }
 }
