@@ -1,0 +1,271 @@
+﻿
+@{
+    ViewData["Title"] = "ProfitLoss";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Profit & Loss</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Account Name</th>
+                    <th>Account</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+    @section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+
+    <script>
+        $(document).ready(function () {
+
+            loadProfitLossReport();
+
+            // Enable/disable date fields
+            $('#chkAllData').on('change', function () {
+                const disabled = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', disabled);
+            });
+
+            // Filter button
+            $('#filterBtn').on('click', loadProfitLossReport);
+
+            // Toggle expand/collapse
+            $('#table1').on('click', '.toggle-icon', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const tr = $(this).closest('tr');
+                const rowId = tr.attr('data-row-id');
+                const icon = $(this).text().trim();
+
+                if (icon === '►') {
+                    $(this).text('▼');
+                    expandChildren(rowId);
+                } else {
+                    $(this).text('►');
+                    collapseChildren(rowId, new Set());
+                }
+            });
+
+            // Collapse children recursively
+            function collapseChildren(rowId, seen) {
+                if (seen.has(rowId)) return;
+                seen.add(rowId);
+
+                const children = $(`#table1 tbody tr[data-parent-row='${rowId}']`);
+
+                children.each(function () {
+                    const childRowId = $(this).attr('data-row-id');
+
+                    $(this).hide();
+                    $(this).find('.toggle-icon').text('►');
+
+                    collapseChildren(childRowId, seen);
+                });
+            }
+
+            // Expand direct children
+            function expandChildren(rowId) {
+                $(`#table1 tbody tr[data-parent-row='${rowId}']`).show();
+            }
+
+            // Main loader
+            function loadProfitLossReport() {
+
+                let showAll = $('#chkAllData').is(':checked');
+                let startDate = $('#startDate').val();
+                let endDate = $('#endDate').val();
+
+                if (!showAll) {
+                    if (!startDate || !endDate) {
+                        toastr.warning("Please select both start and end dates.");
+                        return;
+                    }
+                }
+
+                $.ajax({
+                    url: '/Reports/GetProfitAndLossTree',
+                    type: 'GET',
+                    data: {
+                        showAll: showAll,
+                        startDate: startDate,
+                        endDate: endDate
+                    },
+                    beforeSend: function () {
+                        $('#table1 tbody').html(`
+                            <tr>
+                                <td colspan="3" class="text-center py-4">
+                                    <div class="spinner-border text-primary me-2"></div>Loading...
+                                </td>
+                            </tr>
+                        `);
+                    },
+                    success: function (res) {
+                        console.log(res);
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
+
+                        if (!res.status || !res.data || res.data.length === 0) {
+                            tbody.html('<tr><td colspan="3" class="text-center py-4 text-muted">No records found</td></tr>');
+                            return;
+                        }
+
+                        let rowIndex = 0;
+                        let uniqueRowCounter = 0;
+
+                        function renderRows(nodes, level = 1, parentRowId = null, ancestorPath = []) {
+                            nodes.forEach(n => {
+
+                                const nodeKey = `${n.id}_${n.name}_${level}`;
+                                const isDuplicate = ancestorPath.some(p =>
+                                    p.id === n.id && p.name === n.name && p.level === level
+                                );
+
+                                if (isDuplicate) return;
+
+                                rowIndex++;
+                                uniqueRowCounter++;
+                                const currentRowId = `row_${uniqueRowCounter}`;
+
+                                const indent = '&nbsp;'.repeat((level - 1) * 6);
+                                const hasChildren = n.children && n.children.length > 0;
+                                const icon = hasChildren
+                                    ? '<span class="toggle-icon" style="cursor:pointer;font-weight:bold;margin-right:4px;">►</span>'
+                                    : '';
+
+                                const parentAttr = parentRowId ? ` data-parent-row="${parentRowId}"` : '';
+                                const hideStyle = level > 1 ? ' style="display:none;"' : '';
+
+                                const row = `
+                                    <tr data-id="${n.id}"
+                                        data-level="${level}"
+                                        data-row-id="${currentRowId}"
+                                        ${parentAttr}
+                                        ${hideStyle}>
+                                        <td>${rowIndex}</td>
+                                        <td>${indent}${icon}${n.name}</td>
+                                        <td class="text-end">${Number(n.balance).toLocaleString(undefined, { minimumFractionDigits:2 })}</td>
+                                    </tr>
+                                `;
+
+                                tbody.append(row);
+
+                                const pathNext = [...ancestorPath, { id: n.id, name: n.name, level: level }];
+
+                                if (hasChildren)
+                                    renderRows(n.children, level + 1, currentRowId, pathNext);
+                            });
+                        }
+
+                        // Render all rows
+                        renderRows(res.data);
+
+                        // Rebind DataTables
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().destroy();
+                        }
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':visible' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':visible' },
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+                    }
+                });
+            }
+
+            // Click row → Level 4 → open TransactionByAccount
+            $('#table1 tbody').on('click', 'tr', function () {
+                const level = $(this).data('level');
+                const id = $(this).data('id');
+
+                if (level === 4 && id) {
+                    window.location.href = `/Reports/TransactionByAccount?accountId=${id}`;
+                }
+            });
+
+        });
+    </script>
+
+
+
+    }

@@ -3662,6 +3662,178 @@ ORDER BY l.code;
 
         #endregion
 
+        #region Profit & Loss
+
+        public IActionResult ProfitLoss()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetProfitAndLossTree(
+            bool showAll = true,
+            DateTime? startDate = null,
+            DateTime? endDate = null)
+        {
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Load Level-1 (Income, Cost, Expenses)
+                var queryL1 = @"
+            SELECT id, name 
+            FROM tbl_coa_level_1
+            WHERE name IN ('Income', 'Cost', 'General & Direct Expenses')
+            ORDER BY id;
+        ";
+
+                var tree = new List<object>();
+
+                await using var cmd1 = new MySqlCommand(queryL1, conn);
+                await using var reader1 = await cmd1.ExecuteReaderAsync();
+
+                var level1List = new List<(int id, string name)>();
+
+                while (await reader1.ReadAsync())
+                    level1List.Add((Convert.ToInt32(reader1["id"]), reader1["name"].ToString()));
+
+                await reader1.CloseAsync();
+
+                // Build tree with balances & children
+                foreach (var item in level1List)
+                {
+                    tree.Add(new
+                    {
+                        Id = item.id,
+                        Name = item.name,
+                        Balance = await GetNodeBalance(conn, 1, item.id, showAll, startDate, endDate),
+                        Children = await GetChildren(conn, 1, item.id, showAll, startDate, endDate)
+                    });
+                }
+
+                return Ok(new { status = true, data = tree });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        private async Task<List<object>> GetChildren(
+    MySqlConnection conn,
+    int level,
+    int parentId,
+    bool showAll,
+    DateTime? startDate,
+    DateTime? endDate)
+        {
+            var list = new List<object>();
+
+            if (level >= 4)
+                return list;  // Level-4 has no children
+
+            int nextLevel = level + 1;
+            string table = $"tbl_coa_level_{nextLevel}";
+
+            string query = $@"
+        SELECT id, name
+        FROM {table}
+        WHERE main_id = @parent
+        ORDER BY id;
+    ";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@parent", parentId);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            var children = new List<(int id, string name)>();
+
+            while (await reader.ReadAsync())
+                children.Add((Convert.ToInt32(reader["id"]), reader["name"].ToString()));
+
+            await reader.CloseAsync();
+
+            foreach (var c in children)
+            {
+                list.Add(new
+                {
+                    Id = c.id,
+                    Name = c.name,
+                    Balance = await GetNodeBalance(conn, nextLevel, c.id, showAll, startDate, endDate),
+                    Children = await GetChildren(conn, nextLevel, c.id, showAll, startDate, endDate)
+                });
+            }
+
+            return list;
+        }
+
+
+
+        private async Task<string> GetNodeBalance(
+    MySqlConnection conn,
+    int level,
+    int id,
+    bool showAll,
+    DateTime? startDate,
+    DateTime? endDate)
+        {
+            string filter = level switch
+            {
+                1 => "t1.id = @id",
+                2 => "t2.id = @id",
+                3 => "t3.id = @id",
+                4 => "t4.main_id = @id",
+                _ => throw new Exception("Invalid COA level")
+            };
+
+            string dateFilter = "";
+            if (!showAll && startDate.HasValue && endDate.HasValue)
+            {
+                dateFilter = " AND tt.date >= @dateFrom AND tt.date <= @dateTo ";
+            }
+
+            string sql = $@"
+        SELECT COALESCE(SUM(tt.debit) - SUM(tt.credit), 0) AS Balance
+        FROM tbl_transaction tt
+        WHERE tt.account_id IN (
+            SELECT t4.id
+            FROM tbl_coa_level_4 t4
+            LEFT JOIN tbl_coa_level_3 t3 ON t3.id = t4.main_id
+            LEFT JOIN tbl_coa_level_2 t2 ON t2.id = t3.main_id
+            LEFT JOIN tbl_coa_level_1 t1 ON t1.id = t2.main_id
+            WHERE {filter}
+        )
+        {dateFilter};
+    ";
+
+            await using var cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+
+            if (!showAll && startDate.HasValue && endDate.HasValue)
+            {
+                cmd.Parameters.AddWithValue("@dateFrom", startDate.Value.Date);
+                cmd.Parameters.AddWithValue("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1));
+            }
+
+            object result = await cmd.ExecuteScalarAsync();
+            decimal balance = result != DBNull.Value ? Convert.ToDecimal(result) : 0;
+
+            return balance.ToString("N2");
+        }
+
+        #endregion
+
+
 
 
     }
