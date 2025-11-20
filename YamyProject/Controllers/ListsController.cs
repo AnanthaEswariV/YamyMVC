@@ -4766,21 +4766,25 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 await conn.OpenAsync();
 
                 string query = @"
-         SELECT 
-  pc.id,
-  pc.code,
-  pc.name           AS employeeId,      
-  e.name            AS employeeName,
-  pc.account_id     AS accountId,
-  a.name            AS accountName,
-  pc.mobile,
-  pc.whatsapp_no,
-  pc.email,
-   e.code           AS empCode
-FROM tbl_petty_cash_card pc
-LEFT JOIN tbl_employee      e ON e.id = pc.name
-LEFT JOIN tbl_coa_level_4  a ON a.id = pc.account_id
-ORDER BY pc.id ASC;
+     SELECT 
+    pc.id,
+    pc.code,
+    pc.name AS employeeId,
+    e.name AS employeeName,
+    pc.account_id AS accountId,
+    a.name AS accountName,
+    pc.mobile,
+    pc.whatsapp_no,
+    pc.email,
+    e.code AS empCode
+FROM 
+    tbl_petty_cash_card pc
+LEFT JOIN 
+    tbl_employee e ON e.id = CAST(pc.name AS UNSIGNED)
+LEFT JOIN 
+    tbl_coa_level_4 a ON a.id = pc.account_id
+WHERE 
+    e.code IS NOT NULL;
 ";
 
                 using var cmd = new MySqlCommand(query, conn);
@@ -4802,10 +4806,10 @@ ORDER BY pc.id ASC;
                         mobile = reader["mobile"]?.ToString() ?? "",
                         whatsapp_no = reader["whatsapp_no"]?.ToString() ?? "",
                         email = reader["email"]?.ToString() ?? "",
-                        empCode = reader.GetInt32("empCode")
-                       
+                        empCode = reader["empCode"] == DBNull.Value ? 0 : Convert.ToInt32(reader["empCode"])
                     });
                 }
+
 
 
                 return Ok(new { status = true, data = list });

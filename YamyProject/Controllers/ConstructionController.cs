@@ -784,15 +784,14 @@ namespace YamyProject.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProjectTenders(
-                                                    int? projectId = null,
-                                                    int? tenderId = null)
+        public async Task<IActionResult> GetProjectTenders(int? projectId = null, int? tenderId = null)
         {
             try
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -807,41 +806,45 @@ namespace YamyProject.Controllers
                 CONCAT(t.code,' - ', t.name) AS TenderName,
                 pt.submission_date AS SubmitDate,
                 pt.fees AS Fees,
-                pt.project_id As Project_Id,
-                pt.account_id As Account_Id,
-                pt.warehouse_id As Warehouse_Id,
-                pt.tender_name_id As Tender_Name_Id,
-                pt.description As Description,
-                p.code As Code
+                pt.project_id AS Project_Id,
+                pt.account_id AS Account_Id,
+                pt.warehouse_id AS Warehouse_Id,
+                pt.tender_name_id AS Tender_Name_Id,
+                pt.description AS Description,
+                p.code AS Code
             FROM tbl_project_tender pt
             INNER JOIN tbl_projects p ON pt.project_id = p.id
             INNER JOIN tbl_tender_names t ON pt.tender_name_id = t.id
-            WHERE pt.state = 0";
+            WHERE pt.state = 0
+        ";
 
                 var parameters = new List<MySqlParameter>();
 
-                if (projectId.HasValue)
+                // Add filters only when selected
+                if (projectId.HasValue && projectId.Value > 0)
                 {
                     query += " AND pt.project_id = @projectId";
                     parameters.Add(new MySqlParameter("@projectId", projectId.Value));
                 }
 
-                if (tenderId.HasValue)
+                if (tenderId.HasValue && tenderId.Value > 0)
                 {
                     query += " AND pt.tender_name_id = @tenderId";
                     parameters.Add(new MySqlParameter("@tenderId", tenderId.Value));
                 }
 
+                query += " ORDER BY pt.date DESC";
+
                 await using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddRange(parameters.ToArray());
 
-                var tenders = new List<object>();
+                var list = new List<object>();
                 int sn = 1;
 
                 await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    tenders.Add(new
+                    list.Add(new
                     {
                         SN = sn++,
                         Id = reader.GetInt32("id"),
@@ -856,17 +859,17 @@ namespace YamyProject.Controllers
                         Tender_Name_Id = reader.GetInt32("Tender_Name_Id"),
                         Description = reader["Description"].ToString(),
                         Code = reader["Code"].ToString()
-
                     });
                 }
 
-                return Ok(new { status = true, data = tenders });
+                return Ok(new { status = true, data = list });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         [HttpGet]
         public async Task<IActionResult> GetTenderItems(int tenderId)

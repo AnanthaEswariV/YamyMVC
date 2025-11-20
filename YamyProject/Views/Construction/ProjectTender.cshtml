@@ -577,7 +577,7 @@
         }
 
         $(document).ready(function () {
-
+            loadProjectTenders();
             loadWarehouses();
 
             function loadProjects() {
@@ -719,7 +719,7 @@
                             const tr = `
                                 <tr>
                                     <td>${i + 1}</td>
-                                    <td>${item.itemName ?? ''}</td>
+                                    <td>${item.Y ?? ''}</td>
                                     <td>${item.qty ?? 0}</td>
                                     <td>${item.rate ?? 0}</td>
                                     <td>${item.unit ?? ''}</td>

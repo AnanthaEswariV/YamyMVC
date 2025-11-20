@@ -251,17 +251,17 @@
                     success: function (res) {
                         let tbody = $("#pettyCashTable tbody");
                         tbody.empty();
-
+                        console.log(res);
                         if (res.status && res.data.length > 0) {
                             res.data.forEach(card => {
                                 tbody.append(`
                                     <tr class="employee-row" data-empcode="${card.empCode}">
-                                        <td>${card.empCode ?? ""}</td>
+                                        <td>${card.code ?? ""}</td>
                                         <td>${card.employeeName ?? ""}</td>
                                         <td class="text-center">
                                             <button class="btn btn-sm btn-outline-primary edit-card"
                                                     data-id="${card.id}"
-                                                    data-code="${card.code}"
+                                                    data-code="${card.empCode}"
                                                     data-empname="${card.employeeId}"
                                                     data-accountid="${card.accountId}"
                                                     data-mobile="${card.mobile}"
