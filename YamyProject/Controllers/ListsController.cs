@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis.Elfie.Diagnostics;
+﻿    using Microsoft.CodeAnalysis.Elfie.Diagnostics;
 
 namespace YamyProject.Controllers
 {
@@ -5253,6 +5253,7 @@ WHERE
                 string voucherQuery = @"SELECT * FROM tbl_petty_cash WHERE id = @id;";
                 using var voucherCmd = new MySqlCommand(voucherQuery, conn);
                 voucherCmd.Parameters.AddWithValue("@id", id);
+
 
                 using var reader = await voucherCmd.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
