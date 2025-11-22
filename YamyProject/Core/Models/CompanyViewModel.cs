@@ -388,9 +388,24 @@ namespace YamyProject.Core.Models
         public string? RefId { get; set; }
         public string? CostCenterId { get; set; }
         public string? Category { get; set; }
+        public string? ProjectId { get; set; }
         public string? Description { get; set; }
         public decimal? Amount { get; set; }
         public string? Note { get; set; }
+    }
+
+
+    public class PettyCashDetailDto
+    {
+        public int SN { get; set; }
+        public int Id { get; set; }
+        public string Description { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string CostCenterId { get; set; } = "";
+        public string HumId { get; set; } = "";
+        public string Note { get; set; } = "";
+        public int AccountId { get; set; }
+        public string AccountName { get; set; } = "";
     }
 
     public class ChequeActionRequest
@@ -406,6 +421,7 @@ namespace YamyProject.Core.Models
         public string Name { get; set; }
         public string? Description { get; set; }
     }
+
 
 
     public class PettyCashCardRequest

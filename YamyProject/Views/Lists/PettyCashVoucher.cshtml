@@ -127,7 +127,7 @@
                                 <td><input type="text" class="form-control form-control-sm"></td>
                                 <td><select class="form-select form-select-sm pettyCashCategorySelect"></select></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
-                                <td><select class="form-select form-select-sm"></select></td>
+                                <td><select class="form-select form-select-sm projectName"></select></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
                                 <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
@@ -314,6 +314,24 @@
 </div>
 
 
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalTitle">Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+                <!-- Detail content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 @section Scripts {
    
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -370,7 +388,6 @@
             });
         }
 
-
         function loadPettyCashCategories() {
             $.ajax({
                 url: '/Lists/GetPettyCashCategories',
@@ -399,7 +416,7 @@
                 <td><input type="text" class="form-control form-control-sm"></td>
                 <td><select class="form-select form-select-sm pettyCashCategorySelect"></select></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
-                <td><select class="form-select form-select-sm"></select></td>
+                    <td><select class="form-select form-select-sm projectName"></select></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
                 <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
@@ -422,8 +439,6 @@
                     $('#pettyCashTableBody').empty();
                     addNewRow();
                 });
-
-       
 
         $(document).on('change', '#pettyCashDropdown', function() {
             const selected = $(this).find(':selected');
@@ -521,6 +536,7 @@
                     details.push({
                         EntryDate: new Date(row.find('td:eq(1) input').val()).toISOString(), // ✅ proper DateTime
                         RefId: row.find('td:eq(2) input').val(),
+                             ProjectId: $(this).find(".projectName").val(),
                         Category: Category ? Category.toString() : null, // ✅ string for C# model
                         HumName: row.find('td:eq(4) input').val(),
                         CostCenterId: row.find('td:eq(5) select').val() || null, // ✅ string
@@ -575,12 +591,80 @@
             $('#addPettyCashModal').modal('show');
         });
 
+        function loadProjects() {
+            $.ajax({
+                url: '/Construction/GetProjects',
+                type: 'GET',
+                success: function (result) {
+                    if (result.status) {
+
+                        // Populate ALL projectName dropdowns inside modal
+                        const dropdowns = $('#addPettyCashModal .projectName');
+
+                        dropdowns.empty();
+                        dropdowns.append('<option value="">-- Select Project Name --</option>');
+
+                        $.each(result.data, function (index, project) {
+                            dropdowns.append(
+                                `<option value="${project.id}">${project.name}</option>`
+                            );
+                        });
+
+                    } else {
+                        toastr.error('Failed to load projects');
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading projects');
+                }
+            });
+        }
+
+        function loadEditProjects() {
+            $.ajax({
+                url: '/Construction/GetProjects',
+                type: 'GET',
+                success: function (result) {
+                    if (result.status) {
+
+                        // Populate ALL project dropdowns in EDIT modal
+                        $('.editProjectName').each(function () {
+                            const selectedProject = $(this).data("selected-project");
+                            const $dropdown = $(this);
+
+                            $dropdown.empty();
+                            $dropdown.append('<option value="">-- Select Project --</option>');
+
+                            $.each(result.data, function (i, project) {
+                                $dropdown.append(
+                                    `<option value="${project.id}"
+                                        ${selectedProject == project.id ? "selected" : ""}>
+                                        ${project.name}
+                                    </option>`
+                                );
+                            });
+                        });
+                    }
+                }
+            });
+        }
+            
+        $('#addPettyCashModal').on('shown.bs.modal', function () {
+            loadProjects();
+        });
+
+        $('#editPettyCashModal').on('shown.bs.modal', function () {
+                    loadEditProjects();
+            });
+
         $(document).ready(function() {
             loadPettyCashCards();
             loadPettyCashCategories();
-                    loadPettyCashForEmployee();
+            loadPettyCashForEmployee();
             populateAndSelectBankAccounts();
-                populateAndSelectCostCenter();
+            populateAndSelectCostCenter();
+            loadProjects();
+            loadEditProjects();
         });
 
         $(document).on("click", ".editPettyCashBtn", function () {
@@ -621,7 +705,11 @@
                             </select>
                         </td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.humName ?? ''}"></td>
-                        <td><input type="text" class="form-control form-control-sm" value="${row.projectName ?? ''}"></td>
+                    <td>
+                    <select class="form-select form-select-sm editProjectName"
+                            data-selected-project="${row.projectId}">
+                    </select>
+                </td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.description ?? ''}"></td>
                         <td><input type="number" class="form-control form-control-sm" step="0.01" value="${row.amount ?? 0}"></td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.note ?? ''}"></td>
@@ -713,7 +801,7 @@
                         RefId: row.find('td:eq(2) input').val() || null,
                         Category: category ? category.toString() : null,
                         HumName: row.find('td:eq(4) input').val() || null,
-                        ProjectName: row.find('td:eq(5) input').val() || null,
+                        ProjectId: row.find('td:eq(5) select').val(),
                         Description: row.find('td:eq(6) input').val() || null,
                         Amount: amount,
                         Note: row.find('td:eq(8) input').val() || ""
@@ -755,12 +843,12 @@
             });
         });
 
-       $(document).on('click', '.editPettyCashBtn, .deletePettyCashBtn, #savePettyCashBtn', function(e) {
+        $(document).on('click', '.editPettyCashBtn, .deletePettyCashBtn, #savePettyCashBtn', function(e) {
     e.preventDefault();
     e.stopPropagation(); 
     });
 
-       $(document).on('click', '.deletePettyCashBtn', function () {
+        $(document).on('click', '.deletePettyCashBtn', function () {
             const id = $(this).data('id');
             if (!id) return;
 
@@ -809,10 +897,10 @@
                     if (res.status && res.data) {
                         const header = res.data.header;
                         const details = res.data.details;
-                      console.log(res);
                         // ✅ FIX: Fill Header Fields with proper fallbacks
                         $('#pettyCashCode').val(header.code ?? '');
-
+                        console.log(header);
+                        console.log(details);
                         // ✅ FIX: Populate dropdown correctly
                         const displayText = header.employeeName
                             ? `${header.code} - ${header.employeeName}`
@@ -831,14 +919,17 @@
 
                         if (details && details.length > 0) {
                             $.each(details, function (i, row) {
+                                        const accountId = row.pettyCashAccountId ?? header.pettyCashAccountId ?? '';
+            const accountName = row.pettyCashAccountName ?? header.pettyCashAccountName ?? '-- Select --';
+
                                 const tr = `
                                     <tr>
                                         <td>${i + 1}</td>
-                                        <td>
-                                            <select class="form-select bankAccountSelect" data-selected-id="${row.accountId ?? row.AccountId ?? ''}">
-                                                <option value="">-- Select --</option>
-                                            </select>
-                                        </td>
+                     <td>
+                        <select class="form-select bankAccountSelect" data-selected-id="${accountId}">
+                            <option value="${accountId}" selected>${accountName}</option>
+                        </select>
+                    </td>
                                         <td>
                                               <select class="form-select costCenterSelect" data-selected-id="${row.accountId ?? row.AccountId ?? ''}">
                                                     <option value="">-- Select --</option>
@@ -847,7 +938,10 @@
                                         <td><input type="text" class="form-control" value="${row.description ?? ''}"></td>
                                         <td><input type="number" class="form-control text-end" value="${row.amount ?? 0}"></td>
                                         <td><input type="number" class="form-control text-end" readonly value="${row.amount ?? 0}"></td>
-                                        <td><a href="#" class="text-primary text-decoration-none">View</a></td>
+                                                <td>
+            <a href="#" class="text-primary text-decoration-none viewDetailBtn" data-detail-id="${row.id}">View</a>
+        </td>
+
                                     </tr>`;
                                 tbody.append(tr);
                             });
@@ -905,7 +999,6 @@
             }
         }
 
-
         function populateAndSelectBankAccounts() {
             $.ajax({
                 url: '/HR/GetAccruedSalaries',
@@ -945,7 +1038,6 @@
                     populateAndSelectBankAccounts();
                     populateAndSelectCostCenter();
         });
-
 
         $("#saveCloseBtn").on("click", function () {
             const voucherId = parseInt($("#submissionNo").val()) || 0;
@@ -1010,14 +1102,12 @@
             });
         });
 
-
-            function populateAndSelectCostCenter() {
+        function populateAndSelectCostCenter() {
                 $.ajax({
                         url: '/Lists/GetCostCenters',
                     type: 'GET',
                     success: function(res) {
                         const data = Array.isArray(res) ? res : res.data || [];
-                        console.log(res);
                         if (!data.length) return;
 
                         // Target ALL elements with the class 'bankAccountSelect'
@@ -1045,6 +1135,35 @@
                     }
                 });
             }
+
+        //         // Delegate click event (works even for dynamically added rows)
+        // $(document).on('click', '.viewDetailBtn', function(e) {
+        //     e.preventDefault(); // prevent default anchor behavior
+        //          $('#detailModal').modal('show');
+        //     const detailId = $(this).data('detail-id');
+
+        //     // Optionally, fetch detail info via AJAX if needed
+        //     $.ajax({
+        //         url: `/YourController/GetDetailInfo?id=${detailId}`,
+        //         type: 'GET',
+        //         success: function(res) {
+        //             if (res.status) {
+        //                 // Fill modal fields here
+        //                 $('#detailModalTitle').text(`Detail for ID ${detailId}`);
+        //                 $('#detailModalBody').html(`<p>${res.data.description}</p>`);
+
+        //                 // Show modal
+        //                 $('#detailModal').modal('show');
+        //             } else {
+        //                 alert('Detail not found!');
+        //             }
+        //         },
+        //         error: function() {
+        //             alert('Error fetching detail!');
+        //         }
+        //     });
+        // });
+
 
 
 

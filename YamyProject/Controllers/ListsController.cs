@@ -4955,7 +4955,7 @@ WHERE
                     // --- UPDATE ---
                     string updateQuery = @"
                 UPDATE tbl_petty_cash 
-                SET code=@code, voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
+                SET  voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
                     employee_id=@employee_id, total=@total, notes=@notes 
                 WHERE id=@id;";
 
@@ -5011,12 +5011,12 @@ WHERE
                         var category = string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category;
                         var note = d.Note ?? "";
                         var amount = d.Amount ?? 0;
-
+                        var ProjectId = string.IsNullOrWhiteSpace(d.ProjectId) ? "0" : d.ProjectId;
                         string insertDetailQuery = @"
                     INSERT INTO tbl_petty_cash_details  
-                        (entry_date, petty_cash_id, hum_id, hum_name, ref_id, cost_center_id, amount, description, category, note)
+                        (entry_date, petty_cash_id, hum_id, hum_name, ref_id, cost_center_id, amount,project_id, description, category, note)
                     VALUES
-                        (@entry_date, @petty_cash_id, @hum_id, @hum_name, @ref_id, @cost_center_id, @amount, @description, @category, @note);";
+                        (@entry_date, @petty_cash_id, @hum_id, @hum_name, @ref_id, @cost_center_id, @amount,@project_id, @description, @category, @note);";
 
                         using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
                         cmdDetail.Parameters.AddWithValue("@entry_date", entryDate);
@@ -5028,6 +5028,7 @@ WHERE
                         cmdDetail.Parameters.AddWithValue("@amount", amount);
                         cmdDetail.Parameters.AddWithValue("@description", description);
                         cmdDetail.Parameters.AddWithValue("@category", category);
+                        cmdDetail.Parameters.AddWithValue("@project_id", ProjectId);
                         cmdDetail.Parameters.AddWithValue("@note", note);
 
                         await cmdDetail.ExecuteNonQueryAsync();
@@ -5104,9 +5105,11 @@ WHERE
                 string detailsQuery = @"
             SELECT dt.id, dt.petty_cash_id, dt.entry_date, dt.ref_id, dt.hum_id, dt.hum_name, dt.category,
                    dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.note,
-            c.name AS categoryName
+            c.name AS categoryName,
+            p.name AS projectName
             FROM tbl_petty_cash_details dt
                 LEFT JOIN tbl_petty_cash_category c ON c.id = dt.category
+                LEFT JOIN tbl_projects p ON p.id = dt.project_id
             WHERE dt.petty_cash_id = @id
             ORDER BY dt.entry_date";
 
@@ -5137,7 +5140,8 @@ WHERE
                             description = reader["description"]?.ToString() ?? "",
                             amount = amount,
                             projectId = reader["project_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["project_id"]),
-                            note = reader["note"]?.ToString() ?? ""
+                            note = reader["note"]?.ToString() ?? "",
+                            projectName = reader["projectName"]?.ToString() ?? ""
                         });
                     }
                 }
@@ -5268,7 +5272,7 @@ WHERE
                 reader.Close();
 
                 // --- STEP 2: Get Employee Name using employee_id from petty cash ---
-                int pettyCashAccountId = 0;
+                int pettyCashAccountId = Convert.ToInt32(cashAccountId);
                 string employeeName = "";
 
                 // ✅ Get employee_id directly from petty cash table
@@ -5292,13 +5296,36 @@ WHERE
                     employeeName = empNameObj?.ToString() ?? "";
                 }
 
-                // ✅ Get petty cash account id from petty cash card
-                string pettyCashAccountQuery = @"SELECT account_id FROM tbl_petty_cash_card WHERE id = @id;";
+                string pettyCashAccountQuery = @"
+    SELECT a.id AS AccountId, a.name AS AccountName
+    FROM tbl_petty_cash_card pc
+    JOIN tbl_coa_level_4 a ON a.id = pc.account_id
+    WHERE pc.id = @id
+    LIMIT 1;
+";
+
                 using var pettyCashAccountCmd = new MySqlCommand(pettyCashAccountQuery, conn);
-                pettyCashAccountCmd.Parameters.AddWithValue("@id", Convert.ToInt32(cashAccountId));
-                var pettyCashAccountIdObj = await pettyCashAccountCmd.ExecuteScalarAsync();
-                if (pettyCashAccountIdObj != null)
-                    pettyCashAccountId = Convert.ToInt32(pettyCashAccountIdObj);
+                pettyCashAccountCmd.Parameters.AddWithValue("@id", cashAccountId);
+
+                string pettyCashAccountName = "";
+
+                using (var pettyCashReader = await pettyCashAccountCmd.ExecuteReaderAsync())
+                {
+                    try{
+                        // 🔥 Required — Read first row
+                        if (await pettyCashReader.ReadAsync())
+                        {
+                            pettyCashAccountId = Convert.ToInt32(pettyCashReader["AccountId"]);
+                            pettyCashAccountName = pettyCashReader["AccountName"].ToString();
+                        }
+                    }catch(Exception ex)
+                    {
+                        throw ex;
+                    }
+                  
+                }
+
+
 
                 // --- STEP 3: Load Petty Cash Details ---
                 string detailsQuery = @"
@@ -5323,7 +5350,7 @@ WHERE
                     string description = detailsReader["description"]?.ToString() ?? "";
                     decimal amount = detailsReader["amount"] != DBNull.Value ? Convert.ToDecimal(detailsReader["amount"]) : 0;
                     totalAmount += amount;
-
+                    int Project_Id = Convert.ToInt32(detailsReader["project_id"]);
                     string costCenterId = detailsReader["cost_center_id"]?.ToString();
                     string humId = detailsReader["hum_id"]?.ToString();
                     string note = detailsReader["note"]?.ToString();
@@ -5373,6 +5400,7 @@ WHERE
                         cashAccountId,
                         pettyCashId,
                         pettyCashAccountId,
+                        pettyCashAccountName,
                         employeeName,
                         total,
                         isOldBill
@@ -5442,7 +5470,6 @@ WHERE
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         [HttpPost]
         public async Task<IActionResult> SavePettyCashVoucherJournal([FromBody] PettyCashVoucherRequest model)
@@ -5651,6 +5678,84 @@ WHERE
             catch (Exception ex)
             {
                 await tx.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashTransactions(int pettyCashId, string description)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                t.transaction_id AS id,
+                a.name AS name,
+                t.debit AS debit,
+                0.00 AS credit
+            FROM tbl_transaction t
+            INNER JOIN tbl_petty_cash_details pd 
+                ON t.transaction_id = pd.petty_cash_id
+                AND t.description COLLATE utf8mb4_general_ci = pd.description COLLATE utf8mb4_general_ci
+            INNER JOIN tbl_coa_level_4 a ON t.account_id = a.id
+            WHERE 
+                t.type = 'Petty Cash'
+                AND pd.petty_cash_id = @PettyCashId
+                AND pd.description = @Description COLLATE utf8mb4_general_ci
+
+            UNION ALL
+
+            SELECT
+                t.transaction_id AS id,
+                a.name AS name,
+                0.00 AS debit,
+                pd.amount AS credit
+            FROM tbl_transaction t
+            INNER JOIN tbl_petty_cash_details pd 
+                ON t.transaction_id = pd.petty_cash_id
+                AND t.credit > 0
+            INNER JOIN tbl_coa_level_4 a ON t.account_id = a.id
+            WHERE 
+                t.type = 'Petty Cash'
+                AND pd.petty_cash_id = @PettyCashId
+                AND pd.description = @Description COLLATE utf8mb4_general_ci
+
+            ORDER BY id, name;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@PettyCashId", pettyCashId);
+                cmd.Parameters.AddWithValue("@Description", description);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var transactions = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    transactions.Add(new
+                    {
+                        id = reader["id"],
+                        name = reader["name"]?.ToString(),
+                        debit = reader["debit"] != DBNull.Value ? Convert.ToDecimal(reader["debit"]) : 0,
+                        credit = reader["credit"] != DBNull.Value ? Convert.ToDecimal(reader["credit"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = transactions });
+            }
+            catch (Exception ex)
+            {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
