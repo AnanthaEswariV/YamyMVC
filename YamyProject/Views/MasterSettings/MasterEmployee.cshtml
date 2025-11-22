@@ -1,0 +1,406 @@
+﻿@model DefaultEmplowyeeViewModel
+@{
+    ViewData["Title"] = "Attendance Config";
+    }
+<div class="container-fluid attendance-config py-4">
+    <h4 class="mb-4">Attendance Config</h4>
+
+    <form asp-action="Save" method="POST">
+        <!-- Top row: time in/out + month/year -->
+        <div class="row g-3 align-items-end mb-3">
+            <div class="col-md-3">
+                <label asp-for="TimeIn" class="form-label">Time In</label>
+                <div class="input-group">
+                    <input type="time" asp-for="TimeIn" class="form-control" placeholder="08:00" id="timeIn" />
+                </div>          
+                <label asp-for="TimeOut" class="form-label">Time Out</label>
+                <div class="input-group">
+                    <input type="time" asp-for="TimeOut" class="form-control" placeholder="05:00" id="timeOut" />
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label asp-for="SelectedMonth" class="form-label">Month</label>
+                <select asp-for="SelectedMonth" class="form-select" id="monthSelect">
+             
+                    @foreach (var month in Model.Months)
+                        {
+                        <option value="@month.Value">@month.Text</option>
+                        }
+                    
+                </select>   
+                <label asp-for="SelectedYear" class="form-label">Year</label>
+                <select asp-for="SelectedYear" class="form-select" id="yearSelect">
+                    @foreach (var year in Model.Years)
+                        {
+                        <option value="@year.Value">@year.Text</option>
+                        }
+                </select>
+            </div>
+        </div>
+
+        <!-- Day(s) Off row -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-4 col-lg-3">
+                <label asp-for="SelectedDayOff" class="form-label">Day(s) Off</label>
+                <div class="input-group">
+                    <select asp-for="SelectedDayOff" class="form-select" id="daySelect">
+                        @foreach (var d in Model.AllDaysOfWeek)
+                            {
+                            <option value="@d">@d</option>
+                            }
+                    </select>
+                    <button type="button" id="btnAddDayOff"
+                            class="btn btn-primary px-4">
+                        Ad
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main panels -->
+        <div class="row g-3">
+            <!-- Left: Days Off list -->
+            <div class="col-md-3">
+                <div class="ac-panel">
+                    <table class="table table-sm mb-0 ac-attendance-table align-middle">
+                        <thead>
+                        <tr>
+                                <th style="width: 60px;" class=" align-middle">Day</th>
+                                <th style="width: 60px;" class=" align-middle">Delete</th>
+                        </tr>
+                    </thead>
+                        <tbody id="daysOffBody">
+                        @if (Model.DaysOff != null)
+                            {
+                            foreach (var row in Model.DaysOff)
+                                {
+                                <td value="@row.Value">@row.Text</td>
+                              @*   <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-row">×</button>
+                                </td> *@
+                                }
+                      
+                            }
+
+                    </tbody>
+                    </table>
+       
+                </div>
+
+                <div class="d-grid mt-3">
+                    <button type="submit" name="command" value="ModifyDayOff"
+                            class="btn btn-primary">
+                        Modify
+                    </button>
+                </div>
+            </div>
+         @* </div> *@
+
+            <!-- Right: Calendar grid -->
+            <div class="col-md-9">
+                <div class="ac-panel">
+                    <div class="ac-panel-body p-0">
+                        <table class="table table-sm mb-0 ac-attendance-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">SN#</th>
+                                    <th style="width: 140px;">Date</th>
+                                    <th>Day</th>
+                                    <th style="width: 80px;">Time In</th>
+                                    <th style="width: 80px;">Time Out</th>
+                                    <th style="width: 80px;">State</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceBody">
+                                @if (Model.AttendanceRows != null && Model.AttendanceRows.Any())
+                                    {
+                                    var index = 1;
+                                    foreach (var row in Model.AttendanceRows)
+                                        {
+                                        <tr>
+                                            <td>@index</td>
+                                            <td>@row.Date.ToString("yyyy-MM-dd")</td>
+                                            <td>@row.DayName</td>
+                                            <td>@row.TimeIn</td>
+                                            <td>@row.TimeOut</td>
+                                            <td>@row.State</td>
+                                        </tr>
+                                        index++;
+                                        }
+                                    }
+                                else
+                                    {
+                                    <!-- Empty body to keep grey background -->
+                                  @*   <tr>
+                                        <td colspan="6" class="py-5 text-center text-muted">
+                                            No data yet. Choose month/year and save.
+                                        </td>
+                                    </tr> *@
+                                    }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-center mt-3">
+                    <button type="submit" name="command" value="Save"
+                            class="btn btn-primary px-5">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+    @section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const btnAdd  = document.getElementById("btnAddDayOff");
+            const select  = document.getElementById("daySelect");
+            const tbody   = document.getElementById("daysOffBody");
+
+            // Add day (same as before, shortened)
+            btnAdd.addEventListener("click", function () {
+                const selectedDay = select.value;
+                if (!selectedDay) return;
+
+                // check duplicates
+                const rows = tbody.querySelectorAll("tr");
+                for (let i = 0; i < rows.length; i++) {
+                    const cellText = rows[i].cells[0].textContent.trim();
+                    if (cellText === selectedDay) {
+                        alert("Day already added");
+                        return;
+                    }
+                }
+
+                const tr = document.createElement("tr");
+
+                const tdDay = document.createElement("td");
+                tdDay.textContent = selectedDay;
+
+                const tdRemove = document.createElement("td");
+                tdRemove.innerHTML = `
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger btn-remove-day">
+                        &times;
+                    </button>`;
+
+                tr.appendChild(tdDay);
+                tr.appendChild(tdRemove);
+                tbody.appendChild(tr);
+            });
+
+            // Remove day
+            tbody.addEventListener("click", function (e) {
+                if (e.target.classList.contains("btn-remove-day")) {
+                    const row = e.target.closest("tr");
+                    if (row) {
+                        row.remove();
+                    }
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const btnModify      = document.querySelector('button[name="command"][value="ModifyDayOff"]');
+            const btnSave        = document.querySelector('button[name="command"][value="Save"]');
+            const timeInInput    = document.getElementById("timeIn");
+            const timeOutInput   = document.getElementById("timeOut");
+            const yearSelect     = document.getElementById("yearSelect");
+            const monthSelect    = document.getElementById("monthSelect");
+            const daysOffBody    = document.getElementById("daysOffBody");
+            const attendanceBody = document.getElementById("attendanceBody");
+
+            const weekdayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+            const saveUrl = '@Url.Action("SaveAttendance", "MasterSettings")';
+
+            function clearAttendanceTable() {
+                if (attendanceBody) {
+                    attendanceBody.innerHTML = "";
+                }
+            }
+
+            // Clear when month or year changes
+            if (monthSelect) monthSelect.addEventListener("change", clearAttendanceTable);
+            if (yearSelect)  yearSelect.addEventListener("change", clearAttendanceTable);
+
+            // =====================
+            // MODIFY (fill the table)
+            // =====================
+            if (btnModify) {
+                btnModify.addEventListener("click", function (e) {
+                    e.preventDefault();
+
+                    const inTime  = (timeInInput?.value  || "").trim();
+                    const outTime = (timeOutInput?.value || "").trim();
+
+                    if (!inTime || !outTime) {
+                        alert("Enter Time");
+                        return;
+                    }
+
+                    const year  = parseInt(yearSelect.value, 10);
+                    const month = parseInt(monthSelect.value, 10); // 1..12
+
+                    if (isNaN(year) || isNaN(month)) {
+                        alert("Please select a valid Year and Month.");
+                        return;
+                    }
+
+                    clearAttendanceTable();
+
+                    // Build set of days off
+                    const dayOffNames = new Set();
+                    if (daysOffBody) {
+                        daysOffBody.querySelectorAll("tr").forEach(row => {
+                            const cell = row.cells[0];
+                            if (cell) {
+                                const name = cell.textContent.trim();
+                                if (name) dayOffNames.add(name.toLowerCase());
+                            }
+                        });
+                    }
+
+                    const daysInMonth = new Date(year, month, 0).getDate();
+
+                    let index = 0;
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const date = new Date(year, month - 1, day); // JS months 0–11
+                        const weekdayName = weekdayNames[date.getDay()];
+                        const isDayOff = dayOffNames.has(weekdayName.toLowerCase());
+                        const workFlag = isDayOff ? 0 : 1;
+
+                        const yyyy = date.getFullYear();
+                        const mm   = String(date.getMonth() + 1).padStart(2, "0");
+                        const dd   = String(date.getDate()).padStart(2, "0");
+                        const formattedDate = `${yyyy}-${mm}-${dd}`;
+
+                        const tr = document.createElement("tr");
+
+                        const tdSn = document.createElement("td");
+                        tdSn.textContent = index + 1;
+
+                        const tdDate = document.createElement("td");
+                        tdDate.textContent = formattedDate;
+
+                        const tdWeekday = document.createElement("td");
+                        tdWeekday.textContent = weekdayName;
+
+                        const tdIn = document.createElement("td");
+                        tdIn.textContent = inTime;
+
+                        const tdOut = document.createElement("td");
+                        tdOut.textContent = outTime;
+
+                        const tdWork = document.createElement("td");
+                        tdWork.textContent = workFlag.toString();
+
+                        tr.appendChild(tdSn);
+                        tr.appendChild(tdDate);
+                        tr.appendChild(tdWeekday);
+                        tr.appendChild(tdIn);
+                        tr.appendChild(tdOut);
+                        tr.appendChild(tdWork);
+
+                        attendanceBody.appendChild(tr);
+                        index++;
+                    }
+
+                    // const monthText = monthSelect.options[monthSelect.selectedIndex].text;
+                    // alert(`Entries for ${monthText} ${year} have been added successfully!`);
+                });
+            }
+
+            // =====================
+            // SAVE (JSON → controller, using $.ajax)
+            // =====================
+            if (btnSave) {
+                btnSave.addEventListener("click", function (e) {
+                    e.preventDefault();
+
+                    const year  = parseInt(yearSelect.value, 10);
+                    const month = parseInt(monthSelect.value, 10);
+
+                    if (isNaN(year) || isNaN(month)) {
+                        alert("Please select a valid Year and Month.");
+                        return;
+                    }
+
+                    const trList = attendanceBody.querySelectorAll("tr");
+                    if (trList.length === 0) {
+                        alert("No attendance rows to save.");
+                        return;
+                    }
+
+                    const timeRegex = /^\d{1,2}:\d{2}$/;
+                    const rows = [];
+
+                    trList.forEach(tr => {
+                        const tds = tr.querySelectorAll("td");
+                        if (tds.length < 6) return;
+
+                        const date    = tds[1].textContent.trim(); // Date col
+                        const dayName = tds[2].textContent.trim(); // Day col
+                        const timeIn  = tds[3].textContent.trim();
+                        const timeOut = tds[4].textContent.trim();
+                        const state   = parseInt(tds[5].textContent.trim(), 10) || 0;
+
+                        if (!timeRegex.test(timeIn) || !timeRegex.test(timeOut)) {
+                            alert("Invalid IN or OUT time format. Please enter time as HH:mm (e.g. 08:00).");
+                            return;
+                        }
+
+                        rows.push({
+                            Date:    date,
+                            DayName: dayName,
+                            TimeIn:  timeIn,
+                            TimeOut: timeOut,
+                            State:   state
+                        });
+                    });
+
+                    if (rows.length === 0) {
+                        alert("No valid attendance rows to save.");
+                        return;
+                    }
+
+                    const tokenField = document.querySelector('input[name="__RequestVerificationToken"]');
+                    const token = tokenField ? tokenField.value : null;
+
+                    const payload = JSON.stringify({
+                        SelectedYear: year,
+                        SelectedMonth: month,
+                        AttendanceRows: rows
+                    });
+
+                    $.ajax({
+                        url: saveUrl,
+                        type: 'POST',
+                        data: payload,
+                        contentType: 'application/json; charset=utf-8',
+                        dataType: 'json',
+                        headers: token ? { 'RequestVerificationToken': token } : {},
+                        success: function (res) {
+                            alert((res && res.message) || 'Attendance saved successfully.');
+                            clearAttendanceTable();
+                        },
+                        error: function (xhr) {
+                            let msg = 'Error saving attendance.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            alert(msg);
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+
+
+    }

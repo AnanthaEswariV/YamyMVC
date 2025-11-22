@@ -1,0 +1,231 @@
+﻿@model CustomerSalesDetailListViewModel
+@{
+    ViewData["Title"] = "Sales By Customer Details";
+    }
+
+<style>
+    body {
+        background: #f5f6f8;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .report-wrap {
+        padding: 12px 18px;
+    }
+
+    .toolbar button {
+        font-size: .8rem;
+    }
+
+    .filters-row label {
+        font-size: .8rem;
+        font-weight: 600;
+    }
+
+    .filters-row .form-select,
+    .filters-row .form-control {
+        font-size: .8rem;
+        height: calc(1.5rem + 6px);
+        padding: 2px 6px;
+    }
+
+    .report-surface {
+        margin-top: 18px;
+        background: #ffffff;
+        min-height: 480px;
+        padding: 32px 0;
+    }
+
+    .company-title {
+        font-size: .9rem;
+        font-weight: 600;
+    }
+
+    .report-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+
+    .report-subtitle {
+        font-size: .85rem;
+        font-weight: 600;
+    }
+
+    .center-panel {
+        max-width: 780px;
+        margin: 0 auto;
+    }
+
+    .details-table-wrap {
+        border: 1px solid #d0d5dd;
+        background: #f5f5f5;
+        max-height: 380px;
+        overflow-y: auto;
+    }
+
+    .details-table thead th {
+        background: #e6e7ea;
+        font-size: .8rem;
+        padding: 6px 8px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .details-table tbody td {
+        font-size: .8rem;
+        padding: 6px 8px;
+    }
+
+    .details-table tbody tr:nth-child(odd) td {
+        background: #f9f9ff;
+    }
+
+    .details-table tfoot td {
+        background: #e3e3e3;
+        font-weight: 700;
+        font-size: .8rem;
+        padding: 6px 8px;
+    }
+
+    .left-time {
+        font-size: .7rem;
+        color: #555;
+        position: absolute;
+        left: 10px;
+        top: 90px;
+    }
+
+    .type-link-like {
+        color: #0d6efd;
+        text-decoration: underline;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="container-fluid report-wrap">
+
+    <!-- TOP TOOLBAR (NO Customize / Comment / Memorize / Hide Header / Refresh) -->
+    <div class="toolbar d-flex flex-wrap gap-2 mb-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary">Print ▼</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary">Excel</button>
+    </div>
+
+    <!-- FILTERS (Dates + From/To + Show Column + Sort By, similar to screenshots) -->
+    <form method="get">
+        <input type="hidden" name="customerId" value="@Model.CustomerId" />
+        <div class="row g-2 align-items-end mb-2 filters-row">
+            <div class="col-auto">
+                <label class="form-label mb-0">Dates</label>
+                <select name="dates" class="form-select form-select-sm">
+                    <option value="All">All</option>
+                    <option value="Today">Today</option>
+                    <option value="ThisMonth">This Month</option>
+                    <option value="ThisYear">This Year</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <label class="form-label mb-0">From</label>
+                <input type="date"
+                       class="form-control form-control-sm"
+                       name="startDate"
+                       value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-auto">
+                <label class="form-label mb-0">To</label>
+                <input type="date"
+                       class="form-control form-control-sm"
+                       name="endDate"
+                       value="@Model.EndDate.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-auto">
+                <label class="form-label mb-0">Show_Column</label>
+                <select name="showColumn" class="form-select form-select-sm">
+                    <option value="All">All</option>
+                    @* <option value="QtyAmount">Qty / Amount Only</option> *@
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <label class="form-label mb-0">Sort By</label>
+                <select name="sortBy" class="form-select form-select-sm">
+                    <option value="Date">Date</option>
+                    <option value="Num">Num</option>
+                    <option value="Amount">Amount</option>
+                </select>
+            </div>
+        </div>
+    </form>
+
+    <!-- LEFT DATES (like printed report margin) -->
+    <div class="report-surface position-relative">
+     @*    <div class="left-time">
+            @Model.StartDate.ToString("dd/MM/yyyy")<br />
+            @Model.EndDate.ToString("dd/MM/yyyy")
+        </div> *@
+
+        <!-- REPORT BODY -->
+        <div class="center-panel">
+
+            <div class="text-center mb-3">
+                <div class="company-title">ARC MASTER CONTRACTING L.L.C.</div>
+                <div class="report-title">Sales By Customer Details</div>
+                <div class="report-subtitle">All Transaction</div>
+            </div>
+
+            <div class="details-table-wrap">
+                <table class="table table-sm mb-0 details-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 120px;">Type</th>
+                            <th style="min-width: 90px;">Date</th>
+                            <th style="min-width: 80px;">Num</th>
+                            <th style="min-width: 120px;">Name</th>
+                            <th style="min-width: 130px;">Item</th>
+                            <th class="text-end" style="min-width: 60px;">QTY</th>
+                            <th class="text-end" style="min-width: 90px;">Sales Price</th>
+                            <th class="text-end" style="min-width: 90px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model?.Rows != null && Model.Rows.Any())
+                            {
+                            foreach (var row in Model.Rows)
+                                {
+                                <tr>
+                                    <td>
+                                        @row.Type
+                                    </td>
+                                    <td>@row.Date.ToString("dd/MM/yyyy")</td>
+                                    <td>@row.Num</td>
+                                    <td>@row.CustomerName</td>
+                                    <td>@row.Item</td>
+                                    <td class="text-end">@row.Qty</td>
+                                    <td class="text-end">@row.Price</td>
+                                    <td class="text-end">@row.Amount</td>
+                                </tr>
+                                }
+                            }
+                        else
+                            {
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">No data to display.</td>
+                            </tr>
+                            }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="7" class="text-end">TOTAL</td>
+                            <td class="text-end">@Model.TotalAmount</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>

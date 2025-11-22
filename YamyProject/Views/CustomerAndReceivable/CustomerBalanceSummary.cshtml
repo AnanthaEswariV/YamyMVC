@@ -1,0 +1,315 @@
+﻿@model CustomerBalanceSummaryViewModel
+@{
+    ViewData["Title"] = "Customer Balance Summary";
+    }
+
+
+<style>
+    body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #ffffff;
+    }
+
+    .top-bar {
+        background: #183964;
+        color: #fff;
+        padding: 6px 0;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .toolbar {
+        padding: 6px 16px;
+        border-bottom: 1px solid #e1e4ea;
+        background: #f7f7f7;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+        .toolbar .btn-toolbar {
+            padding: 4px 14px;
+            font-size: 0.8rem;
+            border-radius: 2px;
+            border-color: #d3d7de;
+            background: #fdfdfd;
+            box-shadow: inset 0 0 0 1px #f3f3f3;
+        }
+
+    .filters-row {
+        padding: 2px 16px 10px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+        .filters-row label {
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+
+        .filters-row .form-control {
+            max-width: 140px;
+            font-size: 0.8rem;
+            padding: 4px 6px;
+            height: 26px;
+        }
+
+        .filters-row .form-check-label {
+            margin-left: 4px;
+            font-weight: 600;
+        }
+
+        .filters-row .form-check-input {
+            width: 16px;
+            height: 16px;
+            margin-top: 0;
+        }
+
+    /* Center report card */
+    .report-wrapper {
+        padding-top: 30px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .report-card {
+        width: 430px;
+        border: 1px solid #d7d7d7;
+        background: #ffffff;
+        padding-top: 10px;
+        box-shadow: 0 0 0 1px #f2f2f2;
+    }
+
+    .report-header {
+        text-align: center;
+        margin-bottom: 4px;
+        font-size: 0.82rem;
+    }
+
+        .report-header .company-name {
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .report-header .report-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .report-header .report-subtitle {
+            font-weight: 700;
+            margin-bottom: 1px;
+        }
+
+        .report-header .meta {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+            .report-header .meta span + span {
+                margin-left: 18px;
+            }
+
+    .report-table-container {
+        margin-top: 8px;
+        border-top: 1px solid #d3d3d3;
+    }
+
+    table.report-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+    }
+
+    .report-table thead th {
+        background: #d6d6d6;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-bottom: 1px solid #d3d3d3;
+    }
+
+        .report-table thead th:first-child {
+            width: 60%;
+        }
+
+        .report-table thead th:last-child {
+            width: 40%;
+            text-align: center;
+        }
+
+    .report-table tbody td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #f1f1f1;
+    }
+
+    .report-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .customer-cell {
+        color: #333;
+    }
+
+    .amount-cell {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+        .amount-cell .arrow {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 0.7rem;
+        }
+
+    .report-table tfoot td {
+        background: #e3e3e3;
+        padding: 5px 8px 6px;
+        text-align: center;
+        font-weight: 700;
+        text-decoration: underline;
+    }
+
+    /* disabled dates when All is checked */
+    .date-disabled {
+        background-color: #f0f0f0;
+        color: #777;
+    }
+</style>
+
+<div class="top-bar">
+    Customer Balance Summary
+</div>
+
+<div class="toolbar">
+    <!-- Only Print & Excel as requested -->
+    <button type="button" class="btn btn-sm btn-outline-secondary btn-toolbar">
+        Print ▼
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary btn-toolbar">
+        Excel
+    </button>
+</div>
+
+<form method="get">
+    <div class="filters-row">
+        <label for="DateFrom">From</label>
+        <input asp-for="DateFrom"
+               id="DateFrom"
+               type="date"
+               class="form-control form-control-sm" />
+
+        <label for="DateTo" class="ms-1">To</label>
+        <input asp-for="DateTo"
+               id="DateTo"
+               type="date"
+               class="form-control form-control-sm" />
+
+        <div class="form-check ms-2">
+            <input asp-for="AllDates"
+                   class="form-check-input"
+                   type="checkbox"
+                   id="chkAllDates" />
+            <label class="form-check-label" for="chkAllDates">All</label>
+        </div>
+    </div>
+</form>
+
+<div class="report-wrapper">
+    <div class="report-card">
+        <div class="report-header">
+            <div class="company-name">@Model.CompanyName</div>
+            <div class="report-title">Customer Balance</div>
+            <div class="report-subtitle">All Transaction</div>
+            <div class="meta">
+                <span>@Model.GeneratedOn.ToString("dd/MM/yyyy")</span>
+                <span>@Model.GeneratedOn.ToString("hh:mm tt")</span>
+            </div>
+        </div>
+
+        <div class="report-table-container">
+            <table id="reportTable" class="report-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>@Model.ColumnHeaderText</th> @* e.g. "Jan 01, 01" *@
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Rows != null && Model.Rows.Any())
+                        {
+                        foreach (var row in Model.Rows)
+                            {
+                            <tr data-id="@row.Id">
+                                <td class="customer-cell">
+                                    @row.Account
+                                </td>
+                                <td class="amount-cell">
+                                    @row.Amount.ToString("N2")
+                                    <span class="arrow">◄</span>
+                                </td>
+                            </tr>
+                            }
+                        }
+                    else
+                        {
+                        <tr>
+                            <td colspan="2" class="text-center py-3 text-muted">
+                                No data found.
+                            </td>
+                        </tr>
+                        }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td  colspan="2" class="text-center">
+                            @Model.TotalBalance.ToString("N2")
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    
+<script>
+    // Toggle From/To enabled when "All" is checked
+    document.addEventListener("DOMContentLoaded", function () {
+        const chkAll = document.getElementById("chkAllDates");
+        const fromInput = document.getElementById("DateFrom");
+        const toInput = document.getElementById("DateTo");
+
+        function updateDateState() {
+            const disabled = chkAll.checked;
+            fromInput.disabled = disabled;
+            toInput.disabled = disabled;
+
+            fromInput.classList.toggle("date-disabled", disabled);
+            toInput.classList.toggle("date-disabled", disabled);
+        }
+
+        if (chkAll) {
+            chkAll.addEventListener("change", updateDateState);
+            updateDateState();
+        }
+    });
+</script>
+    <script>
+        $(document).ready(function () {
+
+                   $('#reportTable tbody').on('dblclick', 'tr', function () {
+            const id = $(this).data('id');
+            if (!id) return;
+
+                    const url = '@Url.Action("CustomerSummaryDetails", "CustomerAndReceivable")' + '?id=' + id;
+            window.location.href = url;
+        });
+        });
+    </script>
+}

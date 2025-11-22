@@ -1,0 +1,1005 @@
+﻿@model IEnumerable<EquityBalanceRowViewModel>
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+
+@{
+    ViewData["Title"] = "Profit And Loss";
+    }
+
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+<div class="container-fluid py-3">
+
+    <!-- Toolbar buttons (top) -->
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        <button class="btn btn-sm btn-outline-secondary">Customize Report</button>
+        <button class="btn btn-sm btn-outline-secondary">Comment On</button>
+        <button class="btn btn-sm btn-outline-secondary">Memorize</button>
+        <button class="btn btn-sm btn-outline-secondary">Print ▼</button>
+        <button class="btn btn-sm btn-outline-secondary">Excel</button>
+        <button class="btn btn-sm btn-outline-secondary">Hide</button>
+        <button class="btn btn-sm btn-outline-secondary">Refresh</button>
+    </div>
+
+    <!-- Filters row -->
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label mb-0 fw-semibold">Dates</label>
+            <input type="text" class="form-control form-control-sm" placeholder="">
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-0">From</label>
+            <input type="date" class="form-control form-control-sm" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-0">To</label>
+            <input type="date" class="form-control form-control-sm" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-0">Show Columns</label>
+            <select class="form-select form-select-sm">
+                <option>All Columns</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-0">Sort By</label>
+            <select class="form-select form-select-sm">
+                <option>Account Number</option>
+                <option>Account Name</option>
+                <option>Amount</option>
+            </select>
+        </div>
+        <div class="col ms-auto">
+            <label class="form-label mb-0">Search</label>
+            <input id="searchInput" type="text"
+                   class="form-control form-control-sm"
+                   placeholder="Search accounts..." />
+        </div>
+    </div>
+
+    <!-- Header (time + company + title) -->
+    <div class="row mb-3">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="small text-muted">
+                    @DateTime.Now.ToString("HH:mm")<br />
+                    @DateTime.Now.ToString("dd/MM/yyyy")
+                </div>
+
+                <div class="text-center flex-grow-1">
+                    <h5 class="mb-0 fw-semibold">COMPANY L.L.C.</h5>
+                    <h4 class="mb-0">Profit &amp; loss</h4>
+                    <div class="small text-muted">All Transaction</div>
+                </div>
+
+                <div style="width:80px"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: tree header + body -->
+    <div class="card shadow-sm">
+        <div class="card-header py-2 bg-secondary-subtle">
+            <div class="row">
+                <div class="col fw-semibold">Account Name</div>
+                <div class="col-auto fw-semibold text-end">Amount</div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="tree">
+                <ul class="list-unstyled mb-0" id="plTree">
+                    @foreach (var root in Model)
+                        {
+                        @await Html.PartialAsync(
+                        "_EquityBalanceNode",
+                                        root,
+                                        new ViewDataDictionary(ViewData) { ["Level"] = 0 }
+                                        )
+                                        }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+    @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        .tree-row {
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f1f1;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+            .tree-row:hover {
+                background-color: #f5f5f5;
+            }
+
+        .tree-item.level-0 > .tree-row {
+            background-color: #dcdcdc;
+            font-weight: 600;
+        }
+
+        .tree-item.level-1 > .tree-row {
+            background-color: #f0f4ff;
+            font-weight: 600;
+        }
+
+        .tree-item.level-2 > .tree-row {
+            background-color: #ffffff;
+        }
+
+        .tree-item.level-3 > .tree-row {
+            background-color: #f9f9f9;
+        }
+
+        .toggle {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #555;
+        }
+
+            .toggle.placeholder {
+                visibility: hidden;
+            }
+
+            .toggle.expanded {
+                transform: rotate(90deg);
+            }
+
+        .account-label {
+            padding-left: 2px;
+        }
+
+        .amount {
+            min-width: 130px;
+        }
+    </style>
+
+    <script>
+        $(function () {
+            // expand/collapse
+            $('#plTree').on('click', '.tree-row', function (e) {
+                const $row = $(this);
+                const $toggle = $row.find('.toggle').first();
+                const $li = $row.closest('li');
+                const $children = $li.children('ul.child-list');
+
+                if ($children.length === 0) return;
+
+                if ($children.is(':visible')) {
+                    $children.slideUp(150);
+                    $toggle.removeClass('expanded').text('▶').addClass('collapsed');
+                } else {
+                    $children.slideDown(150);
+                    $toggle.addClass('expanded').text('▼').removeClass('collapsed');
+                }
+            });
+
+            // search
+            $('#searchInput').on('input', function () {
+                const term = $(this).val().toLowerCase().trim();
+                if (!term) {
+                    // show all and collapse to top level
+                    $('#plTree li').show();
+                    $('#plTree ul.child-list').hide();
+                    $('#plTree .toggle').text('▶').removeClass('expanded');
+                    return;
+                }
+
+                $('#plTree li').each(function () {
+                    const $li = $(this);
+                    const text = $li.find('> .tree-row').data('name')?.toLowerCase() || "";
+                    if (text.includes(term)) {
+                        $li.show();
+                        $li.parents('li').show();
+                        $li.parents('ul.child-list').show();
+                        $li.parents('li').find('> .tree-row .toggle')
+                            .text('▼').addClass('expanded');
+                    } else {
+                        $li.hide();
+                    }
+                });
+            });
+        });
+    </script>
+    }
+
+
+
+
+@* @{
+    ViewData["Title"] = "Profit And Loss";
+   // Layout = "~/Views/Shared/_Layout.cshtml";
+    }
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="container py-3">
+    <div class="content">
+
+        <!-- Search + Button Row -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <!-- Search box -->
+            <div class="search-box position-relative flex-grow-1" style="max-width: 400px;">
+                <input type="text" class="form-control ps-5" placeholder="Search accounts..." id="searchInput">
+                <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-secondary">🔍</span>
+            </div>
+
+        </div>
+
+        <!-- COA Tree -->
+        <div class="tree border rounded-3 p-3 bg-light" id="coaTree" style="min-height: 300px;">
+            <div class="loading text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status"></div>
+                <div>Loading accounts...</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="editAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+           @*  <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Edit Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div> 
+
+            <div class="modal-body">
+                <input type="hidden" id="editAccountId" />
+
+                <div class="mb-3">
+                    <label class="form-label">Account Name</label>
+                    <input type="text" id="editAccountName" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Debit</label>
+                    <input type="number" id="editDebit" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Credit</label>
+                    <input type="number" id="editCredit" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Due Date</label>
+                    <input type="date" id="editDate" class="form-control" />
+                </div>
+            </div>
+                       
+        </div>
+    </div>
+</div>
+
+
+    @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 1200px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+            .header::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -20%;
+                width: 200px;
+                height: 200px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 50%;
+                animation: float 6s ease-in-out infinite;
+            }
+
+        keyframes float {
+            0%, 100%
+
+        {
+            transform: translateY(0px) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-20px) rotate(180deg);
+        }
+
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            font-size: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            background: #f9fafb;
+            transition: all 0.3s ease;
+        }
+
+            .search-input:focus {
+                outline: none;
+                border-color: #4f46e5;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            }
+
+        .search-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 20px;
+        }
+
+        .tree {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+            .tree ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                display: none;
+            }
+
+            .tree > ul {
+                display: block;
+            }
+
+            .tree li {
+                position: relative;
+                transition: all 0.3s ease;
+            }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f3f4f6;
+            position: relative;
+        }
+
+            .tree-node:hover {
+                background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+                transform: translateX(5px);
+            }
+
+            .tree-node.level-0 {
+                color: #2563eb;
+                background: lightgray;
+                font-weight: bold;
+                font-size: 16px;
+                border-radius: 6px;
+                padding: 10px 14px;
+                margin-bottom: 6px;
+                font-color: blue;
+            }
+
+                .tree-node.level-0:hover {
+                    background: gray;
+                    transform: translateX(0);
+                }
+
+            .tree-node.level-1 {
+                background: linear-gradient(90deg, #f0f9ff 0%, #e0f2fe 100%);
+                font-weight: 600;
+                color: #0369a1;
+                border-left: 4px solid #0ea5e9;
+            }
+
+                .tree-node.level-1:hover {
+                    background: linear-gradient(90deg, #e0f2fe 0%, #bae6fd 100%);
+                }
+
+        .toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            margin-right: 15px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .tree-node.level-0 .toggle {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .tree-node:not(.level-0) .toggle {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
+        .toggle:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .account-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .level-0 .account-icon {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .level-1 .account-icon {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .level-2 .account-icon, .level-3 .account-icon {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .account-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .account-code {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .account-name {
+            font-weight: 500;
+            margin-top: 2px;
+        }
+        .tree-node.level-0 .account-code,
+        .tree-node.level-0 .account-name {
+            color: blue;
+        }
+        .tree li ul {
+            margin-left: 0;
+            border-left: 2px solid #e5e7eb;
+            margin-left: 50px;
+        }
+        .tree li.level-0 > ul {
+            border-left: none;
+            margin-left: 0;
+        }
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+            .empty-state svg {
+                width: 80px;
+                height: 80px;
+                margin: 0 auto 20px;
+                opacity: 0.5;
+            }
+        .dot-indicator {
+            color: #9ca3af;
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        media (max-width: 768px) {
+            .container
+
+        {
+            margin: 10px;
+            border-radius: 15px;
+        }
+        .header {
+            padding: 20px 25px;
+        }
+            .header h1 {
+                font-size: 2rem;
+            }
+        .content {
+            padding: 25px;
+        }
+        .tree-node {
+            padding: 12px 15px;        }
+
+        }
+    </style>
+    <script>
+               $(function () {
+
+
+            // --- Render empty state ---
+            function renderEmpty(title, message) {
+                return `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h3>${title}</h3>
+                    <p>${message || ''}</p>
+                </div>
+                `;
+            }
+
+            // --- Build tree recursively ---
+            function buildTree(nodes, container) {
+                container.empty();
+                const ul = $("<ul></ul>");
+                nodes.forEach(node => ul.append(createNodeLi(node, 0)));
+                container.append(ul);
+                ul.show();
+            }
+
+            function createNodeLi(node, level) {
+                const li = $("<li>").addClass(`level-${level}`);
+                const nodeDiv = $("<div>").addClass(`tree-node level-${level}`);
+
+                // --- Normalize values ---
+                const id = node.id ?? '';
+                const code = node.code ?? '';
+                const name = node.name ?? '';
+                const debit = (node.debit === 0 || node.debit) ? node.debit : '';
+                const credit = (node.credit === 0 || node.credit) ? node.credit : '';
+                const date = formatDateForInput(node.date ?? node.due ?? '');
+
+                // --- Attach data attributes ---
+                nodeDiv.attr({
+                    'data-id': id,
+                    'data-code': code,
+                    'data-name': name,
+                    'data-debit': debit,
+                    'data-credit': credit,
+                    'data-date': date
+                });
+
+                // --- Toggle / dot ---
+                if (node.children && Array.isArray(node.children) && node.children.length) {
+                    const toggle = $("<div class='toggle'>▶</div>");
+                    toggle.on("click", function (e) {
+                        e.stopPropagation();
+                        const $childUl = $(this).closest('.tree-node').next("ul");
+                        if ($childUl.is(":visible")) {
+                            $childUl.slideUp(250);
+                            $(this).removeClass('expanded').text("▶");
+                        } else {
+                            $childUl.slideDown(250);
+                            $(this).addClass('expanded').text("▼");
+                        }
+                    });
+                    nodeDiv.append(toggle);
+                } else {
+                    nodeDiv.append("<div class='dot-indicator'>•</div>");
+                }
+
+                const infoDiv = $("<div class='account-info'></div>");
+                infoDiv.append(`<div class='account-code'>${code}</div>`);
+                infoDiv.append(`<div class='account-name'>${name}</div>`);
+                nodeDiv.append(infoDiv);
+
+                // --- Actions for level 4 ---
+                if (level === 3) {
+                    const actionContainer = $("<div class='action-container'></div>");
+                    const editBtn = $(`<button class="btn btn-sm btn-outline-primary ms-2" title="Edit"><i class="fas fa-pen"></i></button>`);
+
+                    editBtn.on("click", e => {
+                        e.stopPropagation();
+                        const $node = $(e.currentTarget).closest('.tree-node');
+                        openEditModal(
+                            $node.attr('data-id'),
+                            $node.attr('data-name'),
+                            $node.attr('data-debit'),
+                            $node.attr('data-credit'),
+                            $node.attr('data-date')
+                        );
+                    });
+
+                          const deleteBtn = $(`<button class="btn btn-sm btn-outline-danger ms-2" title="Delete"><i class="fas fa-trash-alt"></i></button>`);
+
+        deleteBtn.on("click", e => {
+            e.stopPropagation();
+            const $node = $(e.currentTarget).closest('.tree-node');
+            const nid = $node.attr('data-id');
+            const nname = $node.attr('data-name');
+
+            // Call the ajax delete function
+            deleteLevel4Account(nid, nname);
+        });
+
+
+                    actionContainer.append(editBtn, deleteBtn);
+                    nodeDiv.append(actionContainer);
+                    nodeDiv.css('cursor', 'default');
+                } else {
+                    nodeDiv.on('click', function (e) {
+                        e.stopPropagation();
+                        const $toggle = $(this).find('> .toggle');
+                        if ($toggle.length) $toggle.trigger('click');
+                    });
+                }
+
+                li.append(nodeDiv);
+
+                // --- Recursion for children ---
+                if (node.children && Array.isArray(node.children) && node.children.length) {
+                    const childUl = $("<ul></ul>").hide();
+                    node.children.forEach(child => childUl.append(createNodeLi(child, level + 1)));
+                    li.append(childUl);
+                }
+
+                return li;
+            }
+
+            // --- Search setup ---
+            function setupSearch() {
+                $('#searchInput').on('input', function () {
+                    const searchTerm = $(this).val().toLowerCase().trim();
+                    if (!searchTerm) {
+                        $('.tree li').show();
+                        $('.tree ul').hide();
+                        $('.tree > ul').show();
+                        $('.toggle').text('▶').removeClass('expanded');
+                        return;
+                    }
+
+                    $('.tree li').each(function () {
+                        const $li = $(this);
+                        const code = $li.find('.account-code').first().text().toLowerCase();
+                        const name = $li.find('.account-name').first().text().toLowerCase();
+                        if (code.includes(searchTerm) || name.includes(searchTerm)) {
+                            $li.show();
+                            $li.parents('li').show();
+                            $li.parents('ul').show();
+                            $li.parents('li').find('> .tree-node .toggle').text('▼').addClass('expanded');
+                        } else {
+                            $li.hide();
+                        }
+                    });
+                });
+            }
+
+            // --- Load tree ---
+            function loadChartOfAccounts() {
+                $("#coaTree").html('<div class="loading"><div class="spinner"></div>Loading accounts...</div>');
+                $.getJSON("/Lists/GetCOA")
+                    .done(function (data) {
+                        if (data && data.status === false) {
+                            $("#coaTree").html(renderEmpty("Unable to Load Accounts", data.message));
+                            return;
+                        }
+                        let nodes = (data && data.data && Array.isArray(data.data)) ? data.data : data;
+                        if (!Array.isArray(nodes)) {
+                            $("#coaTree").html(renderEmpty("Data Format Error", "Unexpected data format received from server."));
+                            return;
+                        }
+                        buildTree(nodes, $("#coaTree"));
+                        setupSearch();
+                    })
+                    .fail(function (xhr, status, error) {
+                        $("#coaTree").html(renderEmpty("Connection Error", "Unable to load Chart of Accounts. Please try again."));
+                    });
+            }
+
+
+        function openEditModal(id, name, debit = 0, credit = 0, date = null) {
+            $("#editAccountId").val(id);
+            $("#editAccountName").val(name);
+            $("#editDebit").val(debit);
+            $("#editCredit").val(credit);
+            $("#editDate").val(formatDateForInput(date));
+            $("#editAccountModal").modal("show");
+        }
+
+
+        $("#saveEditAccount").on("click", function () {
+            const payload = {
+                Id: parseInt($("#editAccountId").val()) || 0,
+                Name: $("#editAccountName").val(),
+                Debit: parseFloat($("#editDebit").val()) || 0,
+                Credit: parseFloat($("#editCredit").val()) || 0,
+                Date: $("#editDate").val() || null
+            };
+
+            $.ajax({
+                url: "/Lists/EditCoaLevel4",
+                type: "PUT",
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Account updated successfully");
+                        $("#editAccountModal").modal("hide");
+                        loadChartOfAccounts(); // reload tree after edit
+                    } else {
+                        toastr.warning(res.message || "Failed to update");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error("Error updating account");
+                }
+            });
+        });
+
+            function formatDateForInput(d) {
+            if (!d) return '';
+            const dt = new Date(d);
+            if (isNaN(dt.getTime())) return '';
+            const month = (dt.getMonth() + 1).toString().padStart(2, '0');
+            const day = dt.getDate().toString().padStart(2, '0');
+            return `${dt.getFullYear()}-${month}-${day}`;
+        }
+
+
+                function deleteLevel4Account(id, name) {
+            if (!id) {
+                toastr.error("Invalid account selected.");
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
+            $.ajax({
+                url: `/Lists/DeleteCoaLevel4?id=${id}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Account deleted successfully");
+                        loadChartOfAccounts(); // reload tree after deletion
+                    } else {
+                        toastr.error(res.message || "Failed to delete account");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Error deleting account");
+                }
+            });
+        }
+
+
+
+            // --- Initial load ---
+            loadChartOfAccounts();
+
+            // Expose edit modal for debugging
+            window.openEditModal = openEditModal;
+        });
+
+
+
+        $(document).ready(function () {
+
+            // Load LEVEL 1 (All)
+            function loadLevel1() {
+                $.ajax({
+                    url: '/Lists/GetLevel1Accounts',
+                    type: 'GET',
+                    success: function (res) {
+                        const $ddl1 = $('#coaModal select').eq(0);
+                        $ddl1.empty().append('<option value="">Select Level 1</option>');
+                        if (res.status && res.data?.length > 0) {
+                            res.data.forEach(row => {
+                                $ddl1.append(`<option value="${row.id}">${row.name}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 1 accounts.');
+                    }
+                });
+            }
+
+            // Load LEVEL 2 based on selected Level 1
+            function loadLevel2(level1Id) {
+                const $ddl2 = $('#coaModal select').eq(1);
+                const $ddl3 = $('#coaModal select').eq(2);
+                $ddl2.empty().append('<option value="">Select Level 2</option>');
+                $ddl3.empty().append('<option value="">Select Level 3</option>');
+                if (!level1Id) return;
+                console.log(level1Id);
+                $.ajax({
+                    url: '/Lists/GetLevel2AccountsByLevel1?level1Id=' + level1Id,
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status && res.data?.length > 0) {
+                            res.data.forEach(row => {
+                                $ddl2.append(`<option value="${row.id}">${row.name}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 2 accounts.');
+                    }
+                });
+            }
+
+            // Load LEVEL 3 based on selected Level 2
+            function loadLevel3(level2Id) {
+                const $ddl3 = $('#coaModal select').eq(2);
+                $ddl3.empty().append('<option value="">Select Level 3</option>');
+                if (!level2Id) return;
+
+                $.ajax({
+                    url: '/Lists/GetLevel3AccountsByLevel2?id=' + level2Id,
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status && res.data?.length > 0) {
+                            res.data.forEach(row => {
+                                $ddl3.append(`<option value="${row.id}">${row.name}</option>`);
+                            });
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 3 accounts.');
+                    }
+                });
+            }
+
+            // When modal opens → load Level 1
+            $('#coaModal').on('shown.bs.modal', function () {
+                loadLevel1();
+                $('#coaModal select').eq(1).empty().append('<option value="">Select Level 2</option>');
+                $('#coaModal select').eq(2).empty().append('<option value="">Select Level 3</option>');
+            });
+
+            // On Level 1 change → load Level 2
+            $('#coaModal select').eq(0).on('change', function () {
+                const level1Id = $(this).val();
+                loadLevel2(level1Id);
+            });
+
+            // On Level 2 change → load Level 3
+            $('#coaModal select').eq(1).on('change', function () {
+                const level2Id = $(this).val();
+                loadLevel3(level2Id);
+            });
+
+               // 🔹 Submit form
+        $('#coaForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#level4Id').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            // ✅ Safe defaults
+            const debitVal = parseFloat($('#txtDebit').val()) || 0;
+            const creditVal = parseFloat($('#txtCredit').val()) || 0;
+            const dateVal = $('#txtDate').val() || null;
+
+            const payload = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: $('#txtLevel4').val().trim(),
+                Level3Id: parseInt($('#ddlLevel3').val()),
+                Debit: debitVal,
+                Credit: creditVal,
+                Date: dateVal
+            };
+
+            $.ajax({
+                url: isEdit ? '/Lists/UpdateLevel4Account' : '/Lists/AddLevel4Account',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Level 4 Account updated successfully' : 'Level 4 Account added successfully');
+                        $('#coaModal').modal('hide');
+                        $('#coaForm')[0].reset();
+                        $('#level4Id').val(0);
+                        $('#coaModalLabel').text('COA - New Account');
+                        form.classList.remove('was-validated');
+                        loadLevel4Accounts();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+
+        });
+
+
+
+
+    </script>
+    } *@

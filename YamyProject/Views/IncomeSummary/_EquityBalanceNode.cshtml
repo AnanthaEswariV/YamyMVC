@@ -1,0 +1,47 @@
+﻿@model EquityBalanceRowViewModel
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+
+@{
+    var level = ViewData["Level"] is int l ? l : 0;
+    var hasChildren = Model.Children != null && Model.Children.Any();
+    }
+
+<li class="tree-item level-@level">
+    <div class="tree-row d-flex align-items-center"
+         data-level="@level"
+         data-name="@Model.Name">
+
+        <div class="flex-grow-1 d-flex align-items-center">
+            @if (hasChildren)
+                {
+                <span class="toggle me-1">▶</span>
+                }
+            else
+                {
+                <span class="toggle placeholder me-1"></span>
+                }
+
+            <span class="account-label">
+                @Model.Name
+            </span>
+        </div>
+
+        <div class="amount text-end pe-3">
+            @(Model.Balance == 0 ? "" : Model.Balance.ToString("N2"))
+        </div>
+    </div>
+
+    @if (hasChildren)
+        {
+        <ul class="list-unstyled mb-0 ms-4 child-list" style="display:none;">
+            @foreach (var child in Model.Children)
+                {
+                @await Html.PartialAsync(
+                "_EquityBalanceNode",
+                child,
+                new ViewDataDictionary(ViewData) { ["Level"] = level + 1 }
+                )
+                }
+        </ul>
+        }
+</li>

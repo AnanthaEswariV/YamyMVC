@@ -52,6 +52,7 @@
                                               .Where(c => _context.TblPurchases.Any(s => s.VendorId == c.Id))
                                               .ToListAsync();
             }
+      
         //other
         public async Task<IEnumerable<TblFixedAssetsCategory>> GetFixedAssetAsync()
             {
@@ -66,9 +67,18 @@
             {
             return await _context.TblCities.ToListAsync();
             }
+        public async Task<IEnumerable<TblProject>> GetProjectAsync()
+
+            {
+            return await _context.TblProjects.ToListAsync();
+            }
         public async Task<IEnumerable<TblBank>> GetBanksAsync()
             {
             return await _context.TblBanks.ToListAsync();
+            }
+        public async Task<IEnumerable<TblSecUser>> GetUsersAsync()
+            {
+            return await _context.TblSecUsers.ToListAsync();
             }
         public async Task<IEnumerable<TblCountry>> GetCountriesAsync()
             {

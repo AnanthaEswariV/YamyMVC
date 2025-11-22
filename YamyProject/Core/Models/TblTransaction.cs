@@ -9,6 +9,9 @@ public partial class TblTransaction
 
     [ForeignKey("AccountId")]
     public virtual TblCity? Citys { get; set; }
+
+    [ForeignKey("AccountId")]
+    public virtual TblCoaLevel4? Account { get; set; }
     public decimal? Debit { get; set; }
 
     public decimal? Credit { get; set; }
@@ -31,6 +34,10 @@ public partial class TblTransaction
     public virtual TblJournalVoucher? JournalVoucher { get; set; }
 
     public int? HumId { get; set; }
+    [ForeignKey("HumId")]
+    public virtual TblCustomer? Customer { get; set; }
+    [ForeignKey("HumId")]
+    public virtual TblVendor? Vendors { get; set; }
 
     public string? Type { get; set; }
 

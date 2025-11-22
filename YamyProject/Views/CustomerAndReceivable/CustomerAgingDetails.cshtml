@@ -1,0 +1,240 @@
+﻿@model CustomerSalesListViewModel
+@{
+    ViewData["Title"] = "Customer Aging Detail";
+    }
+
+<style>
+    .report-shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        box-shadow: 0 2px 4px rgba(15, 23, 42, .08);
+    }
+
+    .report-title-bar {
+        background: #003a70;
+        color: #fff;
+        padding: 6px 12px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 1.05rem;
+        letter-spacing: .02em;
+    }
+
+    .report-toolbar {
+        padding: 6px 12px;
+        border-bottom: 1px solid #e0e0e0;
+        background: #f5f5f5;
+    }
+
+    .report-filters {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e0e0e0;
+        background: #fafafa;
+        font-size: .9rem;
+    }
+
+    .report-header-text {
+        padding: 18px 12px 10px 12px;
+        text-align: center;
+        line-height: 1.25;
+    }
+
+        .report-header-text h5,
+        .report-header-text h6 {
+            margin: 0;
+        }
+
+        .report-header-text h5 {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 1rem;
+        }
+
+        .report-header-text h6 {
+            font-weight: 600;
+            font-size: .95rem;
+        }
+
+    .report-header-meta {
+        font-size: .85rem;
+        color: #555;
+        margin-top: 4px;
+    }
+
+    .report-table thead tr {
+        background: #d8d8d8;
+    }
+
+    .report-table thead th {
+        font-weight: 600;
+        font-size: .85rem;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        white-space: nowrap;
+    }
+
+    .report-table tbody tr.total-row {
+        background: #e5e5e5;
+        font-weight: 600;
+    }
+
+    .badge-customer {
+        font-size: .8rem;
+        background: #e9f3ff;
+        color: #0b4f9c;
+        border-radius: 999px;
+        padding: 3px 10px;
+    }
+</style>
+
+<div class="container-fluid py-2">
+    <div class="report-shell">
+
+        <!-- Top title bar -->
+        <div class="report-title-bar">
+            Customer Aging Detail
+        </div>
+
+        <!-- Toolbar: ONLY Print + Excel -->
+        <div class="report-toolbar d-flex gap-2">
+            <button type="button" id="btnPrint" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-printer me-1"></i> Print
+            </button>
+
+            <button type="button" id="btnExcel" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+            </button>
+        </div>
+
+        <!-- Filters row (From / To dates) -->
+        <form method="get">
+            <div class="report-filters d-flex flex-wrap align-items-end gap-3">
+
+                <div class="d-flex flex-column">
+                    <label class="fw-semibold small mb-1">From</label>
+                    <input asp-for="DateFrom"
+                           type="date"
+                           class="form-control form-control-sm"
+                           style="width: 165px;" />
+                </div>
+
+                <div class="d-flex flex-column">
+                    <label class="fw-semibold small mb-1">To</label>
+                    <input asp-for="DateTo"
+                           type="date"
+                           class="form-control form-control-sm"
+                           style="width: 165px;" />
+                </div>
+@* 
+                <div class="ms-auto d-flex flex-column align-items-end">
+                    <span class="small text-muted">Customer</span>
+                    <span class="badge badge-customer mt-1">
+                        @Model.CustomerName (@Model.CustomerId)
+                    </span>
+                </div> *@
+@* 
+                <div>
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        Run Report
+                    </button>
+                </div> *@
+            </div>
+        </form>
+
+        <!-- Company / report titles -->
+        <div class="report-header-text">
+            <h5>ARC MASTER CONTRACTING L.L.C.</h5>
+            <h6>Customer Aging Detail</h6>
+            <div class="report-header-meta">
+                All Transactions for:
+                <strong>@Model.CustomerName</strong>
+                @if (Model.DateFrom.HasValue || Model.DateTo.HasValue)
+                    {
+                    <span>
+                        | Period:
+                        <span class="fw-semibold">
+                            @(Model.DateFrom?.ToString("dd/MM/yyyy") ?? "…")
+                            –
+                            @(Model.DateTo?.ToString("dd/MM/yyyy") ?? "…")
+                        </span>
+                    </span>
+                    }
+            </div>
+        </div>
+
+        <!-- Data table -->
+        <div class="table-responsive px-2 pb-3">
+            <table class="table table-sm report-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 14%;">Type</th>
+                        <th style="width: 10%;">Date</th>
+                        <th style="width: 8%;">Num</th>
+                        <th style="width: 10%;">V. No</th>
+                        <th style="width: 18%;">Name</th>
+                        <th style="width: 10%;">Terms</th>
+                        <th style="width: 10%;">Due Date</th>
+                        <th style="width: 8%;" class="text-end">Aging</th>
+                        <th style="width: 12%;" class="text-end">Opening Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Rows != null && Model.Rows.Any())
+                        {
+                        foreach (var row in Model.Rows)
+                            {
+                            <tr>
+                                <td>@row.Type</td>
+                                <td>@row.Date</td>
+                                <td>@row.Num</td>
+                                <td>@row.VoucherNo</td>
+                                <td>@row.Name</td>
+                                <td>@row.Terms</td>
+                                <td>@row.DueDate.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">@row.Aging</td>
+                                <td class="text-end">@row.OpeningBalance.ToString("N2")</td>
+                            </tr>
+                            }
+
+                        <tr class="total-row">
+                            <td colspan="8" class="text-center">
+                                TOTAL
+                            </td>
+                            <td class="text-end">
+                                @Model.TotalOpeningBalance.ToString("N2")
+                            </td>
+                        </tr>
+                        }
+                    else
+                        {
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-3">
+                                No transactions found for this customer / period.
+                            </td>
+                        </tr>
+                        }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+    @section Scripts {
+    <script>
+        // Simple client-side print – prints the whole page.
+        document.getElementById('btnPrint')
+            ?.addEventListener('click', function () {
+                window.print();
+            });
+
+        // TODO: wire up Excel export to your controller action.
+        document.getElementById('btnExcel')
+            ?.addEventListener('click', function () {
+                alert('Implement Excel export action and call it here.');
+                // Example (adjust to your route):
+            });
+    </script>
+    }

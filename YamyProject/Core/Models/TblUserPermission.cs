@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblUserPermission
 {
@@ -10,6 +7,9 @@ public partial class TblUserPermission
     public int UserId { get; set; }
 
     public int SubMenuId { get; set; }
+    [ForeignKey(nameof(SubMenuId))]
+    public virtual TblSubMenu? SubMenu { get; set; }
+
 
     public bool CanView { get; set; }
 

@@ -17,6 +17,7 @@ builder.Services.AddScoped<IListServices, ListServices>();
 builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
 builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
 builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
+builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
 builder.Services.AddScoped<ISalesCreateService, SalesCreateService>();
 builder.Services.AddScoped<ISalesQuotationCenterService, SalesQuotationCenterService>();
 builder.Services.AddScoped<ISalesOrderCenterService, SalesOrderCenterService>();
@@ -28,19 +29,25 @@ builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<ISalesServices, SalesServices>();
 builder.Services.AddScoped<ISalesCenterService, SalesCenterService>();
 builder.Services.AddScoped<IStockSettlementService, StockSettlementService>();
+builder.Services.AddScoped<IVendorService, VendorService>();
 builder.Services.AddScoped<IVendorsCenterService, VendorsCenterService>();
 builder.Services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
 builder.Services.AddScoped<IPaymentVoucherService, PaymentVoucherService>();
 builder.Services.AddScoped<IDebitNotesService, DebitNotesService>();
 builder.Services.AddScoped<IAdvancePaymentService, AdvancePaymentService>();
 builder.Services.AddScoped<IGeneralJournalVouchersService, GeneralJournalVouchersService>();
+builder.Services.AddScoped<IIncomeSummaryServices, IncomeSummaryServices>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICustomerSummaryService, CustomerSummaryService>();
+builder.Services.AddScoped<ISalesReportServices, SalesReportServices>();
+builder.Services.AddScoped<IVendorSummaryService, VendorSummaryService>();
 
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
-
-
-
 builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
+
+////
 // Microservice HTTP client
 //builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>(client =>
 //{

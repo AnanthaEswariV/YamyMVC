@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
-
+﻿namespace YamyProject.Core.Models;
 public partial class TblAuditLog
 {
     public int Id { get; set; }
 
     public int? UserId { get; set; }
+    [ForeignKey(nameof(UserId) )]
+    public virtual TblSecUser? User { get; set; }
 
     public string? ActionType { get; set; }
 

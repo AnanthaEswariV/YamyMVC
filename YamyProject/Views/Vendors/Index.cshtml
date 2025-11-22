@@ -322,34 +322,34 @@
             $trx.html(html.join(''));
           }
 
-          function renderCash(rows){
-            if (!rows.length) { $cash.html(`<div class="text-muted">No cash invoices.</div>`); return; }
-            let i = 0, total = 0;
-            const body = rows.map(r => {
-              const amt = Number(r.amount) || 0;
-              total += amt;
-              return `<tr>
-                <td>${++i}</td>
-                <td>${safe(r.voucherNo)}</td>
-                <td>${fmtDate(r.date)}</td>
-                <td>${safe(r.accountName)}</td>
-                <td>${safe(r.voucherType)}</td>
-                <td class="text-end">${fmtAmt(amt)}</td>
-              </tr>`;
-            }).join('');
+              function renderCash(rows){
+                if (!rows.length) { $cash.html(`<div class="text-muted">No cash invoices.</div>`); return; }
+                let i = 0, total = 0;
+                const body = rows.map(r => {
+                  const amt = Number(r.amount) || 0;
+                  total += amt;
+                  return `<tr>
+                    <td>${++i}</td>
+                    <td>${safe(r.voucherNo)}</td>
+                    <td>${fmtDate(r.date)}</td>
+                    <td>${safe(r.accountName)}</td>
+                    <td>${safe(r.voucherType)}</td>
+                    <td class="text-end">${fmtAmt(amt)}</td>
+                  </tr>`;
+                }).join('');
 
-            $cash.html(`
-              <div class="table-responsive"><table class="table table-sm table-striped align-middle">
-                <thead><tr>
-                  <th>Sn</th><th>V - No</th><th>Date</th><th>Account Name</th><th>Type</th><th class="text-end">Amount</th>
-                </tr></thead>
-                <tbody>${body}</tbody>
-                <tfoot><tr>
-                  <th colspan="5" class="text-end">Total</th>
-                  <th class="text-end">${fmtAmt(total)}</th>
-                </tr></tfoot>
-              </table></div>
-            `);
+                $cash.html(`
+                  <div class="table-responsive"><table class="table table-sm table-striped align-middle">
+                    <thead><tr>
+                      <th>Sn</th><th>V - No</th><th>Date</th><th>Account Name</th><th>Type</th><th class="text-end">Amount</th>
+                    </tr></thead>
+                    <tbody>${body}</tbody>
+                    <tfoot><tr>
+                      <th colspan="5" class="text-end">Total</th>
+                      <th class="text-end">${fmtAmt(total)}</th>
+                    </tr></tfoot>
+                  </table></div>
+                `);
           }
 
           // utils

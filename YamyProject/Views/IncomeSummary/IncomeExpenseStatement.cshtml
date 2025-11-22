@@ -1,0 +1,199 @@
+﻿@model IEnumerable<IncomeExpenseRowViewModel>
+@{
+    ViewData["Title"] = "Income Expense Statement";
+    var now = DateTime.Now;
+    }
+
+<style>
+    .report-wrap {
+        padding: 10px 20px;
+        background-color: #fff;
+        min-height: 600px;
+    }
+
+    .report-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+        .report-toolbar label {
+            margin-right: 4px;
+            font-weight: 500;
+        }
+
+        .report-toolbar select,
+        .report-toolbar input[type="date"] {
+            padding: 3px 6px;
+            font-size: 0.85rem;
+        }
+
+    .report-time {
+        font-size: 0.7rem;
+        margin-top: 5px;
+        margin-left: 5px;
+        color: #555;
+    }
+
+    .report-header {
+        text-align: center;
+        margin: 12px 0 16px;
+    }
+
+        .report-header h5 {
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .report-header h6 {
+            margin: 2px 0;
+            font-weight: 600;
+        }
+
+        .report-header span {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+    .report-table-container {
+        margin: 0 auto;
+        max-width: 900px;
+        border: 1px solid #d0d0d0;
+        border-radius: 0;
+        overflow: hidden;
+    }
+
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+        .report-table thead tr {
+            background-color: #f0f0f0;
+        }
+
+        .report-table th,
+        .report-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #e1e1e1;
+        }
+
+        .report-table th {
+            font-weight: 600;
+        }
+
+        .report-table td.text-end {
+            text-align: right;
+        }
+
+    /* Section / header rows (Mode = "u") */
+    .row-section {
+        background-color: #e3f3ff;
+        font-weight: 600;
+    }
+
+    .report-footer-space {
+        height: 220px; /* just to mimic the empty area at bottom */
+    }
+</style>
+
+<div class="report-wrap">
+
+    <!-- Top toolbar (Dates / From / To / Show Columns / Sort By) -->
+    <div class="report-toolbar">
+        <label>Dates</label>
+        <select>
+            <option>Today</option>
+            <option>This Month</option>
+            <option>This Year</option>
+            <option>Custom</option>
+        </select>
+
+        <label class="ms-2">Date From</label>
+        <input type="date" value="@now.ToString("yyyy-MM-dd")" />
+
+        <label>Date To</label>
+        <input type="date" value="@now.ToString("yyyy-MM-dd")" />
+
+        <label class="ms-3">Show_Columns</label>
+        <select>
+            <option>All</option>
+            <option>Summary</option>
+            <option>Detail</option>
+        </select>
+
+        <label class="ms-3">Sort By</label>
+        <select>
+            <option>Default</option>
+            <option>Account Name</option>
+            <option>Amount</option>
+        </select>
+    </div>
+
+    <!-- Left small date/time (like the screenshot) -->
+    <div class="report-time">
+        @now.ToString("hh:mm tt")<br />
+        @now.ToString("dd/MM/yyyy")
+    </div>
+
+    <!-- Center title -->
+    <div class="report-header">
+        <h5>ARC MASTER CONTRACTING L.L.C.</h5>
+        <h6>Income Expense Statement</h6>
+        <span>All Transaction</span>
+    </div>
+
+    <!-- Table -->
+    <div class="report-table-container">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th style="width: 80%;">Account Name</th>
+                    <th style="width: 20%;" class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                    {
+                    foreach (var row in Model)
+                        {
+                        var isHeader = row.Mode == "u";    // header / section row
+                        var indentPx = (row.Level - 1) * 20; // 1 => 0px, 2 => 20px, 3 => 40px...
+
+                        <tr class="@(isHeader ? "row-section" : "")">
+                            <td>
+                                <span style="padding-left:@(indentPx)px">
+                                    @row.Text
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                @if (row.Amount.HasValue)
+                                    {
+                                    @row.Amount.Value.ToString("N2")
+                                    }
+                                else
+                                    {
+                                    @:-
+                                    }
+                            </td>
+                        </tr>
+                        }
+                    }
+                else
+                    {
+                    <!-- Optional fallback if no data -->
+                    <tr>
+                        <td colspan="2" class="text-center text-muted">
+                            No data found for the selected period.
+                        </td>
+                    </tr>
+                    }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="report-footer-space"></div>
+</div>

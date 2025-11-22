@@ -12,4 +12,7 @@ public partial class TblCoaLevel2
     public int Code { get; set; }
 
     public int MainId { get; set; }
-}
+    [ForeignKey("MainId")]
+    public virtual TblCoaLevel1? Account { get; set; }
+
+    }
