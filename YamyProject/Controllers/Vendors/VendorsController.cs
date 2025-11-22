@@ -1,11 +1,14 @@
 ﻿namespace YamyProject.Controllers.Vendors
 {
-    public class VendorsController(YamyDbContext context, ILogger<MasterStockManagementController> logger) : Controller
+    public class VendorsController(YamyDbContext context, ILogger<MasterStockManagementController> logger, IListServices listServices, IVendorService vendorService) : Controller
     {
         private readonly YamyDbContext _context=context;
 
         private readonly ILogger<MasterStockManagementController> _logger=logger;
-            
+        private readonly IListServices _listServices = listServices;
+        private readonly IVendorService _vendorService;
+
+
         public async Task<IActionResult> Index()
         {
             var wanted = new[] {
@@ -68,43 +71,171 @@
                 .ToListAsync();                    
             return View(items);
         }
-        public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken = default)
-        {
-            var vendor = await _context.TblVendors
-                                  .AsNoTracking()
-                                  .Where(v => v.Id == id && v.State == 0)
-                                  .FirstOrDefaultAsync(cancellationToken);
 
-            if (vendor == null) return NotFound();
+        //public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken = default)
+        //{
+        //    var vendor = await _context.TblVendors
+        //                          .AsNoTracking()
+        //                          .Where(v => v.Id == id && v.State == 0)
+        //                          .FirstOrDefaultAsync(cancellationToken);
 
-            var vm = new VendorEditViewModel
+        //    if (vendor == null) return NotFound();
+
+        //    var vm = new VendorEditViewModel
+        //    {
+        //        Id = vendor.Id,
+        //        Code = vendor.Code.ToString("D5"),
+        //        Name = vendor.Name,
+        //        CatId = vendor.CatId,
+        //        AccountId = vendor.AccountId,
+        //        Trn = vendor.Trn,
+        //        MainPhone = vendor.MainPhone,
+        //        WorkPhone = vendor.WorkPhone,
+        //        Mobile = vendor.Mobile,
+        //        Email = vendor.Email,
+        //        Ccemail = vendor.Ccemail,
+        //        Website = vendor.Website,
+        //        Country = vendor.Country,
+        //        City = vendor.City,
+        //        Region = vendor.Region,
+        //        BuildingName = vendor.BuildingName,
+        //        Date = vendor.Date.HasValue ? vendor.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
+        //        OpeningDebit = await _context.TblTransactions.Where(t => t.HumId == id && t.Type == "Vendor Opening Balance").SumAsync(t => (decimal?)t.Debit) ?? 0m,
+        //        OpeningCredit = await _context.TblTransactions.Where(t => t.HumId == id && t.Type == "Vendor Opening Balance").SumAsync(t => (decimal?)t.Credit) ?? 0m,
+        //        Active = vendor.Active == 0,
+        //        CategorySelectList = await _context.TblVendorCategories.AsNoTracking().Select(c => new SelectListItem(c.Name, c.Id.ToString())).ToListAsync(cancellationToken),
+        //        AccountSelectList = await _context.TblCoaLevel4s.AsNoTracking().Select(a => new SelectListItem(a.Name, a.Id.ToString())).ToListAsync(cancellationToken)
+        //    };
+        //    return View(vm);
+        //}
+
+
+        [HttpGet]
+        public async Task<IActionResult> Create()
             {
-                Id = vendor.Id,
-                Code = vendor.Code.ToString("D5"),
-                Name = vendor.Name,
-                CatId = vendor.CatId,
-                AccountId = vendor.AccountId,
-                Trn = vendor.Trn,
-                MainPhone = vendor.MainPhone,
-                WorkPhone = vendor.WorkPhone,
-                Mobile = vendor.Mobile,
-                Email = vendor.Email,
-                Ccemail = vendor.Ccemail,
-                Website = vendor.Website,
-                Country = vendor.Country,
-                City = vendor.City,
-                Region = vendor.Region,
-                BuildingName = vendor.BuildingName,
-                Date = vendor.Date.HasValue ? vendor.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-                OpeningDebit = await _context.TblTransactions.Where(t => t.HumId == id && t.Type == "Vendor Opening Balance").SumAsync(t => (decimal?)t.Debit) ?? 0m,
-                OpeningCredit = await _context.TblTransactions.Where(t => t.HumId == id && t.Type == "Vendor Opening Balance").SumAsync(t => (decimal?)t.Credit) ?? 0m,
-                Active = vendor.Active == 0,
-                CategorySelectList = await _context.TblVendorCategories.AsNoTracking().Select(c => new SelectListItem(c.Name, c.Id.ToString())).ToListAsync(cancellationToken),
-                AccountSelectList = await _context.TblCoaLevel4s.AsNoTracking().Select(a => new SelectListItem(a.Name, a.Id.ToString())).ToListAsync(cancellationToken)
-            };
+            var Category = await _listServices.GetVenderCategorysAsync();
+            var CategorylectList = Category.Select(c => new TblVendorCategory
+                {
+                Id = c.Id,
+                Name = c.Name
+                })
+            .ToList();
+            var city = await _listServices.GetCitysAsync();
+            var citylectList = city.Select(c => new TblCity
+                {
+                Id = c.Id,
+                CountryId = c.CountryId,
+                Name = c.Name
+                })
+            .ToList();
+            var country = await _listServices.GetCountriesAsync();
+            var countrylectList = country.Select(c => new TblCountry
+                {
+                Id = c.Id,
+                Name = c.Name
+                })
+            .ToList();
+            var project = await _listServices.GetProjectAsync();
+            var projectlectList = project.Select(c => new TblProject
+                {   
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+                })
+            .ToList();
+            var codes = _vendorService.GenerateNextCode();
+            var code = codes.ToString();
 
-            return View(vm);
-        }
+            return PartialView("~/Views/Subcontractors/_SubContract.cshtml", new VendorSubContactViewModel
+                {
+                Categoriess = CategorylectList,
+                City = citylectList,
+                Country = countrylectList,
+                Project = projectlectList,
+                Code = code,
+                Type = "Vendor"
+                }
+            );
+            }
+        [HttpPost]
+        public async Task<IActionResult> Create(VendorSubContactViewModel model)
+            {
+            await _vendorService.CreateVendorOrSubcontractorAcync(model);
+            return RedirectToAction(nameof(Index));
+            }
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+            {
+            var Category = await _listServices.GetVenderCategorysAsync();
+            var CategorylectList = Category.Select(c => new TblVendorCategory
+                {
+                Id = c.Id,
+                Name = c.Name
+                })
+            .ToList();
+            var city = await _listServices.GetCitysAsync();
+            var citylectList = city.Select(c => new TblCity
+                {
+                Id = c.Id,
+                CountryId = c.CountryId,
+                Name = c.Name
+                })
+            .ToList();
+            var country = await _listServices.GetCountriesAsync();
+            var countrylectList = country.Select(c => new TblCountry
+                {
+                Id = c.Id,
+                Name = c.Name
+                })
+            .ToList();
+            var project = await _listServices.GetProjectAsync();
+            var projectlectList = project.Select(c => new TblProject
+                {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+                })
+            .ToList();
+
+            var Vendor = await _context.TblVendors.FindAsync(id);
+
+            return PartialView("~/Views/Subcontractors/_SubContract.cshtml", new VendorSubContactViewModel
+                {
+                Categoriess = CategorylectList,
+                City = citylectList,
+                Country = countrylectList,
+                Project = projectlectList,
+                Type = "Vendor",
+                Code = Vendor.Code.ToString(),
+                Name = Vendor.Name,
+                CategoryId = (int)Vendor.CatId,
+                Debit = Vendor.Balance ?? 0m,
+                Credit = Vendor.Balance ?? 0m,
+                Date = (DateOnly)Vendor.Date,
+                MainPhone = Vendor.MainPhone,
+                WorkPhone = Vendor.WorkPhone,
+                Fax = Vendor.Mobile,
+                Email = Vendor.Email,
+                EmailCC = Vendor.Ccemail,
+                Website = Vendor.Website,
+                CountryId = int.Parse(Vendor.Country),
+                CityId = int.Parse(Vendor.City),
+                ProjectId = Vendor.ProjectId,
+                Region = Vendor.Region,
+                BulidingNumber = Vendor.BuildingName,
+                AccountId = (int)Vendor.AccountId,
+                TRN = Vendor.Trn,
+                IsActive = Vendor.Active == 1,
+
+                });
+            }
+        [HttpPost]
+        public async Task<IActionResult> Edit(VendorSubContactViewModel model)
+            {
+            await _vendorService.UpDateVendorOrSubcontractorAcync(model);
+            return RedirectToAction(nameof(Index));
+            }
+
         [HttpGet] public async Task<IActionResult> Header(int id)
             {
             var dto = await _context.TblVendors

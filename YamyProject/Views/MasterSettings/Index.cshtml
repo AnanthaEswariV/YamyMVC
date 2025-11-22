@@ -1,25 +1,27 @@
-﻿@* @model SettingsMasterViewmodel
+﻿ @model SettingsMasterViewmodel
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
+    // Layout = null;
     ViewData["Title"] = "Setting - Master";
+
     bool IsActive(string key) => Model.ActivePrimary.Equals(key, StringComparison.OrdinalIgnoreCase);
     bool IsSub(string key) => Model.ActiveSub.Equals(key, StringComparison.OrdinalIgnoreCase);
 }
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+@* <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" /> *@
 
 <div class="container-fluid py-3">
     <div class="d-flex align-items-center justify-content-between mb-2">
         <h4 class="mb-0 fw-semibold">Setting - Master</h4>
-        @if (TempData["ok"] is string ok && !string.IsNullOrWhiteSpace(ok))
-        { <span class="text-success small">@ok</span> }
+         @if (TempData["ok"] is string ok && !string.IsNullOrWhiteSpace(ok))
+        { <span class="text-success small">@ok</span> } 
     </div>
     <!-- Primary Tabs -->
     <ul class="nav nav-pills gap-2 mb-3">
         <li class="nav-item"><a class="nav-link @(IsActive("default") ? "active" : "")" asp-action="Master" asp-route-primary="default">Default Account Config</a></li>
-        <li class="nav-item"><a class="nav-link @(IsActive("employee") ? "active" : "")" asp-action="Master" asp-route-primary="employee">Employee Default Setting</a></li>
+         <li class="nav-item"><a class="nav-link @(IsActive("employee") ? "active" : "")" asp-action="Master" asp-route-primary="employee">Employee Default Setting</a></li>
         <li class="nav-item"><a class="nav-link @(IsActive("user") ? "active" : "")" asp-action="Master" asp-route-primary="user">User Config</a></li>
-        <li class="nav-item"><a class="nav-link @(IsActive("general") ? "active" : "")" asp-action="Master" asp-route-primary="general">General Settings</a></li>
+         <li class="nav-item"><a class="nav-link @(IsActive("general") ? "active" : "")" asp-action="Master" asp-route-primary="general">General Settings</a></li>
     </ul>
     <!-- ===== DEFAULT ACCOUNT CONFIG ===== -->
     @if (IsActive("default"))
@@ -47,6 +49,7 @@
                     <div class="row g-4">
                         <div class="col-lg-5">
                             <div class="vstack gap-3">
+                               
                                 <div><label class="form-label">PDC Receivable</label><select asp-for="DefaultAccount.PdcReceivableId" asp-items="Model.Accounts" class="form-select"></select></div>
                                 <div><label class="form-label">PDC Receivable Return</label><select asp-for="DefaultAccount.PdcReceivableReturnId" asp-items="Model.Accounts" class="form-select"></select></div>
                                 <div><label class="form-label">PDC Receivable Hold</label><select asp-for="DefaultAccount.PdcReceivableHoldId" asp-items="Model.Accounts" class="form-select"></select></div>
@@ -175,7 +178,7 @@
         }
     }
     <!-- ===== EMPLOYEE DEFAULT SETTING (Attendance) ===== -->
-    @if (IsActive("employee"))
+  @*    @if (IsActive("employee"))
     {
         <form asp-action="Master" method="post" class="card border-0 shadow-sm">
             @Html.AntiForgeryToken()
@@ -208,14 +211,16 @@
                     </div>
                     <div class="col-auto">
                         <label class="form-label">Year</label>
-                        <select asp-for="Attendance.Year" class="form-select">
+                        <select asp-for="Attendance.YearId" class="form-select">
                             @for (var y = DateTime.Now.Year - 2; y <= DateTime.Now.Year + 2; y++)
-                            { <option value="@y" selected="@(Model.Attendance.Year==y)">@y</option> }
+                                {
+                                <option value="@y" selected="@(Model.Attendance.year)">@y</option>
+                                }
                         </select>
                     </div>
                     <div class="col-auto">
                         <label class="form-label">Day(s) Off</label>
-                        <input asp-for="Attendance.DaysOff" class="form-control" placeholder="e.g. Fri,Sat" />
+                        <input asp-for="Attendance.DaysOffId" class="form-control" placeholder="e.g. Fri,Sat" />
                     </div>
                 </div>
 
@@ -233,10 +238,27 @@
                 <button class="btn btn-primary px-5">Save</button>
             </div>
         </form>
-    }
+    } *@
+
+    <!-- ===== EMPLOYEE DEFAULT SETTING (Attendance) ===== -->
+    @if (IsActive("employee"))
+        {
+            @await Html.PartialAsync("_AccessUserControl", Model.Users)
+            @await Html.PartialAsync("AccessUserControl", Model.UserAccess)
+        }
     <!-- ===== USER CONFIG ===== -->
     @if (IsActive("user"))
-    {
+        {
+            @await Html.PartialAsync("_AccessUserControl", Model.Users)
+        }
+          <!-- ===== GENERAL SETTINGS ===== -->
+    @if (IsActive("general"))
+        {
+            @await Html.PartialAsync("_AccessUserControl", Model.Users)
+        }
+    @*
+          @if (IsActive("user"))
+        {
         <form asp-action="Master" method="post" class="card border-0 shadow-sm">
             @Html.AntiForgeryToken()
             <input type="hidden" name="section" value="user-config" />
@@ -327,7 +349,8 @@
                 <button class="btn btn-primary px-5">Save</button>
             </div>
         </form>
-    }
-</div>
+    } 
+ *@
+</div> 
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script> *@
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>  

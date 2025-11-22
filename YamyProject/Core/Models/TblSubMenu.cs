@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class TblSubMenu
 {
@@ -10,6 +7,7 @@ public partial class TblSubMenu
     public string Name { get; set; } = null!;
 
     public int? MId { get; set; }
+    [ForeignKey(nameof(MId))]
 
     public virtual TblMainMenu? MIdNavigation { get; set; }
 }

@@ -1,10 +1,14 @@
-﻿namespace YamyProject.Controllers.Subcontractor
+﻿using Microsoft.CodeAnalysis.CSharp;
+
+namespace YamyProject.Controllers.Subcontractor
     {
-    public class SubcontractorsController(YamyDbContext context, ILogger<MasterStockManagementController> logger) : Controller
+    public class SubcontractorsController(YamyDbContext context, ILogger<MasterStockManagementController> logger,IListServices listServices,IVendorService vendorService) : Controller
         {
         private readonly YamyDbContext _context = context;
 
         private readonly ILogger<MasterStockManagementController> _logger = logger;
+        private readonly IListServices _listServices = listServices;
+        private readonly IVendorService _vendorService;
 
         public async Task<IActionResult> Index()
             {
@@ -59,6 +63,134 @@
                     })
                 .ToListAsync();
             return View(items);
+            }
+
+        [HttpGet]
+        public async Task<IActionResult> Create()
+            {
+            var Category=await _listServices.GetVenderCategorysAsync();
+            var CategorylectList = Category.Select(c => new TblVendorCategory
+                {
+                Id = c.Id,
+                Name = c.Name
+                }).ToList();
+            var city = await _listServices.GetCitysAsync();
+            var citylectList = city.Select(c => new TblCity
+                {
+                Id = c.Id,
+                CountryId= c.CountryId,
+                Name = c.Name
+                }).ToList();
+            var country = await _listServices.GetCountriesAsync();
+            var countrylectList = country.Select(c => new TblCountry
+                {
+                Id = c.Id,                
+                Name = c.Name
+                }).ToList();
+            var Accounts = await _listServices.GetAccountsAsync();
+            var AccountslectList = Accounts.Select(c => new TblCountry
+                {
+                Id = c.Id,
+                Name = c.Name
+                }).ToList();
+
+            var project = await _listServices.GetProjectAsync();
+            var projectlectList = project.Select(c => new TblProject
+                {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+                }).ToList();
+            var codes = _vendorService.GenerateNextCode();
+            var code = codes.ToString();
+
+            return PartialView("_SubContract" ,new VendorSubContactViewModel
+                {
+                Categoriess=CategorylectList,
+                City=citylectList,
+                Country=countrylectList,
+                Project=projectlectList,
+                Code=code,
+                Type= "Subcontractor"
+                }
+            );}
+        [HttpPost]
+        public async Task<IActionResult> Create(VendorSubContactViewModel model)
+         {
+             await _vendorService.CreateVendorOrSubcontractorAcync(model);
+            return RedirectToAction(nameof(Index));
+            }
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+            {
+            var Category = await _listServices.GetVenderCategorysAsync();
+            var CategorylectList = Category.Select(c => new TblVendorCategory
+                {
+                Id = c.Id,
+                Name = c.Name
+                })
+            .ToList();
+            var city = await _listServices.GetCitysAsync();
+            var citylectList = city.Select(c => new TblCity
+                {
+                Id = c.Id,
+                CountryId = c.CountryId,
+                Name = c.Name
+                })
+            .ToList();
+            var country = await _listServices.GetCountriesAsync();
+            var countrylectList = country.Select(c => new TblCountry
+                {
+                Id = c.Id,
+                Name = c.Name
+                })
+            .ToList();
+            var project = await _listServices.GetProjectAsync();
+            var projectlectList = project.Select(c => new TblProject
+                {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+                })
+            .ToList();
+
+            var Vendor=await _context.TblVendors.FindAsync(id);
+
+            return PartialView("_SubContract", new VendorSubContactViewModel
+                {
+                Categoriess = CategorylectList,
+                City = citylectList,
+                Country = countrylectList,
+                Project = projectlectList,
+                Type = "Subcontractor",
+                Code=Vendor.Code.ToString(),
+                Name= Vendor.Name,
+                CategoryId = (int)Vendor.CatId,
+                Debit = Vendor.Balance ?? 0m,
+                Credit = Vendor.Balance ?? 0m,
+                Date = (DateOnly)Vendor.Date,
+                MainPhone = Vendor.MainPhone,
+                WorkPhone = Vendor.WorkPhone,
+                Fax = Vendor.Mobile,
+                Email = Vendor.Email,
+                EmailCC = Vendor.Ccemail,
+                Website = Vendor.Website,
+                CountryId = int.Parse(Vendor.Country),
+                CityId = int.Parse(Vendor.City),
+                ProjectId = Vendor.ProjectId,
+                Region = Vendor.Region,
+                BulidingNumber = Vendor.BuildingName,
+                AccountId = (int)Vendor.AccountId,
+                TRN = Vendor.Trn,
+                IsActive = Vendor.Active==1,
+
+                });
+            }
+        [HttpPost]
+        public async Task<IActionResult> Edit(VendorSubContactViewModel model)
+            {
+            await _vendorService.UpDateVendorOrSubcontractorAcync(model);
+            return RedirectToAction(nameof(Index));
             }
 
         [HttpGet]
@@ -183,7 +315,6 @@
 
             return Json(vm);
             }
-
 
         }
     }

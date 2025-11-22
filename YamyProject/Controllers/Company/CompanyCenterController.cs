@@ -1,6 +1,4 @@
-﻿using System.Security.Claims;
-
-namespace YamyProject.Controllers.Company
+﻿namespace YamyProject.Controllers.Company
 {
     public class CompanyCenterController : Controller
     {
@@ -46,9 +44,9 @@ namespace YamyProject.Controllers.Company
             return PartialView("_CompanyRow", viewModel);
         }
         [HttpGet]
-        public async Task<IActionResult> Edit(int id)
+        public async Task<IActionResult> Edit(/*int id*/)
         {
-            var company = await _context.TblCompanies.FindAsync(id);
+            var company = await _context.TblCompanies.FirstOrDefaultAsync();
           
             if (company is null)
                 return NotFound();

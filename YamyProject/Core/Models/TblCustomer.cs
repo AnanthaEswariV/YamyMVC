@@ -40,6 +40,8 @@ public partial class TblCustomer
     public string? BuildingName { get; set; }
 
     public int? AccountId { get; set; }
+    [ForeignKey("AccountId")]
+    public virtual TblCoaLevel4? Account { get; set; }
 
     public string? Trn { get; set; }
 

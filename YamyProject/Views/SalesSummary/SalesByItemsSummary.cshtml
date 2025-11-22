@@ -1,0 +1,530 @@
+﻿@model ItemSalesReportViewModel
+@{
+    ViewData["Title"] = "Sales By Item Summary";
+    }
+
+<style>
+    body {
+        background: #f5f6f8;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .report-wrap {
+        padding: 16px 24px;
+    }
+
+    .report-card {
+        background: #ffffff;
+        border-radius: 4px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, .06);
+        padding: 12px 18px 24px;
+    }
+
+    .toolbar {
+        margin-bottom: 8px;
+    }
+
+        .toolbar .btn {
+            font-size: .8rem;
+            padding: 4px 10px;
+        }
+
+    .filters-row label {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+    .filters-row .form-select,
+    .filters-row .form-control {
+        font-size: .8rem;
+        height: calc(1.5rem + 6px);
+        padding: 2px 6px;
+    }
+
+    .filters-row .input-group-text {
+        padding: 2px 6px;
+        font-size: .75rem;
+    }
+
+    .report-meta {
+        font-size: .75rem;
+        line-height: 1.2;
+    }
+
+    .report-title h6 {
+        font-size: .8rem;
+        letter-spacing: .05em;
+    }
+
+    .report-title h5 {
+        font-size: 1rem;
+        margin-bottom: 2px;
+    }
+
+    .report-title span {
+        font-size: .85rem;
+        font-weight: 600;
+    }
+
+    .report-table-wrapper {
+        margin-top: 16px;
+        border: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
+
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: .78rem;
+    }
+
+        .report-table thead th {
+            background: #e5e7eb;
+            padding: 6px 8px;
+            text-align: right;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+            .report-table thead th:first-child {
+                text-align: left;
+                width: 32%;
+            }
+
+        .report-table tbody td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #f1f1f1;
+            white-space: nowrap;
+        }
+
+        .report-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .report-table tbody td.text-end {
+            text-align: right;
+        }
+
+    .group-row {
+        background: #dde4f1;
+        font-weight: 600;
+    }
+
+        .group-row.level-2 {
+            background: #c9d7f0;
+        }
+
+        .group-row td {
+            border-bottom-color: #dde4f1;
+        }
+
+    .group-arrow {
+        display: inline-block;
+        width: 14px;
+        text-align: center;
+        margin-right: 4px;
+        font-size: .6rem;
+    }
+
+    .indent-1 {
+        padding-left: 28px !important;
+    }
+
+    .indent-2 {
+        padding-left: 44px !important;
+    }
+</style>
+
+<div class="report-wrap">
+    <div class="report-card">
+        <!-- Top toolbar (Print / Excel only) -->
+        <div class="d-flex justify-content-between align-items-center toolbar">
+            <div class="btn-group">
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm "
+                        @* /  data-bs-toggle="dropdown"
+                        aria-expanded="false" *@>
+                    Print
+                </button>
+              @*   <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#">Print</a></li>
+                    <li><a class="dropdown-item" href="#">Print Preview</a></li>
+                </ul> *@
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-1">
+                    Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters row -->
+        <div class="row g-2 align-items-center filters-row mb-2">
+            <div class="col-auto d-flex align-items-center">
+                <label for="dateFilter">Dates</label>
+                <select id="dateFilter" class="form-select form-select-sm ms-2">
+                    <option selected>All</option>
+                    <option>Today</option>
+                    <option>This Week</option>
+                    <option>This Month</option>
+                    <option>This Year</option>
+                    <option>Custom</option>
+                </select>
+            </div>
+
+            <div class="col-auto d-flex align-items-center">
+                <label for="dateFrom">From</label>
+                <div class="input-group input-group-sm ms-2">
+                    <input  type="date" id="dateFrom" class="form-control form-control-sm" />
+                </div>
+            </div>
+
+            <div class="col-auto d-flex align-items-center">
+                <label for="dateTo">To</label>
+                <div class="input-group input-group-sm ms-2">
+                    <input type="date" id="dateTo" class="form-control form-control-sm" />
+                </div>
+            </div>
+
+            <div class="col-auto d-flex align-items-center">
+                <label for="showColumns">Show_Columns</label>
+                <select id="showColumns" class="form-select form-select-sm ms-2">
+                    <option selected>Default</option>
+                    <option>All Columns</option>
+                    <option>Compact</option>
+                </select>
+            </div>
+
+            <div class="col-auto d-flex align-items-center">
+                <label for="sortBy">Sort By</label>
+                <select id="sortBy" class="form-select form-select-sm ms-2">
+                    <option selected>Item Name</option>
+                    <option>Amount</option>
+                    <option>QTY</option>
+                    <option>Gross Margin</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Header (time / date / title) -->
+        <div class="d-flex justify-content-between align-items-start mb-3">
+           @*  <div class="report-meta text-muted">
+                <div>@DateTime.Now.ToString("hh:mm tt")</div>
+                <div>@DateTime.Now.ToString("dd/MM/yyyy")</div>
+            </div> *@
+
+            <div class="report-title text-center flex-grow-1">
+                <h6 class="mb-1 text-uppercase">ARC MASTER CONTRACTING L.L.C.</h6>
+                <h5 class="mb-0 fw-bold">Sales By Item Summary</h5>
+                <span>All Transaction</span>
+            </div>
+
+            <!-- spacer to balance layout -->
+            <div style="width:120px;"></div>
+        </div>
+
+        <!-- Table -->
+        <div class="report-table-wrapper">
+            <table class="report-table" id="salesTable">
+                <thead>
+                    <tr>
+                        <th>Item / Category</th>
+                        <th>QTY</th>
+                        <th>Amount</th>
+                        <th>% of Sales</th>
+                        <th>AVG Price</th>
+                        <th>COGS</th>
+                        <th>AVG COGS</th>
+                        <th>Gross Margin</th>
+                        <th>Margin %</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    @foreach (var type in Model.Rows)
+                        {
+                        // data-key = type (same as your "key")
+                        <tr class="group-row level-1"
+                            data-level="1"
+                            data-state="e"
+                            data-load="u"
+                            data-key="@type.ItemType"
+                            data-row-id="type-@type.ItemType">
+                            <td>
+                                <span class="group-arrow">►</span>
+                                <span class="group-label">@type.Category</span>
+                            </td>
+                            <td colspan="8"></td>
+                        </tr>
+                        }
+                    <!-- Level 1 group -->
+                    <tr class="group-row level-1">
+                        <td>
+                            <span class="group-arrow">▼</span>
+                            11 - Inventory Part
+                        </td>
+                        <td colspan="8"></td>
+                    </tr>
+
+                    <!-- Level 2 group -->
+                    <tr class="group-row level-2">
+                        <td class="indent-1">
+                            <span class="group-arrow">▼</span>
+                            001 - Materials
+                        </td>
+                        <td colspan="8"></td>
+                    </tr>
+
+                    <!-- Sample items (you can replace with a loop) -->
+                    <tr>
+                        <td class="indent-2">1</td>
+                        <td class="text-end">129.000</td>
+                        <td class="text-end">2,635.600</td>
+                        <td class="text-end">29.6%</td>
+                        <td class="text-end">20.43</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">2,635.60</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">12</td>
+                        <td class="text-end">26.000</td>
+                        <td class="text-end">530.500</td>
+                        <td class="text-end">6.0%</td>
+                        <td class="text-end">20.40</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">530.50</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">first</td>
+                        <td class="text-end">35.000</td>
+                        <td class="text-end">459.270</td>
+                        <td class="text-end">5.2%</td>
+                        <td class="text-end">13.12</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">459.27</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">Graftio Décor -18ltr - code 0852</td>
+                        <td class="text-end">3.000</td>
+                        <td class="text-end">50.000</td>
+                        <td class="text-end">0.6%</td>
+                        <td class="text-end">16.67</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">50.00</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">Product One</td>
+                        <td class="text-end">55.000</td>
+                        <td class="text-end">569.100</td>
+                        <td class="text-end">6.4%</td>
+                        <td class="text-end">10.35</td>
+                        <td class="text-end">210.00</td>
+                        <td class="text-end">3.82</td>
+                        <td class="text-end">359.10</td>
+                        <td class="text-end">63.1%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">r</td>
+                        <td class="text-end">31.000</td>
+                        <td class="text-end">306.550</td>
+                        <td class="text-end">3.4%</td>
+                        <td class="text-end">9.89</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">306.55</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">r1</td>
+                        <td class="text-end">220.000</td>
+                        <td class="text-end">2,200.000</td>
+                        <td class="text-end">24.7%</td>
+                        <td class="text-end">10.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">2,200.00</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">STUCCO FILLER 18LTR NATIONAL</td>
+                        <td class="text-end">30.000</td>
+                        <td class="text-end">620.000</td>
+                        <td class="text-end">7.0%</td>
+                        <td class="text-end">20.67</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">0.00</td>
+                        <td class="text-end">620.00</td>
+                        <td class="text-end">100.0%</td>
+                    </tr>
+                    <tr>
+                        <td class="indent-2">المواد</td>
+                        <td class="text-end">831.000</td>
+                        <td class="text-end">7,39.500</td>
+                        <td class="text-end">8.3%</td>
+                        <td class="text-end">0.89</td>
+                        <td class="text-end">415.50</td>
+                        <td class="text-end">0.50</td>
+                        <td class="text-end">324.00</td>
+                        <td class="text-end">43.8%</td>
+                    </tr>
+
+                    <!-- Other top-level groups -->
+                    <tr class="group-row level-1">
+                        <td>
+                            <span class="group-arrow">▶</span>
+                            12 - Service
+                        </td>
+                        <td colspan="8"></td>
+                    </tr>
+                    <tr class="group-row level-1">
+                        <td>
+                            <span class="group-arrow">▶</span>
+                            13 - Inventory Assembly
+                        </td>
+                        <td colspan="8"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+    @section Scripts {
+    <script>
+            (function() {
+                const table = document.getElementById("salesTable");
+                if (!table) return;
+
+                const dateFrom = document.getElementById("dateFrom")?.value;
+                const dateTo   = document.getElementById("dateTo")?.value;
+
+                table.addEventListener("click", async function (e) {
+                    const row = e.target.closest("tr.group-row");
+                    if (!row) return;
+
+                    const level    = parseInt(row.dataset.level, 10); // 1 or 2
+                    const state    = row.dataset.state;               // "e" or "c"
+                    const load     = row.dataset.load;                // "u" or "l"
+                    const key      = row.dataset.key;                 // type or "catId|type"
+                    const arrowEl  = row.querySelector(".group-arrow");
+
+                    if (state === "e") {
+                        // Expand
+                        if (load === "u") {
+                            if (level === 1) {
+                                await loadCategories(row, key);              // type
+                            } else if (level === 2) {
+                                const parts = key.split("|");                // "catId|type"
+                                const catId = parseInt(parts[0], 10);
+                                const itemType = parts[1];
+                                await loadItems(row, catId, itemType);
+                            }
+                            row.dataset.load = "l";
+                        } else {
+                            toggleChildren(row, true);
+                        }
+
+                        row.dataset.state = "c";
+                        if (arrowEl) arrowEl.textContent = "▼";
+                    } else if (state === "c") {
+                        // Collapse
+                        toggleChildren(row, false);
+                        row.dataset.state = "e";
+                        if (arrowEl) arrowEl.textContent = "►";     
+                    }
+                });
+
+                async function loadCategories(parentRow, itemType) {
+                    const rowId = parentRow.dataset.rowId;
+
+                    const res = await fetch(`/sales-analysis/categories?type=${encodeURIComponent(itemType)}`);
+                    if (!res.ok) return;
+                    const data = await res.json(); // [{id, name}]
+
+                    let insertIndex = parentRow.rowIndex; // 0-based
+                    data.forEach(cat => {
+                        insertIndex++;
+                        const newRow = table.insertRow(insertIndex);
+                        newRow.classList.add("group-row", "level-2");
+                        newRow.dataset.level  = "2";
+                        newRow.dataset.state  = "e";
+                        newRow.dataset.load   = "u";
+                        newRow.dataset.key    = cat.id + "|" + itemType; // same as WinForms key
+                        newRow.dataset.parent = rowId;
+                        newRow.dataset.rowId  = `cat-${cat.id}-type-${itemType}`;
+
+                        newRow.innerHTML = `
+        <td>
+            <span class="group-arrow">►</span>
+            <span class="group-label ms-4">${cat.name}</span>
+        </td>
+        <td colspan="8"></td>`;
+                    });
+                }
+
+                async function loadItems(parentRow, categoryId, itemType) {
+                    const parentId = parentRow.dataset.rowId;
+                    const from = dateFrom || "";
+                    const to   = dateTo || "";
+
+                    const res = await fetch(
+                        `/sales-analysis/items?categoryId=${categoryId}&type=${encodeURIComponent(itemType)}&from=${from}&to=${to}`
+                    );
+                    if (!res.ok) return;
+
+                    const items = await res.json(); // [{id, itemName, qty, amount, ...}]
+                    let insertIndex = parentRow.rowIndex;
+
+                    items.forEach(it => {
+                        insertIndex++;
+                        const newRow = table.insertRow(insertIndex);
+                        newRow.classList.add("group-row", "level-3");
+                        newRow.dataset.level  = "3";
+                        newRow.dataset.state  = "n"; // no expand
+                        newRow.dataset.load   = "l";
+                        newRow.dataset.key    = it.id;
+                        newRow.dataset.parent = parentId;
+
+                        newRow.innerHTML = `
+        <td>
+            <span class="group-label ms-5">${it.itemName}</span>
+        </td>
+        <td class="text-end">${it.qty}</td>
+        <td class="text-end">${it.amount}</td>
+        <td class="text-end">${it.percentOfSales}%</td>
+        <td class="text-end">${it.avgPrice}</td>
+        <td class="text-end">${it.cogs}</td>
+        <td class="text-end">${it.avgCogs}</td>
+        <td class="text-end">${it.grossMargin}</td>
+        <td class="text-end">${it.grossMarginPercent}%</td>`;
+                    });
+                }
+
+                // Similar to your ToggleSalesChildren
+                function toggleChildren(parentRow, show) {
+                    const parentId = parentRow.dataset.rowId;
+                    const rows = table.querySelectorAll("tr.group-row");
+                    rows.forEach(r => {
+                        if (r.dataset.parent === parentId) {
+                            r.style.display = show ? "" : "none";
+
+                            // If hiding, also hide its children recursively
+                            if (!show) {
+                                toggleChildren(r, false);
+                                const arrow = r.querySelector(".group-arrow");
+                                if (arrow) arrow.textContent = "►";
+                                r.dataset.state = "e";
+                            }
+                        }
+                    });
+                }
+            })();
+    </script>
+    }

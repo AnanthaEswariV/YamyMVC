@@ -1,0 +1,226 @@
+﻿@model CustomerAgingSummaryViewModel
+@{
+    ViewData["Title"] = "Customer Aging Summary";
+ }
+
+<style>
+    body {
+        background: #f3f4f6;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .report-shell {
+        background: #0b2854;
+        color: #fff;
+        padding: 6px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .report-toolbar {
+        background: #f8f9fb;
+        border-bottom: 1px solid #d0d5dd;
+        padding: 8px 16px;
+    }
+
+        .report-toolbar .btn {
+            font-size: .8rem;
+            padding: 4px 10px;
+        }
+
+    .filter-row {
+        padding: 6px 16px 10px;
+        border-bottom: 1px solid #e0e4ec;
+        background: #fdfdff;
+        font-size: .8rem;
+    }
+
+        .filter-row .form-control,
+        .filter-row .form-check-input {
+            height: 28px;
+            padding: 2px 6px;
+            font-size: .8rem;
+        }
+
+    .aging-container {
+        max-width: 1000px;
+        margin: 30px auto 40px;
+        background: #ffffff;
+        padding: 24px 24px 40px;
+        box-shadow: 0 0 0 1px #e3e6ef;
+    }
+
+    .aging-header {
+        text-align: center;
+        margin-bottom: 18px;
+    }
+
+        .aging-header h5 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        .aging-header .sub {
+            font-size: .9rem;
+            font-weight: 600;
+        }
+
+        .aging-header .sub2 {
+            font-size: .8rem;
+        }
+
+    .aging-table {
+        font-size: .85rem;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+        .aging-table thead {
+            background: #e4e6ec;
+            border-bottom: 1px solid #c7cad3;
+        }
+
+        .aging-table th,
+        .aging-table td {
+            padding: 6px 8px;
+            border-right: 1px solid #d8dbe5;
+        }
+
+            .aging-table th:last-child,
+            .aging-table td:last-child {
+                border-right: none;
+            }
+
+        .aging-table tbody tr:nth-child(1) {
+            background: #eef1ff;
+        }
+
+        .aging-table tfoot tr {
+            background: #f1f2f6;
+            font-weight: 700;
+        }
+
+        .aging-table tfoot td {
+            border-top: 1px solid #c7cad3;
+        }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .sn-col {
+        width: 40px;
+    }
+
+    .name-col {
+        width: 220px;
+    }
+
+    .age-col {
+        width: 120px;
+    }
+</style>
+
+<div class="report-shell">
+    Customer Aging Summary
+</div>
+
+@* <div class="report-toolbar d-flex align-items-center gap-2 flex-wrap">
+    <button class="btn btn-sm btn-outline-secondary">Customize Report</button>
+    <button class="btn btn-sm btn-outline-secondary">Comment On Report</button>
+    <button class="btn btn-sm btn-outline-secondary">Memorize</button>
+    <button class="btn btn-sm btn-outline-secondary">Print ▼</button>
+    <button class="btn btn-sm btn-outline-secondary">Excel</button>
+    <button class="btn btn-sm btn-outline-secondary">Hide Header</button>
+    <button class="btn btn-sm btn-outline-secondary">Refresh</button>
+</div> *@
+
+<div class="filter-row d-flex align-items-center justify-content-between flex-wrap">
+    <div class="d-flex align-items-center gap-2">
+        <span>Date From</span>
+        <input type="date" class="form-control" style="width: 150px;" />
+        <span>Date To</span>
+        <input type="date" class="form-control" style="width: 150px;" />
+        <div class="form-check ms-3">
+            <input class="form-check-input" type="checkbox" id="chkAll" />
+            <label class="form-check-label" for="chkAll">All</label>
+        </div>
+    </div>
+
+   @*  <div class="text-end">
+        <div>08:08 AM</div>
+        <div>@DateTime.Now.ToString("dd/MM/yyyy")</div>
+    </div> *@
+</div>
+
+<div class="aging-container">
+    <div class="aging-header">
+        <h5>ARC MASTER CONTRACTING</h5>
+        <div class="sub">Customer Aging Summary</div>
+        <div class="sub2">All Transaction</div>
+    </div>
+
+    <table class="aging-table" id="reportTable">
+        <thead>
+            <tr>
+                <th class="sn-col">Sn</th>
+                <th class="name-col">Name</th>
+                <th class="age-col text-right">Current</th>
+                <th class="age-col text-right">1 - 30</th>
+                <th class="age-col text-right">31 - 60</th>
+                <th class="age-col text-right">61 - 90</th>
+                <th class="age-col text-right">&gt; 90</th>
+                <th class="age-col text-right">Total</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var row in Model.Rows)
+                {
+                <tr data-id="@row.CustomerId">
+                    <td>@row.Sn</td>
+                    <td>@row.CustomerName</td>
+                    <td class="text-right">@row.Current</td>
+                    <td class="text-right">@row.Days1To30</td>
+                    <td class="text-right">@row.Days31To60</td>
+                    <td class="text-right">@row.Days61To90</td>
+                    <td class="text-right">@row.Days91Plus</td>
+                    <td class="text-right">@row.Total</td>
+                </tr>
+                }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td></td>
+                <td><u>TOTAL</u></td>
+                <td class="text-right">@Model.TotalCurrent</td>
+                <td class="text-right">@Model.Total1To30</td>
+                <td class="text-right">@Model.Total31To60</td>
+                <td class="text-right">@Model.Total61To90</td>
+                <td class="text-right">@Model.Total91Plus</td>
+                <td class="text-right">@Model.GrandTotal</td>
+            </tr>
+        </tfoot>
+
+    </table>
+</div>
+    @section Scripts {
+
+<script>
+    $(document).ready(function () {
+
+               $('#reportTable tbody').on('dblclick', 'tr', function () {
+        const id = $(this).data('id');
+        if (!id) return;
+
+                    const url = '@Url.Action("CustomerAgingDetails", "CustomerAndReceivable")' + '?id=' + id;
+        window.location.href = url;
+    });
+    });
+</script>
+}

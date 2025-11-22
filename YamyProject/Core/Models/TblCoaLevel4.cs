@@ -8,6 +8,8 @@ public partial class TblCoaLevel4
     public int Code { get; set; }
 
     public int MainId { get; set; }
+    [ForeignKey("MainId")]
+    public virtual TblCoaLevel3? Account { get; set; }
 
     public decimal? Debit { get; set; }
 
@@ -15,3 +17,4 @@ public partial class TblCoaLevel4
 
     public DateTime? Date { get; set; }
 }
+

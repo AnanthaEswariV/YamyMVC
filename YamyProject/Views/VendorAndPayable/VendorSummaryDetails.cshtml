@@ -1,0 +1,209 @@
+﻿@model CustomerSummaryBalanceDetailViewModel
+@{
+    ViewData["Title"] = "Vendor Balance Detail";
+    }
+
+<style>
+    .report-toolbar {
+        gap: .35rem;
+        margin-bottom: .5rem;
+    }
+
+    .report-filters {
+        align-items: center;
+        margin-bottom: .75rem;
+    }
+
+        .report-filters label {
+            font-weight: 600;
+            margin-right: .35rem;
+        }
+
+    .date-list {
+        font-size: .8rem;
+        line-height: 1.5;
+    }
+
+        .date-list .date-item {
+            white-space: nowrap;
+        }
+
+    .report-card {
+        border: 1px solid #d0d5dd;
+        border-radius: .25rem;
+        padding: 0;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .report-card-header {
+        text-align: center;
+        padding: .75rem 1rem .5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+        .report-card-header h5 {
+            font-size: 1rem;
+            margin-bottom: .1rem;
+            font-weight: 700;
+        }
+
+        .report-card-header div {
+            font-size: .85rem;
+        }
+
+    .report-table thead {
+        background: #f3f4f6;
+    }
+
+    .report-table th,
+    .report-table td {
+        font-size: .82rem;
+        padding: .35rem .5rem;
+        vertical-align: middle;
+    }
+
+    .report-table tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+
+    .report-table td.text-end {
+        text-align: right;
+    }
+
+    .report-wrapper {
+        padding: .75rem 1rem 1rem;
+    }
+</style>
+
+<div class="container-fluid py-2">
+
+    <!-- Toolbar -->
+    <div class="d-flex flex-wrap report-toolbar">
+        @*   <button type="button" class="btn btn-sm btn-outline-secondary">Customize Report</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary">Comment On Report</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary">Memorize</button>
+     *@  
+     <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                Print
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Print</a></li>
+                <li><a class="dropdown-item" href="#">Print Preview</a></li>
+            </ul>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary">Excel</button>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="row g-2 report-filters">
+        <div class="col-auto d-flex align-items-center">
+            <label for="fromDate" class="me-1">From</label>
+            <input type="date"
+                   id="fromDate"
+                   name="FromDate"
+                   class="form-control form-control-sm"
+                   value="@(Model.FromDate)" />
+        </div>
+
+        <div class="col-auto d-flex align-items-center">
+            <label for="toDate" class="me-1">To</label>
+            <input type="date"
+                   id="toDate"
+                   name="ToDate"
+                   class="form-control form-control-sm"
+                   value="@(Model.ToDate)" />
+        </div>
+
+        <div class="col-auto d-flex align-items-center">
+            <div class="form-check mt-1">
+                <input class="form-check-input" type="checkbox" id="chkAll" name="ShowAll"
+                       @(Model.ShowAll ? "checked" : "") />
+                <label class="form-check-label" for="chkAll">All</label>
+            </div>
+        </div>
+
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-primary">Run Report</button>
+        </div>
+    </form>
+
+    <!-- Report body -->
+    <div class="report-body">
+
+        <!-- Left: date list -->
+        <div class="date-list">
+            @*   @if (Model.Transactions != null && Model.Transactions.Any())
+                {
+                foreach (var d in Model.Transactions)
+                {
+                    <div class="date-item">
+                        @d.Date</div>
+                    }
+                     .Select(t => t.Date)
+                .Distinct()
+                .OrderBy(d => d))
+                    {
+                    <div class="date-item">@d.ToString("MM/dd/yyyy")</div>
+                    } 
+                } *@
+        </div>
+
+        <!-- Right: main report -->
+        <div class="report-card">
+            <div class="report-card-header">
+                <h5>@Model.CompanyName</h5>
+                <div>@Model.ReportTitleVendor</div>
+                <div>@Model.SubTitle</div>
+            </div>
+
+            <div class="report-wrapper">
+                <div class="table-responsive">
+                    <table class="table table-sm report-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Type</th>
+                                <th style="width: 15%;">Date</th>
+                                <th style="width: 10%;">Num</th>
+                                <th style="width: 25%;">Account</th>
+                                <th style="width: 12%;" class="text-end">Amount</th>
+                                <th style="width: 13%;" class="text-end">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Transactions != null && Model.Transactions.Any())
+                                {
+                                foreach (var row in Model.Transactions)
+                                    {
+                                    <tr>
+                                        <td>@row.Type</td>
+                                        <td>@row.Date</td>
+                                        <td>@row.Num</td>
+                                        <td>@row.Account</td>
+                                        <td class="text-end">
+                                            @row.Amount.ToString("N2")
+                                        </td>
+                                        <td class="text-end">
+                                            @row.Balance.ToString("N2")
+                                        </td>
+                                    </tr>
+                                    }
+                                }
+                            else
+                                {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        No transactions found for the selected period.
+                                    </td>
+                                </tr>
+                                }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

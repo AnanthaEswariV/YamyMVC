@@ -1,0 +1,314 @@
+﻿@model CustomerBalanceDetailViewModel
+@{
+    ViewData["Title"] = "Vendor Balance Detail";
+    }
+
+<style>
+    :root {
+        --cb-pad: 14px;
+    }
+
+    body {
+        margin: 0;
+        background: #f5f6f8;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .cb-page {
+        min-height: 100vh;
+        background: #f5f6f8;
+    }
+
+    .cb-title-bar {
+        background: #003366;
+        color: #fff;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding: 10px 20px;
+        text-align: center;
+    }
+
+    .cb-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px var(--cb-pad) 32px;
+    }
+
+    .cb-toolbar button {
+        min-width: 80px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .cb-filters label {
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+    .cb-filters input[type="date"] {
+        padding: 2px 6px;
+        font-size: 0.85rem;
+    }
+
+    .cb-left-dates {
+        font-size: 0.8rem;
+        color: #222;
+        padding-top: 12px;
+    }
+
+        .cb-left-dates div + div {
+            margin-top: 4px;
+        }
+
+    .cb-report-header {
+        margin-bottom: 14px;
+    }
+
+        .cb-report-header .company {
+            font-weight: 600;
+        }
+
+        .cb-report-header .title {
+            font-weight: 600;
+        }
+
+        .cb-report-header .subtitle {
+            font-weight: 500;
+        }
+
+    .cb-table-wrapper {
+        background: #ffffff;
+        border: 1px solid #dddddd;
+    }
+
+    table.cb-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .cb-table thead th {
+        background: #d9d9d9;
+        padding: 8px 10px;
+        border-bottom: 1px solid #c0c0c0;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .cb-table tbody td {
+        padding: 6px 10px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    .cb-table tbody tr:nth-child(even):not(.cb-total-row) {
+        background: #fafafa;
+    }
+
+    .cb-table tbody tr:hover:not(.cb-total-row) {
+        background: #f3f5f9;
+    }
+
+    .cb-total-row {
+        background: #e4e4e4;
+        font-weight: 600;
+    }
+
+        .cb-total-row td:first-child {
+            text-transform: uppercase;
+        }
+
+    .text-end {
+        text-align: right;
+    }
+
+    .cb-no-rows {
+        padding: 18px 0;
+        color: #999;
+        text-align: center;
+    }
+</style>
+
+<div class="cb-page">
+    <div class="cb-title-bar">
+        Vendor Balance Detail
+    </div>
+
+    <div class="cb-container">
+
+        <!-- Toolbar: ONLY Print + Excel -->
+        <div class="cb-toolbar d-flex flex-wrap gap-2 mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle">
+                Print
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary">
+                Excel
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <form method="get" class="cb-filters mb-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-auto d-flex align-items-center gap-2">
+                    <label>From</label>
+                    <input type="date"
+                           name="dateFrom" id="DateFrom"
+                           @* value="@(Model.DateFrom)" *@
+                           class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-auto d-flex align-items-center gap-2">
+                    <label>To</label>
+                    <input type="date"
+                           name="dateTo" id="DateTo"
+                           @* value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" *@
+                           class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-auto form-check ms-3">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="chkAllDates"
+                           name="allDates"
+                           value="true"
+                           @(Model.AllDates ? "checked" : "") />
+                    <label class="form-check-label" for="chkAllDates">All</label>
+                </div>
+
+                <!-- optional Run button -->
+                @* <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">Run</button>
+                </div> *@
+            </div>
+        </form>
+
+        <div class="row">
+            <!-- Left side dates (like the screenshot) -->
+            @* <div class="col-2 cb-left-dates">
+                @if (Model.Rows != null && Model.Rows.Any())
+                    {
+                    foreach (var d in Model.Rows
+                    .Select(r => r.Date)
+                    .Distinct()
+                    .OrderBy(d => d))
+                        {
+                        @:<div>@d.ToString("dd/MM/yyyy")</div>
+                        }
+                    }
+            </div> *@
+
+            <!-- Main report area -->
+            <div class="col">
+
+                <!-- Report header -->
+                <div class="cb-report-header text-center">
+                    <div class="company">
+                        @(string.IsNullOrWhiteSpace(Model.CompanyName)
+                                                ? "ARC MASTER CONTRACTING L.L.C."
+                                                : Model.CompanyName)
+                    </div>
+                    <div class="title">
+                        @(!string.IsNullOrWhiteSpace(Model.ReportTitle)
+                                                ? Model.ReportTitle
+                                                : "Vendor Balance Detail")
+                    </div>
+                    <div class="subtitle">
+                        @(!string.IsNullOrWhiteSpace(Model.ReportSubTitle)
+                                                ? Model.ReportSubTitle
+                                                : "All Transaction")
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="cb-table-wrapper">
+                    <table class="cb-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th style="width: 150px;">Date</th>
+                                <th style="width: 120px;">Num</th>
+                                <th>Account</th>
+                                <th class="text-end" style="width: 140px;">Amount</th>
+                                <th class="text-end" style="width: 140px;">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Rows != null && Model.Rows.Any())
+                                {
+                                foreach (var row in Model.Rows)
+                                    {
+                                    <tr>
+                                        <td>@row.Type</td>
+                                        <td>@row.Date</td>
+                                        <td>@row.Num</td>
+                                        <td>@row.Account</td>
+                                        <td class="text-end">@row.Amount.ToString("N2")</td>
+                                        <td class="text-end">@row.Balance.ToString("N2")</td>
+                                    </tr>
+                                    }
+
+                                @*  <tr class="cb-total-row">
+                                    <td>TOTAL</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>                                    
+                                    <td class="text-end">@Model.TotalBalance.ToString("N2")</td>
+                                    <td></td>
+                                </tr> *@
+
+                                }
+                            else
+                                {
+                                <tr>
+                                    <td colspan="6" class="cb-no-rows">
+                                        No transactions found for the selected period.
+                                    </td>
+                                </tr>
+                                }
+                        </tbody>
+                        <tfoot>
+                            <tr class="cb-total-row">
+                                <td>TOTAL</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td colspan="2" class="text-center">
+                                    @Model.TotalBalance.ToString("N2")
+                                </td>
+                                @* <td class="text-end">@Model.TotalBalance.ToString("N2")</td> *@
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+    @section Scripts {
+
+    <script>
+        // Toggle From/To enabled when "All" is checked
+        document.addEventListener("DOMContentLoaded", function () {
+            const chkAll = document.getElementById("chkAllDates");
+            const fromInput = document.getElementById("DateFrom");
+            const toInput = document.getElementById("DateTo");
+
+            function updateDateState() {
+                const disabled = chkAll.checked;
+                fromInput.disabled = disabled;
+                toInput.disabled = disabled;
+
+                fromInput.classList.toggle("date-disabled", disabled);
+                toInput.classList.toggle("date-disabled", disabled);
+            }
+
+            if (chkAll) {
+                chkAll.addEventListener("change", updateDateState);
+                updateDateState();
+            }
+        });
+    </script>
+    }
