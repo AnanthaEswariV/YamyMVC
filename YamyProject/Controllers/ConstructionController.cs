@@ -5235,9 +5235,8 @@ LIMIT 1;";
             return View();  
         }
 
-
         [HttpGet]
-        public async Task<IActionResult> GetGanttChartData(string planId = "1")
+        public async Task<IActionResult> GetAllGanttChartData(string planId = "1")
         {
             try
             {
@@ -5269,12 +5268,12 @@ LIMIT 1;";
                             LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
                             LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
                             LEFT JOIN tbl_items_boq boq ON act.name = boq.id
-                            WHERE plan.id = @planId
+                            WHERE plan.id = 1
                             GROUP BY act.id
                             ORDER BY act.start_date";
 
                 using var parentCmd = new MySqlCommand(parentQuery, conn);
-                parentCmd.Parameters.AddWithValue("@planId", planId);
+                parentCmd.Parameters.AddWithValue("1", planId);
 
                 using var parentReader = await parentCmd.ExecuteReaderAsync();
 
@@ -5402,26 +5401,27 @@ LIMIT 1;";
 
                 // Get all activities in flat structure
                 var query = @"SELECT 
-                        act.id AS activity_id,
-                        act.parent_id,
-                        boq.name AS task_name,
-                        act.code AS task_code,
-                        act.start_date,
-                        act.end_date,
-                        plan.description AS planning_description,
-                        plan.progress AS planning_progress,
-                        COALESCE(SUM(details.qty_used), 0) AS completed_work,
-                        COALESCE(SUM(details.qty_total), 0) AS planned_work,
-                        GROUP_CONCAT(DISTINCT assign.resource_id) AS resources
-                    FROM tbl_project_activity act
-                    JOIN tbl_project_planning plan ON plan.id = act.planning_id
-                    LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
-                    LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
-                    LEFT JOIN tbl_items_boq boq ON act.name = boq.id
-                    LEFT JOIN tbl_project_activity_assignment assign ON assign.activity_id = act.id
-                    WHERE plan.id = @planId
-                    GROUP BY act.id
-                    ORDER BY act.start_date";
+                                act.id AS activity_id,
+                                boq.name AS task_name,
+                                act.code AS task_code,
+                                act.start_date,
+                                act.end_date,
+                                plan.description AS planning_description,
+                                plan.progress AS planning_progress,
+                                plan.project_id,
+                                plan.assigned_team,
+                                SUM(details.qty_used) AS completed_work,
+                                SUM(details.qty_total) AS planned_work,
+                                assign.resource_id
+                            FROM tbl_project_activity act
+                            JOIN tbl_project_planning plan ON plan.id = act.planning_id
+                            LEFT JOIN tbl_project_activity_assignment assign ON assign.activity_id = act.id
+                            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
+                            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
+                            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
+                            WHERE plan.id = 1
+                            GROUP BY act.id,assign.resource_id
+                            ORDER BY act.start_date";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@planId", planId);
@@ -5430,13 +5430,13 @@ LIMIT 1;";
 
                 while (await reader.ReadAsync())
                 {
-                    var hasChildren = reader["parent_id"] == DBNull.Value;
+                    //var hasChildren = reader["parent_id"] == DBNull.Value;
 
                     var task = new
                     {
                         Id = reader["activity_id"].ToString(),
-                        ParentId = reader["parent_id"] != DBNull.Value ?
-                            reader["parent_id"].ToString() : null,
+                        //ParentId = reader["parent_id"] != DBNull.Value ?
+                        //    reader["parent_id"].ToString() : null,
                         Name = reader["task_name"].ToString(),
                         Description = reader["planning_description"].ToString(),
                         Code = reader["task_code"].ToString(),
@@ -5456,11 +5456,11 @@ LIMIT 1;";
                             Convert.ToDouble(reader["completed_work"]) : 0,
                         Progress = reader["planning_progress"] != DBNull.Value ?
                             Convert.ToDouble(reader["planning_progress"]) : 0,
-                        Resources = reader["resources"] != DBNull.Value ?
-                            reader["resources"].ToString() : string.Empty,
-                        IconIndex = hasChildren ? 1 : 0,
-                        IndentLevel = hasChildren ? 0 : 1,
-                        IsParent = hasChildren
+                        //Resources = reader["resources"] != DBNull.Value ?
+                          //  reader["resources"].ToString() : string.Empty,
+                        //IconIndex = hasChildren ? 1 : 0,
+                        //IndentLevel = hasChildren ? 0 : 1,
+                        //IsParent = hasChildren
                     };
 
                     allTasks.Add(task);
@@ -5478,6 +5478,8 @@ LIMIT 1;";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
         #endregion
 
 

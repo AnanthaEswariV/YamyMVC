@@ -1,6 +1,5 @@
-﻿
-@{
-    ViewData["Title"] = "ProjectTimeLineChart";
+﻿@{
+    ViewData["Title"] = "Project Timeline - Gantt Chart";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -9,7 +8,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gantt Chart</title>
+    <title>Project Gantt Chart</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         * {
@@ -20,47 +19,90 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f0f0f0;
+            background: #f5f5f5;
             font-size: 11px;
+            overflow: hidden;
         }
 
-        .gantt-wrapper {
+        .gantt-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
             background: white;
         }
 
-        .gantt-main {
+        .toolbar {
+            padding: 8px 12px;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+            .toolbar button, .toolbar select {
+                padding: 5px 12px;
+                font-size: 11px;
+                background: white;
+                border: 1px solid #ababab;
+                cursor: pointer;
+                border-radius: 2px;
+            }
+
+                .toolbar button:hover {
+                    background: #e5f3ff;
+                    border-color: #0078d4;
+                }
+
+                .toolbar button:active {
+                    background: #cce4f7;
+                }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 20px;
+            background: #ccc;
+            margin: 0 4px;
+        }
+
+        .main-content {
             display: flex;
             flex: 1;
             overflow: hidden;
-            border: 1px solid #ccc;
         }
 
-        .task-grid {
-            width: 520px;
+        .left-panel {
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #ccc;
+            border-right: 1px solid #d0d0d0;
             background: white;
+            flex-shrink: 0;
         }
 
         .grid-header {
             display: grid;
-            grid-template-columns: 30px 1fr 110px 110px 60px;
-            background: #f5f5f5;
-            border-bottom: 1px solid #ccc;
+            grid-template-columns: 35px 250px 120px 120px 80px 60px;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d0d0d0;
             font-weight: 600;
+            font-size: 11px;
         }
 
-            .grid-header div {
-                padding: 6px 8px;
-                border-right: 1px solid #d0d0d0;
+        .grid-header-cell {
+            padding: 6px 8px;
+            border-right: 1px solid #d0d0d0;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+            .grid-header-cell.center {
                 text-align: center;
             }
 
-        .grid-rows {
+        .grid-body {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
@@ -68,31 +110,43 @@
 
         .grid-row {
             display: grid;
-            grid-template-columns: 30px 1fr 110px 110px 60px;
-            border-bottom: 1px solid #e0e0e0;
-            min-height: 24px;
+            grid-template-columns: 35px 250px 120px 120px 80px 60px;
+            min-height: 22px;
+            border-bottom: 1px solid #e8e8e8;
             align-items: center;
+            cursor: pointer;
         }
 
             .grid-row:hover {
-                background: #f9f9f9;
+                background: #f0f8ff;
             }
 
             .grid-row.selected {
-                background: #cde6f7;
+                background: #cce8ff !important;
             }
 
-            .grid-row.parent {
-                background: #e8f4f8;
+            .grid-row.plan-row {
+                background: #fff9e6;
+                font-weight: 600;
+                border-bottom: 2px solid #d4af37;
+            }
+
+            .grid-row.parent-row {
+                background: #f0f8ff;
                 font-weight: 600;
             }
 
+            .grid-row.child-row {
+                background: white;
+            }
+
         .grid-cell {
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-right: 1px solid #e8e8e8;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            font-size: 11px;
         }
 
             .grid-cell.center {
@@ -103,19 +157,39 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            padding: 3px 4px;
         }
 
         .task-icon {
-            width: 16px;
-            height: 16px;
+            font-size: 14px;
             flex-shrink: 0;
         }
 
-        .indent-1 {
-            padding-left: 24px;
+        .expand-icon {
+            width: 12px;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 10px;
+            user-select: none;
         }
 
-        .chart-panel {
+        .indent-0 {
+            padding-left: 4px;
+        }
+
+        .indent-1 {
+            padding-left: 20px;
+        }
+
+        .indent-2 {
+            padding-left: 36px;
+        }
+
+        .indent-3 {
+            padding-left: 52px;
+        }
+
+        .right-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -123,11 +197,13 @@
             background: white;
         }
 
-        .chart-header {
+        .timeline-header {
             display: flex;
-            background: #f5f5f5;
-            border-bottom: 1px solid #ccc;
-            height: 40px;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d0d0d0;
+            min-height: 40px;
+            overflow-x: auto;
+            overflow-y: hidden;
         }
 
         .month-header {
@@ -137,21 +213,25 @@
             justify-content: center;
             font-weight: 600;
             font-size: 11px;
+            padding: 0 4px;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
         }
 
-        .chart-subheader {
+        .timeline-subheader {
             display: flex;
             background: white;
-            border-bottom: 1px solid #ccc;
-            height: 20px;
+            border-bottom: 1px solid #d0d0d0;
+            min-height: 20px;
+            overflow: hidden;
         }
 
         .day-cell {
             width: 30px;
+            min-width: 30px;
             border-right: 1px solid #e8e8e8;
             text-align: center;
             font-size: 9px;
-            padding: 2px;
+            padding: 2px 0;
             flex-shrink: 0;
         }
 
@@ -159,45 +239,70 @@
                 background: #f5f5f5;
             }
 
-        .chart-content {
+            .day-cell.today {
+                background: #fff4d6;
+                font-weight: 600;
+            }
+
+        .timeline-body {
             flex: 1;
             overflow: auto;
             position: relative;
         }
 
-        .chart-rows {
+        .timeline-rows {
             position: relative;
         }
 
-        .chart-row {
-            height: 24px;
-            border-bottom: 1px solid #e0e0e0;
+        .timeline-row {
+            height: 22px;
+            border-bottom: 1px solid #e8e8e8;
             display: flex;
             position: relative;
         }
 
-        .chart-cell {
+            .timeline-row.plan-row {
+                background: #fffef8;
+                border-bottom: 2px solid #d4af37;
+            }
+
+            .timeline-row.parent-row {
+                background: #f9fcff;
+            }
+
+        .timeline-cell {
             width: 30px;
+            min-width: 30px;
             border-right: 1px solid #e8e8e8;
             flex-shrink: 0;
             position: relative;
         }
 
-            .chart-cell.weekend {
-                background: #f9f9f9;
+            .timeline-cell.weekend {
+                background: #fafafa;
             }
 
-            .chart-cell.today {
-                background: #fffacd;
+            .timeline-cell.today {
+                background: #fff9e6;
             }
+
+        .today-marker {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #ff4444;
+            z-index: 100;
+            pointer-events: none;
+        }
 
         .gantt-bar {
             position: absolute;
-            height: 18px;
+            height: 16px;
             top: 3px;
-            background: linear-gradient(180deg, #6ea5d7 0%, #3d7ab8 100%);
-            border: 1px solid #2d5a8c;
-            border-radius: 3px;
+            background: linear-gradient(180deg, #6ea5d7 0%, #4a8cc9 100%);
+            border: 1px solid #2d6ca2;
+            border-radius: 2px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -206,13 +311,26 @@
             color: white;
             overflow: hidden;
             white-space: nowrap;
+            z-index: 10;
         }
 
-            .gantt-bar.parent-bar {
-                background: linear-gradient(180deg, #888 0%, #555 100%);
-                border-color: #444;
+            .gantt-bar.plan-bar {
+                background: linear-gradient(180deg, #d4af37 0%, #b8941f 100%);
+                border-color: #8b7319;
                 height: 12px;
-                top: 6px;
+                top: 5px;
+            }
+
+            .gantt-bar.parent-bar {
+                background: linear-gradient(180deg, #888 0%, #666 100%);
+                border-color: #444;
+                height: 14px;
+                top: 4px;
+            }
+
+            .gantt-bar.child-bar {
+                background: linear-gradient(180deg, #6ea5d7 0%, #4a8cc9 100%);
+                border-color: #2d6ca2;
             }
 
         .progress-fill {
@@ -220,123 +338,118 @@
             left: 0;
             top: 0;
             height: 100%;
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(144, 238, 144, 0.4);
             pointer-events: none;
+            border-radius: 1px;
         }
 
-        .resource-panel {
-            height: 150px;
-            border-top: 2px solid #ccc;
+        .dependency-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .dependency-arrow {
+            stroke: #666;
+            stroke-width: 1.5;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+
+        .bottom-panel {
+            height: 180px;
+            border-top: 2px solid #d0d0d0;
             background: white;
-            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .resource-header {
-            background: #f5f5f5;
-            padding: 6px 8px;
-            border-bottom: 1px solid #ccc;
+            background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+            padding: 6px 12px;
+            border-bottom: 1px solid #d0d0d0;
             font-weight: 600;
+            font-size: 11px;
         }
 
-        .sidebar {
+        .resource-content {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+        }
+
+        .resource-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+            .resource-table th {
+                background: #f5f5f5;
+                padding: 6px 8px;
+                text-align: left;
+                border: 1px solid #ddd;
+                font-weight: 600;
+            }
+
+            .resource-table td {
+                padding: 4px 8px;
+                border: 1px solid #e8e8e8;
+            }
+
+            .resource-table tr:hover {
+                background: #f9f9f9;
+            }
+
+        .tooltip {
             position: fixed;
-            right: 0;
-            top: 0;
-            width: 250px;
-            height: 100vh;
-            background: #f8f8f8;
-            border-left: 1px solid #ccc;
-            padding: 10px;
-            overflow-y: auto;
+            background: #333;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 3px;
+            font-size: 11px;
+            z-index: 10000;
+            pointer-events: none;
             display: none;
+            max-width: 300px;
+            line-height: 1.5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
-            .sidebar.show {
+            .tooltip.show {
                 display: block;
             }
 
-        .control-group {
-            margin-bottom: 15px;
-            padding: 10px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-
-            .control-group h3 {
-                font-size: 12px;
-                margin-bottom: 8px;
-                color: #333;
-            }
-
-            .control-group label {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                margin-bottom: 5px;
-                font-size: 11px;
-            }
-
-            .control-group input[type="checkbox"] {
-                margin: 0;
-            }
-
-            .control-group select,
-            .control-group button {
-                width: 100%;
-                padding: 5px;
-                margin-bottom: 5px;
-                font-size: 11px;
-            }
-
-        .toolbar {
-            padding: 8px;
-            background: #f0f0f0;
-            border-bottom: 1px solid #ccc;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-            .toolbar select {
-                padding: 4px 8px;
-                font-size: 11px;
-                border: 1px solid #aaa;
-            }
-
-            .toolbar button {
-                padding: 4px 12px;
-                font-size: 11px;
-                background: white;
-                border: 1px solid #aaa;
-                cursor: pointer;
-            }
-
-                .toolbar button:hover {
-                    background: #e8e8e8;
-                }
-
-        .loading {
+        .loading-overlay {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             z-index: 9999;
+        }
+
+        .loading-box {
+            background: white;
+            padding: 30px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            text-align: center;
         }
 
         .spinner {
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
+            border-top: 3px solid #0078d4;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            margin: 0 auto 15px;
         }
 
         keyframes spin {
@@ -352,36 +465,29 @@
 
         }
 
-        .tooltip {
-            position: absolute;
-            background: #333;
-            color: white;
-            padding: 8px 10px;
-            border-radius: 3px;
-            font-size: 11px;
-            z-index: 1000;
-            pointer-events: none;
-            display: none;
-            max-width: 300px;
-            line-height: 1.4;
+        .error-message {
+            background: #fff4f4;
+            color: #d32f2f;
+            padding: 12px 16px;
+            margin: 8px;
+            border-left: 4px solid #d32f2f;
+            font-size: 12px;
+            border-radius: 2px;
         }
 
-            .tooltip.show {
-                display: block;
-            }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 10px;
-            margin: 10px;
-            border-left: 4px solid #c62828;
+        .info-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 12px 16px;
+            margin: 8px;
+            border-left: 4px solid #1976d2;
             font-size: 12px;
+            border-radius: 2px;
         }
 
         ::-webkit-scrollbar {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
         }
 
         ::-webkit-scrollbar-track {
@@ -390,81 +496,89 @@
 
         ::-webkit-scrollbar-thumb {
             background: #c1c1c1;
-            border: 3px solid #f1f1f1;
+            border: 2px solid #f1f1f1;
+            border-radius: 2px;
         }
 
             ::-webkit-scrollbar-thumb:hover {
                 background: #a8a8a8;
             }
+
+        .collapsed {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
-    <div class="gantt-wrapper">
+    <div class="gantt-container">
         <div class="toolbar">
-            <select id="planSelect">
-                <option value="">Loading...</option>
-            </select>
-            <button onclick="refreshData()">Refresh</button>
-            <button onclick="toggleSidebar()">Settings</button>
-            <button onclick="zoomIn()">Zoom +</button>
-            <button onclick="zoomOut()">Zoom -</button>
+            <button onclick="loadGanttData()" title="Refresh data">🔄 Refresh</button>
+            <div class="toolbar-separator"></div>
+            <button onclick="expandAll()" title="Expand all tasks">⊞ Expand All</button>
+            <button onclick="collapseAll()" title="Collapse all tasks">⊟ Collapse All</button>
+            <div class="toolbar-separator"></div>
+            <button onclick="zoomIn()" title="Zoom in">🔍+ Zoom In</button>
+            <button onclick="zoomOut()" title="Zoom out">🔍- Zoom Out</button>
+            <div class="toolbar-separator"></div>
+            <label style="margin-left: 8px;">
+                <input type="checkbox" id="showWeekends" checked onchange="renderGanttChart()"> Show Weekends
+            </label>
+            <label style="margin-left: 8px;">
+                <input type="checkbox" id="showDependencies" onchange="renderGanttChart()"> Show Dependencies
+            </label>
+            <label style="margin-left: 8px;">
+                <input type="checkbox" id="showResources" checked onchange="toggleResourcePanel()"> Show Resources
+            </label>
         </div>
 
-        <div id="errorContainer"></div>
+        <div id="messageContainer"></div>
 
-        <div id="loadingContainer" class="loading" style="display: none;">
-            <div class="spinner"></div>
-            <div>Loading data...</div>
-        </div>
-
-        <div class="gantt-main">
-            <div class="task-grid">
+        <div class="main-content">
+            <div class="left-panel">
                 <div class="grid-header">
-                    <div>#</div>
-                    <div>Task</div>
-                    <div>Start</div>
-                    <div>Finish</div>
-                    <div>Work</div>
+                    <div class="grid-header-cell center">#</div>
+                    <div class="grid-header-cell">Task Name</div>
+                    <div class="grid-header-cell center">Start</div>
+                    <div class="grid-header-cell center">Finish</div>
+                    <div class="grid-header-cell center">Duration</div>
+                    <div class="grid-header-cell center">Work</div>
                 </div>
-                <div class="grid-rows" id="gridRows"></div>
+                <div class="grid-body" id="gridBody"></div>
             </div>
 
-            <div class="chart-panel">
-                <div class="chart-header" id="chartHeader"></div>
-                <div class="chart-subheader" id="chartSubheader"></div>
-                <div class="chart-content">
-                    <div class="chart-rows" id="chartRows"></div>
+            <div class="right-panel">
+                <div class="timeline-header" id="timelineHeader"></div>
+                <div class="timeline-subheader" id="timelineSubheader"></div>
+                <div class="timeline-body" id="timelineBody">
+                    <div class="timeline-rows" id="timelineRows"></div>
+                    <svg id="dependencySvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#666" />
+                            </marker>
+                        </defs>
+                    </svg>
                 </div>
             </div>
         </div>
 
-        <div class="resource-panel">
-            <div class="resource-header">Resource:</div>
-            <div id="resourceContent"></div>
-        </div>
-    </div>
-
-    <div class="sidebar" id="sidebar">
-        <div class="control-group">
-            <h3>Gantt Chart</h3>
-            <select id="scaleSelect">
-                <option value="day">Days</option>
-                <option value="week">Weeks</option>
-                <option value="month">Months</option>
-            </select>
-        </div>
-
-        <div class="control-group">
-            <h3>Show</h3>
-            <label><input type="checkbox" id="showMarkers" checked> Markers</label>
-            <label><input type="checkbox" id="showTooltips" checked> Tooltips</label>
-            <label><input type="checkbox" id="showResources" checked> Resources</label>
-            <label><input type="checkbox" id="showDependencies"> Dependencies</label>
-            <label><input type="checkbox" id="showExtraDays" checked> Extra Days</label>
-        </div>
-
-        <div class="control-group">
-            <button onclick="toggleSidebar()">Close</button>
+        <div class="bottom-panel" id="bottomPanel">
+            <div class="resource-header">Resources</div>
+            <div class="resource-content" id="resourceContent">
+                <table class="resource-table">
+                    <thead>
+                        <tr>
+                            <th>Resource Name</th>
+                            <th>Type</th>
+                            <th>Assigned Tasks</th>
+                            <th>Total Allocation</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resourceTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: #999;">No resource data available</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -473,462 +587,311 @@
     <script>
         let ganttData = [];
         let cellWidth = 30;
-        const API_BASE_URL = '/Construction/GetGanttChartData';
+        let collapsedTasks = new Set();
+        const API_URL = '/Construction/GetAllGanttChartData';
+        const RESOURCE_API_URL = '/Construction/GetGanttChartDataFlat';
 
         $(document).ready(function() {
-            loadAvailablePlans();
-
-            $('#planSelect').on('change', loadGanttData);
-            $('#scaleSelect').on('change', renderGanttChart);
-
-            // Sync scroll between grid and chart
-            const chartContent = $('.chart-content')[0];
-            const gridRows = $('#gridRows')[0];
-
-            $(chartContent).on('scroll', function() {
-                gridRows.scrollTop = this.scrollTop;
-            });
-
-            $(gridRows).on('scroll', function() {
-                chartContent.scrollTop = this.scrollTop;
-            });
+            loadGanttData();
+            syncScroll();
         });
 
-        function loadAvailablePlans() {
-            $.ajax({
-                url: API_BASE_URL,
-                type: 'GET',
-                beforeSend: function() {
-                    $('#planSelect').html('<option value="">Loading plans...</option>');
-                },
-                success: function(res) {
-                    console.log('Plans response:', res); // Debug log
+        function syncScroll() {
+            const timelineBody = $('#timelineBody');
+            const gridBody = $('#gridBody');
+            const timelineHeader = $('#timelineHeader');
+            const timelineSubheader = $('#timelineSubheader');
 
-                    // Handle different response formats
-                    let data = null;
+            timelineBody.on('scroll', function() {
+                gridBody.scrollTop(this.scrollTop);
+                timelineHeader.scrollLeft(this.scrollLeft);
+                timelineSubheader.scrollLeft(this.scrollLeft);
+            });
 
-                    if (res && res.status && res.data) {
-                        // Format: { status: true, data: [...] }
-                        data = res.data;
-                    } else if (Array.isArray(res)) {
-                        // Format: direct array
-                        data = res;
-                    } else if (res && res.status === false) {
-                        showError(res.message || 'Failed to load plans');
-                        $('#planSelect').html('<option value="">No plans available</option>');
-                        return;
-                    }
-
-                    if (!data || data.length === 0) {
-                        $('#planSelect').html('<option value="">No plans available</option>');
-                        showError('No project plans found in the database.');
-                        return;
-                    }
-
-                    let options = '<option value="">Select a plan...</option>';
-                    $.each(data, function(index, plan) {
-                        // Handle different property name cases
-                        const planId = plan.Id || plan.id || plan.ID || '';
-                        const planDesc = plan.Description || plan.description ||
-                                        plan.desc || 'Plan ' + planId;
-
-                        if (planId) {
-                            options += `<option value="${planId}">${escapeHtml(planDesc)}</option>`;
-                        }
-                    });
-
-                    $('#planSelect').html(options);
-
-                    // // Auto-select first plan
-                    // const firstPlanId = data[0].planId || data[0].planId || data[0].planId;
-                    // if (firstPlanId) {
-                    //     $('#planSelect').val(firstPlanId);
-                    //     loadGanttData();
-                    // }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error loading plans:', xhr.responseText);
-                    console.error('Status:', status, 'Error:', error);
-
-                    let errorMsg = 'Failed to load available plans';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMsg = xhr.responseJSON.message;
-                    } else if (xhr.responseText) {
-                        errorMsg += ': ' + xhr.responseText.substring(0, 100);
-                    }
-
-                    showError(errorMsg);
-                    $('#planSelect').html('<option value="">Error loading plans</option>');
-                }
+            gridBody.on('scroll', function() {
+                timelineBody.scrollTop(this.scrollTop);
             });
         }
 
-        function loadGanttData() {
-            const planId = $('#planSelect').val();
 
-            if (!planId) {
-                return;
+                function loadGanttData() {
+                  $.ajax({
+          url: API_URL,
+          method: 'GET',
+          success: function(response) {
+            if (response && response.status && response.data) {
+              // Combine parentTasks and childTasks arrays
+              const parentTasks = response.data.parentTasks || [];
+              const childTasks = response.data.childTasks || [];
+
+              // Map both arrays to a unified structure if needed
+              ganttData = [...parentTasks, ...childTasks].map(task => ({
+                Id: task.activityId || task.id || task.Id,
+                Name: task.name || task.Name,
+                Start: task.startDate || task.Start || task.start,
+                Finish: task.endDate || task.Finish || task.finish,
+                Progress: task.progress || task.Progress || 0,
+                Work: task.work || task.Work || 0,
+                Description: task.description || task.Description || '',
+                Code: task.code || task.Code || ''
+              }));
+
+              if (ganttData.length === 0) {
+                showInfo('No project data found. Please create project plans and activities.');
+              } else {
+                renderGanttChart();
+                loadResourceData();
+              }
+            } else {
+              showError('Invalid data format from server.');
             }
-
-            $.ajax({
-                url: API_BASE_URL + '/data',
-                type: 'GET',
-                data: { planId: planId },
-                beforeSend: function() {
-                    $('#loadingContainer').show();
-                    $('#errorContainer').html('');
-                },
-                success: function(res) {
-                    console.log('Gantt data response:', res); // Debug log
-
-                    // Handle different response formats
-                    let data = [];
-
-                    if (res && res.status && res.data) {
-                        // Check if data has parentTasks and childTasks structure
-                        if (res.data.parentTasks || res.data.childTasks) {
-                            // Combine parent and child tasks
-                            const parentTasks = res.data.parentTasks || [];
-                            const childTasks = res.data.childTasks || [];
-
-                            // Merge tasks maintaining hierarchy
-                            parentTasks.forEach(function(parent) {
-                                data.push(parent);
-                                // Add child tasks after parent
-                                childTasks.forEach(function(child) {
-                                    // You can add logic here to match child to parent if needed
-                                    data.push(child);
-                                });
-                            });
-
-                            // If no parents, just use children
-                            if (parentTasks.length === 0 && childTasks.length > 0) {
-                                data = childTasks;
-                            }
-                        } else if (Array.isArray(res.data)) {
-                            // Format: { status: true, data: [...] }
-                            data = res.data;
-                        } else {
-                            // Single object, wrap in array
-                            data = [res.data];
-                        }
-                    } else if (Array.isArray(res)) {
-                        // Format: direct array
-                        data = res;
-                    } else if (res && res.status === false) {
-                        showError(res.message || 'Failed to load Gantt data');
-                        return;
-                    }
-
-                    if (!data || data.length === 0) {
-                        showError('No tasks found for this project plan.');
-                        ganttData = [];
-                        $('#gridRows').html('<div style="padding: 20px; text-align: center; color: #999;">No tasks available</div>');
-                        $('#chartRows').html('');
-                        return;
-                    }
-
-                    console.log('Processed gantt data:', data); // Debug log
-                    ganttData = data;
-                    renderGanttChart();
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error loading Gantt data:', xhr.responseText);
-                    console.error('Status:', status, 'Error:', error);
-
-                    let errorMsg = 'Failed to load Gantt chart data';
-
-                    if (xhr.responseJSON) {
-                        if (xhr.responseJSON.message) {
-                            errorMsg = xhr.responseJSON.message;
-                        }
-                        if (xhr.responseJSON.error) {
-                            errorMsg += '<br><small>' + xhr.responseJSON.error + '</small>';
-                        }
-                    } else if (xhr.responseText) {
-                        errorMsg += '<br><small>' + xhr.responseText.substring(0, 200) + '</small>';
-                    } else {
-                        errorMsg += ': ' + error;
-                    }
-
-                    showError(errorMsg);
-                },
-                complete: function() {
-                    $('#loadingContainer').hide();
-                }
-            });
+          },
+          error: function() {
+            showError('Failed to load Gantt chart data');
+          }
+        });
         }
+
 
         function renderGanttChart() {
             if (!ganttData || ganttData.length === 0) {
-                $('#gridRows').html('<div style="padding: 20px; text-align: center; color: #999;">No data to display</div>');
-                $('#chartRows').html('');
-                $('#chartHeader').html('');
-                $('#chartSubheader').html('');
+                $('#gridBody').html('<div style="padding: 20px; text-align: center; color: #999;">No data to display</div>');
                 return;
             }
 
-            const gridRows = $('#gridRows');
-            const chartHeader = $('#chartHeader');
-            const chartSubheader = $('#chartSubheader');
-            const chartRows = $('#chartRows');
+            const showWeekends = $('#showWeekends').is(':checked');
 
-            gridRows.empty();
-            chartHeader.empty();
-            chartSubheader.empty();
-            chartRows.empty();
+            // Calculate date range from Start and Finish fields
+            const dates = ganttData
+                .filter(t => t.Start && t.Finish)
+                .map(t => [new Date(t.Start), new Date(t.Finish)])
+                .flat()
+                .filter(d => !isNaN(d.getTime()));
 
-            try {
-                // Calculate date range
-                const dates = ganttData
-                    .filter(t => t.Start && t.Finish)
-                    .map(t => [new Date(t.Start), new Date(t.Finish)])
-                    .flat()
-                    .filter(d => !isNaN(d.getTime())); // Filter out invalid dates
+            if (dates.length === 0) {
+                showError('No valid dates found in tasks');
+                return;
+            }
 
-                if (dates.length === 0) {
-                    showError('No valid dates found in task data');
-                    return;
-                }
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+            minDate.setDate(minDate.getDate() - 7);
+            maxDate.setDate(maxDate.getDate() + 7);
 
-                const minDate = new Date(Math.min(...dates));
-                const maxDate = new Date(Math.max(...dates));
-                minDate.setDate(minDate.getDate() - 3);
-                maxDate.setDate(maxDate.getDate() + 3);
+            // Generate timeline headers and rows
+            renderTimelineHeader(minDate, maxDate, showWeekends);
+            renderTimelineSubheader(minDate, maxDate, showWeekends);
+            renderTaskGrid();
+            renderTimelineRows(minDate, maxDate, showWeekends);
+        }
 
-                const totalDays = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24));
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
 
-                // Generate month headers
-                const months = generateMonthHeaders(minDate, maxDate);
-                $.each(months, function(i, month) {
-                    const div = $('<div class="month-header"></div>')
-                        .css('width', (month.days * cellWidth) + 'px')
-                        .text(month.name);
-                    chartHeader.append(div);
-                });
-
-                // Generate day headers
-                for (let i = 0; i < totalDays; i++) {
-                    const date = new Date(minDate);
-                    date.setDate(date.getDate() + i);
-
-                    const dayCell = $('<div class="day-cell"></div>');
-                    const dayOfWeek = date.getDay();
-
-                    if (dayOfWeek === 0 || dayOfWeek === 6) {
-                        dayCell.addClass('weekend');
+        function loadResourceData() {
+            $.ajax({
+                url: RESOURCE_API_URL,
+                type: 'GET',
+                success: function(response) {
+                    console.log(response);
+                    if (response && response.status && response.data) {
+                        renderResourceTable(response.data);
                     }
-
-                    dayCell.text(['S', 'M', 'T', 'W', 'T', 'F', 'S'][dayOfWeek]);
-                    chartSubheader.append(dayCell);
                 }
-
-                // Render tasks
-                $.each(ganttData, function(index, task) {
-                    try {
-                        // Grid row
-                        const taskName = task.Name || task.name || 'Task ' + (task.ActivityId || task.Id || index + 1);
-                        const startDate = formatDateTime(task.Start || task.start);
-                        const finishDate = formatDateTime(task.Finish || task.finish);
-                        const work = parseFloat(task.Work || task.work || 0);
-
-                        const gridRow = $('<div class="grid-row"></div>');
-                        if (task.IsParent || task.isParent) {
-                            gridRow.addClass('parent');
-                        }
-
-                        const icon = (task.IsParent || task.isParent) ? '📁' : '📄';
-                        const indentClass = (task.IsParent || task.isParent) ? '' : 'indent-1';
-
-                        gridRow.html(`
-                            <div class="grid-cell center">${index + 1}</div>
-                            <div class="grid-cell task-name-cell ${indentClass}">
-                                ${icon} ${escapeHtml(taskName)}
-                            </div>
-                            <div class="grid-cell center">${startDate}</div>
-                            <div class="grid-cell center">${finishDate}</div>
-                            <div class="grid-cell center">${work.toFixed(1)}h</div>
-                        `);
-                        gridRows.append(gridRow);
-
-                        // Chart row
-                        const chartRow = $('<div class="chart-row"></div>');
-
-                        for (let i = 0; i < totalDays; i++) {
-                            const date = new Date(minDate);
-                            date.setDate(date.getDate() + i);
-
-                            const cell = $('<div class="chart-cell"></div>');
-
-                            const dayOfWeek = date.getDay();
-                            if (dayOfWeek === 0 || dayOfWeek === 6) {
-                                cell.addClass('weekend');
-                            }
-
-                            const cellDate = new Date(date);
-                            cellDate.setHours(0, 0, 0, 0);
-                            if (cellDate.getTime() === today.getTime()) {
-                                cell.addClass('today');
-                            }
-
-                            chartRow.append(cell);
-                        }
-
-                        // Add Gantt bar
-                        const taskStart = task.Start || task.start;
-                        const taskFinish = task.Finish || task.finish;
-
-                        if (taskStart && taskFinish) {
-                            const startDate = new Date(taskStart);
-                            const endDate = new Date(taskFinish);
-
-                            if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-                                const startDay = Math.floor((startDate - minDate) / (1000 * 60 * 60 * 24));
-                                const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-
-                                const ganttBar = $('<div class="gantt-bar"></div>');
-                                if (task.IsParent || task.isParent) {
-                                    ganttBar.addClass('parent-bar');
-                                }
-
-                                ganttBar.css({
-                                    'left': (startDay * cellWidth) + 'px',
-                                    'width': Math.max(duration * cellWidth - 2, 30) + 'px'
-                                });
-
-                                const progress = parseFloat(task.Progress || task.progress || 0);
-                                const progressFill = $('<div class="progress-fill"></div>')
-                                    .css('width', progress + '%');
-                                ganttBar.append(progressFill);
-
-                                ganttBar.on('mouseenter', function(e) {
-                                    showTooltip(e, task);
-                                });
-
-                                ganttBar.on('mouseleave', hideTooltip);
-                                ganttBar.on('mousemove', moveTooltip);
-
-                                chartRow.append(ganttBar);
-                            }
-                        }
-
-                        chartRows.append(chartRow);
-                    } catch (taskError) {
-                        console.error('Error rendering task:', task, taskError);
-                    }
-                });
-            } catch (error) {
-                console.error('Error in renderGanttChart:', error);
-                showError('Error rendering Gantt chart: ' + error.message);
-            }
-        }
-
-        function generateMonthHeaders(minDate, maxDate) {
-            const months = [];
-            let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-
-            while (current <= maxDate) {
-                const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, 1);
-                const daysInRange = Math.ceil((Math.min(nextMonth, maxDate) - Math.max(current, minDate)) / (1000 * 60 * 60 * 24));
-
-                if (daysInRange > 0) {
-                    const monthName = current.toLocaleString('default', { month: 'short' });
-                    const year = current.getFullYear();
-                    months.push({
-                        name: monthName + ' ' + year,
-                        days: daysInRange
-                    });
-                }
-
-                current = nextMonth;
-            }
-
-            return months;
-        }
-
-        function showTooltip(e, task) {
-            const tooltip = $('#tooltip');
-            let html = `<strong>${escapeHtml(task.Name || 'Task ' + task.ActivityId)}</strong><br>`;
-
-            if (task.Code) {
-                html += `Code: ${escapeHtml(task.Code)}<br>`;
-            }
-
-            html += `Start: ${formatDate(task.Start)}<br>`;
-            html += `Finish: ${formatDate(task.Finish)}<br>`;
-            html += `Progress: ${Math.round(task.Progress)}%<br>`;
-            html += `Work: ${task.CompletedWork.toFixed(1)}/${task.Work.toFixed(1)}h`;
-
-            if (task.Resources) {
-                html += `<br>Resources: ${escapeHtml(task.Resources)}`;
-            }
-
-            tooltip.html(html);
-            moveTooltip(e);
-            tooltip.addClass('show');
-        }
-
-        function moveTooltip(e) {
-            $('#tooltip').css({
-                'left': (e.pageX + 15) + 'px',
-                'top': (e.pageY + 15) + 'px'
             });
         }
 
-        function hideTooltip() {
-            $('#tooltip').removeClass('show');
+        function renderResourceTable(resources) {
+            const tbody = $('#resourceTableBody');
+            tbody.empty();
+
+            if (!resources || resources.length === 0) {
+                tbody.html('<tr><td colspan="4" style="text-align: center; color: #999;">No resources assigned</td></tr>');
+                return;
+            }
+
+            resources.forEach(resource => {
+                const row = `
+                    <tr>
+                        <td>${escapeHtml(resource.Name)}</td>
+                        <td>${escapeHtml(resource.Type)}</td>
+                        <td>${resource.AssignedTasks}</td>
+                        <td>${Number(resource.TotalAllocation ?? 0).toFixed(1)}%</td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return 'N/A';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+
+        // Timeline & Task rendering functions
+        function renderTimelineHeader(minDate, maxDate, showWeekends) {
+            const header = $('#timelineHeader');
+            header.empty();
+            const months = generateMonthHeaders(minDate, maxDate, showWeekends);
+            months.forEach(month => {
+                $('<div class="month-header"></div>')
+                    .css('width', (month.days * cellWidth) + 'px')
+                    .text(month.name)
+                    .appendTo(header);
+            });
         }
 
-        function formatDateTime(dateStr) {
-            if (!dateStr) return '';
-            const date = new Date(dateStr);
-            const month = ('0' + (date.getMonth() + 1)).slice(-2);
-            const day = ('0' + date.getDate()).slice(-2);
-            const year = date.getFullYear();
-            let hours = date.getHours();
-            const minutes = ('0' + date.getMinutes()).slice(-2);
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12;
+        function renderTimelineSubheader(minDate, maxDate, showWeekends) {
+            const subheader = $('#timelineSubheader');
+            subheader.empty();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-            return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+            let current = new Date(minDate);
+            while (current <= maxDate) {
+                const dayOfWeek = current.getDay();
+                if (!showWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) { current.setDate(current.getDate() + 1); continue; }
+                const dayCell = $('<div class="day-cell"></div>');
+                if (dayOfWeek === 0 || dayOfWeek === 6) dayCell.addClass('weekend');
+                if (current.getTime() === today.getTime()) dayCell.addClass('today');
+                dayCell.text(['S','M','T','W','T','F','S'][dayOfWeek]);
+                subheader.append(dayCell);
+                current.setDate(current.getDate() + 1);
+            }
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function renderTaskGrid() {
+            const gridBody = $('#gridBody');
+            gridBody.empty();
+            ganttData.forEach((task, index) => {
+                const isCollapsed = collapsedTasks.has(task.Id);
+                const hasChildren = ganttData.some(t => t.ParentId === task.Id);
+                const row = $('<div class="grid-row"></div>')
+                    .attr('data-task-id', task.Id)
+                    .attr('data-parent-id', task.ParentId || '')
+                    .toggleClass('plan-row', task.IsPlan)
+                    .toggleClass('parent-row', task.IsParent)
+                    .toggleClass('child-row', !task.IsPlan && !task.IsParent)
+                    .toggleClass('collapsed', task.ParentId && collapsedTasks.has(task.ParentId))
+                    .html(`
+                        <div class="grid-cell center">${index + 1}</div>
+                        <div class="grid-cell task-name-cell indent-${task.IndentLevel || 0}">
+                            <span class="expand-icon" onclick="toggleTask('${task.Id}')">${hasChildren ? (isCollapsed ? '▶' : '▼') : ''}</span>
+                            <span class="task-icon">${task.IsPlan ? '📋' : task.IsParent ? '📁' : '📄'}</span>
+                            <span>${escapeHtml(task.Name)}</span>
+                        </div>
+                        <div class="grid-cell center">${formatDate(task.Start)}</div>
+                        <div class="grid-cell center">${formatDate(task.Finish)}</div>
+                        <div class="grid-cell center">${task.Duration || 0}d</div>
+                        <div class="grid-cell center">${(task.Work || 0).toFixed(1)}h</div>
+                    `);
+                row.on('click', function() {
+                    $('.grid-row').removeClass('selected');
+                    $(this).addClass('selected');
+                });
+                gridBody.append(row);
+            });
         }
 
-        function showError(message) {
-            $('#errorContainer').html(`<div class="error-message">${escapeHtml(message)}</div>`);
+        function renderTimelineRows(minDate, maxDate, showWeekends) {
+            const timelineRows = $('#timelineRows');
+            timelineRows.empty();
+            const today = new Date(); today.setHours(0,0,0,0);
+
+            ganttData.forEach(task => {
+                const row = $('<div class="timeline-row"></div>')
+                    .attr('data-task-id', task.Id)
+                    .toggleClass('plan-row', task.IsPlan)
+                    .toggleClass('parent-row', task.IsParent)
+                    .toggleClass('collapsed', task.ParentId && collapsedTasks.has(task.ParentId));
+
+                let current = new Date(minDate), totalDays = 0;
+                while(current <= maxDate) {
+                    const dayOfWeek = current.getDay();
+                    if(showWeekends || (dayOfWeek !==0 && dayOfWeek !==6)) totalDays++;
+                    current.setDate(current.getDate()+1);
+                }
+
+                current = new Date(minDate);
+                while(current <= maxDate){
+                    const dayOfWeek = current.getDay();
+                    if(!showWeekends && (dayOfWeek===0||dayOfWeek===6)){ current.setDate(current.getDate()+1); continue; }
+                    const cell = $('<div class="timeline-cell"></div>');
+                    if(dayOfWeek===0||dayOfWeek===6) cell.addClass('weekend');
+                    if(current.getTime()===today.getTime()) cell.addClass('today');
+                    row.append(cell);
+                    current.setDate(current.getDate()+1);
+                }
+
+                if(task.Start && task.Finish){
+                    const startDate=new Date(task.Start), endDate=new Date(task.Finish);
+                    if(!isNaN(startDate.getTime())&&!isNaN(endDate.getTime())){
+                        let startDay=0,duration=0;
+                        current=new Date(minDate);
+                        while(current<startDate){ const dayOfWeek=current.getDay(); if(showWeekends||(dayOfWeek!==0&&dayOfWeek!==6)) startDay++; current.setDate(current.getDate()+1); }
+                        current=new Date(startDate);
+                        while(current<=endDate){ const dayOfWeek=current.getDay(); if(showWeekends||(dayOfWeek!==0&&dayOfWeek!==6)) duration++; current.setDate(current.getDate()+1); }
+
+                        const bar=$('<div class="gantt-bar"></div>')
+                            .toggleClass('plan-bar',task.IsPlan)
+                            .toggleClass('parent-bar',task.IsParent)
+                            .toggleClass('child-bar',!task.IsPlan && !task.IsParent)
+                            .css({'left': (startDay*cellWidth)+'px','width': Math.max(duration*cellWidth-2,20)+'px'});
+                        $('<div class="progress-fill"></div>').css('width',task.Progress+'%').appendTo(bar);
+                        bar.on('mouseenter',e=>showTooltip(e,task)).on('mouseleave',hideTooltip).on('mousemove',moveTooltip);
+                        row.append(bar);
+                    }
+                }
+
+                timelineRows.append(row);
+            });
+
+            timelineRows.css('height', (ganttData.length*22)+'px');
         }
 
-        function refreshData() {
-            loadGanttData();
+        function generateMonthHeaders(minDate,maxDate,showWeekends){
+            const months=[]; let current=new Date(minDate.getFullYear(),minDate.getMonth(),1);
+            while(current<=maxDate){
+                const nextMonth=new Date(current.getFullYear(),current.getMonth()+1,1);
+                let daysInRange=0,tempDate=new Date(Math.max(current,minDate)),endOfMonth=new Date(Math.min(nextMonth,maxDate));
+                while(tempDate<endOfMonth){ const dayOfWeek=tempDate.getDay(); if(showWeekends||(dayOfWeek!==0&&dayOfWeek!==6)) daysInRange++; tempDate.setDate(tempDate.getDate()+1); }
+                if(daysInRange>0) months.push({name: current.toLocaleString('default',{month:'short',year:'numeric'}), days:daysInRange});
+                current=nextMonth;
+            }
+            return months;
         }
 
-        function toggleSidebar() {
-            $('#sidebar').toggleClass('show');
+        function toggleTask(taskId){ collapsedTasks.has(taskId)?collapsedTasks.delete(taskId):collapsedTasks.add(taskId); renderGanttChart(); }
+        function expandAll(){ collapsedTasks.clear(); renderGanttChart(); }
+        function collapseAll(){ ganttData.forEach(task=>{ if(ganttData.some(t=>t.ParentId===task.Id)) collapsedTasks.add(task.Id); }); renderGanttChart(); }
+        function zoomIn(){ cellWidth=Math.min(cellWidth+5,60); renderGanttChart(); }
+        function zoomOut(){ cellWidth=Math.max(cellWidth-5,15); renderGanttChart(); }
+        function toggleResourcePanel(){ $('#bottomPanel').toggle($('#showResources').is(':checked')); }
+
+        function showTooltip(e,task){
+            const tooltip=$('#tooltip');
+            tooltip.html(`<strong>${escapeHtml(task.Name)}</strong><br>
+                Code: ${escapeHtml(task.Code)||''}<br>
+                Start: ${formatDate(task.Start)}<br>
+                Finish: ${formatDate(task.Finish)}<br>
+                Duration: ${task.Duration||0} days<br>
+                Progress: ${Math.round(task.Progress||0)}%<br>
+                Work: ${(task.CompletedWork||0).toFixed(1)}h / ${(task.Work||0).toFixed(1)}h
+                ${task.Resources?'<br>Resources: '+escapeHtml(task.Resources):''}`);
+            moveTooltip(e); tooltip.addClass('show');
+        }
+        function moveTooltip(e){ $('#tooltip').css({'left':(e.pageX+15)+'px','top':(e.pageY+15)+'px'}); }
+        function hideTooltip(){ $('#tooltip').removeClass('show'); }
+
+        function formatDate(dateStr){
+            if(!dateStr) return '';
+            const date=new Date(dateStr);
+            if(isNaN(date.getTime())) return '';
+            return `${('0'+(date.getMonth()+1)).slice(-2)}/${('0'+date.getDate()).slice(-2)}/${date.getFullYear()}`;
         }
 
-        function zoomIn() {
-            cellWidth = Math.min(cellWidth + 10, 60);
-            renderGanttChart();
-        }
-
-        function zoomOut() {
-            cellWidth = Math.max(cellWidth - 10, 20);
-            renderGanttChart();
-        }
+        function escapeHtml(text){ if(!text) return ''; const div=document.createElement('div'); div.textContent=text; return div.innerHTML; }
+        function showLoading(){ $('body').append('<div class="loading-overlay"><div class="loading-box"><div class="spinner"></div><div>Loading Gantt chart data...</div></div></div>'); }
+        function hideLoading(){ $('.loading-overlay').remove(); }
+        function showError(message){ $('#messageContainer').append(`<div class="error-message">❌ ${escapeHtml(message)}</div>`); }
+        function showInfo(message){ $('#messageContainer').append(`<div class="info-message">ℹ️ ${escapeHtml(message)}</div>`); }
+        function clearMessages(){ $('#messageContainer').empty(); }
     </script>
+
 </body>
 </html>
