@@ -507,6 +507,30 @@
         .collapsed {
             display: none !important;
         }
+
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0078d4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        keyframes spin {
+            0%
+
+        {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+
+        }
     </style>
 </head>
 <body>
@@ -535,16 +559,22 @@
 
         <div class="main-content">
             <div class="left-panel">
-                <div class="grid-header">
-                    <div class="grid-header-cell center">#</div>
-                    <div class="grid-header-cell">Task Name</div>
-                    <div class="grid-header-cell center">Start</div>
-                    <div class="grid-header-cell center">Finish</div>
-                    <div class="grid-header-cell center">Duration</div>
-                    <div class="grid-header-cell center">Work</div>
-                </div>
-                <div class="grid-body" id="gridBody"></div>
+               <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Start</th>
+                            <th>Finish</th>
+                            <th>Duration</th>
+                            <th>Work</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ganttGridBody"></tbody>
+                </table>
             </div>
+
 
             <div class="right-panel">
                 <div class="timeline-header" id="timelineHeader"></div>
@@ -583,7 +613,20 @@
     </div>
 
     <div class="tooltip" id="tooltip"></div>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
         let ganttData = [];
         let cellWidth = 30;
@@ -613,88 +656,143 @@
             });
         }
 
+                function normalizeTask(t, isParent = false) {
+            return {
+                Id: t.activityId || t.Id || t.id,
+                ParentId: t.parentId || t.ParentId || null,
 
-                function loadGanttData() {
-                  $.ajax({
-          url: API_URL,
-          method: 'GET',
-          success: function(response) {
-            if (response && response.status && response.data) {
-              // Combine parentTasks and childTasks arrays
-              const parentTasks = response.data.parentTasks || [];
-              const childTasks = response.data.childTasks || [];
+                Name: t.name || t.Name || "",
+                Code: t.code || t.Code || "",
 
-              // Map both arrays to a unified structure if needed
-              ganttData = [...parentTasks, ...childTasks].map(task => ({
-                Id: task.activityId || task.id || task.Id,
-                Name: task.name || task.Name,
-                Start: task.startDate || task.Start || task.start,
-                Finish: task.endDate || task.Finish || task.finish,
-                Progress: task.progress || task.Progress || 0,
-                Work: task.work || task.Work || 0,
-                Description: task.description || task.Description || '',
-                Code: task.code || task.Code || ''
-              }));
+                Start: t.startDate || t.Start || t.start || "",
+                Finish: t.endDate || t.Finish || t.finish || "",
 
-              if (ganttData.length === 0) {
-                showInfo('No project data found. Please create project plans and activities.');
-              } else {
-                renderGanttChart();
-                loadResourceData();
-              }
-            } else {
-              showError('Invalid data format from server.');
-            }
-          },
-          error: function() {
-            showError('Failed to load Gantt chart data');
-          }
-        });
+                Duration: t.duration || t.Duration || 0,
+                Work: t.work || t.Work || 0,
+                CompletedWork: t.completedWork || t.CompletedWork || 0,
+                Progress: t.progress || t.Progress || 0,
+
+                Description: t.description || t.Description || "",
+                IsPlan: t.isPlan || t.IsPlan || false,
+                IsParent: isParent,
+
+                IndentLevel: isParent ? 0 : 1
+            };
         }
 
 
-        function renderGanttChart() {
-            if (!ganttData || ganttData.length === 0) {
-                $('#gridBody').html('<div style="padding: 20px; text-align: center; color: #999;">No data to display</div>');
-                return;
-            }
+                  function loadGanttData(planId = "1") {
 
-            const showWeekends = $('#showWeekends').is(':checked');
+            $.ajax({
+                url: API_URL,
+                type: "GET",
+                data: { planId: planId },
 
-            // Calculate date range from Start and Finish fields
-            const dates = ganttData
-                .filter(t => t.Start && t.Finish)
-                .map(t => [new Date(t.Start), new Date(t.Finish)])
-                .flat()
-                .filter(d => !isNaN(d.getTime()));
+                beforeSend: function () {
+                    $("#ganttGridBody").html(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
 
-            if (dates.length === 0) {
-                showError('No valid dates found in tasks');
-                return;
-            }
+                success: function (response) {
+                    $("#ganttGridBody").empty();
 
-            const minDate = new Date(Math.min(...dates));
-            const maxDate = new Date(Math.max(...dates));
-            minDate.setDate(minDate.getDate() - 7);
-            maxDate.setDate(maxDate.getDate() + 7);
+                    if (!response || !response.status || !response.data) {
+                        $("#ganttGridBody").html(`
+                            <tr><td colspan="7" class="text-center text-danger py-3">
+                                Invalid data format received
+                            </td></tr>
+                        `);
+                        return;
+                    }
 
-            // Generate timeline headers and rows
-            renderTimelineHeader(minDate, maxDate, showWeekends);
-            renderTimelineSubheader(minDate, maxDate, showWeekends);
-            renderTaskGrid();
-            renderTimelineRows(minDate, maxDate, showWeekends);
+                    const parentTasks = response.data.parentTasks || [];
+                    const childTasks = response.data.childTasks || [];
+
+                    const finalData = [];
+
+                    parentTasks.forEach(parent => {
+                        finalData.push(normalizeTask(parent, true));
+
+                        const children = childTasks.filter(c => c.parentId == parent.activityId);
+                        children.forEach(child => finalData.push(normalizeTask(child, false)));
+                    });
+
+                    ganttData = finalData;
+
+                    if (ganttData.length === 0) {
+                        $("#ganttGridBody").html(`
+                            <tr><td colspan="7" class="text-center text-muted py-3">
+                                No project activities found
+                            </td></tr>
+                        `);
+                        return;
+                    }
+
+                    // ⬇ FIXED APPEND — USING PROPER PROPERTY NAMES
+                    ganttData.forEach((task, index) => {
+                        $("#ganttGridBody").append(`
+                            <tr data-id="${task.Id}">
+                                <td>${index + 1}</td>
+                                <td>${task.Code}</td>
+                                <td>${task.Name}</td>
+                                <td>${formatDate(task.Start)}</td>
+                                <td>${formatDate(task.Finish)}</td>
+                                <td>${task.Duration}</td>
+                                <td>${task.Work}</td>
+                            </tr>
+                        `);
+                    });
+
+                    renderGanttChart();
+                    loadResourceData(planId);
+                },
+
+                error: function (xhr, status, err) {
+                    $("#ganttGridBody").html(`
+                        <tr><td colspan="7" class="text-center text-danger py-3">
+                            Failed to load Gantt data: ${(xhr.responseJSON?.message || err || status)}
+                        </td></tr>
+                    `);
+                }
+            });
         }
 
 
-        function loadResourceData() {
+
+        function loadResourceData(planId = "1") {
+            // The flat endpoint returns tasks — if you expect actual resource objects adjust server side.
             $.ajax({
                 url: RESOURCE_API_URL,
                 type: 'GET',
+                data: { planId: planId },
                 success: function(response) {
                     console.log(response);
                     if (response && response.status && response.data) {
-                        renderResourceTable(response.data);
+                        // Try to extract resources if your server returns them; fallback: present grouped by resourceId if present
+                        if (Array.isArray(response.data) && response.data.length > 0 && response.data[0].resourceId) {
+                            const grouped = {};
+                            response.data.forEach(t => {
+                                const rid = t.resourceId || 'unassigned';
+                                if (!grouped[rid]) grouped[rid] = { Name: rid, Type: 'N/A', AssignedTasks: 0, TotalAllocation: 0 };
+                                grouped[rid].AssignedTasks += 1;
+                            });
+                            const arr = Object.values(grouped);
+                            renderResourceTable(arr);
+                        } else {
+                            // If response.data is tasks without resourceId, show message or empty
+                            renderResourceTable([]);
+                        }
+                    } else {
+                        renderResourceTable([]);
                     }
+                },
+                error: function() {
+                    renderResourceTable([]);
                 }
             });
         }
@@ -711,9 +809,9 @@
             resources.forEach(resource => {
                 const row = `
                     <tr>
-                        <td>${escapeHtml(resource.Name)}</td>
-                        <td>${escapeHtml(resource.Type)}</td>
-                        <td>${resource.AssignedTasks}</td>
+                        <td>${escapeHtml(resource.Name || resource.name || 'N/A')}</td>
+                        <td>${escapeHtml(resource.Type || 'N/A')}</td>
+                        <td>${resource.AssignedTasks ?? 0}</td>
                         <td>${Number(resource.TotalAllocation ?? 0).toFixed(1)}%</td>
                     </tr>
                 `;
@@ -721,9 +819,37 @@
             });
         }
 
-        
+        function renderGanttChart() {
+            clearMessages();
+            if (!ganttData || ganttData.length === 0) {
+                $('#gridBody').html('<div style="padding: 20px; text-align: center; color: #999;">No data to display</div>');
+                return;
+            }
 
-        // Timeline & Task rendering functions
+            const showWeekends = $('#showWeekends').is(':checked');
+
+            const dates = ganttData
+                .filter(t => t.Start && t.Finish)
+                .map(t => [new Date(t.Start), new Date(t.Finish)])
+                .flat()
+                .filter(d => !isNaN(d.getTime()));
+
+            if (dates.length === 0) {
+                showError('No valid dates found in tasks');
+                return;
+            }
+
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+            minDate.setDate(minDate.getDate() - 7);
+            maxDate.setDate(maxDate.getDate() + 7);
+
+            renderTimelineHeader(minDate, maxDate, showWeekends);
+            renderTimelineSubheader(minDate, maxDate, showWeekends);
+            renderTaskGrid();
+            renderTimelineRows(minDate, maxDate, showWeekends);
+        }
+
         function renderTimelineHeader(minDate, maxDate, showWeekends) {
             const header = $('#timelineHeader');
             header.empty();
@@ -800,14 +926,7 @@
                     .toggleClass('parent-row', task.IsParent)
                     .toggleClass('collapsed', task.ParentId && collapsedTasks.has(task.ParentId));
 
-                let current = new Date(minDate), totalDays = 0;
-                while(current <= maxDate) {
-                    const dayOfWeek = current.getDay();
-                    if(showWeekends || (dayOfWeek !==0 && dayOfWeek !==6)) totalDays++;
-                    current.setDate(current.getDate()+1);
-                }
-
-                current = new Date(minDate);
+                let current = new Date(minDate);
                 while(current <= maxDate){
                     const dayOfWeek = current.getDay();
                     if(!showWeekends && (dayOfWeek===0||dayOfWeek===6)){ current.setDate(current.getDate()+1); continue; }
@@ -819,21 +938,29 @@
                 }
 
                 if(task.Start && task.Finish){
-                    const startDate=new Date(task.Start), endDate=new Date(task.Finish);
-                    if(!isNaN(startDate.getTime())&&!isNaN(endDate.getTime())){
-                        let startDay=0,duration=0;
-                        current=new Date(minDate);
-                        while(current<startDate){ const dayOfWeek=current.getDay(); if(showWeekends||(dayOfWeek!==0&&dayOfWeek!==6)) startDay++; current.setDate(current.getDate()+1); }
-                        current=new Date(startDate);
-                        while(current<=endDate){ const dayOfWeek=current.getDay(); if(showWeekends||(dayOfWeek!==0&&dayOfWeek!==6)) duration++; current.setDate(current.getDate()+1); }
+                    const startDate = new Date(task.Start), endDate = new Date(task.Finish);
+                    if(!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())){
+                        let startDay = 0, duration = 0;
+                        current = new Date(minDate);
+                        while(current < startDate) {
+                            const dow = current.getDay();
+                            if(showWeekends || (dow !== 0 && dow !== 6)) startDay++;
+                            current.setDate(current.getDate()+1);
+                        }
+                        current = new Date(startDate);
+                        while(current <= endDate) {
+                            const dow = current.getDay();
+                            if(showWeekends || (dow !== 0 && dow !== 6)) duration++;
+                            current.setDate(current.getDate()+1);
+                        }
 
-                        const bar=$('<div class="gantt-bar"></div>')
-                            .toggleClass('plan-bar',task.IsPlan)
-                            .toggleClass('parent-bar',task.IsParent)
-                            .toggleClass('child-bar',!task.IsPlan && !task.IsParent)
+                        const bar = $('<div class="gantt-bar"></div>')
+                            .toggleClass('plan-bar', task.IsPlan)
+                            .toggleClass('parent-bar', task.IsParent)
+                            .toggleClass('child-bar', !task.IsPlan && !task.IsParent)
                             .css({'left': (startDay*cellWidth)+'px','width': Math.max(duration*cellWidth-2,20)+'px'});
-                        $('<div class="progress-fill"></div>').css('width',task.Progress+'%').appendTo(bar);
-                        bar.on('mouseenter',e=>showTooltip(e,task)).on('mouseleave',hideTooltip).on('mousemove',moveTooltip);
+                        $('<div class="progress-fill"></div>').css('width', (task.Progress||0) + '%').appendTo(bar);
+                        bar.on('mouseenter', e => showTooltip(e, task)).on('mouseleave', hideTooltip).on('mousemove', moveTooltip);
                         row.append(bar);
                     }
                 }
@@ -841,30 +968,35 @@
                 timelineRows.append(row);
             });
 
-            timelineRows.css('height', (ganttData.length*22)+'px');
+            timelineRows.css('height', (ganttData.length * 22) + 'px');
         }
 
-        function generateMonthHeaders(minDate,maxDate,showWeekends){
-            const months=[]; let current=new Date(minDate.getFullYear(),minDate.getMonth(),1);
-            while(current<=maxDate){
-                const nextMonth=new Date(current.getFullYear(),current.getMonth()+1,1);
-                let daysInRange=0,tempDate=new Date(Math.max(current,minDate)),endOfMonth=new Date(Math.min(nextMonth,maxDate));
-                while(tempDate<endOfMonth){ const dayOfWeek=tempDate.getDay(); if(showWeekends||(dayOfWeek!==0&&dayOfWeek!==6)) daysInRange++; tempDate.setDate(tempDate.getDate()+1); }
-                if(daysInRange>0) months.push({name: current.toLocaleString('default',{month:'short',year:'numeric'}), days:daysInRange});
-                current=nextMonth;
+        function generateMonthHeaders(minDate, maxDate, showWeekends) {
+            const months = [];
+            let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+            while (current <= maxDate) {
+                const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+                let daysInRange = 0, tempDate = new Date(Math.max(current, minDate)), endOfMonth = new Date(Math.min(nextMonth, maxDate));
+                while (tempDate < endOfMonth) {
+                    const dayOfWeek = tempDate.getDay();
+                    if (showWeekends || (dayOfWeek !== 0 && dayOfWeek !== 6)) daysInRange++;
+                    tempDate.setDate(tempDate.getDate() + 1);
+                }
+                if (daysInRange > 0) months.push({ name: current.toLocaleString('default', { month: 'short', year: 'numeric' }), days: daysInRange });
+                current = nextMonth;
             }
             return months;
         }
 
-        function toggleTask(taskId){ collapsedTasks.has(taskId)?collapsedTasks.delete(taskId):collapsedTasks.add(taskId); renderGanttChart(); }
-        function expandAll(){ collapsedTasks.clear(); renderGanttChart(); }
-        function collapseAll(){ ganttData.forEach(task=>{ if(ganttData.some(t=>t.ParentId===task.Id)) collapsedTasks.add(task.Id); }); renderGanttChart(); }
-        function zoomIn(){ cellWidth=Math.min(cellWidth+5,60); renderGanttChart(); }
-        function zoomOut(){ cellWidth=Math.max(cellWidth-5,15); renderGanttChart(); }
-        function toggleResourcePanel(){ $('#bottomPanel').toggle($('#showResources').is(':checked')); }
+        function toggleTask(taskId) { collapsedTasks.has(taskId) ? collapsedTasks.delete(taskId) : collapsedTasks.add(taskId); renderGanttChart(); }
+        function expandAll() { collapsedTasks.clear(); renderGanttChart(); }
+        function collapseAll() { ganttData.forEach(task => { if (ganttData.some(t => t.ParentId === task.Id)) collapsedTasks.add(task.Id); }); renderGanttChart(); }
+        function zoomIn() { cellWidth = Math.min(cellWidth + 5, 60); renderGanttChart(); }
+        function zoomOut() { cellWidth = Math.max(cellWidth - 5, 15); renderGanttChart(); }
+        function toggleResourcePanel() { $('#bottomPanel').toggle($('#showResources').is(':checked')); }
 
-        function showTooltip(e,task){
-            const tooltip=$('#tooltip');
+        function showTooltip(e, task) {
+            const tooltip = $('#tooltip');
             tooltip.html(`<strong>${escapeHtml(task.Name)}</strong><br>
                 Code: ${escapeHtml(task.Code)||''}<br>
                 Start: ${formatDate(task.Start)}<br>
@@ -875,22 +1007,28 @@
                 ${task.Resources?'<br>Resources: '+escapeHtml(task.Resources):''}`);
             moveTooltip(e); tooltip.addClass('show');
         }
-        function moveTooltip(e){ $('#tooltip').css({'left':(e.pageX+15)+'px','top':(e.pageY+15)+'px'}); }
-        function hideTooltip(){ $('#tooltip').removeClass('show'); }
+        function moveTooltip(e) { $('#tooltip').css({ 'left': (e.pageX + 15) + 'px', 'top': (e.pageY + 15) + 'px' }); }
+        function hideTooltip() { $('#tooltip').removeClass('show'); }
 
-        function formatDate(dateStr){
-            if(!dateStr) return '';
-            const date=new Date(dateStr);
-            if(isNaN(date.getTime())) return '';
-            return `${('0'+(date.getMonth()+1)).slice(-2)}/${('0'+date.getDate()).slice(-2)}/${date.getFullYear()}`;
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            return `${('0' + (date.getMonth() + 1)).slice(-2)}/${('0' + date.getDate()).slice(-2)}/${date.getFullYear()}`;
         }
 
-        function escapeHtml(text){ if(!text) return ''; const div=document.createElement('div'); div.textContent=text; return div.innerHTML; }
-        function showLoading(){ $('body').append('<div class="loading-overlay"><div class="loading-box"><div class="spinner"></div><div>Loading Gantt chart data...</div></div></div>'); }
-        function hideLoading(){ $('.loading-overlay').remove(); }
-        function showError(message){ $('#messageContainer').append(`<div class="error-message">❌ ${escapeHtml(message)}</div>`); }
-        function showInfo(message){ $('#messageContainer').append(`<div class="info-message">ℹ️ ${escapeHtml(message)}</div>`); }
-        function clearMessages(){ $('#messageContainer').empty(); }
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        function showLoading() { $('body').append('<div class="loading-overlay"><div class="loading-box"><div class="spinner"></div><div>Loading Gantt chart data...</div></div></div>'); }
+        function hideLoading() { $('.loading-overlay').remove(); }
+        function showError(message) { $('#messageContainer').append(`<div class="error-message">❌ ${escapeHtml(message)}</div>`); }
+        function showInfo(message) { $('#messageContainer').append(`<div class="info-message">ℹ️ ${escapeHtml(message)}</div>`); }
+        function clearMessages() { $('#messageContainer').empty(); }
+
     </script>
 
 </body>

@@ -5236,7 +5236,7 @@ LIMIT 1;";
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllGanttChartData(string planId = "1")
+        public async Task<IActionResult> GetAllGanttChartData(string planId = "7")
         {
             try
             {
@@ -5248,123 +5248,118 @@ LIMIT 1;";
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                var ganttData = new List<object>();
+                var parentList = new List<object>();
 
-                // Query to get parent activities
-                var parentQuery = @"SELECT 
-                                act.id AS activity_id,
-                                boq.name AS task_name,
-                                act.code AS task_code,
-                                act.start_date,
-                                act.end_date,
-                                plan.description AS planning_description,
-                                plan.progress AS planning_progress,
-                                plan.project_id,
-                                plan.assigned_team,
-                                SUM(details.qty_used) AS completed_work,
-                                SUM(details.qty_total) AS planned_work
-                            FROM tbl_project_activity act
-                            JOIN tbl_project_planning plan ON plan.id = act.planning_id
-                            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
-                            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
-                            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
-                            WHERE plan.id = 1
-                            GROUP BY act.id
-                            ORDER BY act.start_date";
+                var parentQuery = @"
+            SELECT 
+                act.id AS activity_id,
+                boq.name AS task_name,
+                act.code AS task_code,
+                act.start_date,
+                act.end_date,
+                plan.description AS planning_description,
+                plan.progress AS planning_progress,
+                plan.project_id,
+                plan.assigned_team,
+                SUM(details.qty_used) AS completed_work,
+                SUM(details.qty_total) AS planned_work
+            FROM tbl_project_activity act
+            JOIN tbl_project_planning plan ON plan.id = act.planning_id
+            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
+            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
+            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
+            WHERE plan.id = @planId
+            GROUP BY act.id
+            ORDER BY act.start_date;
+        ";
 
                 using var parentCmd = new MySqlCommand(parentQuery, conn);
-                parentCmd.Parameters.AddWithValue("1", planId);
+                parentCmd.Parameters.AddWithValue("@planId", planId);
 
                 using var parentReader = await parentCmd.ExecuteReaderAsync();
 
-                if (parentReader.HasRows)
+                while (await parentReader.ReadAsync())
                 {
-                    while (await parentReader.ReadAsync())
+                    parentList.Add(new
                     {
-                        var parentTask = new
-                        {
-                            ActivityId = parentReader["activity_id"].ToString(),
-                            Name = parentReader["task_name"].ToString(),
-                            Description = parentReader["planning_description"].ToString(),
-                            Code = parentReader["task_code"].ToString(),
-                            StartDate = parentReader["start_date"] != DBNull.Value ?
-                                Convert.ToDateTime(parentReader["start_date"]).ToString("yyyy-MM-dd") : null,
-                            EndDate = parentReader["end_date"] != DBNull.Value ?
-                                Convert.ToDateTime(parentReader["end_date"]).ToString("yyyy-MM-dd") : null,
-                            Progress = parentReader["planning_progress"] != DBNull.Value ?
-                                Convert.ToDouble(parentReader["planning_progress"]) : 0,
-                            CompletedWork = parentReader["completed_work"] != DBNull.Value ?
-                                Convert.ToDouble(parentReader["completed_work"]) : 0,
-                            PlannedWork = parentReader["planned_work"] != DBNull.Value ?
-                                Convert.ToDouble(parentReader["planned_work"]) : 0,
-                            IconIndex = 1,
-                            IndentLevel = 0,
-                            IsParent = true,
-                            SubTasks = new List<object>()
-                        };
-
-                        ganttData.Add(parentTask);
-                    }
+                        activityId = parentReader["activity_id"].ToString(),
+                        name = parentReader["task_name"].ToString(),
+                        description = parentReader["planning_description"].ToString(),
+                        code = parentReader["task_code"].ToString(),
+                        startDate = parentReader["start_date"] != DBNull.Value ?
+                            Convert.ToDateTime(parentReader["start_date"]).ToString("yyyy-MM-dd") : null,
+                        endDate = parentReader["end_date"] != DBNull.Value ?
+                            Convert.ToDateTime(parentReader["end_date"]).ToString("yyyy-MM-dd") : null,
+                        progress = parentReader["planning_progress"] != DBNull.Value ?
+                            Convert.ToDouble(parentReader["planning_progress"]) : 0,
+                        completedWork = parentReader["completed_work"] != DBNull.Value ?
+                            Convert.ToDouble(parentReader["completed_work"]) : 0,
+                        plannedWork = parentReader["planned_work"] != DBNull.Value ?
+                            Convert.ToDouble(parentReader["planned_work"]) : 0,
+                        iconIndex = 1,
+                        indentLevel = 0,
+                        isParent = true,
+                        subTasks = new List<object>()
+                    });
                 }
 
                 await parentReader.CloseAsync();
 
-                // Query to get child activities with resource assignments
-                var childQuery = @"SELECT 
-                                act.id AS activity_id,
-                                boq.name AS task_name,
-                                act.code AS task_code,
-                                act.start_date,
-                                act.end_date,
-                                plan.description AS planning_description,
-                                plan.progress AS planning_progress,
-                                plan.project_id,
-                                plan.assigned_team,
-                                SUM(details.qty_used) AS completed_work,
-                                SUM(details.qty_total) AS planned_work,
-                                assign.resource_id
-                            FROM tbl_project_activity act
-                            JOIN tbl_project_planning plan ON plan.id = act.planning_id
-                            LEFT JOIN tbl_project_activity_assignment assign ON assign.activity_id = act.id
-                            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
-                            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
-                            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
-                            WHERE plan.id = @planId
-                            GROUP BY act.id, assign.resource_id
-                            ORDER BY act.start_date";
+                // Child activities (with resource assignment)
+                var childQuery = @"
+            SELECT 
+                act.id AS activity_id,
+                boq.name AS task_name,
+                act.code AS task_code,
+                act.start_date,
+                act.end_date,
+                plan.description AS planning_description,
+                plan.progress AS planning_progress,
+                plan.project_id,
+                plan.assigned_team,
+                SUM(details.qty_used) AS completed_work,
+                SUM(details.qty_total) AS planned_work,
+                assign.resource_id
+            FROM tbl_project_activity act
+            JOIN tbl_project_planning plan ON plan.id = act.planning_id
+            LEFT JOIN tbl_project_activity_assignment assign ON assign.activity_id = act.id
+            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
+            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
+            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
+            WHERE plan.id = @planId
+            GROUP BY act.id, assign.resource_id
+            ORDER BY act.start_date;
+        ";
 
                 using var childCmd = new MySqlCommand(childQuery, conn);
                 childCmd.Parameters.AddWithValue("@planId", planId);
 
                 using var childReader = await childCmd.ExecuteReaderAsync();
 
-                var childTasks = new List<object>();
+                var childList = new List<object>();
                 while (await childReader.ReadAsync())
                 {
-                    var childTask = new
+                    childList.Add(new
                     {
-                        ActivityId = childReader["activity_id"].ToString(),
-                        Name = childReader["task_name"].ToString(),
-                        Description = childReader["planning_description"].ToString(),
-                        Code = childReader["task_code"].ToString(),
-                        StartDate = childReader["start_date"] != DBNull.Value ?
+                        activityId = childReader["activity_id"].ToString(),
+                        name = childReader["task_name"].ToString(),
+                        description = childReader["planning_description"].ToString(),
+                        code = childReader["task_code"].ToString(),
+                        startDate = childReader["start_date"] != DBNull.Value ?
                             Convert.ToDateTime(childReader["start_date"]).ToString("yyyy-MM-dd") : null,
-                        EndDate = childReader["end_date"] != DBNull.Value ?
+                        endDate = childReader["end_date"] != DBNull.Value ?
                             Convert.ToDateTime(childReader["end_date"]).ToString("yyyy-MM-dd") : null,
-                        Work = childReader["completed_work"] != DBNull.Value ?
+                        work = childReader["completed_work"] != DBNull.Value ?
                             Convert.ToDouble(childReader["completed_work"]) : 0,
-                        PlannedWork = childReader["planned_work"] != DBNull.Value ?
+                        plannedWork = childReader["planned_work"] != DBNull.Value ?
                             Convert.ToDouble(childReader["planned_work"]) : 0,
-                        PlannedCompletedWork = childReader["completed_work"] != DBNull.Value ?
+                        plannedCompletedWork = childReader["completed_work"] != DBNull.Value ?
                             Convert.ToDouble(childReader["completed_work"]) : 0,
-                        ResourceId = childReader["resource_id"] != DBNull.Value ?
-                            childReader["resource_id"].ToString() : null,
-                        IconIndex = 0,
-                        IndentLevel = 1,
-                        IsParent = false
-                    };
-
-                    childTasks.Add(childTask);
+                        resourceId = childReader["resource_id"] != DBNull.Value ? childReader["resource_id"].ToString() : null,
+                        iconIndex = 0,
+                        indentLevel = 1,
+                        isParent = false
+                    });
                 }
 
                 return Ok(new
@@ -5373,8 +5368,8 @@ LIMIT 1;";
                     data = new
                     {
                         planId = planId,
-                        parentTasks = ganttData,
-                        childTasks = childTasks
+                        parentTasks = parentList,
+                        childTasks = childList
                     }
                 });
             }
@@ -5383,6 +5378,7 @@ LIMIT 1;";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         [HttpGet]
         public async Task<IActionResult> GetGanttChartDataFlat(string planId = "1")
@@ -5399,29 +5395,30 @@ LIMIT 1;";
 
                 var allTasks = new List<object>();
 
-                // Get all activities in flat structure
-                var query = @"SELECT 
-                                act.id AS activity_id,
-                                boq.name AS task_name,
-                                act.code AS task_code,
-                                act.start_date,
-                                act.end_date,
-                                plan.description AS planning_description,
-                                plan.progress AS planning_progress,
-                                plan.project_id,
-                                plan.assigned_team,
-                                SUM(details.qty_used) AS completed_work,
-                                SUM(details.qty_total) AS planned_work,
-                                assign.resource_id
-                            FROM tbl_project_activity act
-                            JOIN tbl_project_planning plan ON plan.id = act.planning_id
-                            LEFT JOIN tbl_project_activity_assignment assign ON assign.activity_id = act.id
-                            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
-                            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
-                            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
-                            WHERE plan.id = 1
-                            GROUP BY act.id,assign.resource_id
-                            ORDER BY act.start_date";
+                var query = @"
+            SELECT 
+                act.id AS activity_id,
+                boq.name AS task_name,
+                act.code AS task_code,
+                act.start_date,
+                act.end_date,
+                plan.description AS planning_description,
+                plan.progress AS planning_progress,
+                plan.project_id,
+                plan.assigned_team,
+                SUM(details.qty_used) AS completed_work,
+                SUM(details.qty_total) AS planned_work,
+                assign.resource_id
+            FROM tbl_project_activity act
+            JOIN tbl_project_planning plan ON plan.id = act.planning_id
+            LEFT JOIN tbl_project_activity_assignment assign ON assign.activity_id = act.id
+            LEFT JOIN tbl_project_work_done wd ON wd.planning_id = plan.id
+            LEFT JOIN tbl_project_work_done_details details ON details.ref_id = wd.id
+            LEFT JOIN tbl_items_boq boq ON act.name = boq.id
+            WHERE plan.id = @planId
+            GROUP BY act.id, assign.resource_id
+            ORDER BY act.start_date;
+        ";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@planId", planId);
@@ -5430,40 +5427,22 @@ LIMIT 1;";
 
                 while (await reader.ReadAsync())
                 {
-                    //var hasChildren = reader["parent_id"] == DBNull.Value;
-
-                    var task = new
+                    allTasks.Add(new
                     {
-                        Id = reader["activity_id"].ToString(),
-                        //ParentId = reader["parent_id"] != DBNull.Value ?
-                        //    reader["parent_id"].ToString() : null,
-                        Name = reader["task_name"].ToString(),
-                        Description = reader["planning_description"].ToString(),
-                        Code = reader["task_code"].ToString(),
-                        Start = reader["start_date"] != DBNull.Value ?
-                            Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd HH:mm:ss") : null,
-                        Finish = reader["end_date"] != DBNull.Value ?
-                            Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd HH:mm:ss") : null,
-                        Work = reader["completed_work"] != DBNull.Value ?
-                            Convert.ToDouble(reader["completed_work"]) : 0,
-                        CompletedWork = reader["completed_work"] != DBNull.Value ?
-                            Convert.ToDouble(reader["completed_work"]) : 0,
-                        PlannedStart = reader["start_date"] != DBNull.Value ?
-                            Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd HH:mm:ss") : null,
-                        PlannedWork = reader["planned_work"] != DBNull.Value ?
-                            Convert.ToDouble(reader["planned_work"]) : 0,
-                        PlannedCompletedWork = reader["completed_work"] != DBNull.Value ?
-                            Convert.ToDouble(reader["completed_work"]) : 0,
-                        Progress = reader["planning_progress"] != DBNull.Value ?
-                            Convert.ToDouble(reader["planning_progress"]) : 0,
-                        //Resources = reader["resources"] != DBNull.Value ?
-                          //  reader["resources"].ToString() : string.Empty,
-                        //IconIndex = hasChildren ? 1 : 0,
-                        //IndentLevel = hasChildren ? 0 : 1,
-                        //IsParent = hasChildren
-                    };
-
-                    allTasks.Add(task);
+                        id = reader["activity_id"].ToString(),
+                        name = reader["task_name"].ToString(),
+                        description = reader["planning_description"].ToString(),
+                        code = reader["task_code"].ToString(),
+                        start = reader["start_date"] != DBNull.Value ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd HH:mm:ss") : null,
+                        finish = reader["end_date"] != DBNull.Value ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd HH:mm:ss") : null,
+                        work = reader["completed_work"] != DBNull.Value ? Convert.ToDouble(reader["completed_work"]) : 0,
+                        completedWork = reader["completed_work"] != DBNull.Value ? Convert.ToDouble(reader["completed_work"]) : 0,
+                        plannedStart = reader["start_date"] != DBNull.Value ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd HH:mm:ss") : null,
+                        plannedWork = reader["planned_work"] != DBNull.Value ? Convert.ToDouble(reader["planned_work"]) : 0,
+                        plannedCompletedWork = reader["completed_work"] != DBNull.Value ? Convert.ToDouble(reader["completed_work"]) : 0,
+                        progress = reader["planning_progress"] != DBNull.Value ? Convert.ToDouble(reader["planning_progress"]) : 0,
+                        resourceId = reader["resource_id"] != DBNull.Value ? reader["resource_id"].ToString() : null
+                    });
                 }
 
                 return Ok(new
@@ -5478,6 +5457,7 @@ LIMIT 1;";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
 
         #endregion
