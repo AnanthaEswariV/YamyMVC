@@ -331,6 +331,30 @@
     </div>
 </div>
 
+<div class="modal fade" id="transactionDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Transaction Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Account Name</th>
+                            <th>Debit</th>
+                            <th>Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionDetailBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
    
@@ -938,10 +962,13 @@
                                         <td><input type="text" class="form-control" value="${row.description ?? ''}"></td>
                                         <td><input type="number" class="form-control text-end" value="${row.amount ?? 0}"></td>
                                         <td><input type="number" class="form-control text-end" readonly value="${row.amount ?? 0}"></td>
-                                                <td>
-            <a href="#" class="text-primary text-decoration-none viewDetailBtn" data-detail-id="${row.id}">View</a>
-        </td>
+                                                <td><a href="#" class="text-primary text-decoration-none viewDetailBtn"
+           data-id="${header.id}"
+           data-description="${row.description}">
+           View
+        </a>
 
+                                         </td>
                                     </tr>`;
                                 tbody.append(tr);
                             });
@@ -1136,33 +1163,43 @@
                 });
             }
 
-        //         // Delegate click event (works even for dynamically added rows)
-        // $(document).on('click', '.viewDetailBtn', function(e) {
-        //     e.preventDefault(); // prevent default anchor behavior
-        //          $('#detailModal').modal('show');
-        //     const detailId = $(this).data('detail-id');
+        $(document).on("click", ".viewDetailBtn", function (e) {
+            e.preventDefault();
 
-        //     // Optionally, fetch detail info via AJAX if needed
-        //     $.ajax({
-        //         url: `/YourController/GetDetailInfo?id=${detailId}`,
-        //         type: 'GET',
-        //         success: function(res) {
-        //             if (res.status) {
-        //                 // Fill modal fields here
-        //                 $('#detailModalTitle').text(`Detail for ID ${detailId}`);
-        //                 $('#detailModalBody').html(`<p>${res.data.description}</p>`);
+            let pettyCashId = $(this).data("id");
+            let description = $(this).data("description");
 
-        //                 // Show modal
-        //                 $('#detailModal').modal('show');
-        //             } else {
-        //                 alert('Detail not found!');
-        //             }
-        //         },
-        //         error: function() {
-        //             alert('Error fetching detail!');
-        //         }
-        //     });
-        // });
+            $.ajax({
+                url: "/Lists/GetPettyCashTransactions",
+                type: "GET",
+                data: {
+                    pettyCashId: pettyCashId,
+                    description: description
+                },
+                success: function (response) {
+                    if (!response.status) {
+                        alert("No data found");
+                        return;
+                    }
+
+                    $("#transactionDetailBody").empty();
+
+                    response.data.forEach(item => {
+                        $("#transactionDetailBody").append(`
+                            <tr>
+                                <td>${item.id}</td>
+                                <td>${item.name}</td>
+                                <td>${item.debit.toFixed(2)}</td>
+                                <td>${item.credit.toFixed(2)}</td>
+                            </tr>
+                        `);
+                    });
+
+                    $("#transactionDetailModal").modal("show");
+                }
+            });
+        });
+
 
 
 
