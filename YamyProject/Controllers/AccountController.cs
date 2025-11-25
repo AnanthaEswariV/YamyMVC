@@ -3185,7 +3185,6 @@ namespace YamyProject.Controllers
                         HttpContext.Session.SetString("DatabaseName", dbName);
                         HttpContext.Session.SetString("UserName", username);
                         HttpContext.Session.SetInt32("UserId", user.Id);
-
                         return Json(new { status = true, user });
                     }
                 }
@@ -3243,6 +3242,13 @@ namespace YamyProject.Controllers
                 // ❗Do NOT expose real error to the frontend
                 return Json(new { status = false, message = "Something went wrong, please try again." });
             }
+        }
+
+        [HttpGet]
+        public IActionResult Logout()
+        {
+            HttpContext.Session.Clear();  // clear session
+            return RedirectToAction("Login", "Account");  // redirect to login page
         }
 
         #endregion

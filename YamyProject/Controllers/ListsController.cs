@@ -5681,7 +5681,6 @@ WHERE
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
         [HttpGet]
         public async Task<IActionResult> GetPettyCashTransactions(int pettyCashId, string description)
         {
@@ -5708,12 +5707,12 @@ WHERE
             FROM tbl_transaction t
             INNER JOIN tbl_petty_cash_details pd 
                 ON t.transaction_id = pd.petty_cash_id
-                AND t.description COLLATE utf8mb4_general_ci = pd.description COLLATE utf8mb4_general_ci
+                AND (t.description COLLATE utf8mb4_general_ci = pd.description COLLATE utf8mb4_general_ci OR @Description IS NULL)
             INNER JOIN tbl_coa_level_4 a ON t.account_id = a.id
             WHERE 
                 t.type = 'Petty Cash'
                 AND pd.petty_cash_id = @PettyCashId
-                AND pd.description = @Description COLLATE utf8mb4_general_ci
+                AND (@Description IS NULL OR pd.description = @Description COLLATE utf8mb4_general_ci)
 
             UNION ALL
 
@@ -5730,14 +5729,14 @@ WHERE
             WHERE 
                 t.type = 'Petty Cash'
                 AND pd.petty_cash_id = @PettyCashId
-                AND pd.description = @Description COLLATE utf8mb4_general_ci
-
+                AND (@Description = '' OR pd.description = @Description)
             ORDER BY id, name;";
+
+                string desc = description ?? ""; 
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@PettyCashId", pettyCashId);
-                cmd.Parameters.AddWithValue("@Description", description);
-
+                cmd.Parameters.AddWithValue("@Description", desc);
                 using var reader = await cmd.ExecuteReaderAsync();
                 var transactions = new List<object>();
                 while (await reader.ReadAsync())
@@ -5758,7 +5757,6 @@ WHERE
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         #endregion
 
