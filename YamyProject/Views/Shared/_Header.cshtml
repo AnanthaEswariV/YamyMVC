@@ -20,7 +20,7 @@
                     </li>
                    @*  <li><a href="">Restore Company</a></li>
                     <li><a href="">Backup Company</a></li> *@
-                    <li><a href="#" onclick="window.close(); return false;">Exit</a></li>
+               @*      <li><a href="#" onclick="window.close(); return false;">Exit</a></li> *@
 
                 </ul>
             </li>
@@ -287,9 +287,9 @@
             <li class="dropdown">
                 Settings
                 <ul class="submenu">
-                    <li><a href="">Settings</a></li>
+                    @* <li><a href="">Settings</a></li> *@
                     <li><a href="/Settings/ChangePassword">Change Current Password</a></li>
-                    <li><a href="">Users</a></li>
+                    @* <li><a href="">Users</a></li> *@
                 </ul>
             </li>
         </ul>
@@ -305,7 +305,7 @@
 
         <div style="position:relative;display:inline-block;margin-left:auto">
             <button onclick="document.getElementById('menu').style.display=document.getElementById('menu').style.display=='block'?'none':'block'"
-                    style="background:#667eea;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer">
+                    style="background:#667eea;color:white;border:none;padding:1px 20px;border-radius:8px;cursor:pointer">
                 👤 <span id="navUsername">@((Context.Session.GetString("UserName") ?? "User"))</span>▼
             </button>
             <div id="menu" style="display:none;position:absolute;right:0;background:white;box-shadow:0 4px 12px rgba(0,0,0,0.15);border-radius:8px;margin-top:8px;min-width:150px">

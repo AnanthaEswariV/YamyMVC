@@ -1298,6 +1298,7 @@ namespace YamyProject.Controllers
                             amount DECIMAL(18,2) NOT NULL DEFAULT 0,
                             project_id INT(10) NOT NULL DEFAULT '0',
                             note TEXT NULL,
+                            hum_name VARCHAR(100) NULL,
                             PRIMARY KEY (`id`)
                         );
 
@@ -3248,7 +3249,7 @@ namespace YamyProject.Controllers
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();  // clear session
-            return RedirectToAction("Login", "Account");  // redirect to login page
+            return RedirectToAction("CompanyList", "Account");  // redirect to login page
         }
 
         #endregion

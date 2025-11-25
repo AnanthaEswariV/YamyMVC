@@ -630,12 +630,16 @@
         }
 
         // ===== Load Units =====
-        function loadUnitsDropdown(selector = "#mainUnit") {
+              function loadUnitsDropdown(selector = "#mainUnit") {
             $.get('/Lists/GetUnit', function (res) {
+                console.log(res);
                 const dropdown = $(selector);
                 dropdown.empty().append('<option value="">-- Select Unit --</option>');
-                if (res && res.length > 0) {
-                    res.forEach(u => dropdown.append(`<option value="${u.id}">${u.unitName}</option>`));
+
+                if (res && res.status && res.data && res.data.length > 0) {
+                    res.data.forEach(u => {
+                        dropdown.append(`<option value="${u.id}">${u.unitName}</option>`);
+                    });
                 } else {
                     dropdown.append('<option value="">No units found</option>');
                 }
@@ -644,6 +648,7 @@
                 toastr.error("Failed to load units");
             });
         }
+
 
          $(document).on('shown.bs.modal', '#newWarehouseModal', function () {
             loadUnitsDropdown("#mainUnit");
