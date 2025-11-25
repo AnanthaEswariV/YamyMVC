@@ -294,10 +294,25 @@
             </li>
         </ul>
 
-        @*   <!-- Right: User Profile -->
-                <div class="navbar-user d-flex align-items-right">
-                    <i class="bi bi-person-circle me-2"></i>
-                    <span>yamy1 ▾</span>
-                </div> *@
+        @*  <div class="navbar-user dropdown ms-auto">
+            <!-- Username with icon -->
+            <a class="d-flex align-items-center text-decoration-none dropdown-toggle"
+               href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle fs-5 me-2"></i>
+                <span id="navUsername">@((Context.Session.GetString("UserName") ?? "User"))</span>
+            </a>
+        </div> *@
+
+        <div style="position:relative;display:inline-block;margin-left:auto">
+            <button onclick="document.getElementById('menu').style.display=document.getElementById('menu').style.display=='block'?'none':'block'"
+                    style="background:#667eea;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer">
+                👤 <span id="navUsername">@((Context.Session.GetString("UserName") ?? "User"))</span>▼
+            </button>
+            <div id="menu" style="display:none;position:absolute;right:0;background:white;box-shadow:0 4px 12px rgba(0,0,0,0.15);border-radius:8px;margin-top:8px;min-width:150px">
+                <a href="/Account/Logout" style="display:block;background:#f5576c;color:white;padding:12px 20px;text-decoration:none;border-radius:8px">
+                    🔐Logout
+                </a>
+            </div>
+        </div>
     </div>
 </div>
