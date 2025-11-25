@@ -1,0 +1,248 @@
+﻿@model SalesByItemDetailsViewModel
+@{
+    ViewData["Title"] = "Sales By Item Details";
+}
+
+<style>
+    body {
+        background: #f5f6f8;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .report-wrap {
+        padding: 16px 24px;
+    }
+
+    .report-card {
+        background: #ffffff;
+        border-radius: 4px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, .06);
+        padding: 12px 18px 24px;
+    }
+
+    .toolbar .btn {
+        font-size: .8rem;
+        padding: 4px 12px;
+    }
+
+    .filters-row label {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+    .filters-row .form-select,
+    .filters-row .form-control {
+        font-size: .8rem;
+        height: calc(1.5rem + 8px);
+        padding: 2px 6px;
+    }
+
+    .report-header-main {
+        text-align: center;
+        margin-top: 12px;
+        margin-bottom: 12px;
+    }
+
+    .report-header-main h5 {
+        margin-bottom: 0;
+        font-weight: 600;
+    }
+
+    .report-header-main h6 {
+        margin-bottom: 0;
+        font-weight: 500;
+    }
+
+    .report-meta {
+        font-size: .75rem;
+        color: #888;
+        margin-bottom: 4px;
+    }
+
+    .report-table thead th {
+        background: #f0f0f0;
+        font-size: .78rem;
+        font-weight: 600;
+        border-bottom-width: 2px;
+    }
+
+    .report-table tbody td {
+        font-size: .78rem;
+        vertical-align: middle;
+    }
+
+    /* Tree-style indentation */
+    .table-tree .level-1 .tree-label { padding-left: 4px; font-weight: 600; }
+    .table-tree .level-2 .tree-label { padding-left: 24px; font-weight: 600; }
+    .table-tree .level-3 .tree-label { padding-left: 44px; }
+    .table-tree .toggle {
+        display: inline-block;
+        width: 14px;
+        text-align: center;
+        margin-right: 4px;
+    }
+</style>
+
+<div class="report-wrap">
+    <div class="report-card">
+
+        <!-- Toolbar (ONLY Print + Excel) -->
+        <div class="toolbar d-flex justify-content-end mb-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm me-1">
+                Print
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm">
+                Excel
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <form asp-action="SalesByItemDetails" method="get" class="filters-row row g-2 align-items-end mb-3">
+           @*  <div class="col-auto">
+                <label>Dates</label>
+                <select name="dateFilter" class="form-select form-select-sm">
+                    <option value="All" @(Model.DateFilter == "All" || Model.DateFilter == null ? "selected" : "")>All</option>
+                    <option value="Today" @(Model.DateFilter == "Today" ? "selected" : "")>Today</option>
+                    <option value="ThisMonth" @(Model.DateFilter == "ThisMonth" ? "selected" : "")>This Month</option>
+                    <option value="ThisYear" @(Model.DateFilter == "ThisYear" ? "selected" : "")>This Year</option>
+                    <option value="Custom" @(Model.DateFilter == "Custom" ? "selected" : "")>Custom</option>
+                </select>
+            </div>
+ *@
+            <div class="col-auto">
+                <label>From</label>
+                <input type="date"
+                       name="dateFrom"
+                       class="form-control form-control-sm"
+                       value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div class="col-auto">
+                <label>To</label>
+                <input type="date"
+                       name="dateTo"
+                       class="form-control form-control-sm"
+                       value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" />
+            </div>
+
+            <div class="col-auto">
+                <label>Show Columns</label>
+                <select class="form-select form-select-sm">
+                    <option>All</option>
+                    <option>Without Balance</option>
+                    <option>Without Memo</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <label>Sort By</label>
+                <select class="form-select form-select-sm">
+                    <option>Type / Category / Item</option>
+                    <option>Date</option>
+                    <option>Customer</option>
+                    <option>Amount</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    Run
+                </button>
+            </div>
+        </form>
+
+        <!-- Meta (left time, right date) -->
+        <div class="report-meta d-flex justify-content-between">
+            <div>@DateTime.Now.ToString("hh:mm tt")</div>
+            <div>@DateTime.Now.ToString("dd/MM/yyyy")</div>
+        </div>
+
+        <!-- Title -->
+        <div class="report-header-main">
+            <h5>ARC MASTER CONTRACTING L.L.C.</h5>
+            <h6>Sales By Item Details</h6>
+            <div class="mt-1" style="font-size:.8rem;">All Transaction</div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered report-table table-tree">
+                <thead>
+                    <tr>
+                        <th style="width: 24%;">Type</th>
+                        <th style="width: 8%;">Date</th>
+                        <th style="width: 8%;">Invoice No</th>
+                        <th>Memo</th>
+                        <th style="width: 18%;">Customer</th>
+                        <th class="text-end" style="width: 6%;">QTY</th>
+                        <th class="text-end" style="width: 8%;">Sales Price</th>
+                        <th class="text-end" style="width: 8%;">Amount</th>
+                        <th class="text-end" style="width: 8%;">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.HasRows)
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">
+                            No data for selected filters.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var type in Model.Types)
+                    {
+                        <tr class="level-1 group-row">
+                            <td>
+                                <span class="toggle">▼</span>
+                                <span class="tree-label">@type.TypeName</span>
+                            </td>
+                            <td colspan="8"></td>
+                        </tr>
+
+                        foreach (var cat in type.Categories)
+                        {
+                            <tr class="level-2 group-row">
+                                <td>
+                                    <span class="toggle">▼</span>
+                                    <span class="tree-label">@cat.CategoryName</span>
+                                </td>
+                                <td colspan="8"></td>
+                            </tr>
+
+                            foreach (var item in cat.Items)
+                            {
+                                <tr class="level-3 group-row">
+                                    <td>
+                                        <span class="toggle">▼</span>
+                                        <span class="tree-label">@item.ItemName</span>
+                                    </td>
+                                    <td colspan="8"></td>
+                                </tr>
+
+                                foreach (var row in item.Rows)
+                                {
+                                    <tr class="level-4 data-row">
+                                        <td></td>
+                                        <td>@row.Date.ToString("dd/MM/yyyy")</td>
+                                        <td>@row.Num</td>
+                                        <td>@row.Memo</td>
+                                        <td>@row.Customer</td>
+                                        <td class="text-end">@row.Qty.ToString("N3")</td>
+                                        <td class="text-end">@row.Price.ToString("N3")</td>
+                                        <td class="text-end">@row.Amount.ToString("N3")</td>
+                                        <td class="text-end">@row.Balance.ToString("N3")</td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>

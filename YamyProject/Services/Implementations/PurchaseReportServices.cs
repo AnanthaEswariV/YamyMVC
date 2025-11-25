@@ -1,24 +1,22 @@
-﻿namespace YamyProject.Services.Implementations
+﻿
+namespace YamyProject.Services.Implementations
     {
-    public class SalesReportServices(YamyDbContext context): ISalesReportServices
+    public class PurchaseReportServices(YamyDbContext context) : IPurchaseReportServices
         {
         private readonly YamyDbContext _context = context;
 
-        public async Task<SalesByCustomerSummaryViewModel> GetSalesByCustomerSummaryAsync(/*DateOnly? fromDate,DateOnly? toDate,string? invoiceType = null, string? sortBy = null*/)
+        // Purchase by Vendor Summary
+        public async Task<SalesByCustomerSummaryViewModel> GetPurchaseByVendorSummaryAsync(/*DateOnly? fromDate,DateOnly? toDate,string? invoiceType = null, string? sortBy = null*/)
             {
             var vm = new SalesByCustomerSummaryViewModel();
             // If you have multiple tables (tblName logic), you can switch here based on invoiceType.
-           var  salesQuery = _context.TblSales
-                .Include(s => s.Customer)
-                .Where(s => s.State == 0);
+            var salesQuery = _context.TblPurchases
+                 .Include(s => s.Vendors)
+                 .Where(s => s.State == 0 && s.Vendors.Type== "Vendor");
 
             //  if (invoiceType =="Sales")
             //  if (invoiceType =="Quotation")
             //salesQuery = _context.TblSalesQuotations
-            //    .Include(s => s.Customer)
-            //    .Where(s => s.State == 0);
-            //  if (invoiceType =="Performa")
-            //salesQuery = _context.TblSalesProformas
             //    .Include(s => s.Customer)
             //    .Where(s => s.State == 0);
             //  if (invoiceType =="Order")
@@ -29,7 +27,8 @@
             //salesQuery = _context.TblSalesReturns
             //  .Include(s => s.Customer)
             //  .Where(s => s.State == 0);
-            //// WHERE s.date >= @fromDate AND s.date <= @toDate
+            //   FILTER BY DATE RANGE
+            //   WHERE s.date >= @fromDate AND s.date <= @toDate
             //if (fromDate.HasValue)
             //    {
             //    var from = fromDate.Value.ToDateTime(TimeOnly.MinValue);
@@ -44,14 +43,14 @@
 
             // GROUP BY c.id, c.name  +  SUM(s.net)
             var grouped = await salesQuery
-                .GroupBy(s => new { s.CustomerId, s.Customer.Name })
+                .GroupBy(s => new { s.VendorId, s.Vendors.Name })
                 .Select(g => new
                     {
-                    g.Key.CustomerId,
-                    CustomerName = g.Key.Name,
+                    g.Key.VendorId,
+                    vendorName = g.Key.Name,
                     TotalSales = g.Sum(x => x.Net)
                     })
-                .OrderBy(x => x.CustomerId) 
+                .OrderBy(x => x.VendorId)
                 .ToListAsync();
 
             //// ORDER BY c.id (you can adjust with SortBy)
@@ -69,62 +68,120 @@
                 .Select((x, index) => new SalesByCustomerSummaryRowViewModel
                     {
                     Sn = index + 1,
-                    CustomerId = x.CustomerId,
-                    Name = x.CustomerName,
+                    CustomerId = x.VendorId,
+                    Name = x.vendorName,
                     NetSales = x.TotalSales
                     })
                 .ToList();
 
-         //   vm.DateFilter = BuildDateFilter(fromDate, toDate);
+            //   vm.DateFilter = BuildDateFilter(fromDate, toDate);
 
             return vm;
             }
 
-        //private static string? BuildDateFilter(DateOnly? fromDate, DateOnly? toDate)
-        //   {
-        //   if (!fromDate.HasValue && !toDate.HasValue) return null;
+        // Purchase by Subcontractor Summary
+        public async Task<SalesByCustomerSummaryViewModel> GetPurchaseBySubcontractorSummaryAsync(/*DateOnly? fromDate,DateOnly? toDate,string? invoiceType = null, string? sortBy = null*/)
+            {
+            var vm = new SalesByCustomerSummaryViewModel();
+            // If you have multiple tables (tblName logic), you can switch here based on invoiceType.
+            var salesQuery = _context.TblPurchases
+                 .Include(s => s.Vendors)
+                 .Where(s => s.State == 0 && s.Vendors.Type== "Subcontractor");
 
-        //   if (fromDate.HasValue && toDate.HasValue)
-        //       {
-        //       if (fromDate.Value == toDate.Value)
-        //           return $"On {fromDate:yyyy-MM-dd}";
+            //  if (invoiceType =="Sales")
+            //  if (invoiceType =="Quotation")
+            //salesQuery = _context.TblSalesQuotations
+            //    .Include(s => s.Customer)
+            //    .Where(s => s.State == 0);
+            //  if (invoiceType =="Order")
+            //salesQuery = _context.TblSalesOrders
+            //  .Include(s => s.Customer)
+            //  .Where(s => s.State == 0);
+            //  if (invoiceType =="Return")
+            //salesQuery = _context.TblSalesReturns
+            //  .Include(s => s.Customer)
+            //  .Where(s => s.State == 0);
+            //   FILTER BY DATE RANGE
+            //   WHERE s.date >= @fromDate AND s.date <= @toDate
+            //if (fromDate.HasValue)
+            //    {
+            //    var from = fromDate.Value.ToDateTime(TimeOnly.MinValue);
+            //    salesQuery = salesQuery.Where(s => s.Date >= from);
+            //    }
 
-        //       return $"From {fromDate:yyyy-MM-dd} to {toDate:yyyy-MM-dd}";
-        //       }
+            //if (toDate.HasValue)
+            //    {
+            //    var to = toDate.Value.ToDateTime(TimeOnly.MaxValue);
+            //    salesQuery = salesQuery.Where(s => s.Date <= to);
+            //    }
 
-        //   if (fromDate.HasValue)
-        //       return $"From {fromDate:yyyy-MM-dd}";
+            // GROUP BY c.id, c.name  +  SUM(s.net)
+            var grouped = await salesQuery
+                .GroupBy(s => new { s.VendorId, s.Vendors.Name })
+                .Select(g => new
+                    {
+                    g.Key.VendorId,
+                    vendorName = g.Key.Name,
+                    TotalSales = g.Sum(x => x.Net)
+                    })
+                .OrderBy(x => x.VendorId)
+                .ToListAsync();
 
-        //   return $"To {toDate:yyyy-MM-dd}";
-        //   }
+            //// ORDER BY c.id (you can adjust with SortBy)
+            //var ordered = sortBy?.ToLower() switch
+            //    {
+            //        "name" => grouped.OrderBy(x => x.CustomerName),
+            //        "name_desc" => grouped.OrderByDescending(x => x.CustomerName),
+            //        "netsales_desc" => grouped.OrderByDescending(x => x.TotalSales),
+            //        "netsales" => grouped.OrderBy(x => x.TotalSales),
+            //        _ => grouped.OrderBy(x => x.CustomerId) // default like SQL
+            //        };
 
-        public async Task<CustomerSalesDetailListViewModel> GetCustomerSalesDetailsAsync(int customerId/*,DateTime startDate,DateTime endDate*/)
+            // ROW_NUMBER() OVER (ORDER BY c.id) AS SN  -> do it in memory
+            vm.Rows = grouped
+                .Select((x, index) => new SalesByCustomerSummaryRowViewModel
+                    {
+                    Sn = index + 1,
+                    CustomerId = x.VendorId,
+                    Name = x.vendorName,
+                    NetSales = x.TotalSales
+                    })
+                .ToList();
+
+            //   vm.DateFilter = BuildDateFilter(fromDate, toDate);
+
+            return vm;
+            }
+
+        // purchase Details by Vendor And Subcontractor
+        public async Task<CustomerSalesDetailListViewModel> GetVendorAndSubcontractorPurchaseDetailsAsync(int VendorId/*,DateTime startDate,DateTime endDate*/)
             {
             // Base query for sales headers
-            var baseQuery = _context.TblSales
+            var baseQuery = _context.TblPurchases
                 .Where(s =>
-                    s.CustomerId == customerId 
-                    && s.State == 0
-                    //&&s.Date >= startDate &&
+                    s.VendorId == VendorId
+                    && s.State == 0 //&&
+                    //s.Date >= startDate &&
                     //s.Date <= endDate
                     );
 
             // Flatten to detail rows (no JOIN, only navigation + subquery)
             var rowsQuery = baseQuery
-                .SelectMany(s => s.TblSalesDetails.Select(d => new CustomerSalesDetailRowViewModel
+                .SelectMany(s => s.PurchaseDetails
+                .Select(d => new CustomerSalesDetailRowViewModel
                     {
                     Id = s.Id,
-                                       
+
                     Type = _context.TblTransactions
                         .Where(t => t.TransactionId == s.Id
-                          && t.TType.Contains("sales"))  
+                          && t.TType.Contains("sales"))
                         .OrderBy(t => t.Id)
                         .Select(t => t.Type)
                         .FirstOrDefault(),
 
                     Date = s.Date,
-                    Num = s.InvoiceId,           
-                    CustomerName = s.Customer.Name,
+                    Num = s.InvoiceId,
+                    CustomerName = s.Vendors.Name,
 
                     // Detail + Item navigation
                     Item = d.Items.Code + " - " + d.Items.Name,
@@ -138,9 +195,9 @@
 
             var vm = new CustomerSalesDetailListViewModel
                 {
-                CustomerId = customerId,
+                CustomerId = VendorId,
                 CustomerName = rows.Select(r => r.CustomerName).FirstOrDefault() ?? "",
-               // StartDate = startDate,
+                // StartDate = startDate,
                 //EndDate = endDate,
                 Rows = rows
                 };
@@ -148,7 +205,8 @@
             return vm;
             }
 
-        public async Task<List<ItemSalesReportRowViewModel>> GetPurchaseByItemsSummaryAsync(int? level, string? key, DateOnly startDate, DateOnly endDate)
+        // Purchase by Items Summary
+        public async Task<List<ItemSalesReportRowViewModel>> GetPurchaseByItemsSummaryAsync( int? level,string? key,DateOnly startDate,DateOnly endDate)
             {
             var result = new List<ItemSalesReportRowViewModel>();
 
@@ -188,7 +246,7 @@
                 string type = key;
 
                 var categories = await _context.TblItemCategories
-                      .Where(c => c.Item.Type == type)
+                    .Where(c => c.Item.Type == type)
                     .OrderBy(c => c.Code)
                     .Select(c => new
                         {
@@ -222,21 +280,21 @@
                 int catId = int.Parse(parts[0]);
                 string itemType = parts[1];
 
-                // Total sales for percentage calculation
-                var totalSales = await _context.TblSalesDetails
+                // Total Purchase for percentage calculation
+                var totalSales = await _context.TblPurchaseDetails
                     .Where(sd =>
-                        sd.Sales.State == 0// &&
-                                           // sd.Sales.Date >= from &&
-                                           //sd.Sales.Date <= to
+                        sd.Purchase.State == 0
+                        // &&sd.Purchase.Date >= from &&
+                        //sd.Purchase.Date <= to
                         )
                     .SumAsync(sd => (decimal?)sd.Total) ?? 0m;
 
                 // Group by item and calculate aggregates
-                var items = await _context.TblSalesDetails
+                var items = await _context.TblPurchaseDetails
                     .Where(sd =>
-                        sd.Sales.State == 0 &&
-                        //  sd.Sales.Date >= from &&
-                        // sd.Sales.Date <= to &&
+                        sd.Purchase.State == 0 &&
+                        //  sd.Purchase.Date >= from &&
+                        // sd.Purchase.Date <= to &&
                         sd.Items.CategoryId == catId &&
                         sd.Items.Type == itemType)
                     .GroupBy(sd => new { sd.ItemId, sd.Items.Name })
@@ -295,18 +353,17 @@
 
             return result;
             }
-
-        public async Task<SalesByItemDetailsViewModel> GetSalesByItemDetailsAsync(int Id,string? dateFilter,DateOnly? dateFrom,DateOnly? dateTo)
+        public async Task<SalesByItemDetailsViewModel> GetPurchaseByItemDetailsAsync(int Id, string? dateFilter, DateOnly? dateFrom, DateOnly? dateTo)
             {
-         //   var (from, to) = ResolveDates(dateFilter, dateFrom, dateTo);
+            //   var (from, to) = ResolveDates(dateFilter, dateFrom, dateTo);
 
             // This is the EF version of your WinForms SQL:
             // tbl_sales_details + tbl_items + tbl_sales + tbl_item_category
-            var query = _context.TblSalesDetails
+            var query = _context.TblPurchaseDetails
                 .Include(sd => sd.Items)
                     .ThenInclude(i => i.Category)
-                .Include(sd => sd.Sales)
-                .Where(sd => sd.Sales.State == 0 && sd.ItemId==Id);  // s.state = 0
+                .Include(sd => sd.Purchase)
+                .Where(sd => sd.Purchase.State == 0 && sd.ItemId == Id);  // s.state = 0
 
             //if (from.HasValue)
             //    query = query.Where(sd => sd.Sales.Date >= from.Value);
@@ -317,15 +374,16 @@
             var flat = await query
                 .Select(sd => new
                     {
-                    ItemType = sd.Items.Type,                 
+                    ItemType = sd.Items.Type,               
                      sd.Items.CategoryId,         
-                    CategoryCode = sd.Items.Category.Code,    
-                    CategoryName = sd.Items.Category.Name,    
-                    ItemId = sd.Items.Id,                     
-                    ItemName = sd.Items.Name,                
-                    sd.Sales.Date,                    
-                    Num = sd.Sales.InvoiceId,                
-                    Customer = sd.Sales.BillTo,              
+                    CategoryCode = sd.Items.Category.Code, 
+                    CategoryName = sd.Items.Category.Name, 
+                    ItemId = sd.Items.Id,                  
+                    ItemName = sd.Items.Name,              
+
+                     sd.Purchase.Date,                    
+                    Num = sd.Purchase.InvoiceId,          
+                    Customer = sd.Purchase.BillTo,        
                     Memo = sd.Items.Type + " - " + sd.Items.Name + " - " + sd.Items.Category.Name,
                     sd.Qty,
                      sd.Price,
@@ -339,12 +397,12 @@
                 .ToListAsync();
 
             var model = new SalesByItemDetailsViewModel();
-               // {
-               // DateFilter = dateFilter
-               //// DateFrom = from,
-               //// DateTo = to
-               // };
-               model.Id=Id;
+            // {
+            // DateFilter = dateFilter
+            //// DateFrom = from,
+            //// DateTo = to
+            // };
+            model.Id = Id;
             model.Types = flat
                 .GroupBy(x => x.ItemType)
                 .Select(typeGroup => new ItemTypeGroupViewModel
@@ -379,41 +437,7 @@
 
             return model;
             }
-        ////
-        //private static (DateOnly? from, DateOnly? to) ResolveDates(
-        //           string? dateFilter,
-        //           DateOnly? dateFrom,
-        //           DateOnly? dateTo)
-        //    {
-        //    var today = DateOnly.FromDateTime(DateTime.Today);
-        //    DateOnly? from = dateFrom;
-        //    DateOnly? to = dateTo;
 
-        //    switch (dateFilter)
-        //        {
-        //        case "Today":
-        //            from = to = today;
-        //            break;
-        //        case "ThisMonth":
-        //            from = new DateOnly(today.Year, today.Month, 1);
-        //            to = from.Value.AddMonths(1).AddDays(-1);
-        //            break;
-        //        case "ThisYear":
-        //            from = new DateOnly(today.Year, 1, 1);
-        //            to = new DateOnly(today.Year, 12, 31);
-        //            break;
-        //        case "Custom":
-        //            // keep dateFrom / dateTo as-is
-        //            break;
-        //        default: // All
-        //            from = null;
-        //            to = null;
-        //            break;
-        //        }
 
-        //    return (from, to);
-        //    }
-        //
         }
     }
-    

@@ -166,7 +166,7 @@
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create()
+        public IActionResult Create()
         {
 
             return Ok(200);

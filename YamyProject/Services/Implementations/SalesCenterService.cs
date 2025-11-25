@@ -56,12 +56,12 @@ namespace YamyProject.Services.Implementations
               query = query.Where(s => s.CustomerId == int.Parse(Customer) || s.Customer.Name == Customer);
            
             // Apply Starting date filter if provided
-            if (Starting != default)
-                query = query.Where(s => s.Date >= Starting);
+            //if (Starting != default)
+            //    query = query.Where(s => s.Date >= Starting);
 
-            // Apply Ending date filter if provided
-            if (Ending != default)
-                query = query.Where(s => s.Date <= Ending);
+            //// Apply Ending date filter if provided
+            //if (Ending != default)
+            //    query = query.Where(s => s.Date <= Ending);
 
             // Apply Payment Method filter if provided
             if (!string.IsNullOrEmpty(PayMethod))

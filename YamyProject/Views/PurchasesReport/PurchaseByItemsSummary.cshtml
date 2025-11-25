@@ -1,6 +1,6 @@
 ﻿@model ItemSalesReportViewModel
 @{
-    ViewData["Title"] = "Sales By Item Summary";
+    ViewData["Title"] = "Purchase By Item Summary";
     }
 
 <style>
@@ -152,7 +152,7 @@
         </div>
 
         <!-- Filters row (GET form is best practice) -->
-        <form asp-action="ItemSummary" asp-controller="SalesSummary" method="get" class="mb-2">
+        <form asp-action="ItemSummary" asp-controller="PurchasesReport" method="get" class="mb-2">
             <div class="row g-2 align-items-center filters-row">
                 <div class="col-auto d-flex align-items-center">
                     <label for="dateFilter">Dates</label>
@@ -210,7 +210,7 @@
                     </select>
                 </div>
 
-           @*      <div class="col-auto">
+                @*      <div class="col-auto">
                     <button type="submit" class="btn btn-primary btn-sm">
                         Run Report
                     </button>
@@ -224,7 +224,7 @@
 
             <div class="report-title text-center flex-grow-1">
                 <h6 class="mb-1 text-uppercase">ARC MASTER CONTRACTING L.L.C.</h6>
-                <h5 class="mb-0 fw-bold">Sales By Item Summary</h5>
+                <h5 class="mb-0 fw-bold">Purchases By Item Summary</h5>
                 <span>All Transactions</span>
             </div>
 
@@ -261,7 +261,7 @@
                         foreach (var row in Model.ItemRows)
                             {
                             var isGroup = row.Level == 1 || row.Level == 2;
-                            var rowClass = isGroup ? "detail-row" : "group-row" ;
+                            var rowClass = isGroup ? "detail-row" : "group-row";
                             if (row.Level == 2) rowClass += " level-2";
 
                             var indentClass = row.Level == 1
@@ -305,172 +305,6 @@
     </div>
 </div>
 
-@*     @section Scripts {
-    <script>
-        (function () {
-            const table = document.getElementById('salesTable');
-            if (!table) return;
-
-            const dateFromInput = document.getElementById('dateFrom');
-            const dateToInput = document.getElementById('dateTo');
-            const loadUrl = '@Url.Action("LoadRows", "SalesSummary")';
-
-            table.addEventListener('click', async function (e) {
-                const tr = e.target.closest('tr[data-level]');
-                if (!tr) return;
-
-                const state = tr.dataset.state;
-                if (state !== 'e') return; // only expandable rows
-
-                const level = parseInt(tr.dataset.level || '0');
-                const key = tr.dataset.key;
-                if (!key) return;
-
-                const arrow = tr.querySelector('.group-arrow');
-
-                // toggle collapsed flag
-                debugger
-                const isCollapsedNow = tr.classList.toggle('collapsed');
-                if (arrow) arrow.textContent = isCollapsedNow ? '►' : '▼';
-
-                if (isCollapsedNow) {
-                    hideDescendants(tr);
-                    return;
-                }
-
-                // expanded
-                if (tr.dataset.loadState === 'u') {
-                    // first time: load children via AJAX
-                    const from = dateFromInput.value || '@(Model.FromDate?.ToString("yyyy-MM-dd") ?? "")';
-                    const to = dateToInput.value || '@(Model.ToDate?.ToString("yyyy-MM-dd") ?? "")';
-
-                    const url = `${loadUrl}?level=${level}&key=${encodeURIComponent(key)}&fromDate=${from}&toDate=${to}`;
-
-                    try {
-                        const resp = await fetch(url);
-                        if (!resp.ok) {
-                            console.error('Failed to load rows', resp.status);
-                            return;
-                        }
-                        const rows = await resp.json();
-                        insertRowsAfter(tr, rows);
-                        tr.dataset.loadState = 'l';
-                    } catch (err) {
-                        console.error('Error loading rows', err);
-                    }
-                } else {
-                    // already loaded: just show children
-                    showDirectChildren(tr);
-                }
-            });
-
-            function insertRowsAfter(parentRow, rows) {
-                const parentKey = parentRow.dataset.key;
-                let current = parentRow;
-
-                rows.forEach(row => {
-                    const tr = document.createElement('tr');
-                    const isGroup = row.level === 1 || row.level === 2;
-
-                    tr.dataset.level = row.level;
-                    tr.dataset.key = row.key;
-                    tr.dataset.state = row.state;
-                    tr.dataset.loadState = row.loadState;
-                    tr.dataset.parent = parentKey;
-
-                    let rowClass = isGroup ? 'group-row' : 'detail-row';
-                    if (row.level === 2) rowClass += ' level-2';
-                    tr.className = rowClass;
-
-                    // first cell
-                    const tdName = document.createElement('td');
-                    if (row.level === 2) tdName.classList.add('indent-1');
-                    if (row.level === 3) tdName.classList.add('indent-2');
-
-                    if (row.state === 'e') {
-                        const arrow = document.createElement('span');
-                        arrow.className = 'group-arrow';
-                        arrow.textContent = '▼';
-                        tdName.appendChild(arrow);
-                        tdName.appendChild(document.createTextNode(' '));
-                    }
-
-                    tdName.appendChild(document.createTextNode(row.name));
-                    tr.appendChild(tdName);
-
-                    if (row.level === 3) {
-                        tr.appendChild(createNumberCell(row.qty, 3));
-                        tr.appendChild(createNumberCell(row.amount, 3));
-                        tr.appendChild(createPercentCell(row.percentOfSales, 1));
-                        tr.appendChild(createNumberCell(row.avgPrice, 2));
-                        tr.appendChild(createNumberCell(row.cogs, 2));
-                        tr.appendChild(createNumberCell(row.avgCogs, 2));
-                        tr.appendChild(createNumberCell(row.grossMargin, 2));
-                        tr.appendChild(createPercentCell(row.grossMarginPercent, 1));
-                    } else {
-                        for (let i = 0; i < 8; i++) {
-                            tr.appendChild(document.createElement('td'));
-                        }
-                    }
-
-                    current.insertAdjacentElement('afterend', tr);
-                    current = tr;
-                });
-            }
-
-            function hideDescendants(parentRow) {
-                const parentKey = parentRow.dataset.key;
-                const children = table.querySelectorAll('tr[data-parent="' + parentKey + '"]');
-
-                children.forEach(child => {
-                    child.classList.add('hidden-row');
-
-                    if (child.classList.contains('group-row')) {
-                        child.classList.add('collapsed');
-                        const arrow = child.querySelector('.group-arrow');
-                        if (arrow) arrow.textContent = '►';
-                        hideDescendants(child);
-                    }
-                });
-            }
-
-            function showDirectChildren(parentRow) {
-                const parentKey = parentRow.dataset.key;
-                const children = table.querySelectorAll('tr[data-parent="' + parentKey + '"]');
-
-                children.forEach(child => {
-                    child.classList.remove('hidden-row');
-
-                    // if child group is not collapsed, show its descendants too
-                    if (child.classList.contains('group-row') && !child.classList.contains('collapsed')) {
-                        showDirectChildren(child);
-                    }
-                });
-            }
-
-            function createNumberCell(value, decimals) {
-                const td = document.createElement('td');
-                td.className = 'text-end';
-                if (value != null) {
-                    td.textContent = Number(value)
-                        .toLocaleString(undefined, {
-                            minimumFractionDigits: decimals,
-                            maximumFractionDigits: decimals
-                        });
-                }
-                return td;
-            }
-
-            function createPercentCell(value, decimals) {
-                const td = createNumberCell(value, decimals);
-                if (td.textContent) td.textContent += '%';
-                return td;
-            }
-        })();
-    </script>
-    }
- *@
-
     @section Scripts {
     <script>
         (function () {
@@ -481,8 +315,8 @@
             const dateToInput = document.getElementById('dateTo');
             const dateFilterSelect = document.getElementById('dateFilter'); // NEW
 
-            const loadUrl = '@Url.Action("LoadRows", "SalesSummary")';
-            const detailsUrl = '@Url.Action("SalesByItemsSummaryDetails", "SalesSummary")'; // NEW
+            const loadUrl = '@Url.Action("LoadRows", "PurchasesReport")';
+            const detailsUrl = '@Url.Action("PurchaseByItemsSummaryDetails", "PurchasesReport")'; // NEW
 
             // ================================
             // NEW: Double-click on level 3 row → go to details

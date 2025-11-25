@@ -27,7 +27,7 @@ namespace YamyProject.Controllers.InventoryDoc
             return View("Index",list);
         }
         // API: /item-stock-settlements/{id}
-        [HttpGet("{id:int}")]
+        [HttpGet]
         public async Task<IActionResult> Details(int id)
         {
             var vm = await _svc.GetSettlementDetailsAsync(id);
@@ -67,7 +67,7 @@ namespace YamyProject.Controllers.InventoryDoc
             return RedirectToAction(nameof(Index));
         }
         // GET edit
-        [HttpGet("edit/{id:int}")]
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var data = await _svc.GetSettlementDetailsAsync(id);
@@ -85,17 +85,32 @@ namespace YamyProject.Controllers.InventoryDoc
                     Id = i.Id,
                     ItemId = i.ItemId,
                     OnHand = i.OnHand ?? 0,
+                    
+                    ItemName=i.ItemName,
                     Price = i.Price ?? 0,
                     NewOnHand = i.NewOnHand ?? 0,
                     MinusAmount = i.MinusAmount ?? 0,
                     PlusAmount = i.PlusAmount ?? 0
                 }).ToList()
             };
+            var list = await _svc.GetCreateUpdateSettlementVmAsync();
+              //var warehousesEntity = await _db.TblWarehouses
+            //.AsNoTracking()
+            //.ToListAsync();
 
-            return View(vm);
+            //var warehousesVm = warehousesEntity
+            //    .Select(w => new WarehouseViewModel
+            //        {
+            //        Id = w.Id,
+            //        Name = w.Code + " - " + w.Name
+            //        })
+            //    .ToList();
+            vm.warehouse = list.warehouse;
+            vm.WarehousesVm = list.WarehousesVm;
+            return View("StockSettelment", vm);
         }
         // POST edit
-        [HttpPost("edit/{id:int}")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, CreateUpdateSettlementVm vm)
         {
@@ -107,7 +122,7 @@ namespace YamyProject.Controllers.InventoryDoc
             return RedirectToAction(nameof(Index));
         }
         // POST delete
-        [HttpPost("delete/{id:int}")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
@@ -116,7 +131,7 @@ namespace YamyProject.Controllers.InventoryDoc
             return RedirectToAction(nameof(Index));
         }
         // API helper method equivalent of bindInvoiceItems() in your WinForms: gets items for selected settlement
-        [HttpGet("{id:int}/items")]
+        [HttpGet]
         public async Task<IActionResult> GetItems(int id)
         {
             var vm = await _svc.GetSettlementDetailsAsync(id);

@@ -1,6 +1,4 @@
-﻿
-
-<div class="top-navbar">
+﻿<div class="top-navbar">
     <div class="d-flex align-items-center  w-100">
 
         <!-- Left: Navigation Menu -->
@@ -9,13 +7,16 @@
                 File
                 <ul class="submenu">
                     <li><a href="/Account/CompanyList">Company List</a></li>
-                    <li class="dropdown has-submenu">
-                        <a href="">Company Profile</a>
+                    <li @* class="dropdown has-submenu" *@>
+                        <a href="javascript:void(0);"
+                           onclick="openCompanyProfileModal()">Company Profile</a>
+
+                        @*   <a href="">Company Profile</a>
                         <ul class="submenu">
                             <li><a asp-controller="CompanyCenter" asp-action="Index">Company Center</a></li>
-                            @* <li><a asp-controller="Reminders" asp-action="Index">Reminders</a></li> *@
+                            @* <li><a asp-controller="Reminders" asp-action="Index">Reminders</a></li> 
                             <li>Reminders</li>
-                        </ul>
+                        </ul> *@
                     </li>
                    @*  <li><a href="">Restore Company</a></li>
                     <li><a href="">Backup Company</a></li> *@
@@ -102,35 +103,35 @@
                 Customers
                 <ul class="submenu">
                     <li><a asp-controller="CustomerCenter" asp-action="Index">Customer Center</a></li>
-                    <li><a href="">Sales Center</a></li>
-                    <li><a href="">Sales Quotation</a></li>
-                    <li><a href="">Sales Order</a></li>
-                    <li><a href="">Sales Proforma</a></li>
-                    <li><a href="">Sales Return</a></li>
-                    <li><a href="">Create Invoice</a></li>
-                    <li><a href="">Receive Voucher</a></li>
-                    <li><a href="">Credit Note</a></li>
+                    <li><a asp-controller="MasterCreditNote" asp-action="Index">Sales Center</a></li>
+                    <li><a asp-controller="CustmerSalesQuotation" asp-action="Index">Sales Quotation</a></li>
+                    <li><a asp-controller="CustomerSalesOrders" asp-action="Index">Sales Order</a></li>
+                    <li><a asp-controller="CustmerSalesProformas" asp-action="Index">Sales Proforma</a></li>
+                    <li><a asp-controller="SalesReturns" asp-action="Index">Sales Return</a></li>
+                    <li><a asp-controller="MasterCreditNote" asp-action="Create">Create Invoice</a></li>
+                    <li><a asp-controller="ReceiptVouchers" asp-action="Create">Receive Voucher</a></li>
+                    <li><a asp-controller="CreditNotes" asp-action="Index">Credit Note</a></li>
                 </ul>
             </li>
             <li class="dropdown">
                 Vendors
                 <ul class="submenu">
-                    <li><a href="">Vendor Center</a></li>
-                    <li><a href="">Purchases Center</a></li>
-                    <li><a href="">Purchase Order</a></li>
-                    <li><a href="">Purchase Return</a></li>
-                    <li><a href="">Create Purchase</a></li>
-                    <li><a href="">Payment Voucher</a></li>
-                    <li><a href="">Debit Note</a></li>
+                    <li><a asp-controller="Vendors" asp-action="Index">Vendor Center</a></li>
+                    <li><a asp-controller="PurchasesCenter" asp-action="Index">Purchases Center</a></li>
+                    <li><a asp-controller="PurchaseOrders" asp-action="Index">Purchase Order</a></li>
+                    <li><a asp-controller="PurchasesReturn" asp-action="Index">Purchase Return</a></li>
+                    <li><a asp-controller="PurchasesCenter" asp-action="Create">Create Purchase</a></li>
+                    <li><a asp-controller="ReceiveVoucher" asp-action="Create">Payment Voucher</a></li>
+                    <li><a asp-controller="DebitNotes" asp-action="Index">Debit Note</a></li>
                 </ul>
             </li>
             <li class="dropdown">
                 Subcontractor
                 <ul class="submenu">
-                    <li><a href="">Subcontractor Center</a></li>
-                    <li><a href="">Purchases Center</a></li>
-                    <li><a href="">Create Purchase</a></li>
-                    <li><a href="">Payment Voucher</a></li>
+                    <li><a asp-controller="Subcontractors" asp-action="Index">Subcontractor Center</a></li>
+                    <li><a asp-controller="SubcontractorPurchases" asp-action="Index">Purchases Center</a></li>
+                    <li><a asp-controller="SubcontractorPurchases" asp-action="Create">Create Purchase</a></li>
+                    <li><a asp-controller="SubcontractorReceiveVoucher" asp-action="Create">Payment Voucher</a></li>
                 </ul>
             </li>
            @*  <li class="dropdown">

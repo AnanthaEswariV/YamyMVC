@@ -1,0 +1,179 @@
+﻿@model IEnumerable<YamyProject.Core.Models.TblCustomer>
+
+@{
+    ViewData["Title"] = "Customer List";
+    }
+
+<style>
+    body {
+        background: #f5f6f8;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .customer-wrap {
+        padding: 10px 16px;
+    }
+
+    .customer-card {
+        background: #ffffff;
+        border-radius: 4px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, .1);
+        overflow: hidden;
+    }
+
+    .customer-toolbar {
+        background: #1d2a3b;
+        padding: 6px 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .customer-header .btn {
+            min-width: 70px;
+            font-size: .8rem;
+            font-weight: 600;
+            padding: 2px 12px;
+            border-radius: 2px;
+            border: 1px solid #fff;
+            background: #2f3f56;
+            color: #fff;
+        }
+
+            .customer-toolbar .btn:hover {
+                background: #435675;
+            }
+
+    .customer-header {
+        background: #1d2a3b;
+        color: #ffffff;
+        text-align: center;
+        font-weight: 600;
+        padding: 4px 0;
+        border-top: 1px solid rgba(255, 255, 255, .15);
+    }
+
+    .customer-table-wrap {
+        overflow-x: auto;
+    }
+
+    table.customer-table {
+        width: 100%;
+        border-collapse: collapse;
+        white-space: nowrap;
+        font-size: .78rem;
+    }
+
+        table.customer-table thead tr {
+            background: #7b66ff;
+            color: #ffffff;
+        }
+
+        table.customer-table thead th {
+            padding: 4px 8px;
+            border-bottom: 1px solid #d3d5ff;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        table.customer-table tbody tr:nth-child(even) {
+            background: #f7f5ff;
+        }
+
+        table.customer-table tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+
+        table.customer-table tbody td {
+            padding: 3px 8px;
+            border-bottom: 1px solid #ececff;
+        }
+
+            table.customer-table tbody td.numeric {
+                text-align: right;
+            }
+</style>
+
+<div class="customer-wrap">
+    <div class="customer-card">
+   @*      <!-- Top toolbar -->
+        <div class="customer-toolbar">
+        
+        </div> *@
+
+        <!-- Title row -->
+        <div class="customer-header">
+            <button id="btnExportPdf" class="btn">PDF</button>
+            <button id="btnExportExcel" class="btn">Excel</button>
+            Customer List
+        </div>
+
+        <!-- Table -->
+        <div class="customer-table-wrap">
+            <table class="customer-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Cat id</th>
+                        <th>Balance</th>
+                        <th>Date</th>
+                        <th>Main_Phone</th>
+                        <th>Work Phone</th>
+                        <th>Mobile</th>
+                        <th>Email</th>
+                        <th>ccemail</th>
+                        <th>Website</th>
+                        <th>Country</th>
+                        <th>City</th>
+                        <th>Region</th>
+                        <th>Building Name</th>
+                        <th>account id</th>
+                        <th>TRN</th>
+                        <th>Facilty_Name</th>
+                        <th>Active</th>
+                        <th>created by</th>
+                        <th>created date</th>
+                        <th>State</th>
+                        <th>project id</th>
+                        <th>project site</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null)
+                        {
+                        foreach (var customer in Model)
+                            {
+                            <tr>
+                                <td>@customer.Code</td>
+                                <td>@customer.Name</td>
+                                <td class="numeric">@customer.CatId</td>
+                                <td class="numeric">@customer.Balance?.ToString("0.0000")</td>
+                                <td>@customer.Date?.ToString("M/d/yyyy")</td>
+                                <td>@customer.MainPhone</td>
+                                <td>@customer.WorkPhone</td>
+                                <td>@customer.Mobile</td>
+                                <td>@customer.Email</td>
+                                <td>@customer.Ccemail</td>
+                                <td>@customer.Website</td>
+                                <td>@customer.Country</td>
+                                <td>@customer.City</td>
+                                <td>@customer.Region</td>
+                                <td>@customer.BuildingName</td>
+                                <td class="numeric">@customer.AccountId</td>
+                                <td>@customer.Trn</td>
+                                <td>@customer.FaciltyName</td>
+                                <td class="numeric">@customer.Active</td>
+                                <td class="numeric">@customer.CreatedBy</td>
+                                <td>@customer.CreatedDate?.ToString("M/d/yyyy")</td>
+                                <td class="numeric">@customer.State</td>
+                                <td class="numeric">@customer.ProjectId</td>
+                                <td>@customer.ProjectSite</td>
+                            </tr>
+                            }
+                        }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
