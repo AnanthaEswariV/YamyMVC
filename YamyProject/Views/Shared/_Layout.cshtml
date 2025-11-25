@@ -42,7 +42,13 @@
                     </div>
                 </section>
             </div> *@
-
+            <div class="modal fade" id="companyProfileModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-centered">
+                    <div class="modal-content" id="companyProfileModalContent">
+                        @* content (the partial) will be loaded here *@
+                    </div>
+                </div>
+            </div>
             <!-- ✅ Footer -->
             <footer>
                 <partial name="_footer" />
@@ -60,11 +66,20 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
 
     <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
     <script src="~/assets/js/pages/dashboard.js"></script>
     <script src="~/assets/js/main.js"></script>
     <script src="~/js/MainJs.js"></script>
+    <script>
+        function openCompanyProfileModal() {
+            $("#companyProfileModalContent").load("/CompanyCenter/Edit", function () {
+                const modal = new bootstrap.Modal(document.getElementById("companyProfileModal"));
+                modal.show();
+            });
+        }
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
      <script src="~/js/site.js"></script>
   </body>

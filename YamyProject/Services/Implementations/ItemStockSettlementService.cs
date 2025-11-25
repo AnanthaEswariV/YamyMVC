@@ -160,8 +160,8 @@
                         PlusAmount = d.PlusAmount
                     }).ToList()
                 };
-
-                return vm;
+          
+            return vm;
             }
         public async Task<CreateUpdateSettlementVm> GetCreateUpdateSettlementVmAsync()
         {

@@ -10,8 +10,6 @@
         public async Task<IActionResult> Index()
             {
             MasterCreditNoteViewModel vm = await _CreditVoucher.QueryCreditNoteAsync();
-
-        
             return View(vm);
             }
         public async Task<IActionResult> Create()

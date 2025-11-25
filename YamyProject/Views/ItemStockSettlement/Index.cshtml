@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = "Inventory - Stock Management";
-}
+    }
 
 <div class="container-fluid bg-light p-3 rounded shadow-sm">
 
@@ -11,26 +11,13 @@
         New Settlement
     </a>
 
-@*     <a href="javascript:;" class="btn btn-sm btn-primary js-render-modal"
-       data-title="Add Company" data-url="/CompanyCenter/Create">
-        <i class="bi bi-plus-square-dotted"></i>
-        Add
-    </a> *@
-    @*  <a href="javascript:;" class="btn btn-sm btn-primary js-render-modal"
-       data-title="New Settlement" asp-action="List">
-        <i class="bi bi-plus-square-dotted"></i>
-
-        Stock ManagementNew
-    </a> *@
-
     <!-- Filter Section -->
-    <div class="mt-4"></div>
-    <div class="mt-4"></div>
-    <div class="mt-4"></div>
-    <form asp-action="Index" asp-action="SubmitData" class="row g-3 align-items-end">
+    <div class="mt-4"></div><div class="mt-4"></div><div class="mt-4"></div>
+
+    <form class="row g-3 align-items-end">
         <div class="col-md-3">
             <label for="FromDate" class="form-label">Start Date</label>
-            <input type="date" id="FromDate"  name="FromDate" class="form-control" />
+            <input type="date" id="FromDate" name="FromDate" class="form-control" />
         </div>
 
         <div class="col-md-3">
@@ -58,140 +45,159 @@
         </div>
     </form>
 
-    <!-- Data Grid -->
+    <!-- First table: Settlements -->
     <div class="table-responsive mt-4">
         @if (Model != null)
-        {
-            <table class="table table-bordered table-striped table-hover text-center align-middle">
+            {
+            <table id="settlementTable"
+                   class="table table-bordered table-striped table-hover text-center align-middle">
                 <thead class="table-primary">
                     <tr>
                         <th>Sn</th>
                         <th>Date</th>
                         <th>JV No</th>
                         <th>INV NO</th>
-                        <th >Edit </th>
-
+                        <th>Edit</th>
                     </tr>
-
                 </thead>
                 <tbody>
                     @foreach (var item in Model)
-                    {
-                        <tr>
-                            <td>@item.Id </td>
-                            <td>@item.Date</td>
+                        {
+                        <tr class="settlement-row" data-id="@item.Id">
+                            <td>@item.Id</td>
+                            <td>@item.Date?.ToString("d")</td>
                             <td>@item.JvNo</td>
                             <td>@item.Code</td>
                             <td>
-                                @* <a href="javascript:void(0)" onclick="loadInvoiceItems(@item.Id)">View Items</a> *@
-
-                            </td>
-                            @* <div class="menu-item px-3">
-                                <a href="javascript:;" class="menu-link px-3 js-render-modal"
-                                   data-title="Edit Company" data-url="/CompanyCenter/Edit/Model.Id"
-                                   data-update="true">
+                                <a class="menu-link px-3 js-render-modal"
+                                   asp-controller="ItemStockSettlement"
+                                   asp-action="Edit"
+                                   asp-route-id="@item.Id">
                                     Edit
                                 </a>
-                            </div> *@
+                            </td>
                         </tr>
-                    }
-                    @* else
-                {
-                    <tr>
-                        <td colspan="4" class="text-muted">No records found.</td>
-                    </tr>
-                } *@
+                        }
                 </tbody>
             </table>
-        }
+            }
     </div>
 
-    <!-- Items Section -->
-    <div class="table-responsive mt-4">
-        <h5>Items</h5>
-        <table class="table table-bordered table-sm table-hover">
-            <thead class="table-secondary">
-                <tr>
-                    <th>Item Name</th>
-                    <th>QTY</th>
-                    <th>Cost Price</th>
-                    <th>New on Hand</th>
-                  @*   <div class="menu-item px-3">
-                        <a href="javascript:;" class="menu-link px-3 js-render-modal"
-                           data-title="Edit Company" data-url="/CompanyCenter/Edit/@Model.Id"
-                           data-update="true">
-                            Edit
-                        </a>
-                    </div> *@
-                </tr>
-            </thead>
-            <tbody>
-                @*    @if (Model != null)
-                {
-                    foreach (var item in Model.Item2)
-                    {
-                         foreach (var sub in item.)
-                        {
-                            <tr>
-                                <td>@sub.ItemName</td>
-                                <td>@sub.Quantity</td>
-                                <td>@sub.CostPrice</td>
-                                <td>@sub.NewOnHand</td>
-                                 <div class="menu-item px-3">
-                <a href="javascript:;" class="menu-link px-3 js-render-modal"
-                   data-title="Edit Company" data-url="/CompanyCenter/Edit/@Model.Id"
-                   data-update="true">
-                    Edit
-                </a>
-            </div>
-                            </tr>
-                        } 
-                    }
-                }
-                else
-                {
+    <!-- Second table: Items of selected settlement -->
+    <div class="mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-semibold small">Item Name</span>
+            <span id="selectedItemName" class="small text-primary"></span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm table-hover mb-0">
+                <thead class="table-secondary">
                     <tr>
-                        <td colspan="4" class="text-muted">No items found.</td>
+                        <th>Item</th>
+                        <th class="text-end">QTY</th>
+                        <th class="text-end">Cost Price</th>
+                        <th class="text-end">New on hand</th>
                     </tr>
-                } *@
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="itemsTableBody">
+                    <tr>
+                        <td colspan="4" class="text-muted text-center">
+                            Select a settlement from the list above to see its items.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Buttons -->
-    @*   <div class="d-flex gap-2 mt-3">
-        <a asp-action="CreateSettlement" class="btn btn-primary">New Settlement</a>
-        <a asp-action="EditCurrent" class="btn btn-outline-primary">Edit Current</a>
-    </div> *@
 </div>
 
-@section Scripts {
+    @section Scripts {
     <script>
-        function loadInvoiceItems(id) {
-            $.get('/Stock/InvoiceItems/' + id, function (data) {
-                $('#invoiceItems').html(data);
+        $(function () {
+            // Template URL for Details action (adjust controller name if needed)
+            // This will produce something like "/Stock/Details/__id__"
+            
+            var detailsUrlTemplate = '@Url.Action("Details", "ItemStockSettlement")';
+
+            // click on settlement row
+            $(document).on('click', '.settlement-row', function () {
+                var id = $(this).data('id');
+                if (!id) return;
+
+                // highlight selected row
+                $('.settlement-row').removeClass('table-active');
+                $(this).addClass('table-active');
+
+                loadSettlementDetails(id);
             });
-        }
 
+            function getProp(obj) {
+                for (var i = 1; i < arguments.length; i++) {
+                    var name = arguments[i];
+                    if (obj[name] !== undefined && obj[name] !== null)
+                        return obj[name];
+                }
+                return null;
+            }
 
+            function formatNumber(value) {
+                if (value === null || value === undefined || value === '') return '';
+                return Number(value).toLocaleString(undefined, {
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3
+                });
+            }
 
-    $("#submitButton").click(function() {
-    var data = {
-        StartDate: $("#StartDate").val(),
-        EndDate: $("#EndDate").val(),
-        SelectedItems: $("#SelectedItems").val()
-    };
+            function loadSettlementDetails(id) {
+                var url = detailsUrlTemplate.replace("id", id);
 
-    $.ajax({
-        url: '/YourController/List',
-        type: 'GET',
-        data: JSON.stringify(data),
-        contentType: 'application/json',
-        success: function(response) {
-            alert("Data submitted!");
-        }
-    });
-});
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                     data: { id: id },
+                    success: function (result) {
+                        var items = result.items || result.Items || [];
+                        var $tbody = $('#itemsTableBody');
+                        $tbody.empty();
+
+                        if (!items.length) {
+                            $tbody.append(
+                                '<tr><td colspan="4" class="text-muted text-center">No items found.</td></tr>');
+                            $('#selectedItemName').text('');
+                            return;
+                        }
+
+                        // show name of first item in header line
+                        var first = items[0];
+                        var firstCode = getProp(first, 'itemCode', 'ItemCode') || '';
+                        var firstName = getProp(first, 'itemName', 'ItemName') || '';
+                        $('#selectedItemName').text(firstCode + ' - ' + firstName);
+
+                        $.each(items, function (i, it) {
+                            var itemCode = getProp(it, 'itemCode', 'ItemCode') || '';
+                            var itemName = getProp(it, 'itemName', 'ItemName') || '';
+                            var onHand = getProp(it, 'onHand', 'OnHand');     // used as Qty
+                            var price = getProp(it, 'price', 'Price');
+                            var newOnHand = getProp(it, 'newOnHand', 'NewOnHand');
+
+                            var rowHtml =
+                                '<tr>' +
+                                    '<td>' + (itemCode ? itemCode + ' - ' : '') + itemName + '</td>' +
+                                    '<td class="text-end">' + formatNumber(onHand) + '</td>' +
+                                    '<td class="text-end">' + formatNumber(price) + '</td>' +
+                                    '<td class="text-end">' + formatNumber(newOnHand) + '</td>' +
+                                '</tr>';
+
+                            $tbody.append(rowHtml);
+                        });
+                    },
+                    error: function () {
+                        alert('Failed to load settlement items.');
+                    }
+                });
+            }
+        });
     </script>
-
-}
+    }

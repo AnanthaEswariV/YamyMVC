@@ -103,6 +103,26 @@
                }).ToListAsync();
             return Json(result);
         }
+        [HttpGet]
+        public async Task<IActionResult> GetItemsDetels(int Id)
+            {
+            //if (string.IsNullOrEmpty(term))
+            //    return Json(new List<object>());
+
+            var result = await _Context.TblSalesDetails
+                .Where(t=>t.SalesId==Id)
+                .Include(t=>t.Items)
+                //.Where(i => (i.Code.Contains(term) || i.Name.Contains(term)) && i.WarehouseId == warehouseId)
+               .Select(i => new
+                   {
+                   i.Items,
+                   i.Qty,
+                   i.Price,
+                   i.Vat,i.Total
+             
+                   }).ToListAsync();
+            return Json(result);
+            }
         //private async Task<IActionResult> PopulateViewModel(TaxInvoiceViewModel? model = null)
         //{
         //    TaxInvoiceViewModel viewModel = model is null ? new TaxInvoiceViewModel() : model;

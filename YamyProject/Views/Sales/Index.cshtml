@@ -80,7 +80,7 @@
                     foreach (var s in Model)
                     {
                         // safe JSON serialization of items for client-side details rendering
-                          <tr class="invoice-row" data-id="@s.Id"'>
+                          <tr class="invoice-row" data-id="@s.Id">
                             <td>@s.SN</td>
                             <td>@(s.Date.ToString("yyyy-MM-dd"))</td>
                             <td>@s.InvoiceId</td>

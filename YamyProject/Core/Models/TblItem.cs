@@ -56,6 +56,8 @@ public partial class TblItem
     public int DeletedBy { get; set; }
 
     public int? CategoryId { get; set; }
+    [ForeignKey(nameof(CategoryId))]
+    public virtual TblItemCategory? Category { get; set; }
 
     public int? PosItem { get; set; }
 

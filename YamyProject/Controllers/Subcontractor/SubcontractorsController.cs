@@ -1,6 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-
-namespace YamyProject.Controllers.Subcontractor
+﻿namespace YamyProject.Controllers.Subcontractor
     {
     public class SubcontractorsController(YamyDbContext context, ILogger<MasterStockManagementController> logger,IListServices listServices,IVendorService vendorService) : Controller
         {
