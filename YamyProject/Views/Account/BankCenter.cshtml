@@ -293,9 +293,8 @@
                     if(res.status) {
                         toastr.success(isEdit ? 'Bank updated successfully' : 'Bank added successfully');
                         $('#bankModal').modal('hide');
-                         $('#bankModal')[0].reset();
-                        const selectionMethod = $('#bankSelect').val();
-                        loadBanks(selectionMethod);
+                        setTimeout(() => location.reload(), 1500);
+
                     } else {
                         toastr.error(res.message);
                     }

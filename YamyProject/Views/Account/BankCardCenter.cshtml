@@ -518,8 +518,7 @@
                 if(res.status) {
                     toastr.success(isEdit ? 'Bank card updated successfully' : 'Bank card added successfully');
                     $('#bankCardModal').modal('hide');
-                    $('#bankCardModal')[0].reset();
-                    loadBankCards(); // reload table
+                    setTimeout(() => location.reload(), 1500);
                 } else {
                     toastr.error(res.message);
                 }

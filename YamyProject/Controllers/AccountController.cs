@@ -4020,25 +4020,6 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                //                string query = @"
-                //     SELECT 
-                //    ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
-                //    c.id,
-                //    c.bank_card_id AS BankCardId,
-                //    CONCAT(b.code, '-', b.name) AS BankName,   -- Bank linked to this bank_card
-                //    bc.account_name AS AcName,
-                //    bc.account_type AS AcType,
-                //    c.chq_book_no AS ChqBookNo,
-                //    c.chq_book_qty AS ChqBookQty,
-                //    c.leaves_start_from AS StartFrom,
-                //    c.leaves_end_in AS EndIn
-                //FROM tbl_cheque c
-                //INNER JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
-                //INNER JOIN tbl_bank b ON b.id = c.bank_card_id
-                //;
-                //"; // Optional order
-
-
                 string query = @"SELECT
                                     ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
                                     c.id,

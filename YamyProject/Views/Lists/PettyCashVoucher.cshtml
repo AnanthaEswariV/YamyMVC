@@ -1095,12 +1095,15 @@
             });
 
             if (!details.length) return toastr.warning("Enter at least one valid amount");
-
+                 const cashAccountId = parseInt($(".bankAccountSelect").val()) || 0;
+        if (cashAccountId === 0) {
+            return toastr.warning("Please select a cash/bank account");
+        }
             const payload = {
                 Id: voucherId,
                 Code: pettyCashCode,
                 VoucherDate: voucherDate,
-                CashAccountId: parseInt($("#pettyCashNameJ").val()) || 1, 
+                    CashAccountId: cashAccountId,
                 EmployeeId: parseInt($("#employeeId").val()) || 1,       
                 Notes: "",
                 Total: totalAmount,

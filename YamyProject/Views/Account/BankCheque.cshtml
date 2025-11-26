@@ -412,13 +412,7 @@
                     if(res.status) {
                         toastr.success(chequeId > 0 ? 'Cheque updated successfully' : 'Cheque added successfully');
                         $('#bankChequeModal').modal('hide');
-                        $('#checkBookForm')[0].reset();
-                        $('#bankName').prop('disabled', false);
-                        $('#accountName').prop('disabled', false);
-                        $('#chqBookNo').prop('disabled', false);
-                        $('#startingFrom').prop('disabled', false);
-                        $('#to').prop('disabled', false);
-                        loadChequeBooks();
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.error(res.message);
                     }
