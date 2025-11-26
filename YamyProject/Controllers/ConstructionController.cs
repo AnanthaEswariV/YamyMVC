@@ -5379,7 +5379,6 @@ LIMIT 1;";
             }
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetGanttChartDataFlat(string planId = "1")
         {
@@ -5458,6 +5457,153 @@ LIMIT 1;";
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectTimelineFull()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // -------------------------------
+                // 1. MAIN PROJECT PLANNING QUERY
+                // -------------------------------
+                string mainQuery = @"
+            SELECT 
+                plan.id,
+                IFNULL(ted.name, CONCAT('Task ', plan.id)) AS task_name,
+                plan.description,
+                plan.date,
+                plan.start_date,
+                plan.end_date
+            FROM tbl_project_planning plan
+            LEFT JOIN tbl_tender_names ted ON plan.tender_id = ted.id;
+        ";
+
+                await using var cmdMain = new MySqlCommand(mainQuery, conn);
+                await using var readerMain = await cmdMain.ExecuteReaderAsync();
+
+                var planningList = new List<object>();
+
+                while (await readerMain.ReadAsync())
+                {
+                    int planId = readerMain.GetInt32("id");
+
+                    var item = new
+                    {
+                        PlanId = planId,
+                        TaskName = readerMain["task_name"].ToString(),
+                        Description = readerMain["description"]?.ToString(),
+                        Date = readerMain["date"] != DBNull.Value
+                               ? Convert.ToDateTime(readerMain["date"]).ToString("yyyy-MM-dd")
+                               : null,
+                        StartDate = readerMain["start_date"] != DBNull.Value
+                               ? Convert.ToDateTime(readerMain["start_date"]).ToString("yyyy-MM-dd")
+                               : null,
+                        EndDate = readerMain["end_date"] != DBNull.Value
+                               ? Convert.ToDateTime(readerMain["end_date"]).ToString("yyyy-MM-dd")
+                               : null,
+
+                        // Placeholder for nested activity list
+                        Activities = new List<object>()
+                    };
+
+                    planningList.Add(item);
+                }
+
+                readerMain.Close(); // Close first reader before next command
+
+                // ----------------------------------
+                // 2. LOOP PLANS → LOAD ACTIVITIES
+                // ----------------------------------
+                foreach (dynamic plan in planningList)
+                {
+                    string activityQuery = @"
+                SELECT 
+                    act.id AS activity_id,
+                    boq.name AS task_name,
+                    boq.sr AS task_code,
+                    act.start_date,
+                    act.end_date,
+                    plan.description AS planning_description,
+                    plan.progress AS planning_progress,
+                    act.progress AS progress,
+                    plan.project_id,
+                    GROUP_CONCAT(DISTINCT res.name ORDER BY res.name SEPARATOR ', ') AS assigned_team_names,
+                    SUM(COALESCE(res.unit_time, 0)) AS completed_work,
+                    SUM(COALESCE(res.max_unit_time, 0)) AS planned_work,
+                    GROUP_CONCAT(DISTINCT res.unit_time ORDER BY res.name SEPARATOR ', ') AS assigned_time,
+                    GROUP_CONCAT(DISTINCT res.max_unit_time ORDER BY res.name SEPARATOR ', ') AS assigned_max_time
+                FROM tbl_project_activity act
+                JOIN tbl_project_planning plan ON plan.id = act.planning_id
+                LEFT JOIN tbl_project_resource res 
+                    ON FIND_IN_SET(res.id, plan.assigned_team) > 0 
+                   AND res.TYPE = 'Labour'
+                LEFT JOIN tbl_items_boq boq ON act.name = boq.id
+                WHERE plan.id = @planId
+                GROUP BY act.id, boq.name, boq.sr, act.start_date, act.end_date, 
+                         plan.description, plan.progress, plan.project_id, boq.id
+                ORDER BY boq.id;
+            ";
+
+                    await using var cmdAct = new MySqlCommand(activityQuery, conn);
+                    cmdAct.Parameters.AddWithValue("@planId", plan.PlanId);
+
+                    await using var readerAct = await cmdAct.ExecuteReaderAsync();
+
+                    var activityList = new List<object>();
+
+                    while (await readerAct.ReadAsync())
+                    {
+                        activityList.Add(new
+                        {
+                            ActivityId = readerAct.GetInt32("activity_id"),
+                            TaskName = readerAct["task_name"].ToString(),
+                            TaskCode = readerAct["task_code"].ToString(),
+                            StartDate = readerAct["start_date"] != DBNull.Value
+                                ? Convert.ToDateTime(readerAct["start_date"]).ToString("yyyy-MM-dd")
+                                : null,
+                            EndDate = readerAct["end_date"] != DBNull.Value
+                                ? Convert.ToDateTime(readerAct["end_date"]).ToString("yyyy-MM-dd")
+                                : null,
+
+                            Description = readerAct["planning_description"].ToString(),
+                            Progress = readerAct["progress"] != DBNull.Value
+                                ? Convert.ToDecimal(readerAct["progress"])
+                                : 0,
+
+                            AssignedTeam = readerAct["assigned_team_names"]?.ToString() ?? "Unassigned",
+                            CompletedWork = readerAct["completed_work"] != DBNull.Value
+                                ? Convert.ToDecimal(readerAct["completed_work"])
+                                : 0,
+                            PlannedWork = readerAct["planned_work"] != DBNull.Value
+                                ? Convert.ToDecimal(readerAct["planned_work"])
+                                : 0,
+
+                            AssignedTime = readerAct["assigned_time"]?.ToString(),
+                            AssignedMaxTime = readerAct["assigned_max_time"]?.ToString()
+                        });
+                    }
+
+                    readerAct.Close();
+
+                    // Attach activities to main record
+                    ((List<object>)plan.Activities).AddRange(activityList);
+                }
+
+                return Ok(new { status = true, data = planningList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
 
         #endregion
