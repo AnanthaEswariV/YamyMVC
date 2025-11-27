@@ -1,356 +1,607 @@
-﻿ @model SettingsMasterViewmodel
+﻿@model SettingsMasterViewmodel
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
 @{
-    // Layout = null;
     ViewData["Title"] = "Setting - Master";
 
-    bool IsActive(string key) => Model.ActivePrimary.Equals(key, StringComparison.OrdinalIgnoreCase);
-    bool IsSub(string key) => Model.ActiveSub.Equals(key, StringComparison.OrdinalIgnoreCase);
-}
+    bool IsActive(string key) =>
+        string.Equals(Model?.ActivePrimary ?? "default", key, StringComparison.OrdinalIgnoreCase);
 
-@* <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" /> *@
+    bool IsSub(string key) =>
+        string.Equals(Model?.ActiveSub ?? "common", key, StringComparison.OrdinalIgnoreCase);
+    }
 
-<div class="container-fluid py-3">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h4 class="mb-0 fw-semibold">Setting - Master</h4>
-         @if (TempData["ok"] is string ok && !string.IsNullOrWhiteSpace(ok))
-        { <span class="text-success small">@ok</span> } 
+<style>
+    .settings-wrapper {
+        background-color: #f5f6f8;
+        min-height: calc(100vh - 60px);
+    }
+
+    .settings-header-bar {
+        background-color: #003b73;
+        color: #fff;
+        padding: 8px 24px;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+        .settings-header-bar h4 {
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+    .settings-primary-tabs .nav-link {
+        border-radius: 0;
+        padding: 6px 24px;
+        font-size: .9rem;
+        background-color: #1f2933;
+        color: #e5e7eb;
+        margin-right: 2px;
+    }
+
+        .settings-primary-tabs .nav-link.active {
+            background-color: #111827;
+            color: #fff;
+        }
+
+    .settings-sub-tabs .btn {
+        border-radius: 0;
+        min-width: 140px;
+        font-size: .85rem;
+    }
+
+        .settings-sub-tabs .btn.btn-primary {
+            background-color: #5b5ce6;
+            border-color: #5b5ce6;
+        }
+
+        .settings-sub-tabs .btn.btn-outline-primary {
+            border-color: #5b5ce6;
+            color: #5b5ce6;
+        }
+
+            .settings-sub-tabs .btn.btn-outline-primary:hover {
+                background-color: #5b5ce6;
+                color: #fff;
+            }
+
+    .settings-card {
+        border-radius: 0;
+    }
+
+        .settings-card .form-label {
+            font-size: .8rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .settings-card .form-select {
+            font-size: .8rem;
+            height: calc(1.8rem + 2px);
+            padding-top: .15rem;
+            padding-bottom: .15rem;
+        }
+
+    .settings-save-footer {
+        border-top: none;
+        background: transparent;
+    }
+</style>
+
+<div class="settings-wrapper">
+    <!-- Top blue bar -->
+    <div class="settings-header-bar d-flex align-items-center justify-content-between">
+        <h4 class="mb-0 fw-semibold"> Setting - Master</h4>
+        @if (TempData["ok"] is string ok && !string.IsNullOrWhiteSpace(ok))
+            {
+            <span class="small text-light">@ok</span>
+            }
     </div>
-    <!-- Primary Tabs -->
-    <ul class="nav nav-pills gap-2 mb-3">
-        <li class="nav-item"><a class="nav-link @(IsActive("default") ? "active" : "")" asp-action="Master" asp-route-primary="default">Default Account Config</a></li>
-         <li class="nav-item"><a class="nav-link @(IsActive("employee") ? "active" : "")" asp-action="Master" asp-route-primary="employee">Employee Default Setting</a></li>
-        <li class="nav-item"><a class="nav-link @(IsActive("user") ? "active" : "")" asp-action="Master" asp-route-primary="user">User Config</a></li>
-         <li class="nav-item"><a class="nav-link @(IsActive("general") ? "active" : "")" asp-action="Master" asp-route-primary="general">General Settings</a></li>
-    </ul>
-    <!-- ===== DEFAULT ACCOUNT CONFIG ===== -->
-    @if (IsActive("default"))
-    {
-        <div class="mb-3">
-            <div class="btn-group flex-wrap gap-2">
-                <a class="btn @(IsSub("common") ? "btn-primary" : "btn-outline-primary")"  asp-action="Master" asp-route-primary="default" asp-route-sub="common">Common</a>
-                <a class="btn @(IsSub("vendor") ? "btn-primary" : "btn-outline-primary")"  asp-action="Master" asp-route-primary="default" asp-route-sub="vendor">Vendor - Purchase</a>
-                <a class="btn @(IsSub("inventory") ? "btn-primary" : "btn-outline-primary")" asp-action="Master" asp-route-primary="default" asp-route-sub="inventory">Inventory</a>
-                <a class="btn @(IsSub("customer") ? "btn-primary" : "btn-outline-primary")" asp-action="Master" asp-route-primary="default" asp-route-sub="customer">Customer - Sales</a>
-                <a class="btn @(IsSub("employee") ? "btn-primary" : "btn-outline-primary")" asp-action="Master" asp-route-primary="default" asp-route-sub="employee">Employee</a>
-                <a class="btn @(IsSub("bank") ? "btn-primary" : "btn-outline-primary")"     asp-action="Master" asp-route-primary="default" asp-route-sub="bank">Bank &amp; Other</a>
-            </div>
+
+    <div class="container-fluid py-3">
+
+        @* Optional: Debug line – remove later *@
+        <div class="small text-muted mb-2">
+            Primary: @Model.ActivePrimary | Sub: @Model.ActiveSub
         </div>
 
-        <!-- COMMON -->
-        @if (IsSub("common"))
-        {
-            <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="section" value="default-common" />
-                <input type="hidden" name="primary" value="default" />
-                <input type="hidden" name="sub" value="common" />
-                <div class="card-body">
-                    <div class="row g-4">
-                        <div class="col-lg-5">
-                            <div class="vstack gap-3">
-                               
-                                <div><label class="form-label">PDC Receivable</label><select asp-for="DefaultAccount.PdcReceivableId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">PDC Receivable Return</label><select asp-for="DefaultAccount.PdcReceivableReturnId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">PDC Receivable Hold</label><select asp-for="DefaultAccount.PdcReceivableHoldId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">PDC Payable</label><select asp-for="DefaultAccount.PdcPayableId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">PDC Payable Return</label><select asp-for="DefaultAccount.PdcPayableReturnId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">PDC Payable Hold</label><select asp-for="DefaultAccount.PdcPayableHoldId" asp-items="Model.Accounts" class="form-select"></select></div>
+        <!-- Primary Tabs (top dark row) -->
+        <ul class="nav settings-primary-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("default") ? "active" : "")"
+                   asp-controller="MasterSettings"
+                   asp-action="Index"
+                   asp-route-primary="default"
+                   asp-route-sub="common">
+                    Default Account Config
+                </a>
+            </li>
+         @*    <li class="nav-item">
+                <a class="nav-link @(IsActive("employee") ? "active" : "")"
+                   asp-controller="MasterSettings"
+                   asp-action="Index"
+                   asp-route-primary="employee"
+                   asp-route-sub="common">
+                    Employee Default Setting
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("user") ? "active" : "")"
+                   asp-controller="MasterSettings"
+                   asp-action="Index"
+                   asp-route-primary="user"
+                   asp-route-sub="common">
+                    User Config
+                </a>
+            </li> *@
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("general") ? "active" : "")"
+                   asp-controller="MasterSettings"
+                   asp-action="Index"
+                   asp-route-primary="general"
+                   asp-route-sub="common">
+                    General Settings
+                </a>
+            </li>
+        </ul>
+
+        <!-- ========= DEFAULT ACCOUNT CONFIG ========= -->
+        @if (IsActive("default"))
+            {
+            <!-- Second row: purple sub-tabs -->
+            <div class="mb-3">
+                <div class="btn-group settings-sub-tabs flex-wrap">
+                    <a class="btn @(IsSub("common") ? "btn-primary" : "btn-outline-primary")"
+                       asp-controller="MasterSettings"
+                       asp-action="Index"
+                       asp-route-primary="default"
+                       asp-route-sub="common">
+                        Common
+                    </a>
+                    <a class="btn @(IsSub("vendor") ? "btn-primary" : "btn-outline-primary")"
+                       asp-controller="MasterSettings"
+                       asp-action="Index"
+                       asp-route-primary="default"
+                       asp-route-sub="vendor">
+                        Vendor - Purchase
+                    </a>
+                    <a class="btn @(IsSub("inventory") ? "btn-primary" : "btn-outline-primary")"
+                       asp-controller="MasterSettings"
+                       asp-action="Index"
+                       asp-route-primary="default"
+                       asp-route-sub="inventory">
+                        Inventory
+                    </a>
+                    <a class="btn @(IsSub("customer") ? "btn-primary" : "btn-outline-primary")"
+                       asp-controller="MasterSettings"
+                       asp-action="Index"
+                       asp-route-primary="default"
+                       asp-route-sub="customer">
+                        Customer - Sales
+                    </a>
+                    <a class="btn @(IsSub("employee") ? "btn-primary" : "btn-outline-primary")"
+                       asp-controller="MasterSettings"
+                       asp-action="Index"
+                       asp-route-primary="default"
+                       asp-route-sub="employee">
+                        Employee
+                    </a>
+                    <a class="btn @(IsSub("bank") ? "btn-primary" : "btn-outline-primary")"
+                       asp-controller="MasterSettings"
+                       asp-action="Index"
+                       asp-route-primary="default"
+                       asp-route-sub="bank">
+                        Bank &amp; Other
+                    </a>
+                </div>
+            </div>
+
+            <!-- ===== COMMON ===== -->
+            @if (IsSub("common"))
+                {
+                <form asp-controller="MasterSettings"
+                      asp-action="Master"
+                      method="post"
+                      class="card settings-card shadow-sm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="section" value="default-common" />
+                    <input type="hidden" name="primary" value="default" />
+                    <input type="hidden" name="sub" value="common" />
+
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <!-- LEFT COLUMN (PDC*) -->
+                            <div class="col-lg-5">
+                                <div class="vstack gap-3">
+                                    <div>
+                                        <label class="form-label">PDC Receivable</label>
+                                        <select asp-for="DefaultAccount.PdcReceivableId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">PDC Receivable Return</label>
+                                        <select asp-for="DefaultAccount.PdcReceivableReturnId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">PDC Receivable Hold</label>
+                                        <select asp-for="DefaultAccount.PdcReceivableHoldId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">PDC Payable</label>
+                                        <select asp-for="DefaultAccount.PdcPayableId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">PDC Payable Return</label>
+                                        <select asp-for="DefaultAccount.PdcPayableReturnId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">PDC Payable Hold</label>
+                                        <select asp-for="DefaultAccount.PdcPayableHoldId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-lg-7">
-                            <div class="vstack gap-3">
-                                <div><label class="form-label">Default Account For Cash</label><select asp-for="DefaultAccount.DefaultCashAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">Opening Balance</label><select asp-for="DefaultAccount.OpeningBalanceAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">Opening Balance Equity</label><select asp-for="DefaultAccount.OpeningBalanceEquityAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">Prepaid Expense Debit Account</label><select asp-for="DefaultAccount.PrepaidExpenseDebitAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">Prepaid Expense Credit Account</label><select asp-for="DefaultAccount.PrepaidExpenseCreditAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">Fixed Asset Debit Account</label><select asp-for="DefaultAccount.FixedAssetDebitAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
-                                <div><label class="form-label">Fixed Asset Credit Account</label><select asp-for="DefaultAccount.FixedAssetCreditAccountId" asp-items="Model.Accounts" class="form-select"></select></div>
+
+                            <!-- RIGHT COLUMN -->
+                            <div class="col-lg-7">
+                                <div class="vstack gap-3">
+                                    <div>
+                                        <label class="form-label">Default Account For Cash</label>
+                                        <select asp-for="DefaultAccount.DefaultCashAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Opening Balance</label>
+                                        <select asp-for="DefaultAccount.OpeningBalanceAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Opening Balance Equity</label>
+                                        <select asp-for="DefaultAccount.OpeningBalanceEquityAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Prepaid Expense Debit Account</label>
+                                        <select asp-for="DefaultAccount.PrepaidExpenseDebitAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Prepaid Expense Credit Account</label>
+                                        <select asp-for="DefaultAccount.PrepaidExpenseCreditAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Fixed Asset Debit Account</label>
+                                        <select asp-for="DefaultAccount.FixedAssetDebitAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Fixed Asset Credit Account</label>
+                                        <select asp-for="DefaultAccount.FixedAssetCreditAccountId"
+                                                asp-items="Model.Accounts"
+                                                class="form-select form-select-sm">
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="card-footer bg-transparent d-flex justify-content-end">
-                    <button class="btn btn-primary px-4">Save</button>
-                </div>
-            </form>
-        }
-        <!-- VENDOR - PURCHASE -->
-        @if (IsSub("vendor"))
-        {
-            <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="section" value="default-vendor" />
-                <input type="hidden" name="primary" value="default" />
-                <input type="hidden" name="sub" value="vendor" />
-                <div class="card-body vstack gap-3 col-6">
-                    <div><label class="form-label">Vendor</label><select asp-for="DefaultAccount.VendorId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Vat Input</label><select asp-for="DefaultAccount.VatInputId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Purchase Payment Cash Method</label><select asp-for="DefaultAccount.PurchasePaymentCashMethodId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Purchase Invoice</label><select asp-for="DefaultAccount.PurchaseInvoiceId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">PurchaseReturn Invoice</label><select asp-for="DefaultAccount.PurchaseReturnInvoiceId" asp-items="Model.Accounts" class="form-select"></select></div>
-                </div>
-                <div class="card-footer bg-transparent d-flex justify-content-end">
-                    <button class="btn btn-primary px-4">Save</button>
-                </div>
-            </form>
-        }
-        <!-- INVENTORY -->
-        @if (IsSub("inventory"))
-        {
-            <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="section" value="default-inventory" />
-                <input type="hidden" name="primary" value="default" />
-                <input type="hidden" name="sub" value="inventory" />
-                <div class="card-body vstack gap-3 col-6">
-                    <div><label class="form-label">Inventory</label><select asp-for="DefaultAccount.InventoryId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Item_COGS</label><select asp-for="DefaultAccount.ItemCogsId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Inventory Damage Account</label><select asp-for="DefaultAccount.InventoryDamageId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Stock Settlement</label><select asp-for="DefaultAccount.StockSettlementId" asp-items="Model.Accounts" class="form-select"></select></div>
-                </div>
-                <div class="card-footer bg-transparent d-flex justify-content-end">
-                    <button class="btn btn-primary px-4">Save</button>
-                </div>
-            </form>
-        }
-        <!-- CUSTOMER - SALES -->
-        @if (IsSub("customer"))
-        {
-            <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="section" value="default-customer" />
-                <input type="hidden" name="primary" value="default" />
-                <input type="hidden" name="sub" value="customer" />
-                <div class="card-body vstack gap-3 col-6">
-                    <div><label class="form-label">Customer</label><select asp-for="DefaultAccount.CustomerId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Invoice Payment Cash Method</label><select asp-for="DefaultAccount.InvoicePaymentCashMethodId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Vat Output</label><select asp-for="DefaultAccount.VatOutputId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Sales Invoice</label><select asp-for="DefaultAccount.SalesInvoiceId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">SalesReturn Invoice</label><select asp-for="DefaultAccount.SalesReturnInvoiceId" asp-items="Model.Accounts" class="form-select"></select></div>
-                </div>
-                <div class="card-footer bg-transparent d-flex justify-content-end">
-                    <button class="btn btn-primary px-4">Save</button>
-                </div>
-            </form>
-        }
-        <!-- EMPLOYEE -->
-        @if (IsSub("employee"))
-        {
-            <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="section" value="default-employee" />
-                <input type="hidden" name="primary" value="default" />
-                <input type="hidden" name="sub" value="employee" />
-                <div class="card-body vstack gap-3 col-6">
-                    <div><label class="form-label">Accrued Salaries</label><select asp-for="DefaultAccount.AccruedSalariesId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Salaries</label><select asp-for="DefaultAccount.SalariesId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Accrual Leave Salary</label><select asp-for="DefaultAccount.AccrualLeaveSalaryId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Employee Receivable</label><select asp-for="DefaultAccount.EmployeeReceivableId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Gratuity</label><select asp-for="DefaultAccount.GratuityId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">End of Service Debit Account</label><select asp-for="DefaultAccount.EosDebitId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">End of Service Credit Account</label><select asp-for="DefaultAccount.EosCreditId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Leave Salary Debit</label><select asp-for="DefaultAccount.LeaveSalaryDebitId" asp-items="Model.Accounts" class="form-select"></select></div>
-                    <div><label class="form-label">Leave Salary Credit</label><select asp-for="DefaultAccount.LeaveSalaryCreditId" asp-items="Model.Accounts" class="form-select"></select></div>
-                </div>
-                <div class="card-footer bg-transparent d-flex justify-content-end">
-                    <button class="btn btn-primary px-4">Save</button>
-                </div>
-            </form>
-        }
-        <!-- BANK & OTHER -->
-        @if (IsSub("bank"))
-        {
-            <form asp-action="Master" method="post" class="card border-0 shadow-sm col-lg-6">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="section" value="default-bank" />
-                <input type="hidden" name="primary" value="default" />
-                <input type="hidden" name="sub" value="bank" />
-                <div class="card-body">
-                    <label class="form-label">Default Account For Bank</label>
-                    <select asp-for="DefaultAccount.DefaultBankAccountId" asp-items="Model.Accounts" class="form-select"></select>
-                </div>
-                <div class="card-footer bg-transparent d-flex justify-content-end">
-                    <button class="btn btn-primary px-4">Save</button>
-                </div>
-            </form>
-        }
+
+                    <div class="card-footer settings-save-footer d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary px-4">Save</button>
+                    </div>
+                </form>
+                }
+
+            <!-- ===== VENDOR - PURCHASE ===== -->
+            @if (IsSub("vendor"))
+                {
+                <form asp-controller="MasterSettings"
+                      asp-action="Master"
+                      method="post"
+                      class="card settings-card shadow-sm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="section" value="default-vendor" />
+                    <input type="hidden" name="primary" value="default" />
+                    <input type="hidden" name="sub" value="vendor" />
+
+                    <div class="card-body vstack gap-3 col-lg-6">
+                        <div>
+                            <label class="form-label">Vendor</label>
+                            <select asp-for="DefaultAccount.VendorId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Vat Input</label>
+                            <select asp-for="DefaultAccount.VatInputId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Purchase Payment Cash Method</label>
+                            <select asp-for="DefaultAccount.PurchasePaymentCashMethodId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Purchase Invoice</label>
+                            <select asp-for="DefaultAccount.PurchaseInvoiceId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">PurchaseReturn Invoice</label>
+                            <select asp-for="DefaultAccount.PurchaseReturnInvoiceId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                    </div>
+
+                    <div class="card-footer settings-save-footer d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">Save</button>
+                    </div>
+                </form>
+                }
+
+            <!-- ===== INVENTORY ===== -->
+            @if (IsSub("inventory"))
+                {
+                <form asp-controller="MasterSettings"
+                      asp-action="Master"
+                      method="post"
+                      class="card settings-card shadow-sm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="section" value="default-inventory" />
+                    <input type="hidden" name="primary" value="default" />
+                    <input type="hidden" name="sub" value="inventory" />
+
+                    <div class="card-body vstack gap-3 col-lg-6">
+                        <div>
+                            <label class="form-label">Inventory</label>
+                            <select asp-for="DefaultAccount.InventoryId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Item_COGS</label>
+                            <select asp-for="DefaultAccount.ItemCogsId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Inventory Damage Account</label>
+                            <select asp-for="DefaultAccount.InventoryDamageId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Stock Settlement</label>
+                            <select asp-for="DefaultAccount.StockSettlementId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                    </div>
+
+                    <div class="card-footer settings-save-footer d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">Save</button>
+                    </div>
+                </form>
+                }
+
+            <!-- ===== CUSTOMER - SALES ===== -->
+            @if (IsSub("customer"))
+                {
+                <form asp-controller="MasterSettings"
+                      asp-action="Master"
+                      method="post"
+                      class="card settings-card shadow-sm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="section" value="default-customer" />
+                    <input type="hidden" name="primary" value="default" />
+                    <input type="hidden" name="sub" value="customer" />
+
+                    <div class="card-body vstack gap-3 col-lg-6">
+                        <div>
+                            <label class="form-label">Customer</label>
+                            <select asp-for="DefaultAccount.CustomerId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Invoice Payment Cash Method</label>
+                            <select asp-for="DefaultAccount.InvoicePaymentCashMethodId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Vat Output</label>
+                            <select asp-for="DefaultAccount.VatOutputId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Sales Invoice</label>
+                            <select asp-for="DefaultAccount.SalesInvoiceId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">SalesReturn Invoice</label>
+                            <select asp-for="DefaultAccount.SalesReturnInvoiceId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                    </div>
+
+                    <div class="card-footer settings-save-footer d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">Save</button>
+                    </div>
+                </form>
+                }
+
+            <!-- ===== EMPLOYEE ===== -->
+            @if (IsSub("employee"))
+                {
+                <form asp-controller="MasterSettings"
+                      asp-action="Master"
+                      method="post"
+                      class="card settings-card shadow-sm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="section" value="default-employee" />
+                    <input type="hidden" name="primary" value="default" />
+                    <input type="hidden" name="sub" value="employee" />
+
+                    <div class="card-body vstack gap-3 col-lg-6">
+                        <div>
+                            <label class="form-label">Accrued Salaries</label>
+                            <select asp-for="DefaultAccount.AccruedSalariesId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Salaries</label>
+                            <select asp-for="DefaultAccount.SalariesId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Accrual Leave Salary</label>
+                            <select asp-for="DefaultAccount.AccrualLeaveSalaryId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Employee Receivable</label>
+                            <select asp-for="DefaultAccount.EmployeeReceivableId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Gratuity</label>
+                            <select asp-for="DefaultAccount.GratuityId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">End of Service Debit Account</label>
+                            <select asp-for="DefaultAccount.EosDebitId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">End of Service Credit Account</label>
+                            <select asp-for="DefaultAccount.EosCreditId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Leave Salary Debit</label>
+                            <select asp-for="DefaultAccount.LeaveSalaryDebitId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Leave Salary Credit</label>
+                            <select asp-for="DefaultAccount.LeaveSalaryCreditId"
+                                    asp-items="Model.Accounts"
+                                    class="form-select form-select-sm"></select>
+                        </div>
+                    </div>
+
+                    <div class="card-footer settings-save-footer d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">Save</button>
+                    </div>
+                </form>
+                }
+
+            <!-- ===== BANK & OTHER ===== -->
+            @if (IsSub("bank"))
+                {
+                <form asp-controller="MasterSettings"
+                      asp-action="Master"
+                      method="post"
+                      class="card settings-card shadow-sm col-lg-6">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="section" value="default-bank" />
+                    <input type="hidden" name="primary" value="default" />
+                    <input type="hidden" name="sub" value="bank" />
+
+                    <div class="card-body">
+                        <label class="form-label">Default Account For Bank</label>
+                        <select asp-for="DefaultAccount.DefaultBankAccountId"
+                                asp-items="Model.Accounts"
+                                class="form-select form-select-sm"></select>
+                    </div>
+
+                    <div class="card-footer settings-save-footer d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">Save</button>
+                    </div>
+                </form>
+                }
+            }
+
+        <!-- ========= EMPLOYEE DEFAULT SETTING / USER CONFIG / GENERAL ========= -->
+        @if (IsActive("employee"))
+            {
+            @* You can replace these with your real attendance screen later *@
+            @if (Model.Users != null)
+                {
+            //    @await Html.PartialAsync("_AccessUserControl", Model.Users)
+                @await Html.PartialAsync("AccessUserControl", Model.UserAccess)
+                }
+            @if (Model.UserAccess != null)
+                {
+                @await Html.PartialAsync("AccessUserControl", Model.UserAccess)
+                }
+            }
+
+        @if (IsActive("user"))
+            {
+            @if (Model.Users != null)
+                {
+                @await Html.PartialAsync("_AccessUserControl", Model.Users)
+                }
+            }
+
+        @if (IsActive("general"))
+            {
+            @if (Model.GeneralConfig != null)
+                {
+                @await Html.PartialAsync("_GeneralConfig", Model.GeneralConfig)
+                }
+            }
+    </div>
+</div>
+
+    @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     }
-    <!-- ===== EMPLOYEE DEFAULT SETTING (Attendance) ===== -->
-  @*    @if (IsActive("employee"))
-    {
-        <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="section" value="employee-default" />
-            <input type="hidden" name="primary" value="employee" />
-            <div class="card-body">
-                <h5 class="mb-3">Attendance Config</h5>
-                <div class="row g-3 align-items-end">
-                    <div class="col-auto">
-                        <label class="form-label">Time In</label>
-                        <input asp-for="Attendance.TimeIn" class="form-control" placeholder="Ex : 08:00" />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">&nbsp;</label>
-                        <select asp-for="Attendance.TimeInAmPm" class="form-select"><option>AM</option><option>PM</option></select>
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">Time Out</label>
-                        <input asp-for="Attendance.TimeOut" class="form-control" placeholder="Ex : 06:00" />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">&nbsp;</label>
-                        <select asp-for="Attendance.TimeOutAmPm" class="form-select"><option>AM</option><option selected>PM</option></select>
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">Month</label>
-                        <select asp-for="Attendance.Month" class="form-select">
-                              <option value=""></option> 
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">Year</label>
-                        <select asp-for="Attendance.YearId" class="form-select">
-                            @for (var y = DateTime.Now.Year - 2; y <= DateTime.Now.Year + 2; y++)
-                                {
-                                <option value="@y" selected="@(Model.Attendance.year)">@y</option>
-                                }
-                        </select>
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">Day(s) Off</label>
-                        <input asp-for="Attendance.DaysOffId" class="form-control" placeholder="e.g. Fri,Sat" />
-                    </div>
-                </div>
-
-                <div class="row mt-4 g-4">
-                    <div class="col-lg-4">
-                        <div class="border" style="height:280px;background:#e9ecef"></div>
-                        <div class="d-grid mt-2"><button type="button" class="btn btn-secondary">Modify</button></div>
-                    </div>
-                    <div class="col-lg-8">
-                        <div class="border" style="height:280px;background:#e9ecef"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer bg-transparent d-flex justify-content-center">
-                <button class="btn btn-primary px-5">Save</button>
-            </div>
-        </form>
-    } *@
-
-    <!-- ===== EMPLOYEE DEFAULT SETTING (Attendance) ===== -->
-    @if (IsActive("employee"))
-        {
-            @await Html.PartialAsync("_AccessUserControl", Model.Users)
-            @await Html.PartialAsync("AccessUserControl", Model.UserAccess)
-        }
-    <!-- ===== USER CONFIG ===== -->
-    @if (IsActive("user"))
-        {
-            @await Html.PartialAsync("_AccessUserControl", Model.Users)
-        }
-          <!-- ===== GENERAL SETTINGS ===== -->
-    @if (IsActive("general"))
-        {
-            @await Html.PartialAsync("_AccessUserControl", Model.Users)
-        }
-    @*
-          @if (IsActive("user"))
-        {
-        <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="section" value="user-config" />
-            <input type="hidden" name="primary" value="user" />
-            <div class="card-body">
-                <h5 class="mb-3">Access User Control</h5>
-                <div class="row g-3">
-                    <div class="col-lg-3">
-                        <div class="mb-2">
-                            <label class="form-label">Active User</label>
-                            <select asp-for="UserConfig.SelectedUserId" asp-items="Model.Users" class="form-select"></select>
-                        </div>
-                        <input class="form-control" placeholder="Search By Name, Code" />
-                        <div class="list-group mt-3" style="max-height:420px;overflow:auto">
-                            <!-- optional: echo users here for visual parity -->
-                            @foreach (var u in Model.Users)
-                            {
-                                <a class="list-group-item list-group-item-action">@u.Text</a>
-                            }
-                        </div>
-                    </div>
-                    <div class="col-lg-9">
-                        <div class="border p-3 mb-3">
-                            <h6 class="mb-3">User Information</h6>
-                            <div class="row row-cols-2 row-cols-md-3 g-2">
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.AccountantAccess" /><label class="form-check-label">Accountant Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.InventoryAccess" /><label class="form-check-label">Inventory Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.CustomerAccess" /><label class="form-check-label">Customer Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.VendorAccess" /><label class="form-check-label">Vendor Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.HrAccess" /><label class="form-check-label">H.R Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.BankingAccess" /><label class="form-check-label">Banking Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.ReportAccess" /><label class="form-check-label">Report Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.SettingAccess" /><label class="form-check-label">Setting Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.FileAccess" /><label class="form-check-label">File Access</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.ConstructionAccess" /><label class="form-check-label">Construction Access</label></div>
-                            </div>
-                        </div>
-
-                        <div class="border p-3">
-                            <h6 class="mb-2">Construction</h6>
-                            <div class="row row-cols-1 row-cols-md-2 g-2">
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.ProjectDashboard" /><label class="form-check-label">Project Dashboard</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.ProjectTender" /><label class="form-check-label">Project Tender</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.ProjectEstimate" /><label class="form-check-label">Project Estimate</label></div>
-                                <div class="form-check"><input class="form-check-input" asp-for="UserConfig.ProjectPlanning" /><label class="form-check-label">Project Planning</label></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer bg-transparent d-flex justify-content-center">
-                <button class="btn btn-primary px-5">Save</button>
-            </div>
-        </form>
-    }
-    <!-- ===== GENERAL SETTINGS ===== -->
-    @if (IsActive("general"))
-    {
-        <form asp-action="Master" method="post" class="card border-0 shadow-sm">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="section" value="general" />
-            <input type="hidden" name="primary" value="general" />
-            <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <h6 class="mb-3">General Config</h6>
-                        <div class="vstack gap-2 border p-3" style="min-height:320px">
-                            <div class="form-check"><input class="form-check-input" asp-for="General.AllItemsInSales" /><label class="form-check-label fw-semibold">ALL ITEMS IN SALES</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.AllItemsInPurchase" /><label class="form-check-label fw-semibold">ALL ITEMS IN PURCHASE</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.AllowItemWithoutQty" /><label class="form-check-label fw-semibold">ALLOW ITEM WITHOUT QTY</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.DefaultTaxPercentage" /><label class="form-check-label fw-semibold">DEFAULT TAX PERCENTAGE</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.PrintKitchenKot" /><label class="form-check-label fw-semibold">PRINT KITCHEN KOT</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.PrintBill" /><label class="form-check-label fw-semibold">PRINT BILL</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.ProjectOption" /><label class="form-check-label fw-semibold">PROJECT OPTION</label></div>
-                            <div class="form-check"><input class="form-check-input" asp-for="General.EnablePettyCashApproval" /><label class="form-check-label fw-semibold">ENABLE PETTYCASH APPROVAL</label></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <h6 class="mb-3">Default Settings</h6>
-                        <div class="border p-3" style="min-height:320px">
-                            <label class="form-label">Default Tax %</label>
-                            <select asp-for="General.DefaultTaxId" asp-items="Model.Taxes" class="form-select"></select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer bg-transparent d-flex justify-content-center">
-                <button class="btn btn-primary px-5">Save</button>
-            </div>
-        </form>
-    } 
- *@
-</div> 
-
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>  

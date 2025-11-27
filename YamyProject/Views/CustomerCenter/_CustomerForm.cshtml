@@ -1,10 +1,12 @@
 ﻿@model CustomerViewModel
 
-<form asp-action="Save" method="post" class="needs-validation" novalidate>
+<form asp-action="Create" asp-controller="CustomerCenter" method="post" class="needs-validation" novalidate>
+    @Html.AntiForgeryToken()
+
     <input type="hidden" asp-for="Customer.Id" />
 
     <!-- Tabs -->
-    <ul class="nav nav-tabs nav-tabs-sm mb-3" role="tablist">
+@*     <ul class="nav nav-tabs nav-tabs-sm mb-3" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active small" id="tab-basic" data-bs-toggle="tab" data-bs-target="#panel-basic" type="button" role="tab">
                 <i class="bi bi-card-text me-1"></i> Basic
@@ -25,11 +27,11 @@
                 <i class="bi bi-gear me-1"></i> Account
             </button>
         </li>
-    </ul>
+    </ul> *@
 
     <div class="tab-content">
         <!-- BASIC -->
-        <div class="tab-pane fade show active" id="panel-basic" role="tabpanel">
+        @* <div class="tab-pane fade show active" @*  id="panel-basic" role="tabpanel"  > *@
             <div class="row g-2">
                 <div class="col-md-6 col-12">
                     <label class="form-label small mb-1">Customer Name</label>
@@ -37,7 +39,7 @@
                 </div>
                 <div class="col-md-3 col-6">
                     <label class="form-label small mb-1">Code</label>
-                    <input asp-for="Customer.Code" class="form-control form-control-sm" placeholder="Code"  disabled/>
+                    <input asp-for="Customer.Code" class="form-control form-control-sm" placeholder="Code" disabled />
                 </div>
                 <div class="col-md-3 col-6 d-flex align-items-end">
                     <div class="w-100">
@@ -46,7 +48,7 @@
                     </div>
                 </div>
 
-                <div class="col-12">
+                <div class="col-6">
                     <label class="form-label small mb-1">Category</label>
                     <div class="input-group input-group-sm">
                         <select asp-for="Customer.CatId" class="form-select form-select-sm" asp-items="Model.Categoriess">
@@ -67,10 +69,10 @@
                     <input asp-for="Transactions.Credit" id="Credit" class="form-control form-control-sm" placeholder="0.00" />
                 </div>
             </div>
-        </div>
+        @* </div> *@
 
         <!-- CONTACT -->
-        <div class="tab-pane fade" id="panel-contact" role="tabpanel">
+        @* <div class="tab-pane fade" @* id="panel-contact"  role="tabpanel"  > *@
             <div class="row g-2">
                 <div class="col-md-4 col-12">
                     <label class="form-label small mb-1">Main Phone</label>
@@ -94,15 +96,15 @@
                     <input asp-for="Customer.Ccemail" class="form-control form-control-sm" placeholder="CC Email" />
                 </div>
 
-                <div class="col-12 mt-2">
+                <div class="col-6 mt-2">
                     <label class="form-label small mb-1">Website</label>
                     <input asp-for="Customer.Website" class="form-control form-control-sm" placeholder="Website" />
                 </div>
             </div>
-        </div>
+        @* </div> *@
 
         <!-- ADDRESS -->
-        <div class="tab-pane fade" id="panel-address" role="tabpanel">
+        @* <div class="tab-pane fade"@*  id="panel-address" role="tabpanel" > *@
             <div class="row g-2">
                 <div class="col-md-6 col-12">
                     <label class="form-label small mb-1">Country</label>
@@ -126,10 +128,10 @@
                     <input asp-for="Customer.BuildingName" class="form-control form-control-sm" placeholder="Building Name" />
                 </div>
             </div>
-        </div>
+        @* </div> *@
 
         <!-- ACCOUNT & PROJECTS -->
-        <div class="tab-pane fade" id="panel-account" role="tabpanel">
+        @* <div class="tab-pane fade" @* id="panel-account" role="tabpanel" > *@
             <div class="row g-2">
                 <div class="col-md-6 col-12">
                     <label class="form-label small mb-1">Account</label>
@@ -148,71 +150,17 @@
                     <input asp-for="Customer.FaciltyName" class="form-control form-control-sm" placeholder="Facility Name" />
                 </div>
 
-                @*   <div class="col-12 mt-3">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <label class="form-label small mb-0">Projects</label>
-                        <div>
-                            <button type="button" id="checkAllProjects" class="btn btn-sm btn-outline-primary me-1">Check All</button>
-                            <button type="button" id="uncheckAllProjects" class="btn btn-sm btn-outline-secondary">Uncheck All</button>
-                        </div>
-                    </div>
- *@
-                @*                 <div class="border rounded px-2 py-2" style="max-height:180px; overflow:auto;">
-                        @if (Model?.Projects != null && Model.Projects.Any())
-                        {
-                            <div class="row">
-                                @foreach (var p in Model.Projects)
-                                {
-                                    <div class="col-md-6 col-12 mb-1">
-                                        <div class="form-check form-check-sm">
-                                            <input class="form-check-input project-checkbox" type="checkbox"
-                                                   id="proj_@p.Id" name="SelectedProjectIds"
-                                                   value="@p.Id"
-                                                   @(Model.SelectedProjectIds != null && Model.SelectedProjectIds.Contains(p.Id) ? "checked" : "") />
-                                            <label class="form-check-label small fw-bold" for="proj_@p.Id">
-                                                @p.Id - @p.Name
-                                            </label>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="small text-muted">No projects available</div>
-                        }
-                    </div>
-     *@            </div>
-
-          @*   <div class="col-12 mt-3">
-                <div class="form-check form-switch form-switch-sm">
-                    <input asp-for="Customer.Active" class="form-check-input" type="checkbox" />
-                    <label class="form-check-label small ms-2">Active</label>
-                </div>
-            </div> *@
-        </div>
-    </div>
+                @* Projects block is commented; leave as-is if you plan to use it later *@
+            </div>
+        @* </div> *@
     </div>
 
     <!-- Buttons -->
     <div class="d-flex justify-content-end gap-2 mt-3">
-        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Close</a>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
         <button type="submit" class="btn btn-sm btn-primary">Save</button>
     </div>
 </form>
-
-<!-- Small script for projects check/uncheck -->
-<script>
-    (function () {
-        var checkAll = document.getElementById('checkAllProjects');
-        var uncheckAll = document.getElementById('uncheckAllProjects');
-        function toggleAll(checked) {
-            document.querySelectorAll('.project-checkbox').forEach(function (el) { el.checked = checked; });
-        }
-        if (checkAll) checkAll.addEventListener('click', function () { toggleAll(true); });
-        if (uncheckAll) uncheckAll.addEventListener('click', function () { toggleAll(false); });
-    })();
-</script>
 
 <style>
     /* compact tab styling */
@@ -240,23 +188,3 @@
         padding: .18rem .5rem;
     }
 </style>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    debugger
-    $("#Debit").on("input", function () {
-        if ($(this).val().length > 0) {
-            $("#Credit").prop("disabled", true);
-        } else {
-            $("#Credit").prop("disabled", false);
-        }
-    });
-
-    $("#Credit").on("input", function () {
-        if ($(this).val().length > 0) {
-            $("#Debit").prop("disabled", true);
-        } else {
-            $("#Debit").prop("disabled", false);
-        }
-    });
-</script>

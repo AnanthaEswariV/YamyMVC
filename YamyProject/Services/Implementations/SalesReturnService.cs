@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
     {
     public class SalesReturnService(YamyDbContext context, IListServices listServices) : ISalesReturnService
         {
@@ -451,13 +449,12 @@ namespace YamyProject.Services.Implementations
                     // 6) Transfer flags + accounting entries
                 //    await TransferSaleAsync(vm.InvoiceType ?? "", saleId, vm.PONO ?? "");
                     await Transaction(vm,
-                        level4PaymentCreditMethodId: 2,
+                        level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Customer"),
+                       level4SalesInvoice:await _ListServices.DefaultAccountsSet("Sales"),
                         invid: saleId,
                         invoiceNo: vm.Invoce ?? invoiceNo,
-                        level4VatId: 3);
-
-                  
-
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
+                            
 
                     await tx.CommitAsync();
                     }
@@ -604,7 +601,7 @@ namespace YamyProject.Services.Implementations
             }
 
 
-        public async Task Transaction(SalesReturnViewModel model, int level4PaymentCreditMethodId, int invid = 0, string invoiceNo = "", int level4VatId = 0)
+        public async Task Transaction(SalesReturnViewModel model, int level4PaymentCreditMethodId,int level4SalesInvoice, int invid = 0, string invoiceNo = "", int level4VatId = 0)
             {
             invid = invid != 0 ? invid : model.Id;
             invoiceNo = !string.IsNullOrWhiteSpace(invoiceNo) ? invoiceNo : model.Invoce;
@@ -625,7 +622,7 @@ namespace YamyProject.Services.Implementations
             );
             // Revenue
             await AddTransactionEntry(
-                model.Date, level4PaymentCreditMethodId,  (int)model.TotalBeforeVat, 0,
+                model.Date, level4SalesInvoice,  (int)model.TotalBeforeVat, 0,
                 invid, 0,
                 model.Invoce == "Credit" ? "SalesReturn Invoice" : "SalesReturn Invoice ",
                 "SALES RETURN", $"SalesReturn For Invoice No. {invoiceNo}",

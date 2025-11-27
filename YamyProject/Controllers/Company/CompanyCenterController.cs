@@ -5,12 +5,31 @@
 
        private readonly YamyDbContext _context;
        private readonly IMapper _mapper;
-
-        public CompanyCenterController(YamyDbContext context,IMapper mapper)
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
+        public CompanyCenterController(YamyDbContext context,IMapper mapper, IHttpClientFactory httpClientFactory,IConfiguration config)
         {
             _context = context;
             _mapper = mapper;
-        }
+            _httpClientFactory = httpClientFactory;
+            _config = config;
+            }
+        private MySqlConnection CreateConnection()
+            {
+            // base connection string from appsettings.json
+            var baseConn = _config.GetConnectionString("DefaultConnection");
+
+            // database name from Session (if set), or fallback to DefaultDatabase
+            var dbName = HttpContext.Session.GetString("DatabaseName")
+                         ?? _config.GetConnectionString("DefaultDatabase");
+
+            var builder = new MySqlConnectionStringBuilder(baseConn)
+                {
+                Database = dbName
+                };
+
+            return new MySqlConnection(builder.ConnectionString);
+            }
         [HttpGet]
         public IActionResult Index()
         {
@@ -56,22 +75,22 @@
         }       
         [HttpPost]
         public IActionResult Edit(CompanyViewModel model)
-        { 
-            if (!ModelState.IsValid)
-                 return BadRequest();
-            
-             var company = _context.TblCompanies.Find(model.Id);
+        {
+            //if (!ModelState.IsValid)
+            //    return PartialView("_Form", model);
+
+            var company = _context.TblCompanies.Find(model.Id);
             
              if (company is null)
                  return NotFound();
             
-             company = _mapper.Map(model, company);
-             //company.LastUpdatedOn = DateTime.Now;
-                        _context.SaveChanges();
-            
-            var viewModel = _mapper.Map<CompanyViewModel>(company);
+             _mapper.Map(model, company);
+             _context.SaveChanges();
+           // return RedirectToAction("Index");
+            //var viewModel = _mapper.Map<CompanyViewModel>(company);
+            return Json(new { success = true });
 
-            return PartialView("CompanyList", viewModel);
+         //   return PartialView("CompanyList", viewModel);
         }
 
         [HttpPost]
@@ -107,7 +126,9 @@
                 await _context.SaveChangesAsync();
 
                 TempData["Message"] = "VAT and Corporate Tax information saved successfully!";
-                return RedirectToAction("Index"); // Or wherever your list or confirmation page is
+            return Json(new { success = true });
+
+              //  return RedirectToAction("Index"); // Or wherever your list or confirmation page is
             }
             catch (Exception ex)
             {

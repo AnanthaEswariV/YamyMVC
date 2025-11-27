@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Services.Implementations
+﻿using YamyProject.Core.Models;
+
+namespace YamyProject.Services.Implementations
     {
     public class VendorsCenterService(YamyDbContext context, IListServices ListServices) : IVendorsCenterService
         {
@@ -540,10 +542,11 @@
                     // 6) Transfer flags + accounting entries
                     await TransferSaleAsync(vm.InvoiceType ?? "", PurchaseId, vm.PONO ?? "");
                     await Transaction(vm,
-                        level4PaymentCreditMethodId: 2,
+                        level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
+                       level4Inventory: await _ListServices.DefaultAccountsSet("Inventory"),
                         invid: PurchaseId,
                         invoiceNo: vm.Invoce ?? invoiceNo,
-                        level4VatId: 3);
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
                     await UpdateOrAddFixedAssets(PurchaseId, vm.FixedAssetId);
                     await tx.CommitAsync();
                     }
@@ -661,7 +664,7 @@
                         .SetProperty(q => q.VendorId, invId));
                 }
             }
-        public async Task Transaction(PurchaseInvoiceViewModel model, int level4PaymentCreditMethodId, int invid = 0, string invoiceNo = "", int level4VatId = 0)
+        public async Task Transaction(PurchaseInvoiceViewModel model, int level4PaymentCreditMethodId, int level4Inventory, int invid = 0, string invoiceNo = "", int level4VatId = 0)
             {
             invid = invid != 0 ? invid : model.Id;
             invoiceNo = !string.IsNullOrWhiteSpace(invoiceNo) ? invoiceNo : model.Invoce;
@@ -682,7 +685,7 @@
             );
             // Revenue
             await AddTransactionEntry(
-                model.Date, level4PaymentCreditMethodId, (int)model.TotalBeforeVat, 0, 
+                model.Date, level4Inventory, (int)model.TotalBeforeVat, 0, 
                 invid, 0,
                 model.InvoiceType == "Credit" ? "Purchase Invoice" : "Purchase Invoice Cash",
                 "Purchase", $"Purchase  For Invoice No. {invoiceNo}",
@@ -888,11 +891,12 @@
                     //insert the new details and transactions and item transactions and item card details and cost center transactions
                     await InsertInvItems(Model);
                     await Transaction(Model,
-                        level4PaymentCreditMethodId: 2,
+                        level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
+                       level4Inventory: await _ListServices.DefaultAccountsSet("Inventory"),
                         invoiceNo: Model.Invoce,
-                        level4VatId: 3);
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
 
-                    await tx.CommitAsync();
+            await tx.CommitAsync();
                     }
                 catch
                     {

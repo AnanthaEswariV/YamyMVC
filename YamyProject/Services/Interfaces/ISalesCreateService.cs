@@ -14,7 +14,7 @@
         Task TransferSaleAsync(string formType, int invId, string poNoOrId);
         Task addTransactionEntry(DateOnly date, int? accountId, decimal debit, decimal credit,
                             int transactionId, int humId, string type, string voucher_name, string description, int createdBy, DateOnly createdDate, string VoucherNo);
-        Task Transaction(TaxInvoiceViewModel Model, int level4PaymentCreditMethodId, int Invid, string invoiceNo, int level4VatId);
+        Task Transaction(TaxInvoiceViewModel Model, int level4PaymentCreditMethodId, int level4SalesInvoice, int Invid, string invoiceNo, int level4VatId);
 
         // Task<bool> CheckItemAvailability(int? itemId, decimal salesQty);
         Task<TaxInvoiceViewModel> GetEditAsync(int id, string formType = "");

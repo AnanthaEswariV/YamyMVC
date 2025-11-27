@@ -34,18 +34,22 @@
                 modal.show();
             }
 
-            // // Add new customer
-            // document.getElementById('btnAddCustomer').addEventListener('click', function () {
-            //     loadPartial('@Url.Action("CreatePartial", "Customer")');
-            // });
-
-            // Edit buttons (delegated)
+            // Add new customer (if you have a "New customer" button)
             document.addEventListener('click', function (e) {
+                var addBtn = e.target.closest('#btnAddCustomer');
+                if (addBtn) {
+                    loadPartial('@Url.Action("Create", "CustomerCenter")');
+                    return;
+                }
+
+                // Edit buttons (delegated)
                 var el = e.target.closest('.btnEdit');
                 if (!el) return;
+
                 var id = el.getAttribute('data-id');
                 if (!id) return;
-                loadPartial('@Url.Action("EditPartial", "Customer")?id=' + encodeURIComponent(id));
+
+                loadPartial('@Url.Action("Edit", "CustomerCenter")?id=' + encodeURIComponent(id));
             });
 
             // Delegate form submit inside modal: handle AJAX post
@@ -54,10 +58,8 @@
                 if (!form.closest('#customerModal')) return; // only handle forms inside modal
                 e.preventDefault();
 
-                // Use FormData to include files and form fields
                 var fd = new FormData(form);
                 var action = form.getAttribute('action') || '@Url.Action("Save", "Customer")';
-                var token = fd.get('__RequestVerificationToken'); // antiforgery token is included by form
 
                 const resp = await fetch(action, {
                     method: 'POST',
@@ -65,7 +67,6 @@
                     credentials: 'same-origin'
                 });
 
-                // If server returned JSON success -> close modal & optionally refresh list
                 const contentType = resp.headers.get('content-type') || '';
                 if (contentType.indexOf('application/json') !== -1) {
                     const json = await resp.json();
@@ -84,9 +85,28 @@
                 // Otherwise server likely returned the PartialView (with validation errors).
                 const html = await resp.text();
                 document.getElementById('customerModalContent').innerHTML = html;
-
-                // Re-run any JS inside partial if needed (or keep partial JS in a script block that executes)
             });
+
+            // ===== Logic moved from partial (delegated so it works after injection) =====
+
+            // Debit / Credit mutual disable
+            $(document).on("input", "#Debit", function () {
+                $("#Credit").prop("disabled", $(this).val().length > 0);
+            });
+
+            $(document).on("input", "#Credit", function () {
+                $("#Debit").prop("disabled", $(this).val().length > 0);
+            });
+
+            // Projects check/uncheck (if you enable that block later)
+            $(document).on("click", "#checkAllProjects", function () {
+                $(".project-checkbox").prop("checked", true);
+            });
+
+            $(document).on("click", "#uncheckAllProjects", function () {
+                $(".project-checkbox").prop("checked", false);
+            });
+
         })();
     </script>
-}
+    }

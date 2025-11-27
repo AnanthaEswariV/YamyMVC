@@ -51,33 +51,34 @@
                // JournalCode = Code
                 });
                 }
-        //[HttpPost]  
-        //public async Task<IActionResult> Create(JournalVoucherViewModel model)
-        //    {
-        //    if (ModelState.IsValid)
-        //        {
-        //        //var result = 
-        //           // await _JournalVouchersService.CreateJournalVoucher(model);
-        //        //if (result.IsSuccess)
-                    
-        //            return RedirectToAction("Index");
-                    
-        //        //ModelState.AddModelError(string.Empty, result.ErrorMessage);
-        //        }
-                      
-        //[HttpPost]
-        //public async Task<IActionResult> Edit(JournalVoucherViewModel?model)
-        //    {
-        //         if (ModelState.IsValid)
-        //             {
-        //           //  var result = 
-        //          //  await _JournalVouchersService.UpdateJournalVoucher(model);
-        //            // if (result.IsSuccess)
-                         
-        //                 return RedirectToAction("Index");
-                         
-        //           //  ModelState.AddModelError(string.Empty, result.ErrorMessage);
-        //             }          
-        //     }
-    }
+        [HttpPost]
+        public async Task<IActionResult> Create(JournalVoucherViewModel model)
+            {
+            //if (ModelState.IsValid)
+            //    {
+              ////  var result =
+                 await _JournalVouchersService.CreateJournalVoucher(model);
+              //  if (result.IsSuccess)
+
+                    return RedirectToAction("Index");
+
+              //  ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                //}
+            }
+
+        [HttpPost]
+        public async Task<IActionResult> Edit(JournalVoucherViewModel? model)
+            {
+            //if (ModelState.IsValid)
+            //    {
+                //  var result = 
+                  await _JournalVouchersService.UpdateJournalVoucher(model);
+                // if (result.IsSuccess)
+
+                return RedirectToAction("Index");
+
+                //  ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                //}
+            }
+        }
 }

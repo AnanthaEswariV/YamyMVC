@@ -2,9 +2,7 @@
 public partial class TblCustomer
 {
     public int Id { get; set; }
-    [ForeignKey(nameof(Id))]
-    public virtual TblCreditNote? CreditNotes { get; set; }
-
+    
     public int Code { get; set; }
 
     public string? Name { get; set; }
@@ -40,7 +38,7 @@ public partial class TblCustomer
     public string? BuildingName { get; set; }
 
     public int? AccountId { get; set; }
-    [ForeignKey("AccountId")]
+    [ForeignKey(nameof(AccountId))]
     public virtual TblCoaLevel4? Account { get; set; }
 
     public string? Trn { get; set; }

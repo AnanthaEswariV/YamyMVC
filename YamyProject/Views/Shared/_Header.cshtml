@@ -53,7 +53,15 @@
                             <li><a href="/Lists/FixedAssetsCategory">Fixed Assets Category</a></li>
                         </ul>
                     </li>
-                    <li><a href="">Voucher</a></li>
+                    <li class="dropdown has-submenu">
+                        <a href="">Voucher</a>
+                        <ul class="submenu">
+                            <li><a asp-controller="ReceiptVouchers" asp-action="Index"></a>Payment Voucher</li>
+                            <li><a asp-controller="ReceiveVoucher" asp-action="Index"></a>Receipt Voucher</li>
+                            <li><a asp-controller="AdvancePayments" asp-action="Index"></a>Advance Payment</li>
+                            <li><a asp-controller="GeneralJournalVouchers" asp-action="Index"></a>General Journal Voucher</li>
+                        </ul>
+                        </li>
                     <li class="dropdown has-submenu">
                         <a href="">Prepaid Expense List</a>
                         <ul class="submenu">
@@ -93,7 +101,7 @@
                         </ul>
                     </li>
                     <li><a href="/Lists/ItemList">Add New Item</a></li>
-                    <li><a href="">Stock Management</a></li>
+                    <li><a asp-controller="ItemStockSettlement" asp-action="Index">Stock Management</a></li>
                     <li><a href="/Lists/ItemList">Inventory Center</a></li>
                     <li><a href="/Inventory/WareHouse">Warehouse Center</a></li>
                     <li><a href="/Inventory/WarehouseTransfer">Item Warehouse Transfter</a></li>
@@ -183,18 +191,47 @@
                         <a href="">Company</a>
                         <ul class="submenu">
                             <li><a href="/Reports/AccountBalanceReport">Balance Sheet Standard</a></li>
-                            <li><a href="">Income By Customer Summary</a></li>
-                            <li><a href="">Expense From Vendor Summary</a></li>
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Expense From Vendor Summary</a></li>
                             <li><a href="/Reports/ProfitLoss">Profit & Loss</a></li>
-                            <li><a href="">Statement of Cash Flow</a></li>
-                            <li><a href="">Income Expense Statement</a></li>
-                            <li><a href="">User Activity Report</a></li>
+                            <li><a asp-controller="IncomeSummary" asp-action="CashFlowStatement">Statement of Cash Flow</a></li>
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeExpenseStatement">Income Expense Statement</a></li>
+                            <li><a asp-controller="IncomeSummary" asp-action="UserActivity">User Activity Report</a></li>
                         </ul>
                         </li>
-                    <li><a href="">Customer & Receivable</a></li>
-                    <li><a href="">Sales</a></li>
-                    <li><a href="">Vendor & Payable</a></li>
-                    <li><a href="">Purchases</a></li>
+                    <li class="dropdown has-submenu">
+                        <a href="">Customer & Receivable</a>
+                        <ul class="submenu">
+                            <li><a asp-controller="CustomerAndReceivableC" asp-action="CustomerSummary">Customer Summary</a></li>
+                            <li><a asp-controller="CustomerAndReceivableC" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>
+                            <li><a asp-controller="CustomerAndReceivableC" asp-action="CustomerBalanceSummary"></a>Customer Balance Summary</li>
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary"></a> Income By Customer Summary</li>
+                        </ul>
+                    </li>
+                    <li class="dropdown has-submenu">
+                        <a href="">Sales</a>
+                        <ul class="submenu">
+                            <li><a asp-controller="SalesSummary" asp-action="SalesByCustomerSummary">Sales By Customer Summary</a></li>
+                            <li><a asp-controller="SalesSummary" asp-action="ItemSummary">Sales By Item Summary</a></li>
+                        </ul>
+                    </li>
+                     <li class="dropdown has-submenu">
+                        <a href="">Vendor & Payable</a>
+                        <ul class="submenu">
+                            <li><a asp-controller="VendorAndPayable" asp-action="VendorSummary">Vendor Summary</a></li>
+                            <li><a asp-controller="VendorAndPayable" asp-action="VendorAgingSummary">Vendor Aging Summary</a></li>
+                            <li><a asp-controller="VendorAndPayable" asp-action="VendorBalanceSummary"></a>Vendor Balance Summary</li>
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary"></a> Income By Vendor Summary</li>
+                        </ul>
+                    </li>
+                       <li class="dropdown has-submenu">
+                        <a href="">Purchases</a>
+                        <ul class="submenu">
+                            <li><a asp-controller="PurchasesReport" asp-action="PurchaseByVendorSummary">Purchase By Vendor Summary</a></li>
+                            <li><a asp-controller="PurchasesReport" asp-action="ItemSummary">Purchase By Items Summary</a></li>
+                            <li><a asp-controller="PurchasesReport" asp-action="PurchaseBySubcontractorSummary"></a>Purchase By Subcontractor Summary</li>
+                        </ul>
+                    </li>
                     <li class="dropdown has-submenu">
                         <a href="">Employees</a>
                         <ul class="submenu">
@@ -261,8 +298,8 @@
                             <li><a href="/Reports/CityList">City List</a></li>
                             <li><a href="/Reports/CountryList">Country List</a></li>
                             <li><a href="/Lists/CostCenter">Cost Center List</a></li>
-                            <li><a href="">Customer List</a></li>
-                            <li><a href="">Customer Category List</a></li>
+                            <li><a asp-controller="CustomerList" asp-action="CustomerList">Customer List</a></li>
+                            <li><a asp-controller="CustomerList" asp-action="CustomerCategoryList">Customer Category List</a></li>
                             <li><a href="/Lists/Department">Department List</a></li>
                             <li><a href="/Reports/EmployeeList">Employee List</a></li>
                             <li><a href="/Reports/FixedAssetList">Fixed Asset List</a></li>
@@ -277,8 +314,8 @@
                             <li><a href="/Lists/Position">Position List</a></li>
                             <li><a href="/Lists/PrepaidExpense">Prepaid Expense List</a></li>
                             <li><a href="/Lists/PrepaidExpenseCategory">Prepaid Expense Category List</a></li>
-                            <li><a href="">Vendor List</a></li>
-                            <li><a href="">Vendor Category List</a></li>
+                            <li><a asp-controller="VendorList" asp-action="VendorList">Vendor List</a></li>
+                            <li><a asp-controller="VendorList" asp-action="VendorCategoryList">Vendor Category List</a></li>
                         </ul>
                     </li>
 
@@ -288,7 +325,9 @@
                 Settings
                 <ul class="submenu">
                     @* <li><a href="">Settings</a></li> *@
+                    <li><a asp-controller="MasterSettings" asp-action="Index">Settings</a></li>
                     <li><a href="/Settings/ChangePassword">Change Current Password</a></li>
+                    <li><a asp-controller="UserAccounts" asp-action="Index">User</a></li>
                     @* <li><a href="">Users</a></li> *@
                 </ul>
             </li>

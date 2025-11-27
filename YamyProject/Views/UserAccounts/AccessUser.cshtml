@@ -4,49 +4,163 @@
     ViewData["Title"] = "Access User Control";
     }
 
-<div class="container-fluid py-2">
-    <!-- Header bar -->
+<style>
+    body {
+        background-color: #f5f6f8;
+    }
+
+    .access-header-bar {
+        background-color: #003b73;
+        color: #fff;
+        padding: 4px 12px;
+        font-size: .95rem;
+    }
+
+    .access-card {
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+    }
+
+    /* left user list */
+    #UserList table {
+        font-size: .8rem;
+    }
+
+    #UserList thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    /* right side */
+    .user-info-title {
+        font-size: 1.6rem;
+        font-weight: 300;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .user-info-small-label {
+        font-size: .8rem;
+        color: #666;
+    }
+
+    .user-info-small-value {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-left: .25rem;
+    }
+
+    .permissions-wrapper {
+        background-color: #f8f8f8;
+        border-top: 1px solid #e5e5e5;
+        padding: 8px 12px;
+    }
+
+    .permission-row {
+        font-size: .8rem;
+        padding: 4px 0;
+    }
+
+        .permission-row + .permission-row {
+            border-top: 1px solid #f0f0f0;
+        }
+
+    .permission-category-label {
+        white-space: nowrap;
+        font-weight: 500;
+        color: #555;
+    }
+
+    .permission-arrow-btn {
+        border: none;
+        background: transparent;
+        padding: 0 4px 0 0;
+        line-height: 1;
+    }
+
+        .permission-arrow-btn i {
+            font-size: .75rem;
+        }
+
+    .permission-select-all {
+        font-size: .75rem;
+    }
+
+    .permission-items-panel {
+        background-color: #f9f9f9;
+        border-radius: 2px;
+        padding: 4px 10px;
+    }
+
+    .permission-items-table td {
+        padding: 2px 4px;
+        vertical-align: middle;
+        font-size: .75rem;
+    }
+
+    .permission-items-table .form-check {
+        margin-bottom: 0;
+    }
+
+    .permission-items-table .form-check-label {
+        font-size: .75rem;
+    }
+
+    .permission-items-table .text-danger {
+        font-weight: 500;
+    }
+
+    .project-access-title {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-top: 10px;
+        margin-bottom: 4px;
+    }
+</style>
+
+<div class="container-fluid py-1">
+    <!-- top blue bar -->
     <div class="row mb-2">
         <div class="col">
-            <div class="d-flex justify-content-between align-items-center bg-primary text-white px-3 py-2 rounded-1">
-                <h5 class="mb-0">Access User Control</h5>
+            <div class="access-header-bar d-flex justify-content-center">
+                <strong>Access User Control</strong>
             </div>
         </div>
     </div>
 
-    <form method="post">
+    <form >
         @* @Html.AntiForgeryToken() *@
 
-        <div class="row">
-            <!-- LEFT: Users list + filter -->
+        <div class="row g-2">
+            <!-- LEFT: user list -->
             <div class="col-3">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-light py-2">
+                <div class="card access-card h-100">
+                    <div class="card-header py-1">
                         <div class="d-flex justify-content-between align-items-center">
-                            <!-- Add / Edit / Delete user -->
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-person-plus"></i> Add New User
+                            <div class="d-flex align-items-center gap-1">
+                                <!-- NEW USER BUTTON -->
+                                <button type="button"
+                                        id="btnNewUser"
+                                        class="btn btn-primary btn-sm">
+                                    <i class="bi bi-person-plus"></i>
                                 </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" asp-controller="Users" asp-action="Create">New User</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Users" asp-action="Edit" asp-route-id="@Model.SelectedUserId">Edit User</a></li>
-                                    <li><a class="dropdown-item text-danger" asp-controller="Users" asp-action="Delete" asp-route-id="@Model.SelectedUserId">Delete User</a></li>
-                                </ul>
+                                <span class="small fw-semibold">Add New User</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card-body border-top">
-                        <!-- Status filter + search -->
-                        <div class="mb-2">
-                            <select asp-for="StatusFilter" class="form-select form-select-sm"
+                    <div class="card-body border-top pt-2 pb-1">
+                        <!-- status filter -->
+                        <div class="mb-1">
+                            <select asp-for="StatusFilter"
                                     asp-items='@(new SelectList(new List<string> { "All", "Active", "Inactive" }))'
+                                    class="form-select form-select-sm"
                                     onchange="this.form.submit()">
                             </select>
                         </div>
 
+                        <!-- search -->
                         <div class="input-group input-group-sm mb-2">
                             <input asp-for="SearchTerm" class="form-control" placeholder="Search by name, code" id="txtSearch" />
                             <button class="btn btn-outline-secondary" type="submit">
@@ -54,12 +168,12 @@
                             </button>
                         </div>
 
-                        <!-- Users table -->
-                        <div class="table-responsive" style="max-height: 60vh;" id="UserList">
+                        <!-- users -->
+                        <div class="table-responsive" style="max-height: 70vh;" id="UserList">
                             <table class="table table-sm table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:60px;">ID</th>
+                                        <th style="width:55px;">ID</th>
                                         <th>Name</th>
                                     </tr>
                                 </thead>
@@ -81,145 +195,153 @@
                 </div>
             </div>
 
-            <!-- RIGHT: User info + permissions -->
+            <!-- RIGHT: info + permissions -->
             <div class="col-9">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-light py-2">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">User Information</h5>
-                            <button type="submit" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-save"></i> Save
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="card-body" id="UserInformation">
-                        <!-- hidden selected user -->
+                <div class="card access-card h-100">
+                    <div class="card-body p-2">
+                        <!-- hidden selected user for POST -->
                         <input asp-for="SelectedUserId" type="hidden" id="SelectedUserId" />
 
-                        <!-- TOP INFO (loaded by UserInformation(int id)) -->
-                        <div id="UserInformationTop">
-                            @* Optional initial content (fallback if JS not used) *@
-                            @if (Model.UserInfo != null)
-                                {
-                                <div class="mb-3 small">
-                                    <div></div>
-                                    <div class="col-md-3">
-                                        <strong>User Code:</strong> @Model.UserInfo.UserCode
+                        <!-- big title -->
+                        <div class="mb-2 border-bottom pb-1">
+                            <div class="user-info-title">User Information</div>
+
+                            <div id="UserInformationTop">
+                                @if (Model.UserInfo != null)
+                                    {
+                                    <div class="row g-2 small">
+                                        <div class="col-md-3">
+                                            <span class="user-info-small-label">User Code</span>
+                                            <span class="user-info-small-value">- @Model.UserInfo.UserCode</span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <span class="user-info-small-label">User Name</span>
+                                            <span class="user-info-small-value">- @Model.UserInfo.UserName</span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <span class="user-info-small-label">Name</span>
+                                            <span class="user-info-small-value">- @Model.UserInfo.Name</span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <span class="user-info-small-label">Status</span>
+                                            <span class="user-info-small-value">- @Model.UserInfo.Status</span>
+                                        </div>
                                     </div>
-                                    <div class="col-md-3">
-                                        <strong>User Name:</strong> @Model.UserInfo.UserName
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Name:</strong> @Model.UserInfo.Name
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Status:</strong> @Model.UserInfo.Status
-                                    </div>
-                                </div>
-                                }
-                            else
-                                {
-                                <div class="text-muted small">Select a user from the list.</div>
-                                }
+                                    }
+                                else
+                                    {
+                                    <div class="text-muted small">Select a user from the left list.</div>
+                                    }
+                            </div>
                         </div>
 
-                        <hr class="mt-0" />
-
-                        <!-- PERMISSIONS (loaded by UserRoleandPermission(int id)) -->
-                        <div class="permissions-area"
-                             id="PermissionsArea"
-                             style="max-height:60vh; overflow:auto;">
-
-                            @* Optional initial content from model (fallback) *@
+                        <!-- permissions -->
+                        <div class="permissions-wrapper" id="PermissionsArea" style="max-height:65vh; overflow:auto;">
                             @if (Model.Categories != null && Model.Categories.Any())
                                 {
-                                for (var i = 0; i < Model.Categories.Count; i++)
+                                @for (var i = 0; i < Model.Categories.Count; i++)
                                     {
                                     var cat = Model.Categories[i];
                                     var collapseId = $"perm-cat-{i}";
-                                    <div class="mb-1">
-                                        <!-- category header row -->
-                                        <div class="d-flex align-items-center">
-                                            <button class="btn btn-sm btn-link text-decoration-none px-0 me-2"
-                                                    type="button"
-                                                    data-bs-toggle="collapse"
-                                                    data-bs-target="#@collapseId"
-                                                    aria-expanded="false">
-                                                <i class="bi bi-caret-right-fill"></i>
-                                            </button>
-                                            <span class="me-auto">@cat.DisplayName</span>
-                                            <div class="form-check form-check-inline mb-0">
-                                                <input class="form-check-input"
-                                                       asp-for="Categories[i].SelectAll"
-                                                       type="checkbox"
-                                                       data-category-select-all="true"
-                                                       data-category-index="@i" />
-                                                <label class="form-check-label small">Select All</label>
+                                    <div class="permission-row">
+                                        <div class="row align-items-start">
+                                            <!-- left: category name -->
+                                            <div class="col-3">
+                                                <div class="d-flex align-items-center">
+                                                    <button type="button"
+                                                            class="permission-arrow-btn"
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#@collapseId"
+                                                            aria-expanded="false"
+                                                            aria-controls="@collapseId">
+                                                        <i class="bi bi-caret-right-fill"></i>
+                                                    </button>
+                                                    <span class="permission-category-label">
+                                                        @cat.DisplayName
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <!-- right: select all + items -->
+                                            <div class="col-9">
+                                                <div class="d-flex align-items-center mb-1">
+                                                    <div class="form-check permission-select-all">
+                                                        <input class="form-check-input"
+                                                               asp-for="Categories[i].SelectAll"
+                                                               type="checkbox"
+                                                               data-category-select-all="true"
+                                                               data-category-index="@i" />
+                                                        <label class="form-check-label">Select All</label>
+                                                    </div>
+                                                </div>
+
+                                                <div class="collapse permission-items-panel" id="@collapseId">
+                                                    <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                        <tbody>
+                                                            @for (var j = 0; j < cat.Items.Count; j++)
+                                                                {
+                                                                <tr>
+                                                                    <td class="w-50">
+                                                                        <div class="form-check">
+                                                                            <input class="form-check-input"
+                                                                                   asp-for="Categories[i].Items[j].CanView"
+                                                                                   data-item-checkbox="true"
+                                                                                   data-category-index="@i" />
+                                                                            <label class="form-check-label">
+                                                                                @cat.Items[j].Name
+                                                                            </label>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-check-inline">
+                                                                            <input class="form-check-input"
+                                                                                   asp-for="Categories[i].Items[j].CanEdit" />
+                                                                            <label class="form-check-label">Edit</label>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <div class="form-check form-check-inline">
+                                                                            <input class="form-check-input"
+                                                                                   asp-for="Categories[i].Items[j].CanDelete" />
+                                                                            <label class="form-check-label text-danger">Delete</label>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         </div>
+                                    </div>
+                                    }
 
-                                        <!-- items -->
-                                        <div class="collapse ms-4" id="@collapseId">
-                                            <table class="table table-sm mb-0 align-middle">
-                                                <tbody>
-                                                    @for (var j = 0; j < cat.Items.Count; j++)
-                                                        {
-                                                        <tr>
-                                                            <td class="w-50">
-                                                                <div class="form-check mb-0">
-                                                                    <input class="form-check-input"
-                                                                           asp-for="Categories[i].Items[j].CanView"
-                                                                           data-category-index="@i"
-                                                                           data-item-checkbox="true" />
-                                                                    <label class="form-check-label">
-                                                                        @cat.Items[j].Name
-                                                                    </label>
-                                                                </div>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <div class="form-check form-check-inline mb-0">
-                                                                    <input class="form-check-input"
-                                                                           asp-for="Categories[i].Items[j].CanEdit" />
-                                                                    <label class="form-check-label small">Edit</label>
-                                                                </div>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <div class="form-check form-check-inline mb-0">
-                                                                    <input class="form-check-input"
-                                                                           asp-for="Categories[i].Items[j].CanDelete" />
-                                                                    <label class="form-check-label small text-danger">Delete</label>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        }
-                                                </tbody>
-                                            </table>
+                                <!-- Construction / Project access (bottom) -->
+                                <div class="mt-3 border-top pt-2">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <span class="permission-category-label me-2">Construction Access</span>
+                                        <div class="form-check permission-select-all mb-0">
+                                            <input type="checkbox" class="form-check-input" id="CBSelectAllConstruction" />
+                                            <label class="form-check-label">Select All</label>
                                         </div>
                                     </div>
 
-                                    <hr class="my-1" />
-                                    }
-
-                                <!-- bottom project access section -->
-                                <div class="mt-3">
-                                    <strong>Project Access</strong>
-                                    <div class="mt-2">
+                                    <div class="permission-items-panel">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="projDashboard">
-                                            <label class="form-check-label" for="projDashboard">Project Dashboard</label>
+                                            <input class="form-check-input" type="checkbox" id="CBProjectDashBoard" />
+                                            <label class="form-check-label">Project Dashboard</label>
                                         </div>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="projTender">
-                                            <label class="form-check-label" for="projTender">Project Tender</label>
+                                            <input class="form-check-input" type="checkbox" id="CBProjectTender" />
+                                            <label class="form-check-label">Project Tender</label>
                                         </div>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="projEstimate">
-                                            <label class="form-check-label" for="projEstimate">Project Estimate</label>
+                                            <input class="form-check-input" type="checkbox" id="CBProjectEstimate" />
+                                            <label class="form-check-label">Project Estimate</label>
                                         </div>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="projPlanning">
-                                            <label class="form-check-label" for="projPlanning">Project Planning</label>
+                                            <input class="form-check-input" type="checkbox" id="CBProjectPlanning" />
+                                            <label class="form-check-label">Project Planning</label>
                                         </div>
                                     </div>
                                 </div>
@@ -228,7 +350,13 @@
                                 {
                                 <div class="text-muted small">Permissions will appear here when you select a user.</div>
                                 }
-                        </div> <!-- /permissions -->
+                        </div>
+
+                        <div class="mt-2 text-end">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="bi bi-save"></i> Save
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -236,40 +364,223 @@
     </form>
 </div>
 
+<!-- MODAL CONTAINER FOR NEW / EDIT USER -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" id="userModalBody">
+            @* _UserForm partial will be loaded here *@
+        </div>
+    </div>
+</div>
+
     @section Scripts {
     <script>
-        // "Select All" behaviour per category (still works for dynamically loaded content)
+        // ---------- small helper to prevent HTML injection ----------
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ---------- render User Information from JSON ----------
+        function renderUserInfo(user) {
+            if (!user) {
+                return '<div class="text-muted small">Select a user from the left list.</div>';
+            }
+
+            return `
+                <div class="row g-4 small">
+                    <div class="col-md-3">
+                        <span class="user-info-small-label">User Code</span>
+                        <span class="user-info-small-value">- ${escapeHtml(user.userCode)}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="user-info-small-label">User Name</span>
+                        <span class="user-info-small-value">- ${escapeHtml(user.userName)}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="user-info-small-label">Name</span>
+                        <span class="user-info-small-value">- ${escapeHtml(user.name)}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="user-info-small-label">Status</span>
+                        <span class="user-info-small-value">- ${escapeHtml(user.status)}</span>
+                    </div>
+                </div>`;
+        }
+
+        // ---------- render Permissions from JSON ----------
+        function renderPermissions(categories) {
+            if (!categories || !categories.length) {
+                return '<div class="text-muted small">Permissions will appear here when you select a user.</div>';
+            }
+
+            let html = '';
+            categories.forEach((cat, i) => {
+                const collapseId = `perm-cat-${i}`;
+                const selectAllChecked = cat.selectAll ? 'checked' : '';
+
+                html += `
+                <div class="permission-row">
+                  <div class="row align-items-start">
+                    <div class="col-3">
+                      <div class="d-flex align-items-center">
+                        <button type="button"
+                                class="permission-arrow-btn"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#${collapseId}"
+                                aria-expanded="false"
+                                aria-controls="${collapseId}">
+                          <i class="bi bi-caret-right-fill"></i>
+                        </button>
+                        <span class="permission-category-label">
+                          ${escapeHtml(cat.displayName)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="col-9">
+                      <div class="d-flex align-items-center mb-1">
+                        <div class="form-check permission-select-all">
+                          <input class="form-check-input"
+                                 type="checkbox"
+                                 data-category-select-all="true"
+                                 data-category-index="${i}"
+                                 ${selectAllChecked} />
+                          <label class="form-check-label">Select All</label>
+                        </div>
+                      </div>
+
+                      <div class="collapse permission-items-panel" id="${collapseId}">
+                        <table class="table table-borderless table-sm permission-items-table mb-0">
+                          <tbody>`;
+
+                (cat.items || []).forEach(item => {
+                    const canViewChecked = item.canView ? 'checked' : '';
+                    const canEditChecked = item.canEdit ? 'checked' : '';
+                    const canDeleteChecked = item.canDelete ? 'checked' : '';
+
+                    html += `
+                            <tr>
+                                <td class="w-50">
+                                    <div class="form-check">
+                                        <input class="form-check-input perm-checkbox"
+                                               type="checkbox"
+                                               data-item-checkbox="true"
+                                               data-category-index="${i}"
+                                               data-submenu-id="${item.id}"
+                                               data-perm-type="view"
+                                               ${canViewChecked} />
+                                        <label class="form-check-label">
+                                            ${escapeHtml(item.name)}
+                                        </label>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input perm-checkbox"
+                                               type="checkbox"
+                                               data-submenu-id="${item.id}"
+                                               data-perm-type="edit"
+                                               ${canEditChecked} />
+                                        <label class="form-check-label">Edit</label>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input perm-checkbox"
+                                               type="checkbox"
+                                               data-submenu-id="${item.id}"
+                                               data-perm-type="delete"
+                                               ${canDeleteChecked} />
+                                        <label class="form-check-label text-danger">Delete</label>
+                                    </div>
+                                </td>
+                            </tr>`;
+                });
+
+                html += `
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>`;
+            });
+
+            return html;
+        }
+
+        // ---------- change events ----------
         document.addEventListener('change', function (e) {
+            // 1) per-category Select All
             if (e.target.matches('[data-category-select-all="true"]')) {
                 const index = e.target.getAttribute('data-category-index');
                 const checked = e.target.checked;
+
                 document
                     .querySelectorAll('[data-item-checkbox="true"][data-category-index="' + index + '"]')
-                    .forEach(cb => cb.checked = checked);
+                    .forEach(cb => {
+                        cb.checked = checked;
+                        cb.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+            }
+
+            // 2) save single permission
+            if (e.target.matches('.perm-checkbox')) {
+                const row = e.target.closest('tr');
+                if (!row) return;
+
+                const viewCb = row.querySelector('[data-perm-type="view"]');
+                const editCb = row.querySelector('[data-perm-type="edit"]');
+                const deleteCb = row.querySelector('[data-perm-type="delete"]');
+
+                const submenuId = viewCb.getAttribute('data-submenu-id');
+                const canView = viewCb.checked;
+                const canEdit = editCb.checked;
+                const canDelete = deleteCb.checked;
+
+                const userId = document.getElementById('SelectedUserId')?.value;
+                if (!userId) return;
+
+                fetch('@Url.Action("ChangePermission")'
+                    + '?userId=' + encodeURIComponent(userId)
+                    + '&subMenuId=' + encodeURIComponent(submenuId)
+                    + '&canView=' + canView
+                    + '&canEdit=' + canEdit
+                    + '&canDelete=' + canDelete,
+                    {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .catch(err => console.error(err));
             }
         });
 
+        // ---------- main load module ----------
         (function () {
-
-              // Search
-          $('#txtSearch').on('input', function(){
-            const q = this.value.toLowerCase();
-            $('#UserList .User-item').each(function(){
-              const t = $(this).text().toLowerCase();
-              $(this).toggle(t.includes(q));
+            // search filter
+            $('#txtSearch').on('input', function () {
+                const q = this.value.toLowerCase();
+                $('#UserList .user-row').each(function () {
+                    const t = $(this).text().toLowerCase();
+                    $(this).toggle(t.indexOf(q) !== -1);
+                });
             });
-          });
-          $('#btnClear').on('click', function(){ $('#txtSearch').val('').trigger('input'); });
 
             const infoContainer = document.getElementById('UserInformationTop');
             const permsContainer = document.getElementById('PermissionsArea');
             const hiddenSelectedUser = document.getElementById('SelectedUserId');
 
-            const infoUrl = '@Url.Action("UserInformation")';         // GET /[ThisController]/UserInformation?id=...
-            const permsUrl = '@Url.Action("UserRoleandPermission")';  // GET /[ThisController]/UserRoleandPermission?id=...
+            const infoUrl = '@Url.Action("UserInformation")';
+            const permsUrl = '@Url.Action("UserRoleandPermission")';
 
             let isLoading = false;
-            let currentUserId = null;
+            let currentUserId = hiddenSelectedUser ? hiddenSelectedUser.value || null : null;
 
             function setLoadingState() {
                 if (infoContainer) {
@@ -283,9 +594,7 @@
             }
 
             function loadUser(id, clickedRow) {
-                if (!id) return;
-                if (isLoading) return;
-                if (id === currentUserId) return;
+                if (!id || isLoading || id === currentUserId) return;
 
                 isLoading = true;
                 currentUserId = id;
@@ -297,55 +606,30 @@
                     clickedRow.classList.add('table-success');
                 }
 
-                // update hidden field for Save
                 if (hiddenSelectedUser) {
                     hiddenSelectedUser.value = id;
                 }
 
-                setLoadingState();                
+                setLoadingState();
+
                 const infoRequest = fetch(infoUrl + '?id=' + encodeURIComponent(id), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });                
+                });
+
                 const permsRequest = fetch(permsUrl + '?id=' + encodeURIComponent(id), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                                
-               // ${safe(infoRequest.UserCode)}
 
-                    function renderHeader(infoRequest){
-                              $header.html
-                            (` 
-                              <div class="mb-3 small">
-                                    <div></div>
-                                    <div class="col-md-3">
-                                        <strong>User Code:</strong>   ${(infoRequest.UserCode)}
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>User Name:</strong>  ${(infoRequest.UserName)} 
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Name:</strong>  ${(infoRequest.Name)} 
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Status:</strong>  ${(infoRequest.Status)} 
-                                    </div>
-                                </div>`
-                            );
-                    }
-                    function renderperms(permsRequest){
-                              $header.html(` `);
-                    }
-                    debugger
-                    Promise.all([infoRequest, permsRequest])                    
+                Promise.all([infoRequest, permsRequest])
                     .then(responses => {
                         if (!responses[0].ok || !responses[1].ok) {
                             throw new Error('Failed to load data from server.');
                         }
-                        return Promise.all([responses[0].text(), responses[1].text()]);
-                    })                    
-                    .then(([infoHtml, permsHtml]) => {
-                        if (infoContainer) infoContainer.innerHTML = infoHtml;
-                        if (permsContainer) permsHtml && (permsContainer.innerHTML = permsHtml);
+                        return Promise.all([responses[0].json(), responses[1].json()]);
+                    })
+                    .then(([userInfo, permissions]) => {
+                        if (infoContainer) infoContainer.innerHTML = renderUserInfo(userInfo);
+                        if (permsContainer) permsContainer.innerHTML = renderPermissions(permissions);
                     })
                     .catch(err => {
                         console.error(err);
@@ -363,26 +647,111 @@
                     });
             }
 
+            // click on user rows
+            document.addEventListener('click', function (e) {
+                const row = e.target.closest('.user-row[data-user-id]');
+                if (!row) return;
+                const id = row.getAttribute('data-user-id');
+                loadUser(id, row);
+            });
 
-            // attach click handlers to rows
+            // auto-load first user
             document.addEventListener('DOMContentLoaded', function () {
-                const rows = document.querySelectorAll('.user-row[data-user-id]');
-                rows.forEach(row => {
-                    row.addEventListener('click', function () {
-                        const id = this.getAttribute('data-user-id');
-                        loadUser(id, this);
-                    });
-                });
-
-                // Optional: auto-load first user (like your Vendor example)
-                if (rows.length > 0) {
-                    const first = rows[0];
-                    const firstId = first.getAttribute('data-user-id');
-                    if (firstId) {
-                        loadUser(firstId, first);
-                    }
+                const firstRow = document.querySelector('.user-row[data-user-id]');
+                if (firstRow) {
+                    const id = firstRow.getAttribute('data-user-id');
+                    loadUser(id, firstRow);
                 }
             });
         })();
+
+        // ---------- NEW USER MODAL (Bootstrap 5) ----------
+        (function () {
+            
+            const newUserUrl = '@Url.Action("Edit", "UserAccounts")'; // GET partial
+            const btnNewUser = document.getElementById('btnNewUser');
+            
+            if (btnNewUser) {
+                btnNewUser.addEventListener('click', function () {
+                    fetch(newUserUrl, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(r => r.text())
+                        .then(html => {
+                            document.getElementById('userModalBody').innerHTML = html;
+
+                            const modalElement = document.getElementById('userModal');
+                            // const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                            // modal.show();
+                                    let modal = bootstrap.Modal.getInstance(modalElement);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalElement);  // create it if it doesn't exist
+        }
+        modal.show();
+                        })
+                        .catch(err => console.error(err));
+                });
+            }
+
+            // called from AJAX form in _UserForm.cshtml
+            window.onUserSaved = function (result) {
+                if (result && result.success) {
+                    const modalElement = document.getElementById('userModal');
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) modal.hide();
+                    // reload the page to show the new user in the left list
+                    window.location.reload();
+                }
+            };
+        })();
     </script>
+    <script>
+        // show/hide password toggle
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.toggle-password');
+            if (!btn) return;
+
+            var targetSelector = btn.getAttribute('data-target');
+            var input = document.querySelector(targetSelector);
+            if (!input) return;
+
+            input.type = (input.type === 'password') ? 'text' : 'password';
+        });
+
+        // AJAX submit for the user form
+        document.addEventListener('submit', function (e) {
+            const form = e.target.closest('#userForm');
+            if (!form) return;
+
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                method: form.method,
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(r => {
+                    const contentType = r.headers.get('content-type') || '';
+                    if (contentType.includes('application/json')) {
+                        return r.json();
+                    }
+                    // if server re-sent the form (validation errors)
+                    return r.text().then(html => ({ htmlOnly: true, html }));
+                })
+                .then(result => {
+                    if (result.htmlOnly) {
+                        // re-render form with validation messages
+                        document.getElementById('userModalBody').innerHTML = result.html;
+                    } else if (result.success && window.onUserSaved) {
+                        window.onUserSaved(result);
+                    }
+                })
+                .catch(err => console.error(err));
+        });
+    </script>
+
     }

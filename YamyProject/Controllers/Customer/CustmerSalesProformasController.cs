@@ -127,7 +127,23 @@
                        }).ToListAsync();
                 return Json(result);
                 }
-
+        public async Task<IActionResult> GetItemsDetels(int Id)
+            {
+            var result = await _Context.TblSalesProformaDetails
+             .Where(t => t.SalesId == Id)
+             .Include(t => t.Items)
+             .Select(i => new
+                 {
+                 i.Items,
+                 i.Qty,
+                 i.Price,
+                 i.Vat,
+                 i.Total
+                 }).ToListAsync();
+            return Json(result);
             }
 
+
         }
+
+    }

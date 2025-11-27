@@ -139,5 +139,22 @@
             await _PurchaseOrderService.UpdateTaxInvoiceAsync(model, userId);
             return RedirectToAction(nameof(Index));
             }
+
+
+        public async Task<IActionResult> GetItemsDetels(int Id)
+            {
+            var result = await _Context.TblPurchaseOrderDetails
+             .Where(t => t.PurchaseId == Id)
+             .Include(t => t.Items)
+             .Select(i => new
+                 {
+                 i.Items,
+                 i.Qty,
+                 i.Price,
+                 i.Vat,
+                 i.Total
+                 }).ToListAsync();
+            return Json(result);
+            }
         }
     }
