@@ -1,0 +1,561 @@
+﻿@model VatCorporateViewModel
+
+@{
+    ViewData["Title"] = "VAT declaration";
+    }
+
+<style>
+    .vat-page {
+        background: #f5f6f8;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .vat-header-bar {
+        background-color: #003b73;
+        color: #fff;
+        padding: 6px 16px;
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 12px;
+    }
+
+    .vat-card {
+        background: #fff;
+        border-radius: 3px;
+        box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+        padding: 14px 18px 24px;
+    }
+
+    .vat-label {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+
+    .vat-box {
+        border: 1px solid #ddd;
+        background: #f7f7f7;
+        padding: 4px 8px;
+        font-size: .8rem;
+        min-height: 28px;
+    }
+
+    .vat-input {
+        font-size: .8rem;
+        height: 28px;
+        text-align: center;
+        background: #f7f7f7;
+    }
+
+    .vat-col-header {
+        font-size: .75rem;
+        font-weight: 600;
+        text-align: center;
+        border: 1px solid #ddd;
+        background: #f7f7f7;
+        padding: 3px 4px;
+    }
+
+    .vat-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 12px 0 6px;
+    }
+
+    .vat-row-text {
+        font-size: .8rem;
+    }
+
+    .vat-small-text {
+        font-size: .75rem;
+    }
+</style>
+
+
+<div class="container-fluid vat-page py-2">
+    <div class="vat-header-bar d-flex justify-content-between">
+        <div>VAT declaration</div>
+        <div>VAT Corporate</div>
+        <div class="text-end">إقرار ضريبة القيمة المضافة</div>
+    </div>
+
+    <div class="vat-card">
+        <!-- Top period / TRN -->
+        <div class="row mb-2">
+            <div class="col-md-4">
+                <div class="vat-label">Period From@* </div>
+                <div class="vat-box"> *@
+                    @Model.PeriodFrom.ToString("d")
+                </div>
+
+                @*   <div class="col-md-2 d-flex align-items-end"> justify-content-center
+                <span class="vat-small-text">To</span> *@
+
+                    <div class="vat-label"> To
+                        @*&nbsp;</div> *@
+                @* <div class="vat-box"> *@
+                    @Model.PeriodTo.ToString("d")
+                </div>
+            </div>
+            <div class="col-md-2 text-end align-items-end">
+                <div class="vat-small-text">للفترة من @Model.PeriodFrom.ToString("d") إلى @Model.PeriodTo.ToString("d")</div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="vat-label">Date Due Return VAT</div>
+                <div class="vat-box">
+                    @Model.DateDueReturnVat.ToString("d")
+                </div>
+
+                <div class="vat-label mt-2">Legal Name of Entity English</div>
+                <div class="vat-box">
+                    @Model.CompanyName
+                </div>
+            </div>
+
+            <div class="col-md-4 text-center">
+                <div class="vat-label">TRN</div>
+                <div class="vat-box">@Model.TrnNo</div>
+
+                <div class="mt-4 fs-4 fw-semibold">
+                    @DateTime.Today.ToString("MM/dd/yyyy")
+                </div>
+                <div class="vat-small-text">
+                    ARC MASTER - الاسم باللغة
+                </div>
+            </div>
+
+            <div class="col-md-4 text-end">
+                <div class="vat-label">تاريخ استحقاق إقرار</div>
+                <div class="vat-box">@Model.DateDueReturnVat.ToString("d")</div>
+
+                <div class="vat-label mt-2">الاسم القانوني للكيان</div>
+                <div class="vat-box">@Model.CompanyName</div>
+            </div>
+        </div>
+
+        <!-- Column headers -->
+        <div class="row mb-1">
+            <div class="col-md-4">
+                <div class="vat-box fw-semibold">Description</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-col-header">Settlement</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-col-header">Value Added Tax (AED)</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-col-header">Amount (dirhams)</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-box fw-semibold text-center">الوصف</div>
+            </div>
+        </div>
+
+        <!-- ================= VAT on sales and all other ================= -->
+        <div class="vat-section-title">VAT on sales and all other</div>
+
+        <!-- 1 Abu Dhabi -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                1- Supplies subject to the basic rate in Abu Dhabi
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.AbuDhabiVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.AbuDhabiAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -1 التوريدات الخاضعة للنسبة الأساسية - أبوظبي
+            </div>
+        </div>
+
+        <!-- 2 Dubai -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                2- Supplies subject to the basic rate in Dubai
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.DubaiVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.DubaiAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -2 التوريدات الخاضعة للنسبة الأساسية - دبي
+            </div>
+        </div>
+
+        <!-- 3 Sharjah -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                3- Supplies subject to the basic rate in Sharjah
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.SharjahVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.SharjahAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -3 التوريدات الخاضعة للنسبة الأساسية - الشارقة
+            </div>
+        </div>
+
+        <!-- 4 Ajman -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                4- Supplies subject to the basic rate in Ajman
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.AjmanVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.AjmanAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -4 التوريدات الخاضعة للنسبة الأساسية - عجمان
+            </div>
+        </div>
+
+        <!-- 5 Umm Al Quwain -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                5- Supplies subject to the basic rate in Umm Al Quwain
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.UmmAlQuwainVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.UmmAlQuwainAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -5 التوريدات الخاضعة للنسبة الأساسية - أم القيوين
+            </div>
+        </div>
+
+        <!-- 6 Ras Al Khaimah -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                6- Supplies subject to the basic rate in Ras Al Khaimah
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.RasAlKhaimahVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.RasAlKhaimahAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -6 التوريدات الخاضعة للنسبة الأساسية - رأس الخيمة
+            </div>
+        </div>
+
+        <!-- 7 Fujairah -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                7- Supplies subject to the basic rate in Fujairah
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.FujairahVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.FujairahAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -7 التوريدات الخاضعة للنسبة الأساسية - الفجيرة
+            </div>
+        </div>
+
+        <!-- 8 Tourist refund -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                8- Amounts refunded to tourists based on the tourist tax refund system.
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.TouristRefundVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.TouristRefundAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -8 المبالغ التي تم ردها للسياح بناءً على نظام رد ضريبة السياحة
+            </div>
+        </div>
+
+        <!-- 9 Reverse accounting (sales) -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                9- Supplies are subject to the provisions of reverse accounting.
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ReverseAccountingSalesVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ReverseAccountingSalesAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -9 تخضع التوريدات لأحكام الاحتساب العكسي
+            </div>
+        </div>
+
+        <!-- 10 Zero-rated, 11 Exempt, 12 Goods imported, 13 Settlement goods imported , 14-->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                10- Zero-rated supplies
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ZeroRatedAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -10 التوريدات الخاضعة لنسبة الصفرية
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                11- Exempt supplies
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExemptAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -11 التوريدات المعفاة
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                12- Goods imported into the country
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.GoodsImportedVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.GoodsImportedAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -12 البضائع الواردة إلى الدولة
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-3">
+            <div class="col-md-4 vat-row-text">
+                13- Settlement of goods imported into the United Arab Emirates
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.GoodsImportedSettlementVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.GoodsImportedSettlementAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                -13 تسوية على البضائع المستوردة إلى
+            </div>
+        </div>
+
+        <!-- ================= VAT on expenses and all other inputs ================= -->
+        <hr class="my-3" />
+
+        <div class="row mb-1">
+            <div class="col-md-12">
+                <div class="vat-box fw-semibold text-center">
+                    Total
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-1">
+            <div class="col-md-4">
+                <div class="vat-box fw-semibold">Description</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-col-header">Settlement</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-col-header">Value Added Tax (AED)</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-col-header">Amount (dirhams)</div>
+            </div>
+            <div class="col-md-2">
+                <div class="vat-box fw-semibold text-center">الوصف</div>
+            </div>
+        </div>
+
+        <div class="vat-section-title">VAT on expenses and all other inputs</div>
+
+        <!-- 15-17 amounts -->
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                14 - Expenses subject to the basic rate
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExpensesBasicRateVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExpensesBasicRateAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                14- النفقات الخاضعة للنسبة الأساسية
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                15 - Supplies are subject to the provisions of reverse accounting.
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExpensesReverseAccountingVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExpensesReverseAccountingAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                15- تخضع التوريدات لأحكام الاحتساب
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                16 - Total
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly value="0.00" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExpensesTotalVat.ToString("N2")" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control vat-input" readonly
+                       value="@Model.ExpensesTotalAmount.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                16- المجموع
+            </div>
+        </div>
+
+        <!-- 18-20 totals -->
+        <div class="row align-items-center mt-3 mb-1">
+            <div class="col-md-4 vat-row-text">
+                17 - Net VAT due
+            </div>
+            <div class="col-md-8">
+                <input class="form-control vat-input" readonly
+                       value="@Model.NetVatDue.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                17- صافي ضريبة القيمة المضافة
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                18 - Total amount of tax recoverable for the period (AED)
+            </div>
+            <div class="col-md-8">
+                <input class="form-control vat-input" readonly
+                       value="@Model.TotalTaxRecoverable.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                18- إجمالي قيمة الضريبة القابلة للاسترداد
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-1">
+            <div class="col-md-4 vat-row-text">
+                19 - Tax payable for the period (AED)
+            </div>
+            <div class="col-md-8">
+                <input class="form-control vat-input" readonly
+                       value="@Model.TaxPayableForPeriod.ToString("N2")" />
+            </div>
+            <div class="col-md-2 text-end vat-row-text">
+                19- الضريبة المستحقة الدفع عن الفترة
+            </div>
+        </div>
+    </div>
+</div>

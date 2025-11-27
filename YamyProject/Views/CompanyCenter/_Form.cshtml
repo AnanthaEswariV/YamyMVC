@@ -24,9 +24,9 @@
         <div class="card-header py-2" style="background-color:#0d3b70;color:white;">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Company Profile</h5>
-                <button type="button" class="btn-close btn-close-white"
-                        data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+              @*   <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal" aria-label="Close"></button>*@
+            </div> 
         </div>
 
         <div class="card-body">
@@ -259,3 +259,28 @@
         </div>
     </div>
 </form>
+    @section script {
+    <script>
+        $(document).on('submit', '#companyProfileForm', function (e) {
+            e.preventDefault();
+
+            var $form = $(this);
+            
+            $.ajax({
+                url: $form.attr('action'),
+                type: $form.attr('method'),
+                data: $form.serialize(),
+                success: function (res) {
+                    if (res && res.success) {
+                        // ✅ Bootstrap 5 way
+                        var modalEl = $form.closest('.modal')[0];
+                        var modal = bootstrap.Modal.getInstance(modalEl)
+                                    || new bootstrap.Modal(modalEl);
+                        modal.hide();
+                    }
+                }
+            });
+        });
+    </script>
+
+}

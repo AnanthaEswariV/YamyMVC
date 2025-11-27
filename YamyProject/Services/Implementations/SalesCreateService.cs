@@ -105,12 +105,12 @@
                    // 6) Transfer flags + accounting entries
                    await TransferSaleAsync(vm.InvoiceType ?? "", saleId, vm.PONO ?? "");
                    await Transaction(vm,
-                       level4PaymentCreditMethodId: 2,
+                       level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Customer"),
+                       level4SalesInvoice:await _ListServices.DefaultAccountsSet("Sales"),
                        invid: saleId,
                        invoiceNo: vm.Invoce ?? invoiceNo,
-                       level4VatId: 3);
-
-                   await tx.CommitAsync();
+                       level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
+                    await tx.CommitAsync();
                    }
                catch
                    {
@@ -121,6 +121,7 @@
             }
         public async Task InsertInvItems(TaxInvoiceViewModel vm, int saleId = 0, string invoiceNo = "")
             {
+
             var details = new List<TblSalesDetail>(vm.Items.Count);
             saleId = saleId != 0 ? saleId : vm.Id;
             invoiceNo = !string.IsNullOrWhiteSpace(invoiceNo) ? invoiceNo : vm.Invoce;
@@ -350,7 +351,7 @@
                         .SetProperty(q => q.SalesId, invId));
                 }
             }
-        public async Task Transaction(TaxInvoiceViewModel model, int level4PaymentCreditMethodId, int invid = 0, string invoiceNo = "", int level4VatId = 0)
+        public async Task Transaction(TaxInvoiceViewModel model, int level4PaymentCreditMethodId,int level4SalesInvoice, int invid = 0, string invoiceNo = "", int level4VatId = 0)
             {
             invid = invid != 0 ? invid : model.Id;
             invoiceNo = !string.IsNullOrWhiteSpace(invoiceNo) ? invoiceNo : model.Invoce;
@@ -373,7 +374,7 @@
 
             // Revenue
             await addTransactionEntry(
-                model.Date, level4PaymentCreditMethodId, 0, model.TotalBeforeVat,
+                model.Date, level4SalesInvoice, 0, model.TotalBeforeVat,
                 invid, 0,
                 model.InvoiceType == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
                 "SALES", $"Sales Revenue For Invoice No. {invoiceNo}",
@@ -872,7 +873,8 @@
                     //insert the new details and transactions and item transactions and item card details and cost center transactions
                     await InsertInvItems(Model);
                     await Transaction(Model,
-                        level4PaymentCreditMethodId: 2,                      
+                        level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Customer"),
+                       level4SalesInvoice:await _ListServices.DefaultAccountsSet("Sales"),
                         invoiceNo: Model.Invoce ,
                         level4VatId: 3);
 

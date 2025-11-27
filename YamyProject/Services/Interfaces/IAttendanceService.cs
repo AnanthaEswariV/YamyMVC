@@ -3,5 +3,6 @@
     public interface IAttendanceService
         {
         Task<SaveResultViewModel> SaveAttendanceAsync(DefaultEmplowyeeViewModel request);
+        Task<DefaultAccountViewModel> GetListAsync();
         }
     }

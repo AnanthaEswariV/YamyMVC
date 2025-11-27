@@ -397,10 +397,11 @@
                     await InsertInvItems(vm, PurchaseId, invoiceNo);
                     // 6) Transfer flags + accounting entries
                     await Transaction(vm,
-                        level4PaymentCreditMethodId: 2,
+                        level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
+                        level4PurchaseReturnId: await _ListServices.DefaultAccountsSet("PurchaseReturn"),
                         invid: PurchaseId,
                         invoiceNo: vm.Invoce ?? invoiceNo,
-                        level4VatId: 3);
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Input"));
                  
                     await tx.CommitAsync();
                     }
@@ -465,9 +466,10 @@
                     //insert the new details and transactions and item transactions and item card details and cost center transactions
                     await InsertInvItems(Model);
                     await Transaction(Model,
-                        level4PaymentCreditMethodId: 2,
+                         level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
+                        level4PurchaseReturnId: await _ListServices.DefaultAccountsSet("PurchaseReturn"),
                         invoiceNo: Model.Invoce,
-                        level4VatId: 3);
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Input"));
 
                     await tx.CommitAsync();
                     }
@@ -640,7 +642,7 @@
             await _context.SaveChangesAsync();
             }
 
-        public async Task Transaction(PurchaseInvoiceViewModel model, int level4PaymentCreditMethodId, int invid = 0, string invoiceNo = "", int level4VatId = 0)
+        public async Task Transaction(PurchaseInvoiceViewModel model, int level4PaymentCreditMethodId,int level4PurchaseReturnId, int invid = 0, string invoiceNo = "", int level4VatId = 0)
             {
             invid = invid != 0 ? invid : model.Id;
             invoiceNo = !string.IsNullOrWhiteSpace(invoiceNo) ? invoiceNo : model.Invoce;
@@ -661,7 +663,7 @@
             );
             // Revenue
             await AddTransactionEntry(
-                model.Date, level4PaymentCreditMethodId,  0, (int)model.TotalBeforeVat,
+                model.Date, level4PurchaseReturnId,  0, (int)model.TotalBeforeVat,
                 invid, 0,
                 model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
                 "Purchase Return", $"Purchase Return For Invoice No. {invoiceNo}",

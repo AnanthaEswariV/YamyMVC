@@ -98,7 +98,8 @@ namespace YamyProject.Controllers
             }).ToList() ?? new List<SelectListItem>();
 
 
-            return View("Edite", vm); // reuse Edit view
+            return View("_CustomerForm", vm); // reuse Edit view
+        //    return View("Edite", vm); // reuse Edit view
         }
         // POST: CustomerCenter/Create
         [HttpPost]
@@ -110,7 +111,8 @@ namespace YamyProject.Controllers
                 // Reload dropdowns
                 var reloadVm = await _service.GetCreateCustomerFormAsync();
                 reloadVm.Customer = vm.Customer; // preserve entered data
-                return View("Edite", reloadVm);
+                return View("_CustomerForm", reloadVm);
+               // return View("Edite", reloadVm);
             }
 
             await _service.SaveCustomerAsync(vm.Customer);

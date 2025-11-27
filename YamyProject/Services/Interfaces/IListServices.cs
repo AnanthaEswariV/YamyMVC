@@ -25,6 +25,7 @@
         Task<IEnumerable<TblBank>> BindCombosBindBankAccount();
         Task<IEnumerable<TblSecUser>> GetUsersAsync();
         Task AreDefaultAccountsSet(List<string> list);
+        Task<int> DefaultAccountsSet(string Category);
 
         }
     }

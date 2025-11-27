@@ -129,5 +129,136 @@
             });
             }
 
+        //
+        public async Task<UserEditViewModel> GetUserForEditAsync(int? id)
+            {
+            var vm = new UserEditViewModel();
+
+            if (id.HasValue && id.Value > 0)
+                {
+                var user = await _context.TblSecUsers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == id.Value);
+
+                if (user != null)
+                    {
+                    vm.Id = user.Id;
+                    vm.FirstName = user.FirstName;
+                    vm.LastName = user.LastName;
+                    vm.UserName = user.UserName;
+                    vm.EmployeeId = user.EmpId;
+                    vm.RoleId = user.RoleId;
+                    vm.Active = user.Active == 0; // 0 = active, 1 = inactive (same as old code)
+                    }
+                }
+            else
+                {
+                // defaults for new user
+                vm.Active = true;
+                }
+
+            await PopulateLookupsAsync(vm);
+            return vm;
+            }
+
+        public async Task PopulateLookupsAsync(UserEditViewModel model)
+            {
+            model.Roles = await _context.TblSecRoles
+                .OrderBy(r => r.Name)
+                .Select(r => new SelectListItem
+                    {
+                    Value = r.Id.ToString(),
+                    Text = r.Name
+                    })
+                .ToListAsync();
+
+            model.Employees = await _context.TblEmployees
+                .OrderBy(e => e.Id)
+                .Select(e => new SelectListItem
+                    {
+                    Value = e.Id.ToString(),
+                    Text = e.Code + " - " + e.Name
+                    })
+                .ToListAsync();
+            }
+
+        public async Task<bool> UserNameExistsAsync(string userName, int excludeId)
+            {
+            return await _context.TblSecUsers
+                .AnyAsync(u => u.UserName == userName && u.Id != excludeId);
+            }
+
+        public async Task SaveUserAsync(UserEditViewModel model)
+            {
+            // username must be unique
+            bool exists = await UserNameExistsAsync(model.UserName, model.Id);
+            if (exists)
+                throw new InvalidOperationException("User Name already exists.");
+
+            if (model.IsNew)
+                {
+                var (hash, salt) = CreatePasswordHash(model.Password ?? string.Empty);
+
+                var entity = new TblSecUser
+                    {
+                    UserName = model.UserName,
+                    PasswordHash = hash,
+                    Salt = salt,
+                    EmpId = model.EmployeeId /*? -1*/,  // same as your old code
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    RoleId = model.RoleId!.Value,
+                    Active = model.Active ? 0 : 1,
+                    State = 0
+                    };
+
+                _context.TblSecUsers.Add(entity);
+                }
+            else
+                {
+                var entity = await _context.TblSecUsers
+                    .FirstOrDefaultAsync(u => u.Id == model.Id);
+
+                if (entity == null)
+                    throw new KeyNotFoundException("User not found.");
+
+                entity.UserName = model.UserName;
+                entity.EmpId = model.EmployeeId /*? -1*/;
+                entity.FirstName = model.FirstName;
+                entity.LastName = model.LastName;
+                entity.RoleId = model.RoleId!.Value;
+                entity.Active = model.Active ? 0 : 1;
+
+                // optional: if password supplied on edit, change it
+                if (!string.IsNullOrWhiteSpace(model.Password))
+                    {
+                    //var (hash, salt) = CreatePasswordHash(model.Password);
+                    //entity.PasswordHash = hash;
+                    //entity.Salt = salt;
+                    // var (hash, salt) =
+                    string salt;
+                    var hash=PasswordHelper.HashPassword(model.Password,out salt);
+                    entity.PasswordHash = hash;
+                    entity.Salt = salt;
+                    }
+                }
+
+            await _context.SaveChangesAsync();
+            }
+
+        private static (string hash, string salt) CreatePasswordHash(string password)
+            {
+            var saltBytes = RandomNumberGenerator.GetBytes(16);
+            var salt = Convert.ToBase64String(saltBytes);
+
+            var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000, HashAlgorithmName.SHA256);
+            var hashBytes = pbkdf2.GetBytes(32);
+            var hash = Convert.ToBase64String(hashBytes);
+
+            return (hash, salt);
+            }
+
+
         }
     }
+

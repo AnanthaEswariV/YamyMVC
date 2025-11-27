@@ -106,9 +106,6 @@
         [HttpGet]
         public async Task<IActionResult> GetItemsDetels(int Id)
             {
-            //if (string.IsNullOrEmpty(term))
-            //    return Json(new List<object>());
-
             var result = await _Context.TblSalesDetails
                 .Where(t=>t.SalesId==Id)
                 .Include(t=>t.Items)

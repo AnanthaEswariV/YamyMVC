@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Services.Implementations
+﻿using System.Collections.Generic;
+
+namespace YamyProject.Services.Implementations
     {
     public class ListServices : IListServices
         {
@@ -116,5 +118,14 @@
             //else
             //    return false;
             }
+        public async Task<int> DefaultAccountsSet(string Category)
+            {
+            var Account = await _context.TblCoaConfigs
+               .Where(t => t.Category == t.Category)
+               .Select(t=>t.AccountId)
+                .FirstOrDefaultAsync();
+            return Account??0;
+            }
+   
         }
     }

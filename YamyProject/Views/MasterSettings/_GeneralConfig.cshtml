@@ -1,0 +1,116 @@
+﻿@model GeneralConfigViewModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<style>
+    .config-panel {
+        border: 1px solid #dadada;
+        border-radius: 4px;
+        background-color: #ffffff;
+    }
+
+    .config-title {
+        font-weight: 700;
+        font-size: 1.05rem;
+        margin-bottom: .75rem;
+    }
+
+    .config-list .form-check-label {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: .95rem;
+    }
+
+    .btn-save {
+        min-width: 140px;
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <form method="post" class="row g-4">
+        @Html.AntiForgeryToken()
+        <!-- Left side: General Config -->
+        <div class="col-md-6 col-lg-5">
+            <div class="config-panel p-3 h-100">
+                <div class="config-title">General Config</div>
+
+                <div class="config-list">
+                    @for (int i = 0; i < Model.GeneralConfig.Count; i++)
+                        {
+                        <div class="form-check mb-2">
+                            <input type="hidden" asp-for="GeneralConfig[i].Id" />
+                            <input type="checkbox"
+                                   asp-for="GeneralConfig[i].IsChecked"
+                                   class="form-check-input general-config-toggle"
+                                   data-id="@Model.GeneralConfig[i].Id" />
+                            <label class="form-check-label">
+                                @Model.GeneralConfig[i].Name
+                            </label>
+                        </div>
+                        }
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side: Default Settings -->
+        <div class="col-md-6 col-lg-4">
+            <div class="config-panel p-3 h-100">
+                <div class="config-title">Default Settings</div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Default Tax</label>
+                    <select asp-for="DefaultTaxPercent"
+                            asp-items="Model.TaxOptions"
+                            class="form-select">
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save button -->
+        <div class="col-12 mt-3 text-center">
+            <button type="submit"
+                    class="btn btn-primary btn-save"
+                    formaction="@Url.Action("SaveDefaultTax", "MasterSettings")"
+                    formmethod="post">
+                Save
+            </button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+    (function () {
+        const configList = document.querySelector('.config-list');
+        if (!configList) return;
+
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        const csrfToken = tokenInput ? tokenInput.value : null;
+
+        configList.addEventListener('change', function (e) {
+            if (!e.target.classList.contains('general-config-toggle')) return;
+
+            const checkbox = e.target;
+            const id = checkbox.dataset.id;
+            const isChecked = checkbox.checked;
+
+            fetch('@Url.Action("GeneralConfig", "MasterSettings")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': csrfToken
+                },
+                body: JSON.stringify({
+                    id: Number(id),
+                    isChecked: isChecked
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('Failed to save config item');
+                }
+            }).catch(err => console.error(err));
+        });
+    })();
+</script>

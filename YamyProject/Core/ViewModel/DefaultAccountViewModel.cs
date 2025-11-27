@@ -1,7 +1,10 @@
-﻿namespace YamyProject.Core.ViewModel
+﻿using System.Security.Policy;
+
+namespace YamyProject.Core.ViewModel
     {
     public class DefaultAccountViewModel
         {
+        public int? PettyCashAccountId { get; set; }
         // Left (PDC)
         public int? PdcReceivableId { get; set; }
         public int? PdcReceivableReturnId { get; set; }
