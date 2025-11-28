@@ -754,4 +754,31 @@
         });
     </script>
 
+    <script>
+        $(document).on('submit', '#userForm', function (e) {
+            e.preventDefault(); // stop normal navigation
+
+            var $form = $(this);
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: $form.attr('method'),
+                data: $form.serialize(),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function (res) {
+                    // if controller returned JSON { success: true }
+                    if (res && res.success) {
+                        // close modal
+                        $('#userModal').modal('hide');
+
+                        // TODO: reload your users table/grid here
+                        // e.g. $('#usersTable').DataTable().ajax.reload();
+                    } else {
+                        // controller returned HTML (validation errors)
+                        $('#userModal .modal-content').html(res);
+                    }
+                }
+            });
+        });
+    </script>
     }

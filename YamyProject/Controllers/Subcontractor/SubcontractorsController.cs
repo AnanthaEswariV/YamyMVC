@@ -6,7 +6,7 @@
 
         private readonly ILogger<MasterStockManagementController> _logger = logger;
         private readonly IListServices _listServices = listServices;
-        private readonly IVendorService _vendorService;
+        private readonly IVendorService _vendorService= vendorService;
 
         public async Task<IActionResult> Index()
             {
@@ -91,7 +91,6 @@
                 Id = c.Id,
                 Name = c.Name
                 }).ToList();
-
             var project = await _listServices.GetProjectAsync();
             var projectlectList = project.Select(c => new TblProject
                 {
@@ -104,7 +103,8 @@
 
             return PartialView("_SubContract" ,new VendorSubContactViewModel
                 {
-                Categoriess=CategorylectList,
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                Categoriess = CategorylectList,
                 City=citylectList,
                 Country=countrylectList,
                 Project=projectlectList,
@@ -126,31 +126,27 @@
                 {
                 Id = c.Id,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
             var city = await _listServices.GetCitysAsync();
             var citylectList = city.Select(c => new TblCity
                 {
                 Id = c.Id,
                 CountryId = c.CountryId,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
             var country = await _listServices.GetCountriesAsync();
             var countrylectList = country.Select(c => new TblCountry
                 {
                 Id = c.Id,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
             var project = await _listServices.GetProjectAsync();
             var projectlectList = project.Select(c => new TblProject
                 {
                 Id = c.Id,
                 Code = c.Code,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
 
             var Vendor=await _context.TblVendors.FindAsync(id);
 
@@ -164,6 +160,7 @@
                 Code=Vendor.Code.ToString(),
                 Name= Vendor.Name,
                 CategoryId = (int)Vendor.CatId,
+                OpeningAmount = Vendor.Balance??0m,
                 Debit = Vendor.Balance ?? 0m,
                 Credit = Vendor.Balance ?? 0m,
                 Date = (DateOnly)Vendor.Date,

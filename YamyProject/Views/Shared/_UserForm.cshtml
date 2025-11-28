@@ -16,7 +16,8 @@
         </div> *@
     </div>
 
-    <form asp-action="Save"
+    <form id="userForm"
+        asp-action="Save"
           asp-controller="UserAccounts"
           method="post"
           class="card-body">
@@ -112,23 +113,4 @@
         </div>
     </form>
 </div>
-@* @section scripts {
-   
-<script>
-    // simple show/hide password toggle
-    document.addEventListener('click', function (e) {
-        var btn = e.target.closest('.toggle-password');
-        if (!btn) return;
 
-        var targetSelector = btn.getAttribute('data-target');
-        var input = document.querySelector(targetSelector);
-        if (!input) return;
-
-        if (input.type === 'password') {
-            input.type = 'text';
-        } else {
-            input.type = 'password';
-        }
-    });
-</script>
-} *@

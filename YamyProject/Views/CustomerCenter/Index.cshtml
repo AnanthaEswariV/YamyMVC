@@ -1,4 +1,4 @@
-﻿@model CustomerCenterViewModel
+﻿@* @model CustomerCenterViewModel
 @{
     ViewData["Title"] = "Customer Center";
 }
@@ -7,20 +7,22 @@
     <!-- Top Menu -->
     <div class="d-flex align-items-center bg-light p-2 border rounded mb-2">
         <div class="btn-group">
-            <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnNewSubcontractor" @* dropdown-toggle" data-bs-toggle="dropdown" >
                 Customer Operations
             </button>
-            <ul class="dropdown-menu">
+            <div id="CustomerModalHost"></div>
+
+           @*  <ul class="dropdown-menu">
                 <li><a class="dropdown-item" asp-action="Create">New Customer</a></li>
                 @if (Model.SelectedCustomer != null)
                 {
                     <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@Model.SelectedCustomer.Id">Edit Customer</a></li>
                     <li><a class="dropdown-item" asp-action="Delete" asp-route-id="@Model.SelectedCustomer.Id">Delete Customer</a></li>
                 }
-            </ul>
+            </ul> 
         </div>
 
-        <div class="btn-group">
+       @*  <div class="btn-group">
             <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
                 New Transactions
             </button>
@@ -31,7 +33,7 @@
                     <li><a class="dropdown-item" asp-action="Details" asp-route-id="@Model.SelectedCustomer.Id">Receive Payment</a></li>
                 }
             </ul>
-        </div>
+        </div> 
     </div>
 
     <div class="row">
@@ -67,7 +69,7 @@
             @if (Model.SelectedCustomer != null)
             {
                 <div class="card mb-3">
-                    <div class="card-header bg-white fw-bold">
+                   @*  <div class="card-header bg-white fw-bold">
                         Customer Information
                     </div>
                     <div class="card-body">
@@ -96,7 +98,69 @@
                             <dt class="col-sm-3">Address</dt>
                             <dd class="col-sm-9">@Model.SelectedCustomer?.City </dd>
                         </dl>
+                    </div> 
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                    <h5 class="mb-0 fw-semibold">Customer Information</h5>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            id="btnEditCustomer"
+                            data-id=@Model.SelectedCustomer.Id
+                            title="Edit Customer">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
+
+                <!-- Details -->
+                <div class="row small">
+                    <!-- Left column -->
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="text-muted pe-3">Customer Code</td>
+                                    <td class="fw-semibold">@Model.SelectedCustomer.Code</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted pe-3">Customer Name</td>
+                                    <td class="fw-semibold">@Model.SelectedCustomer.Name</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted pe-3">TRN</td>
+                                    <td>@Model.SelectedCustomer.Trn</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted pe-3">Email</td>
+                                    <td>@Model.SelectedCustomer.Email</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
+
+                    <!-- Right column -->
+                    <div class="col-md-6">
+                        <table class="table table-borderless table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="text-muted pe-3">Work Phone</td>
+                                    <td>@Model.SelectedCustomer.WorkPhone</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted pe-3">Main Phone</td>
+                                    <td>@Model.SelectedCustomer.MainPhone</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted pe-3">Customer Category</td>
+                                    <td>@Model.SelectedCustomer.City?</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted pe-3">Address</td>
+                                    <td class="text-truncate">@Model.SelectedCustomer.City</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 </div>
 
                 <!-- Tabs -->
@@ -166,3 +230,292 @@
         </div>
     </div>
 </div>
+    @section Scripts {
+    <script>
+        $(function () {
+            $('#btnNewSubcontractor').on('click', function (e) {
+                e.preventDefault();
+
+                 $.get('@Url.Action("Create", "CustomerCenter")', function (html) {
+                    $('#CustomerModalHost').html(html);
+
+                    var modalEl = document.getElementById('CustomerModal');
+                    if (modalEl) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+        });
+
+    </script>
+<script>
+
+    $(function () {
+
+            $(document).on('click', '#btnEditCustomer', function (e) {
+            e.preventDefault();
+
+            var id = $(this).data('id');
+            if (!id) return;
+
+                $.get('@Url.Action("Edit", "CustomerCenter")', { id: id }, function (html) {
+                    $('#CustomerModalHost').html(html);
+
+                        var modalEl = document.getElementById('CustomerModal');
+                if (modalEl) {
+                    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                }
+            });
+        });
+
+    });
+</script>
+} *@
+
+
+@model CustomerCenterViewModel
+@{
+    ViewData["Title"] = "Customer Center";
+    }
+
+<div class="container-fluid mt-2">
+    <!-- Top Menu -->
+    <div class="d-flex align-items-center bg-light p-2 border rounded mb-2">
+        <div class="btn-group">
+            <button type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    id="btnNewSubcontractor">
+                Customer Operations
+            </button>
+
+            <!-- Modal content injected here -->
+            <div id="CustomerModalHost"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Panel -->
+        <div class="col-md-3 border-end">
+            <form method="get" asp-action="Index" class="mb-2">
+                <select name="state"
+                        class="form-select form-select-sm"
+                        onchange="this.form.submit()">
+                    <option value="All" selected="@(Model.State == "All")">All Customers</option>
+                    <option value="Active" selected="@(Model.State == "Active")">Active Customer</option>
+                    <option value="Inactive" selected="@(Model.State == "Inactive")">Inactive Customer</option>
+                </select>
+            </form>
+
+            <form method="get" asp-action="Index" class="mb-2">
+                <input type="text"
+                       name="searchText"
+                       value="@Model.SearchText"
+                       class="form-control form-control-sm"
+                       placeholder="Search by Name, Code" />
+            </form>
+
+            <div class="list-group small">
+                @foreach (var customer in Model.Customers)
+                    {
+                    var isActive = Model.SelectedCustomer?.Id == customer.Id ? "active" : "";
+                    <a asp-action="Index"
+                       asp-route-selectedId="@customer.Id"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @isActive">
+                        @customer.Code - @customer.Name
+                        <span class="badge @(customer.Balance > 0 ? "bg-success" : "bg-light text-dark") rounded-pill">
+                            @(customer.Balance.GetValueOrDefault().ToString("N2"))
+                        </span>
+                    </a>
+                    }
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="col-md-9">
+            @if (Model.SelectedCustomer != null)
+                {
+                <div class="card mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom px-3 pt-2">
+                        <h5 class="mb-0 fw-semibold">Customer Information</h5>
+
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                id="btnEditCustomer"
+                                data-id="@Model.SelectedCustomer.Id"
+                                title="Edit Customer">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+
+                    <!-- Details -->
+                    <div class="row small px-3 pb-2">
+                        <!-- Left column -->
+                        <div class="col-md-6">
+                            <table class="table table-borderless table-sm mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted pe-3">Customer Code</td>
+                                        <td class="fw-semibold">@Model.SelectedCustomer.Code</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Customer Name</td>
+                                        <td class="fw-semibold">@Model.SelectedCustomer.Name</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">TRN</td>
+                                        <td>@Model.SelectedCustomer.Trn</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Email</td>
+                                        <td>@Model.SelectedCustomer.Email</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Right column -->
+                        <div class="col-md-6">
+                            <table class="table table-borderless table-sm mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted pe-3">Work Phone</td>
+                                        <td>@Model.SelectedCustomer.WorkPhone</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Main Phone</td>
+                                        <td>@Model.SelectedCustomer.MainPhone</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Customer Category</td>
+                                        <td>@Model.SelectedCustomer.City</td> @* change to CategoryName if you have *@
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Address</td>
+                                        <td class="text-truncate">@Model.SelectedCustomer.City</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active"
+                           data-bs-toggle="tab"
+                           href="#transactions">Transactions</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content border border-top-0 p-2">
+                    <!-- Transactions -->
+                    <div class="tab-pane fade show active" id="transactions">
+                        <table class="table table-sm table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>SN#</th>
+                                    <th>Date</th>
+                                    <th>Voucher No</th>
+                                    <th>Voucher Type</th>
+                                    <th>Description</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Transactions.Any())
+                                    {
+                                    int sn = 1;
+                                    decimal runningBalance = 0;
+
+                                    foreach (var t in Model.Transactions)
+                                        {
+                                        var debit = t.Debit ?? 0;
+                                        var credit = t.Credit ?? 0;
+                                        runningBalance += (debit - credit);
+                                        var date = t.Date.HasValue
+                                        ? t.Date.Value.ToString("yyyy-MM-dd")
+                                        : "-";
+
+                                        <tr>
+                                            <td>@sn</td>
+                                            <td>@date</td>
+                                            <td>@t.TransactionId</td>
+                                            <td>@t.Type</td>
+                                            <td>@t.Description</td>
+                                            <td>@debit.ToString("N2")</td>
+                                            <td>@credit.ToString("N2")</td>
+                                            <td>@runningBalance.ToString("N2")</td>
+                                        </tr>
+
+                                        sn++;
+                                        }
+                                    }
+                                else
+                                    {
+                                    <tr>
+                                        <td colspan="8" class="text-center">No transactions found.</td>
+                                    </tr>
+                                    }
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                }
+            else
+                {
+                <div class="alert alert-info">
+                    Select a customer from the left panel to view details.
+                </div>
+                }
+        </div>
+    </div>
+</div>
+
+    @section Scripts {
+    <script>
+        // NEW CUSTOMER
+        $(function () {
+            $('#btnNewSubcontractor').on('click', function (e) {
+                e.preventDefault();
+
+                $.get('@Url.Action("Create", "CustomerCenter")', function (html) {
+                    $('#CustomerModalHost').html(html);
+
+                    var modalEl = document.getElementById('CustomerModal');
+                    if (modalEl) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script>
+        // EDIT CUSTOMER
+        $(function () {
+            $(document).on('click', '#btnEditCustomer', function (e) {
+                e.preventDefault();
+
+                var id = $(this).data('id');
+                if (!id) return;
+
+                $.get('@Url.Action("Edit", "CustomerCenter")', { id: id }, function (html) {
+                    $('#CustomerModalHost').html(html);
+
+                    var modalEl = document.getElementById('CustomerModal');
+                    if (modalEl) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+        });
+    </script>
+    }

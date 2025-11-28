@@ -73,7 +73,7 @@ namespace YamyProject.Controllers
             var accounts = await _ListServices.GetAccountsAsync();
             var countries = await _ListServices.GetCountriesAsync();
             var cities = await _ListServices.GetCitysAsync();
-
+            var Code = _service.GenerateNextCustomerCode();
 
             vm.Customer ??= new TblCustomer();
             vm.Categoriess = categories.Select(c => new SelectListItem
@@ -96,9 +96,9 @@ namespace YamyProject.Controllers
                 Text = c.Name,
                 Value = c.Id.ToString()
             }).ToList() ?? new List<SelectListItem>();
+            vm.Customer.Code = int.Parse(Code);
 
-
-            return View("_CustomerForm", vm); // reuse Edit view
+            return PartialView("CustomerForm", vm); // reuse Edit view
         //    return View("Edite", vm); // reuse Edit view
         }
         // POST: CustomerCenter/Create
@@ -111,7 +111,7 @@ namespace YamyProject.Controllers
                 // Reload dropdowns
                 var reloadVm = await _service.GetCreateCustomerFormAsync();
                 reloadVm.Customer = vm.Customer; // preserve entered data
-                return View("_CustomerForm", reloadVm);
+                return PartialView("CustomerForm", reloadVm);
                // return View("Edite", reloadVm);
             }
 
@@ -150,7 +150,7 @@ namespace YamyProject.Controllers
                 Value = c.Id.ToString()
             }).ToList() ?? new List<SelectListItem>();
 
-            return View("_CustomerForm", vm);
+            return PartialView("CustomerForm", vm);
         }
         // POST: Save Edit
         [HttpPost]

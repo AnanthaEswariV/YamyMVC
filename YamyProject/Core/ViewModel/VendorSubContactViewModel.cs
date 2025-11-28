@@ -10,6 +10,7 @@
         public int CategoryId { get; set; }
         public decimal Debit { get; set; }
         public decimal Credit { get; set; }
+        public decimal OpeningAmount { get; set; }
         public DateOnly Date {  get; set; }
         public string MainPhone { get; set; }
         public string WorkPhone { get; set; }

@@ -1,30 +1,30 @@
-﻿@model VendorSubContactViewModel
+﻿@* @model CustomerViewModel
 @{
-    ViewData["Title"] = "New Subcontractor";
-   
+    ViewData["Title"] = "New Customer";
+
     }
 
-<div  class="modal fade" id="subContractModal"   tabindex="-1" 
-      aria-labelledby="subContractModalLabel" aria-hidden="true" >
+<div class="modal fade" id="CustomerModal" tabindex="-1"
+     aria-labelledby="CustomerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content shadow-lg border-0">
             <form method="post">
                 <!-- HEADER -->
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="subContractModalLabel">
-                         New 
+                    <h5 class="modal-title" id="CustomerModalLabel">
+                        New
                     </h5>
                     <button type="button" class="btn-close btn-close-white"
                             data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <input type="hidden" class="form-control" asp-for="Id" id="Type" value="@Model.Id" readonly />
+                <input type="hidden" class="form-control" asp-for="Customer.Id" id="Type" value="@Model.Customer.Id" readonly />
 
-                <input type="hidden" class="form-control" asp-for="CategoryId" id="CategoryId" value="@Model.CategoryId" readonly />
-                <input type="hidden" class="form-control" asp-for="CountryId" id="CountryId" value="@Model.CountryId" readonly />
-                <input type="hidden" class="form-control" asp-for="CityId" id="CityId" value="@Model.CityId" readonly />
-                <input type="hidden" class="form-control" asp-for="AccountId" id="AccountId" value="@Model.AccountId" readonly />
+          @*       <input type="hidden" class="form-control" asp-for="CategoryId" id="CategoryId" value="@Model.Customer.CategoryId" readonly />
+                <input type="hidden" class="form-control" asp-for="CountryId" id="CountryId" value="@Model.Customer.CountryId" readonly />
+                <input type="hidden" class="form-control" asp-for="CityId" id="CityId" value="@Model.Customer.CityId" readonly />
+                <input type="hidden" class="form-control" asp-for="AccountId" id="AccountId" value="@Model.Customer.AccountId" readonly />
                 <input type="hidden" class="form-control" asp-for="ProjectId" id="ProjectId" value="@Model.ProjectId" readonly />
-                
+ 
                 <!-- BODY -->
                 <div class="modal-body">
                     <!-- BASIC DATA -->
@@ -32,27 +32,27 @@
                         <div class="fw-semibold mb-3 small text-uppercase">Basic Data</div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="SubcontractorName" class="form-label">
-                                    Subcontractor Name
+                                <label for="CustomerorName" class="form-label">
+                                    Customeror Name
                                 </label>
-                                <input id="SubcontractorName" asp-for="Name"
+                                <input id="CustomerorName" asp-for="Customer.Name"
                                        class="form-control" />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="SubcontractorCode" class="form-label">
-                                    Subcontractor Cod
+                                <label for="CustomerorCode" class="form-label">
+                                    Customeror Cod
                                 </label>
-                                <input id="SubcontractorCode"  asp-for="Code" 
+                                <input id="CustomerorCode" asp-for="Customer.Code"
                                        class="form-control" readonly />
                             </div>
 
                             <div class="col-md-6">
                                 <label for="Category" class="form-label">Category</label>
                                 <div class="input-group">
-                                    <select id="Category" name="Category" asp-for="CategoryId" asp-items="@(new SelectList(Model.Categoriess, "Id", "Name"))"
+                                    <select id="Category" name="Category" asp-for="Customer.CatId" asp-items="@(new SelectList(Model.Categoriess, "Id", "Name"))"
                                             class="form-select">
-                                        @* <option>vendors_test1</option> *@
+                                        @* <option>vendors_test1</option> 
                                         <!-- more options here -->
                                     </select>
                                     <a type="button" class="btn btn-outline-secondary">
@@ -96,7 +96,7 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label for="MainPhone" class="form-label" >Main Phone</label>
+                                <label for="MainPhone" class="form-label">Main Phone</label>
                                 <input id="MainPhone" name="MainPhone" asp-for="MainPhone" class="form-control" />
                             </div>
                             <div class="col-md-4">
@@ -128,14 +128,14 @@
                             <div class="col-md-3">
                                 <label for="Country" class="form-label">Country</label>
                                 <select id="Country" name="Country" class="form-select" asp-for="CountryId" asp-items="@(new SelectList(Model.Country, "Id", "Name"))">
-                                    @* <option>Albania</option> *@
+                                    @* <option>Albania</option> 
                                     <!-- more countries -->
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label for="City" class="form-label">City</label>
                                 <select id="City" name="City" class="form-select" asp-for="CountryId" asp-items="@(new SelectList(Model.City, "Id", "Name"))">
-                                    @* <option>Tirana</option> *@
+                                    @* <option>Tirana</option> 
                                     <!-- more cities -->
                                 </select>
                             </div>
@@ -163,14 +163,14 @@
                             <div class="col-md-6">
                                 <label for="Account" class="form-label">Account</label>
                                 <select id="Account" name="Account" class="form-select" asp-for="AccountId" asp-items="@(new SelectList(Model.Account, "Id", "Name"))">
-                                    @* <option>2101001 - Vendors</option> *@
+                                    @* <option>2101001 - Vendors</option> 
                                     <!-- more accounts -->
                                 </select>
                             </div>
 
                             <div class="col-md-6">
                                 <label for="TRN" class="form-label">TRN</label>
-                                <input id="TRN" name="TRN" class="form-control" asp-for="TRN"/>
+                                <input id="TRN" name="TRN" class="form-control" asp-for="TRN" />
                             </div>
 
                             <div class="col-md-6">
@@ -243,7 +243,7 @@
         </div>
     </div>
 </div>
-@section Scripts {
+    @section Scripts {
     <small id="openingPreview" class="text-muted ms-2"></small>
 
     <script>
@@ -266,7 +266,7 @@
                 document.addEventListener('DOMContentLoaded', function () {
             // ... (preview wiring above)
 
-            const form = document.getElementById('subContractForm');
+            const form = document.getElementById('CustomerForm');
             if (!form) return;
 
             form.addEventListener('submit', function (e) {
@@ -276,9 +276,9 @@
 
                 // if Id > 0 => Edit, else => Create
                 if (idVal && idVal > 0) {
-                    form.action = '@Url.Action("Edit", "SubcontractorsC")';
+                    form.action = '@Url.Action("Edit", "CustomerorsC")';
                 } else {
-                    form.action = '@Url.Action("Create", "SubcontractorsC")';
+                    form.action = '@Url.Action("Create", "CustomerorsC")';
                 }
 
             });
@@ -286,4 +286,246 @@
 
     </script>
 
+    } *@
+
+@model CustomerViewModel
+@{
+    Layout = null;   // important for AJAX partial
     }
+
+<div class="modal fade" id="CustomerModal" tabindex="-1"
+     aria-labelledby="CustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <form asp-action="Create"
+                  asp-controller="CustomerCenter"
+                  method="post"
+                  class="needs-validation"
+                  novalidate>
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" asp-for="Customer.Id" />
+
+                <!-- HEADER -->
+                <div class="modal-header py-2">
+                    <h5 class="modal-title" id="CustomerModalLabel">
+                        New Customer
+                    </h5>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <!-- BODY -->
+                <div class="modal-body">
+                    <!-- BASIC -->
+                    <div class="row g-2">
+                        <div class="col-md-6 col-12">
+                            <label class="form-label small mb-1">Customer Name</label>
+                            <input asp-for="Customer.Name"
+                                   class="form-control form-control-sm"
+                                   placeholder="Name"
+                                   required />
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small mb-1">Code</label>
+                            <input asp-for="Customer.Code"
+                                   class="form-control form-control-sm"
+                                   placeholder="Code"
+                                   disabled />
+                        </div>
+                        <div class="col-md-3 col-6 d-flex align-items-end">
+                            <div class="w-100">
+                                <label class="form-label small mb-1">Date</label>
+                                <input asp-for="Customer.CreatedDate"
+                                       type="date"
+                                       class="form-control form-control-sm" />
+                            </div>
+                        </div>
+
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Category</label>
+                            <div class="input-group input-group-sm">
+                                <select asp-for="Customer.CatId"
+                                        class="form-select form-select-sm"
+                                        asp-items="Model.Categoriess">
+                                    <option value="">Select</option>
+                                </select>
+                                <button type="button"
+                                        id="addCategoryLink"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        title="Add category">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-12 mt-2">
+                            <label class="form-label small mb-1">Opening Balance — Debit</label>
+                            <input asp-for="Transactions.Debit"
+                                   id="Debit"
+                                   class="form-control form-control-sm"
+                                   placeholder="0.00" />
+                        </div>
+                        <div class="col-md-6 col-12 mt-2">
+                            <label class="form-label small mb-1">Opening Balance — Credit</label>
+                            <input asp-for="Transactions.Credit"
+                                   id="Credit"
+                                   class="form-control form-control-sm"
+                                   placeholder="0.00" />
+                        </div>
+                    </div>
+
+                    <hr class="my-2" />
+
+                    <!-- CONTACT -->
+                    <div class="row g-2">
+                        <div class="col-md-4 col-12">
+                            <label class="form-label small mb-1">Main Phone</label>
+                            <input asp-for="Customer.MainPhone"
+                                   class="form-control form-control-sm"
+                                   placeholder="Main Phone" />
+                        </div>
+                        <div class="col-md-4 col-12">
+                            <label class="form-label small mb-1">Work Phone</label>
+                            <input asp-for="Customer.WorkPhone"
+                                   class="form-control form-control-sm"
+                                   placeholder="Work Phone" />
+                        </div>
+                        <div class="col-md-4 col-12">
+                            <label class="form-label small mb-1">Mobile / Fax</label>
+                            <input asp-for="Customer.Mobile"
+                                   class="form-control form-control-sm"
+                                   placeholder="Mobile or Fax" />
+                        </div>
+
+                        <div class="col-md-6 col-12 mt-2">
+                            <label class="form-label small mb-1">Email</label>
+                            <input asp-for="Customer.Email"
+                                   class="form-control form-control-sm"
+                                   placeholder="Email" />
+                        </div>
+                        <div class="col-md-6 col-12 mt-2">
+                            <label class="form-label small mb-1">CC Email</label>
+                            <input asp-for="Customer.Ccemail"
+                                   class="form-control form-control-sm"
+                                   placeholder="CC Email" />
+                        </div>
+
+                        <div class="col-6 mt-2">
+                            <label class="form-label small mb-1">Website</label>
+                            <input asp-for="Customer.Website"
+                                   class="form-control form-control-sm"
+                                   placeholder="Website" />
+                        </div>
+                    </div>
+
+                    <hr class="my-2" />
+
+                    <!-- ADDRESS -->
+                    <div class="row g-2">
+                        <div class="col-md-6 col-12">
+                            <label class="form-label small mb-1">Country</label>
+                            <select asp-for="Customer.Country"
+                                    class="form-select form-select-sm"
+                                    asp-items="Model.Countriess">
+                                <option value="">Select Country</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label small mb-1">City</label>
+                            <select asp-for="Customer.City"
+                                    class="form-select form-select-sm"
+                                    asp-items="Model.Citys">
+                                <option value="">Select City</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-12 mt-2">
+                            <label class="form-label small mb-1">Region</label>
+                            <input asp-for="Customer.Region"
+                                   class="form-control form-control-sm"
+                                   placeholder="Region" />
+                        </div>
+                        <div class="col-md-6 col-12 mt-2">
+                            <label class="form-label small mb-1">Building</label>
+                            <input asp-for="Customer.BuildingName"
+                                   class="form-control form-control-sm"
+                                   placeholder="Building Name" />
+                        </div>
+                    </div>
+
+                    <hr class="my-2" />
+
+                    <!-- ACCOUNT & PROJECTS -->
+                    <div class="row g-2">
+                        <div class="col-md-6 col-12">
+                            <label class="form-label small mb-1">Account</label>
+                            <select asp-for="Customer.AccountId"
+                                    class="form-select form-select-sm"
+                                    asp-items="Model.Account">
+                                <option value="">Select Account</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 col-6 mt-2">
+                            <label class="form-label small mb-1">TRN</label>
+                            <input asp-for="Customer.Trn"
+                                   class="form-control form-control-sm"
+                                   placeholder="TRN" />
+                        </div>
+
+                        <div class="col-md-3 col-6 mt-2">
+                            <label class="form-label small mb-1">Facility</label>
+                            <input asp-for="Customer.FaciltyName"
+                                   class="form-control form-control-sm"
+                                   placeholder="Facility Name" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOOTER -->
+                <div class="modal-footer py-2">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="submit"
+                            class="btn btn-sm btn-primary">
+                        Save
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .nav-tabs-sm .nav-link {
+        padding: .35rem .6rem;
+        font-size: .85rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+    }
+
+    .form-control-sm, .form-select-sm {
+        height: auto;
+        padding: .35rem .5rem;
+        font-size: .88rem;
+    }
+
+    .form-check-sm .form-check-input {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .input-group .btn {
+        padding: .18rem .5rem;
+    }
+</style>

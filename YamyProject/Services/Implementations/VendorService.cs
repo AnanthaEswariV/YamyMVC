@@ -4,13 +4,13 @@
         {
         private readonly YamyDbContext _context = context;
 
-        public async Task<string> GenerateNextCode()
+        public  string GenerateNextCode()
             {
             var prefix = 00000; // Prefix for Credit Note
-            var lastCodeValue = await _context.TblVendors
+            var lastCodeValue =  _context.TblVendors
                .Select(s => s.Code)
-               .MaxAsync();
-            if (lastCodeValue==null)
+               .Max();
+            if (lastCodeValue!=null)
                 {
                 prefix = lastCodeValue + 1;
                 }
@@ -107,7 +107,9 @@
                         {
                         Balance = Model.Credit;
                         }
-                   
+                 //  Balance=Model.OpeningAmount;
+
+
                     var vendors =await _context.TblVendors.FindAsync(Model.Id);
                     if (vendors == null)
                         { }

@@ -2,7 +2,7 @@
     {
     public interface IVendorService
         {
-        Task<string> GenerateNextCode();
+        string GenerateNextCode();
         Task CreateVendorOrSubcontractorAcync(VendorSubContactViewModel Model);
         Task UpDateVendorOrSubcontractorAcync(VendorSubContactViewModel Model);
         }
