@@ -277,7 +277,7 @@
 
         function loadFinalSettlements() {
             $.ajax({
-                url: '/HR/GetFinalSettlement',
+               url: '@Url.Action("GetFinalSettlement", "HR")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#table1 tbody').html(`
@@ -389,7 +389,7 @@
 
         function populateEmployeeNameDropdown(selectedId = null) {
             $.ajax({
-                url: '/Inventory/GetAllEmployees',
+               url: '@Url.Action("GetAllEmployees", "Inventory")',
                 type: 'GET',
                 success: function(res) {
                     employeesData = Array.isArray(res) ? res : (res.data || []);
@@ -434,7 +434,7 @@
 
         function loadEmployeeSettlementData(employeeId) {
             $.ajax({
-                url: `/HR/GetEmployeeFinalSettlementData?employeeId=${employeeId}`,
+               url: '@Url.Action("GetEmployeeFinalSettlementData", "HR")' + '?employeeId=' + employeeId,
                 type: 'GET',
                 success: function (res) {
 
@@ -572,7 +572,7 @@
             }
 
             $.ajax({
-                url: '/HR/DeleteFinalSettlement',
+             url: '@Url.Action("DeleteFinalSettlement", "HR")',
                 type: 'POST',
                 data: { id: id },      
                 success: function (res) {
@@ -649,7 +649,7 @@
             console.log("Final Settlement Payload:", payload);
 
             $.ajax({
-                url: '/HR/SaveFinalSettlement',
+           url: '@Url.Action("SaveFinalSettlement", "HR")',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(payload),

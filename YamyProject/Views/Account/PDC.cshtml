@@ -111,7 +111,7 @@
             // Load table based on selection
             function loadChecks(type) {
                 $.ajax({
-                    url: `/Account/GetChecks?type=${type}`,
+                  url: `@Url.Action("GetChecks", "Account")?type=${type}`,
                     type: "GET",
                     success: function (res) {
                         if ($.fn.DataTable.isDataTable("#table1")) $("#table1").DataTable().destroy();
@@ -235,7 +235,7 @@
 
             // ✅ AJAX request
             $.ajax({
-                url: "/Account/UpdateChequeState",
+              url: '@Url.Action("UpdateChequeState", "Account")',
                 type: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(payload),

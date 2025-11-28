@@ -102,7 +102,7 @@
                 const endDate = $('#endDate').val();
 
                 $.ajax({
-                    url: '/Inventory/GetWarehouseTransfers',
+                 url: '@Url.Action("GetWarehouseTransfers", "Inventory")',
                     type: 'GET',
                     data: {
                         id: id,

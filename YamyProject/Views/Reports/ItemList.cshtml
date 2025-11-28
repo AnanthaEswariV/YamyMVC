@@ -80,7 +80,7 @@
     <script>
         function loadFixedAssets() {
             $.ajax({
-                url: '/Lists/GetItems',
+               url: '@Url.Action("GetItems", "Lists")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#itemListTable tbody').html(`
@@ -150,7 +150,7 @@
                         $('#itemListTable tbody').on('click', 'tr', function() {
                     const id = $(this).data('id');
                     if (id) {
-                        window.location.href = `/Lists/ItemList?Id=${id}`;
+                        window.location.href = '@Url.Action("ItemList", "Lists")' + '?Id=' + id;
                     }
                 });
 

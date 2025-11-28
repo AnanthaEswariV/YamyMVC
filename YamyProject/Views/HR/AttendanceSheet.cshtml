@@ -315,7 +315,7 @@
 
             // Send AJAX request
             $.ajax({
-                url: '/HR/SaveAttendance',
+            url: '@Url.Action("SaveAttendance", "HR")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(attendanceData),
@@ -421,7 +421,7 @@
 
                     // Send to API
                     $.ajax({
-                        url: '/HR/SaveAttendance',
+                       url: '@Url.Action("SaveAttendance", "HR")',
                         type: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify(attendanceData),
@@ -505,7 +505,7 @@
             console.log('Loading attendance with filters:', { employeeName, month, year });
 
             $.ajax({
-                url: '/HR/GetAttendance',
+           url: '@Url.Action("GetAttendance", "HR")',
                 type: 'GET',
                 data: {
                     employeeName: employeeName,

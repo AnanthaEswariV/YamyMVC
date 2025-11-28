@@ -124,7 +124,7 @@
             }
 
             $.ajax({
-                url: '/Reports/GetTrialBalanceReport',
+             url: '@Url.Action("GetTrialBalanceReport", "Reports")',
                 type: 'GET',
                 data: {
                     reportType: reportType,
@@ -206,7 +206,7 @@
             }
 
             // Redirect to TransactionByAccount page with accountId as query parameter
-            window.location.href = `/Reports/TransactionByAccount?accountId=${accountId}`;
+           window.location.href = '@Url.Action("TransactionByAccount", "Reports")' + '?accountId=' + accountId;
         });
 
 

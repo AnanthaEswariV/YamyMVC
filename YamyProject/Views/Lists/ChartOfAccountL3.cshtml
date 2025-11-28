@@ -126,7 +126,7 @@
 
             function loadLevel1() {
                 $.ajax({
-                    url: '/Lists/GetLevel1Accounts', 
+                  url: '@Url.Action("GetLevel1Accounts", "Lists")',
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
@@ -155,7 +155,7 @@
 
             // Load Level 1 dropdown
             $.ajax({
-                url: '/Lists/GetLevel1Accounts',
+               url: '@Url.Action("GetLevel1Accounts", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     if (res.status) {
@@ -171,7 +171,7 @@
 
                             if (level3Id > 0) {
                                 $.ajax({
-                                    url: `/Lists/GetLevel3ById?id=${level3Id}`,
+                                  url: '@Url.Action("GetLevel3ById", "Lists")' + `?id=${level3Id}`,
                                     type: 'GET',
                                     success: function(res2) {
                                         if(res2.status) {
@@ -202,7 +202,7 @@
 
              function loadLevel3Accounts() {
             $.ajax({
-                url: '/Lists/GetLevel3Accounts',
+           url: '@Url.Action("GetLevel3Accounts", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     if(res.status) {
@@ -273,7 +273,7 @@
             if(!level1Id) return;
 
             $.ajax({
-                url: '/Lists/GetLevel2AccountsByLevel1',
+            url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")',
                 type: 'GET',
                 data: { level1Id },
                 success: function(res) {
@@ -303,7 +303,7 @@
                 const level1Id = $(this).val();
                 if (level1Id) {
                     $.ajax({
-                        url: '/Lists/GetLevel2AccountsByLevel1', 
+                    url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")',
                         type: 'GET',
                         data: { level1Id: level1Id },
                         success: function (res) {
@@ -354,7 +354,7 @@
             };
 
             $.ajax({
-                url: '/Lists/SaveLevel3Account',
+            url: '@Url.Action("SaveLevel3Account", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
@@ -385,12 +385,12 @@
             if (!confirm("Are you sure you want to delete this Level 3 account?")) return;
 
             $.ajax({
-                url: `/Lists/DeleteLevel3Account?id=${id}`,
+                url: '@Url.Action("DeleteLevel3Account", "Lists")' + `?id=${id}`,
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {
                         toastr.success(res.message);
-                        loadLevel3Accounts(); // reload Level 3 table
+                        loadLevel3Accounts(); 
                     } else {
                         toastr.error(res.message);
                     }

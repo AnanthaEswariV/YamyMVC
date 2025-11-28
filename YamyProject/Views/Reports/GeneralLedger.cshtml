@@ -117,7 +117,7 @@
             }
 
             $.ajax({
-                url: '/Reports/GetSalesReport',
+                url: '@Url.Action("GetSalesReport", "Reports")',
                 type: 'GET',
                 data: { reportType, startDate: startDate || null, endDate: endDate || null },
                 beforeSend: function () {

@@ -76,7 +76,7 @@
 
         function loadCategories() {
             $.ajax({
-                url: '/Lists/GetItemCategory',  
+              url: '@Url.Action("GetItemCategory", "Lists")',
                 type: 'GET',
 
                 beforeSend: function () {
@@ -195,7 +195,9 @@
             };
 
             $.ajax({
-                url: isEdit ? "/Lists/EditCategory" : "/Lists/AddCategory",
+                url: isEdit
+        ? '@Url.Action("EditCategory", "Lists")'
+        : '@Url.Action("AddCategory", "Lists")',
                 type: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(categoryData),
@@ -232,8 +234,8 @@
              }
 
              $.ajax({
-                 url: '/Lists/DeleteCategory',
-                 type: 'POST',   // MVC action
+               url: '@Url.Action("DeleteCategory", "Lists")',
+                 type: 'POST', 
                  data: { id: id },
                  success: function (result) {
                         if (result.status) {

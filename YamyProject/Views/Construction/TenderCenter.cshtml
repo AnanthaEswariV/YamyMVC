@@ -99,7 +99,7 @@
         // Initialize Tender DataTable
         function loadTenders() {
             $.ajax({
-                url: '/Construction/GetTenders', 
+              url: '@Url.Action("GetTenders", "Construction")',
                 type: 'GET',
                 success: function(res) {
                     if (!res.status) {
@@ -183,7 +183,7 @@
             if (!confirm("Are you sure you want to delete this tender?")) return;
 
             $.ajax({
-                url: `/Construction/DeleteTender?tenderId=${tenderId}`, 
+               url: `@Url.Action("DeleteTender", "Construction")?tenderId=${tenderId}`,
                 type: "DELETE",
                 success: function(res) {
                     if (res.status) {
@@ -214,7 +214,7 @@
             };
 
             $.ajax({
-                url: '/Construction/SaveTender', // Your save API
+              url: '@Url.Action("SaveTender", "Construction")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(tenderData),

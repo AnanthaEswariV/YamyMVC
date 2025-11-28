@@ -932,7 +932,7 @@
                     });
 
                     $.ajax({
-                    url: '/Construction/GetTenders',
+                   url: '@Url.Action("GetTenders", "Construction")',
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
@@ -956,7 +956,7 @@
                 });
 
                     $.ajax({
-                    url: '/Construction/GetProjectSites',
+                 url: '@Url.Action("GetProjectSites", "Construction")',
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
@@ -981,7 +981,7 @@
 
                     function populateBankAccounts() {
                     $.ajax({
-                        url: '/HR/GetAccruedSalaries',
+                       url: '@Url.Action("GetAccruedSalaries", "HR")',
                         type: 'GET',
                         success: function(res) {
                             const data = Array.isArray(res) ? res : res.data || [];
@@ -1029,7 +1029,7 @@
 
                     function loadProjectTenders(projectId) {
                     $.ajax({
-                        url: '/Construction/GetProjectTenders',
+                     url: '@Url.Action("GetProjectTenders", "Construction")',
                         type: 'GET',
                         data: { projectId: projectId },
                         success: function (res) {
@@ -1103,7 +1103,7 @@
 
                     function loadTenderItems(tenderId) {
                     $.ajax({
-                        url: '/Construction/GetTenderItems',
+                        url: '@Url.Action("GetTenderItems", "Construction")',
                         type: 'GET',
                         data: { tenderId: tenderId },
                         success: function (res) {
@@ -1196,7 +1196,7 @@
 
                         function loadProjects() {
                     $.ajax({
-                        url: '/Construction/GetProjects',
+                      url: '@Url.Action("GetProjects", "Construction")',
                         type: 'GET',
                         success: function (result) {
                             if (result.status) {
@@ -1237,7 +1237,7 @@
                     const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
 
                     $.ajax({
-                        url: '/Construction/GetProjectPlanning',
+                        url: '@Url.Action("GetProjectPlanning", "Construction")',
                         type: 'GET',
                         data: {
                             projectId: reportedBy,
@@ -1395,7 +1395,7 @@
                     }
 
                     $.ajax({
-                        url: '/Construction/SaveOrUpdateProjectPlanning',
+                       url: '@Url.Action("SaveOrUpdateProjectPlanning", "Construction")',
                         type: 'POST',
                         contentType: 'application/json; charset=utf-8',
                         data: JSON.stringify(model),
@@ -1470,7 +1470,7 @@
 
                                 function loadActivityPlanning(tenderId) {
             $.ajax({
-                url: '/Construction/GetProjectTenderDetails',
+             url: '@Url.Action("GetProjectTenderDetails", "Construction")',
                 type: 'GET',
                 data: { tenderId: tenderId },
                 success: function (res) {
@@ -1505,7 +1505,7 @@
                         function loadRequestMaterial(planningId) {
                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
-                        url: '/Construction/GetRequestedMaterial',
+                        url: '@Url.Action("GetRequestedMaterial", "Construction")',
                         type: 'GET',
                         data: { planningId: planningId },
                         success: function (res) {
@@ -1542,7 +1542,7 @@
                         function loadIssuedMaterial(planningId) {
                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
-                        url: '/Construction/GetIssuedMaterial',
+                      url: '@Url.Action("GetIssuedMaterial", "Construction")',
                         type: 'GET',
                         data: { planningId: planningId },
                         success: function (res) {
@@ -1577,7 +1577,7 @@
                         function loadReceivedMaterial(planningId) {
                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
-                        url: '/Construction/GetReceivedMaterial',
+                       url: '@Url.Action("GetReceivedMaterial", "Construction")',
                         type: 'GET',
                         data: { planningId: planningId },
                         success: function (res) {
@@ -1612,7 +1612,7 @@
                         function loadResourceList(planningId) {
                              if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
-                        url: '/Construction/GetResourceData',
+                        url: '@Url.Action("GetResourceData", "Construction")',
                         type: 'GET',
                         data: { planningId: planningId },
                         success: function (res) {
@@ -1689,7 +1689,7 @@
                     // Load items dynamically from tender selection
                     function loadItems(tenderId, targetDropdown = null) {
                         $.ajax({
-                            url: `/Construction/GetItemsByTenderId?tenderId=${tenderId}`,
+                            url: '@Url.Action("GetItemsByTenderId", "Construction")' + '?tenderId=' + tenderId,
                             type: 'GET',
                             success: function (response) {
                                 if (response.status) {
@@ -1800,7 +1800,7 @@
 
 
                         $.ajax({
-                            url: '/Construction/SaveOrUpdateMaterialRequest',
+                           url: '@Url.Action("SaveOrUpdateMaterialRequest", "Construction")',
                             type: 'POST',
                             contentType: 'application/json',
                             data: JSON.stringify(model),
@@ -1857,7 +1857,7 @@
             // Load requested data for dropdowns
             function loadRequestedItems(planningId, dropdown) {
                 $.ajax({
-                    url: `/Construction/GetRequestedData?planningId=${planningId}`,
+                   url: '@Url.Action("GetRequestedData", "Construction")' + '?planningId=' + planningId,
                     type: 'GET',
                     success: function (response) {
                         if (response.status) {
@@ -1957,7 +1957,7 @@
                 };
 
                 $.ajax({
-                    url: '/Construction/SaveOrUpdateIssueMaterial',
+                 url: '@Url.Action("SaveOrUpdateIssueMaterial", "Construction")',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(model),
@@ -1995,7 +1995,7 @@
             // 🔹 Load issued-but-not-received materials for dropdowns
             function loadPendingReceivedItems(planningId, dropdown) {
                 $.ajax({
-                    url: `/Construction/GetPendingReceivedMaterials?planningId=${planningId}`,
+                url: '@Url.Action("GetPendingReceivedMaterials", "Construction")' + '?planningId=' + planningId,
                     type: 'GET',
                     success: function (response) {
                         if (response.status) {
@@ -2093,7 +2093,7 @@
                 };
            
                 $.ajax({
-                    url: '/Construction/SaveOrUpdateReceiveMaterial',
+                    url: '@Url.Action("SaveOrUpdateReceiveMaterial", "Construction")',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(model),
@@ -2135,7 +2135,7 @@
         // Load resources from API
         function loadProjectResources() {
             const planningId = $('#PlanningId').val() || 0; // Optional hidden field or variable
-            const apiUrl = `/Construction/GetProjectResources?planningId=${planningId}`;
+            const apiUrl = '@Url.Action("GetProjectResources", "Construction")' + '?planningId=' + planningId;
 
             $('tbody', '#assignResourceModal').empty(); // clear old rows
 
@@ -2224,7 +2224,7 @@
             };
 
             $.ajax({
-                url: "/Construction/SaveOrUpdateRole",
+               url: '@Url.Action("SaveOrUpdateRole", "Construction")',
                 type: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(roleData),
@@ -2253,7 +2253,7 @@
 
                 function loadRoles() {
             $.ajax({
-                url: "/Construction/GetRoles",
+               url: '@Url.Action("GetRoles", "Construction")',
                 type: "GET",
                 success: function (res) {
                     const $dropdown = $("#roleDropdown");
@@ -2304,7 +2304,7 @@
             if (!resourceData.Name) return toastr.warning("Name is required");
 
             $.ajax({
-                url: "/Construction/SaveOrUpdateProjectResource",
+               url: '@Url.Action("SaveOrUpdateProjectResource", "Construction")',
                 type: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(resourceData),
@@ -2382,7 +2382,7 @@
            
 
             $.ajax({
-                url: '/Construction/AssignResources',
+               url: '@Url.Action("AssignResources", "Construction")',
                 type: 'POST',
                 contentType: 'application/json',
                  data: JSON.stringify({ PlanningId: planningId, ResourceIds: selectedResources }),
@@ -2466,7 +2466,7 @@
              function loadAssignedResources(planningId) {
                   if (!planningId) planningId = getCurrentPlanningId();
             $.ajax({
-                url: '/Construction/GetAssignedResources',
+               url: '@Url.Action("GetAssignedResources", "Construction")',
                 type: 'GET',
                 data: { planningId: planningId },
                 success: function (res) {
@@ -2526,7 +2526,7 @@
 
           
             $.ajax({
-                url: '/Construction/SaveOrUpdateProjectActivity',
+               url: '@Url.Action("SaveOrUpdateProjectActivity", "Construction")',
                 type: 'POST',
                 data: JSON.stringify(model),        
                 contentType: 'application/json',     

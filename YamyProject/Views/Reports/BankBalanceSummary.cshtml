@@ -101,7 +101,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetBankBalances',
+              url: '@Url.Action("GetBankBalances", "Reports")',
                 type: 'GET',
                 data: {
                     startDate: startDate || null,

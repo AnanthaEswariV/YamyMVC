@@ -140,7 +140,7 @@
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
             $.ajax({
-                url: '/Reports/GetPrepaidExpenseDetails',
+               url: '@Url.Action("GetPrepaidExpenseDetails", "Reports")',
                 type: 'GET',
                 data: {
                     transactionId: transactionId,
@@ -212,7 +212,7 @@
                             console.log('Clicked row with transaction ID:', transId); // Debug log
                             if (transId) {
                                 // Redirect to PrepaidExpense view with ID parameter
-                                window.location.href = `/Lists/PrepaidExpense?Id=${transId}`;
+                                window.location.href = '@Url.Action("PrepaidExpense", "Lists")' + '?Id=' + transId;
                             }
                         });
 

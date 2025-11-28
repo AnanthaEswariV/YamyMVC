@@ -116,7 +116,7 @@ Layout = "~/Views/Shared/_Layout.cshtml";
             }
 
             $.ajax({
-                url: '/Reports/GetCostCenterTransactions',
+              url: '@Url.Action("GetCostCenterTransactions", "Reports")',
                 type: 'GET',
                 data: {
                     costCenterId: id,
@@ -201,7 +201,7 @@ Layout = "~/Views/Shared/_Layout.cshtml";
                             toDate: transactionDate
                         }).toString();
 
-                        window.location.href = `/Lists/TransacationJournal?${query}`;
+                           window.location.href = '@Url.Action("TransacationJournal", "Lists")' + '?' + query;
                     });
                 },
                 error: function () {

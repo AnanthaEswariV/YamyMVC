@@ -109,7 +109,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetItemWiseProfit', 
+               url: '@Url.Action("GetItemWiseProfit", "Reports")',
                 type: 'GET',
                 data: {
                     isDateChecked: !showAll,

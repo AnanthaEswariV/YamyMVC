@@ -103,7 +103,7 @@
 
             function loadCities() {
                 $.ajax({
-                    url: '/Reports/GetCitys',
+                   url: '@Url.Action("GetCitys", "Reports")',
                     type: 'GET',
 
                     beforeSend: function () {
@@ -183,7 +183,7 @@
 
             function loadCountry() {
                 $.ajax({
-                    url: '/Reports/GetCountry',
+                    url: '@Url.Action("GetCountry", "Reports")',
                     type: 'GET',
                     success: function(result) {
                         const dropdown = $('#cmbCountry');
@@ -221,7 +221,7 @@
             $('#cityListModalLabel').text('Edit City');
 
             $.ajax({
-                url: '/Reports/GetCountry',
+                url: '@Url.Action("GetCountry", "Reports")',
                 type: 'GET',
                 success: function(result) {
                     const dropdown = $('#cmbCountry');
@@ -263,7 +263,7 @@
             };
 
             $.ajax({
-                url: '/Reports/SaveCity', 
+               url: '@Url.Action("SaveCity", "Reports")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(cityData),

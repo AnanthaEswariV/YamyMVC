@@ -131,7 +131,7 @@
 
             function loadChequeBooks() {
             $.ajax({
-                url: "/Account/GetChequeBooks",
+                url: '@Url.Action("GetChequeBooks", "Account")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -218,7 +218,7 @@
 
             function loadBankDropdown(selectedId = null) {
                 $.ajax({
-                    url: '/Account/GetBanksforDropdown',
+                     url: '@Url.Action("GetBanksforDropdown", "Account")',
                     type: 'GET',
                     success: function(res) {
                         if (res.status) {
@@ -275,7 +275,7 @@
 
                      // Fetch last cheque number for this bank
                      $.ajax({
-                 url: `/Account/GetLastChequeNumber?bankId=${bankId}`,
+                        url: `@Url.Action("GetLastChequeNumber", "Account")?bankId=${bankId}`,
                 type: 'GET',
                 success: function(res) {
                     if(res.status) {
@@ -310,7 +310,7 @@
     if (!bankCardId) return;
 
     $.ajax({
-        url: `/Account/GetLastLeafNumber?bankCardId=${bankCardId}`, 
+        url: `@Url.Action("GetLastLeafNumber", "Account")?bankCardId=${bankCardId}`,
         type: 'GET',
         success: function (res) {
             if (res.status) {
@@ -401,7 +401,8 @@
                 LeavesEndIn: leavesEndIn
             };
 
-            const url = chequeId > 0 ? '/Account/UpdateCheque' : '/Account/SaveCheque';
+              const url = chequeId > 0 ? '@Url.Action("UpdateCheque", "Account")' : '@Url.Action("SaveCheque", "Account")';
+
 
             $.ajax({
                 url: url,

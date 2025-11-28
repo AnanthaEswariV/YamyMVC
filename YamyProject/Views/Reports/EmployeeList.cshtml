@@ -97,7 +97,7 @@
     <script>
         function loadEmployees() {
             $.ajax({
-                url: '/HR/GetEmployees',
+              url: '@Url.Action("GetEmployees", "HR")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#employeeListTable tbody').html(`
@@ -185,7 +185,7 @@
                         $('#employeeListTable tbody').on('click', 'tr', function () {
                             const id = $(this).data('id');
                             if (id) {
-                                window.location.href = `/HR/Employee?Id=${id}`;
+                                window.location.href = '@Url.Action("Employee", "HR")' + '?Id=' + id;
                             }
                         });
                     } else {

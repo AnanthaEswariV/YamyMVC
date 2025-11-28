@@ -138,7 +138,7 @@
                 }
 
                 $.ajax({
-                    url: '/Reports/GetBalanceSheetReport',
+                   url: '@Url.Action("GetBalanceSheetReport", "Reports")',
                     type: 'GET',
                     data: { date: reportDate },
                     beforeSend: function () {

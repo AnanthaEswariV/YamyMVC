@@ -398,7 +398,7 @@
 
         function loadAssemblyItems() {
             $.ajax({
-                url: '/Lists/GetItems',
+              url: '@Url.Action("GetItems", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status && res.data.length > 0) {
@@ -515,7 +515,7 @@
             const type = $("#allType").is(":checked") ? "" : $("#typeDropdown").val();
 
             $.ajax({
-                url: '/Lists/GetItems',
+          url: '@Url.Action("GetItems", "Lists")',
                 type: 'GET',
                 data: { state, categoryId, type },
                 success: function (result) {
@@ -578,7 +578,7 @@
         // ===== Load Categories =====
         function loadCategories(selector = "#categoryDropdown, #categoryDropdowns") {
             $.ajax({
-                url: '/Lists/GetItemCategory',
+               url: '@Url.Action("GetItemCategory", "Lists")',
                 type: 'GET',
                 success: function (result) {
                     var dropdowns = $(selector);
@@ -610,7 +610,7 @@
         // ===== Load Warehouses =====
         function loadWarehouses(selector = "#warehouse, #warehouseDropdown") {
             $.ajax({
-                url: '/Inventory/GetWarehouses',
+              url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
@@ -656,7 +656,7 @@
 
         // ===== Load Accounts =====
         $.ajax({
-            url: '/HR/GetAccruedSalaries',
+            url: '@Url.Action("GetAccruedSalaries", "HR")',
             type: 'GET',
             success: function (data) {
                 const dropdowns = [
@@ -856,7 +856,7 @@
          
 
             $.ajax({
-                url: '/Lists/SaveItem',
+              url: '@Url.Action("SaveItem", "Lists")',
                 type: 'POST',
                 data: JSON.stringify(item),
                 contentType: "application/json",
@@ -922,7 +922,7 @@
                 if (!itemId) return;
 
                 $.ajax({
-                    url: '/Lists/GetItemTransactions',
+                   url: '@Url.Action("GetItemTransactions", "Lists")',
                     type: 'GET',
                     data: { itemId: itemId },
                     success: function (result) {
@@ -966,7 +966,7 @@
                 }
 
                 $.ajax({
-                    url: '/Lists/GetItemCardTransactions',
+                url: '@Url.Action("GetItemCardTransactions", "Lists")',
                     type: 'GET',
                     data: { itemId: selectedItem.id },
                     success: function (res) {
@@ -1019,7 +1019,7 @@
 
             if (confirm("Are you sure you want to delete this item?")) {
                 $.ajax({
-                    url: `/Lists/DeleteItem/${id}`,
+                    url: '@Url.Action("DeleteItem", "Lists")' + '?id=' + id,
                     type: "DELETE",
                     success: function(res) {
                         if(res && res.status) {

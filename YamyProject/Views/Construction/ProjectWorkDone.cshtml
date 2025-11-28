@@ -222,7 +222,7 @@
 
             function loadProjects() {
                 $.ajax({
-                    url: '/Construction/GetProjects',
+                   url: '@Url.Action("GetProjects", "Construction")',
                     type: 'GET',
                     success: function (result) {
                         if (result.status) {
@@ -251,7 +251,7 @@
 
             function loadProjectWorkDone(projectId = null, tenderId = null) {
                 $.ajax({
-                    url: '/Construction/GetProjectWorkDone',
+                   url: '@Url.Action("GetProjectWorkDone", "Construction")',
                     type: 'GET',
                     data: { projectId: projectId, tenderId: tenderId },
                     success: function (res) {
@@ -313,7 +313,7 @@
                 tbody.empty();
 
                 $.ajax({
-                    url: '/Construction/GetProjectWorkDoneItems',
+                  url: '@Url.Action("GetProjectWorkDoneItems", "Construction")',
                     type: 'GET',
                     data: { id: workDoneId },
                     success: function (res) {
@@ -346,7 +346,7 @@
 
             // Load Project Sites
             $.ajax({
-                url: '/Construction/GetProjectSites',
+                url: '@Url.Action("GetProjectSites", "Construction")',
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
@@ -369,7 +369,7 @@
 
             // Load Tenders
             $.ajax({
-                url: '/Construction/GetTenders',
+               url: '@Url.Action("GetTenders", "Construction")',
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
@@ -392,7 +392,7 @@
 
             // Load Accounts
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+              url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function(res) {
                     const data = Array.isArray(res) ? res : res.data || [];
@@ -440,7 +440,7 @@
                 tbody.empty();
 
                 $.ajax({
-                    url: '/Construction/GetProjectWorkDoneDetails',
+                  url: '@Url.Action("GetProjectWorkDoneDetails", "Construction")',
                     type: 'GET',
                     data: { projectId, siteId, tenderId },
                     success: function (res) {
@@ -509,7 +509,7 @@
 
                 // Fetch BOQ items
                 $.ajax({
-                    url: '/Construction/GetBoqItems',
+                  url: '@Url.Action("GetBoqItems", "Construction")',
                     type: 'GET',
                     data: { planningId },
                     success: function (res) {
@@ -559,7 +559,7 @@
 
             function fetchAssemblyData(itemId) {
                 $.ajax({
-                    url: '/Construction/GetAssemblyData',
+                  url: '@Url.Action("GetAssemblyData", "Construction")',
                     type: 'GET',
                     data: { itemId },
                     success: function (res) {
@@ -714,7 +714,7 @@
 
                 // API call
                 $.ajax({
-                    url: '/Construction/SaveOrUpdateProjectWorkDone',
+                   url: '@Url.Action("SaveOrUpdateProjectWorkDone", "Construction")',
                     type: 'POST',
                     data: JSON.stringify(model),
                     contentType: 'application/json; charset=utf-8',

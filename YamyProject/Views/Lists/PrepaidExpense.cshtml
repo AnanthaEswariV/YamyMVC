@@ -204,7 +204,7 @@
 
                 function populateBankAccounts() {
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+               url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function(res) {
                     const data = Array.isArray(res) ? res : res.data || [];
@@ -241,7 +241,7 @@
 
                 function populateCategories() {
             $.ajax({
-                url: '/Lists/GetCategories',
+               url: '@Url.Action("GetCategories", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     const data = Array.isArray(res) ? res : res.data || [];
@@ -398,7 +398,7 @@
             };
 
             $.ajax({
-                url: '/Lists/SavePrepaidExpense',
+               url: '@Url.Action("SavePrepaidExpense", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(prepaidData),
@@ -422,7 +422,7 @@
 
            function loadPrepaidExpenses() {
             $.ajax({
-                url: "/Lists/GetPrepaidExpenses",
+               url: '@Url.Action("GetPrepaidExpenses", "Lists")',
                 type: "GET",
                 success: function(res) {
                     if (!res.status) {
@@ -514,7 +514,7 @@
             $('#journalModal').modal('show');
 
             $.ajax({
-                url: `/Lists/GetPrepaidJournalEntries?prepaidId=${prepaidId}`,
+               url: '@Url.Action("GetPrepaidJournalEntries", "Lists")' + '?prepaidId=' + prepaidId,
                 type: 'GET',
                 success: function (res) {
                     if (res.status && res.data.length > 0) {

@@ -111,7 +111,7 @@
             console.log(startDate);
             console.log(endDate);
             $.ajax({
-                url: '/Reports/GetItemMovingReport', 
+            url: '@Url.Action("GetItemMovingReport", "Reports")',
                 type: 'GET',
                 data: {
                     showAll: showAll,

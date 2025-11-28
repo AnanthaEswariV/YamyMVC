@@ -47,7 +47,7 @@
 <script>
     function loadProjectTimeline() {
         $.ajax({
-            url: '/Construction/GetProjectTimelineSummary',
+           url: '@Url.Action("GetProjectTimelineSummary", "Construction")',
             type: 'GET',
             beforeSend: function () {
                 $("#chart-profile-visit").html(`

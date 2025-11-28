@@ -214,7 +214,7 @@
 
         function loadEmployees() {
             $.ajax({
-                url: '/HR/GetEmployees',
+              url: '@Url.Action("GetEmployees", "HR")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#table1 tbody').html(`
@@ -291,7 +291,7 @@
 
         function populateBankAccounts() {
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function(res) {
                     const data = Array.isArray(res) ? res : res.data || [];
@@ -330,7 +330,7 @@
 
         function populateEmployeeNameDropdown(selectedId = null) {
             $.ajax({
-                url: '/Inventory/GetAllEmployees',
+          url: '@Url.Action("GetAllEmployees", "Inventory")',
                 type: 'GET',
                 success: function(res) {
                     employeesData = Array.isArray(res) ? res : (res.data || []);
@@ -389,7 +389,7 @@
             `);
 
             $.ajax({
-                url: '/HR/GetEmployeeLoan',
+               url: '@Url.Action("GetEmployeeLoan", "HR")',
                 type: 'GET',
                 data: { employeeCode: employeeCode },
                 success: function (res) {
@@ -512,7 +512,7 @@
           });
 
           $.ajax({
-            url: '/HR/CreateLoan',
+         url: '@Url.Action("CreateLoan", "HR")',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(payload),

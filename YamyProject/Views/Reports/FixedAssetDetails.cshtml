@@ -122,7 +122,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetFixedAssetDetails',
+               url: '@Url.Action("GetFixedAssetDetails", "Reports")',
                 type: 'GET',
                 data: {
                     transactionId: transactionId,

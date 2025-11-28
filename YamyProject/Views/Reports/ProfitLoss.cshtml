@@ -147,7 +147,7 @@
                 }
 
                 $.ajax({
-                    url: '/Reports/GetProfitAndLossTree',
+                url: '@Url.Action("GetProfitAndLossTree", "Reports")',
                     type: 'GET',
                     data: {
                         showAll: showAll,
@@ -259,7 +259,8 @@
                 const id = $(this).data('id');
 
                 if (level === 4 && id) {
-                    window.location.href = `/Reports/TransactionByAccount?accountId=${id}`;
+                     window.location.href = '@Url.Action("TransactionByAccount", "Reports")' + '?accountId=' + id;
+
                 }
             });
 

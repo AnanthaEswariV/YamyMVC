@@ -3104,7 +3104,7 @@ namespace YamyProject.Controllers
 
                 using (var cmd = new MySqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@customerCode", 02);
+                    cmd.Parameters.AddWithValue("@customerCode", 123);
 
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {

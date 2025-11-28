@@ -73,7 +73,7 @@
                 let to = $("#dateTo").val();
                 let ignoreDate = $("#chkAll").is(":checked");
 
-                $.get("/Lists/GetFixedAssetItem",
+               $.get('@Url.Action("GetFixedAssetItem", "Lists")',
                     { dateFrom: from, dateTo: to, ignoreDate: ignoreDate },
                     function (res) {
                         if (!res.status) {
@@ -116,7 +116,7 @@
                             const Id = $(this).data('id');
                             if (Id) {
                                 // Redirect to PrepaidExpense view with ID parameter
-                                window.location.href = `/Lists/ItemList?Id=${Id}`;
+                              window.location.href = '@Url.Action("ItemList", "Lists")' + `?Id=${Id}`;
                             }
                         });
 

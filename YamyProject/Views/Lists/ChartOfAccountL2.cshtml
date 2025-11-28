@@ -110,7 +110,7 @@
          // Load Level 1 options (dropdown)
         function loadLevel1Options() {
             $.ajax({
-                url: '/Lists/GetLevel1Accounts',
+                url: '@Url.Action("GetLevel1Accounts", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     if(res.status && res.data) {
@@ -126,7 +126,7 @@
 
                function loadLevel2Accounts() {
             $.ajax({
-                url: "/Lists/GetLevel2Accounts",
+               url: '@Url.Action("GetLevel2Accounts", "Lists")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -246,7 +246,7 @@
             };
 
             $.ajax({
-                url: '/Lists/SaveLevel2Account',
+             url: '@Url.Action("SaveLevel2Account", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
@@ -277,7 +277,7 @@
             if (!confirm("Are you sure you want to delete this Level 2 account?")) return;
 
             $.ajax({
-                url: `/Lists/DeleteLevel2Account?id=${id}`,
+                url: '@Url.Action("DeleteLevel2Account", "Lists")' + `?id=${id}`,
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {

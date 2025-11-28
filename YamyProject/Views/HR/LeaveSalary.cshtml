@@ -62,7 +62,7 @@
 
         function loadLeaveSalarySummary() {
             $.ajax({
-                url: '/HR/GetLeaveSalary',
+               url: '@Url.Action("GetLeaveSalary", "HR")',
                 type: 'GET',
 
                 beforeSend: function () {

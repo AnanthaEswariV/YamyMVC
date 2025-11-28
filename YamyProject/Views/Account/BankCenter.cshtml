@@ -143,7 +143,7 @@
         // ===== Load Banks Table =====
            function loadBanks(selectionMethod) {
             $.ajax({
-                url: "/Account/GetBanks",
+               url: '@Url.Action("GetBanks", "Account")',
                 type: "GET",
                 data: { selectionMethod: selectionMethod },
                 success: function (res) {
@@ -243,7 +243,7 @@
             } else {
                 // Option not found, load the country name dynamically
                 $.ajax({
-                    url: `/Account/GetCountryById/${bank.countryId}`, 
+                    url: `@Url.Action("GetCountryById", "Account")?id=${bank.countryId}`,
                     type: 'GET',
                     success: function(country) {
                         if (country) {
@@ -285,7 +285,7 @@
             };
 
             $.ajax({
-                url: '/Account/SaveBank',
+               url: '@Url.Action("SaveBank", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(bankData),
@@ -313,7 +313,7 @@
             if (!confirm("Are you sure you want to deactivate this bank?")) return;
 
             $.ajax({
-                url: '/Account/DeactivateBank',
+                url: '@Url.Action("DeactivateBank", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: bankId, // Send just the integer
@@ -340,7 +340,7 @@
             if (!confirm("Are you sure you want to reactivate this bank?")) return;
 
             $.ajax({
-                url: '/Account/ReactivateBank', 
+                url: '@Url.Action("ReactivateBank", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: bankId,
@@ -361,7 +361,7 @@
         // ===== Load Countries on Page Ready =====
         $(document).ready(function () {
             $.ajax({
-                url: '/Account/GetCountries',
+             url: '@Url.Action("GetCountries", "Account")',
                 type: 'GET',
                 success: function (countries) {
                     let $country = $("#country");

@@ -246,7 +246,7 @@
             // 1️⃣ Load Petty Cash Cards
             function loadPettyCashCards() {
                 $.ajax({
-                    url: '/Lists/GetPettyCashCards',
+                    url: '@Url.Action("GetPettyCashCards", "Lists")',
                     type: 'GET',
                     success: function (res) {
                         let tbody = $("#pettyCashTable tbody");
@@ -304,7 +304,7 @@
             // 3️⃣ Load Petty Cash Vouchers
             function loadVouchers(empCode) {
                 $.ajax({
-                    url: '/Lists/GetEmployeePettyCash',
+                   url: '@Url.Action("GetEmployeePettyCash", "Lists")',
                     type: 'GET',
                     data: { empCode: empCode },
                     success: function (res) {
@@ -336,9 +336,9 @@
             // 4️⃣ Load Petty Cash Transactions
             function loadTransactions(empCode) {
                 $.ajax({
-                    url: '/Lists/GetEmployeePettyCashTransactions',
+                url: '@Url.Action("GetEmployeePettyCashTransactions", "Lists")',
                     type: 'GET',
-                    data: { empCode: empCode }, // Make sure backend accepts 'empCode'
+                    data: { empCode: empCode }, 
                     success: function (res) {
                         let tbody = $("#pettyCashTransactionsTable tbody");
                         tbody.empty();
@@ -427,7 +427,7 @@
             };
 
             $.ajax({
-                url: '/Lists/SavePettyCashCard',
+              url: '@Url.Action("SavePettyCashCard", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(pettyCashData),
@@ -449,7 +449,7 @@
 
            function loadAccounts() {
                     $.ajax({
-                        url: '/HR/GetAccruedSalaries', // make sure this is your accounts API
+                        url: '/HR/GetAccruedSalaries',
                         type: 'GET',
                         success: function (data) {
                             const dropdowns = [
@@ -488,11 +488,11 @@
 
             function loademployee() {
             $.ajax({
-                url: '/HR/GetEmployees',
+              url: '@Url.Action("GetEmployees", "HR")',
                 type: 'GET',
                 success: function (res) {
 
-                    const employees = res.data; // <-- FIX: use res.data
+                    const employees = res.data;
 
                     const $ddl = $('#employeeSelect');
                     if ($ddl.length === 0) {
@@ -563,7 +563,7 @@
             if (!confirm("Are you sure you want to delete this Petty Cash Card?")) return;
 
             $.ajax({
-                url: `/Lists/DeletePettyCashCard/${id}`,
+              url: '@Url.Action("DeletePettyCashCard", "Lists")' + '/' + id,
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {

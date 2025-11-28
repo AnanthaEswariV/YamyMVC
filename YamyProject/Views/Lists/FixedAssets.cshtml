@@ -187,7 +187,7 @@
 
             function loadFixedAssetCategories() {
                 $.ajax({
-                    url: '/Lists/GetFixedAssetsCategoryList',
+                   url: '@Url.Action("GetFixedAssetsCategoryList", "Lists")',
                     type: 'GET',
                     success: function (res) {
                         if (!res.status) {
@@ -244,7 +244,7 @@
 
             function loadAccounts() {
                 $.ajax({
-                    url: '/HR/GetAccruedSalaries', // make sure this is your accounts API
+                   url: '@Url.Action("GetAccruedSalaries", "HR")',
                     type: 'GET',
                     success: function (data) {
                         const dropdowns = [
@@ -304,7 +304,7 @@
                     }
 
                     $.ajax({
-                            url: "/Lists/AddFixedAssetsCategory",
+                       url: '@Url.Action("AddFixedAssetsCategory", "Lists")',
                         method: "POST",
                         contentType: "application/json",
                         data: JSON.stringify(model),
@@ -329,7 +329,7 @@
 
         function loadAllFixedAssets() {
             $.ajax({
-                url: '/Lists/GetAllFixedAssets',
+          url: '@Url.Action("GetAllFixedAssets", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     if (!res.status) {
@@ -449,7 +449,7 @@
             $(document).ready(function () {
 
             $.ajax({
-            url: '/Lists/GetFixedAssetsCategory',
+          url: '@Url.Action("GetFixedAssetsCategory", "Lists")',
             type: 'GET',
             success: function (res) {
                 if (res.status) {
@@ -482,7 +482,7 @@
         });
 
             $.ajax({
-            url: '/HR/GetAccruedSalaries',
+          url: '@Url.Action("GetAccruedSalaries", "HR")',
             type: 'GET',
             success: function (data) {
                 // Map of dropdowns and their corresponding code boxes
@@ -650,7 +650,7 @@
             }
 
             $.ajax({
-                url: '/Lists/AddFixedAsset', 
+                url: '@Url.Action("AddFixedAsset", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(payload),
@@ -774,7 +774,7 @@
           
 
             $.ajax({
-                url: "/Lists/UpdateFixedAsset",
+          url: '@Url.Action("UpdateFixedAsset", "Lists")',
                 type: "POST",
                 data: JSON.stringify(payload),
                 contentType: "application/json",
@@ -837,7 +837,7 @@
             if (!assetId) return;
 
             $.ajax({
-                url: '/Lists/GetFixedAssetsForGrid',
+              url: '@Url.Action("GetFixedAssetsForGrid", "Lists")',
                 type: 'GET',
                 data: { assetId: assetId },
                 success: function (res) {
@@ -889,7 +889,7 @@
             if (!confirm("Are you sure you want to delete this Fixed Asset?")) return;
 
             $.ajax({
-                url: `/Lists/DeleteFixedAsset?assetId=${assetId}`,
+               url: '@Url.Action("DeleteFixedAsset", "Lists")' + '?assetId=' + assetId,
                 type: "DELETE",
                 success: function (res) {
                     if (res.status) {

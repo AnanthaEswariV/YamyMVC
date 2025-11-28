@@ -105,7 +105,7 @@
 
         // You can get this "id" from query string or previous page
         const urlParams = new URLSearchParams(window.location.search);
-        const employeeId = urlParams.get('id'); // example: ?id=123
+        const employeeId = urlParams.get('id');
 
         if (!employeeId) {
             toastr.warning('Employee ID missing in URL');
@@ -113,7 +113,7 @@
         }
 
         $.ajax({
-            url: '/Reports/GetEmployeeTransactionDetails',
+           url: '@Url.Action("GetEmployeeTransactionDetails", "Reports")',
             type: 'GET',
             data: {
                 id: employeeId,

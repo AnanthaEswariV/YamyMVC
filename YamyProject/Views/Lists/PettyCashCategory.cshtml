@@ -110,7 +110,7 @@
 
         function loadPettyCashCategories() {
             $.ajax({
-                url: "/Lists/GetPettyCashCategories",
+               url: '@Url.Action("GetPettyCashCategories", "Lists")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -218,7 +218,7 @@
             };
 
             $.ajax({
-                url: '/Lists/SavePettyCashCategory',
+                url: '@Url.Action("SavePettyCashCategory", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(categoryData),

@@ -114,7 +114,7 @@
         $(document).ready(function () {
             
             $.ajax({
-                url: '/Lists/GetAccountTypes', // API returning enum list
+              url: '@Url.Action("GetAccountTypes", "Lists")',
                 type: 'GET',
                 success: function (data) {
                     const dropdown = $('#comboCategoryCode');
@@ -130,7 +130,7 @@
 
             function loadLevel1Accounts() {
             $.ajax({
-                url: "/Lists/GetLevel1Accounts",
+          url: '@Url.Action("GetLevel1Accounts", "Lists")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -237,7 +237,7 @@
             };
 
             $.ajax({
-                url: '/Lists/SaveLevel1Account',
+               url: '@Url.Action("SaveLevel1Account", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(levelData),
@@ -274,7 +274,7 @@
             if (!confirm(`Are you sure you want to delete?`)) return;
 
             $.ajax({
-                url: `/Lists/DeleteLevel1Account?id=${id}`,
+              url: '@Url.Action("DeleteLevel1Account", "Lists")' + `?id=${id}`,
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {

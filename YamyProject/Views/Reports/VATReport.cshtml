@@ -109,7 +109,7 @@
             }
 
             $.ajax({
-                url: '/Reports/GetVatReport',
+               url: '@Url.Action("GetVatReport", "Reports")',
                 type: 'GET',
                 data: {
                     type: type,

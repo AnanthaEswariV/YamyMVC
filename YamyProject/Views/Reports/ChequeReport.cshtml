@@ -81,7 +81,7 @@
 
         function loadChequeNumbers() {
             $.ajax({
-                url: '/Reports/GetChequeNumbers',
+             url: '@Url.Action("GetChequeNumbers", "Reports")',
                 method: 'GET',
                 dataType: 'json',
                 success: function(result) {
@@ -102,7 +102,8 @@
         }
 
         function loadChequeReport(chequeNo) {
-            const url = '/Reports/GetChequeDetails' + (chequeNo ? `?chequeNo=${chequeNo}` : '');
+         const url = '@Url.Action("GetChequeDetails", "Reports")' + (chequeNo ? '?chequeNo=' + chequeNo : '');
+
 
             $.ajax({
                 url: url,

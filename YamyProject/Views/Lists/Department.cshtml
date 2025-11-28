@@ -145,7 +145,7 @@
             }
 
             $.ajax({
-                url: '/Lists/AddDepartment',
+              url: '@Url.Action("AddDepartment", "Lists")',
                 type: 'POST',
                 contentType: 'application/json', // important
                 data: JSON.stringify({ name: name }), // send JSON body
@@ -177,7 +177,7 @@
 
               function loadDepartments() {
             $.ajax({
-                url: "/Lists/GetDepartments",
+             url: '@Url.Action("GetDepartments", "Lists")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -278,7 +278,7 @@
             }
 
             $.ajax({
-                url: '/Lists/EditDepartment',
+               url: '@Url.Action("EditDepartment", "Lists")',
                 type: 'PUT',
                 contentType: 'application/json',
                 data: JSON.stringify({ Id: id, Name: name }),
@@ -306,7 +306,7 @@
             if (!confirm("Are you sure you want to delete this department?")) return;
 
             $.ajax({
-                url: `/Lists/DeleteDepartment/${id}`,
+           url: `@Url.Action("DeleteDepartment", "Lists")/${id}`,
                 type: 'DELETE',
                 success: function(res) {
                     if (res.status) {

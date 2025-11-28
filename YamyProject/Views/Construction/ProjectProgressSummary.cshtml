@@ -59,7 +59,7 @@
         // ✅ Load data from API
         function loadProjectProgressSummary() {
             $.ajax({
-                url: '/Construction/GetProjectActivitySummary',
+            url: '@Url.Action("GetProjectActivitySummary", "Construction")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#table1 tbody').html(`

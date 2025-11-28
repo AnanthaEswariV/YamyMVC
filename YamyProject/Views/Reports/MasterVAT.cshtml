@@ -85,7 +85,7 @@
             const type = $('#vatType').val() || 'All';
 
             $.ajax({
-                url: '/Reports/GetMasterVATReport',
+                 url: '@Url.Action("GetMasterVATReport", "Reports")',
                 type: 'GET',
                 data: { reportType: type },
                 beforeSend: function () {
@@ -137,8 +137,9 @@
                         type: selectionMethod  
                     }).toString();
 
-                                    // Redirect to TransactionJournal
-                                    window.location.href = `/Lists/TransacationJournal?${query}`;
+                                           // Redirect to TransactionJournal
+        window.location.href = '@Url.Action("TransacationJournal", "Lists")' + '?' + query;
+
                                 });
                             }
 

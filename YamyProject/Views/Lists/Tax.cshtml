@@ -167,7 +167,7 @@
 
           function loadTaxes() {
             $.ajax({
-                url: "/Lists/GetTaxes",
+              url: '@Url.Action("GetTaxes", "Lists")',
                 type: "GET",
                 success: function (res) {
                     if ($.fn.DataTable.isDataTable("#taxTable")) {
@@ -255,10 +255,10 @@
             };
 
             $.ajax({
-                url: '/Lists/AddTax',
+              url: '@Url.Action("AddTax", "Lists")',
                 type: 'POST',
-                contentType: 'application/json',  // ✅ Important: send JSON
-                data: JSON.stringify(taxData),     // ✅ Convert JS object to JSON
+                contentType: 'application/json', 
+                data: JSON.stringify(taxData),     
                 success: function (res) {
                     if (res.status) {
                         // Hide modal
@@ -315,7 +315,7 @@
             };
 
             $.ajax({
-                url: '/Lists/EditTax',
+              url: '@Url.Action("EditTax", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(taxData),
@@ -389,7 +389,7 @@
         function restoreTax(id) {
              console.log("Restore Tax called with ID:", id);
             $.ajax({
-                url: '/Lists/RestoreTax',
+               url: '@Url.Action("RestoreTax", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ id: id }),

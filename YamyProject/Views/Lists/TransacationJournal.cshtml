@@ -193,7 +193,7 @@
                 }
 
                 $.ajax({
-                    url: '/Lists/GetJournal',
+                url: '@Url.Action("GetJournal", "Lists")',
                     type: 'GET',
                     data: data,
                     beforeSend: function () {
@@ -307,7 +307,7 @@
                     vType: vType,
                     date: date
                 });
-                window.location.href = `/Lists/GeneralJournal?${params.toString()}`;
+        window.location.href = '@Url.Action("GeneralJournal", "Lists")' + '?' + params.toString();
             }
         });
 

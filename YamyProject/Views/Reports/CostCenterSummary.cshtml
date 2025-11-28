@@ -133,7 +133,7 @@
             $('#summaryRow').remove();
 
                     $.ajax({
-            url: '/Reports/GetCostCenterReport',
+            url: '@Url.Action("GetCostCenterReport", "Reports")',
             type: 'GET',
             data: {
                 costCenterId: costCenterId || null,
@@ -257,7 +257,7 @@
 
                    function loadCostCenters() {
             $.ajax({
-                url: '/Lists/GetCostCenters',
+               url: '@Url.Action("GetCostCenters", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     // res is directly an array

@@ -135,7 +135,7 @@
             }).toString();
             console.log(query);
             // Navigate to TransactionJournal
-            window.location.href = `/Lists/TransacationJournal?${query}`;
+            window.location.href = '@Url.Action("TransactionJournal", "Lists")' + '?' + query;
         });
          
 
@@ -150,7 +150,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetMasterTransactionByAccount',
+            url: '@Url.Action("GetMasterTransactionByAccount", "Reports")',
                 type: 'GET',
                 data: {
                     accountId: accountId,

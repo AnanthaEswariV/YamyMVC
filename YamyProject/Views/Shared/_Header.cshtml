@@ -32,11 +32,11 @@
                             Chart of Account
                         </a>
                     </li>
-                    <li><a href="/Lists/ItemList">Item List</a></li>
-                    <li><a href="/Lists/ItemCategory">Item Category List</a></li>
-                    <li><a href="/Lists/Tax">Item Tax Code List</a></li>
-                    <li><a href="/Lists/Unit">Item Unit List</a></li>
-                    <li><a href="/Lists/FixedAssetItem">Fixed Asset Item List</a></li>
+                    <li><a href="@Url.Action("ItemList", "Lists")">Item List</a></li>
+                    <li><a href="@Url.Action("ItemCategory", "Lists")">Item Category List</a></li>
+                    <li><a href="@Url.Action("Tax", "Lists")">Item Tax Code List</a></li>
+                    <li><a href="@Url.Action("Unit", "Lists")">Item Unit List</a></li>
+                    <li><a href="@Url.Action("FixedAssetItem", "Lists")">Fixed Asset Item List</a></li>
                 </ul>
             </li>
 
@@ -46,15 +46,15 @@
                     <li class="dropdown has-submenu">
                         <a href="">Account Center</a>
                         <ul class="submenu">
-                            <li><a href="/Lists/ChartOfAccount">Chart Of Account</a></li>
-                            <li><a href="/Lists/CostCenter">Cost Center</a></li>
+                            <li><a href="@Url.Action("ChartOfAccount", "Lists")">Chart Of Account</a></li>
+                            <li><a href="@Url.Action("CostCenter", "Lists")">Cost Center</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">Fixed Assets List</a>
                         <ul class="submenu">
-                            <li><a href="/Lists/FixedAssets">Fixed Assets Center</a></li>
-                            <li><a href="/Lists/FixedAssetsCategory">Fixed Assets Category</a></li>
+                            <li><a href="@Url.Action("FixedAssets", "Lists")">Fixed Assets Center</a></li>
+                            <li><a href="@Url.Action("FixedAssetsCategory", "Lists")">Fixed Assets Category</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
@@ -69,25 +69,23 @@
                     <li class="dropdown has-submenu">
                         <a href="">Prepaid Expense List</a>
                         <ul class="submenu">
-                            <li><a href="/Lists/PrepaidExpense">Prepaid Expense Center</a></li>
-                            <li><a href="/Lists/PrepaidExpenseCategory">Prepaid Expense Category</a></li>
+                            <li><a href="@Url.Action("PrepaidExpense", "Lists")">Prepaid Expense Center</a></li>
+                            <li><a href="@Url.Action("PrepaidExpenseCategory", "Lists")">Prepaid Expense Category</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">Petty Cash List</a>
                         <ul class="submenu">
-                            <li><a href="/Lists/PettyCash">Petty Cash Center</a></li>
-                            <li><a href="">Add Account</a></li>
+                            <li><a href="@Url.Action("PettyCash", "Lists")">Petty Cash Center</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">Banking</a>
                         <ul class="submenu">
-                            <li><a href="/Account/BankCenter">Bank Center</a></li>
-                            <li><a href="/Account/BankCardCenter">Open Bank Card</a></li>
-                            <li><a href="/Account/BankCheque">Cheques</a></li>
-                            <li><a href="/Account/PDC">PDC</a></li>
-                           @*  <li><a href="">Reconciliation</a></li> *@
+                            <li><a href="@Url.Action("BankCenter", "Account")">Petty Cash Center</a></li>
+                            <li><a href="@Url.Action("BankCardCenter", "Account")">Petty Cash Center</a></li>
+                            <li><a href="@Url.Action("BankCheque", "Account")">Petty Cash Center</a></li>
+                            <li><a href="@Url.Action("PDC", "Account")">Petty Cash Center</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -99,16 +97,16 @@
                     <li class="dropdown has-submenu">
                         <a href="">Inventory Items</a>
                         <ul class="submenu">
-                            <li><a href="/Lists/Unit">Add Unit</a></li>
-                            <li><a href="/Lists/ItemCategory">Add Category</a></li>
-                            <li><a href="/Lists/Tax">Add Item Tax Code</a></li>
+                            <li><a href="@Url.Action("Unit", "Lists")">Add Unit</a></li>
+                            <li><a href="@Url.Action("ItemCategory", "Lists")">Add Category</a></li>
+                            <li><a href="@Url.Action("Tax", "Lists")">Add Item Tax Code</a></li>
                         </ul>
                     </li>
-                    <li><a href="/Lists/ItemList">Add New Item</a></li>
+                    <li><a href="@Url.Action("ItemList", "Lists")">Add New Item</a></li>
                     <li><a asp-controller="ItemStockSettlement" asp-action="Index">Stock Management</a></li>
-                    <li><a href="/Lists/ItemList">Inventory Center</a></li>
-                    <li><a href="/Inventory/WareHouse">Warehouse Center</a></li>
-                    <li><a href="/Inventory/WarehouseTransfer">Item Warehouse Transfter</a></li>
+                    <li><a href="@Url.Action("ItemList", "Lists")">Inventory Center</a></li>
+                    <li><a href="@Url.Action("WareHouse", "Inventory")">Warehouse Center</a></li>
+                    <li><a href="@Url.Action("WarehouseTransfer", "Inventory")">Item Warehouse Transfter</a></li>
                 </ul>
             </li>
             <li class="dropdown">
@@ -149,7 +147,7 @@
             <li class="dropdown">
                 HR
                 <ul class="submenu">
-                    <li><a href="/HR/HRMS">Human Resource</a></li>
+                    <li><a href="@Url.Action("HRMS", "HR")">Human Resource</a></li>
                 </ul>
             </li>
             <li class="dropdown">
@@ -158,34 +156,34 @@
                     <li class="dropdown has-submenu">
                         <a href="">Project SetUp</a>
                         <ul class="submenu">
-                            <li><a href="/Construction/ProjectCenter">Project Center</a></li>
-                            <li><a href="/Construction/TenderCenter">Tender Center</a></li>
-                            <li><a href="/Construction/SiteCenter">Site Center</a></li>
+                            <li><a href="@Url.Action("ProjectCenter", "Construction")">Project Center</a></li>
+                            <li><a href="@Url.Action("TenderCenter", "Construction")">Tender Center</a></li>
+                            <li><a href="@Url.Action("SiteCenter", "Construction")">Site Center</a></li>
                         </ul>
                       </li>
-                    <li><a href="/Construction/ProjectTender">Project Tender</a></li>
-                    <li><a href="/Construction/ProjectEstimation">Project Estimate</a></li>
-                    <li><a href="/Construction/ProjectPlanning">Project planning</a></li>
-                    <li><a href="/Construction/ProjectWorkDone">Project Work Done</a></li>
+                    <li><a href="@Url.Action("ProjectTender", "Construction")">Project Tender</a></li>
+                    <li><a href="@Url.Action("ProjectEstimation", "Construction")">Project Estimate</a></li>
+                    <li><a href="@Url.Action("ProjectPlanning", "Construction")">Project planning</a></li>
+                    <li><a href="@Url.Action("ProjectWorkDone", "Construction")">Project Work Done</a></li>
                     <li class="dropdown has-submenu">
                         <a href="">Project Management</a>
                         <ul class="submenu">
-                            <li><a href="/Construction/ProjectSummary">Project Summary</a></li>
-                            <li><a href="/Construction/ActivitySummary">Project Active Summary</a></li>
-                            <li><a href="/Construction/ProjectAssignReport">Project Assign Summary</a></li>
-                            <li><a href="/Construction/ProjectResourceReport">Project Resource Summary</a></li>
-                            <li><a href="/Construction/ProjectProgressSummary">Project Progress Summary</a></li>
-                            <li><a href="/Construction/ProjectWorkProgressSummary">Project Work Progress Summary</a></li>
+                            <li><a href="@Url.Action("ProjectSummary", "Construction")">Project Summary</a></li>
+                            <li><a href="@Url.Action("ActivitySummary", "Construction")">Project Active Summary</a></li>
+                            <li><a href="@Url.Action("ProjectAssignReport", "Construction")">Project Assign Summary</a></li>
+                            <li><a href="@Url.Action("ProjectResourceReport", "Construction")">Project Resource Summary</a></li>
+                            <li><a href="@Url.Action("ProjectProgressSummary", "Construction")">Project Progress Summary</a></li>
+                            <li><a href="@Url.Action("ProjectWorkProgressSummary", "Construction")">Project Work Progress Summary</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">Project Dashboard & Reports</a>
                         <ul class="submenu">
-                            <li><a href="/Construction/ProjectDashboard">Project Dashboard</a></li>
-                            <li><a href="/Construction/ProjectTimeLine">Timeline</a></li>
+                            <li><a href="@Url.Action("ProjectDashboard", "Construction")">Project Dashboard</a></li>
+                            <li><a href="@Url.Action("ProjectTimeLine", "Construction")">Timeline</a></li>
                         </ul>
                     </li>
-                    <li><a href="/Construction/ProjectTimeLineChart">Project Time Line</a></li>
+                    <li><a href="@Url.Action("ProjectTimeLineChart", "Construction")">Project Time Line</a></li>
                 </ul>
             </li>
             <li class="dropdown">
@@ -194,10 +192,10 @@
                     <li class="dropdown has-submenu">
                         <a href="">Company</a>
                         <ul class="submenu">
-                            <li><a href="/Reports/AccountBalanceReport">Balance Sheet Standard</a></li>
+                            <li><a href="@Url.Action("AccountBalanceReport", "Reports")">Balance Sheet Standard</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Expense From Vendor Summary</a></li>
-                            <li><a href="/Reports/ProfitLoss">Profit & Loss</a></li>
+                            <li><a href="@Url.Action("ProfitLoss", "Reports")">Profit & Loss</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="CashFlowStatement">Statement of Cash Flow</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="IncomeExpenseStatement">Income Expense Statement</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="UserActivity">User Activity Report</a></li>
@@ -206,9 +204,9 @@
                     <li class="dropdown has-submenu">
                         <a href="">Customer & Receivable</a>
                         <ul class="submenu">
-                            <li><a asp-controller="CustomerAndReceivableC" asp-action="CustomerSummary">Customer Summary</a></li>
-                            <li><a asp-controller="CustomerAndReceivableC" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>
-                            <li><a asp-controller="CustomerAndReceivableC" asp-action="CustomerBalanceSummary"></a>Customer Balance Summary</li>
+                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerSummary">Customer Summary</a></li>
+                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>
+                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerBalanceSummary"></a>Customer Balance Summary</li>
                             <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary"></a> Income By Customer Summary</li>
                         </ul>
                     </li>
@@ -239,7 +237,7 @@
                     <li class="dropdown has-submenu">
                         <a href="">Employees</a>
                         <ul class="submenu">
-                            <li><a href="/Reports/EmployeeBalanceSummary">Employee Balance Summary</a></li>
+                            <li><a href="@Url.Action("EmployeeBalanceSummary", "Reports")">Employee Balance Summary</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
@@ -257,67 +255,72 @@
                                     </li>
                                 </ul>
                             </li> *@
-                            <li><a href="/Reports/PettyCashSummary">Petty Cash Summary</a></li>
-                            <li><a href="/Reports/PettyCashDetails">Petty Cash Details</a></li>
-                            <li><a href="/Lists/TransacationJournal">Transactions Journal</a></li>
-                            <li><a href="/Reports/GeneralLedger">General Ledger</a></li>
-                            <li><a href="/Reports/CostCenterSummary">Cost Center</a></li>
-                            <li><a href="/Reports/VATReport">VAT Report</a></li>
-                            <li><a href="/Reports/FixedAssetSummary">Fixed Asset</a></li>
-                            <li><a href="/Reports/PrepaidExpenseSummary">Prepaid Expense</a></li>
-                            <li><a href="/Reports/MasterVAT">VAT Category Report</a></li>
+                            <li><a href="@Url.Action("PettyCashSummary", "Reports")">Petty Cash Summary</a></li>
+                            <li><a href="@Url.Action("PettyCashDetails", "Reports")">Petty Cash Details</a></li>
+                            <li><a href="@Url.Action("TransacationJournal", "Lists")">Transactions Journal</a></li>
+                            <li><a href="@Url.Action("GeneralLedger", "Reports")">General Ledger</a></li>
+                            <li><a href="@Url.Action("CostCenterSummary", "Reports")">Cost Center</a></li>
+                            <li><a href="@Url.Action("VATReport", "Reports")">VAT Report</a></li>
+                            <li><a href="@Url.Action("FixedAssetSummary", "Reports")">Fixed Asset</a></li>
+                            <li><a href="@Url.Action("PrepaidExpenseSummary", "Reports")">Prepaid Expense</a></li>
+                            <li><a href="@Url.Action("MasterVAT", "Reports")">VAT Category Report</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">Inventory</a>
                         <ul class="submenu">
-                            <li><a href="/Reports/ItemMovingReport">Item Moving Report</a></li>
-                            <li><a href="/Reports/ItemWiseProfitStatement">Item Profit</a></li>
-                            <li><a href="/Reports/InventoryTransaction">Item Transaction</a></li>
-                            <li><a href="/Reports/WareHouseSummary">Warehouse Summary</a></li>
+                            <li><a href="@Url.Action("ItemMovingReport", "Reports")">Item Moving Report</a></li>
+                            <li><a href="@Url.Action("ItemWiseProfitStatement", "Reports")">Item Profit</a></li>
+                            <li><a href="@Url.Action("InventoryTransaction", "Lists")">Item Transaction</a></li>
+                            <li><a href="@Url.Action("WareHouseSummary", "Reports")">Warehouse Summary</a></li>
                         </ul>
                     </li>
                     <li><a href="">Corporate Tax</a></li>
                     <li class="dropdown has-submenu">
                         <a href="">Bank</a>
                         <ul class="submenu">
-                            <li><a href="/Reports/ChequeReport">Cheque Inquiry</a></li>
-                            <li><a href="/Reports/BankBalanceSummary">Bank Balance Summary</a></li>
-                            <li><a href="/Reports/PDCOutstandingSummary">PDC Outstanding</a></li>
-                            <li><a href="/Reports/PDCClearedHistory">PDC Cleared History</a></li>
-                            <li><a href="/Reports/ReturnedChequeReport">Returned Cheques Report</a></li>
-                            <li><a href="/Reports/ChequeLinked">Cheques Linked to Payment/Receipt</a></li>
+
+                            <li><a href="@Url.Action("ChequeReport", "Reports")">Cheque Inquiry</a></li>
+                            <li><a href="@Url.Action("BankBalanceSummary", "Reports")">Bank Balance Summary</a></li>
+                            <li><a href="@Url.Action("PDCOutstandingSummary", "Reports")">PDC Outstanding</a></li>
+                            <li><a href="@Url.Action("PDCClearedHistory", "Reports")">PDC Cleared History</a></li>
+                            <li><a href="@Url.Action("ReturnedChequeReport", "Reports")">Returned Cheques Report</a></li>
+                            <li><a href="@Url.Action("ChequeLinked", "Reports")">Cheques Linked to Payment/Receipt</a></li>
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">List</a>
                         <ul class="submenu">
-                            <li><a href="/Lists/ChartOfAccount">Account List</a></li>
-                            <li><a href="/Account/BankCenter">Bank List</a></li>
-                            <li><a href="/Account/BankCardCenter">Bank Card List</a></li>
-                            <li><a href="/Lists/ChartOfAccountL1">Chart of Account(L1)</a></li>
-                            <li><a href="/Lists/ChartOfAccountL2">Chart of Account(L2)</a></li>
-                            <li><a href="/Lists/ChartOfAccountL3">Chart of Account(L3)</a></li>
-                            <li><a href="/Account/BankCheque">Cheque List</a></li>
-                            <li><a href="/Reports/CityList">City List</a></li>
-                            <li><a href="/Reports/CountryList">Country List</a></li>
-                            <li><a href="/Lists/CostCenter">Cost Center List</a></li>
+                            <li><a href="@Url.Action("ChartOfAccount", "Lists")">Account List</a></li>
+                            <li><a href="@Url.Action("BankCenter", "Account")">Bank List</a></li>
+                            <li><a href="@Url.Action("BankCardCenter", "Account")">Bank Card List</a></li>
+                            <li><a href="@Url.Action("ChartOfAccountL1", "Lists")">Chart of Account(L1)</a></li>
+                            <li><a href="@Url.Action("ChartOfAccountL2", "Lists")">Chart of Account(L2)</a></li>
+                            <li><a href="@Url.Action("ChartOfAccountL3", "Lists")">Chart of Account(L3)</a></li>
+                            <li><a href="@Url.Action("BankCheque", "Account")">Cheque List</a></li>
+                            <li><a href="@Url.Action("CityList", "Reports")">City List</a></li>
+                            <li><a href="@Url.Action("CountryList", "Reports")">Country List</a></li>
+                            <li><a href="@Url.Action("CostCenter", "Lists")">Cost Center List</a></li>
+
                             <li><a asp-controller="CustomerList" asp-action="CustomerList">Customer List</a></li>
                             <li><a asp-controller="CustomerList" asp-action="CustomerCategoryList">Customer Category List</a></li>
-                            <li><a href="/Lists/Department">Department List</a></li>
-                            <li><a href="/Reports/EmployeeList">Employee List</a></li>
-                            <li><a href="/Reports/FixedAssetList">Fixed Asset List</a></li>
-                            <li><a href="/Lists/FixedAssetsCategory">Fixed Asset Category List</a></li>
-                            <li><a href="/Lists/FixedAssetItem">Fixed Asset Item List</a></li>
-                            <li><a href="/Reports/ItemList">Item List</a></li>
-                            <li><a href="/Lists/ItemCategory">Item Category List</a></li>
-                            <li><a href="/Lists/Tax">Item Tax Code List</a></li>
-                            <li><a href="/Lists/Unit">Item Unit List</a></li>
-                            <li><a href="/Reports/ItemWarehouseList">Item Warehouse List</a></li>
-                            <li><a href="/Lists/PettyCashCategory">Petty Cash Category List</a></li>
-                            <li><a href="/Lists/Position">Position List</a></li>
-                            <li><a href="/Lists/PrepaidExpense">Prepaid Expense List</a></li>
-                            <li><a href="/Lists/PrepaidExpenseCategory">Prepaid Expense Category List</a></li>
+
+                            <li><a href="@Url.Action("Department", "Lists")">Department List</a></li>
+                            <li><a href="@Url.Action("EmployeeList", "Reports")">Employee List</a></li>
+                            <li><a href="@Url.Action("FixedAssetList", "Reports")">Fixed Asset List</a></li>
+                            <li><a href="@Url.Action("FixedAssetsCategory", "Lists")">Fixed Asset Category List</a></li>
+                            <li><a href="@Url.Action("FixedAssetItem", "Lists")">Fixed Asset Item List</a></li>
+                            <li><a href="@Url.Action("ItemList", "Reports")">Item List</a></li>
+
+
+                            <li><a href="@Url.Action("ItemCategory", "Lists")">Item Category List</a></li>
+                            <li><a href="@Url.Action("Tax", "Lists")">Item Tax Code List</a></li>
+                            <li><a href="@Url.Action("Unit", "Lists")">Item Unit List</a></li>
+                            <li><a href="@Url.Action("ItemWarehouseList", "Reports")">Item Warehouse List</a></li>
+                            <li><a href="@Url.Action("PettyCashCategory", "Lists")">Petty Cash Category List</a></li>
+                            <li><a href="@Url.Action("Position", "Lists")">Position List</a></li>
+                            <li><a href="@Url.Action("PrepaidExpense", "Lists")">Prepaid Expense List</a></li>
+                            <li><a href="@Url.Action("PrepaidExpenseCategory", "Lists")">Prepaid Expense Category List</a></li>
                             <li><a asp-controller="VendorList" asp-action="VendorList">Vendor List</a></li>
                             <li><a asp-controller="VendorList" asp-action="VendorCategoryList">Vendor Category List</a></li>
                         </ul>
@@ -328,11 +331,9 @@
             <li class="dropdown">
                 Settings
                 <ul class="submenu">
-                    @* <li><a href="">Settings</a></li> *@
                     <li><a asp-controller="MasterSettings" asp-action="Index">Settings</a></li>
-                    <li><a href="/Settings/ChangePassword">Change Current Password</a></li>
+                    <li><a href="@Url.Action("ChangePassword", "Settings")">Change Current Password</a></li>
                     <li><a asp-controller="UserAccounts" asp-action="Index">User</a></li>
-                    @* <li><a href="">Users</a></li> *@
                 </ul>
             </li>
         </ul>

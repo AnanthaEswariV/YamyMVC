@@ -173,7 +173,7 @@
         // Load warehouses into dropdown
         function loadWarehouses() {
             $.ajax({
-                url: '/Inventory/GetWarehouses', // your API route
+                url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
                 success: function(result) {
                     const dropdown = $('#warehouseDropdown');
@@ -207,7 +207,7 @@
             }
 
             $.ajax({
-                url: '/Inventory/GetWarehouseItems?warehouseId=' + warehouseId,
+               url: '@Url.Action("GetWarehouseItems", "Inventory")' + '?warehouseId=' + warehouseId,
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
@@ -241,7 +241,7 @@
 
         function loadWarehouse() {
             $.ajax({
-                url: '/Inventory/GetWarehouses',
+                url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
                 success: function (res) {
 
@@ -345,7 +345,7 @@
             };
 
             $.ajax({
-                url: "/Inventory/EditWarehouse",
+                url: '@Url.Action("EditWarehouse", "Inventory")',
                 type: "PUT",
                 contentType: "application/json",
                 data: JSON.stringify(model),
@@ -370,7 +370,7 @@
 
             if(confirm("Are you sure you want to delete this warehouse?")) {
                         $.ajax({
-        url: `/Inventory/DeleteWarehouse/${id}`,
+        url: '@Url.Action("DeleteWarehouse", "Inventory")' + '/' + id,
                     type: "DELETE",
                     success: function(res) {
                         if(res && res.status) {
@@ -433,8 +433,9 @@
             // Decide create vs update by EmployeeId presence (robust)
             const idVal = $('#EmployeeId').val();
             const isEdit = idVal && parseInt(idVal) > 0;
-            const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
-
+          const url = isEdit
+        ? '@Url.Action("EditEmployee", "HR")'
+        : '@Url.Action("SaveEmployee", "HR")';
             const employeeData = {
                 Id: isEdit ? parseInt(idVal) : 0,
                 Name: $('input[name="EmployeeName"]').val() || '',
@@ -512,7 +513,7 @@
 
            $(document).ready(function () {
                 $.ajax({
-                    url: '/HR/GetAccruedSalaries',
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
                     type: 'GET',
                     success: function (data) {
                      

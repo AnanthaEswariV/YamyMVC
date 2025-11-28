@@ -73,7 +73,7 @@
 
                        function loadFixedAssetCategories() {
             $.ajax({
-                url: "/Lists/GetFixedAssetsCategory",
+               url: '@Url.Action("GetFixedAssetsCategory", "Lists")',
                 type: "GET",
 
                 beforeSend: function () {
@@ -181,7 +181,7 @@
                     }
 
                     $.ajax({
-                            url: "/Lists/AddFixedAssetsCategory",
+                url: '@Url.Action("AddFixedAssetsCategory", "Lists")',
                         method: "POST",
                         contentType: "application/json",
                         data: JSON.stringify(model),
@@ -208,7 +208,7 @@
 
            $(document).ready(function () {
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function (data) {
 
@@ -257,7 +257,7 @@
            $(document).ready(function() {
                        function loadEditDropdowns(selectedAssets, selectedDepreciation, selectedExpence, codes = {}) {
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+               url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function (data) {
                     const dropdowns = [
@@ -340,7 +340,7 @@
                 };
 
                 $.ajax({
-                    url: "/Lists/EditFixedAssetsCategory",
+            url: '@Url.Action("EditFixedAssetsCategory", "Lists")',
                     type: "PUT",
                     contentType: "application/json",
                     data: JSON.stringify(model),
@@ -374,7 +374,7 @@
             if (!confirm("Are you sure you want to delete this category?")) return;
 
             $.ajax({
-                url: `/Lists/DeleteFixedAssetCategory?id=${categoryId}`,
+           url: '@Url.Action("DeleteFixedAssetCategory", "Lists")' + '?id=' + categoryId,
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {

@@ -54,7 +54,7 @@
             loadCountries();
                     function loadCountries() {
             $.ajax({
-                url: '/Reports/GetCountrys', 
+             url: '@Url.Action("GetCountrys", "Reports")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#table2 tbody').html(`

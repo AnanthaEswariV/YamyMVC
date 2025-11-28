@@ -64,7 +64,7 @@
 
                function loadEndOfServiceSummary() {
             $.ajax({
-                url: '/HR/GetEndOfService',  
+              url: '@Url.Action("GetEndOfService", "HR")',
                 type: 'GET',
 
                 beforeSend: function () {

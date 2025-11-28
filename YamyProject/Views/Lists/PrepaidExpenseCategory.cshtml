@@ -106,7 +106,7 @@
         $(document).ready(function () {
                  function loadPrepaidExpenseCategories() {
             $.ajax({
-                url: "/Lists/GetCategories",
+              url: '@Url.Action("GetCategories", "Lists")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -205,7 +205,7 @@
                 };
 
                 $.ajax({
-                    url: '/Lists/SavePrepaidExpenseCategory',
+                    url: '@Url.Action("SavePrepaidExpenseCategory", "Lists")',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(categoryData),

@@ -382,7 +382,7 @@
 
           function loadEmployeeTransactions(employeeId) {
             $.ajax({
-                url: '/HR/GetInvoiceByCustomerId',
+           url: '@Url.Action("GetInvoiceByCustomerId", "HR")',
                 type: 'GET',
                 data: { id: employeeId },
                 beforeSend: function () {
@@ -590,7 +590,9 @@
                 // Decide create vs update by EmployeeId presence (robust)
                 const idVal = $('#EmployeeId').val();
                 const isEdit = idVal && parseInt(idVal) > 0;
-                const url = isEdit ? '/HR/EditEmployee' : '/HR/SaveEmployee';
+                 const url = isEdit
+        ? '@Url.Action("EditEmployee", "HR")'
+        : '@Url.Action("SaveEmployee", "HR")';
 
                 // Build payload - prefer explicit IDs. Keep this list in sync with your modal IDs.
                 const employeeData = {
@@ -714,7 +716,7 @@
             // Fetch employees from API
             function fetchEmployees(filter = "active", search = ""){
                 $.ajax({
-                    url: `/HR/GetEmployees?filter=${filter}`,
+                  url: '@Url.Action("GetEmployees", "HR")' + '?filter=' + filter,
                     method: "GET",
                     success: function(res){
                         if(res.status){
@@ -904,7 +906,7 @@
                 if (!confirm('Are you sure you want to delete this employee?')) return;
 
                 $.ajax({
-                    url: '/HR/DeleteEmployee',
+                   url: '@Url.Action("DeleteEmployee", "HR")',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(empId),
@@ -927,7 +929,7 @@
 
               $(document).ready(function () {
                 $.ajax({
-                    url: '/HR/GetCountryOfIssue', // adjust controller name
+                  url: '@Url.Action("GetCountryOfIssue", "HR")',
                     type: 'GET',
                     success: function (data) {
                         let $ddl = $('#countryOfIssue');
@@ -945,7 +947,7 @@
 
               $(document).ready(function () {
                 $.ajax({
-                    url: '/HR/GetAccruedSalaries',
+              url: '@Url.Action("GetAccruedSalaries", "HR")',
                     type: 'GET',
                     success: function (data) {
 
@@ -1085,7 +1087,7 @@
             }
 
             $.ajax({
-                url: '/Lists/AddDepartment',
+               url: '@Url.Action("AddDepartment", "Lists")',
                 type: 'POST',
                 contentType: 'application/json', // important
                 data: JSON.stringify({ name: name }), // send JSON body
@@ -1132,7 +1134,7 @@
 
             // Always POST for Add
             $.ajax({
-                url: '/Lists/AddPosition',
+              url: '@Url.Action("AddPosition", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),

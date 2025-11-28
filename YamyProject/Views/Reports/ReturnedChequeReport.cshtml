@@ -102,7 +102,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetReturnChecks',  
+                url: '@Url.Action("GetReturnChecks", "Reports")',
                 type: 'GET',
                 data: {
                     startDate: startDate || null,

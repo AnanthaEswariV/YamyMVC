@@ -93,7 +93,7 @@
     <script>
         function loadFixedAssets() {
             $.ajax({
-                url: '/Lists/GetAllFixedAssets',
+            url: '@Url.Action("GetAllFixedAssets", "Lists")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#fixedassetTable tbody').html(`

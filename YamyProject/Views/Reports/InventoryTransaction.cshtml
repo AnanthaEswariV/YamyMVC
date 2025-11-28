@@ -116,7 +116,7 @@
 
             function loadItems() {
                 $.ajax({
-                    url: '/Lists/GetItems',
+                  url: '@Url.Action("GetItems", "Lists")',
                     type: 'GET',
                     success: function (res) {
                         const dropdown = $('#itemSelect');
@@ -168,7 +168,7 @@
                 }
 
                 $.ajax({
-                    url: '/Reports/GetInvoices',
+                  url: '@Url.Action("GetInvoices", "Reports")',
                     type: 'GET',
                     data: {
                         itemId: itemId,

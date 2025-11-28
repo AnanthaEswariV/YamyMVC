@@ -119,7 +119,7 @@
                 if (id) {
                     // ✅ Call your API with the selected ID
                     $.ajax({
-                        url: `/Reports/GetEmployeeTransactionDetails`,
+                       url: '@Url.Action("GetEmployeeTransactionDetails", "Reports")',
                         type: 'GET',
                         data: { id: id },
                         success: function (res) {
@@ -147,7 +147,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetEmployeeBalanceSummary',
+             url: '@Url.Action("GetEmployeeBalanceSummary", "Reports")',
                 type: 'GET',
                 data: {
                     showAll: showAll,

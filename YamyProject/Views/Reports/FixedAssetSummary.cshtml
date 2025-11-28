@@ -104,7 +104,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetFixedAssets',
+             url: '@Url.Action("GetFixedAssets", "Reports")',
                 type: 'GET',
                 data: {
                     startDate: startDate || null,
@@ -164,7 +164,8 @@
                             }).toString();
 
                             // Redirect to details page
-                            window.location.href = `/Reports/FixedAssetDetails?${query}`;
+                           window.location.href = '@Url.Action("FixedAssetDetails", "Reports")' + '?' + query;
+
                         });
 
                         $('#table3').DataTable({

@@ -251,7 +251,7 @@
 
           
             $.ajax({
-                url: '/Lists/GetCostCenters', 
+             url: '@Url.Action("GetCostCenters", "Lists")',
                 type: 'GET',
                 success: function(response) {
                     console.log('Loaded cost centers:', response);
@@ -468,7 +468,7 @@
             $('#saveButtonText').text('Saving...');
 
             $.ajax({
-                url: '/Lists/SaveCostCenter',
+              url: '@Url.Action("SaveCostCenter", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(costCenterData),
@@ -511,7 +511,7 @@
         // ✅ Load Main Cost Centers via API
         function loadMainCostCenters() {
             $.ajax({
-                url: '/Lists/GetMainCostCenters',
+               url: '@Url.Action("GetMainCostCenters", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     const ddl = $('#mainId');
@@ -547,7 +547,7 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.ajax({
-                        url: '/Lists/DeleteSubCostCenter',
+                      url: '@Url.Action("DeleteSubCostCenter", "Lists")',
                         type: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify(data.id),

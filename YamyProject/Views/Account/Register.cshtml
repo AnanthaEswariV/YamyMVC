@@ -82,7 +82,7 @@
                 url: '@Url.Action("Register", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify(formData),  // 👈 must stringify
+                data: JSON.stringify(formData),  
                        success: function (response) {
             toastr.success(response.message || 'Company created successfully!');
 

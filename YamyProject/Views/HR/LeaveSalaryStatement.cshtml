@@ -71,7 +71,7 @@
         }
 
         $.ajax({
-            url: `/HR/GetLeaveSalaryStatement?id=${id}`,   
+         url: '@Url.Action("GetLeaveSalaryStatement", "HR")' + '?id=' + id,
             type: 'GET',
                 beforeSend: function () {
                     // Display loading spinner while waiting for the response

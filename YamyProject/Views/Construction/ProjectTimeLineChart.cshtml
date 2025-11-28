@@ -667,7 +667,7 @@
             `);
 
             $.ajax({
-                url: "/Construction/GetProjectTimelineFull",
+               url: '@Url.Action("GetProjectTimelineFull", "Construction")',
                 type: "GET",
 
                 success: function (res) {

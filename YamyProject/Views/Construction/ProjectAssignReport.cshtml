@@ -110,7 +110,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Construction/GetActivityAssignmentSummary',
+               url: '@Url.Action("GetActivityAssignmentSummary", "Construction")',
                 type: 'GET',
                 data: {
                     showAll: showAll,

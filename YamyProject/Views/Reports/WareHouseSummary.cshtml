@@ -70,7 +70,7 @@
 
             function loadWarehouses() {
                 $.ajax({
-                    url: '/Inventory/GetWarehouses',
+                   url: '@Url.Action("GetWarehouses", "Inventory")',
                     type: 'GET',
                     success: function(result) {
                         const dropdown = $('#warehouseDropdown');
@@ -95,7 +95,7 @@
             const warehouseId = $('#warehouseDropdown').val();
 
             $.ajax({
-                url: '/Reports/GetWarehouseItems',
+            url: '@Url.Action("GetWarehouseItems", "Reports")',
                 type: 'GET',
                 data: { warehouseId: warehouseId },
 
@@ -150,9 +150,8 @@
                                 itemId: itemId
                             }).toString();
 
-                            // // Redirect to Warehouse History (calls GetWarehouseTransfers)
-                            // window.location.href = `/Reports/WareHouseHistory?${query}`;
-                             window.location.href = `/Reports/WareHouseHistory`;
+        window.location.href = '@Url.Action("WareHouseHistory", "Reports")';
+
                         });
 
                         // ✅ Initialize DataTable

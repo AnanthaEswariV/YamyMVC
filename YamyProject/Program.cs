@@ -68,15 +68,14 @@ builder.Services.AddHttpClient("ApiClient", client =>
 });
 
 
-
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromHours(24);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.Path = "/YamyProject"; // Virtual folder
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // If using HTTP
+    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
 });
+
 
 // Add DbContext with SQL Server
 //builder.Services.AddDbContext<YamyDbContext>(options =>

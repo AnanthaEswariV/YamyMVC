@@ -367,7 +367,7 @@
 
         function loadPettyCashCards() {
             $.ajax({
-                url: '/Lists/GetPettyCashCards',
+                   url: '@Url.Action("GetPettyCashCards", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     if (res.status && res.data?.length > 0) {
@@ -392,7 +392,7 @@
 
         function loadPettyCashForEmployee() {
             $.ajax({
-                url: '/Lists/GetPettyCashCardsByEmployee',
+              url: '@Url.Action("GetPettyCashCardsByEmployee", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     const $dropdown = $('#pettyCashDropdown');
@@ -414,7 +414,7 @@
 
         function loadPettyCashCategories() {
             $.ajax({
-                url: '/Lists/GetPettyCashCategories',
+                   url: '@Url.Action("GetPettyCashCategories", "Lists")',
                 type: 'GET',
                 success: function(res) {
                     if (res.status && res.data?.length > 0) {
@@ -476,7 +476,7 @@
             if (!selectedId) return;
 
             $.ajax({
-                url: `/Lists/GetPettyCashVoucher?id=${selectedId}`,
+                  url: '@Url.Action("GetPettyCashVoucher", "Lists")' + '?id=' + selectedId,
                 type: "GET",
                 success: function(res) {
                     const tbody = $("#table1 tbody");
@@ -572,11 +572,11 @@
             });
 
             $.ajax({
-                url: '/Lists/SavePettyCashVoucher',
+                   url: '@Url.Action("SavePettyCashVoucher", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
-                    VoucherDate: new Date(pettyCashDate).toISOString(), // ✅ ISO format
+                    VoucherDate: new Date(pettyCashDate).toISOString(), 
                     CashAccountId: parseInt(pettyCashName) || 0,
                     EmployeeId: empId,
                     Total: totalAmount,
@@ -617,7 +617,7 @@
 
         function loadProjects() {
             $.ajax({
-                url: '/Construction/GetProjects',
+                    url: '@Url.Action("GetProjects", "Construction")',
                 type: 'GET',
                 success: function (result) {
                     if (result.status) {
@@ -646,7 +646,7 @@
 
         function loadEditProjects() {
             $.ajax({
-                url: '/Construction/GetProjects',
+                 url: '@Url.Action("GetProjects", "Construction")',
                 type: 'GET',
                 success: function (result) {
                     if (result.status) {
@@ -747,7 +747,7 @@
 
         function loadPettyCashCardsTo(selector, selectedId = null) {
             $.ajax({
-                url: '/Lists/GetPettyCashCards',
+                    url: '@Url.Action("GetPettyCashCards", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     const $dropdown = $(selector);
@@ -781,7 +781,7 @@
 
         function loadPettyCashCategoriesToTable(tbodySelector) {
             $.ajax({
-                url: '/Lists/GetPettyCashCategories',
+               url: '@Url.Action("GetPettyCashCategories", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status && res.data?.length > 0) {
@@ -837,7 +837,7 @@
                 return toastr.warning('Enter at least one valid amount');
 
             $.ajax({
-                                        url: '/Lists/SavePettyCashVoucher',
+                  url: '@Url.Action("SavePettyCashVoucher", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
@@ -879,7 +879,7 @@
             if (!confirm('Are you sure you want to delete this Petty Cash voucher?')) return;
 
             $.ajax({
-                url: '/Lists/DeletePettyCashVoucher',
+                  url: '@Url.Action("DeletePettyCashVoucher", "Lists")',
                 type: 'POST',  
                 contentType: 'application/json',
                 data: JSON.stringify(id),
@@ -915,7 +915,7 @@
 
             // API Call
             $.ajax({
-                url: `/Lists/GetPettyCashVoucherJournal?id=${selectedId}`,
+                   url: '@Url.Action("GetPettyCashVoucherJournal", "Lists")' + '?id=' + selectedId,
                 type: 'GET',
                 success: function (res) {
                     if (res.status && res.data) {
@@ -1028,7 +1028,7 @@
 
         function populateAndSelectBankAccounts() {
             $.ajax({
-                url: '/HR/GetAccruedSalaries',
+                    url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function(res) {
                     const data = Array.isArray(res) ? res : res.data || [];
@@ -1112,7 +1112,7 @@
 
 
             $.ajax({
-                url: "/Lists/SavePettyCashVoucherJournal",
+               url: '@Url.Action("SavePettyCashVoucherJournal", "Lists")',
                 type: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(payload),
@@ -1134,7 +1134,7 @@
 
         function populateAndSelectCostCenter() {
                 $.ajax({
-                        url: '/Lists/GetCostCenters',
+                      url: '@Url.Action("GetCostCenters", "Lists")',
                     type: 'GET',
                     success: function(res) {
                         const data = Array.isArray(res) ? res : res.data || [];
@@ -1173,7 +1173,7 @@
             let description = $(this).data("description");
 
             $.ajax({
-                url: "/Lists/GetPettyCashTransactions",
+                   url: '@Url.Action("GetPettyCashTransactions", "Lists")',
                 type: "GET",
                 data: {
                     pettyCashId: pettyCashId,

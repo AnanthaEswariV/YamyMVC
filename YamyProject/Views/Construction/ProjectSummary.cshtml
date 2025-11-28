@@ -321,7 +321,7 @@
             });
 
              $.ajax({
-                url: '/HR/GetAccruedSalaries',
+               url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
                 success: function(res) {
                     const data = Array.isArray(res) ? res : res.data || [];
@@ -350,7 +350,7 @@
 
             function loadProjects() {
                 $.ajax({
-                    url: '/Construction/GetProjects',
+              url: '@Url.Action("GetProjects", "Construction")',
                     type: 'GET',
                     success: function (result) {
                         if (result.status) {
@@ -384,7 +384,7 @@
                 const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
 
                 $.ajax({
-                    url: '/Construction/GetProjectSummary',
+                  url: '@Url.Action("GetProjectSummary", "Construction")',
                     type: 'GET',
                     data: {
                         projectId: reportedBy || undefined,
@@ -478,7 +478,7 @@
 
             // Call API using the selected ID
             $.ajax({
-                url: '/Construction/GetProjectPlanningSummary',
+               url: '@Url.Action("GetProjectPlanningSummary", "Construction")',
                 type: 'GET',
                 data: { id: projectId },
                        success: function (res) {
@@ -603,7 +603,7 @@
 
             // API Call
             $.ajax({
-                url: '/Construction/SaveOrUpdateProjectManagement',
+               url: '@Url.Action("SaveOrUpdateProjectManagement", "Construction")',
                 type: 'POST',
                 data: JSON.stringify(model),
                 contentType: 'application/json; charset=utf-8',

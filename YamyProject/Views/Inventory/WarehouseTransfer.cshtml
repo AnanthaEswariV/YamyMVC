@@ -261,10 +261,10 @@
                 const tbody = $(`${tableSelector} tbody`);
                 tbody.empty();
                 if (!warehouseId) return;
+        let url = tableSelector === '#transactionsBody'
+            ? '@Url.Action("GetWarehouseItemsFrom", "Inventory")'
+            : '@Url.Action("GetWarehouseItemsTo", "Inventory")';
 
-                let url = tableSelector === '#transactionsBody'
-                    ? '/Inventory/GetWarehouseItemsFrom'
-                    : '/Inventory/GetWarehouseItemsTo';
 
                 $.get(url, { warehouseId }, function(result) {
                     if (result.status && result.data.length) {
@@ -334,7 +334,7 @@
                 }
 
                 $.ajax({
-                    url: '/Inventory/TransferItem',
+                   url: '@Url.Action("TransferItem", "Inventory")',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
@@ -379,7 +379,7 @@
 
             $('#transferHistoryTable').DataTable({
                 ajax: {
-                    url: '/Inventory/GetWarehouseTransfers',
+                   url: '@Url.Action("GetWarehouseTransfers", "Inventory")',
                     dataSrc: 'data'
                 },
                 columns: [

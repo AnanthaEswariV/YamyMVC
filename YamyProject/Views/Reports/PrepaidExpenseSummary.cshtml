@@ -103,7 +103,7 @@
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetPrepaidExpenses',
+                url: '@Url.Action("GetPrepaidExpenses", "Reports")',
                 type: 'GET',
                 data: {
                     startDate: startDate || null,
@@ -162,7 +162,7 @@
                             }).toString();
 
                             // Redirect to prepaid expense details page
-                            window.location.href = `/Reports/PrepaidExpenseDetails?${query}`;
+                            window.location.href = '@Url.Action("PrepaidExpenseDetails", "Reports")' + '?' + query;
                         });
 
                         // ✅ Initialize DataTable

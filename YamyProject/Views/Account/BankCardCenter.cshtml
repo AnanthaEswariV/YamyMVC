@@ -261,7 +261,7 @@
 
         function loadBankCards() {
             $.ajax({
-                url: "/Account/GetBankCards",
+               url: '@Url.Action("GetBankCards", "Account")',
                 type: "GET",
                 success: function (res) {
                     if (res.status) {
@@ -352,7 +352,7 @@
 
         function loadBankDropdown(selectedId = null) {
                 $.ajax({
-                    url: '/Account/GetBanksforDropdown',
+                   url: '@Url.Action("GetBanksforDropdown", "Account")',
                     type: 'GET',
                     success: function(res) {
                         if (res.status) {
@@ -415,7 +415,7 @@
         });
 
         $.ajax({
-            url: '/HR/GetAccruedSalaries',
+          url: '@Url.Action("GetAccruedSalaries", "HR")',
             type: 'GET',
             success: function (data) {
                 // Map of dropdowns and their corresponding code boxes
@@ -510,7 +510,7 @@
 
 
                     $.ajax({
-            url: '/Account/SaveBankCard',
+           url: '@Url.Action("SaveBankCard", "Account")',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(cardData),
@@ -538,7 +538,7 @@
             if (!confirm("Are you sure you want to delete this bank card?")) return;
 
             $.ajax({
-                url: '/Account/DeleteBankCard',
+              url: '@Url.Action("DeleteBankCard", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(cardId),  // ⚡ Important: stringify the number
@@ -563,7 +563,7 @@
             if (!confirm("Are you sure you want to delete this bank card?")) return;
 
             $.ajax({
-                url: '/Account/RestoreBankCard',
+                url: '@Url.Action("RestoreBankCard", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(cardId),  // ⚡ Important: stringify the number
@@ -584,7 +584,7 @@
                 // ♻️ Recycle Modal - Load Deleted Bank Cards
         $(document).on("click", ".recycleCardBtn", function () {
             $.ajax({
-                url: '/Account/GetDeletedBankCards',
+                url: '@Url.Action("GetDeletedBankCards", "Account")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
@@ -629,7 +629,7 @@
             if (!confirm("Are you sure you want to restore this bank card?")) return;
 
             $.ajax({
-                url: '/Account/RestoreBankCard',
+                url: '@Url.Action("RestoreBankCard", "Account")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(cardId),  

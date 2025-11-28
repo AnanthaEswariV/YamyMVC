@@ -70,7 +70,7 @@
             }
 
             $.ajax({
-                url: `/HR/GetEndOfServiceStatement?id=${id}`,
+           url: '@Url.Action("GetEndOfServiceStatement", "HR")' + '?id=' + id,
                 type: 'GET',
                 beforeSend: function () {
                     $('#table1 tbody').html(`

@@ -136,7 +136,7 @@
         // Load positions table
         function loadPositions() {
             $.ajax({
-                url: '/Lists/GetPositions',
+            url: '@Url.Action("GetPositions", "Lists")',
                 type: 'GET',
 
                 beforeSend: function () {
@@ -251,7 +251,10 @@
 
             // Determine URL and method
             const isUpdate = data.Id > 0;
-            const url = isUpdate ? '/Lists/EditPosition' : '/Lists/AddPosition';
+        const url = isUpdate
+         ? '@Url.Action("EditPosition", "Lists")'
+         : '@Url.Action("AddPosition", "Lists")';
+
             const type = isUpdate ? 'PUT' : 'POST';
 
             // Send AJAX request
@@ -305,7 +308,8 @@
             if (!confirm("Are you sure you want to delete this position?")) return;
 
             $.ajax({
-                url: `/Lists/DeletePosition/${id}`,
+                // url: `/Lists/DeletePosition/${id}`,
+                url : '@Url.Action("DeletePosition", "Lists")' + '/' + id,
                 type: 'DELETE',
                 success: function(res) {
                     if (res.status) {

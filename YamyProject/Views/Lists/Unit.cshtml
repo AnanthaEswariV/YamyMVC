@@ -73,7 +73,7 @@
 
           function loadUnits() {
             $.ajax({
-                url: '/Lists/GetUnit',
+        url: '@Url.Action("GetUnit", "Lists")',
                 type: 'GET',
 
                 beforeSend: function () {
@@ -171,7 +171,7 @@
             }
 
             $.ajax({
-                url: '/Lists/AddUnit',
+            url: '@Url.Action("AddUnit", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ Name: name }),
@@ -218,7 +218,7 @@
             }
 
             $.ajax({
-                url: '/Lists/EditUnit',
+               url: '@Url.Action("EditUnit", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ id: id, name: name }),
@@ -247,7 +247,7 @@
             if (!confirm("Are you sure you want to delete this unit?")) return;
 
             $.ajax({
-                url: '/Lists/DeleteUnit?id=' + id,
+                url: '@Url.Action("DeleteUnit", "Lists")' + '?id=' + id,
                 type: 'POST',
                 success: function(res) {
                     if (res.status) {

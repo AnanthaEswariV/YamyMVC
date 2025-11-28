@@ -111,7 +111,7 @@
             const endDate = showAll ? null : $('#endDate').val();
 
             $.ajax({
-                url: '/Construction/GetProjectAssignmentSummary',
+             url: '@Url.Action("GetProjectAssignmentSummary", "Construction")',
                 type: 'GET',
                 data: {
                     showAll: showAll,
