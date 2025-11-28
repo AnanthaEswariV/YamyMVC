@@ -69,14 +69,15 @@ builder.Services.AddHttpClient("ApiClient", client =>
 
 
 
-// ? Register Session services
-builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromHours(24); // session timeout
+    options.IdleTimeout = TimeSpan.FromHours(24);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.Path = "/YamyProject"; // Virtual folder
+    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // If using HTTP
 });
+
 // Add DbContext with SQL Server
 //builder.Services.AddDbContext<YamyDbContext>(options =>
 //    options.UseMySql(ConnectionString,
@@ -127,9 +128,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-
-app.UseAuthorization();
 app.UseSession();
+app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=CompanyList}/{id?}");

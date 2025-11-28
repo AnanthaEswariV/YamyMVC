@@ -660,8 +660,7 @@
             // --- Load tree ---
             function loadChartOfAccounts() {
                 $("#coaTree").html('<div class="loading"><div class="spinner"></div>Loading accounts...</div>');
-                $.getJSON("/Lists/GetCOA")
-                    .done(function (data) {
+                      $.getJSON('@Url.Action("GetCOA", "Lists")').done(function (data) {
                         if (data && data.status === false) {
                             $("#coaTree").html(renderEmpty("Unable to Load Accounts", data.message));
                             return;
@@ -700,8 +699,8 @@
             };
 
             $.ajax({
-                url: "/Lists/EditCoaLevel4",
-                type: "PUT",
+                url: '@Url.Action("EditCoaLevel4", "Lists")',
+                type: 'PUT',
                 contentType: "application/json; charset=utf-8",
                 data: JSON.stringify(payload),
                 success: function (res) {
@@ -738,7 +737,7 @@
             if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
 
             $.ajax({
-                url: `/Lists/DeleteCoaLevel4?id=${id}`, 
+                url: `@Url.Action("DeleteCoaLevel4", "Lists")?id=${id}`, 
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {
@@ -770,7 +769,7 @@
             // Load LEVEL 1 (All)
             function loadLevel1() {
                 $.ajax({
-                    url: '/Lists/GetLevel1Accounts',
+                   url: `@Url.Action("GetLevel1Accounts", "Lists")`,
                     type: 'GET',
                     success: function (res) {
                         const $ddl1 = $('#coaModal select').eq(0);
@@ -796,7 +795,7 @@
                 if (!level1Id) return;
                 console.log(level1Id);
                 $.ajax({
-                    url: '/Lists/GetLevel2AccountsByLevel1?level1Id=' + level1Id,
+                   url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
                     type: 'GET',
                     success: function (res) {
                         if (res.status && res.data?.length > 0) {
@@ -818,7 +817,7 @@
                 if (!level2Id) return;
 
                 $.ajax({
-                    url: '/Lists/GetLevel3AccountsByLevel2?id=' + level2Id,
+                    url: '@Url.Action("GetLevel3AccountsByLevel2", "Lists")' + '?id=' + level2Id,
                     type: 'GET',
                     success: function (res) {
                         if (res.status && res.data?.length > 0) {
@@ -880,7 +879,9 @@
             };
 
             $.ajax({
-                url: isEdit ? '/Lists/UpdateLevel4Account' : '/Lists/AddLevel4Account',
+               url: isEdit 
+    ? '@Url.Action("UpdateLevel4Account", "Lists")' 
+    : '@Url.Action("AddLevel4Account", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(payload),

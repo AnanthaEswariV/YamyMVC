@@ -105,31 +105,29 @@
                     database: $("#database").val()
                 };
 
-                $.ajax({
-                    url: "/Account/LoginUser",
-                    type: "POST",
-                    data: data,
+                     $.ajax({
+            url: '@Url.Action("LoginUser", "Account")',
+            type: "POST",
+            data: data,
 
-                    success: function (res) {
-                        if (res.status) {
-                            toastr.success('Login successful!');
-                    
+            success: function (res) {
+                if (res.status) {
 
+                    toastr.success('Login successful!');
                     $("#navUsername").text(res.user.userName + " ▾");
-                    
 
-                   // Redirect to dashboard after a short delay
-                            setTimeout(function () {
-                                window.location.href = '@Url.Action("Index", "Home")';
-                            }, 1500); // Optional delay before redirect
-                        } else {
-                            toastr.error(res.message);
-                        }
-                    },
-                    error: function (xhr) {
-                        toastr.error('An error occurred: ' + xhr.responseText);
-                    }
-                });
+                    setTimeout(function () {
+                        window.location.href = '@Url.Action("Index", "Home")';
+                    }, 1500);
+                } else {
+                    toastr.error(res.message);
+                }
+            },
+            error: function (xhr) {
+                toastr.error('An error occurred: ' + xhr.responseText);
+            }
+        });
+
             });
         });
     </script>

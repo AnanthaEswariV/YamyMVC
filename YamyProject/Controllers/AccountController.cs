@@ -3086,7 +3086,7 @@ namespace YamyProject.Controllers
         {
             try
             {
-                string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
+               //string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
 
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
@@ -3104,7 +3104,7 @@ namespace YamyProject.Controllers
 
                 using (var cmd = new MySqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@customerCode", customerCode);
+                    cmd.Parameters.AddWithValue("@customerCode", 02);
 
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
