@@ -41,10 +41,10 @@ namespace YamyProject.Services.Implementations
             };
             return vm;
         }
-        public async Task<string> GenerateNextCustomerCode()
+        public  string GenerateNextCustomerCode()
             {
             var prefix = "0000"; // Prefix for Credit Note
-            var lastCodeValue = await _context.TblCustomers
+            var lastCodeValue =  _context.TblCustomers
                .Select(s => s.Code)
                .MaxAsync();
             prefix = lastCodeValue.ToString();
@@ -56,7 +56,7 @@ namespace YamyProject.Services.Implementations
 
             if (customer.Id == 0)
                 {
-                var code = await GenerateNextCustomerCode();
+                var code =  GenerateNextCustomerCode();
                 var customerRow = new TblCustomer {
                     Name = customer.Name,
                     Code = int.Parse(code),//customer.Code,

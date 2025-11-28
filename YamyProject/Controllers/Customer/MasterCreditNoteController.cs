@@ -79,9 +79,9 @@
         [HttpPost]
         public async Task<IActionResult> Create(TaxInvoiceViewModel model)
         {
-            if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
-            if (model.CustomerId is null) return BadRequest("Customer is required.");
-            if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
+            //if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
+            //if (model.CustomerId is null) return BadRequest("Customer is required.");
+            //if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
             var userId = 1;
 
             await _SalesCreateService.CreateTaxInvoiceAsync(model, userId);

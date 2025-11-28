@@ -6,7 +6,7 @@
 
         private readonly ILogger<MasterStockManagementController> _logger=logger;
         private readonly IListServices _listServices = listServices;
-        private readonly IVendorService _vendorService;
+        private readonly IVendorService _vendorService= vendorService;
 
 
         public async Task<IActionResult> Index()
@@ -118,35 +118,37 @@
                 {
                 Id = c.Id,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
             var city = await _listServices.GetCitysAsync();
             var citylectList = city.Select(c => new TblCity
                 {
                 Id = c.Id,
                 CountryId = c.CountryId,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
             var country = await _listServices.GetCountriesAsync();
             var countrylectList = country.Select(c => new TblCountry
                 {
                 Id = c.Id,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
+            var Accounts = await _listServices.GetAccountsAsync();
+            var AccountslectList = Accounts.Select(c => new TblCountry
+                {
+                Id = c.Id,
+                Name = c.Name
+                }).ToList();
             var project = await _listServices.GetProjectAsync();
             var projectlectList = project.Select(c => new TblProject
-                {   
+                {
                 Id = c.Id,
                 Code = c.Code,
                 Name = c.Name
-                })
-            .ToList();
+                }).ToList();
             var codes = _vendorService.GenerateNextCode();
             var code = codes.ToString();
 
-            return PartialView("~/Views/Subcontractors/_SubContract.cshtml", new VendorSubContactViewModel
+            return PartialView("~/Views/Vendors/_Vendor.cshtml", new VendorSubContactViewModel
                 {
                 Categoriess = CategorylectList,
                 City = citylectList,
@@ -199,7 +201,7 @@
 
             var Vendor = await _context.TblVendors.FindAsync(id);
 
-            return PartialView("~/Views/Subcontractors/_SubContract.cshtml", new VendorSubContactViewModel
+            return PartialView("~/Views/Vendors/_Vendor.cshtml", new VendorSubContactViewModel
                 {
                 Categoriess = CategorylectList,
                 City = citylectList,

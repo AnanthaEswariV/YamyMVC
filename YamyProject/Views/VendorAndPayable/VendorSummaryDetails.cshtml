@@ -1,4 +1,4 @@
-﻿@model CustomerSummaryBalanceDetailViewModel
+﻿@* @model CustomerSummaryBalanceDetailViewModel
 @{
     ViewData["Title"] = "Vendor Balance Detail";
     }
@@ -148,7 +148,7 @@
                     {
                     <div class="date-item">@d.ToString("MM/dd/yyyy")</div>
                     } 
-                } *@
+                } 
         </div>
 
         <!-- Right: main report -->
@@ -207,3 +207,272 @@
 
     </div>
 </div>
+ *@
+@model CustomerSummaryBalanceDetailViewModel
+@{
+    ViewData["Title"] = "Vendor Balance Detail";
+    }
+
+        <style>
+            .report-toolbar {
+                gap: .35rem;
+                margin-bottom: .5rem;
+            }
+
+            .report-filters {
+                align-items: center;
+                margin-bottom: .75rem;
+            }
+
+                .report-filters label {
+                    font-weight: 600;
+                    margin-right: .35rem;
+                }
+
+            .date-list {
+                font-size: .8rem;
+                line-height: 1.5;
+            }
+
+                .date-list .date-item {
+                    white-space: nowrap;
+                }
+
+            .report-card {
+                border: 1px solid #d0d5dd;
+                border-radius: .25rem;
+                padding: 0;
+                overflow: hidden;
+                background: #fff;
+            }
+
+            .report-card-header {
+                text-align: center;
+                padding: .75rem 1rem .5rem;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+                .report-card-header h5 {
+                    font-size: 1rem;
+                    margin-bottom: .1rem;
+                    font-weight: 700;
+                }
+
+                .report-card-header div {
+                    font-size: .85rem;
+                }
+
+            .report-table thead {
+                background: #f3f4f6;
+            }
+
+            .report-table th,
+            .report-table td {
+                font-size: .82rem;
+                padding: .35rem .5rem;
+                vertical-align: middle;
+            }
+
+            .report-table tbody tr:nth-child(even) {
+                background: #fafafa;
+            }
+
+            .report-table td.text-end {
+                text-align: right;
+            }
+
+            .report-wrapper {
+                padding: .75rem 1rem 1rem;
+            }
+
+            /* DataTables styling similar to your ItemList view */
+            table.dataTable {
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+
+            th, td {
+                white-space: nowrap;
+            }
+
+            /* Hide built-in DataTables buttons (we trigger them from the top toolbar) */
+            .dataTables_wrapper .dt-buttons {
+                display: none !important;
+            }
+        </style>
+
+        <div class="container-fluid py-2">
+@* 
+            <!-- Toolbar -->
+            <div class="d-flex flex-wrap report-toolbar">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        Print
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" id="btnPrint">Print</a></li>
+                        <li><a class="dropdown-item" href="#" id="btnPrintPreview">Print Preview</a></li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnExcel">Excel</button>
+            </div>
+
+            <!-- Filters -->
+            <form method="get" class="row g-2 report-filters">
+                <div class="col-auto d-flex align-items-center">
+                    <label for="fromDate" class="me-1">From</label>
+                    <input type="date"
+                           id="fromDate"
+                           name="FromDate"
+                           class="form-control form-control-sm"
+                           value="@(Model.FromDate)" />
+                </div>
+
+                <div class="col-auto d-flex align-items-center">
+                    <label for="toDate" class="me-1">To</label>
+                    <input type="date"
+                           id="toDate"
+                           name="ToDate"
+                           class="form-control form-control-sm"
+                           value="@(Model.ToDate)" />
+                </div>
+
+                <div class="col-auto d-flex align-items-center">
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="checkbox" id="chkAll" name="ShowAll"
+                               @(Model.ShowAll ? "checked" : "") />
+                        <label class="form-check-label" for="chkAll">All</label>
+                    </div>
+                </div>
+
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">Run Report</button>
+                </div>
+            </form>
+ *@
+            <!-- Report body -->
+            <div class="report-body">
+
+                <!-- Left: date list (currently empty / optional) -->
+                <div class="date-list">
+                </div>
+
+                <!-- Right: main report -->
+                <div class="report-card">
+                    <div class="report-card-header">
+                        <h5>@Model.CompanyName</h5>
+                        <div>@Model.ReportTitleVendor</div>
+                        <div>@Model.SubTitle</div>
+                    </div>
+
+                    <div class="report-wrapper">
+                        <div class="table-responsive">
+                            <!-- MAKE THIS TABLE A DATATABLE -->
+                            <table class="table table-sm report-table mb-0" id="vendorBalanceTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Type</th>
+                                        <th style="width: 15%;">Date</th>
+                                        <th style="width: 10%;">Num</th>
+                                        <th style="width: 25%;">Account</th>
+                                        <th style="width: 12%;" class="text-end">Amount</th>
+                                        <th style="width: 13%;" class="text-end">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.Transactions != null && Model.Transactions.Any())
+                                        {
+                                        foreach (var row in Model.Transactions)
+                                            {
+                                            <tr>
+                                                <td>@row.Type</td>
+                                                <td>@row.Date</td>
+                                                <td>@row.Num</td>
+                                                <td>@row.Account</td>
+                                                <td class="text-end">
+                                                    @row.Amount.ToString("N2")
+                                                </td>
+                                                <td class="text-end">
+                                                    @row.Balance.ToString("N2")
+                                                </td>
+                                            </tr>
+                                            }
+                                        }
+                                    else
+                                        {
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted">
+                                                No transactions found for the selected period.
+                                            </td>
+                                        </tr>
+                                        }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    @section Scripts {
+            <!-- DataTables + Buttons (same style as your ItemList view) -->
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+            <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+            <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+            <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+            <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+            <script>
+                $(document).ready(function () {
+                    // Initialize DataTable on your vendor balance table
+                    var table = $('#vendorBalanceTable').DataTable({
+                        dom: 'Bfrtip',      // we hide the buttons bar with CSS, but still use the buttons
+                        paging: true,
+                        pageLength: 25,
+                        ordering: true,
+                        order: [[1, 'asc']], // order by Date column
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                text: 'Excel',
+                                className: 'btn btn-primary btn-sm'
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                text: 'PDF',
+                                className: 'btn btn-primary btn-sm',
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            },
+                            {
+                                extend: 'print',
+                                text: 'Print',
+                                className: 'btn btn-primary btn-sm'
+                            }
+                        ]
+                    });
+
+                    // Top toolbar buttons trigger DataTables buttons
+
+                    // Excel button on top toolbar
+                    $('#btnExcel').on('click', function (e) {
+                        e.preventDefault();
+                        table.button('.buttons-excel').trigger();
+                    });
+
+                    // Print & Print Preview from dropdown
+                    $('#btnPrint, #btnPrintPreview').on('click', function (e) {
+                        e.preventDefault();
+                        table.button('.buttons-print').trigger();
+                    });
+                });
+            </script>
+    }

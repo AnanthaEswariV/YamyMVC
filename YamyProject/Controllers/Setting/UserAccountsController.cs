@@ -125,7 +125,7 @@
             await _UserService.SaveUserAsync(model);
 
             // if you are using AJAX modal, you usually return JSON
-            return Json(new { success = true });
+            return Ok(new { status = true });
             }
 
         public async Task<IActionResult> EditRole(int? id)

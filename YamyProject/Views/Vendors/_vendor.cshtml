@@ -1,17 +1,17 @@
 ﻿@model VendorSubContactViewModel
 @{
-    ViewData["Title"] = "New Subcontractor";
+    ViewData["Title"] = "New Vendor";
    
     }
 
-<div  class="modal fade" id="subContractModal"   tabindex="-1" 
-      aria-labelledby="subContractModalLabel" aria-hidden="true" >
+<div class="modal fade" id="VendorModal" tabindex="-1"
+     aria-labelledby="VendorModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content shadow-lg border-0">
             <form method="post">
                 <!-- HEADER -->
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="subContractModalLabel">
+                    <h5 class="modal-title" id="VendorModalLabel">
                          New 
                     </h5>
                     <button type="button" class="btn-close btn-close-white"
@@ -32,18 +32,18 @@
                         <div class="fw-semibold mb-3 small text-uppercase">Basic Data</div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="SubcontractorName" class="form-label">
-                                    Subcontractor Name
+                                <label for="VendorName" class="form-label">
+                                    Vendor Name
                                 </label>
-                                <input id="SubcontractorName" asp-for="Name"
+                                <input id="VendorName" asp-for="Name"
                                        class="form-control" />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="SubcontractorCode" class="form-label">
-                                    Subcontractor Cod
+                                <label for="VendorCode" class="form-label">
+                                    Vendor Cod
                                 </label>
-                                <input id="SubcontractorCode"  asp-for="Code" 
+                                <input id="VendorCode"  asp-for="Code" 
                                        class="form-control" readonly />
                             </div>
 
@@ -266,7 +266,7 @@
                 document.addEventListener('DOMContentLoaded', function () {
             // ... (preview wiring above)
 
-            const form = document.getElementById('subContractForm');
+            const form = document.getElementById('VendorForm');
             if (!form) return;
 
             form.addEventListener('submit', function (e) {
@@ -276,9 +276,9 @@
 
                 // if Id > 0 => Edit, else => Create
                 if (idVal && idVal > 0) {
-                    form.action = '@Url.Action("Edit", "SubcontractorsC")';
+                    form.action = '@Url.Action("Edit", "Vendor")';
                 } else {
-                    form.action = '@Url.Action("Create", "SubcontractorsC")';
+                    form.action = '@Url.Action("Create", "Vendor")';
                 }
 
             });
