@@ -567,6 +567,10 @@ namespace YamyProject.Controllers
                           `trn_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
                           `country_id` int NOT NULL DEFAULT(0),
                           `logoComp` longblob,
+                           `code` varchar(100) NULL,
+                           `default_company` int NULL,
+                           `customer_code` varchar(100) NULL,
+                           `stampComp` longblob NULL,
                           PRIMARY KEY (`id`) USING BTREE
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -3019,11 +3023,13 @@ namespace YamyProject.Controllers
         {
             try
             {
-                string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
+                //string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
 
-                // ✅ If no environment variable, generate a fallback
-                if (string.IsNullOrEmpty(customerCode))
-                    customerCode = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+                //// ✅ If no environment variable, generate a fallback
+                //if (string.IsNullOrEmpty(customerCode))
+                //    customerCode = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+
+                string customerCode = "123";
 
                 using (var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection")))
                 {
@@ -3060,7 +3066,7 @@ namespace YamyProject.Controllers
                         cmd.Parameters.AddWithValue("@TrnNo", request.TrnNo ?? "");
                         cmd.Parameters.AddWithValue("@LogoComp", DBNull.Value);
                         cmd.Parameters.AddWithValue("@DefaultCompany", request.DefaultCompany ?? 0);
-                        cmd.Parameters.AddWithValue("@CustomerCode", customerCode);
+                        cmd.Parameters.AddWithValue("@CustomerCode", 123);
 
                         await cmd.ExecuteNonQueryAsync();
                     }
@@ -3086,14 +3092,17 @@ namespace YamyProject.Controllers
         {
             try
             {
-               //string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
+                //string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
 
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName")
-                              ?? _config.GetConnectionString("DefaultDatabase")
-                };
-                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                //var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                //{
+                //    Database = HttpContext.Session.GetString("DatabaseName")
+                //              ?? _config.GetConnectionString("DefaultDatabase")
+                //};
+                //using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                //await conn.OpenAsync();
+
+                using var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
                 await conn.OpenAsync();
 
                 string query = @"SELECT id, `Code`, `Name`, Descriptions, default_company, database_name 

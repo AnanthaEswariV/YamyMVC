@@ -383,6 +383,7 @@
 @Html.Partial("~/Views/Inventory/_WareHouse.cshtml")
 @Html.Partial("~/Views/Lists/_ItemCategory.cshtml")
 @Html.Partial("~/Views/Lists/_Unit.cshtml")
+@Html.Partial("~/Views/HR/_Employee.cshtml")
 
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -629,6 +630,53 @@
             });
         }
 
+
+          $("#newWarehouseForm").submit(function (e) {
+            e.preventDefault();
+
+            let model = {
+                Id: parseInt($("#warehouseId").val()) || 0,
+                Name: $("#warehouseName").val(),
+                City: $("#city").val(),
+                BuildingName: $("#buildingName").val(),
+                EmpId: parseInt($("#manager").val()) || null,
+                AccountId: parseInt($("#accruedSalaries").val()) || null,
+            };
+
+            $.ajax({
+                url: "/Inventory/SaveWarehouse",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(model),
+                success: function (res) {
+                    if (res && res.status) {
+                        toastr.success(res.message || "Warehouse saved successfully!");
+                        $("#warehouseCode").val(res.code || "");
+                        $("#newWarehouseModal").modal("hide");
+                        $("#newWarehouseForm")[0].reset();
+                        $("#warehouseId").val(0);
+
+                        //      // ✅ Refresh warehouse table and dropdown
+                        // if (typeof loadWarehouse === "function") {
+                        //     loadWarehouse();
+                        // }
+                        // if (typeof loadWarehouses === "function") {
+                        //     loadWarehouses();
+                        // }
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res?.message || "Failed to save warehouse");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
+                }
+            });
+        });
+
+
         // ===== Load Units =====
               function loadUnitsDropdown(selector = "#mainUnit") {
             $.get('/Lists/GetUnit', function (res) {
@@ -653,6 +701,19 @@
          $(document).on('shown.bs.modal', '#newWarehouseModal', function () {
             loadUnitsDropdown("#mainUnit");
         });
+         $(document).on('click', '.openEmployeeNew', function(e) {
+            e.preventDefault();
+
+            // Reset form for adding new employee
+            $('#newEmployeeForm')[0].reset();
+            $('#EmployeeId').val(''); // clear ID for Add mode
+            $('#cityDropdown').html('<option value="">-- Select --</option>'); // reset city dropdown
+            $('#saveOrUpdateBtn').data('action', 'save').text('Save'); // set save mode
+
+            // Show the modal
+            $('#newEmployeeModal').modal('show');
+        });
+
 
         // ===== Load Accounts =====
         $.ajax({

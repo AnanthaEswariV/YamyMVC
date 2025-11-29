@@ -124,19 +124,67 @@
 
 
 @section Scripts {
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
 
     <script>
                $(document).ready(function () {
             if (document.getElementById("warehouseTable")) {
                 loadWarehouse();
             }
+
+
+
+              $("#newWarehouseForm").submit(function (e) {
+            e.preventDefault();
+
+            let model = {
+                Id: parseInt($("#warehouseId").val()) || 0,
+                Name: $("#warehouseName").val(),
+                City: $("#city").val(),
+                BuildingName: $("#buildingName").val(),
+                EmpId: parseInt($("#manager").val()) || null,
+                AccountId: parseInt($("#accruedSalaries").val()) || null,
+            };
+
+            $.ajax({
+                url: "/Inventory/SaveWarehouse",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(model),
+                success: function (res) {
+                    if (res && res.status) {
+                        toastr.success(res.message || "Warehouse saved successfully!");
+                        $("#warehouseCode").val(res.code || "");
+                        $("#newWarehouseModal").modal("hide");
+                        $("#newWarehouseForm")[0].reset();
+                        $("#warehouseId").val(0);
+
+                        //      // ✅ Refresh warehouse table and dropdown
+                        // if (typeof loadWarehouse === "function") {
+                        //     loadWarehouse();
+                        // }
+                        // if (typeof loadWarehouses === "function") {
+                        //     loadWarehouses();
+                        // }
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res?.message || "Failed to save warehouse");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
+                }
+            });
+        });
         });
           toastr.options = {
                  "closeButton": true,
