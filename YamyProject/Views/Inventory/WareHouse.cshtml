@@ -287,7 +287,7 @@
         }
 
 
-                     const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search);
         const WarehouseId = urlParams.get('Id');
         if (WarehouseId) {
             setTimeout(function() {
@@ -314,7 +314,50 @@
         }
 
 
+             $("#newWarehouseForm").submit(function (e) {
+            e.preventDefault();
 
+            let model = {
+                Id: parseInt($("#warehouseId").val()) || 0,
+                Name: $("#warehouseName").val(),
+                City: $("#city").val(),
+                BuildingName: $("#buildingName").val(),
+                EmpId: parseInt($("#manager").val()) || null,
+                AccountId: parseInt($("#accruedSalaries").val()) || null,
+            };
+
+            $.ajax({
+                url: "/Inventory/SaveWarehouse",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(model),
+                success: function (res) {
+                    if (res && res.status) {
+                        toastr.success(res.message || "Warehouse saved successfully!");
+                        $("#warehouseCode").val(res.code || "");
+                        $("#newWarehouseModal").modal("hide");
+                        $("#newWarehouseForm")[0].reset();
+                        $("#warehouseId").val(0);
+
+                        //      // ✅ Refresh warehouse table and dropdown
+                        // if (typeof loadWarehouse === "function") {
+                        //     loadWarehouse();
+                        // }
+                        // if (typeof loadWarehouses === "function") {
+                        //     loadWarehouses();
+                        // }
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res?.message || "Failed to save warehouse");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
+                }
+            });
+        });
 
 
         $(document).on("click", ".edit-warehouse", function() {
@@ -390,21 +433,24 @@
 
         });
 
-           function loadeditManagersDropdown(selectedId = null) {
-            $.getJSON('/Inventory/GetAllEmployees', function(employees) {
-                const $manager = $('#editManager');
-                $manager.empty().append('<option value="">Select Manager</option>');
+              function loadManagersDropdown(selector, selectedId = null) {
+            $.getJSON('@Url.Action("GetAllEmployees", "Inventory")', function(employees) {
+                const $dropdown = $(selector);
+                $dropdown.empty().append('<option value="">Select Manager</option>');
 
                 employees.forEach(emp => {
                     const selected = selectedId && emp.id === selectedId ? 'selected' : '';
-                    $manager.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
+                    $dropdown.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
                 });
+            }).fail(function() {
+                console.error("Failed to load employees for dropdown:", selector);
             });
         }
 
         // Call this on page load
         $(document).ready(function() {
-            loadeditManagersDropdown();
+        loadManagersDropdown('#manager');
+        loadManagersDropdown('#editManager');
         });
 
          $(document).on('click', '.openEmployeeNew', function(e) {
@@ -512,46 +558,48 @@
 
 
            $(document).ready(function () {
-                $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
-                    type: 'GET',
-                    success: function (data) {
-                     
+                       $.ajax({
+            url: '@Url.Action("GetAccruedSalaries", "HR")',
+            type: 'GET',
+            success: function (data) {
 
-                        // List of dropdowns with their matching code textbox
-                        const dropdowns = [
-                            { ddl: '#editaccruedSalaries' }
-                        ];
+                // List all dropdowns you want to populate
+                const dropdowns = [
+                    { ddl: '#editaccruedSalaries' },
+                    { ddl: '#accruedSalaries' } // <-- NEW dropdown added
+                ];
 
-                        dropdowns.forEach(set => {
-                            let $ddl = $(set.ddl);
-                          
+                dropdowns.forEach(set => {
 
-                            $ddl.empty().append('<option value="">-- Select --</option>');
+                    let $ddl = $(set.ddl);
+                    $ddl.empty().append('<option value="">-- Select --</option>');
 
-                            $.each(data, function (i, item) {
-                                $ddl.append(
-                                    $('<option>', {
-                                        value: item.id,
-                                        text: item.code + ' - ' + item.name,
-                                        'data-code': item.code
-                                    })
-                                );
-                            });
+                    // Fill dropdown
+                    $.each(data, function (i, item) {
+                        $ddl.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code
+                            })
+                        );
+                    });
 
-                        
-                            // On change, update the code textbox
-                            $ddl.on('change', function () {
-                                let selected = $(this).find(':selected');
-                                let code = selected.data('code');
-                                $(set.codeBox).val(code || "");
-                            });
+                    // If dropdown has code box (edit screen), connect change event
+                    if (set.codeBox) {
+                        $ddl.on('change', function () {
+                            let selected = $(this).find(':selected');
+                            let code = selected.data('code');
+                            $(set.codeBox).val(code || "");
                         });
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("❌ Error loading accounts:", status, error);
                     }
                 });
+            },
+            error: function (xhr, status, error) {
+                console.error("❌ Error loading accounts:", status, error);
+            }
+        });
+
             });
 
         
