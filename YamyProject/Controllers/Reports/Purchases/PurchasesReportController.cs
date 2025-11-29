@@ -3,9 +3,9 @@
     public class PurchasesReportController(IPurchaseReportServices purchaseReportServices) : Controller
         {
         private IPurchaseReportServices _purchaseReportServices= purchaseReportServices;
-        public IActionResult PurchaseByVendorSummary()
+        public async Task<IActionResult> PurchaseByVendorSummary()
             {
-            var PurchaseByVendorSummary = _purchaseReportServices.GetPurchaseByVendorSummaryAsync();
+            var PurchaseByVendorSummary =await _purchaseReportServices.GetPurchaseByVendorSummaryAsync();
             return View(PurchaseByVendorSummary);
             }
         public IActionResult PurchaseByVendorSummaryDetails(int Id)
