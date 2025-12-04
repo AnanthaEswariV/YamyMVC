@@ -210,10 +210,10 @@
             });
         }
 
-               let countryCities = []; // global storage for countries and cities
+         let countryCities = []; // global storage for countries and cities
 
             // Function to load country & city dropdowns
-            function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+         function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
                 const $country = $(countryIdSelector);
                 const $city = $(cityIdSelector);
 
@@ -238,10 +238,9 @@
                 });
             }
 
+         loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
 
-             loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
-
-               $.ajax({
+         $.ajax({
                     url: '@Url.Action("GetCountryOfIssue", "HR")',
                     type: 'GET',
                     success: function (data) {
@@ -257,7 +256,9 @@
                     }
                 });
 
-                  $.ajax({
+
+
+         $.ajax({
                  url: '@Url.Action("GetAccruedSalaries", "HR")',
                     type: 'GET',
                     success: function (data) {
@@ -303,7 +304,7 @@
                     }
                 });
 
-                   function loadDepartments() {
+         function loadDepartments() {
             $.get('/Lists/GetDepartments', function(res) {
                 if (res.status) {
                     const select = $("#departmentSelect");
@@ -371,10 +372,7 @@
             });
         }
 
-
-
-
-                     $('#btnNew').on('click', function () {
+         $('#btnNew').on('click', function () {
             $('#newEmployeeForm')[0].reset();
             $('#EmployeeId').val('');
             $('#cityDropdown').html('<option value="">-- Select --</option>');
@@ -485,7 +483,7 @@
             form.reset();
         });
 
-                   const urlParams = new URLSearchParams(window.location.search);
+         const urlParams = new URLSearchParams(window.location.search);
         const empId = urlParams.get('Id');
         if (empId) {
             setTimeout(function() {
@@ -511,7 +509,7 @@
             }, 1500);
         }
 
-                  $(document).on('click', '.edit-btn', function () {
+         $(document).on('click', '.edit-btn', function () {
                 const empId = $(this).data('id');
 
                 $.getJSON(`/HR/GetEmployeeById?id=${empId}`, function (emp) {

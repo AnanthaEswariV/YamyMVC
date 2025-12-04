@@ -501,6 +501,11 @@
         loadManagersDropdown('#editManager');
         });
 
+
+
+
+
+
          $(document).on('click', '.openEmployeeNew', function(e) {
             e.preventDefault();
 
@@ -647,6 +652,55 @@
                 console.error("❌ Error loading accounts:", status, error);
             }
         });
+
+
+
+
+         let countryCities = []; // global storage for countries and cities
+
+            // Function to load country & city dropdowns
+         function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+                const $country = $(countryIdSelector);
+                const $city = $(cityIdSelector);
+
+                $.getJSON(apiUrl, function (data) {
+                    countryCities = data; // store globally
+
+                    // Populate country dropdown
+                    $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
+                });
+
+                // Event: When country changes, populate cities
+                $country.on('change', function () {
+                    const selectedCountryId = $(this).val();
+
+                    // Reset city dropdown
+                    $city.html('<option value="">-- Select --</option>');
+
+                    if (selectedCountryId) {
+                        const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
+                        $city.append(cities.map(city => `<option value="${city.id}">${city.name}</option>`));
+                    }
+                });
+            }
+
+         loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
+
+         $.ajax({
+                    url: '@Url.Action("GetCountryOfIssue", "HR")',
+                    type: 'GET',
+                    success: function (data) {
+                        let $ddl = $('#countryOfIssue');
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function (i, country) {
+                            $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
+                        });
+                    },
+                    error: function () {
+                        alert("Error loading countries");
+                    }
+                });
 
             });
 
