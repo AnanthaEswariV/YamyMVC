@@ -178,6 +178,7 @@
                         <th>Debit Account</th>
                         <th>Credit Account</th>
                         <th>Type</th>
+                        <th>Edit</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -191,6 +192,8 @@
                             <td>@r.DebitAccount</td>
                             <td>@r.CreditAccount</td>
                             <td>@r.Type</td>
+                            <td><a class="menu-link px-3 js-render-modal" asp-controller="AdvancePayments" asp-action="Edit" asp-route-id="@r.Id">Edit</a></td>
+
                         </tr>
                         }
                         </tbody>
@@ -336,7 +339,7 @@
               debugger
 
             const rows = filterRows();
-            debugger
+            
             mainBody.innerHTML = rows.map((r, idx) => {
               const date   = g(r, 'date', 'Date');
               const code   = g(r, 'paymentCode', 'PaymentCode');
@@ -344,6 +347,7 @@
               const amt    = g(r, 'amount', 'Amount');
               const debit  = g(r, 'debitAccount', 'DebitAccount');
               const credit = g(r, 'creditAccount', 'CreditAccount');
+              const Type = g(r, 'type', 'Type');
               debugger
 
               return `
@@ -354,8 +358,13 @@
                   <td class="amount">${fmtMoney(amt)}</td>
                   <td>${debit ?? ''}</td>
                   <td>${credit ?? ''}</td>
+                  <td>${Type ?? ''}</td>
+                  <td><a  class="menu-link px-3 js-render-modal" asp-controller="AdvancePayments" asp-action="Edit" asp-route-id="${Type ?? ''}"></a>Edit</td>
+                  
                 </tr>
               `;
+                             
+
             }).join('');
               debugger
 

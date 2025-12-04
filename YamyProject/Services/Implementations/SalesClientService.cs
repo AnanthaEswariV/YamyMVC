@@ -14,7 +14,8 @@
         public async Task SendSaleTransactionAsync(int saleId, CancellationToken ct = default)
         {
             var payload = new { SaleId = saleId };
-            var res = await _http.PostAsJsonAsync("/transactions/sales", payload, ct);
+            var res = await System.Net.Http.Json.HttpClientJsonExtensions
+                .PostAsJsonAsync(_http, "/transactions/sales", payload, ct);
             if (!res.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Microservice returned {Status} when sending sale transaction {SaleId}", res.StatusCode, saleId);

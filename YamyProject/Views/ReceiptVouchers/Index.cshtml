@@ -1,122 +1,463 @@
 ﻿@model ReceiptVoucherCenterViewModel
-
 @{
     ViewData["Title"] = "Receipt Voucher Center";
     }
-<div class="container-fluid bg-light p-3 rounded shadow-sm">
-   
- <!-- Filter Section -->
-    <form method="get" asp-action="Index" class="row g-3 align-items-end">
-   
-        <div class="col-md-3">
-            <label for="FromDate" class="form-label">From</label>
-            <input type="date" id="FromDate" name="FromDate" class="form-control" />
+<style>
+    .apvc-wrap {
+        font-family: Segoe UI, Roboto, Arial, sans-serif;
+        background: #f7f7fc;
+        padding: 10px;
+    }
+
+    .apvc-window {
+        background: #fff;
+        border: 1px solid #cfd3e1;
+        border-top: 6px solid #3b82f6;
+        border-radius: 6px;
+    }
+
+    .apvc-title {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .6rem .8rem;
+        color: #1f2a44;
+        font-weight: 600;
+        border-bottom: 1px solid #e5e7f2;
+    }
+
+    .apvc-toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 10px;
+        background: #fafbff;
+        border-bottom: 1px solid #e5e7f2;
+    }
+
+        .apvc-toolbar label {
+            font-size: .85rem;
+            color: #333;
+            margin-right: 6px;
+        }
+
+        .apvc-toolbar select,
+        .apvc-toolbar input[type="date"] {
+            height: 30px;
+            padding: 4px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: #fff;
+        }
+
+        .apvc-toolbar .spacer {
+            flex: 1;
+        }
+
+    .apvc-grid,
+    .apvc-detail-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .apvc-grid thead th,
+        .apvc-detail-grid thead th {
+            background: #edf2ff;
+            color: #1f2a44;
+            font-weight: 600;
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #dbe3f5;
+            font-size: .9rem;
+        }
+
+        .apvc-grid tbody tr {
+            cursor: pointer;
+        }
+
+            .apvc-grid tbody tr:hover {
+                background: #f5f7ff;
+            }
+
+        .apvc-grid td,
+        .apvc-detail-grid td {
+            padding: 8px;
+            border-bottom: 1px solid #eef2ff;
+            font-size: .92rem;
+            color: #1f2937;
+        }
+
+    .apvc-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .apvc-btn {
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+    }
+
+        .apvc-btn.primary {
+            background: #3b82f6;
+            color: #fff;
+            border-color: #3b82f6;
+        }
+
+        .apvc-btn.danger {
+            background: #ef4444;
+            color: #fff;
+            border-color: #ef4444;
+        }
+
+        .apvc-btn.ghost {
+            background: #f1f5f9;
+        }
+
+    .apvc-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 6px;
+    }
+
+    .amount {
+        text-align: right;
+    }
+
+    .muted {
+        color: #6b7280;
+    }
+</style>
+<div class="apvc-wrap">
+    <div class="apvc-window">
+        <div class="apvc-title">
+            <span>Receipt Voucher Center</span>
         </div>
-        <div class="col-md-3">
-            <label for="ToDate" class="form-label">To</label>
-            <input type="date" id="ToDate" name="ToDate" class="form-control" />
+        <div class="apvc-toolbar">
+            <form method="get"
+                  asp-action="Index"
+                  id="filterForm"
+                  class="d-flex flex-wrap align-items-end gap-3 mb-0 w-100">
+                <div>
+                    <label for="FromDate">From</label>
+                    <input type="date" id="FromDate" name="FromDate"
+                           class="form-control form-control-sm" />
+                </div>
+                <div>
+                    <label for="ToDate">To</label>
+                    <input type="date" id="ToDate" name="ToDate"
+                           class="form-control form-control-sm" />
+                </div>
+                <label class="apvc-checkbox mt-3">
+                    <input class="form-check-input" type="checkbox" id="All" name="All" checked />
+                    <span>All</span>
+                </label>
+                <button type="submit" class="apvc-btn ghost mt-3" id="btnFilter">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+                <div class="spacer"></div>
+                <a class="apvc-btn primary"
+                   asp-controller="ReceiptVouchers"
+                   asp-action="Create"
+                   id="btnNew">
+                    <i class="bi bi-plus-circle-dotted"></i>
+                    New Receipt
+                </a>
+            </form>
         </div>
-        <div class="col-md-2 d-flex align-items-center">
-            <div class="form-check mt-3">
-                <input class="form-check-input" type="checkbox" id="All" name="All" checked />
-                <label class="form-check-label" for="All">All</label>
-            </div>
-        </div>    
-    </form>
-    <a class="btn d-flex gap-2 mt-3" asp-action="Create">
-        <i class="bi bi-plus-circle-dotted"></i>
-        New Settlement
-    </a>
-    <!-- Data Grid -->
-    <div class="table-responsive mt-4">
-        @if (Model != null)
-            {
-            <table class="table table-bordered table-striped table-hover text-center align-middle">
-                <thead class="table-primary">
+
+        <div style="overflow:auto; max-height:420px;">
+            @if (Model?.ReceiptVouchers != null && Model.ReceiptVouchers.Any())
+                {
+                <table class="apvc-grid" id="mainGrid">
+                    <thead>
+                        <tr>
+                            <th style="width:60px;">Sn</th>
+                            <th style="width:120px;">Date</th>
+                            <th style="width:100px;">JV No</th>
+                            <th style="width:140px;">Payment Code</th>
+                            <th style="width:140px;">Amount</th>
+                            <th>Debit Account</th>
+                            <th>Credit Account</th>
+                            <th style="width:90px;">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.ReceiptVouchers)
+                            {
+                            <tr data-payment-id="@item.Id">
+                                <td>@item.SN</td>
+                                <td>@item.Date</td>
+                                <td>@item.JVNO</td>
+                                <td>@item.ReceiptCode</td>
+                                <td class="amount">@item.Amount</td>
+                                <td>@item.DebitAccount</td>
+                                <td>@item.CreditAccount</td>
+                                <td>
+                                    <a class="menu-link px-2 js-render-modal"
+                                       asp-controller="ReceiptVouchers"
+                                       asp-action="Edit"
+                                       asp-route-id="@item.Id">
+                                        Edit
+                                    </a>
+                                </td>
+                            </tr>
+                            }
+                    </tbody>
+                </table>
+                }
+            else
+                {
+                <div class="p-3 muted">
+                    No vouchers found.
+                </div>
+                }
+        </div>
+        <div style="border-top:1px solid #e5e7f2; margin-top:6px;">
+            <table class="apvc-detail-grid" id="detailGrid">
+                <thead>
                     <tr>
-                        <th>Sn</th>
                         <th>Id</th>
                         <th>Date</th>
-                        <th>JV No</th>
-                        <th>Payment Code</th>
-                        <th>Amount</th>
-                        <th>Debit Account</th>
-                        <th>Credit Account</th>
-                        <th>Edite</th>
+                        <th>Payment Id</th>
+                        <th>Inv Id</th>
+                        <th>Hud Id</th>
+                        <th>InvCode</th>
+                        <th>Total</th>
+                        <th>Payment</th>
+                        <th>Description</th>
+                        <th>CostCenterId</th>
+                        <th>ProjectId</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Model.ReceiptVouchers)
-                        {
-                        <tr>                           
-                            <td>@item.SN</td>
-                            <td>@item.Id</td>
-                            <td>@item.Date</td>
-                            <td>@item.JVNO</td>
-                            <td>@item.ReceiptCode</td>
-                            <td>@item.Amount</td>
-                            <td>@item.DebitAccount</td>
-                            <td>@item.CreditAccount</td>
-                            <td>
-                            <a class="menu-link px-3 js-render-modal" asp-controller="SalesReturns" asp-action="Edit" asp-route-id="@item.Id">Edit</a>
-                            </td>
-                        </tr>
-                        }
                 </tbody>
             </table>
-            }
+        </div>
     </div>
-    <!-- Items Section -->
-    <div class="mt-4" hidden>
-       @if (Model != null)
-        {
-          <table class="table table-bordered table-sm table-hover">
-               <thead class="table-secondary">
-               <tr>
-                           <th>Id</th>
-                           <th>Date</th>
-                           <th>Payment Id</th>
-                           <th>Inv Id</th>
-                           <th>InvCode</th>
-                           <th>Total</th>
-                           <th>Payment</th>
-                           <th>Description</th>
-                           <th>CostCenterId</th>
-                           <th>ProjectId</th>
-               </tr>
-               </thead>
-               <tbody>
-                 @*    @foreach (var item in Model.ReceiptVouchers)
-                       {
-                       foreach (var sub in item.ReceiptVoucherDetail)
-                           {
-                               <tr>
-                                   <td>@sub.Id</td>
-                                   <td>@sub.Date</td>
-                                   <td>@sub.PaymentId</td>
-                                   <td>@sub.InvId</td>
-                                   <td>@sub.HumId</td>
-                                   <td>@sub.InvCode</td>
-                                   <td>@sub.Total</td>
-                                   <td>@sub.Payment</td>
-                                   <td>@sub.Description</td>
-                                   <td>@sub.CostCenterId</td>
-                                   <td>@sub.ProjectId</td>
-                               </tr>
-                           } 
-                       } *@
-               </tbody>
-          </table>
-          }
-
-    </div>   
 </div>
     @section Scripts {
- @*    <script>
-        function loadInvoiceItems(id) {
-            $.get('/Stock/InvoiceItems/' + id, function (data) {
-                $('#invoiceItems').html(data);
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const mainBody   = document.querySelector('#mainGrid tbody');
+            const detailBody = document.querySelector('#detailGrid tbody');
+
+            const fromInput  = document.getElementById('FromDate');
+            const toInput    = document.getElementById('ToDate');
+            const chkAll     = document.getElementById('All');
+            const filterForm = document.getElementById('filterForm');
+
+            if (!mainBody || !detailBody) return;
+            const filterUrl = '@Url.Action("Filter", "ReceiptVouchers")';
+            const editUrlTemplate = '@Url.Action("Edit", "ReceiptVouchers", new { id = "__id__" })';
+            function toIsoString(d) {
+                const year  = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day   = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function toggleDateReadonly() {
+                const isAll = chkAll && chkAll.checked;
+                if (fromInput) {
+                    fromInput.readOnly = isAll;
+                    fromInput.classList.toggle('bg-light', isAll);
+                }
+                if (toInput) {
+                    toInput.readOnly = isAll;
+                    toInput.classList.toggle('bg-light', isAll);
+                }
+            }
+            function normalizeDates() {
+                const today = new Date();
+                let fromVal = fromInput.value;
+                let toVal   = toInput.value;
+                if (!fromVal && !toVal) {
+                    const todayStr = toIsoString(today);
+                    fromVal = todayStr;
+                    toVal   = todayStr;
+                }
+                else if (!fromVal && toVal) {
+                    debugger
+                    const toDate = new Date(toVal);
+                    if (!Number.isNaN(toDate.getTime())) {
+                        toDate.setMonth(toDate.getMonth() - 1);
+                        fromVal = toIsoString(toDate);
+                    } else {
+                        fromVal = toIsoString(today);
+                    }
+                }
+                else if (fromVal && !toVal) {
+                    toVal = toIsoString(today);
+                }
+                if (fromVal && toVal && fromVal > toVal) {
+                    const tmp = fromVal;
+                    fromVal = toVal;
+                    toVal = tmp;
+                }
+                fromInput.value = fromVal;
+                toInput.value   = toVal;
+                return { from: fromVal, to: toVal };
+            }
+            async function applyFilter() {
+                if (chkAll && chkAll.checked) {
+                    return;
+                }
+                const { from, to } = normalizeDates();
+                const url = `${filterUrl}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&all=false`;
+                try {
+                    const response = await fetch(url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const vm = await response.json();
+                    const vouchers = vm.receiptVouchers ?? vm.ReceiptVouchers ?? [];
+                    mainBody.innerHTML = '';
+                    detailBody.innerHTML =
+                        '<tr><td colspan="11" class="text-muted">Select a voucher to see details.</td></tr>';
+                    if (!vouchers.length) {
+                        mainBody.innerHTML =
+                            '<tr><td colspan="8" class="text-muted">No vouchers for this period.</td></tr>';
+                        return;
+                    }
+                    vouchers.forEach((item, index) => {
+                        const id            = item.id            ?? item.Id;
+                        const sn            = item.sn            ?? item.SN ?? (index + 1);
+                        const dateRaw       = item.date          ?? item.Date;
+                        const jvno          = item.jvno          ?? item.JVNO;
+                        const receiptCode   = item.receiptCode   ?? item.ReceiptCode;
+                        const amount        = item.amount        ?? item.Amount;
+                        const debitAccount  = item.debitAccount  ?? item.DebitAccount;
+                        const creditAccount = item.creditAccount ?? item.CreditAccount;
+                        let dateText = dateRaw ?? '';
+                        if (dateRaw && typeof dateRaw === 'string') {
+                            const d = new Date(dateRaw);
+                            if (!Number.isNaN(d.getTime())) {
+                                dateText = d.toLocaleDateString();
+                            }
+                        }
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('data-payment-id', id);
+                        const editUrl = editUrlTemplate.replace('__id__', id);
+                        tr.innerHTML =
+                            `<td>${sn}</td>` +
+                            `<td>${dateText}</td>` +
+                            `<td>${jvno ?? ''}</td>` +
+                            `<td>${receiptCode ?? ''}</td>` +
+                            `<td class="amount">${amount ?? ''}</td>` +
+                            `<td>${debitAccount ?? ''}</td>` +
+                            `<td>${creditAccount ?? ''}</td>` +
+                            `<td>
+                                <a class="menu-link px-2 js-render-modal"
+                                   href="${editUrl}">
+                                    Edit
+                                </a>
+                             </td>`;
+                        mainBody.appendChild(tr);
+                    });
+                } catch (error) {
+                    console.error(error);
+                    mainBody.innerHTML =
+                        '<tr><td colspan="8" class="text-danger">Error loading vouchers.</td></tr>';
+                }
+            }
+            if (filterForm) {
+                filterForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    applyFilter();
+                });
+            }
+            if (chkAll) {
+                chkAll.addEventListener('change', toggleDateReadonly);
+                toggleDateReadonly();
+            }
+
+            mainBody.addEventListener('click', function (e) {
+                const row = e.target.closest('tr[data-payment-id]');
+                if (!row) return;
+
+                const paymentId = row.getAttribute('data-payment-id');
+
+                const url = '@Url.Action("GetInvoiceRowsDetailsAsync", "ReceiptVouchers")'
+                    + '?PaymentId=' + encodeURIComponent(paymentId);
+
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(rows => {
+                        detailBody.innerHTML = '';
+
+                        if (!rows || rows.length === 0) {
+                            detailBody.innerHTML =
+                                '<tr><td colspan="11" class="text-muted">No details for this voucher.</td></tr>';
+                            return;
+                        }
+
+                        rows.forEach(r => {
+                            const tr = document.createElement('tr');
+
+                            const sn           = r.sn           ?? r.SN           ?? '';
+                            const dateRaw      = r.date         ?? r.Date         ?? '';
+                            const invId        = r.invId        ?? r.InvId        ?? '';
+                            const humId        = r.humId        ?? r.HumId        ?? '';
+                            const invoiceNo    = r.invoiceNo    ?? r.InvoiceNo    ?? '';
+                            const amount       = r.amount       ?? r.Amount       ?? '';
+                            const payment      = r.payment      ?? r.Payment      ?? '';
+                            const description  = r.description  ?? r.Description  ?? '';
+                            const costCenterId = r.costCenterId ?? r.CostCenterId ?? '';
+                            const projectId    = r.projectId    ?? r.ProjectId    ?? '';
+
+                            let dateText = dateRaw;
+                            if (dateRaw && typeof dateRaw === 'string') {
+                                const d = new Date(dateRaw);
+                                if (!Number.isNaN(d.getTime())) {
+                                    dateText = d.toLocaleDateString();
+                                }
+                            }
+
+                            tr.innerHTML =
+                                '<td>' + sn + '</td>' +
+                                '<td>' + dateText + '</td>' +
+                                '<td>' + paymentId + '</td>' +
+                                '<td>' + invId + '</td>' +
+                                '<td>' + humId + '</td>' +
+                                '<td>' + invoiceNo + '</td>' +
+                                '<td class="amount">' + amount + '</td>' +
+                                '<td class="amount">' + payment + '</td>' +
+                                '<td>' + description + '</td>' +
+                                '<td>' + costCenterId + '</td>' +
+                                '<td>' + projectId + '</td>';
+
+                            detailBody.appendChild(tr);
+                        });
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        detailBody.innerHTML =
+                            '<tr><td colspan="11" class="text-danger">Error loading details.</td></tr>';
+                    });
             });
-        }
-    </script> *@
+        });
+    </script>
     }

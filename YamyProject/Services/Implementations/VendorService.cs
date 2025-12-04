@@ -22,6 +22,7 @@
             }
         public async Task CreateVendorOrSubcontractorAcync(VendorSubContactViewModel  Model)
             {
+               // int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
             var strategy = _context.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>

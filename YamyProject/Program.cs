@@ -47,6 +47,7 @@ builder.Services.AddScoped<IPurchaseReportServices, PurchaseReportServices>();
 builder.Services.AddScoped<IVatCorporateService, VatCorporateService>();
 
 
+builder.Services.AddScoped<IGlobalService, GlobalService>();
 builder.Services.AddScoped<ICurrentUserContextService, CurrentUserContextService>();
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
 builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
