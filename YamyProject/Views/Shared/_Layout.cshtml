@@ -7,43 +7,145 @@
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap">
     <link rel="stylesheet" href="~/assets/css/bootstrap.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-@*     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" /> *@
 
     <link rel="stylesheet" href="~/assets/vendors/iconly/bold.css" />
     <link rel="stylesheet" href="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.css" />
     <link rel="stylesheet" href="~/assets/css/app.css" asp-append-version="true" />
     <link rel="icon" href="~/assets/images/logo/yamy.png" type="image/png" />
     <link rel="stylesheet" href="~/css/MainLayout.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     @RenderSection("Styles", required: false)
-
-  </head>
+</head>
 <body>
     <div id="app">
         <!-- ✅ Top Navbar -->
         <partial name="_Header" />
-        <!-- ✅ Sidebar -->
-        <partial name="_Aside" />
 
-        <!-- ✅ Main -->
-         <div id="main">
-            <div >
-                <div class="content " id="kt_content">
+        <div id="sidebar" class="active">
+            <div class="sidebar-wrapper active">
+                <div class="sidebar-header">
+                    <div class="d-flex justify-content-between">
+                        <div class="toggler">
+                            <a href="#" class="sidebar-hide d-xl-none d-block"><i class="bi bi-x bi-middle"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="sidebar-menu">
+                    <ul class="menu">
+                        <!-- Dashboard -->
+                        <li class="sidebar-item active">
+                            <a href="/" class='sidebar-link'>
+                                <i class="bi bi-grid-fill"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+
+                        <!-- Accountant -->
+                        <li class="sidebar-item">
+                            <a href="@Url.Action("ChartOfAccount", "Lists")" class="sidebar-link">
+                                <i class="bi bi-calculator-fill"></i>
+                                <span>Chart Of Account</span>
+                            </a>
+                        </li>
+
+                        <!-- Customers -->
+                        <li class="sidebar-item">
+                            <a asp-controller="CustomerCenter" asp-action="Index" class="sidebar-link">
+                                <i class="bi bi-people-fill"></i>
+                                <span>Customers</span>
+                            </a>
+                        </li>
+
+                        <!-- Vendors -->
+                        <li class="sidebar-item">
+                            <a asp-controller="Vendors" asp-action="Index" class="sidebar-link">
+                                <i class="bi bi-person-lines-fill"></i>
+                                <span>Vendors</span>
+                            </a>
+                        </li>
+
+                        <!-- HR with Submenu -->
+                        <li class="sidebar-item has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-person-badge-fill"></i>
+                                <span>HR</span>
+                            </a>
+                            <ul class="submenu">
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("HRMS", "HR")">Human Resource</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- Inventory with Submenu -->
+                        <li class="sidebar-item has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-box-seam-fill"></i>
+                                <span>Inventory</span>
+                            </a>
+                            <ul class="submenu">
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("ItemList", "Lists")">Item List</a>
+                                </li>
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("WareHouse", "Inventory")">Warehouse</a>
+                                </li>
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("WarehouseTransfer", "Inventory")">Item Warehouse Transfer</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- Banking with Submenu -->
+                        <li class="sidebar-item has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-bank"></i>
+                                <span>Banking</span>
+                            </a>
+                            <ul class="submenu">
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("BankCenter", "Account")">Bank Center</a>
+                                </li>
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("BankCardCenter", "Account")">Bank Card Center</a>
+                                </li>
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("BankCheque", "Account")">Bank Cheque</a>
+                                </li>
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("PDC", "Account")">PDC</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- Settings with Submenu -->
+                        <li class="sidebar-item has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-gear-fill"></i>
+                                <span>Settings</span>
+                            </a>
+                            <ul class="submenu">
+                                <li class="submenu-item">
+                                    <a href="@Url.Action("ChangePassword", "Settings")">Change Password</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                    </ul>
+                </div>
+                <button class="sidebar-toggler btn x"><i class="bi bi-x"></i></button>
+            </div>
+        </div>
+
+        <!-- ✅ Main Content -->
+        <div id="main">
+            <div>
+                <div class="content" id="kt_content">
                     @RenderBody()
                 </div>
             </div>
-            @* @await Html.PartialAsync("~/Views/Subcontractors/_SubContract.cshtml") *@
-            @* <partial name="~/Views/Subcontractors/_SubContract.cshtml" /> *@
-            @* <partial name="_Modal" /> *@
-            @*  <div class="page-content">
-                <section class="row">
-                    <div class="col-12">
-                        @RenderBody()
-                    </div>
-                </section>
-            </div> *@
+
+            <!-- Company Profile Modal -->
             <div class="modal fade" id="companyProfileModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-centered">
                     <div class="modal-content" id="companyProfileModalContent">
@@ -51,42 +153,79 @@
                     </div>
                 </div>
             </div>
+
             <!-- ✅ Footer -->
             <footer>
                 <partial name="_footer" />
-
             </footer>
         </div>
     </div>
-
 
     <!-- ✅ Scripts: Load jQuery FIRST, then dependencies, then your scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="~/assets/js/bootstrap.bundle.min.js"></script>
     <script src="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
-    @* <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> *@
 
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
-@*  
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" /> *@
 
- @*    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script> *@
     <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
     <script src="~/assets/js/pages/dashboard.js"></script>
     <script src="~/assets/js/main.js"></script>
+
+    <!-- Submenu Toggle Script -->
+    <script>
+        $(document).ready(function() {
+             // Submenu toggle
+        $('.sidebar-item.has-sub > .sidebar-link').on('click', function(e) {
+            e.preventDefault();
+
+            var $parent = $(this).parent('.sidebar-item.has-sub');
+
+            // Toggle current submenu
+            $parent.toggleClass('active');
+            $parent.find('.submenu').first().slideToggle(300);
+
+            // Close other submenus
+            $('.sidebar-item.has-sub').not($parent).removeClass('active');
+            $('.sidebar-item.has-sub').not($parent).find('.submenu').slideUp(300);
+        });
+
+        // Highlight active submenu item based on current URL
+        var currentPath = window.location.pathname;
+        $('.submenu-item a').each(function() {
+            var linkPath = $(this).attr('href');
+            if (linkPath && currentPath.indexOf(linkPath) !== -1 && linkPath !== '/') {
+                $(this).parent('.submenu-item').addClass('active');
+                $(this).closest('.sidebar-item.has-sub').addClass('active');
+                $(this).closest('.submenu').show();
+            }
+        });
+
+        // Mobile sidebar toggle
+        $('.sidebar-hide, .sidebar-toggler').on('click', function(e) {
+            e.preventDefault();
+            $('#sidebar').toggleClass('active');
+        });
+
+        $('.burger-btn').on('click', function(e) {
+            e.preventDefault();
+            $('#sidebar').addClass('active');
+        });
+        });
+    </script>
+
     <script>
         function openCompanyProfileModal() {
-            $("#companyProfileModalContent").load("/CompanyCenter/Edit", function () {
+            $("#companyProfileModalContent").load("/CompanyCenter/Edit", function() {
                 const modal = new bootstrap.Modal(document.getElementById("companyProfileModal"));
                 modal.show();
             });
         }
     </script>
+
     @await RenderSectionAsync("Scripts", required: false)
-     <script src="~/js/site.js"></script>
-  </body>
+    <script src="~/js/site.js"></script>
+</body>
 </html>
