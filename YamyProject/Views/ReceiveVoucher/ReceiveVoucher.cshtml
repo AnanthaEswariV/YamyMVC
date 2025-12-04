@@ -1,319 +1,501 @@
 ﻿@model ReceiveVoucherViewModel
 @{
     ViewData["Title"] = "Receive Voucher";
+
     var readOnlyTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "Subcontractor", "Vendor" ,"Employee" // add more here
+        "Subcontractor", "Vendor" ,"Employee"
     };
-    var isEmployeeType = Model?.Type != null && string.Equals(Model.Type, "Employee", StringComparison.OrdinalIgnoreCase);
-    var isReadOnly = readOnlyTypes.Contains(Model.Type);
+    var isEmployeeType = Model?.Type != null &&
+                         string.Equals(Model.Type, "Employee", StringComparison.OrdinalIgnoreCase);
+    var isReadOnly = !readOnlyTypes.Contains(Model.Type);
     }
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
 <style>
-    .ribbon .btn {
-        min-width: 110px
+    .pv-wrap {
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        background: #f3f4f8;
+        padding: 10px;
+    }
+
+    .pv-window {
+        background: #fff;
+        border: 1px solid #cfd3e1;
+        border-top: 5px solid #0d6efd;
+        border-radius: 4px;
+    }
+
+    .pv-header {
+        padding: .45rem .75rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #fff;
+        background: #123b7a;
+        border-radius: 4px 4px 0 0;
+        text-align: center;
+    }
+
+    .pv-tabs {
+        border-bottom: 1px solid #e0e4f0;
+        padding: 0 .75rem;
+        background: #f8f9fc;
+    }
+
+        .pv-tabs .nav-link {
+            padding: .4rem .9rem;
+            font-size: .9rem;
+        }
+
+    .pv-ribbon {
+        padding: .5rem .75rem;
+        border-bottom: 1px solid #e0e4f0;
+        background: #fdfdff;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+        .pv-ribbon .btn {
+            min-width: 105px;
+        }
+
+        .pv-ribbon .pv-nav-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: .25rem;
+            border: 1px solid #cfd3e1;
+            background: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pv-ribbon .pv-code {
+            min-width: 120px;
+            border-radius: .25rem;
+            border: 1px solid #cfd3e1;
+            background: #e9edf7;
+            font-size: .88rem;
+            padding: .25rem .5rem;
+            text-align: center;
+        }
+
+        .pv-ribbon .vr {
+            height: 32px;
+            margin: 0 .4rem;
+        }
+
+    .pv-body {
+        padding: .75rem;
     }
 
     .section-title {
         font-weight: 600;
-        background: var(--bs-tertiary-bg);
-        padding: .5rem .75rem;
-        border-bottom: 1px solid var(--bs-border-color);
+        background: #f6f7fb;
+        padding: .4rem .6rem;
+        border-bottom: 1px solid #e1e4f0;
+        font-size: .9rem;
     }
 
     .fieldset {
-        border: 1px solid var(--bs-border-color);
-        border-radius: .5rem;
-    }
-
-    .toolbar-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: .5rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid var(--bs-border-color);
+        border: 1px solid #e1e4f0;
+        border-radius: .35rem;
+        margin-bottom: .75rem;
+        background: #fff;
     }
 
     .tiny {
-        font-size: .85rem
+        font-size: .83rem;
+    }
+
+    #payerArea {
+        background: #fafbff;
+    }
+
+    /* Details grid */
+    #invoiceTable thead {
+        background: #f5f6fb;
+        font-size: .88rem;
+    }
+
+    #invoiceTable tbody tr.selected-row {
+        background-color: #d9f9c8;
+    }
+
+    #invoiceTable td,
+    #invoiceTable th {
+        padding: .3rem .4rem;
+    }
+
+    .pv-footer {
+        padding: .6rem .75rem .8rem;
+        border-top: 1px solid #e1e4f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: .5rem;
+        background: #f8f9fc;
+        border-radius: 0 0 4px 4px;
     }
 </style>
 
-<div class="container-fluid py-3">
-    <!-- Top Tabs -->
-    <ul class="nav nav-tabs mb-2">
-        <li class="nav-item"><a class="nav-link active" href="#">Main</a></li>
-        <li class="nav-item"><a class="nav-link disabled" tabindex="-1">Reports</a></li>
-    </ul>
+<div class="pv-wrap">
+    <div class="pv-window">
+        <!-- Top blue header -->
+        <div class="pv-header">
+            Payment Voucher
+        </div>
 
-    <!-- Ribbon -->
-    <div class="ribbon card shadow-sm border-0 mb-3">
-        <div class="card-body d-flex flex-wrap align-items-center gap-3">
-            <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-light border"><i class="bi bi-arrow-left-short"></i></button>
-                <div class="toolbar-icon">RV</div>
-                <button type="button" class="btn btn-light border"><i class="bi bi-arrow-right-short"></i></button>
+        <!-- Tabs (Main / Reports) -->
+        <div class="pv-tabs">
+            <ul class="nav nav-tabs border-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">Main</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" tabindex="-1">Reports</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Ribbon -->
+        <div class="pv-ribbon">
+            <button type="button" class="pv-nav-btn" title="Previous">
+                <i class="bi bi-arrow-left-short"></i>
+            </button>
+
+            <div class="pv-code">
+                @(Model?.VoucherNo ?? "PV-0000")
             </div>
+
+            <button type="button" class="pv-nav-btn" title="Next">
+                <i class="bi bi-arrow-right-short"></i>
+            </button>
+
             <div class="vr"></div>
 
-            <button type="submit" form="rvForm" class="btn btn-primary" id="btnSave"><i class="bi bi-save"></i> Save</button>
+            <button type="button" class="btn btn-outline-secondary">
+                <i class="bi bi-file-earmark-plus"></i> New
+            </button>
 
-            <div class="vr"></div>
-            <button type="button" class="btn btn-outline-secondary" id="btnPrint"><i class="bi bi-printer"></i> Print</button>
-            <div class="form-check tiny">
+            <button type="submit" form="rvForm" class="btn btn-primary" id="btnSave">
+                <i class="bi bi-save"></i> Save
+            </button>
+
+            <button type="button" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+
+            <button type="button" class="btn btn-outline-secondary">
+                <i class="bi bi-files"></i> Create a Copy
+            </button>
+    
+            <button type="button" class="btn btn-outline-secondary" id="btnPrint">
+                <i class="bi bi-printer"></i> Print
+            </button>
+
+            <button type="button" class="btn btn-outline-secondary" id="btnEmail">
+                <i class="bi bi-envelope"></i> Email
+            </button>
+
+            <div class="form-check tiny ms-2">
                 <input class="form-check-input" type="checkbox" id="PrintAfterSave" checked>
                 <label class="form-check-label" for="PrintAfterSave">Print After Save</label>
             </div>
-            <button type="button" class="btn btn-outline-secondary" id="btnEmail"><i class="bi bi-envelope"></i> Email</button>
+        </div>
 
-            <div class="ms-auto badge text-bg-secondary px-3 py-2">
-                @(Model?.VoucherNo ?? "RV-0000")
-            </div>
+        <!-- Body -->
+        <div class="pv-body">
+            <form asp-action="Create" asp-controller="ReceiptVouchers" method="post" id="rvForm"
+                  class="needs-validation" novalidate>
+                @Html.AntiForgeryToken()
+
+                <!-- Header info row -->
+                <div class="fieldset mb-2">
+                    <div class="section-title">Header</div>
+                    <div class="p-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Date</label>
+                                <input asp-for="Date" class="form-control" type="date" />
+                                <span class="text-danger small" asp-validation-for="Date"></span>
+                            </div>
+
+                            <fieldset class="col-12 col-md-3" @(isReadOnly ? "disabled" : null)>
+                                <label class="form-label">Payment Type</label>
+                                <select class="form-select" asp-for="PaymentType"
+                                        asp-items="Model.PaymentTypes" id="PaymentType"></select>
+                            </fieldset>
+
+                            @if (!isEmployeeType)
+                                {
+                                <div class="col-12 col-md-2 d-flex align-items-center">
+                                    <div class="form-check ms-1 mt-3">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="IsSubcontractor" asp-for="IsSubcontractor">
+                                        <label class="form-check-label tiny" for="IsSubcontractor">
+                                            Subcontractors
+                                        </label>
+                                    </div>
+                                </div>
+                                }
+
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Payment Method</label>
+                                <select class="form-select" asp-for="PaymentMethod"
+                                        asp-items="Model.PaymentMethods" id="PaymentMethod"></select>
+                            </div>
+
+                            <div class="w-100"></div>
+
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Amount</label>
+                                <input asp-for="Amount" id="Amount" class="form-control text-end"
+                                       placeholder="0.000" readonly />
+                                <span class="text-danger small" asp-validation-for="Amount"></span>
+                            </div>
+                            <div class="col-12 col-md-9">
+                                <label class="form-label">Amount In Word</label>
+                                <input asp-for="AmountInWords" class="form-control" id="AmountInWords" readonly />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- hidden keys -->
+                <input type="hidden" asp-for="CreditAccountId" id="CreditAccountId" />
+                <input type="hidden" asp-for="CreditCostCenterId" id="CreditCostCenterId" />
+                <input type="hidden" asp-for="DebitAccountId" id="DebitAccountId" />
+                <input type="hidden" asp-for="DebitCostCenterId" id="DebitCostCenterId" />
+                <input type="hidden" asp-for="DebitEmployeeId" id="DebitEmployeeId" />
+                <input type="hidden" asp-for="vendorId" id="vendorId" />
+
+                <!-- Pay To - Debit -->
+                <div class="fieldset">
+                    <div class="section-title">Pay To - Debit</div>
+                    <div class="p-3">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Account Code</label>
+                                <input asp-for="Debit.AccountCode" class="form-control" id="DebitAccountCode" />
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Account Name</label>
+                                <select class="form-select" asp-for="DebitAccountId"
+                                        asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
+                                        id="filterCreditAccount">
+                                </select>
+                                <span class="text-danger" asp-validation-for="DebitAccountId"></span>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Cost Center</label>
+                                <select class="form-select" asp-for="CreditCostCenterId"
+                                        asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"
+                                        id="filterCreditCostCenter">
+                                </select>
+                            </div>
+
+                            <div class="w-100"></div>
+
+                            <div id="payerArea" asp-for="Description"
+                                 class="position-relative border rounded p-3 mt-2" style="min-height:190px;">
+                                <!-- Employee panel -->
+                                <div id="panelEmployee" class="pane d-none">
+                                    <div class="row g-3">
+                                        <div class="col-12 col-md-3">
+                                            <label class="form-label">Employee Code</label>
+                                            <input asp-for="Debit.EmployeeCode" class="form-control" id="EmployeeCode" />
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Employee Name</label>
+                                            <select class="form-select" asp-for="DebitEmployeeId"
+                                                    asp-items="@(new SelectList(Model.Employees, "Id", "Name"))"
+                                                    id="filterEmployee">
+                                            </select>
+                                            <span class="text-danger" asp-validation-for="DebitEmployeeId"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vendor panel -->
+                                <div id="panelVendor" class="pane d-none">
+                                    <div class="row g-3">
+                                        <div class="col-12 col-md-3">
+                                            <label class="form-label">Vendor Code</label>
+                                            <input asp-for="Debit.VendorCode" class="form-control" id="VendorCode" />
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Vendor Name</label>
+                                            <select class="form-select" asp-for="vendorId"
+                                                    asp-items="@(new SelectList(Model.vendors, "Id", "Name"))"
+                                                    id="filterVendor">
+                                            </select>
+                                            <span class="text-danger" asp-validation-for="vendorId"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-2">
+                                <label class="form-label">Note</label>
+                                <textarea asp-for="Debit.Note" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pay From - Credit -->
+                <div class="fieldset">
+                    <div class="section-title">Pay From - Credit</div>
+                    <div class="p-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Account Code</label>
+                                <input asp-for="Credit.AccountCode" class="form-control" id="CreditAccountCode" />
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Account Name</label>
+                                <select class="form-select" asp-for="DebitAccountId"
+                                        asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
+                                        id="filterDebitAccount">
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label">Cost Center</label>
+                                <select class="form-select" asp-for="DebitCostCenterId"
+                                        asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"
+                                        id="filterDebitCostCenter">
+                                </select>
+                            </div>
+
+                            <div class="w-100"></div>
+
+                            <!-- Cheque -->
+                            <div class="col-12 col-md-3 cheque-only d-none">
+                                <label class="form-label">Cheque Name</label>
+                                <input asp-for="Credit.ChequeName" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-2 cheque-only d-none">
+                                <label class="form-label d-block">Cheque</label>
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" asp-for="Credit.IsCheque" />
+                                    <label class="form-check-label tiny">Is Cheque</label>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3 cheque-only d-none">
+                                <label class="form-label">Cheque No</label>
+                                <input asp-for="Credit.ChequeNo" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-3 cheque-only d-none">
+                                <label class="form-label">Cheque Date</label>
+                                <input asp-for="Credit.ChequeDate" type="date" class="form-control" />
+                            </div>
+
+                            <!-- Transfer -->
+                            <div class="col-12 col-md-3 transfer-only d-none">
+                                <label class="form-label">Transfer Date</label>
+                                <input asp-for="Credit.transferDate" type="date" class="form-control" />
+                            </div>
+                            <div class="col-12 col-md-4 transfer-only d-none">
+                                <label class="form-label">TRNS / Name</label>
+                                <input class="form-control" asp-for="Credit.TRNSNAme" />
+                            </div>
+                            <div class="col-12 col-md-4 transfer-only d-none">
+                                <label class="form-label">TRNS / REF</label>
+                                <input class="form-control" asp-for="Credit.TRNSRef" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Details grid -->
+                <div class="fieldset mb-0">
+                    <div class="section-title">Details</div>
+                    <div class="p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle mb-0" id="invoiceTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:60px">No</th>
+                                        <th style="width:140px">ID</th>
+                                        <th style="width:140px">Date</th>
+                                        <th style="width:140px">Inv No</th>
+                                        <th style="width:140px" class="text-end">Amount</th>
+                                        <th style="width:70px" class="text-center">Pay</th>
+                                        <th style="width:160px" class="text-end">Payment</th>
+                                        <th style="width:140px">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model?.Items != null && Model.Items.Any())
+                                        {
+                                        for (var i = 0; i < Model.Items.Count; i++)
+                                            {
+                                            <tr>
+                                                <td class="text-center">@(i + 1)</td>
+                                                <td>
+                                                    <input class="form-control form-control-sm item-humId"
+                                                           name="Items[i].humId" asp-for="Items[i].humId" readonly />
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm item-date"
+                                                           name="Items[i].invId" asp-for="Items[i].invId" readonly />
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm item-invno"
+                                                           name="Items[i].InvoiceNo" asp-for="Items[i].InvoiceNo" readonly />
+                                                </td>
+                                                <td>
+                                                    <input step="0.01" class="form-control form-control-sm text-end item-Amount"
+                                                           asp-for="Items[i].Amount" readonly />
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="form-check-input row-select"
+                                                           asp-for="Items[i].Pay" />
+                                                </td>
+                                                <td>
+                                                    <input step="0.01" min="0"
+                                                           class="form-control form-control-sm text-end item-Payment"
+                                                           asp-for="Items[i].Payment" data-max="Items[i].amount"
+                                                           disabled />
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm item-Description"
+                                                           asp-for="Items[i].Description" />
+                                                </td>
+                                            </tr>
+                                            }
+                                        }
+                                    else
+                                        {
+                                        <tr class="text-center text-muted">
+                                            <td colspan="10">No invoices found for this vendor.</td>
+                                        </tr>
+                                        }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer buttons -->
+                <div class="pv-footer">
+                    <button type="submit" name="close" value="1" class="btn btn-primary">
+                        Save &amp; Close
+                    </button>
+                    <button type="submit" class="btn btn-secondary">
+                        Save
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        Close
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
-
-    <form asp-action="Create" asp-controller="ReceiptVouchers" method="post" id="rvForm" class="needs-validation" novalidate>
-        @Html.AntiForgeryToken()
-
-        <!-- Header -->
-        <div class="card shadow-sm border-0 mb-3">
-            <div class="card-body">
-                <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Date</label>
-                        <input asp-for="Date" class="form-control" type="date" />
-                        <span class="text-danger small" asp-validation-for="Date"></span>
-                    </div>
-                    <fieldset @(isReadOnly ? "disabled" : null)>
-                     <div class="col-12 col-md-3">
-                        <label class="form-label">Payment Type</label>
-                        <!-- values: 1=Cash, 2=Cheque, 3=Transfer -->
-                        <select class="form-select" asp-for="PaymentType" asp-items="Model.PaymentTypes" id="PaymentType"></select>
-                    </div>
-                    </fieldset>
-
-                         @if(!isEmployeeType)
-                        {
-                           <fieldset @(string.Equals(Model?.Type, "Subcontractor", StringComparison.OrdinalIgnoreCase) ? "disabled": null)>
-                               <div class="col-sm-6 d-flex align-items-end">
-                                  <div class="form-check ms-2">
-                                     <input class="form-check-input" type="checkbox" id="IsSubcontractor" asp-for="IsSubcontractor">
-                                     <label class="form-check-label" for="IsSubcontractor">Subcontractors</label>
-                                  </div>
-                                </div>
-                           </fieldset >
-                         }
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Payment Method</label>
-                        <!-- values: 1=Cash, 2=Cheque, 3=Transfer -->
-                        <select class="form-select" asp-for="PaymentMethod" asp-items="Model.PaymentMethods" id="PaymentMethod"></select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Amount</label>
-                        <input asp-for="Amount" id="Amount" class="form-control text-end" placeholder="0.000" readonly />
-                        <span class="text-danger small" asp-validation-for="Amount"></span>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Amount In Word</label>
-                        <input asp-for="AmountInWords" class="form-control" id="AmountInWords" readonly />
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- hidden keys -->
-        <input type="hidden" asp-for="CreditAccountId" id="CreditAccountId" />
-        <input type="hidden" asp-for="CreditCostCenterId" id="CreditCostCenterId" />
-        <input type="hidden" asp-for="DebitAccountId" id="DebitAccountId" />
-        <input type="hidden" asp-for="DebitCostCenterId" id="DebitCostCenterId" />
-        <input type="hidden" asp-for="DebitEmployeeId" id="DebitEmployeeId" />
-        <input type="hidden" asp-for="vendorId" id="vendorId" />
-
-        <!-- Received From - Credit -->
-        <div class="fieldset mb-3">
-            <div class="section-title">Received From - Debit</div>
-            <div class="p-3">
-                <div class="row g-3">
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Account Code</label>
-                        <input asp-for="Debit.AccountCode" class="form-control" id="DebitAccountCode" />
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label">Account Name</label>
-                        <select class="form-select" asp-for="DebitAccountId"
-                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
-                                id="filterCreditAccount">
-                        </select>
-                        <span class="text-danger" asp-validation-for="DebitAccountId"></span>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Cost Center</label>
-                        <select class="form-select" asp-for="CreditCostCenterId"
-                                asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"
-                                id="filterCreditCostCenter">
-                        </select>
-                    </div>
-                    <div class="col-md-3"></div>
-                    <div id="payerArea" asp-for="Description" class="position-relative border rounded p-3 mt-3" style="min-height:190px;">
-                        <!-- Employee panel -->
-                        <div id="panelEmployee" class="pane d-none">
-                            <div class="col-12 col-md-2">
-                                <label class="form-label">Employee Code</label>
-                                <input asp-for="Debit.EmployeeCode" class="form-control" id="EmployeeCode" />
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label">Employee Name</label>
-                                <select class="form-select" asp-for="DebitEmployeeId"
-                                        asp-items="@(new SelectList(Model.Employees, "Id", "Name"))"
-                                        id="filterEmployee">
-                                </select>
-                                <span class="text-danger" asp-validation-for="DebitEmployeeId"></span>
-                        </div>
-                        </div>
-                            <!-- Vendor panel -->
-                       <div id="panelVendor" class="pane hidden d-none">
-                         <div class="col-12 col-md-2">
-                            <label class="form-label">Vendor Code</label>
-                             <input asp-for="Debit.VendorCode" class="form-control" id="VendorCode" />
-                         </div>
-                         <div class="col-12 col-md-6">
-                            <label class="form-label">Vendor Name</label>
-                                 <select class="form-select" asp-for="vendorId"
-                                            asp-items="@(new SelectList(Model.vendors, "Id", "Name"))"
-                                   id="filterVendor">
-                                 </select>
-                           <span class="text-danger" asp-validation-for="vendorId"></span>
-                         </div>
-                       </div>
-                 </div>
-                    <div class="col-12">
-                        <label class="form-label">Note</label>
-                        <textarea asp-for="Debit.Note" class="form-control" rows="2"></textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Received To - Debit -->
-        <div class="fieldset mb-3">
-            <div class="section-title">Received To - Credit</div>
-            <div class="p-3">
-                <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Account Code</label>
-                        <input asp-for="Credit.AccountCode" class="form-control" id="CreditAccountCode" />
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="form-label">Account Name</label>
-                        <select class="form-select" asp-for="DebitAccountId"
-                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
-                                id="filterDebitAccount">
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <label class="form-label">Cost Center</label>
-                        <select class="form-select" asp-for="DebitCostCenterId"
-                                asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"
-                                id="filterDebitCostCenter">
-                        </select>
-                    </div>
-
-                    <div class="w-100"></div>
-
-                    <!-- Cheque (hidden by default) -->
-                    <div class="col-12 col-md-3 cheque-only d-none">
-                        <label class="form-label">Cheque Name</label>
-                        <input asp-for="Credit.ChequeName" class="form-control" />
-                    </div>
-                    <div class="col-12 col-md-2 cheque-only d-none">
-                        <label class="form-label d-block">Cheque</label>
-                        <div class="form-check mt-1">
-                            <input class="form-check-input" type="checkbox" asp-for="Credit.IsCheque" />
-                            <label class="form-check-label tiny">Is Cheque</label>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-3 cheque-only d-none">
-                        <label class="form-label">Cheque No</label>
-                        <input asp-for="Credit.ChequeNo" class="form-control" />
-                    </div>
-                    <div class="col-12 col-md-3 cheque-only d-none">
-                        <label class="form-label">Cheque Date</label>
-                        <input asp-for="Credit.ChequeDate" type="date" class="form-control" />
-                    </div>
-
-                    <!-- Transfer (hidden by default) -->
-                    <div class="col-12 col-md-3 transfer-only d-none">
-                        <label class="form-label">Transfer Date</label>
-                        <input asp-for="Credit.transferDate" type="date" class="form-control" />
-                    </div>
-                    <div class="col-12 col-md-4 transfer-only d-none">
-                        <label class="form-label">TRNS / Name</label>
-                        <input class="form-control" asp-for="Credit.TRNSNAme" />
-                    </div>
-                    <div class="col-12 col-md-4 transfer-only d-none">
-                        <label class="form-label">TRNS / REF</label>
-                        <input class="form-control" asp-for="Credit.TRNSRef" />
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Details Grid (target for JS rendering) -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle mb-0" id="invoiceTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width:60px">SN#</th>
-                                <th style="width:140px">ID</th>
-                                <th style="width:140px">Date</th>
-                                <th style="width:140px">INV NO</th>
-                                <th style="width:140px" class="text-end">Total</th>
-                                <th style="width:70px" class="text-center">Pay</th>
-                                <th style="width:160px" class="text-end">Payment</th>
-                                <th style="width:140px" class="text-end">Description</th>
-
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Model?.Items != null && Model.Items.Any())
-                                {
-                                @for (var i = 0; i < Model.Items.Count; i++)
-                                    {
-                                    <tr >
-                                        <td class="text-center">@(i + 1)</td>
-                                        <td><input class="form-control form-control-sm item-humId" name="Items[i].humId" asp-for="Items[i].humId" readonly></td>
-                                        <td><input class="form-control form-control-sm item-date" name="Items[i].invId" asp-for="Items[i].invId" readonly></td>
-                                        <td><input class="form-control form-control-sm item-invno" name="Items[i].InvoiceNo" asp-for="Items[i].InvoiceNo" readonly></td>
-                                        <td><input step="0.01" class="form-control form-control-sm text-end item-Amount" asp-for="Items[i].Amount" readonly></td>
-                                        <td class="text-center"><input type="checkbox" class="form-check-input row-select" asp-for="Items[i].Pay"></td>
-                                        <td><input step="0.01" min="0" class="form-control form-control-sm text-end item-Payment" asp-for="Items[i].Payment" data-max="Items[i].amount" disabled></td>
-                                        <td><input class="form-control form-control-sm text-end item-Description" asp-for="Items[i].Description"></td>
-                                    </tr>
-                                    }
-                                }
-                            else
-                                {
-                                <tr class="text-center text-muted"><td colspan="10">No invoices found for this vendor.</td></tr>
-                                }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Buttons -->
-        <div class="d-flex justify-content-end gap-2">
-            <button type="submit" name="close" value="1" class="btn btn-primary">Save &amp; Close</button>
-            <button type="submit" class="btn btn-secondary">Save</button>
-            <a asp-action="Index" class="btn btn-outline-secondary">Close</a>
-        </div>
-    </form>
 </div>
+
+
 
     @section Scripts {
     <script>
@@ -392,7 +574,7 @@
               return Number($sel.val() || $hiddenId.val() || 0);
             }
             async function loadInvoicesForCustomer(vendorId) {
-                debugger
+                
                   if (!vendorId  ) { alert('Select a vendor first.'); return; }
 
               const url = '/ReceiveVoucher/GetVendorInvoiceRowsAsync?vendorId=' + encodeURIComponent(vendorId);

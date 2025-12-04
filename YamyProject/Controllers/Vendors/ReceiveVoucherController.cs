@@ -66,11 +66,12 @@ namespace YamyProject.Controllers.Vendors
             //if (model.CustomerId is null) return BadRequest("Customer is required.");
             //if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
             //var userId = 1;
-            
-            await _PaymentVoucher.CreatePvAsync(model);
+            if (model.Id == 0 || model.Id == null)
+                await _PaymentVoucher.CreatePvAsync(model);
+            else
+                await _PaymentVoucher.updatePvAsync(model);
 
-
-            return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index));
             }
 
         [HttpGet]
@@ -217,6 +218,27 @@ namespace YamyProject.Controllers.Vendors
                 if (rows is null) return NotFound();
             return Json(rows); // your JS will fill the grid
             }
-   
+
+        public async Task<IActionResult> GetPaymentDetailsAsync(int PaymentId)
+            {
+            var rows = new List<RvItemViewModel>();
+
+            var paidAgainstOB = await _context.TblPaymentVoucherDetails
+                 .Where(t => t.PaymentId == PaymentId).ToListAsync();
+            foreach (var s in paidAgainstOB)
+                {
+                rows.Add(new RvItemViewModel
+                    {
+                    Date=s.Date,
+                    Payment=s.Payment??0m,
+                    Description=s.Description,
+                    VoucherType=s.Employee.Name
+                    });
+                }
+            if (rows is null) return NotFound();
+            return Json(rows);
+            }
+
+
         }
-}
+    }

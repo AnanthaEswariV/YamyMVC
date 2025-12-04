@@ -196,7 +196,7 @@
         public async Task<AdvancePaymentViewModel> GetEditAsync(int Id)
             {
             var advancePayment = await _context.TblAdvancePaymentVouchers
-                .Include(ap => ap.AdvancePaymentVoucherDetail)
+                //.Include(ap => ap.AdvancePaymentVoucherDetail)
                 .Include(ap => ap.DebitAccount)
                 .Include(ap => ap.CreditAccount)
                 .FirstOrDefaultAsync(ap => ap.Id == Id);

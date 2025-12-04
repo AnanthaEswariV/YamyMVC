@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
+﻿
 namespace YamyProject.Core.Models;
 
 public partial class TblPaymentVoucherDetail
@@ -12,7 +10,8 @@ public partial class TblPaymentVoucherDetail
     public int? PaymentId { get; set; }
 
     public int? HumId { get; set; }
-
+    [ForeignKey(nameof(HumId))]
+    public virtual TblEmployee Employee { get; set; }
     public int? InvId { get; set; }
 
     public string? InvCode { get; set; }

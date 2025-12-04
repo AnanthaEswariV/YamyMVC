@@ -282,23 +282,6 @@
             const safe = s => (s ?? '-');
             const num = n => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 });
 
-            // $header.html(`
-            //   <div class="row g-2">
-            //     <div class="col-3"><strong>Vendor Code</strong><div>${safe(h.code)}</div></div>
-            //     <div class="col-5"><strong>Vendor Name</strong><div>${safe(h.name)}</div></div>
-            //     <div class="col-2"><strong>TRN</strong><div>${safe(h.trn)}</div></div>
-            //     <div class="col-2"><strong>Balance</strong><div>${num(h.balance)}</div></div>
-
-            //     <div class="col-3"><strong>Work Phone</strong><div>${safe(h.workPhone)}</div></div>
-            //     <div class="col-3"><strong>Main Phone</strong><div>${safe(h.mainPhone)}</div></div>
-            //     <div class="col-3"><strong>Vendor Category</strong><div>${safe(h.category)}</div></div>
-            //     <div class="col-3"><strong>Region</strong><div>${safe(h.region)}</div></div>
-
-            //     <div class="col-6"><strong>Email</strong><div>${safe(h.email)}</div></div>
-            //     <div class="col-6"><strong>Address</strong><div class="text-truncate">${safe(h.address)}</div></div>
-            //   </div>
-            // `);
-
                 $header.html(`
             <!-- Title + Edit button -->
             <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
@@ -438,8 +421,7 @@
             if($first.length) $first.trigger('click');
           });
         })();
-    </script>
-    <script>
+//New Vendor
         $(function () {
             $('#btnNewVendor').on('click', function (e) {
                 e.preventDefault();
@@ -456,9 +438,7 @@
             });
         });
 
-    </script>
-    <script>
-
+//Edit Vendor 
         $(function () {
 
             $(document).on('click', '#btnEditVendor', function (e) {

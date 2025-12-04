@@ -15,7 +15,8 @@ namespace YamyProject.Controllers.InventoryDoc
         // GET: /item-stock-settlements
         public async Task<IActionResult> Index(string selectionMethod = "Default",DateTime? from = null, DateTime? to = null)
         {
-           
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
             var list = await _svc.GetSettlementsAsync( selectionMethod);
                 return View( list); // a strongly-typed view for the default listing
         }
@@ -49,8 +50,9 @@ namespace YamyProject.Controllers.InventoryDoc
         public async Task<IActionResult> Create(CreateUpdateSettlementVm vm)
         {
             if (!ModelState.IsValid) return View(vm);
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
 
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)); // or your own user id provider
+           // var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)); // or your own user id provider
             var id = await _svc.CreateSettlementAsync(vm, userId);
 
             // call microservice to notify external system (non-blocking)
