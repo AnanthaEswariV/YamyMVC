@@ -55,6 +55,8 @@
             <!-- Modal Body -->
             <div class="modal-body">
                 <form id="cityForm">
+                    <input type="hidden" id="cityId" value="0" />
+
                     <!-- Country -->
                     <div class="mb-3">
                         <label for="cmbCountry" class="form-label">Country</label>
@@ -256,11 +258,12 @@
                 return;
             }
 
-            const cityData = {
-                Id: parseInt($('#cityId').val()) || 0,
-                Name: $('#txtCity').val().trim(),
-                CountryId: parseInt($('#cmbCountry').val())
-            };
+                    const cityData = {
+            Id: parseInt($('#cityId').val()) || 0,
+            Name: $('#txtCity').val().trim(),
+            CountryId: parseInt($('#cmbCountry').val())
+        };
+
 
             $.ajax({
                url: '@Url.Action("SaveCity", "Reports")',

@@ -183,7 +183,7 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
 
-                $(document).ready(function () {
+        $(document).ready(function () {
 
             function loadFixedAssetCategories() {
                 $.ajax({
@@ -558,6 +558,7 @@
             const totalDays = Math.round((endDate - purchaseDate) / (1000 * 60 * 60 * 24)) + 1;
             totalDaysInput.val(totalDays);
         }
+
             $('#depreciationLife').on('input', function () {
             calculateDepreciation(
                 '#depreciationLife',
@@ -616,9 +617,35 @@
         });
 
                // Submit Fixed Asset Form via AJAX
-            $('#newFixedAssetForm').on('submit', function (e) {
+                  $('#newFixedAssetForm').on('submit', function (e) {
             e.preventDefault();
 
+            // Remove previous validation states
+            $('.is-invalid, .is-valid').removeClass('is-invalid is-valid');
+
+            // Validate one-by-one (order matters)
+            const requiredFields = [
+                '#assetCategory',
+                '#assetName',
+                '#assetDate',
+                '#purchaseDate',
+                '#depreciationLife',
+                '#totalInvoice'
+            ];
+
+            for (let selector of requiredFields) {
+                let field = $(selector);
+
+                if (!field.val() || field.val() === "0") {
+                    field.addClass("is-invalid");
+                    field.focus();
+                    return;  // ❗ Stop here — show only ONE error
+                } else {
+                    field.addClass("is-valid");
+                }
+            }
+
+            // If validation passed → build payload & run AJAX
             let payload = {
                 Id: $('#FixedAssetId').val() || 0,
                 Code: $('#assetCode').val(),
@@ -643,12 +670,6 @@
                 MakeJournal: $('#makeJournal').is(':checked')
             };
 
-            // Basic validation
-            if (!payload.CategoryId || !payload.Name || !payload.PurchaseDate || !payload.DepreciationLife) {
-                alert('Please fill all required fields.');
-                return;
-            }
-
             $.ajax({
                 url: '@Url.Action("AddFixedAsset", "Lists")',
                 type: 'POST',
@@ -658,23 +679,21 @@
                     if (res.status) {
                         $('#newFixedAssetModal').modal('hide');
                         $('#newFixedAssetForm')[0].reset();
-                        $('#depreciationValue, #totalDays, #endDate').val('');
+                        $('.is-invalid, .is-valid').removeClass("is-invalid is-valid");
 
-                                toastr.success("FixedAssets Added Successfully!");
-
-                                // Optional: reload page after short delay
-                                setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+                        toastr.success("FixedAssets Added Successfully!");
+                        setTimeout(() => location.reload(), 1500);
                     } else {
-                      toastr.error("Something went wrong!");
-
+                        toastr.error("Something went wrong!");
                     }
                 },
-                error: function (xhr, status, error) {
-                               console.error(error);
-                            toastr.error("Server error occurred while saving fixedassets");
+                error: function () {
+                    toastr.error("Server error occurred while saving fixed assets");
                 }
             });
+
         });
+
 
             loadAllFixedAssets();
             $(document).on("click", ".editAsset", function () {

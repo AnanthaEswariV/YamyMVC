@@ -799,6 +799,12 @@ namespace YamyProject.Core.Models
         public int CountryId { get; set; }
     }
 
+    public class CountryRequest
+    {
+        public int Id { get; set; }       
+        public string Name { get; set; } 
+    }
+
     public class Login
     {
        // [Required(ErrorMessage = "Username is required.")]

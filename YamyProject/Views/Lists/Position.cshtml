@@ -228,7 +228,7 @@
 
 
 
-                function savePosition() {
+        function savePosition() {
             // Get values from modal
             const idVal = $("#positionId").val();
             const name = $("#positionName").val().trim();
@@ -246,8 +246,6 @@
                 DepartmentId: parseInt(deptVal)
             };
 
-            // Log to console for debugging
-            console.log("Sending data to API:", data);
 
             // Determine URL and method
             const isUpdate = data.Id > 0;
@@ -264,7 +262,6 @@
                 contentType: 'application/json',
                 data: JSON.stringify(data),
                 success: function(res) {
-                    console.log("API response:", res);
                     if (res.status) {
                         $("#addPositionModal").modal('hide');
                         $("#positionId").val('');

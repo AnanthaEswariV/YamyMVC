@@ -15,23 +15,61 @@
             color: #fff !important;
         }
 </style>
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <div class="card">
     <div class="card-header text-center">
         <strong>Country List</strong>
     </div>
     <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" id="btnAddCountry">
+                <i class="bi bi-plus-circle me-2"></i>Add Country
+            </button>
+
+        </div>
         <table class="table table-striped" id="table2">
             <thead>
                 <tr>
                     <th>S.No</th>
                     <th>Country</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 </div>
+
+
+<div class="modal fade" id="countryModal" tabindex="-1" aria-labelledby="countryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="countryModalLabel">Add Country</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="countryForm">
+                    <input type="hidden" id="countryId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Country Name</label>
+                        <input type="text" id="txtCountry" class="form-control" placeholder="Enter Country Name" required />
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" id="btnSaveCountry">Save</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 
 
 @section Scripts {
@@ -47,12 +85,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+
     <script>
 
         $(document).ready(function () {
 
             loadCountries();
-                    function loadCountries() {
+
+            function loadCountries() {
             $.ajax({
              url: '@Url.Action("GetCountrys", "Reports")',
                 type: 'GET',
@@ -79,15 +122,21 @@
                     tbody.empty();
 
                     if (res.data && res.data.length > 0) {
-                        $.each(res.data, function (i, row) {
-                            const tr = $(`
-                                <tr data-id="${row.id}">
-                                    <td>${row.sn}</td>
-                                    <td>${row.name}</td>
-                                </tr>
-                            `);
-                            tbody.append(tr);
-                        });
+                                $.each(res.data, function (i, row) {
+            const tr = $(`
+                <tr data-id="${row.id}">
+                    <td>${row.sn}</td>
+                    <td>${row.name}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary editCountryBtn" data-country='${JSON.stringify(row)}'>
+                            <i class="fas fa-pen"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+            tbody.append(tr);
+        });
+
 
                         // Initialize DataTable
                         $('#table2').DataTable({
@@ -118,6 +167,60 @@
                 }
             });
         }
+
+           $('#btnSaveCountry').click(function () {
+            const name = $('#txtCountry').val().trim();
+            const id = parseInt($('#countryId').val()) || 0;
+
+            if (name === "") {
+                toastr.error("Please enter country name");
+                return;
+            }
+
+            const countryData = { Id: id, Name: name };
+
+            $.ajax({
+                url: '@Url.Action("SaveCountry", "Reports")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(countryData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(id > 0 ? 'Country updated successfully' : 'Country added successfully');
+                        $('#countryModal').modal('hide');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+                   $(document).on('click', '.editCountryBtn', function () {
+            const country = $(this).data('country');
+            if (!country) return;
+
+            $('#countryId').val(country.id ?? 0);
+            $('#txtCountry').val(country.name ?? '');
+            $('#countryModalLabel').text('Edit Country');
+
+            $('#countryModal').modal('show');
+        });
+
+
+           $(document).on('click', '#btnAddCountry', function () {
+            $('#countryId').val(0);
+            $('#txtCountry').val('');
+            $('#countryModalLabel').text('Add Country');
+            $('#countryModal').modal('show');
+        });
+
+
+
 
 
         });

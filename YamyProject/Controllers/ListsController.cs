@@ -4099,19 +4099,19 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
         public async Task<IActionResult> AddFixedAsset([FromBody] FixedAssetRequest model)
         {
             if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
+                return Json(new { status = false, message = "Invalid request" });
 
             if (string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { status = false, message = "Enter asset name" });
+                return Json(new { status = false, message = "Enter asset name" });
 
             if (model.CategoryId == 0)
-                return BadRequest(new { status = false, message = "Select category first" });
+                return Json(new { status = false, message = "Select category first" });
 
             if (model.PurchasePrice <= 0)
-                return BadRequest(new { status = false, message = "Enter purchase price" });
+                return Json(new { status = false, message = "Enter purchase price" });
 
             if (model.DepreciationLife <= 0)
-                return BadRequest(new { status = false, message = "Enter depreciation life" });
+                return Json(new { status = false, message = "Enter depreciation life" });
 
             try
             {
@@ -4176,7 +4176,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { status = false, message = ex.Message });
+                return Json(500, new { status = false, message = ex.Message });
             }
         }
 
@@ -4888,23 +4888,23 @@ WHERE
         public async Task<IActionResult> SavePettyCashVoucher([FromBody] PettyCashVoucherRequest model)
         {
             if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
+                return Json(new { status = false, message = "Invalid request" });
 
             // --- Equivalent to chkRequireData() ---
             if (model.CashAccountId <= 0)
-                return BadRequest(new { status = false, message = "Please select a petty cash account" });
+                return Json(new { status = false, message = "Please select a petty cash account" });
             if (model.EmployeeId <= 0)
-                return BadRequest(new { status = false, message = "Please select an employee" });
+                return Json(new { status = false, message = "Please select an employee" });
             if (model.Total <= 0)
-                return BadRequest(new { status = false, message = "Please enter a valid total amount" });
+                return Json(new { status = false, message = "Please enter a valid total amount" });
             if (model.VoucherDate == DateTime.MinValue)
-                return BadRequest(new { status = false, message = "Invalid voucher date" });
+                return Json(new { status = false, message = "Invalid voucher date" });
 
             try
             {
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
+                    return Json(new { status = false, message = "User not logged in" });
 
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
@@ -5014,13 +5014,14 @@ WHERE
                         var ProjectId = string.IsNullOrWhiteSpace(d.ProjectId) ? "0" : d.ProjectId;
                         string insertDetailQuery = @"
                     INSERT INTO tbl_petty_cash_details  
-                        ( petty_cash_id, hum_id, hum_name, ref_id, cost_center_id, amount,project_id, description, category, note)
+                        ( petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount,project_id, description, category, note)
                     VALUES
-                        ( @petty_cash_id, @hum_id, @hum_name, @ref_id, @cost_center_id, @amount,@project_id, @description, @category, @note);";
+                        ( @petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount,@project_id, @description, @category, @note);";
 
                         using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
                         cmdDetail.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
                         cmdDetail.Parameters.AddWithValue("@hum_id", humId);
+                        cmdDetail.Parameters.AddWithValue("@entry_date", DateTime.Now);
                         cmdDetail.Parameters.AddWithValue("@hum_name", humName);
                         cmdDetail.Parameters.AddWithValue("@ref_id", refId);
                         cmdDetail.Parameters.AddWithValue("@cost_center_id", costCenterId);
@@ -5049,7 +5050,7 @@ WHERE
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { status = false, message = ex.Message });
+                return Json(500, new { status = false, message = ex.Message });
             }
         }
 

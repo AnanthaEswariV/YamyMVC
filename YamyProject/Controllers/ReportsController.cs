@@ -2454,14 +2454,21 @@ ORDER BY l.code;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔹 Check for duplicate city
-                string checkQuery = "SELECT id FROM tbl_city WHERE name = @name";
+                // Only treat as duplicate if a different city already has this name
+                string checkQuery = @"
+    SELECT id 
+    FROM tbl_city 
+    WHERE name = @name
+      AND id <> @id
+    LIMIT 1;
+";
                 await using (var checkCmd = new MySqlCommand(checkQuery, conn))
                 {
                     checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    var existingId = await checkCmd.ExecuteScalarAsync();
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    var existing = await checkCmd.ExecuteScalarAsync();
 
-                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                    if (existing != null)
                     {
                         return BadRequest(new { status = false, message = "City already exists. Please enter another name." });
                     }
@@ -2555,6 +2562,76 @@ ORDER BY l.code;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveCountry([FromBody] CountryRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter Country Name First" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Check duplicate country
+                string checkQuery = "SELECT id FROM tbl_country WHERE name = @name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    var existingId = await checkCmd.ExecuteScalarAsync();
+
+                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                    {
+                        return BadRequest(new { status = false, message = "Country already exists. Please enter another name." });
+                    }
+                }
+
+                if (model.Id == 0)
+                {
+                    // 🔹 Insert new country
+                    string insertQuery = "INSERT INTO tbl_country(name) VALUES(@name); SELECT LAST_INSERT_ID();";
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+                    int insertedId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+
+                    return Ok(new { status = true, message = "Country created successfully", id = insertedId });
+                }
+                else
+                {
+                    // 🔹 Update existing country
+                    string updateQuery = "UPDATE tbl_country SET name=@name WHERE id=@id";
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Country not found" });
+
+                    return Ok(new { status = true, message = "Country updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Fixed Asset List
