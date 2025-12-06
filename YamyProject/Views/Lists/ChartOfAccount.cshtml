@@ -46,7 +46,6 @@
 
             <div class="modal-body">
                 <input type="hidden" id="editAccountId" />
-
                 <div class="mb-3">
                     <label class="form-label">Account Name</label>
                     <input type="text" id="editAccountName" class="form-control" />
@@ -682,6 +681,7 @@
         function openEditModal(id, name, debit = 0, credit = 0, date = null) {
             $("#editAccountId").val(id);
             $("#editAccountName").val(name);
+                
             $("#editDebit").val(debit);
             $("#editCredit").val(credit);
             $("#editDate").val(formatDateForInput(date)); 
@@ -707,7 +707,9 @@
                     if (res.status) {
                         toastr.success(res.message || "Account updated successfully");
                         $("#editAccountModal").modal("hide");
-                        loadChartOfAccounts(); // reload tree after edit
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1500);
                     } else {
                         toastr.warning(res.message || "Failed to update");
                     }
@@ -742,7 +744,9 @@
                 success: function (res) {
                     if (res.status) {
                         toastr.success(res.message || "Account deleted successfully");
-                        loadChartOfAccounts(); // reload tree after deletion
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1500);
                     } else {
                         toastr.error(res.message || "Failed to delete account");
                     }
@@ -893,7 +897,9 @@
                         $('#level4Id').val(0);
                         $('#coaModalLabel').text('COA - New Account');
                         form.classList.remove('was-validated');
-                        loadLevel4Accounts();
+                             setTimeout(function () {
+                                location.reload();
+                            }, 1500);
                     } else {
                         toastr.error(res.message);
                     }

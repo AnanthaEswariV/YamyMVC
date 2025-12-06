@@ -646,29 +646,27 @@
             }
 
             // If validation passed → build payload & run AJAX
-            let payload = {
-                Id: $('#FixedAssetId').val() || 0,
-                Code: $('#assetCode').val(),
-                Date: $('#assetDate').val(),
-                CategoryId: $('#assetCategory').val(),
-                Name: $('#assetName').val(),
-                Brand: $('#assetBrand').val(),
-                Model: $('#modelEngNo').val(),
-                Supplier: $('#supplierName').val(),
-                Status: $('#assetStatus').val(),
-                InvoiceNumber: $('#invoiceNumber').val(),
-                TotalInvoice: parseFloat($('#totalInvoice').val()) || 0,
-                PurchasePrice: parseFloat($('#totalInvoice').val()) || 0,
-                PurchaseDate: $('#purchaseDate').val(),
-                DepreciationLife: parseInt($('#depreciationLife').val()) || 0,
-                DepreciationValue: parseFloat($('#depreciationValue').val()) || 0,
-                EndDate: $('#endDate').val(),
-                TotalDays: parseInt($('#totalDays').val()) || 0,
-                DebitAccountId: $('#fixedAssetsAccount').val(),
-                CreditAccountId: $('#accumulatedDepreciation').val(),
-                ExpenceAccountId: $('#depreciationExpense').val(),
-                MakeJournal: $('#makeJournal').is(':checked')
-            };
+                 let payload = {
+            Id: parseInt($('#FixedAssetId').val()) || 0,
+            Name: $('#assetName').val(),
+            Brand: $('#assetBrand').val(),
+            CategoryId: parseInt($('#assetCategory').val()) || 0,
+            Model: $('#modelEngNo').val(),
+            Supplier: $('#supplierName').val(),
+            Status: $('#assetStatus').val(),
+            InvoiceNumber: $('#invoiceNumber').val(),
+            PurchaseDate: $('#purchaseDate').val(),
+            EndDate: $('#endDate').val(),
+            DepreciationLife: parseInt($('#depreciationLife').val()) || 0,
+            PurchasePrice: parseFloat($('#totalInvoice').val()) || 0,
+            DebitAccountId: parseInt($('#fixedAssetsAccount').val()) || 0,
+            CreditAccountId: parseInt($('#accumulatedDepreciation').val()) || 0,
+            ExpenceAccountId: parseInt($('#depreciationExpense').val()) || 0,
+            CreateJournal: $('#makeJournal').is(':checked'),
+            CreatedBy: parseInt($('#createdBy').val()) || 0,
+            ManufactureId: parseInt($('#manufactureId').val()) || 0
+        };
+
 
             $.ajax({
                 url: '@Url.Action("AddFixedAsset", "Lists")',

@@ -1067,69 +1067,112 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 return BadRequest(new { status = false, message = "Invalid account request" });
 
             if (string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { status = false, message = "Account name is required" });
+                return BadRequest(new { status = false, message = "Account name is required." });
 
             if (model.Date.HasValue && model.Date.Value.Date < DateTime.Today)
-                return BadRequest(new { status = false, message = "Date cannot be earlier than today" });
-
+                return BadRequest(new { status = false, message = "Date cannot be earlier than today." });
 
             try
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                        ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Check if account exists
-                string checkQuery = "SELECT COUNT(*) FROM tbl_coa_level_4 WHERE id = @id";
-                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                // 🔹 Load existing code (we will not change it)
+                string existingCode = "";
+                using (var cmd = new MySqlCommand("SELECT code FROM tbl_coa_level_4 WHERE id = @id", conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@id", model.Id);
-                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
-                    if (!exists)
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    var res = await cmd.ExecuteScalarAsync();
+                    if (res == null)
                         return NotFound(new { status = false, message = "Account not found" });
+
+                    existingCode = res.ToString();
                 }
 
-                // Update the account with the values provided in model
-                string updateQuery = @"
+                // 🔹 Check duplicate name (except same record)
+                using (var cmd = new MySqlCommand(
+                    "SELECT id FROM tbl_coa_level_4 WHERE name = @name AND id != @id", conn))
+                {
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    var exists = await cmd.ExecuteScalarAsync();
+                    if (exists != null)
+                        return BadRequest(new { status = false, message = "Account name already exists." });
+                }
+
+                // 🔹 Update ONLY allowed fields
+                using (var cmd = new MySqlCommand(@"
             UPDATE tbl_coa_level_4
             SET name = @name,
                 debit = @debit,
                 credit = @credit,
                 date = @date
-            WHERE id = @id";
-
-                using var updateCmd = new MySqlCommand(updateQuery, conn);
-                updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                updateCmd.Parameters.AddWithValue("@debit", model.Debit ?? (object)DBNull.Value);
-                updateCmd.Parameters.AddWithValue("@credit", model.Credit ?? (object)DBNull.Value);
-                updateCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
-                updateCmd.Parameters.AddWithValue("@id", model.Id);
-
-                int rowsAffected = await updateCmd.ExecuteNonQueryAsync();
-                if (rowsAffected == 0)
-                    return NotFound(new { status = false, message = "No changes applied or account not found" });
-
-                // Return the **updated values from the model**, not old DB values
-                var result = new
+            WHERE id = @id", conn))
                 {
-                    Id = model.Id,
-                    Name = model.Name,
-                    Debit = model.Debit ?? 0,
-                    Credit = model.Credit ?? 0,
-                    Date = model.Date
-                };
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@debit", model.Debit ?? 0);
+                    cmd.Parameters.AddWithValue("@credit", model.Credit ?? 0);
+                    cmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    await cmd.ExecuteNonQueryAsync();
+                }
 
-                return Ok(new { status = true, data = result, message = "Account updated successfully" });
+                // 🔹 Handle Opening Balance
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // Delete previous entries
+                using (var cmd = new MySqlCommand(
+                    "DELETE FROM tbl_transaction WHERE transaction_id = @tid AND t_type = 'GENERAL LEDGER OPENING BALANCE'", conn))
+                {
+                    cmd.Parameters.AddWithValue("@tid", model.Id);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Insert if needed
+                if ((model.Debit ?? 0) > 0 || (model.Credit ?? 0) > 0)
+                {
+                    await InsertTransactionsAsync(
+                        conn,
+                        model.Id,
+                        existingCode,                   // KEEP old code
+                        model.Debit ?? 0,
+                        model.Credit ?? 0,
+                        model.Date ?? DateTime.Now,
+                        userId
+                    );
+                }
+
+                // 🔹 Return response
+                return Ok(new
+                {
+                    status = true,
+                    message = "Account updated successfully.",
+                    data = new
+                    {
+                        Id = model.Id,
+                        Name = model.Name,
+                        Code = existingCode,
+                        Debit = model.Debit ?? 0,
+                        Credit = model.Credit ?? 0,
+                        Date = model.Date
+                    }
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
 
         [HttpDelete]
         public async Task<IActionResult> DeleteCoaLevel4(int id)
@@ -2745,202 +2788,384 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             return View();
         }
 
+        //[HttpPost]
+        //public async Task<IActionResult> SaveItem([FromBody] ItemRequest model)
+        //{
+        //    try
+        //    {
+        //        if (model == null || string.IsNullOrWhiteSpace(model.Name))
+        //            return BadRequest(new { status = false, message = "Invalid item" });
+
+        //        int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        //        if (userId == 0) return Unauthorized(new { status = false, message = "User not logged in" });
+
+        //        var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+
+        //        using var conn = new MySqlConnection(connStr.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        // ✅ Duplicate check (ignore same Id)
+        //        var exists = Convert.ToInt32(await new MySqlCommand(
+        //            "SELECT COUNT(*) FROM tbl_items WHERE name=@name AND id<>@id", conn)
+        //        {
+        //            Parameters = { new MySqlParameter("@name", model.Name), new MySqlParameter("@id", model.Id) }
+        //        }.ExecuteScalarAsync()) > 0;
+
+        //        if (exists) return BadRequest(new { status = false, message = "Item already exists" });
+
+        //        // ✅ UPDATE
+        //        if (model.Id > 0)
+        //        {
+        //            var updateQuery = @"UPDATE tbl_items SET 
+        //        warehouse_id=@warehouseId,
+        //        type=@type,
+        //        category_id=@category,
+        //        name=@name,
+        //        unit_id=@unit_id,
+        //        barcode=@barcode,
+        //        cost_price=@cost_price,
+        //        cogs_account_id=@cogs_account_id,
+        //        vendor_id=@vendor_id,
+        //        sales_price=@sales_price,
+        //        income_account_id=@income_account_id,
+        //        asset_account_id=@asset_account_id,
+        //        min_amount=@min_amount,
+        //        max_amount=@max_amount,
+        //        on_hand=@on_hand,
+        //        method=@method,
+        //        total_value=@total_value,
+        //        date=@date,
+        //        active=@active,
+        //        item_type=@item_type
+        //    WHERE id=@id";
+
+        //            using var cmd = new MySqlCommand(updateQuery, conn);
+        //            cmd.Parameters.AddWithValue("@id", model.Id);
+        //            cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+        //            cmd.Parameters.AddWithValue("@type", model.Type);
+        //            cmd.Parameters.AddWithValue("@category", model.CategoryId);
+        //            cmd.Parameters.AddWithValue("@name", model.Name);
+        //            cmd.Parameters.AddWithValue("@unit_id", model.UnitId);
+        //            cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
+        //            cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
+        //            cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
+        //            cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
+        //            cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice);
+        //            cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
+        //            cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
+        //            cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
+        //            cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
+        //            cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
+        //            cmd.Parameters.AddWithValue("@method", model.Method);
+        //            cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
+        //            cmd.Parameters.AddWithValue("@date", model.Date);
+        //            cmd.Parameters.AddWithValue("@active", model.Active ? 1 : 0);
+        //            cmd.Parameters.AddWithValue("@item_type", model.ItemType);
+
+        //            await cmd.ExecuteNonQueryAsync();
+
+        //            // ✅ Update Units (delete old → insert new)
+        //            using (var delUnitCmd = new MySqlCommand("DELETE FROM tbl_items_unit WHERE item_id=@id", conn))
+        //            {
+        //                delUnitCmd.Parameters.AddWithValue("@id", model.Id);
+        //                await delUnitCmd.ExecuteNonQueryAsync();
+        //            }
+        //            foreach (var u in model.Units)
+        //            {
+        //                using var unitCmd = new MySqlCommand(
+        //                    @"INSERT INTO tbl_items_unit (item_id, unit_id, factor) VALUES (@id,@unit_id,@factor)", conn);
+        //                unitCmd.Parameters.AddWithValue("@id", model.Id);
+        //                unitCmd.Parameters.AddWithValue("@unit_id", u.UnitId);
+        //                unitCmd.Parameters.AddWithValue("@factor", u.Factor);
+        //                await unitCmd.ExecuteNonQueryAsync();
+        //            }
+
+        //            // ✅ Update Assemblies only for "Assembly"
+        //            using (var delAsmCmd = new MySqlCommand("DELETE FROM tbl_item_assembly WHERE assembly_id=@id", conn))
+        //            {
+        //                delAsmCmd.Parameters.AddWithValue("@id", model.Id);
+        //                await delAsmCmd.ExecuteNonQueryAsync();
+        //            }
+        //            if (model.Type.Contains("Assembly"))
+        //            {
+        //                foreach (var asm in model.Assemblies)
+        //                {
+        //                    using var asmCmd = new MySqlCommand(
+        //                        "INSERT INTO tbl_item_assembly (assembly_id,item_id,qty) VALUES (@assembly_id,@item_id,@qty)", conn);
+        //                    asmCmd.Parameters.AddWithValue("@assembly_id", model.Id);
+        //                    asmCmd.Parameters.AddWithValue("@item_id", asm.ItemId);
+        //                    asmCmd.Parameters.AddWithValue("@qty", asm.Qty);
+        //                    await asmCmd.ExecuteNonQueryAsync();
+        //                }
+        //            }
+
+        //            return Ok(new { status = true, message = "Item updated successfully", id = model.Id });
+        //        }
+        //        else
+        //        {
+        //            // ✅ INSERT (your original logic)
+        //            long lastCode = 0;
+        //            using (var reader = await new MySqlCommand(
+        //                "SELECT Code FROM tbl_items WHERE LENGTH(Code)=9 ORDER BY CAST(Code AS UNSIGNED) DESC LIMIT 1", conn)
+        //                .ExecuteReaderAsync())
+        //            {
+        //                if (await reader.ReadAsync()) lastCode = long.Parse(reader["Code"].ToString());
+        //            }
+        //            string newCode = (lastCode + 1).ToString("D9");
+
+        //            var insertQuery = @"INSERT INTO tbl_items
+        //        (code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, min_amount, max_amount, on_hand, method, total_value, date, active, created_by, created_date, item_type)
+        //        VALUES (@code,@warehouseId,@type,@category,@name,@unit_id,@barcode,@cost_price,@cogs_account_id,@vendor_id,@sales_price,@income_account_id,@asset_account_id,@min_amount,@max_amount,@on_hand,@method,@total_value,@date,@active,@created_by,@created_date,@item_type);
+        //        SELECT LAST_INSERT_ID();";
+
+        //            using var cmd = new MySqlCommand(insertQuery, conn);
+        //            cmd.Parameters.AddWithValue("@code", newCode);
+        //            cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+        //            cmd.Parameters.AddWithValue("@type", model.Type);
+        //            cmd.Parameters.AddWithValue("@category", model.CategoryId);
+        //            cmd.Parameters.AddWithValue("@name", model.Name);
+        //            cmd.Parameters.AddWithValue("@unit_id", model.UnitId);
+        //            cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
+        //            cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
+        //            cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
+        //            cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
+        //            cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice);
+        //            cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
+        //            cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
+        //            cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
+        //            cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
+        //            cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
+        //            cmd.Parameters.AddWithValue("@method", model.Method);
+        //            cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
+        //            cmd.Parameters.AddWithValue("@date", model.Date);
+        //            cmd.Parameters.AddWithValue("@active", model.Active ? 1 : 0);
+        //            cmd.Parameters.AddWithValue("@created_by", userId);
+        //            cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+        //            cmd.Parameters.AddWithValue("@item_type", model.ItemType);
+
+        //            model.Id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        //            model.Code = newCode;
+
+        //            foreach (var u in model.Units)
+        //            {
+        //                using var unitCmd = new MySqlCommand(
+        //                    @"INSERT INTO tbl_items_unit (item_id, unit_id, factor) VALUES (@id,@unit_id,@factor)", conn);
+        //                unitCmd.Parameters.AddWithValue("@id", model.Id);
+        //                unitCmd.Parameters.AddWithValue("@unit_id", u.UnitId);
+        //                unitCmd.Parameters.AddWithValue("@factor", u.Factor);
+        //                await unitCmd.ExecuteNonQueryAsync();
+        //            }
+
+        //            if (model.Type.Contains("Assembly"))
+        //            {
+        //                foreach (var asm in model.Assemblies)
+        //                {
+        //                    using var asmCmd = new MySqlCommand(
+        //                        "INSERT INTO tbl_item_assembly (assembly_id,item_id,qty) VALUES (@assembly_id,@item_id,@qty)", conn);
+        //                    asmCmd.Parameters.AddWithValue("@assembly_id", model.Id);
+        //                    asmCmd.Parameters.AddWithValue("@item_id", asm.ItemId);
+        //                    asmCmd.Parameters.AddWithValue("@qty", asm.Qty);
+        //                    await asmCmd.ExecuteNonQueryAsync();
+        //                }
+        //            }
+
+        //            return Ok(new { status = true, message = "Item added successfully", code = model.Code, id = model.Id });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
+        //[HttpGet]
+        //public async Task<IActionResult> GetItemTransactions(int itemId)
+        //{
+        //    try
+        //    {
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+
+        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        var query = @"
+        //    SELECT id, date, reference, type, qty_in, qty_out, cost_price, sales_price
+        //    FROM tbl_item_transaction
+        //    WHERE item_id = @itemId
+        //    ORDER BY date ASC, id ASC";
+
+        //        using var cmd = new MySqlCommand(query, conn);
+        //        cmd.Parameters.AddWithValue("@itemId", itemId);
+
+        //        var transactions = new List<object>();
+        //        decimal qtyBalance = 0;
+
+        //        using var reader = await cmd.ExecuteReaderAsync();
+        //        while (await reader.ReadAsync())
+        //        {
+        //            var qtyIn = reader.IsDBNull("qty_in") ? 0 : reader.GetDecimal("qty_in");
+        //            var qtyOut = reader.IsDBNull("qty_out") ? 0 : reader.GetDecimal("qty_out");
+        //            qtyBalance += (qtyIn - qtyOut);
+
+        //            transactions.Add(new
+        //            {
+        //                id = reader.GetInt32("id"),
+        //                date = reader.GetDateTime("date").ToString("dd-MM-yyyy"),
+        //                reference = reader.IsDBNull("reference") ? "" : reader.GetString("reference"),
+        //                type = reader.GetString("type"),
+        //                qtyIn = qtyIn.ToString("N2"),
+        //                qtyOut = qtyOut.ToString("N2"),
+        //                costPrice = reader.IsDBNull("cost_price") ? "0.00" : reader.GetDecimal("cost_price").ToString("N2"),
+        //                salesPrice = reader.IsDBNull("sales_price") ? "0.00" : reader.GetDecimal("sales_price").ToString("N2"),
+        //                qtyBalance = qtyBalance.ToString("N2")
+        //            });
+        //        }
+
+        //        return Ok(new { status = true, data = transactions });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
+        //[HttpGet]
+        //public async Task<IActionResult> GetItemCardTransactions(int itemId)
+        //{
+        //    try
+        //    {
+        //        // Build connection string with dynamic DB from session
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(
+        //            _config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName")
+        //                        ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+
+        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        // 1️⃣ Get item info (on_hand, method)
+        //        string method = "";
+        //        decimal onHand = 0;
+        //        using (var cmdItem = new MySqlCommand(
+        //            "SELECT on_hand, method FROM tbl_items WHERE id = @itemId", conn))
+        //        {
+        //            cmdItem.Parameters.AddWithValue("@itemId", itemId);
+        //            using var itemReader = await cmdItem.ExecuteReaderAsync();
+        //            if (await itemReader.ReadAsync())
+        //            {
+        //                method = itemReader["method"]?.ToString().Trim() ?? "";
+        //                onHand = itemReader["on_hand"] == DBNull.Value ? 0 : Convert.ToDecimal(itemReader["on_hand"]);
+        //            }
+        //        }
+
+        //        // 2️⃣ Get transactions with warehouse name using JOIN
+        //        var transactions = new List<object>();
+        //        decimal qtyBalance = 0;
+        //        decimal currentCostPrice = 0;
+        //        List<decimal> fifoPrices = new List<decimal>();
+        //        List<decimal> fifoQtys = new List<decimal>();
+        //        decimal lastPrice = 0;
+        //        bool fifoSet = false;
+
+        //        string query = @"
+        //    SELECT icd.id, icd.date, icd.wharehouse_id, icd.inv_no, icd.trans_no, icd.trans_type, icd.description,
+        //           icd.price, icd.qty_in, icd.qty_out, icd.qty_balance, icd.debit, icd.credit, icd.balance, icd.fifo_qty, icd.fifo_cost,
+        //           w.name AS warehouseName
+        //    FROM tbl_item_card_details icd
+        //    LEFT JOIN tbl_warehouse w ON icd.wharehouse_id = w.id
+        //    WHERE icd.itemId = @itemId
+        //    ORDER BY icd.date, icd.id";
+
+        //        using (var cmd = new MySqlCommand(query, conn))
+        //        {
+        //            cmd.Parameters.AddWithValue("@itemId", itemId);
+        //            using var reader = await cmd.ExecuteReaderAsync();
+
+        //            while (await reader.ReadAsync())
+        //            {
+        //                string warehouseName = reader["warehouseName"]?.ToString() ?? "";
+        //                decimal qtyIn = reader["qty_in"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_in"]);
+        //                decimal qtyOut = reader["qty_out"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_out"]);
+        //                decimal price = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]);
+
+        //                // FIFO / LIFO / AVG logic
+        //                if (qtyIn > 0)
+        //                {
+        //                    fifoPrices.Add(price);
+        //                    fifoQtys.Add(qtyIn);
+        //                    lastPrice = price;
+
+        //                    if (method.ToUpper() == "FIFO" && !fifoSet)
+        //                    {
+        //                        currentCostPrice = price;
+        //                        fifoSet = true;
+        //                    }
+        //                }
+
+        //                if (method.ToUpper() == "AVG")
+        //                {
+        //                    decimal qtyBal = reader["qty_balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_balance"]);
+        //                    decimal bal = reader["balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["balance"]);
+        //                    currentCostPrice = qtyBal != 0 ? bal / qtyBal : 0;
+        //                }
+
+        //                qtyBalance += (qtyIn - qtyOut);
+
+        //                transactions.Add(new
+        //                {
+        //                    id = reader["id"],
+        //                    date = reader["date"] == DBNull.Value ? "" : Convert.ToDateTime(reader["date"]).ToString("dd-MM-yyyy"),
+        //                    warehouseName,
+        //                    invNo = reader["inv_no"]?.ToString() ?? "",
+        //                    transNo = reader["trans_no"]?.ToString() ?? "",
+        //                    transType = reader["trans_type"]?.ToString() ?? "",
+        //                    description = reader["description"]?.ToString() ?? "",
+        //                    price = price.ToString("N2"),
+        //                    qtyIn = qtyIn.ToString("N2"),
+        //                    qtyOut = qtyOut.ToString("N2"),
+        //                    qtyBalance = qtyBalance.ToString("N2"),
+        //                    debit = reader["debit"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["debit"]).ToString("N2"),
+        //                    credit = reader["credit"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["credit"]).ToString("N2"),
+        //                    balance = reader["balance"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["balance"]).ToString("N2")
+        //                });
+        //            }
+        //        }
+
+        //        return Ok(new
+        //        {
+        //            status = true,
+        //            item = new
+        //            {
+        //                itemId,
+        //                method,
+        //                onHand,
+        //                currentCostPrice = currentCostPrice.ToString("N2")
+        //            },
+        //            transactions
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
+
+
         [HttpPost]
         public async Task<IActionResult> SaveItem([FromBody] ItemRequest model)
         {
-            try
-            {
-                if (model == null || string.IsNullOrWhiteSpace(model.Name))
-                    return BadRequest(new { status = false, message = "Invalid item" });
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
 
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId == 0) return Unauthorized(new { status = false, message = "User not logged in" });
-
-                var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                using var conn = new MySqlConnection(connStr.ConnectionString);
-                await conn.OpenAsync();
-
-                // ✅ Duplicate check (ignore same Id)
-                var exists = Convert.ToInt32(await new MySqlCommand(
-                    "SELECT COUNT(*) FROM tbl_items WHERE name=@name AND id<>@id", conn)
-                {
-                    Parameters = { new MySqlParameter("@name", model.Name), new MySqlParameter("@id", model.Id) }
-                }.ExecuteScalarAsync()) > 0;
-
-                if (exists) return BadRequest(new { status = false, message = "Item already exists" });
-
-                // ✅ UPDATE
-                if (model.Id > 0)
-                {
-                    var updateQuery = @"UPDATE tbl_items SET 
-                warehouse_id=@warehouseId,
-                type=@type,
-                category_id=@category,
-                name=@name,
-                unit_id=@unit_id,
-                barcode=@barcode,
-                cost_price=@cost_price,
-                cogs_account_id=@cogs_account_id,
-                vendor_id=@vendor_id,
-                sales_price=@sales_price,
-                income_account_id=@income_account_id,
-                asset_account_id=@asset_account_id,
-                min_amount=@min_amount,
-                max_amount=@max_amount,
-                on_hand=@on_hand,
-                method=@method,
-                total_value=@total_value,
-                date=@date,
-                active=@active,
-                item_type=@item_type
-            WHERE id=@id";
-
-                    using var cmd = new MySqlCommand(updateQuery, conn);
-                    cmd.Parameters.AddWithValue("@id", model.Id);
-                    cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-                    cmd.Parameters.AddWithValue("@type", model.Type);
-                    cmd.Parameters.AddWithValue("@category", model.CategoryId);
-                    cmd.Parameters.AddWithValue("@name", model.Name);
-                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId);
-                    cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
-                    cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
-                    cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
-                    cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
-                    cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice);
-                    cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
-                    cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
-                    cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
-                    cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
-                    cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
-                    cmd.Parameters.AddWithValue("@method", model.Method);
-                    cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
-                    cmd.Parameters.AddWithValue("@date", model.Date);
-                    cmd.Parameters.AddWithValue("@active", model.Active ? 1 : 0);
-                    cmd.Parameters.AddWithValue("@item_type", model.ItemType);
-
-                    await cmd.ExecuteNonQueryAsync();
-
-                    // ✅ Update Units (delete old → insert new)
-                    using (var delUnitCmd = new MySqlCommand("DELETE FROM tbl_items_unit WHERE item_id=@id", conn))
-                    {
-                        delUnitCmd.Parameters.AddWithValue("@id", model.Id);
-                        await delUnitCmd.ExecuteNonQueryAsync();
-                    }
-                    foreach (var u in model.Units)
-                    {
-                        using var unitCmd = new MySqlCommand(
-                            @"INSERT INTO tbl_items_unit (item_id, unit_id, factor) VALUES (@id,@unit_id,@factor)", conn);
-                        unitCmd.Parameters.AddWithValue("@id", model.Id);
-                        unitCmd.Parameters.AddWithValue("@unit_id", u.UnitId);
-                        unitCmd.Parameters.AddWithValue("@factor", u.Factor);
-                        await unitCmd.ExecuteNonQueryAsync();
-                    }
-
-                    // ✅ Update Assemblies only for "Assembly"
-                    using (var delAsmCmd = new MySqlCommand("DELETE FROM tbl_item_assembly WHERE assembly_id=@id", conn))
-                    {
-                        delAsmCmd.Parameters.AddWithValue("@id", model.Id);
-                        await delAsmCmd.ExecuteNonQueryAsync();
-                    }
-                    if (model.Type.Contains("Assembly"))
-                    {
-                        foreach (var asm in model.Assemblies)
-                        {
-                            using var asmCmd = new MySqlCommand(
-                                "INSERT INTO tbl_item_assembly (assembly_id,item_id,qty) VALUES (@assembly_id,@item_id,@qty)", conn);
-                            asmCmd.Parameters.AddWithValue("@assembly_id", model.Id);
-                            asmCmd.Parameters.AddWithValue("@item_id", asm.ItemId);
-                            asmCmd.Parameters.AddWithValue("@qty", asm.Qty);
-                            await asmCmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    return Ok(new { status = true, message = "Item updated successfully", id = model.Id });
-                }
-                else
-                {
-                    // ✅ INSERT (your original logic)
-                    long lastCode = 0;
-                    using (var reader = await new MySqlCommand(
-                        "SELECT Code FROM tbl_items WHERE LENGTH(Code)=9 ORDER BY CAST(Code AS UNSIGNED) DESC LIMIT 1", conn)
-                        .ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync()) lastCode = long.Parse(reader["Code"].ToString());
-                    }
-                    string newCode = (lastCode + 1).ToString("D9");
-
-                    var insertQuery = @"INSERT INTO tbl_items
-                (code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, min_amount, max_amount, on_hand, method, total_value, date, active, created_by, created_date, item_type)
-                VALUES (@code,@warehouseId,@type,@category,@name,@unit_id,@barcode,@cost_price,@cogs_account_id,@vendor_id,@sales_price,@income_account_id,@asset_account_id,@min_amount,@max_amount,@on_hand,@method,@total_value,@date,@active,@created_by,@created_date,@item_type);
-                SELECT LAST_INSERT_ID();";
-
-                    using var cmd = new MySqlCommand(insertQuery, conn);
-                    cmd.Parameters.AddWithValue("@code", newCode);
-                    cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-                    cmd.Parameters.AddWithValue("@type", model.Type);
-                    cmd.Parameters.AddWithValue("@category", model.CategoryId);
-                    cmd.Parameters.AddWithValue("@name", model.Name);
-                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId);
-                    cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
-                    cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
-                    cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
-                    cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
-                    cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice);
-                    cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
-                    cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
-                    cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
-                    cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
-                    cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
-                    cmd.Parameters.AddWithValue("@method", model.Method);
-                    cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
-                    cmd.Parameters.AddWithValue("@date", model.Date);
-                    cmd.Parameters.AddWithValue("@active", model.Active ? 1 : 0);
-                    cmd.Parameters.AddWithValue("@created_by", userId);
-                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
-                    cmd.Parameters.AddWithValue("@item_type", model.ItemType);
-
-                    model.Id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-                    model.Code = newCode;
-
-                    foreach (var u in model.Units)
-                    {
-                        using var unitCmd = new MySqlCommand(
-                            @"INSERT INTO tbl_items_unit (item_id, unit_id, factor) VALUES (@id,@unit_id,@factor)", conn);
-                        unitCmd.Parameters.AddWithValue("@id", model.Id);
-                        unitCmd.Parameters.AddWithValue("@unit_id", u.UnitId);
-                        unitCmd.Parameters.AddWithValue("@factor", u.Factor);
-                        await unitCmd.ExecuteNonQueryAsync();
-                    }
-
-                    if (model.Type.Contains("Assembly"))
-                    {
-                        foreach (var asm in model.Assemblies)
-                        {
-                            using var asmCmd = new MySqlCommand(
-                                "INSERT INTO tbl_item_assembly (assembly_id,item_id,qty) VALUES (@assembly_id,@item_id,@qty)", conn);
-                            asmCmd.Parameters.AddWithValue("@assembly_id", model.Id);
-                            asmCmd.Parameters.AddWithValue("@item_id", asm.ItemId);
-                            asmCmd.Parameters.AddWithValue("@qty", asm.Qty);
-                            await asmCmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    return Ok(new { status = true, message = "Item added successfully", code = model.Code, id = model.Id });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetItemTransactions(int itemId)
-        {
             try
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
@@ -2951,40 +3176,93 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                var query = @"
-            SELECT id, date, reference, type, qty_in, qty_out, cost_price, sales_price
-            FROM tbl_item_transaction
-            WHERE item_id = @itemId
-            ORDER BY date ASC, id ASC";
+                // Validation
+                var validationResult = await ValidateItemDataAsync(conn, model, 0);
+                if (!validationResult.isValid)
+                    return BadRequest(new { status = false, message = validationResult.message });
 
-                using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@itemId", itemId);
-
-                var transactions = new List<object>();
-                decimal qtyBalance = 0;
-
-                using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                // Check if item already exists
+                using (var cmdCheck = new MySqlCommand("SELECT * FROM tbl_items WHERE name = @name", conn))
                 {
-                    var qtyIn = reader.IsDBNull("qty_in") ? 0 : reader.GetDecimal("qty_in");
-                    var qtyOut = reader.IsDBNull("qty_out") ? 0 : reader.GetDecimal("qty_out");
-                    qtyBalance += (qtyIn - qtyOut);
-
-                    transactions.Add(new
+                    cmdCheck.Parameters.AddWithValue("@name", model.Name);
+                    using var reader = await cmdCheck.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
                     {
-                        id = reader.GetInt32("id"),
-                        date = reader.GetDateTime("date").ToString("dd-MM-yyyy"),
-                        reference = reader.IsDBNull("reference") ? "" : reader.GetString("reference"),
-                        type = reader.GetString("type"),
-                        qtyIn = qtyIn.ToString("N2"),
-                        qtyOut = qtyOut.ToString("N2"),
-                        costPrice = reader.IsDBNull("cost_price") ? "0.00" : reader.GetDecimal("cost_price").ToString("N2"),
-                        salesPrice = reader.IsDBNull("sales_price") ? "0.00" : reader.GetDecimal("sales_price").ToString("N2"),
-                        qtyBalance = qtyBalance.ToString("N2")
-                    });
+                        return BadRequest(new { status = false, message = "Item Already Exists. Enter Another Name." });
+                    }
                 }
 
-                return Ok(new { status = true, data = transactions });
+                // Generate next code
+                string itemCode = await GetNextCodeAsync(conn, model.Type, model.CategoryId);
+
+                // Insert Item
+                var insertQuery = @"
+                    INSERT INTO `tbl_items`(
+                        `code`, `warehouse_id`, `type`, `category_id`, `name`, `unit_id`, `barcode`, 
+                        `cost_price`, `cogs_account_id`, `vendor_id`, `sales_price`, `income_account_id`, 
+                        `asset_account_id`, `min_amount`, `max_amount`, `on_hand`, `method`, `total_value`, 
+                        `date`, `img`, `active`, `state`, `created_By`, `created_date`, `Item_type`
+                    ) VALUES (
+                        @code, @warehouseId, @type, @category, @name, @unit_id, @barcode, @cost_price, 
+                        @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
+                        @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, 
+                        @state, @created_By, @created_date, @Item_type
+                    ); 
+                    SELECT LAST_INSERT_ID();";
+
+                int itemId;
+                using (var cmd = new MySqlCommand(insertQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@code", itemCode);
+                    cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                    cmd.Parameters.AddWithValue("@type", model.Type);
+                    cmd.Parameters.AddWithValue("@category", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId == 0 ? (object)DBNull.Value : model.UnitId);
+                    cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
+                    cmd.Parameters.AddWithValue("@cost_price", model.CostPrice == 0 ? "0" : model.CostPrice.ToString());
+                    cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
+                    cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
+                    cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice == 0 ? "0" : model.SalesPrice.ToString());
+                    cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
+                    cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
+                    cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
+                    cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
+                    cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@img", "");
+                    cmd.Parameters.AddWithValue("@active", model.Active ? 0 : 1);
+                    cmd.Parameters.AddWithValue("@state", 0);
+                    cmd.Parameters.AddWithValue("@created_By", model.CreatedBy);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@Item_type", model.ItemType ?? "");
+
+                    itemId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                // Insert Item Units
+                if (model.Type != "12 - Service" && model.UnitId != 0)
+                {
+                    await InsertItemUnitsAsync(conn, itemId, model);
+                }
+
+                // Insert Item Assembly
+                if (model.Type == "13 - Inventory Assembly" && model.Assemblies != null && model.Assemblies.Any())
+                {
+                    await InsertItemsAssemblyAsync(conn, itemId, model.Assemblies);
+                }
+
+                // Insert Item Transaction and Journal
+                if (model.OnHand != 0 && model.Type != "12 - Service")
+                {
+                    await InsertItemTransactionAsync(conn, itemId, model, itemCode);
+                    await InsertItemJournalAsync(conn, itemId, model, itemCode);
+                }
+
+
+                return Ok(new { status = true, message = "Item added successfully", itemId, itemCode });
             }
             catch (Exception ex)
             {
@@ -2992,128 +3270,437 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetItemCardTransactions(int itemId)
+        [HttpPost]
+        public async Task<IActionResult> UpdateItem([FromBody] ItemRequest model)
         {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid item ID" });
+
             try
             {
-                // Build connection string with dynamic DB from session
-                var connStrBuilder = new MySqlConnectionStringBuilder(
-                    _config.GetConnectionString("DefaultConnection"))
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName")
-                                ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 1️⃣ Get item info (on_hand, method)
-                string method = "";
-                decimal onHand = 0;
-                using (var cmdItem = new MySqlCommand(
-                    "SELECT on_hand, method FROM tbl_items WHERE id = @itemId", conn))
+                // Validation
+                var validationResult = await ValidateItemDataAsync(conn, model, model.Id);
+                if (!validationResult.isValid)
+                    return BadRequest(new { status = false, message = validationResult.message });
+
+                // Check if item name already exists (excluding current item)
+                using (var cmdCheck = new MySqlCommand("SELECT * FROM tbl_items WHERE name = @name", conn))
                 {
-                    cmdItem.Parameters.AddWithValue("@itemId", itemId);
-                    using var itemReader = await cmdItem.ExecuteReaderAsync();
-                    if (await itemReader.ReadAsync())
+                    cmdCheck.Parameters.AddWithValue("@name", model.Name);
+                    using var reader = await cmdCheck.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
                     {
-                        method = itemReader["method"]?.ToString().Trim() ?? "";
-                        onHand = itemReader["on_hand"] == DBNull.Value ? 0 : Convert.ToDecimal(itemReader["on_hand"]);
+                        int existingId = Convert.ToInt32(reader["id"]);
+                        if (existingId != model.Id)
+                        {
+                            return BadRequest(new { status = false, message = "Item Already Exists. Enter Another Name." });
+                        }
                     }
                 }
 
-                // 2️⃣ Get transactions with warehouse name using JOIN
-                var transactions = new List<object>();
-                decimal qtyBalance = 0;
-                decimal currentCostPrice = 0;
-                List<decimal> fifoPrices = new List<decimal>();
-                List<decimal> fifoQtys = new List<decimal>();
-                decimal lastPrice = 0;
-                bool fifoSet = false;
+                // Update Item
+                var updateQuery = @"
+                    UPDATE tbl_items SET 
+                        type = @type, category_id = @category, name = @name, unit_id = @unit_id, 
+                        barcode = @barcode, cost_price = @cost_price, cogs_account_id = @cogs_account_id, 
+                        vendor_id = @vendor_id, sales_price = @sales_price, income_account_id = @income_account_id, 
+                        asset_account_id = @asset_account_id, min_amount = @min_amount, max_amount = @max_amount, 
+                        on_hand = @on_hand, method = @method, total_value = @total_value, date = @date, 
+                        img = @img, active = @active, state = @state, created_By = @created_By, 
+                        created_date = @created_date, Item_type = @Item_type 
+                    WHERE id = @id";
 
-                string query = @"
-            SELECT icd.id, icd.date, icd.wharehouse_id, icd.inv_no, icd.trans_no, icd.trans_type, icd.description,
-                   icd.price, icd.qty_in, icd.qty_out, icd.qty_balance, icd.debit, icd.credit, icd.balance, icd.fifo_qty, icd.fifo_cost,
-                   w.name AS warehouseName
-            FROM tbl_item_card_details icd
-            LEFT JOIN tbl_warehouse w ON icd.wharehouse_id = w.id
-            WHERE icd.itemId = @itemId
-            ORDER BY icd.date, icd.id";
-
-                using (var cmd = new MySqlCommand(query, conn))
+                using (var cmd = new MySqlCommand(updateQuery, conn))
                 {
-                    cmd.Parameters.AddWithValue("@itemId", itemId);
-                    using var reader = await cmd.ExecuteReaderAsync();
+                    cmd.Parameters.AddWithValue("@type", model.Type);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@category", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId == 0 ? (object)DBNull.Value : model.UnitId);
+                    cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
+                    cmd.Parameters.AddWithValue("@cost_price", model.CostPrice == 0 ? null : model.CostPrice.ToString());
+                    cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
+                    cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
+                    cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice == 0 ? null : model.SalesPrice.ToString());
+                    cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
+                    cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
+                    cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);
+                    cmd.Parameters.AddWithValue("@max_amount", model.MaxAmount);
+                    cmd.Parameters.AddWithValue("@on_hand", model.OnHand);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@img", "");
+                    cmd.Parameters.AddWithValue("@active", model.Active ? 0 : 1);
+                    cmd.Parameters.AddWithValue("@state", 0);
+                    cmd.Parameters.AddWithValue("@created_By", model.CreatedBy);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@Item_type", model.ItemType ?? "");
+                    cmd.Parameters.AddWithValue("@id", model.Id);
 
-                    while (await reader.ReadAsync())
-                    {
-                        string warehouseName = reader["warehouseName"]?.ToString() ?? "";
-                        decimal qtyIn = reader["qty_in"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_in"]);
-                        decimal qtyOut = reader["qty_out"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_out"]);
-                        decimal price = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]);
-
-                        // FIFO / LIFO / AVG logic
-                        if (qtyIn > 0)
-                        {
-                            fifoPrices.Add(price);
-                            fifoQtys.Add(qtyIn);
-                            lastPrice = price;
-
-                            if (method.ToUpper() == "FIFO" && !fifoSet)
-                            {
-                                currentCostPrice = price;
-                                fifoSet = true;
-                            }
-                        }
-
-                        if (method.ToUpper() == "AVG")
-                        {
-                            decimal qtyBal = reader["qty_balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_balance"]);
-                            decimal bal = reader["balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["balance"]);
-                            currentCostPrice = qtyBal != 0 ? bal / qtyBal : 0;
-                        }
-
-                        qtyBalance += (qtyIn - qtyOut);
-
-                        transactions.Add(new
-                        {
-                            id = reader["id"],
-                            date = reader["date"] == DBNull.Value ? "" : Convert.ToDateTime(reader["date"]).ToString("dd-MM-yyyy"),
-                            warehouseName,
-                            invNo = reader["inv_no"]?.ToString() ?? "",
-                            transNo = reader["trans_no"]?.ToString() ?? "",
-                            transType = reader["trans_type"]?.ToString() ?? "",
-                            description = reader["description"]?.ToString() ?? "",
-                            price = price.ToString("N2"),
-                            qtyIn = qtyIn.ToString("N2"),
-                            qtyOut = qtyOut.ToString("N2"),
-                            qtyBalance = qtyBalance.ToString("N2"),
-                            debit = reader["debit"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["debit"]).ToString("N2"),
-                            credit = reader["credit"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["credit"]).ToString("N2"),
-                            balance = reader["balance"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["balance"]).ToString("N2")
-                        });
-                    }
+                    await cmd.ExecuteNonQueryAsync();
                 }
 
-                return Ok(new
+                // Delete old units and assembly
+                using (var cmdDeleteUnits = new MySqlCommand("DELETE FROM tbl_items_unit WHERE item_id = @id", conn))
                 {
-                    status = true,
-                    item = new
-                    {
-                        itemId,
-                        method,
-                        onHand,
-                        currentCostPrice = currentCostPrice.ToString("N2")
-                    },
-                    transactions
-                });
+                    cmdDeleteUnits.Parameters.AddWithValue("@id", model.Id);
+                    await cmdDeleteUnits.ExecuteNonQueryAsync();
+                }
+
+                using (var cmdDeleteAssembly = new MySqlCommand("DELETE FROM tbl_item_assembly WHERE assembly_id = @id", conn))
+                {
+                    cmdDeleteAssembly.Parameters.AddWithValue("@id", model.Id);
+                    await cmdDeleteAssembly.ExecuteNonQueryAsync();
+                }
+
+                // Re-insert Item Units
+                if (model.Type != "12 - Service" && model.UnitId != 0)
+                {
+                    await InsertItemUnitsAsync(conn, model.Id, model);
+                }
+
+                // Re-insert Item Assembly
+                if (model.Type == "13 - Inventory Assembly" && model.Assemblies != null && model.Assemblies.Any())
+                {
+                    await InsertItemsAssemblyAsync(conn, model.Id, model.Assemblies);
+                }
+
+                // Delete old transactions and journal entries
+                using (var cmdDeleteTrans = new MySqlCommand(
+                    @"DELETE FROM tbl_item_transaction WHERE type = 'Opening Qty' AND item_id = @id;
+                      DELETE FROM tbl_transaction WHERE type = 'Opening Qty' AND transaction_id = @id;
+                      DELETE FROM tbl_item_card_details WHERE trans_type = 'Opening Qty' AND itemId = @id;", conn))
+                {
+                    cmdDeleteTrans.Parameters.AddWithValue("@id", model.Id);
+                    await cmdDeleteTrans.ExecuteNonQueryAsync();
+                }
+
+                // Re-insert transactions and journal
+                await InsertItemTransactionAsync(conn, model.Id, model, model.Code);
+                await InsertItemJournalAsync(conn, model.Id, model, model.Code);
+
+                return Ok(new { status = true, message = "Item updated successfully", itemId = model.Id });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        private async Task<(bool isValid, string message)> ValidateItemDataAsync(MySqlConnection conn, ItemRequest model, int currentId)
+        {
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return (false, "Enter Item Name First.");
+
+            if (model.WarehouseId == 0)
+                return (false, "Enter Warehouse First");
+
+            if (model.CategoryId == 0)
+                return (false, "Enter Category First");
+
+            if (model.OnHand != 0 && model.CostPrice == 0)
+                return (false, "Enter Cost Price");
+
+            if (model.Type != "12 - Service")
+            {
+                if (model.Date > DateTime.Now.Date && model.OnHand != 0)
+                    return (false, "Date Must Be Less Or Equal Today");
+
+                //// Check default accounts
+                //if (!await AreDefaultAccountsSetAsync(conn, new List<string> { "COGS", "Sales", "Inventory" }))
+                //    return (false, "Default accounts for Item are not properly configured. Please check your settings.");
+
+                //// Check if main unit is in sub units
+                //if (model.Units != null && model.Units.Any())
+                //{
+                //    foreach (var unit in model.Units)
+                //    {
+                //        if (unit.UnitId.HasValue && unit.UnitId.Value == model.UnitId)
+                //            return (false, "Main Unit Can't Be Included As Sub Unit");
+                //    }
+                //}
+                //foreach (var unit in model.Units)  // Units = list of SUB units only
+                //{
+                //    if (unit.UnitId.HasValue && unit.UnitId.Value == model.UnitId)  // Check if sub unit = main unit
+                //        return (false, "Main Unit Can't Be Included As Sub Unit");
+                //}
+            }
+
+            // Validate assembly items
+            if (model.Type == "13 - Inventory Assembly")
+            {
+                if (model.Assemblies == null || !model.Assemblies.Any())
+                    return (false, "Item Assembly Can't be 0 or empty");
+
+                foreach (var item in model.Assemblies)
+                {
+                    if (!item.Qty.HasValue || item.Qty <= 0 || !item.ItemId.HasValue || item.ItemId == 0)
+                        return (false, "Item Assembly Can't be 0 or empty");
+                }
+            }
+
+            return (true, string.Empty);
+        }
+
+
+        private async Task<string> GetNextCodeAsync(MySqlConnection conn, string type, int categoryId)
+        {
+            // Get category text first
+            string categoryText = "";
+            //using (var cmdCat = new MySqlCommand("SELECT name FROM tbl_categories WHERE id = @id", conn))
+            //{
+            //    cmdCat.Parameters.AddWithValue("@id", categoryId);
+            //    var result = await cmdCat.ExecuteScalarAsync();
+            //    categoryText = result?.ToString() ?? "";
+            //}
+
+            string typeCategory = type.Split('-')[0].Trim() + categoryText.Split('-')[0].Trim();
+            string query = "SELECT MAX(RIGHT(code, 4)) FROM tbl_items WHERE LEFT(code, 5) = @typeCategory";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@typeCategory", typeCategory);
+
+            var queryResult = await cmd.ExecuteScalarAsync();
+            int nextSerial = (queryResult == DBNull.Value || queryResult == null) ? 1 : Convert.ToInt32(queryResult) + 1;
+            string formattedSerial = nextSerial.ToString().PadLeft(4, '0');
+            return typeCategory + formattedSerial;
+        }
+
+        private async Task InsertItemUnitsAsync(MySqlConnection conn, int itemId, ItemRequest model)
+        {
+            // Insert main unit
+            var query = @"INSERT INTO tbl_items_unit (item_id, unit_id, factor) 
+                         VALUES (@id, @unit_id, @factor)";
+
+            using (var cmd = new MySqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@id", itemId);
+                cmd.Parameters.AddWithValue("@unit_id", model.UnitId);
+                cmd.Parameters.AddWithValue("@factor", 1);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+           
+
+            // Insert sub units
+            if (model.Units != null && model.Units.Any())
+            {
+                foreach (var unit in model.Units)
+                {
+                    if (unit.UnitId.HasValue && unit.Factor.HasValue)
+                    {
+                        using var cmd = new MySqlCommand(query, conn);
+                        cmd.Parameters.AddWithValue("@id", itemId);
+                        cmd.Parameters.AddWithValue("@unit_id", unit.UnitId.Value);
+                        cmd.Parameters.AddWithValue("@factor", unit.Factor.Value);
+                        await cmd.ExecuteNonQueryAsync();
+
+                    }
+                }
+            }
+        }
+
+        private async Task InsertItemsAssemblyAsync(MySqlConnection conn, int itemId, List<AssemblyRequest> assemblyItems)
+        {
+            var query = @"INSERT INTO tbl_item_assembly (assembly_id, item_id, qty) 
+                         VALUES (@assembly_id, @item_id, @qty)";
+
+            foreach (var item in assemblyItems)
+            {
+                if (item.ItemId.HasValue && item.Qty.HasValue)
+                {
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@assembly_id", itemId);
+                    cmd.Parameters.AddWithValue("@item_id", item.ItemId.Value);
+                    cmd.Parameters.AddWithValue("@qty", item.Qty.Value);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+        private async Task InsertItemTransactionAsync(MySqlConnection conn, int itemId, ItemRequest model, string itemCode)
+        {
+            await InsertItemTransactionHelperAsync(conn, model.Date, "Opening Qty", "0", itemId.ToString(),
+                model.CostPrice.ToString(), model.OnHand.ToString(), "0", "0", model.OnHand.ToString(),
+                "Opening Balance", model.WarehouseId.ToString());
+        }
+
+        private async Task InsertItemTransactionHelperAsync(MySqlConnection conn, DateTime date, string type,
+            string reference, string itemId, string costPrice, string qtyIn, string salesPrice, string qtyOut,
+            string qtyInc, string description, string warehouseId)
+        {
+            var query = @"INSERT INTO tbl_item_transaction 
+                         (date, type, reference, item_id, cost_price, qty_in, sales_price, qty_out, qty_inc, description, warehouse_id) 
+                         VALUES (@date, @type, @reference, @itemId, @costPrice, @qtyIn, @sales_price, @qtyOut, @qtyInc, @description, @warehouseId);";
+
+            using (var cmd = new MySqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@reference", reference);
+                cmd.Parameters.AddWithValue("@itemId", itemId);
+                cmd.Parameters.AddWithValue("@costPrice", costPrice);
+                cmd.Parameters.AddWithValue("@sales_price", salesPrice);
+                cmd.Parameters.AddWithValue("@qtyIn", qtyIn);
+                cmd.Parameters.AddWithValue("@qtyOut", qtyOut);
+                cmd.Parameters.AddWithValue("@qtyInc", qtyInc);
+                cmd.Parameters.AddWithValue("@description", description);
+                cmd.Parameters.AddWithValue("@warehouseId", warehouseId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            await UpdateOnHandItemAsync(conn, itemId);
+            await AddItemCardDetailsAsync(conn, date, type, reference, itemId, costPrice, qtyIn,
+                salesPrice, qtyOut, qtyInc, description, warehouseId);
+        }
+
+        private async Task UpdateOnHandItemAsync(MySqlConnection conn, string itemId)
+        {
+            var query = @"UPDATE tbl_items 
+                         SET on_hand = (SELECT SUM(qty_in - qty_out) FROM tbl_item_transaction WHERE item_id = @itemId) 
+                         WHERE id = @itemId";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@itemId", itemId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task AddItemCardDetailsAsync(MySqlConnection conn, DateTime date, string type, string reference,
+            string itemId, string costPrice, string qtyIn, string salesPrice, string qtyOut, string qtyInc,
+            string description, string warehouseId)
+        {
+            string invoiceNo = "INV-" + reference;
+            string transNo = reference;
+            string transType = type;
+            decimal qtyBalance = 0, debit = 0, credit = 0, price = decimal.Parse(costPrice), balance = 0, fifoQty = 0, fifoCost = 0;
+            decimal _qtyIn = 0, _qtyOut = 0;
+
+            if (!string.IsNullOrEmpty(qtyIn) && decimal.Parse(qtyIn) > 0)
+            {
+                debit = decimal.Parse(qtyIn) * decimal.Parse(costPrice);
+                _qtyIn = decimal.Parse(qtyIn);
+            }
+
+            if (!string.IsNullOrEmpty(qtyOut) && decimal.Parse(qtyOut) > 0)
+            {
+                credit = decimal.Parse(qtyOut) * decimal.Parse(costPrice);
+                _qtyOut = decimal.Parse(qtyOut);
+            }
+
+            // Get current balances
+            using (var cmdQty = new MySqlCommand(
+                "SELECT IFNULL(SUM(qty_in - qty_out), 0) FROM tbl_item_card_details WHERE itemId = @id", conn))
+            {
+                cmdQty.Parameters.AddWithValue("@id", itemId);
+                var result = await cmdQty.ExecuteScalarAsync();
+                decimal _QtyBalance = result != DBNull.Value ? Convert.ToDecimal(result) : 0;
+                qtyBalance = _QtyBalance + (_qtyIn - _qtyOut);
+            }
+
+            using (var cmdBal = new MySqlCommand(
+                "SELECT IFNULL(SUM(debit - credit), 0) FROM tbl_item_card_details WHERE itemId = @id", conn))
+            {
+                cmdBal.Parameters.AddWithValue("@id", itemId);
+                var result = await cmdBal.ExecuteScalarAsync();
+                decimal _Balance = result != DBNull.Value ? Convert.ToDecimal(result) : 0;
+                balance = _Balance + (debit - credit);
+            }
+
+            // Insert card details
+            var insertQuery = @"INSERT INTO tbl_item_card_details (
+                               itemId, date, wharehouse_id, inv_no, trans_no, trans_type, description,
+                               price, qty_in, qty_out, qty_balance, debit, credit, balance, fifo_qty, fifo_cost
+                           ) VALUES (
+                               @itemId, @date, @wharehouse_id, @inv_no, @trans_no, @trans_type, @description,
+                               @price, @qty_in, @qty_out, @qty_balance, @debit, @credit, @balance, @fifo_qty, @fifo_cost
+                           );";
+
+            using var cmd = new MySqlCommand(insertQuery, conn);
+            cmd.Parameters.AddWithValue("@itemId", itemId);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@wharehouse_id", warehouseId);
+            cmd.Parameters.AddWithValue("@inv_no", invoiceNo);
+            cmd.Parameters.AddWithValue("@trans_no", transNo);
+            cmd.Parameters.AddWithValue("@trans_type", transType);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@price", price);
+            cmd.Parameters.AddWithValue("@qty_in", qtyIn);
+            cmd.Parameters.AddWithValue("@qty_out", qtyOut);
+            cmd.Parameters.AddWithValue("@qty_balance", qtyBalance);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@balance", balance);
+            cmd.Parameters.AddWithValue("@fifo_qty", fifoQty);
+            cmd.Parameters.AddWithValue("@fifo_cost", fifoCost);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task InsertItemJournalAsync(MySqlConnection conn, int itemId, ItemRequest model, string itemCode)
+        {
+            // Get default accounts
+            string inventoryAccountId = await SelectDefaultLevelAccountAsync(conn, "Inventory");
+            string equityAccountId = await SelectDefaultLevelAccountAsync(conn, "Opening Balance Equity");
+
+            await InsertTransactionEntryAsync(conn, model.Date, inventoryAccountId, model.TotalValue.ToString(), "0",
+                itemId.ToString(), itemId.ToString(), "Opening Qty",
+                $"Opening Balance - Item Code - {itemCode}", model.CreatedBy, DateTime.Now.Date);
+
+            await InsertTransactionEntryAsync(conn, model.Date, equityAccountId, "0", model.TotalValue.ToString(),
+                itemId.ToString(), "0", "Opening Qty",
+                $"Opening Balance Equity - Item Code - {itemCode}", model.CreatedBy, DateTime.Now.Date);
+        }
+
+        private async Task<string> SelectDefaultLevelAccountAsync(MySqlConnection conn, string accountType)
+        {
+            var query = @"
+        SELECT account_id 
+        FROM tbl_coa_config 
+        WHERE category = @type 
+        LIMIT 1";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@type", accountType);
+
+            var result = await cmd.ExecuteScalarAsync();
+
+            return result?.ToString() ?? "0";
+        }
+
+
+        private async Task InsertTransactionEntryAsync(MySqlConnection conn, DateTime date, string accountId,
+            string debit, string credit, string transactionId, string humId, string type, string description,
+            int createdBy, DateTime createdDate)
+        {
+            var query = @"INSERT INTO tbl_transaction 
+                         (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state) 
+                         VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0);";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@type", type.Trim());
+            cmd.Parameters.AddWithValue("@tType", "");
+            cmd.Parameters.AddWithValue("@hum_id", humId);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@createdBy", createdBy);
+            cmd.Parameters.AddWithValue("@createdDate", createdDate);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteItem(int id)

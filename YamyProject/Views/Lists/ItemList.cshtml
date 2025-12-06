@@ -955,12 +955,11 @@
             $("#newItemModal").modal("show");
         });
 
-        // 🔹 Save function (your base, with insert/update logic)
-        function saveItem() {
+           function saveItem() {
             if (!validateForm()) return;
 
             let item = {
-                Id: parseInt($("#itemId").val()) || 0,   // 👈 determines Add vs Update
+                Id: parseInt($("#itemId").val()) || 0,
                 Name: $("#itemNameInput").val(),
                 WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
                 Type: $("#typeSelect").val(),
@@ -985,10 +984,12 @@
                 Assemblies: []
             };
 
+            // Collect Assembly Items if needed
             if (item.Type && item.Type.includes("Assembly")) {
                 $("#assemblyTable tbody tr").each(function () {
                     const itemId = $(this).find(".item-select").val();
                     const qty = $(this).find(".item-qty").val();
+
                     if (itemId && qty) {
                         item.Assemblies.push({
                             ItemId: parseInt(itemId),
@@ -998,17 +999,25 @@
                 });
             }
 
-         
+            // 👉 Auto-select the correct endpoint (Add vs Update)
+            let url =
+                item.Id > 0
+                    ? '@Url.Action("UpdateItem", "Lists")'
+                    : '@Url.Action("SaveItem", "Lists")';
 
             $.ajax({
-              url: '@Url.Action("SaveItem", "Lists")',
+                url: url,
                 type: 'POST',
                 data: JSON.stringify(item),
                 contentType: "application/json",
                 success: function (res) {
                     if (res.status) {
                         $("#newItemModal").modal("hide");
-                        toastr.success(item.Id > 0 ? "Item Updated Successfully!" : "Item Added Successfully!");
+
+                        toastr.success(
+                            item.Id > 0 ? "Item Updated Successfully!" : "Item Added Successfully!"
+                        );
+
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.error(res.message || "Something went wrong!");
@@ -1023,6 +1032,7 @@
                 }
             });
         }
+
 
 
 
