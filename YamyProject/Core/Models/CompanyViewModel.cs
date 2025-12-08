@@ -864,6 +864,7 @@ namespace YamyProject.Core.Models
         public List<AttendanceRow> AttendanceRows { get; set; }
     }
 
+
     public class AttendanceRow
     {
         public string EmpId { get; set; }
@@ -873,6 +874,8 @@ namespace YamyProject.Core.Models
         public string TimeOut { get; set; } 
         public string DayOfWeek { get; set; } 
         public string Status { get; set; }  
+
+
     }
 
 

@@ -140,6 +140,7 @@
             }
 
 
+       
 
               $("#newWarehouseForm").submit(function (e) {
             e.preventDefault();
@@ -518,6 +519,42 @@
             // Show the modal
             $('#newEmployeeModal').modal('show');
         });
+
+
+                          // Function to get today's date in YYYY-MM-DD format
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Set today's date when modal is opened
+        document.getElementById('newEmployeeModal').addEventListener('shown.bs.modal', function () {
+            const todayDate = getTodayDate();
+
+            // Fill all date fields
+            const dateFields = [
+                'BirthDay',
+                'PassportIssueDate',
+                'PassportExpiryDate',
+                'ResidencyIssueDate',
+                'ResidencyExpiryDate',
+                'ContractIssueDate',
+                'ContractExpiryDate',
+                'EmiratesIdIssueDate',
+                'EmiratesIdExpiryDate'
+            ];
+
+            dateFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value) {
+                    field.value = todayDate;
+                }
+            });
+        });
+
 
           // Form submit handler
         $('#newEmployeeForm').on('submit', function (e) {

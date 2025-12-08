@@ -134,7 +134,9 @@
                             <th style="font-size: 13px;">Name</th>
                             <th style="font-size: 13px;">From</th>
                             <th style="font-size: 13px;">To</th>
+                            <th style="font-size: 13px;">Total</th>
                             <th style="font-size: 13px;">Action</th>
+                            
                         </tr>
                     </thead>
                     <tbody style="font-size: 12px;">
@@ -358,6 +360,7 @@
                             <td>${asset.name || '-'}</td>
                             <td>${PurchaseDate}</td>
                             <td>${EndDate}</td>
+                            <td>${asset.purchasePrice}</td>
                             <td>
                                 <button class="btn btn-sm btn-primary editAsset"
                                         data-id="${asset.id}"
@@ -630,7 +633,10 @@
                 '#assetDate',
                 '#purchaseDate',
                 '#depreciationLife',
-                '#totalInvoice'
+                '#totalInvoice',
+                '#fixedAssetsAccount',
+                '#accumulatedDepreciation',
+                '#depreciationExpense'
             ];
 
             for (let selector of requiredFields) {
