@@ -1,6 +1,6 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class SalesProformaCenterService(YamyDbContext context, IListServices listServices) : ISalesProformaCenterService
+    public class SalesProformaCenterService(YamyDbContext context, IListServices listServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : ISalesProformaCenterService
         {
         private string Customer;
         private DateOnly Starting = default;
@@ -8,6 +8,9 @@
         private string PayMethod;
         private readonly YamyDbContext _context = context;
         private readonly IListServices _ListServices = listServices;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+
         //the main method to get sales with filters
         public async Task<IEnumerable<SalesCenterViewModel>> GetSalesAsync(string selectCustomer = null, bool Custmer = true, DateOnly From = default, DateOnly To = default, bool Date = true, string selectionMethod = "Default", string selectionMethodPay = null, bool Pay = true)
             {
@@ -275,7 +278,7 @@
             }
     
       //method to create quotation from proforma + New quotation
-        public async Task CreateProformaCenterAsync(TaxInvoiceViewModel vm, int currentUserId)
+        public async Task CreateProformaCenterAsync(TaxInvoiceViewModel vm)
             {
             decimal totalBeforeVat = 0m, totalVat = 0m, netAmount = 0m;
             foreach (var r in vm.Items.Where(i => i != null))
@@ -295,8 +298,7 @@
                     netAmount += (decimal)lineTotal;
                     }
                 }  // 2) Generate invoice no (async)
-            var invoiceNo = string.IsNullOrWhiteSpace(vm.Invoce)
-                ? await GenerateInvoiceNoAsync() : vm.Invoce.Trim();
+            var invoiceNo = await GenerateInvoiceNoAsync() ;
 
             // 3) Strategy + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -329,7 +331,7 @@
                         Net = netAmount,
                         Pay = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? netAmount : 0m,
                         Change = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? 0m : netAmount,
-                        CreatedBy = currentUserId,
+                        CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State = 0,
                         Description = vm.Description ?? string.Empty
@@ -368,7 +370,7 @@
                         throw new InvalidOperationException("No valid detail rows to save (ItemId missing).");
                     _context.TblSalesProformaDetails.AddRange(details);
                     await _context.SaveChangesAsync();
-
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Proforma Invoice", "Proforma Invoice", saleId, "Added Proforma Invoice: " + invoiceNo);
                     await tx.CommitAsync();
                     }
                 catch (Exception ex)
@@ -486,7 +488,7 @@
                     }).ToList()
                 };
             }
-        public async Task UpdateProformaInvoiceAsync(TaxInvoiceViewModel Model, int currentUserId)
+        public async Task UpdateProformaInvoiceAsync(TaxInvoiceViewModel Model)
             {
             decimal paidAmount = 0;
             decimal changeAmount = 0;
@@ -523,12 +525,12 @@
                     if (Model.Id == 0)
                         {
                         Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Sales.ModifiedBy = currentUserId;
+                        Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                         }
                     else
                         {
                         Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Sales.ModifiedBy = currentUserId;
+                        Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                         }
 
                     Sales.Pay = paidAmount;
@@ -571,6 +573,7 @@
                         throw new InvalidOperationException("No valid detail rows to save (ItemId missing).");
                     _context.TblSalesProformaDetails.AddRange(details);
                     await _context.SaveChangesAsync();
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Proforma Invoice", "Proforma Invoice", Model.Id, "Updated Proforma Invoice: " + Model.Invoce);
 
                     await tx.CommitAsync();
 

@@ -7,6 +7,7 @@
         [DataType(DataType.Date)]
         public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.Today);
         public string? InvoiceNo { get; set; }
+        public string? Code { get; set; }
         public string? CustomerCode { get; set; }
         public int? CustomerId { get; set; }
         public IEnumerable<TblCustomer> Customers { get; set; }

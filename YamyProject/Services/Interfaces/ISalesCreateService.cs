@@ -2,7 +2,7 @@
 {
     public interface ISalesCreateService
     {
-         Task CreateTaxInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId);
+         Task CreateTaxInvoiceAsync(TaxInvoiceViewModel vm);
         // Task<decimal> InsertItemTransaction(SalesRowDataViewModel request, int? itemId, decimal qty, string? method, DateOnly SelseDate, int invId,string invoiceNo);
         Task InsertItemTransaction(DateOnly date, string type, string Invoce, int? itemId, decimal costPrice, int qtyIn, decimal salesPrice, decimal qtyOut, 
                                   string description, int warehouseId);
@@ -21,7 +21,7 @@
     
         //  Task UpdateAsync(int id, TaxInvoiceViewModel vm, int currentUserId);
         Task<bool> CheckItemValidity(TaxInvoiceViewModel vm, int itemId);
-        Task UpdateTaxInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId);
+        Task UpdateTaxInvoiceAsync(TaxInvoiceViewModel vm);
        }
 }
 

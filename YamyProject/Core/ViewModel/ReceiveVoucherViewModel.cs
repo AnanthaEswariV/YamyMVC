@@ -35,6 +35,8 @@
 
         public IEnumerable<TblCoaLevel4> Accounts { get; set; } = default!;
         public IEnumerable<TblVendor> vendors { get; set; } = default!;
+        public IEnumerable<TblCheque> Cheques { get; set; } = default!;
+        public IEnumerable<TblBankCard> BankCard { get; set; } = default!;
         public IEnumerable<TblEmployee> Employees { get; set; } = default!;
         public IEnumerable<TblCostCenter> CostCenters { get; set; } = default!;
         public IEnumerable<TblBank> DebitAccounts { get; set; } = Enumerable.Empty<TblBank>();

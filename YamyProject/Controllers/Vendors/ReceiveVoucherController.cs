@@ -52,6 +52,51 @@ namespace YamyProject.Controllers.Vendors
                 VoucherNo = await _PaymentVoucher.GenerateNextPaymentCode(),
                 Date = DateOnly.FromDateTime(DateTime.Now),
                 Accounts = AccountList,
+                DebitAccountId = 2101001,
+                CreditAccountId= 1103006,
+                vendors = vendorSelectList,
+                CostCenters = CostCenterList
+                }
+            );
+            }
+        public async Task<IActionResult> CreateVousher()
+            {
+            var vendor = await _ListServices.GetVendorsAsync();
+            var vendorSelectList = vendor.Select(c => new TblVendor
+                {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+                }).ToList();
+            var Account = await _ListServices.GetAccountsAsync();
+            var AccountList = Account.Select(c => new TblCoaLevel4
+                {
+                Id = c.Id,
+                Name = c.Name,
+                Code = c.Code
+                }).ToList();
+            var CostCenter = await _ListServices.GetCostCenterAsync();
+            var CostCenterList = CostCenter.Select(c => new TblCostCenter
+                {
+                Id = c.Id,
+                Code = c.Code,
+                }).ToList();
+            var Employee = await _ListServices.GetEmployeeAsync();
+            var EmployeelectList = Employee.Select(c => new TblEmployee
+                {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+                }).ToList();
+            return View("ReceiveVoucher", new ReceiveVoucherViewModel
+                {
+                Type = "",
+                Employees = EmployeelectList,
+                VoucherNo = await _PaymentVoucher.GenerateNextPaymentCode(),
+                Date = DateOnly.FromDateTime(DateTime.Now),
+                Accounts = AccountList,
+                DebitAccountId = 2101001,
+                CreditAccountId = 1103006,
                 vendors = vendorSelectList,
                 CostCenters = CostCenterList
                 }

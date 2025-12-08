@@ -1,6 +1,6 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class PurchaseOrdersService(YamyDbContext context, IListServices ListServices) : IPurchaseOrdersService
+    public class PurchaseOrdersService(YamyDbContext context, IListServices ListServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IPurchaseOrdersService
         {       
 
         private string Vendors = null;
@@ -9,7 +9,10 @@
         private string PayMethod = null;
         private readonly YamyDbContext _context = context;
         private readonly IListServices _ListServices = ListServices;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
 
+       
         public async Task<IEnumerable<PurchaseRowViewModel>> GetPurchaseAsync(bool Subcontractors = false, string selectVendors = null, bool Custmer = true, DateOnly From = default, DateOnly To = default, bool Date = true, string selectionMethod = "Default", string selectionMethodPay = null, bool Pay = true)
             {
             if (Custmer == true)
@@ -437,7 +440,7 @@
                     .ToList()
                 };
             }
-        public async Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm, int currentUserId)
+        public async Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm)
             {
             // 0) Guards
             if (vm is null) throw new ArgumentNullException(nameof(vm));
@@ -497,7 +500,7 @@
                         Net = netAmount,
                         Pay = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? netAmount : 0m,
                         Change = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? 0m : netAmount,
-                        CreatedBy = currentUserId,
+                        CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State = 0,
                         //  Discount = totalDiscount,
@@ -519,7 +522,7 @@
                     // 5) Details (batch add), then inventory moves per line
                     await InsertInvItems(vm, PurchaseId, invoiceNo);
                     // 6) Transfer flags + accounting entries
-                  
+                    _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Purchase Order", "Purchase Order", PurchaseId, "Added Purchase Order: " + invoiceNo);
                     await tx.CommitAsync();
                     }
                 catch
@@ -566,7 +569,7 @@
                     }
                 }
             }
-       public async Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel Model, int currentUserId)
+       public async Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel Model)
             {
             decimal paidAmount = 0;
             decimal? changeAmount = 0;
@@ -617,12 +620,12 @@
                     if (Model.Id == 0)
                         {
                         PurchaseOrder.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        PurchaseOrder.ModifiedBy = currentUserId;
+                        PurchaseOrder.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                         }
                     else
                         {
                         PurchaseOrder.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        PurchaseOrder.ModifiedBy = currentUserId;
+                        PurchaseOrder.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                         }
 
                     PurchaseOrder.Pay = paidAmount;

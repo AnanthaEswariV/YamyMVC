@@ -134,7 +134,7 @@
                 Name = c.Name
                 }).ToList();
             var Accounts = await _listServices.GetAccountsAsync();
-            var AccountslectList = Accounts.Select(c => new TblCountry
+            var AccountslectList = Accounts.Select(c => new TblCoaLevel4
                 {
                 Id = c.Id,
                 Name = c.Name
@@ -155,6 +155,8 @@
                 City = citylectList,
                 Country = countrylectList,
                 Project = projectlectList,
+                Account=AccountslectList,
+                Date=DateOnly.FromDateTime(DateTime.UtcNow),
                 Code = code,
                 Type = "Vendor"
                 }

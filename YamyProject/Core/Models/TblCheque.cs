@@ -8,7 +8,8 @@ public partial class TblCheque
     public int Id { get; set; }
 
     public int? BankCardId { get; set; }
-
+    [ForeignKey(nameof(BankCardId))]
+    public virtual TblBankCard? BankCard { get; set; }
     public int? ChqBookNo { get; set; }
 
     public int? ChqBookQty { get; set; }

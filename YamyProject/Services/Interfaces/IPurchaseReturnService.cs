@@ -7,7 +7,7 @@
         Task<PurchaseInvoiceViewModel> GetEditAsync(int id);
 
 
-        Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm, int currentUserId);
-        Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel vm, int currentUserId);
+        Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm);
+        Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel vm);
         }
     }

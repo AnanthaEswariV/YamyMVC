@@ -10,5 +10,7 @@
         public decimal NewOnHand { get; set; }
         public decimal MinusAmount { get; set; }
         public decimal PlusAmount { get; set; }
+        public string Method { get; set; }
+
+        }
     }
-}

@@ -45,7 +45,8 @@
                 Date = DateOnly.FromDateTime(DateTime.Now),
                 Accounts = AccountList,
                 Customers = customerSelectList,
-                CostCenters = CostCenterList
+                CostCenters = CostCenterList,
+                
                 });
             }
         public async Task<IActionResult> Edit(int id)

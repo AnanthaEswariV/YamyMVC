@@ -76,5 +76,16 @@
         //        );
         //        }
         //    }
-        }
+
+        public async Task<string> SelectDefaultLevelAccount( string accountName)
+            {
+            var Account = await _context.TblCoaLevel4s
+            .AsNoTracking()
+            .Where(x => x.Name == accountName)
+            .Select(x => x.Id)
+            .FirstOrDefaultAsync();
+            return Account == 0 ? "0" : Account.ToString(); 
+                }
     }
+ }
+    

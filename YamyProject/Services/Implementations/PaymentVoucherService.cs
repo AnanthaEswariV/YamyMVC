@@ -1,10 +1,11 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class PaymentVoucherService(YamyDbContext context) : IPaymentVoucherService
+    public class PaymentVoucherService(YamyDbContext context, IHttpContextAccessor httpContextAccessor) : IPaymentVoucherService
         {
         private DateOnly Starting = default;
         private DateOnly Ending = default;
         private readonly YamyDbContext _context = context;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
         public async Task<ReceiveVoucherCenterViewModel> QueryPurchaseAsync(DateOnly from = default, DateOnly to = default, bool Date = true, CancellationToken ct = default)
             {
             if (Date == true)
@@ -145,7 +146,7 @@
                         TransDate = Model.Debit.TransFerDate,
                         TransName = Model.Debit.TRNSNAme,
                         TransRef = Model.Debit.TRNSRef,
-                        CreatedBy = 1, // TODO: Current User
+                        CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0 , // TODO: Current User
                         CreatedDate = DateOnly.FromDateTime(DateTime.Now),
                         //  VendorId = Model.vendorId,
                         //  DebitEmployeeId = Model.DebitEmployeeId,
@@ -243,7 +244,7 @@
                         }
                     await InsertJournals(Type, Model.DebitEmployeeId.ToString(), i.VoucherType, i.Payment.ToString(), Model.Date, (int)Model.Debit.AccountId, PaymentVoucherId, invoiceNo);
                     }
-                else if (Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text == "Employee")
+                else if (Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text != "Employee")
                     {
                     decimal? net = await _context.TblPurchases
                      .AsNoTracking()
@@ -290,7 +291,7 @@
                 Type,
                 "PAYMENT",
                 "Payment Voucher NO" + Code,
-                1,//Add The User ID
+                _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,//Add The User ID
                 DateOnly.FromDateTime(DateTime.Now),
                 VoucherNo: Code
                 );
@@ -305,7 +306,7 @@
                 Type,
                 "PAYMENT",
                 "Payment Voucher NO" + Code,
-                1,//Add The User ID
+                _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,//Add The User ID
                 DateOnly.FromDateTime(DateTime.Now),
                 VoucherNo: Code
                 );
@@ -327,7 +328,7 @@
                 Description = description,
                 CreatedBy = createdBy,
                 VoucherNo = voucher_name,
-                CreatedDate = createdDate,
+                CreatedDate = createdDate,                
                 State = 0
                 };
 
@@ -383,7 +384,7 @@
                     PaymentVoucher.TransDate = Model.Debit.TransFerDate;
                     PaymentVoucher.TransName = Model.Debit.TRNSNAme;
                     PaymentVoucher.TransRef= Model.Debit.TRNSRef;
-                    PaymentVoucher.ModifiedBy = 1; // TODO: Current User
+                    PaymentVoucher.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0; // TODO: Current User
                     PaymentVoucher.ModifiedDate = DateOnly.FromDateTime(DateTime.Now);
                     await _context.SaveChangesAsync();
 

@@ -1,6 +1,6 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class SalesReturnService(YamyDbContext context, IListServices listServices) : ISalesReturnService
+    public class SalesReturnService(YamyDbContext context, IListServices listServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : ISalesReturnService
         {
 
         private string Customer = null;
@@ -9,8 +9,8 @@
         private string PayMethod = null;
         private readonly YamyDbContext _context = context;
         private readonly IListServices _ListServices = listServices;
-     
-
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
         public async Task<IEnumerable<SalesCenterViewModel>> GetSalesREturnAsync(string selectCustomer = null, bool Custmer = true, DateOnly From = default, DateOnly To = default, bool Date = true, string selectionMethod = "Default", string selectionMethodPay = null, bool Pay = true)
             {
             if (Custmer == true)
@@ -39,8 +39,7 @@
             }
         public async Task<IEnumerable<SalesCenterViewModel>> GetDefaultReportAsync()
             {
-            //var transactions = await _context.TblTransactions.ToListAsync();
-
+           
             var query = _context.TblSalesReturns
               .Where(s => s.State == 0)
               .Include(s => s.TblTransaction)
@@ -341,38 +340,37 @@
                     .OrderBy(d => d.Id)
                     .Select(d =>
                     {
-                        // null-safe access for the navigation 'Items'
-                        // If your schema has nullable decimals, coalesce to 0m as needed.
+                       
                         var qty = d.Qty;
                         var price = d.Price;
                         var disc = 0;
-                        var vatAmt = d.Vatp;   // amount (keep as-is if that’s your schema)
+                        var vatAmt = d.Vatp;  
                         var netPrice = (price * qty) - disc + vatAmt;
 
                         return new SalesReturnRowDataViewModel
                             {
                             Id = d.Id,
-                            ItemId = d.ItemId ?? 0,                         // if non-nullable in DB, make model int (not int?) and remove ??
-                            ItemCode = d.Items.Code ?? string.Empty,       // null-safe
-                            ItemName = d.Items.Name ?? string.Empty,       // null-safe
-                            Method = d.Items.Method ?? string.Empty,       // null-safe
-                            Type = d.Items.Type ?? string.Empty,       // null-safe
+                            ItemId = d.ItemId ?? 0,                         
+                            ItemCode = d.Items.Code ?? string.Empty,      
+                            ItemName = d.Items.Name ?? string.Empty,      
+                            Method = d.Items.Method ?? string.Empty,      
+                            Type = d.Items.Type ?? string.Empty,      
                             QTY = d.Qty,
                             Price = d.Price,
                             Disc = 0,
                             NetPrice = netPrice,
-                            VatPersint = d.Vat,                                  // percent (if that’s your schema)
-                            VatAmonut = d.Vatp,                                 // amount
+                            VatPersint = d.Vat,                                
+                            VatAmonut = d.Vatp,                                 
                             Amount = d.Total,
                             CostPrice = d.CostPrice,
-                            WarehouseId = d.Items.WarehouseId,                  // if VM property is int? use: it?.WarehouseId
-                            CostCenterId = d.CostCenterId                          // if nullable in DB, use: d.CostCenterId ?? 0
+                            WarehouseId = d.Items.WarehouseId,                
+                            CostCenterId = d.CostCenterId                        
                             };
                     })]
                 };
             }
 
-        public async Task CreateSalesReturnInvoiceAsync(SalesReturnViewModel vm, int currentUserId)
+        public async Task CreateSalesReturnInvoiceAsync(SalesReturnViewModel vm)
             {
           
             // 1) Server-side totals
@@ -396,9 +394,7 @@
                     }
                 }
             // 2) Generate invoice no (async)
-            var invoiceNo = string.IsNullOrWhiteSpace(vm.Invoce)
-                ? await GenerateReturnInvoiceNoAsync()
-                : vm.Invoce.Trim();
+            var invoiceNo =  await GenerateReturnInvoiceNoAsync();
 
             // 3) Strategy + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -432,7 +428,7 @@
                         Net = netAmount,
                         Pay =  netAmount,
                         Change =  0,
-                        CreatedBy = currentUserId,
+                        CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State = 0,
                         Discount = totalDiscount,
@@ -454,7 +450,7 @@
                         invid: saleId,
                         invoiceNo: vm.Invoce ?? invoiceNo,
                         level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
-                            
+                    _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Sales Return Invoice", "Sales Return", saleId, "Added Sales Return Invoice: " + invoiceNo);
 
                     await tx.CommitAsync();
                     }
@@ -558,7 +554,7 @@
 
 
 
-        public async Task UpdateSalesReturnInvoiceAsync(SalesReturnViewModel vm, int currentUserId)
+        public async Task UpdateSalesReturnInvoiceAsync(SalesReturnViewModel vm)
             {
             await _context.SaveChangesAsync();
             }
@@ -617,7 +613,7 @@
                 invid, model.SalesRefId,
                 model.Invoce == "Credit" ? "SalesReturn Invoice" : "SalesReturn Invoice ",
                 "SALES RETURN", $"SalesReturn Invoice NO. {invoiceNo}",
-                createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                 VoucherNo: model.NextCode
             );
             // Revenue
@@ -626,7 +622,7 @@
                 invid, 0,
                 model.Invoce == "Credit" ? "SalesReturn Invoice" : "SalesReturn Invoice ",
                 "SALES RETURN", $"SalesReturn For Invoice No. {invoiceNo}",
-                createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                 VoucherNo: model.NextCode
             );
             // VAT
@@ -637,7 +633,7 @@
                     invid, 0,
                     model.Invoce == "Credit" ? "SalesReturn Invoice" : "SalesReturn Invoice ",
                     "SALES RETURN", $"Vat Input For Return Invoice No. {invoiceNo}",
-                    createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                    createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                     VoucherNo: model.NextCode
                 );
                 }

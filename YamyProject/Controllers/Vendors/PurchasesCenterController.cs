@@ -90,7 +90,7 @@
             if (model.WarehouseId is null) return BadRequest("Warehouse is required.");
             var userId = 1;
 
-            await _PurchaseService.CreateTaxInvoiceAsync(model, userId);
+            await _PurchaseService.CreateTaxInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
             [HttpGet]
@@ -131,11 +131,11 @@
 
             if (model.Id == 0)
                 {
-                await _PurchaseService.CreateTaxInvoiceAsync(model, userId);
+                await _PurchaseService.CreateTaxInvoiceAsync(model);
                 return RedirectToAction(nameof(Index));
                 }
             //else
-                await _PurchaseService.UpdateTaxInvoiceAsync(model, userId);
+                await _PurchaseService.UpdateTaxInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
 

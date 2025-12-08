@@ -19,5 +19,8 @@
         public string? ChequeNo { get; set; }
         public DateOnly? ChequeDate { get; set; }
         public DateOnly? transferDate { get; set; }
+        public int BankId { get; set; }
+        public int BankAccountId { get; set; }
+        public int BookNo { get; set; }
         }
     }

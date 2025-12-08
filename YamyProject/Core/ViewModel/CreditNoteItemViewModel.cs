@@ -7,6 +7,7 @@
         public string? InvoiceNo { get; set; }
         public decimal Total { get; set; }
         public decimal Balance { get; set; }
+        public decimal vat { get; set; }
         public bool Selected { get; set; }
         public decimal Amount { get; set; }
         public decimal Remaining { get; set; }

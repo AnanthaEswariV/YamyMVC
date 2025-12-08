@@ -1,18 +1,13 @@
 ﻿namespace YamyProject.Services.Implementations
 {
-    public class SalesCreateService : ISalesCreateService
+    public class SalesCreateService(YamyDbContext context, ISalesCenterService salesService, IListServices listServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService): ISalesCreateService
         {
-        private readonly YamyDbContext _context;
-        private readonly ISalesCenterService _salesService;
-        private readonly IListServices _ListServices;
-
-        public SalesCreateService(YamyDbContext context, ISalesCenterService salesService, IListServices listServices)
-            {
-            _context = context;
-            _salesService = salesService;
-            _ListServices = listServices;
-            }
-        public async Task CreateTaxInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId)
+        private readonly YamyDbContext _context = context;
+        private readonly ISalesCenterService _salesService = salesService;
+        private readonly IListServices _ListServices = listServices;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+        public async Task CreateTaxInvoiceAsync(TaxInvoiceViewModel vm)
             {
             // 0) Guards
             if (vm is null) throw new ArgumentNullException(nameof(vm));
@@ -40,9 +35,7 @@
                     }
                 }
             // 2) Generate invoice no (async)
-            var invoiceNo = string.IsNullOrWhiteSpace(vm.Invoce)
-                ? await _salesService.GenerateInvoiceNoAsync()
-                : vm.Invoce.Trim();
+            var invoiceNo = await _salesService.GenerateInvoiceNoAsync();  
 
             // 3) Strategy + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -75,7 +68,7 @@
                        Net = netAmount,
                        Pay = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? netAmount : 0m,
                        Change = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? 0m : netAmount,
-                       CreatedBy = currentUserId,
+                       CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                        CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                        State = 0,
                        Discount = totalDiscount,
@@ -110,6 +103,7 @@
                        invid: saleId,
                        invoiceNo: vm.Invoce ?? invoiceNo,
                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
+                   _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Create Invoice", "Sales Invoice", saleId, "Created Sales Invoice No. " + invoiceNo);
                     await tx.CommitAsync();
                    }
                catch
@@ -236,7 +230,7 @@
 
             await InsertItemTransaction(
                 date: SelseDate,
-                type: vmRow.Type ?? "SALE",
+                type: vmRow.Type ?? "SALE Invoice",
                 invId: invId.ToString(),
                 itemId: id,
                 costPrice: costPrice,
@@ -368,7 +362,7 @@
                 invid, model.CustomerId ?? 0,
                 model.InvoiceType == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
                 "SALES", $"Sales Invoice NO. {invoiceNo}",
-                createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                 VoucherNo: model.NextCode
             );
 
@@ -378,7 +372,7 @@
                 invid, 0,
                 model.InvoiceType == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
                 "SALES", $"Sales Revenue For Invoice No. {invoiceNo}",
-                createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                 VoucherNo: model.NextCode
             );
 
@@ -390,7 +384,7 @@
                     invid, 0,
                     model.InvoiceType == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
                     "SALES", $"Vat Output For Invoice No. {invoiceNo}",
-                    createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                    createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                     VoucherNo: model.NextCode
                 );
                 }
@@ -804,7 +798,7 @@
 
             return total;
         }
-        public async Task UpdateTaxInvoiceAsync(TaxInvoiceViewModel Model, int currentUserId)
+        public async Task UpdateTaxInvoiceAsync(TaxInvoiceViewModel Model)
         {
             decimal paidAmount = 0;
             decimal changeAmount = 0;
@@ -855,13 +849,13 @@
                     if (Model.Id == 0)
                     {
                         Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Sales.ModifiedBy = currentUserId;
-                    }
+                        Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
+                        }
                     else
                     {
                         Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Sales.ModifiedBy = currentUserId;
-                    }
+                        Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
+                        }
 
                     Sales.Pay = paidAmount;
                     Sales.Change = changeAmount;
@@ -876,7 +870,7 @@
                         level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Customer"),
                        level4SalesInvoice:await _ListServices.DefaultAccountsSet("Sales"),
                         invoiceNo: Model.Invoce ,
-                        level4VatId: 3);
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
 
                     await tx.CommitAsync();
                 }

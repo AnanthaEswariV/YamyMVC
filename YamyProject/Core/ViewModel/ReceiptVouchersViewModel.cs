@@ -10,6 +10,8 @@
         public string? ReceiptCode { get; set; }
         public decimal? Amount { get; set; }
 
+     //   PaymentVoucherRowViewModel 
+
         public string? DebitAccount { get; set; }
         public string? CreditAccount { get; set; }
 

@@ -83,9 +83,9 @@
             if (model.CustomerId is null) return BadRequest("Customer is required.");
             if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
 
-            var userId = 1;
+          //  var userId = 1;
 
-            await _SalesReturnService.CreateSalesReturnInvoiceAsync(model, userId);
+            await _SalesReturnService.CreateSalesReturnInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
 
             }
@@ -126,11 +126,11 @@
 
             if (model.Id == 0)
                 {
-                await _SalesReturnService.CreateSalesReturnInvoiceAsync(model, userId);
+                await _SalesReturnService.CreateSalesReturnInvoiceAsync(model);
                 return RedirectToAction(nameof(Index));
                 }
             else
-                await _SalesReturnService.UpdateSalesReturnInvoiceAsync(model, userId);
+                await _SalesReturnService.UpdateSalesReturnInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
 

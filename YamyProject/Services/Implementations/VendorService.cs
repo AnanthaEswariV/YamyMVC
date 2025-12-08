@@ -1,24 +1,32 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class VendorService(YamyDbContext context):IVendorService
+    public class VendorService(YamyDbContext context, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) :IVendorService
         {
         private readonly YamyDbContext _context = context;
-
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
         public  string GenerateNextCode()
             {
-            var prefix = 00000; // Prefix for Credit Note
-            var lastCodeValue =  _context.TblVendors
-               .Select(s => s.Code)
-               .Max();
-            if (lastCodeValue!=null)
-                {
-                prefix = lastCodeValue + 1;
-                }
-            else
-                {
-                prefix = prefix + 1;
-                }
-            return prefix.ToString("D5");
+            //var prefix = 00000; // Prefix for Credit Note
+            //var lastCodeValue =  _context.TblVendors
+            //   .Select(s => s.Code)
+            //   .DefaultIfEmpty(0)
+            //   .Max();
+            //if (lastCodeValue!=null)
+            //    {
+            //    prefix = lastCodeValue + 1;
+            //    }
+            //else
+            //    {
+            //    prefix = prefix + 1;
+            //    }
+            //return prefix.ToString("D5");
+            int lastCode = _context.TblVendors
+            .Select(v => (int?)v.Code) 
+            .Max() ?? 0;              
+
+            int next = lastCode + 1;
+            return next.ToString("D5");
             }
         public async Task CreateVendorOrSubcontractorAcync(VendorSubContactViewModel  Model)
             {
@@ -69,13 +77,28 @@
                         Trn=Model.TRN,
                         FaciltyName=Model.FaciltyName,
                         Active = Model.IsActive ? 1:0,
-                        CreatedBy=1,
-                        CreatedDate= DateOnly.FromDateTime(DateTime.UtcNow),
+                        CreatedBy= _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
+                        CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State=0
                         };
                     _context.TblVendors.Add(Vendors);
                     _context.SaveChanges();
                     //Add Loger
+                    _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Vendor", "Vendor Center", vendor.Id, "Added Vendor: " + Model.Name);
+                    var openingBalanceEquity =await _GlobalService.SelectDefaultLevelAccount("Opening Balance Equity");
+
+                    if (Model.Credit != 0)
+                        {
+                        await AddTransactionEntry(Model.Date, int.Parse(openingBalanceEquity), Model.Credit, 0, Model.Id, 0, "Subcontractor Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
+                        await AddTransactionEntry(Model.Date, Model.AccountId, 0, Model.Credit, Model.Id, Model.Id, "Subcontractor Opening Balance", "OPENING BALANCE", "Account Payable  - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
+                        }
+                    else if (Model.Debit != 0)
+                        {
+                        await AddTransactionEntry(Model.Date, int.Parse(openingBalanceEquity), 0, Model.Debit, Model.Id, 0, "Subcontractor Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
+                        await AddTransactionEntry(Model.Date, Model.AccountId, Model.Debit, 0, Model.Id, Model.Id, "Subcontractor Opening Balance", "OPENING BALANCE", "Account Payable  - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
+                        }
+
+
                     await tx.CommitAsync();
 
                     }
@@ -135,27 +158,33 @@
                         vendors.Trn = Model.TRN;
                         vendors.FaciltyName = Model.FaciltyName;
                         vendors.Active = Model.IsActive ? 1 : 0;
-                        vendors.CreatedBy = 1;
-                        vendors.CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+//vendors.CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
+                      //  vendors.CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow);
                         vendors.State = 0;
                         
                     _context.TblVendors.Update(vendors);
 
                     await _context.SaveChangesAsync();
-
+                    await _context.TblTransactions
+                    .Where(t => t.TransactionId == vendor.Id && t.Type == "Vendor Opening Balance")
+                    .ExecuteDeleteAsync();
                     //Get the Defolte account
                     //Addloger 
+                    _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Vendor", "Vendor Center", vendor.Id, "Updated Vendor: " + Model.Name);
+                    var openingBalanceEquity = await _GlobalService.SelectDefaultLevelAccount("Opening Balance Equity");
+
                     //Get the login User
                     if (Model.Credit != 0)
                         {
-                        await AddTransactionEntry(Model.Date, 1, Model.Credit, 0, Model.Id, 0, "Subcontractor Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
+                        await AddTransactionEntry(Model.Date, int.Parse(openingBalanceEquity), Model.Credit, 0, Model.Id, 0, "Subcontractor Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
                         await AddTransactionEntry(Model.Date, Model.AccountId, 0, Model.Credit, Model.Id, Model.Id, "Subcontractor Opening Balance", "OPENING BALANCE", "Account Payable  - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
                         }
                     else if(Model.Debit!=0)
                         {
-                        await AddTransactionEntry(Model.Date, 1,0, Model.Debit,  Model.Id, 0, "Subcontractor Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
+                        await AddTransactionEntry(Model.Date, int.Parse(openingBalanceEquity), 0, Model.Debit,  Model.Id, 0, "Subcontractor Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
                         await AddTransactionEntry(Model.Date, Model.AccountId,  Model.Debit,0, Model.Id, Model.Id, "Subcontractor Opening Balance", "OPENING BALANCE", "Account Payable  - Subcontractor Code - " + Model.Code, 1, DateOnly.FromDateTime(DateTime.Now));
                         }
+
                     await tx.CommitAsync();
                     }
                 catch (Exception ex)

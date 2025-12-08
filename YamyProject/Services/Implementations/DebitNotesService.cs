@@ -1,13 +1,14 @@
-﻿using System;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
     {
-    public class DebitNotesService(YamyDbContext context, IListServices listServices) : IDebitNotesService
+    public class DebitNotesService(YamyDbContext context, IListServices listServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IDebitNotesService
         {
         private DateOnly Starting = default;
         private DateOnly Ending = default;    
         private readonly YamyDbContext _context = context;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+        private readonly IListServices _listServices = listServices;
+        
 
         public async Task<MasterDebitNoteViewModel> QueryDebitNoteAsync( DateOnly from = default, DateOnly to = default, bool Date = true, CancellationToken ct = default)
             {        
@@ -138,18 +139,23 @@ namespace YamyProject.Services.Implementations
                                 Vat = Model.Vat,
                                 Total = Model.TotalAmount,
                                 Description = Model.Description,
-                                CreatedBy = 1,
+                                CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                                 CreatedDate = DateOnly.FromDateTime(DateTime.Today),
                                 State = 0,
                                 };
                             _context.TblDebitNotes.Add(debitNote);
                             await _context.SaveChangesAsync();
                         var debitnoteId = debitNote.Id;
-                            
-                        await insertInvItems(Model, debitnoteId);// level4VendorId,                 level4VatId,                                    level4PurchaseReturn,
-                        await AddTransaction(Model.Date, (int)Model.DebitAccountId, (int)Model.DebitAccountId,(int) Model.DebitAccountId, 
-                            Model.TotalAmount, Model.Amount, debitnoteId, (int)Model.VendorId, invoiceNo, Model.Vat, Model.Amount);
 
+                        var level4VendorId=await _listServices.DefaultAccountsSet("Vendor");
+                        var level4VatId= await _listServices.DefaultAccountsSet("Vat Input");
+                        var level4PurchaseReturn= await _listServices.DefaultAccountsSet("Inventory");
+                        var level4COGS= await _listServices.DefaultAccountsSet("PurchaseReturn");
+                       // var level4Inventory= _listServices.DefaultAccountsSet();
+                        await insertInvItems(Model, debitnoteId);// level4VendorId,                 level4VatId,                                    level4PurchaseReturn,
+                        await AddTransaction(Model.Date,  level4VendorId, level4VatId, level4PurchaseReturn, 
+                            Model.TotalAmount, Model.Amount, debitnoteId, (int)Model.VendorId, invoiceNo, Model.Vat, Model.Amount);
+                        await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Debit Note", "Debit Note", debitnoteId, "Added Debit Note: " + invoiceNo);
                         //Add Loge Here
 
                         await tx.CommitAsync();
@@ -195,11 +201,12 @@ namespace YamyProject.Services.Implementations
                           .SetProperty(t => t.Pay, change)
                           .SetProperty(t => t.Change, i.Remaining));
                     //Add Loge
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Debit Note Item", "Debit Note", InvId, "Added Debit Note Item: " + i.InvoiceNo + " for Invoice ID: " + i.InvoiceNo);
                     }
                 }
             }
         //Add Transaction
-        public async Task AddTransaction(DateOnly Date,int level4VendorId, int level4VatId, int level4PurchaseReturn, decimal TotalAmount , decimal Amount,int TransactionId,int humId,string Code, decimal Vat, decimal amount)
+        public async Task AddTransaction(DateOnly Date,int? level4VendorId, int? level4VatId, int? level4PurchaseReturn, decimal TotalAmount , decimal Amount,int TransactionId,int humId,string Code, decimal Vat, decimal amount)
             {
             var VoucherName = "Debit Note";
             var Type = "Debit Note";
@@ -214,7 +221,7 @@ namespace YamyProject.Services.Implementations
              Type,
              VoucherName,
              "Debit Note NO" + Code,
-             1,//Add The User ID
+             _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,//Add The User ID
              DateOnly.FromDateTime(DateTime.Now),
              VoucherNo: Code
               );
@@ -230,7 +237,7 @@ namespace YamyProject.Services.Implementations
                Type,
                VoucherName,
                "Vat Input For  Voucher NO" + Code,
-               1,//Add The User ID
+               _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,//Add The User ID
                DateOnly.FromDateTime(DateTime.Now),
                VoucherNo: Code
                );
@@ -245,7 +252,7 @@ namespace YamyProject.Services.Implementations
                Type,
                VoucherName,
                "Revenue For  Voucher NO" + Code,
-               1,//Add The User ID
+               _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,//Add The User ID
                DateOnly.FromDateTime(DateTime.Now),
                VoucherNo: Code   
                );
@@ -314,9 +321,15 @@ namespace YamyProject.Services.Implementations
                      _context.TblTransactions.RemoveRange(Transactions);
                     //Insert New Debit Note Details
                     await insertInvItems(Model, Model.Id);// level4VendorId,                 level4VatId,                                    level4PurchaseReturn,
+                    var level4VendorId = await _listServices.DefaultAccountsSet("Vendor");
+                    var level4VatId = await _listServices.DefaultAccountsSet("Vat Input");
+                    var level4PurchaseReturn = await _listServices.DefaultAccountsSet("Inventory");
+                    var level4COGS = await _listServices.DefaultAccountsSet("PurchaseReturn");
+
                     //insert New Debit Note Transactions
-                    await AddTransaction(Model.Date, (int)Model.DebitAccountId, (int)Model.DebitAccountId, (int)Model.DebitAccountId,
+                    await AddTransaction(Model.Date, level4VendorId, level4VatId, level4PurchaseReturn,
                         Model.TotalAmount, Model.Amount, Model.Id, (int)Model.VendorId, invoiceNo, Model.Vat, Model.Amount);
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Debit Note", "Debit Note", Model.Id, "Updated Debit Note: " + invoiceNo);
                     //Save All Changes
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();

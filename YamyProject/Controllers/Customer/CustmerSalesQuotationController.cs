@@ -84,7 +84,7 @@
 
             var userId = 1;
 
-            await _SalesQuotation.CreateQuotationCenterAsync(model, userId);
+            await _SalesQuotation.CreateQuotationCenterAsync(model);
             return RedirectToAction(nameof(Index));
             }
 
@@ -103,7 +103,7 @@
             if (model.CustomerId is null) return BadRequest("Customer is required.");
             if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
             var userId = 1;
-            await _SalesQuotation.UpdateTaxInvoiceAsync(model, userId);
+            await _SalesQuotation.UpdateTaxInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
         [HttpGet]

@@ -1,9 +1,8 @@
 ﻿@model VendorSubContactViewModel
 @{
     ViewData["Title"] = "New Vendor";
-   
-    }
-
+ 
+}
 <div class="modal fade" id="VendorModal" tabindex="-1"
      aria-labelledby="VendorModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -56,7 +55,7 @@
                                         <!-- more options here -->
                                     </select>
                                     <a type="button" class="btn btn-outline-secondary">
-                                        Add New
+                                        <i class="fas fa-plus-circle fs-6"></i>  @* Add New *@
                                     </a>
                                 </div>
                             </div>
@@ -243,7 +242,7 @@
         </div>
     </div>
 </div>
-@section Scripts {
+    @section Scripts {
     <small id="openingPreview" class="text-muted ms-2"></small>
 
     <script>
