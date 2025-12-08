@@ -1,6 +1,6 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class PurchaseReturnService(YamyDbContext context, IListServices listServices) : IPurchaseReturnService
+    public class PurchaseReturnService(YamyDbContext context, IListServices listServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IPurchaseReturnService
         {
         private string Vendor = null;
         private DateOnly Starting = default;
@@ -8,6 +8,10 @@
         private string PayMethod = null;
         private readonly YamyDbContext _context = context;
         private readonly IListServices _ListServices = listServices;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+
+
         public async Task<IEnumerable<PurchaseRowViewModel>> GetPurchaseREturnAsync(string selectVendor = null, bool Custmer = true, DateOnly From = default, DateOnly To = default, bool Date = true, string selectionMethod = "Default", string selectionMethodPay = null, bool Pay = true)
             {
             if (Custmer == true)
@@ -317,7 +321,7 @@
             //    await PopulateLookupsAsync(vm);
             return vm;
             }
-        public async Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm, int currentUserId)
+        public async Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm)
             {
             // 0) Guards
             if (vm is null)
@@ -381,7 +385,7 @@
                         Net = netAmount,
                         Pay = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? netAmount : 0m,
                         Change = string.Equals(vm.InvoiceType, "Cash", StringComparison.OrdinalIgnoreCase) ? 0m : netAmount,
-                        CreatedBy = currentUserId,
+                        CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State = 0,
                         //  Discount = totalDiscount,
@@ -402,7 +406,7 @@
                         invid: PurchaseId,
                         invoiceNo: vm.Invoce ?? invoiceNo,
                         level4VatId: await _ListServices.DefaultAccountsSet("Vat Input"));
-                 
+                 _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Purchase Return Invoice", "Purchase Return", PurchaseId, "Added Purchase Return Invoice No. " + invoiceNo);
                     await tx.CommitAsync();
                     }
                 catch
@@ -413,7 +417,7 @@
             });
             }
 
-        public async Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel Model, int currentUserId)
+        public async Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel Model)
             {
             decimal paidAmount = 0;
             decimal? changeAmount = 0;
@@ -448,12 +452,12 @@
                     if (Model.Id == 0)
                         {
                         Purchase.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Purchase.ModifiedBy = currentUserId;
+                        Purchase.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                         }
                     else
                         {
                         Purchase.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Purchase.ModifiedBy = currentUserId;
+                        Purchase.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                         }
 
                     Purchase.Pay = paidAmount;
@@ -658,7 +662,7 @@
                 invid, model.VendorId ?? 0,
                 model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
                 "Purchase Return", $"Purchase Return Invoice NO. {invoiceNo}",
-                createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                 VoucherNo: model.NextCode
             );
             // Revenue
@@ -667,7 +671,7 @@
                 invid, 0,
                 model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
                 "Purchase Return", $"Purchase Return For Invoice No. {invoiceNo}",
-                createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                 VoucherNo: model.NextCode
             );
             // VAT
@@ -678,7 +682,7 @@
                     invid, 0,
                     model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
                     "Purchase Return", $"Vat Input For Return Invoice No. {invoiceNo}",
-                    createdBy: 1, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
+                    createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
                     VoucherNo: model.NextCode
                 );
                 }

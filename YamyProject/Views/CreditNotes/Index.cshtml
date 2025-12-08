@@ -26,18 +26,14 @@
                 <!-- From -->
                 <div class="col-md-3 col-6">
                     <label class="form-label small mb-1">From</label>
-                    <input type="date"
-                           name="fromDate"
-                           class="form-control form-control-sm"
+                    <input type="date" name="fromDate" class="form-control form-control-sm"
                            value="@(DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"))" />
                 </div>
 
                 <!-- To -->
                 <div class="col-md-3 col-6">
                     <label class="form-label small mb-1">To</label>
-                    <input type="date"
-                           name="toDate"
-                           class="form-control form-control-sm"
+                    <input type="date" name="toDate" class="form-control form-control-sm"
                            value="@(DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"))" />
                 </div>
 
@@ -60,14 +56,14 @@
                     <thead class="table-secondary text-center">
                         <tr>
                             <th style="width:60px;">SN</th>
-                            <th style="width:80px;">ID</th>
+                            @* <th style="width:80px;">ID</th> *@
                             <th>Date</th>
                             <th>JV No</th>
                             @* <th>INV</th> *@
                             <th>INV No</th>
                             <th class="text-end">Amount</th>
                             <th class="text-end">VAT</th>
-                            <th class="text-end">Total</th>
+                            @* <th class="text-end">Total</th> *@
                             <th>Credit Account</th>
                             <th>Debit Account</th>
                             <th style="width:90px;">Actions</th>
@@ -81,14 +77,14 @@
                                 {
                                 <tr>
                                     <td class="text-center">@sn</td>
-                                    <td class="text-center">@sale.Id</td>
+                                    @* <td class="text-center">@sale.Id</td> *@
                                     <td>@sale.Date</td>
                                     <td>@sale.JvNo</td>
                                     @* <td>@sale.Inv</td> *@
                                     <td>@sale.InvNo</td>
-                                    <td class="text-end">@sale.Amount</td>
-                                    <td class="text-end">@sale.Vat</td>
-                                    <td class="text-end">@sale.Total</td>
+                                    <td class="text-center">@sale.Amount</td>
+                                    <td class="text-center">@sale.Vat</td>
+                                    @* <td class="text-end">@sale.Total</td> *@
                                     <td>@sale.CreditAccount</td>
                                     <td>@sale.DebitAccount</td>
                                     <td class="text-center">

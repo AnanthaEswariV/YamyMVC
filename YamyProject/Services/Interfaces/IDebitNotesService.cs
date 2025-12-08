@@ -5,5 +5,6 @@
         Task<MasterDebitNoteViewModel> QueryDebitNoteAsync( DateOnly from = default, DateOnly to = default, bool date = true, CancellationToken ct = default);
         Task<string> GenerateNextDebitNoteCode();
         Task CreateDebitNoteAsync(DebitNoteViewModel model);
+        Task UpdateDebitNoteAsync(DebitNoteViewModel model);
         }
     }

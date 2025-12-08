@@ -1,24 +1,18 @@
-﻿using System.Security.Claims;
-namespace YamyProject.Controllers.InventoryDoc
+﻿namespace YamyProject.Controllers.InventoryDoc
 {
-    public class ItemStockSettlementController : Controller
+    public class ItemStockSettlementController(IItemStockSettlementService svc, IMicroserviceClientt micro, ILogger<ItemStockSettlementController> logger) : Controller
     {
-        private readonly IItemStockSettlementService _svc;
-        private readonly IMicroserviceClientt _micro;
-        private readonly ILogger<ItemStockSettlementController> _logger;
-        public ItemStockSettlementController(IItemStockSettlementService svc, IMicroserviceClientt micro, ILogger<ItemStockSettlementController> logger)
-        {
-            _svc = svc;
-            _micro = micro;
-            _logger = logger;
-        }
+        private readonly IItemStockSettlementService _svc = svc;
+        private readonly IMicroserviceClientt _micro = micro;
+        private readonly ILogger<ItemStockSettlementController> _logger = logger;
+       
         // GET: /item-stock-settlements
         public async Task<IActionResult> Index(string selectionMethod = "Default",DateTime? from = null, DateTime? to = null)
         {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                //int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
 
             var list = await _svc.GetSettlementsAsync( selectionMethod);
-                return View( list); // a strongly-typed view for the default listing
+                return View( list); 
         }
         // API: /item-stock-settlements/list
         [HttpGet("list")]
@@ -41,6 +35,9 @@ namespace YamyProject.Controllers.InventoryDoc
         {
 
             var model = await _svc.GetCreateUpdateSettlementVmAsync();
+            model.Date = DateOnly.FromDateTime( DateTime.UtcNow);
+            model.Code=await _svc.GenerateNextCode();
+            model.WarehouseId = 1;
 
             return View("StockSettelment", model);
         }
@@ -53,7 +50,7 @@ namespace YamyProject.Controllers.InventoryDoc
             int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
 
            // var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)); // or your own user id provider
-            var id = await _svc.CreateSettlementAsync(vm, userId);
+            var id = await _svc.CreateSettlementAsync(vm);
 
             // call microservice to notify external system (non-blocking)
             try
@@ -119,8 +116,8 @@ namespace YamyProject.Controllers.InventoryDoc
             if (id != vm.Id) return BadRequest();
             if (!ModelState.IsValid) return View(vm);
 
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            await _svc.UpdateSettlementAsync(id, vm, userId);
+       //     var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            await _svc.UpdateSettlementAsync(id, vm);
             return RedirectToAction(nameof(Index));
         }
         // POST delete
@@ -128,8 +125,8 @@ namespace YamyProject.Controllers.InventoryDoc
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            await _svc.DeleteSettlementAsync(id, userId);
+        //    var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            await _svc.DeleteSettlementAsync(id);
             return RedirectToAction(nameof(Index));
         }
         // API helper method equivalent of bindInvoiceItems() in your WinForms: gets items for selected settlement

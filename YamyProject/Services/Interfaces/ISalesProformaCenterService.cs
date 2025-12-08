@@ -6,8 +6,8 @@
         Task<IEnumerable<SalesCenterViewModel>> GetDefaultReportAsync();
         Task<IEnumerable<SalesCenterViewModel>> GetDetailedReportAsync();
         Task<string> GenerateInvoiceNoAsync();
-        Task CreateProformaCenterAsync(TaxInvoiceViewModel vm, int currentUserId);
+        Task CreateProformaCenterAsync(TaxInvoiceViewModel vm);
         Task<TaxInvoiceViewModel> GetEditAsync(int id);
-        Task UpdateProformaInvoiceAsync(TaxInvoiceViewModel vm, int currentUserId);
+        Task UpdateProformaInvoiceAsync(TaxInvoiceViewModel vm);
         }
 }

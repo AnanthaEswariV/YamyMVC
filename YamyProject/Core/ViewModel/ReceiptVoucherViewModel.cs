@@ -4,6 +4,7 @@
         {
         // General Info
         public int? Id { get; set; }
+        public string Code { get; set; }
         public string? VoucherNo { get; set; }
         public DateOnly Date { get; set; }
         public decimal Amount { get; set; }
@@ -30,6 +31,7 @@
         public int? DebitAccountId { get; set; }
         public int? DebitCostCenterId { get; set; }
         public int? CustomerId { get; set; }
+        public decimal vat { get; set; }
 
         public IEnumerable<TblCoaLevel4> Accounts { get; set; } = default!;
         public IEnumerable<TblCustomer> Customers { get; set; } = default!;

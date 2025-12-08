@@ -4,5 +4,8 @@
         {
         Task<MasterCreditNoteViewModel> QueryCreditNoteAsync(string selectCustomer = null, bool Custmer = true, DateOnly? from = default, DateOnly? torom = default, bool date = true, CancellationToken ct = default);
         Task<string> GenerateNextCreditNoteCode();
+        Task insertInvoice(CreditNoteViewModel model);
+        Task updateInvoice(CreditNoteViewModel model);
+
         }
     }

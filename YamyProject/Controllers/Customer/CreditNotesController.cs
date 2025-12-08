@@ -28,11 +28,28 @@
                 Id = c.Id,
                 Name = c.Name
                 }).ToList();
+            var code =await _CreditVoucher.GenerateNextCreditNoteCode();
             return View("MasterCreditNote", new CreditNoteViewModel
                 {
-                Customers=customerSelectList,
+                Code = code.ToString(),
+                Customers = customerSelectList,
                 DebitAccounts = AccountList,
                 });
+            }
+        [HttpPost]
+        public async Task<IActionResult> Create(CreditNoteViewModel  model)
+            {
+            //if (!ModelState.IsValid)
+            //  return View("TaxInvoice", PopulateViewModel(model));
+         //   if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
+           // if (model.CustomerId is null) return BadRequest("Customer is required.");
+            //if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
+
+            //  var userId = 1;
+
+            await _CreditVoucher.insertInvoice(model);
+            return RedirectToAction(nameof(Index));
+
             }
         public async Task<IActionResult> Edite(int id)
             {
@@ -51,6 +68,22 @@
                 Code = c.Code
                 }).ToList();
             return View("MasterCreditNote");
+            }
+        [HttpPost]
+        public async Task<IActionResult> Edit(CreditNoteViewModel model)
+            {
+         //   if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
+          //  if (model.CustomerId is null) return BadRequest("Customer is required.");
+          ///  if (model.WarehousesId is null) return BadRequest("Warehouse is required.");
+
+            if (model.Id == 0)
+                {
+                await _CreditVoucher.insertInvoice(model);
+                return RedirectToAction(nameof(Index));
+                }
+            else
+                await _CreditVoucher.updateInvoice(model);
+            return RedirectToAction(nameof(Index));
             }
         [HttpGet]
         public async Task<IActionResult> GetInvoiceDetails(int customerId)

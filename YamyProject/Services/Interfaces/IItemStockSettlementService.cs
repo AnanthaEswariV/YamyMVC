@@ -10,18 +10,18 @@
 
         public  Task<CreateUpdateSettlementVm> GetCreateUpdateSettlementVmAsync();
 
-        Task<int> CreateSettlementAsync(CreateUpdateSettlementVm model, int currentUserId);
+        Task<int> CreateSettlementAsync(CreateUpdateSettlementVm model);
 
-        Task UpdateSettlementAsync(int id, CreateUpdateSettlementVm model, int currentUserId);
+        Task UpdateSettlementAsync(int id, CreateUpdateSettlementVm model);
 
-        Task DeleteSettlementAsync(int id, int currentUserId);
+        Task DeleteSettlementAsync(int id);
         Task<List<TblItem>> GetItemsByCodeAsync(string code, int warehouseId);
         Task<List<TblItem>> GetItemsByNameAsync(string name, int warehouseId);
         Task<List<ItemViewModel>> GetItemsAsync(string name, int warehouseId);
 
         Task<List<ItemStockSettlementListVm>> GetSettlementItemsAsync(int settleId);
 
-
+        Task<string> GenerateNextCode();
 
 
 

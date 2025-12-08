@@ -98,13 +98,13 @@ builder.Services.AddDbContext<YamyDbContext>((serviceProvider, options) =>
     var dbNameFromSession = httpContextAccessor.HttpContext?.Session.GetString("DatabaseName");
 
     // you can store DefaultDatabase as a normal setting or as a connection string; adapt if needed
-    var defaultDbName = config.GetConnectionString("DefaultDatabase");
+    //var defaultDbName = config.GetConnectionString("DefaultDatabase");
 
     var csb = new MySqlConnectionStringBuilder(baseConnStr)
         {
-        Database = string.IsNullOrWhiteSpace(dbNameFromSession)
-                    ? defaultDbName
-                    : dbNameFromSession
+        Database = dbNameFromSession
+                    //? defaultDbName
+                    //: dbNameFromSession
         };
 
     options.UseMySql(

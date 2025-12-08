@@ -6,7 +6,7 @@
         Task<string> GenerateReturnInvoiceNoAsync();
         Task<SalesReturnViewModel> GetEditAsync(int id);
 
-        Task CreateSalesReturnInvoiceAsync(SalesReturnViewModel vm, int currentUserId);
+        Task CreateSalesReturnInvoiceAsync(SalesReturnViewModel vm);
         // Task<int> GetInvoiceCountAsync(int currentUserId);
         // Task<int> GetInvoiceCountAsync(TaxInvoiceViewModel vm);
         // Task<int> GetInvoiceCountAsync(string currentUserId);
@@ -26,6 +26,6 @@
 
         // //  Task UpdateAsync(int id, TaxInvoiceViewModel vm, int currentUserId);
         // Task<bool> CheckItemValidity(TaxInvoiceViewModel vm, int itemId);
-         Task UpdateSalesReturnInvoiceAsync(SalesReturnViewModel vm, int currentUserId);
+         Task UpdateSalesReturnInvoiceAsync(SalesReturnViewModel vm);
         }
     }

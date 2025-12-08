@@ -91,7 +91,7 @@
             if (model.WarehouseId is null) return BadRequest("Warehouse is required.");
             var userId = 1;
 
-            await _PurchaseOrderService.CreateTaxInvoiceAsync(model, userId);
+            await _PurchaseOrderService.CreateTaxInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
         [HttpGet]
@@ -128,15 +128,15 @@
             if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
             if (model.VendorId is null) return BadRequest("Ven is required.");
             if (model.WarehouseId is null) return BadRequest("Warehouse is required.");
-            var userId = 1;
+            //var userId = 1;
 
             if (model.Id == 0)
                 {
-                await _PurchaseOrderService.CreateTaxInvoiceAsync(model, userId);
+                await _PurchaseOrderService.CreateTaxInvoiceAsync(model);
                 return RedirectToAction(nameof(Index));
                 }
             //else
-            await _PurchaseOrderService.UpdateTaxInvoiceAsync(model, userId);
+            await _PurchaseOrderService.UpdateTaxInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
 

@@ -10,7 +10,8 @@ namespace YamyProject.Controllers
         }
 
         public IActionResult Index()
-        {
+            {
+            int UserId = HttpContext.Session.GetInt32("UserId") ?? 0;
             return View();
         }
         public IActionResult DataTable()

@@ -6,8 +6,8 @@
          Task<string> GenerateVendorsInvoiceNoAsync();
 
         Task<PurchaseInvoiceViewModel> GetEditAsync(int id, string formType = "", string VendorType = "");
-        Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm, int currentUserId);
-        Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel vm, int currentUserId);
+        Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm);
+        Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel vm);
 
 
         }

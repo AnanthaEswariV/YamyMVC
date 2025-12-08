@@ -39,7 +39,7 @@
             {
             //if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
             //if (model.VendorId is null) return BadRequest("Vendor is required.");
-             var userId = 1;
+             //var userId = 1;
           //  var result = 
                 await _DebitVoucher.CreateDebitNoteAsync(model);
             //if(result)
@@ -65,6 +65,17 @@
                 }).ToList();
 
             return View("MasterDebitNote");
+            }
+        [HttpPost]
+        public async Task<IActionResult> Edit(DebitNoteViewModel model)
+            {
+            //if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
+            //if (model.VendorId is null) return BadRequest("Vendor is required.");
+           
+            await _DebitVoucher.UpdateDebitNoteAsync(model);
+            //if(result)
+            return RedirectToAction(nameof(Index));
+            // return View(model);
             }
         [HttpGet]
         public async Task<IActionResult> GetInvoiceDetails(int VendorId)

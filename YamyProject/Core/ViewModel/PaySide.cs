@@ -21,6 +21,7 @@
         public int BookNo { get; set; }
         public int BookCode { get; set; }
         public string ChequeName { get; set; }
+        public string BankCode { get; set; }
         public bool IsCheque { get; set; }
         public string? ChequeNo { get; set; }
         public DateOnly? ChequeDate { get; set; }

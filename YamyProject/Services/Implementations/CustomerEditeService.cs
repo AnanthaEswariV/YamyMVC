@@ -8,10 +8,13 @@ using System.Xml.Linq;
 
 namespace YamyProject.Services.Implementations
 {
-    public class CustomerEditeService : IEditeCustomerService
+    public class CustomerEditeService(YamyDbContext context, IListServices listServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IEditeCustomerService
     {
-        private readonly YamyDbContext _context;
-        public CustomerEditeService(YamyDbContext context) { _context = context; }
+        private readonly YamyDbContext _context = context;
+        private readonly IListServices _ListServices = listServices;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+
         public async Task<CustomerViewModel> GetCustomerFormDataAsync(int? id)
         {
             var vm = new CustomerViewModel
@@ -73,15 +76,17 @@ namespace YamyProject.Services.Implementations
                     Trn=customer.Trn,
                     FaciltyName=customer.FaciltyName,
                     Active=1,
-                   // CreatedBy=customer.CreatedBy,
-                   // CreatedDate=customer.CreatedDate,
-                    State=customer.State,
+                    CreatedBy= _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
+                     CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                    State =customer.State,
                     ProjectId=customer.ProjectId,
                     ProjectSite=customer.ProjectSite
-                    }
-            ;
+                    };
 
                 _context.TblCustomers.Add(customerRow);
+            ProcessOpeningBalanceTransactions(customerRow);
+
+                _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "INSERT", "Customer Center", customerRow.Id, "New Customer Created - Code: " + customerRow.Code + ", Name: " + customerRow.Name);
                 }
             else
                 {
@@ -110,7 +115,57 @@ namespace YamyProject.Services.Implementations
                 }
 
             await _context.SaveChangesAsync();
+            ProcessOpeningBalanceTransactions(customer);
         }
-    }
+        public async Task ProcessOpeningBalanceTransactions(TblCustomer customer)
+            {
+            var Account = customer.AccountId;
+            var openingBalanceEquity = _ListServices.DefaultAccountsSet("Opening Balance Equity").ToString();
+            var result = _context.TblCoaLevel4s
+                .FirstOrDefaultAsync(a => a.Name == "Opening Balance Equity");
+            if (openingBalanceEquity == "0")
+                {
+                openingBalanceEquity = result.Id.ToString();
+                }
+            if (customer.Balance != null && customer.Balance != 0)
+                {
+                if (customer.Balance < 0)
+                    {
+                    AddTransactionEntry(customer.Date, int.Parse(openingBalanceEquity),(decimal)customer.Balance, 0,customer.Id,0, "Customer Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Customer Code - " + customer.Code, _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.UtcNow),"");
+                    AddTransactionEntry(customer.Date,Account,0, (decimal)customer.Balance,customer.Id,customer.Id, "Customer Opening Balance", "OPENING BALANCE", "Opening Balance - Customer Code - " + customer.Code, _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.UtcNow), "");
+                    }
+                else if (customer.Balance > 0)
+                    {
+                    AddTransactionEntry(customer.Date, int.Parse(openingBalanceEquity),0, (decimal)customer.Balance,customer.Id,0, "Customer Opening Balance", "OPENING BALANCE", "Opening Balance Equity - Customer Code - " + customer.Code, _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.UtcNow),"");
+                    AddTransactionEntry(customer.Date, Account, (decimal)customer.Balance,0, customer.Id, customer.Id, "Customer Opening Balance", "OPENING BALANCE", "Opening Balance - Customer Code - " + customer.Code, _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.UtcNow), "");
+                    }
+
+
+                }
+            }
+        public async Task AddTransactionEntry(DateOnly? date, int? accountId, decimal debit, decimal credit, int transactionId, int humId, string type, string voucherName,
+           string description, int createdBy, DateOnly createdDate, string VoucherNo)
+            {
+            var trx = new TblTransaction
+                {
+                Date = date,
+                AccountId = accountId,
+                Debit = debit,
+                Credit = credit,
+                TransactionId = transactionId,
+                HumId = humId,
+                TType = voucherName,
+                Type = type,
+                Description = description,
+                CreatedBy = createdBy,
+                VoucherNo = VoucherNo,
+                CreatedDate = createdDate,
+                State = 0
+                };
+
+            _context.TblTransactions.Add(trx);
+            await _context.SaveChangesAsync();
+            }
+        }
 }
     

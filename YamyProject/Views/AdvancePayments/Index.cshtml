@@ -178,7 +178,7 @@
                         <th>Debit Account</th>
                         <th>Credit Account</th>
                         <th>Type</th>
-                        <th>Edit</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -192,7 +192,7 @@
                             <td>@r.DebitAccount</td>
                             <td>@r.CreditAccount</td>
                             <td>@r.Type</td>
-                            <td><a class="menu-link px-3 js-render-modal" asp-controller="AdvancePayments" asp-action="Edit" asp-route-id="@r.Id">Edit</a></td>
+                            <td><a class="btn btn-sm btn-primary js-render-modal" asp-controller="AdvancePayments" asp-action="Edit" asp-route-id="@r.Id"><i class="fa-solid fa-pen"> @* Edit *@ </i></a></td>
 
                         </tr>
                         }
