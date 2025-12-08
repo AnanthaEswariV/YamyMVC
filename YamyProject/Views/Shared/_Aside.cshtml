@@ -1,57 +1,56 @@
-﻿   
+﻿
 
 <div id="sidebar" class="active">
-            <div class="sidebar-wrapper active">
-                <div class="sidebar-header">
-                    <div class="d-flex justify-content-between">
-                        <div class="toggler">
-                            <a href="#" class="sidebar-hide d-xl-none d-block">
-                                <i class="bi bi-x bi-middle"></i>
-                            </a>
-                        </div>
-                    </div>
+    <div class="sidebar-wrapper active">
+        <div class="sidebar-header">
+            <div class="d-flex justify-content-between">
+                <div class="toggler">
+                    <a href="#" class="sidebar-hide d-xl-none d-block">
+                        <i class="bi bi-x bi-middle"></i>
+                    </a>
                 </div>
+            </div>
+        </div>
 
-                <!-- ✅ Sidebar Menu -->
-                <div class="sidebar-menu">
-                    <ul class="menu">
-                        <li class="sidebar-item active">
-                            <a asp-controller="Home" asp-action="Index" class="sidebar-link">
-                                <i class="bi bi-grid-fill"></i><span>Dashboard</span>
-                            </a>
-                        </li>
+        <!-- ✅ Sidebar Menu -->
+        <div class="sidebar-menu">
+            <ul class="menu">
+                <li class="sidebar-item active">
+                    <a asp-controller="Home" asp-action="Index" class="sidebar-link">
+                        <i class="bi bi-grid-fill"></i><span>Dashboard</span>
+                    </a>
+                </li>
                 <li class="sidebar-item"><a href="@Url.Action("ChartOfAccount", "Lists")" class="sidebar-link"><i class="bi bi-calculator"></i><span>Accountant</span></a></li>
-                <li class="sidebar-item"><a asp-controller="CustomerCenter" asp-action="Index"  class="sidebar-link"><i class="bi bi-people"></i><span>Customers</span></a></li>
+                <li class="sidebar-item"><a asp-controller="CustomerCenter" asp-action="Index" class="sidebar-link"><i class="bi bi-people"></i><span>Customers</span></a></li>
                 <li class="sidebar-item"><a asp-controller="Vendors" asp-action="Index" class="sidebar-link"><i class="bi bi-person-lines-fill"></i><span>Vendors</span></a></li>
                 <li class="sidebar-item"><a href="@Url.Action("HRMS", "HR")" class="sidebar-link"><i class="bi bi-person-badge"></i><span>HR</span></a></li>
                 <li class="sidebar-item"><a href="@Url.Action("ItemList", "Lists")" class="sidebar-link"><i class="bi bi-box-seam"></i><span>Inventory</span></a></li>
                 <li class="sidebar-item"><a href="@Url.Action("WareHouse", "Inventory")" class="sidebar-link"><i class="bi bi-building"></i><span>Warehouse</span></a></li>
                 <li class="sidebar-item"><a href="@Url.Action("BankCenter", "Account")" class="sidebar-link"><i class="bi bi-bank"></i><span>Banking</span></a></li>
-                    </ul>
-                </div>
-
-                <!-- ✅ Sidebar Footer -->
-                <div class="sidebar-footer">
-                    <ul class="menu">
-                <li class="sidebar-item"><a href="@Url.Action("ChangePassword", "Settings")" class="sidebar-link"><i class="bi bi-gear"></i><span>Settings</span></a></li>
-                    </ul>
-                </div>
-
-                <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
-            </div>
+            </ul>
         </div>
 
-@* 
-        @section Scripts {
+        <!-- ✅ Sidebar Footer -->
+        <div class="sidebar-footer">
+            <ul class="menu">
+                <li class="sidebar-item"><a href="@Url.Action("ChangePassword", "Settings")" class="sidebar-link"><i class="bi bi-gear"></i><span>Settings</span></a></li>
+            </ul>
+        </div>
+
+        <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
+    </div>
+</div>
+
+
+@section Scripts {
 
 
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="~/assets/vendors/fontawesome/all.min.css" rel="stylesheet" />
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
-    @* <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
-        }
- *@
+}
 
 
- 
+
