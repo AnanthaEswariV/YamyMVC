@@ -1,11 +1,13 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class PaymentVoucherService(YamyDbContext context, IHttpContextAccessor httpContextAccessor) : IPaymentVoucherService
+    public class PaymentVoucherService(YamyDbContext context, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IPaymentVoucherService
         {
         private DateOnly Starting = default;
         private DateOnly Ending = default;
         private readonly YamyDbContext _context = context;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+
         public async Task<ReceiveVoucherCenterViewModel> QueryPurchaseAsync(DateOnly from = default, DateOnly to = default, bool Date = true, CancellationToken ct = default)
             {
             if (Date == true)
@@ -111,9 +113,7 @@
                 throw new InvalidOperationException("Invoice must contain at least one item.");
 
             // 1) Generate invoice no (async)
-            var invoiceNo = string.IsNullOrWhiteSpace(Model.VoucherNo)
-                ? await GenerateNextPaymentCode()
-                : Model.VoucherNo.Trim();
+            var invoiceNo =  await GenerateNextPaymentCode();
 
             // 2) Voucher + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -162,11 +162,12 @@
                         {
                         var New_Cheque = new TblCheckDetail
                             {
-                            PvcNo = PaymentVoucherId,
+                            Date = DateOnly.FromDateTime(DateTime.Now),
                             CheckId = Model.Debit.BookNo,  //Add From The model (  )
                             CheckNo = Model.Debit.BookNo,
                             CheckDate = Model.Debit.ChequeDate,
                             CheckType = "Payment",
+                            PvcNo = PaymentVoucherId,
                             CheckName = Model.Debit.ChequeName,
                             Amount = Model.Amount,
                             State = "New",
@@ -176,12 +177,10 @@
                         _context.TblCheckDetails.Add(New_Cheque);
                         await _context.SaveChangesAsync();
                         }
-                    else if (Model.PaymentMethods.FirstOrDefault(i => i.Value == Model.PaymentMethod?.ToString())?.Text == "Transfer")
-                        { }
                     //5) Payment Voucher Details + Update Employ + Update Vendor(Purchase) + Entry journals 
                     await AddPaymentVoucherDetailsAsync(Model, PaymentVoucherId, invoiceNo);
                     //7) Add User Log
-                    //Add User Log
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Insert Payment Voucher", "Payment Voucher", PaymentVoucherId, "Insered Payment Voucher: " + invoiceNo);
                     //8)Debit Costcenter Entry
                     await InsertCostCenterTransaction(Model.Date, Model.Amount, 0, PaymentVoucherId, "Payment", "Payment Debit Entry", (int)Model.Debit.CostCenterId);
                     //9)Credit Costcenter Entry
@@ -260,7 +259,7 @@
                               .Where(t => t.Id == i.invId)
                               .ExecuteUpdateAsync(updates => updates
                                   .SetProperty(t => t.Pay, totalPaid)
-                                  .SetProperty(t => t.Change, totalPaid - net)
+                                  .SetProperty(t => t.Change, net - totalPaid )
                              );
                     if (Model.IsSubcontractor)
                         Type = "Subcontractor Payment";
@@ -415,17 +414,22 @@
                                            .SetProperty(c => c.CheckDate, Model.Credit.ChequeDate)
                                            .SetProperty(c => c.CheckName, Model.Credit.ChequeName)
                                            .SetProperty(c => c.Amount, Model.Amount)
+                                           .SetProperty(c => c.PvcNo, Model.Id)
+                                           .SetProperty(c => c.CheckType, "Payment")
+                                           .SetProperty(c => c.CheckId, Model.Credit.BookNo)
+                                           
                                        );
                             }
                         else
                             {
                             var New_Cheque = new TblCheckDetail
                                 {
-                                PvcNo = Model.Id,
+                                Date= DateOnly.FromDateTime(DateTime.Now),
                                 CheckId = Model.Debit.BookNo,  //Add From The model (  )
                                 CheckNo = Model.Debit.BookNo,
                                 CheckDate = Model.Debit.ChequeDate,
                                 CheckType = "Payment",
+                                PvcNo = Model.Id,
                                 CheckName = Model.Debit.ChequeName,
                                 Amount = Model.Amount,
                                 State = "New",
@@ -442,13 +446,19 @@
                         { }
                     //5) Payment Voucher Details + Update Employ + Update Vendor(Purchase) + Entry journals
                     await AddPaymentVoucherDetailsAsync(Model, (int)Model.Id, Model.VoucherNo);
-                  
+
+                    var PaymentCostCenter = await _context.TblCostCenterTransactions
+                 .Where(d => d.RefId == Model.Id&& d.Type== "Payment")
+                 .ToListAsync();
+                    _context.TblCostCenterTransactions.RemoveRange(PaymentCostCenter);
+
+
                     //6)Debit Costcenter Entry
                     await InsertCostCenterTransaction(Model.Date, Model.Amount, 0, (int)Model.Id, "Payment", "Payment Debit Entry", (int)Model.Debit.CostCenterId);
                     //7)Credit Costcenter Entry
                     await InsertCostCenterTransaction(Model.Date, 0, Model.Amount, (int)Model.Id, "Payment", "Payment Credit Entry", (int)Model.Credit.CostCenterId);
                     //8) Add User Log
-                    //Add User Log
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Payment Voucher", "Payment Voucher", (int)Model.Id, "Updated Payment Voucher: " + Model.VoucherNo);
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
                     }

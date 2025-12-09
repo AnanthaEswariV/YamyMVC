@@ -49,6 +49,17 @@
                 
                 });
             }
+        [HttpPost]
+        public async Task<IActionResult> Create(ReceiptVoucherViewModel model)
+            {
+            if (model.Id == 0 || model.Id == null)
+                await _ReceiptVoucher.CreatePvAsync(model);
+            else
+                await _ReceiptVoucher.UpdatePvAsync(model);
+
+            return RedirectToAction(nameof(Index));
+
+            }
         public async Task<IActionResult> Edit(int id)
             {
             var customers = await _ListServices.GetCustomersRetrunAsync();

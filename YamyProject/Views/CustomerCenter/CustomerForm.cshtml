@@ -1,295 +1,6 @@
-﻿@* @model CustomerViewModel
+﻿@model CustomerViewModel
 @{
     ViewData["Title"] = "New Customer";
-
-    }
-
-<div class="modal fade" id="CustomerModal" tabindex="-1"
-     aria-labelledby="CustomerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content shadow-lg border-0">
-            <form method="post">
-                <!-- HEADER -->
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="CustomerModalLabel">
-                        New
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white"
-                            data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <input type="hidden" class="form-control" asp-for="Customer.Id" id="Type" value="@Model.Customer.Id" readonly />
-
-          @*       <input type="hidden" class="form-control" asp-for="CategoryId" id="CategoryId" value="@Model.Customer.CategoryId" readonly />
-                <input type="hidden" class="form-control" asp-for="CountryId" id="CountryId" value="@Model.Customer.CountryId" readonly />
-                <input type="hidden" class="form-control" asp-for="CityId" id="CityId" value="@Model.Customer.CityId" readonly />
-                <input type="hidden" class="form-control" asp-for="AccountId" id="AccountId" value="@Model.Customer.AccountId" readonly />
-                <input type="hidden" class="form-control" asp-for="ProjectId" id="ProjectId" value="@Model.ProjectId" readonly />
- 
-                <!-- BODY -->
-                <div class="modal-body">
-                    <!-- BASIC DATA -->
-                    <section class="border rounded-3 p-3 mb-3">
-                        <div class="fw-semibold mb-3 small text-uppercase">Basic Data</div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="CustomerorName" class="form-label">
-                                    Customeror Name
-                                </label>
-                                <input id="CustomerorName" asp-for="Customer.Name"
-                                       class="form-control" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="CustomerorCode" class="form-label">
-                                    Customeror Cod
-                                </label>
-                                <input id="CustomerorCode" asp-for="Customer.Code"
-                                       class="form-control" readonly />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="Category" class="form-label">Category</label>
-                                <div class="input-group">
-                                    <select id="Category" name="Category" asp-for="Customer.CatId" asp-items="@(new SelectList(Model.Categoriess, "Id", "Name"))"
-                                            class="form-select">
-                                        @* <option>vendors_test1</option> 
-                                        <!-- more options here -->
-                                    </select>
-                                    <a type="button" class="btn btn-outline-secondary">
-                                        Add New
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label d-block">Opening Balance</label>
-                                <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <div class="btn-group" role="group">
-                                        <input type="radio" class="btn-check" name="OpeningType" asp-for="Debit"
-                                               id="obDebit" value="Debit" checked />
-                                        <label class="btn btn-outline-primary" for="obDebit">
-                                            Debit
-                                        </label>
-
-                                        <input type="radio" class="btn-check" name="OpeningType" asp-for="Credit"
-                                               id="obCredit" value="Credit" />
-                                        <label class="btn btn-outline-primary" for="obCredit">
-                                            Credit
-                                        </label>
-                                    </div>
-                                    <input asp-for="OpeningAmount"
-                                           class="form-control text-end"
-                                           style="max-width: 140px;"
-                                           placeholder="Amount" />
-
-                                    <input type="date" name="OpeningDate" asp-for="Date"
-                                           class="form-control" style="max-width: 200px;" />
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- CONTACT & ADDRESS DATA -->
-                    <section class="border rounded-3 p-3 mb-3">
-                        <div class="fw-semibold mb-3 small text-uppercase">
-                            Contact &amp; Address Data
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="MainPhone" class="form-label">Main Phone</label>
-                                <input id="MainPhone" name="MainPhone" asp-for="MainPhone" class="form-control" />
-                            </div>
-                            <div class="col-md-4">
-                                <label for="WorkPhone" class="form-label">Work Phone</label>
-                                <input id="WorkPhone" name="WorkPhone" asp-for="WorkPhone" class="form-control" />
-                            </div>
-                            <div class="col-md-4">
-                                <label for="MobileOrFax" class="form-label">
-                                    Mobile_Or_Fax
-                                </label>
-                                <input id="MobileOrFax" name="MobileOrFax" asp-for="Fax"
-                                       class="form-control" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="Email" class="form-label">Email</label>
-                                <input id="Email" name="Email" asp-for="Email" class="form-control" />
-                            </div>
-                            <div class="col-md-6">
-                                <label for="CcEmail" class="form-label">CC Email</label>
-                                <input id="CcEmail" name="CcEmail" asp-for="EmailCC" class="form-control" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="Website" class="form-label">Website</label>
-                                <input id="Website" name="Website" class="form-control" asp-for="Website" />
-                            </div>
-
-                            <div class="col-md-3">
-                                <label for="Country" class="form-label">Country</label>
-                                <select id="Country" name="Country" class="form-select" asp-for="CountryId" asp-items="@(new SelectList(Model.Country, "Id", "Name"))">
-                                    @* <option>Albania</option> 
-                                    <!-- more countries -->
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="City" class="form-label">City</label>
-                                <select id="City" name="City" class="form-select" asp-for="CountryId" asp-items="@(new SelectList(Model.City, "Id", "Name"))">
-                                    @* <option>Tirana</option> 
-                                    <!-- more cities -->
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="Region" class="form-label">Region</label>
-                                <input id="Region" name="Region" class="form-control" asp-for="Region" />
-                            </div>
-                            <div class="col-md-6">
-                                <label for="BuildingName" class="form-label">
-                                    Building Name
-                                </label>
-                                <input id="BuildingName" name="BuildingName" asp-for="BulidingNumber"
-                                       class="form-control" />
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- ACCOUNT SETTINGS & OTHER -->
-                    <section class="border rounded-3 p-3">
-                        <div class="fw-semibold mb-3 small text-uppercase">
-                            Account Settings &amp; Other
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="Account" class="form-label">Account</label>
-                                <select id="Account" name="Account" class="form-select" asp-for="AccountId" asp-items="@(new SelectList(Model.Account, "Id", "Name"))">
-                                    @* <option>2101001 - Vendors</option> 
-                                    <!-- more accounts -->
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="TRN" class="form-label">TRN</label>
-                                <input id="TRN" name="TRN" class="form-control" asp-for="TRN" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="FacilityName" class="form-label">Facility_Name</label>
-                                <input id="FacilityName" name="FacilityName" asp-for="FaciltyName"
-                                       class="form-control" />
-                            </div>
-
-                            <div class="col-md-6 d-flex align-items-center">
-                                <div class="form-check mt-4">
-                                    <input class="form-check-input" type="checkbox" asp-for="IsActive"
-                                           id="Active" name="Active" checked />
-                                    <label class="form-check-label" for="Active">
-                                        Active
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="col-md-12">
-                                <label class="form-label">Project</label>
-                                <div class="border rounded-3 p-2"
-                                     style="max-height: 150px; overflow-y: auto;">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj135" name="Projects" value="135" />
-                                        <label class="form-check-label" for="proj135">
-                                            135 - p1-135
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj136" name="Projects" value="136" />
-                                        <label class="form-check-label" for="proj136">
-                                            136 - fxc-136
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj137" name="Projects" value="137" />
-                                        <label class="form-check-label" for="proj137">
-                                            137 - tjhgn
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj153" name="Projects" value="153" />
-                                        <label class="form-check-label" for="proj153">
-                                            153 - Eissa Mohammed Ali Ahmed K…
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- FOOTER -->
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="submit" name="saveAndNew" value="true"
-                            class="btn btn-outline-primary">
-                        Save &amp; New
-                    </button>
-                    <button type="button" class="btn btn-secondary"
-                            data-bs-dismiss="modal">
-                        Close
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-    @section Scripts {
-    <small id="openingPreview" class="text-muted ms-2"></small>
-
-    <script>
-        function updateOpeningPreview() {
-            const type = document.querySelector('input[name="OpeningType"]:checked')?.value;
-            const amt  = parseFloat(document.getElementById('OpeningAmount').value) || 0;
-            const sign = type === 'Credit' ? -Math.abs(amt) : Math.abs(amt);
-            document.getElementById('openingPreview').textContent = sign.toFixed(2);
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const radios = document.querySelectorAll('input[name="OpeningType"]');
-            const amtInput = document.getElementById('OpeningAmount');
-
-            radios.forEach(r => r.addEventListener('change', updateOpeningPreview));
-            if (amtInput) amtInput.addEventListener('input', updateOpeningPreview);
-
-            updateOpeningPreview();
-        });
-                document.addEventListener('DOMContentLoaded', function () {
-            // ... (preview wiring above)
-
-            const form = document.getElementById('CustomerForm');
-            if (!form) return;
-
-            form.addEventListener('submit', function (e) {
-                // read Id from hidden field
-                const idField = form.querySelector('input[name="Id"]');
-                const idVal = parseInt(idField?.value || '0', 10);
-
-                // if Id > 0 => Edit, else => Create
-                if (idVal && idVal > 0) {
-                    form.action = '@Url.Action("Edit", "CustomerorsC")';
-                } else {
-                    form.action = '@Url.Action("Create", "CustomerorsC")';
-                }
-
-            });
-        });
-
-    </script>
-
-    } *@
-
-@model CustomerViewModel
-@{
     Layout = null;   // important for AJAX partial
     }
 
@@ -361,7 +72,7 @@
                                 </button>
                             </div>
                         </div>
-
+@* 
                         <div class="col-md-6 col-12 mt-2">
                             <label class="form-label small mb-1">Opening Balance — Debit</label>
                             <input asp-for="Transactions.Debit"
@@ -375,6 +86,32 @@
                                    id="Credit"
                                    class="form-control form-control-sm"
                                    placeholder="0.00" />
+                        </div> *@
+                        <div></div>
+                        <div class="col-md-6">
+                            <label class="form-label d-block">Opening Balance</label>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="OpeningType" asp-for="Debit"
+                                           id="obDebit" value="Debit" checked />
+                                    <label class="btn btn-outline-primary" for="obDebit">
+                                        Debit
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="OpeningType" asp-for="Credit"
+                                           id="obCredit" value="Credit" />
+                                    <label class="btn btn-outline-primary" for="obCredit">
+                                        Credit
+                                    </label>
+                                </div>
+                                <input asp-for="Customer.Balance"
+                                       class="form-control form-control-sm"
+                                       @* style="max-width: 140px;" *@
+                                       id="Balance"
+                                       placeholder="0.00" />
+
+                               
+                            </div>
                         </div>
                     </div>
 
@@ -483,6 +220,26 @@
                                    class="form-control form-control-sm"
                                    placeholder="Facility Name" />
                         </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" asp-for="IsActive"
+                                       id="Active" name="Active" checked />
+                                <label class="form-check-label" for="Active">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <label class="form-label small mb-1">Project</label>
+                            <select asp-for="Customer.ProjectId"
+                                    class="form-select form-select-sm"
+                                    asp-items="Model.Projects">
+                                <option value="">Select Account</option>
+                            </select>
+                        </div>
+
                     </div>
                 </div>
 
