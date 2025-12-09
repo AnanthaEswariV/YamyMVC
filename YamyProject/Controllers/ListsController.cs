@@ -3798,6 +3798,9 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
@@ -3885,7 +3888,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     {
                         SN = count++,
                         Date = reader["date"].ToString(),
-                        TransactionId = reader["transaction_id"].ToString(),
+                        TransactionId = reader["id"].ToString(),
                         HumName = reader["hum name"].ToString(),
                         AccountId = reader["account_id"].ToString(),
                         AccountCode = reader["Account Code"].ToString(),
@@ -3907,12 +3910,148 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdateJournal([FromBody] JournalUpdateRequest request)
-        {
+        //[HttpPost]
+        //public async Task<IActionResult> UpdateJournal([FromBody] JournalUpdateRequest request)
+        //{
 
-            if (request == null || request.Entries == null || request.Entries.Count == 0)
-                return Json(new { status = false, message = "No journal entries provided." });
+        //    if (request == null || request.Entries == null || request.Entries.Count == 0)
+        //        return Json(new { status = false, message = "No journal entries provided." });
+
+        //    try
+        //    {
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+        //        int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        //        if (userId <= 0)
+        //            return Unauthorized(new { status = false, message = "User not logged in" });
+
+        //        await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        using var transaction = await conn.BeginTransactionAsync();
+
+        //        decimal totalDebit = 0, totalCredit = 0;
+
+        //        foreach (var row in request.Entries)
+        //        {
+        //            if (row.AccountId <= 0)
+        //                continue;
+
+
+        //            decimal debit = row.Debit ?? 0;
+        //            decimal credit = row.Credit ?? 0;
+        //            totalDebit += debit;
+        //            totalCredit += credit;
+
+        //            string updateQuery = @"
+        //        UPDATE tbl_transaction 
+        //        SET 
+        //            date = @date,
+        //            account_id = @accountId,
+        //            debit = @debit,
+        //            credit = @credit,
+        //            transaction_id = @transactionId,
+        //            hum_id = @humId,
+        //            type = @type,
+        //            description = @description,
+        //            modified_by = @modifiedBy,
+        //            modified_date = NOW()
+        //        WHERE id = @id;
+        //    ";
+
+        //            await using (var cmd = new MySqlCommand(updateQuery, conn, (MySqlTransaction)transaction))
+        //            {
+        //                cmd.Parameters.AddWithValue("@date", row.Date);
+        //                cmd.Parameters.AddWithValue("@accountId", row.AccountId);
+        //                cmd.Parameters.AddWithValue("@debit", debit);
+        //                cmd.Parameters.AddWithValue("@credit", credit);
+        //                cmd.Parameters.AddWithValue("@transactionId", row.Id);
+        //                cmd.Parameters.AddWithValue("@humId", row.HumId ?? "0");
+        //                cmd.Parameters.AddWithValue("@type", request.VoucherType);
+        //                cmd.Parameters.AddWithValue("@description", row.Description ?? "");
+        //               cmd.Parameters.AddWithValue("@modifiedBy", userId);
+        //                cmd.Parameters.AddWithValue("@id", row.Id); 
+        //                await cmd.ExecuteNonQueryAsync();
+        //            }
+
+        //            // --- Handle type-specific account updates ---
+        //            string type = request.VoucherType;
+        //            string secondaryQuery = type switch
+        //            {
+        //                "Customer Opening Balance" => "UPDATE tbl_customer SET account_id = @acId WHERE id = @hId;",
+        //                "Vendor Opening Balance" => "UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId;",
+        //                "Subcontractor Opening Balance" => "UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId;",
+        //                _ => ""
+        //            };
+
+        //            if (!string.IsNullOrEmpty(secondaryQuery))
+        //            {
+        //                await using var cmd2 = new MySqlCommand(secondaryQuery, conn, (MySqlTransaction)transaction);
+        //                cmd2.Parameters.AddWithValue("@acId", row.AccountId);
+        //                cmd2.Parameters.AddWithValue("@hId", row.HumId);
+        //                await cmd2.ExecuteNonQueryAsync();
+        //            }
+
+        //        }
+
+        //        // --- Update Balance Table ---
+        //        decimal amount = totalDebit > totalCredit ? totalDebit : totalCredit;
+        //        await UpdateVoucherTablesAsync(conn, transaction, request.VoucherType, amount, request.CurrentHumId, request.CurrentVoucherId, request.ModifiedBy);
+
+        //        await transaction.CommitAsync();
+
+        //        return Ok(new
+        //        {
+        //            status = true,
+        //            message = "Journal updated successfully",
+        //            totalDebit,
+        //            totalCredit
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return Json(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
+        //private async Task UpdateVoucherTablesAsync(MySqlConnection conn, MySqlTransaction transaction, string type, decimal amount, string humId, string voucherId, int modifiedBy)
+        //{
+        //    try
+        //    {
+        //        string query = type switch
+        //        {
+        //            "Customer Opening Balance" => "UPDATE tbl_customer SET Balance=@amount WHERE id=@hId;",
+        //            "Vendor Opening Balance" => "UPDATE tbl_vendor SET Balance=@amount WHERE id=@hId;",
+        //            "Subcontractor Opening Balance" => "UPDATE tbl_vendor SET Balance=@amount WHERE id=@hId;",
+        //            _ => ""
+        //        };
+
+        //        if (!string.IsNullOrEmpty(query))
+        //        {
+        //            await using var cmd = new MySqlCommand(query, conn, transaction);
+        //            cmd.Parameters.AddWithValue("@amount", amount);
+        //            cmd.Parameters.AddWithValue("@hId", humId);
+        //            await cmd.ExecuteNonQueryAsync();
+        //        }
+
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        throw ex;
+        //    }
+
+        //}
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateJournal([FromBody] JournalVoucherRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.Id <= 0)
+                return BadRequest(new { status = false, message = "Invalid journal voucher ID" });
 
             try
             {
@@ -3920,126 +4059,315 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
 
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                using var transaction = await conn.BeginTransactionAsync();
+                // Calculate totals
+                var totals = CalculateTotals(model.JournalEntries);
+                decimal totalDebit = totals.totalDebit;
+                decimal totalCredit = totals.totalCredit;
 
-                decimal totalDebit = 0, totalCredit = 0;
-
-                foreach (var row in request.Entries)
+                // Validate Debit and Credit amounts
+                if (!ValidateDebitAndCreditAmount(totalDebit, totalCredit))
                 {
-                    if (string.IsNullOrEmpty(row.AccountId))
-                        continue;
-
-                    decimal debit = row.Debit ?? 0;
-                    decimal credit = row.Credit ?? 0;
-                    totalDebit += debit;
-                    totalCredit += credit;
-
-                    string updateQuery = @"
-                UPDATE tbl_transaction 
-                SET 
-                    date = @date,
-                    account_id = @accountId,
-                    debit = @debit,
-                    credit = @credit,
-                    transaction_id = @transactionId,
-                    hum_id = @humId,
-                    type = @type,
-                    description = @description,
-                    modified_by = @modifiedBy,
-                    modified_date = NOW()
-                WHERE id = @id;
-            ";
-
-                    await using (var cmd = new MySqlCommand(updateQuery, conn, (MySqlTransaction)transaction))
-                    {
-                        cmd.Parameters.AddWithValue("@date", row.Date);
-                        cmd.Parameters.AddWithValue("@accountId", row.AccountId);
-                        cmd.Parameters.AddWithValue("@debit", debit);
-                        cmd.Parameters.AddWithValue("@credit", credit);
-                        cmd.Parameters.AddWithValue("@transactionId", request.TransactionId);
-                        cmd.Parameters.AddWithValue("@humId", row.HumId ?? "0");
-                        cmd.Parameters.AddWithValue("@type", request.VoucherType);
-                        cmd.Parameters.AddWithValue("@description", row.Description ?? "");
-                       cmd.Parameters.AddWithValue("@modifiedBy", userId);
-                        cmd.Parameters.AddWithValue("@id", row.Id); 
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-
-                    // --- Handle type-specific account updates ---
-                    string type = request.VoucherType;
-                    string secondaryQuery = type switch
-                    {
-                        "Customer Opening Balance" => "UPDATE tbl_customer SET account_id = @acId WHERE id = @hId;",
-                        "Vendor Opening Balance" => "UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId;",
-                        "Subcontractor Opening Balance" => "UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId;",
-                        _ => ""
-                    };
-
-                    if (!string.IsNullOrEmpty(secondaryQuery))
-                    {
-                        await using var cmd2 = new MySqlCommand(secondaryQuery, conn, (MySqlTransaction)transaction);
-                        cmd2.Parameters.AddWithValue("@acId", row.AccountId);
-                        cmd2.Parameters.AddWithValue("@hId", row.HumId);
-                        await cmd2.ExecuteNonQueryAsync();
-                    }
-
+                    return BadRequest(new { status = false, message = "Debit Total and Credit Total are not equal." });
                 }
 
-                // --- Update Balance Table ---
-                decimal amount = totalDebit > totalCredit ? totalDebit : totalCredit;
-                await UpdateVoucherTablesAsync(conn, transaction, request.VoucherType, amount, request.CurrentHumId, request.CurrentVoucherId, request.ModifiedBy);
-
-                await transaction.CommitAsync();
-
-                return Ok(new
+                // Check required data
+                if (!CheckRequiredData(model.JournalEntries))
                 {
-                    status = true,
-                    message = "Journal updated successfully",
-                    totalDebit,
-                    totalCredit
-                });
+                    return BadRequest(new { status = false, message = "Invalid account data in one or more rows." });
+                }
+
+                // Update details
+                await UpdateDetailsAsync(conn, model);
+
+                return Ok(new { status = true, message = "Journal voucher updated successfully", journalId = model.Id });
             }
             catch (Exception ex)
             {
-                return Json(500, new { status = false, message = ex.Message });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
-        private async Task UpdateVoucherTablesAsync(MySqlConnection conn, MySqlTransaction transaction, string type, decimal amount, string humId, string voucherId, int modifiedBy)
+        private (decimal totalDebit, decimal totalCredit) CalculateTotals(List<JournalEntryItem> entries)
         {
-            try
-            {
-                string query = type switch
-                {
-                    "Customer Opening Balance" => "UPDATE tbl_customer SET Balance=@amount WHERE id=@hId;",
-                    "Vendor Opening Balance" => "UPDATE tbl_vendor SET Balance=@amount WHERE id=@hId;",
-                    "Subcontractor Opening Balance" => "UPDATE tbl_vendor SET Balance=@amount WHERE id=@hId;",
-                    _ => ""
-                };
+            decimal totalDebit = 0, totalCredit = 0;
 
-                if (!string.IsNullOrEmpty(query))
+            if (entries == null || !entries.Any())
+                return (totalDebit, totalCredit);
+
+            foreach (var entry in entries)
+            {
+                // Check if debit or credit values are null or empty
+                if (entry.Debit == null && entry.Credit == null)
+                    continue;
+
+                if (string.IsNullOrEmpty(entry.Debit?.ToString().Trim()) && string.IsNullOrEmpty(entry.Credit?.ToString().Trim()))
+                    continue;
+
+                // Parse and sum debit and credit
+                if (!string.IsNullOrEmpty(entry.Debit?.ToString()))
                 {
-                    await using var cmd = new MySqlCommand(query, conn, transaction);
-                    cmd.Parameters.AddWithValue("@amount", amount);
-                    cmd.Parameters.AddWithValue("@hId", humId);
+                    totalDebit += decimal.Parse(entry.Debit.ToString());
+                }
+
+                if (!string.IsNullOrEmpty(entry.Credit?.ToString()))
+                {
+                    totalCredit += decimal.Parse(entry.Credit.ToString());
+                }
+            }
+
+            return (totalDebit, totalCredit);
+        }
+
+        private bool ValidateDebitAndCreditAmount(decimal totalDebit, decimal totalCredit)
+        {
+            // Check if both are zero
+            if (totalDebit == 0 && totalCredit == 0)
+            {
+                return false;
+            }
+
+            // Check if debit equals credit
+            if (totalDebit == totalCredit)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool CheckRequiredData(List<JournalEntryItem> entries)
+        {
+            if (entries == null || !entries.Any())
+                return false;
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var entry = entries[i];
+
+                // Check if account_name is null, empty, or zero
+                if (entry.AccountName == null ||
+                    string.IsNullOrEmpty(entry.AccountName.ToString()) ||
+                    (decimal.TryParse(entry.AccountName.ToString(), out decimal val) && val == 0))
+                {
+                    // Row index is i + 1 for user-friendly message
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private async Task UpdateDetailsAsync(MySqlConnection conn, JournalVoucherRequest model)
+        {
+            decimal totalDebitAmount = 0, totalCreditAmount = 0;
+            string currenthumId = "";
+
+            foreach (var entry in model.JournalEntries)
+            {
+                // Skip if account_id is null or empty
+                if (string.IsNullOrEmpty(entry.AccountId?.ToString()))
+                    continue;
+
+                // Skip if both Debit and Credit are null or empty
+                if ((entry.Debit == null || string.IsNullOrEmpty(entry.Debit.ToString())) &&
+                    (entry.Credit == null || string.IsNullOrEmpty(entry.Credit.ToString())))
+                    continue;
+
+                decimal debitAmount = entry.Debit == null ? 0 : Convert.ToDecimal(entry.Debit);
+                decimal creditAmount = entry.Credit == null ? 0 : Convert.ToDecimal(entry.Credit);
+                string accountId = entry.AccountId.ToString();
+                string description = entry.Description ?? "";
+                string humId = entry.HumId ?? "0";
+                string tId = entry.TId ?? "0";
+                DateTime date = model.Date.Date;
+
+                // Update transaction
+                var updateQuery = @"UPDATE tbl_transaction 
+                SET date = @date, 
+                    account_id = @accountId, 
+                    debit = @debit, 
+                    credit = @credit, 
+                    transaction_id = @transactionId, 
+                    hum_id = @hum_id,
+                    type = @type,
+                    description = @description, 
+                    modified_by = @modifiedBy, 
+                    modified_date = @modifiedDate
+                WHERE id = @journalId;";
+
+                using (var cmd = new MySqlCommand(updateQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@date", date);
+                    cmd.Parameters.AddWithValue("@accountId", accountId);
+                    cmd.Parameters.AddWithValue("@debit", debitAmount);
+                    cmd.Parameters.AddWithValue("@credit", creditAmount);
+                    cmd.Parameters.AddWithValue("@transactionId", 1);
+                    cmd.Parameters.AddWithValue("@hum_id", humId);
+                    cmd.Parameters.AddWithValue("@type", model.VType);
+                    cmd.Parameters.AddWithValue("@description", description);
+                    cmd.Parameters.AddWithValue("@modifiedBy", model.UserId);
+                    cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@journalId", tId);
+
                     await cmd.ExecuteNonQueryAsync();
                 }
 
+                totalDebitAmount += debitAmount;
+                totalCreditAmount += creditAmount;
+                currenthumId = humId;
+
+                // Update related tables based on voucher type
+                string type = model.CurrentVoucherName;
+                string query = "";
+
+                if (type == "Customer Opening Balance")
+                {
+                    query = @"UPDATE tbl_customer SET account_id = @acId WHERE id = @hId";
+                    using (var cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@hId", humId);
+                        cmd.Parameters.AddWithValue("@acId", accountId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+                else if (type == "Vendor Opening Balance")
+                {
+                    query = @"UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId";
+                    using (var cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@hId", humId);
+                        cmd.Parameters.AddWithValue("@acId", accountId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+                else if (type == "Subcontractor Opening Balance")
+                {
+                    query = @"UPDATE tbl_vendor SET account_id = @acId WHERE id = @hId";
+                    using (var cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@hId", humId);
+                        cmd.Parameters.AddWithValue("@acId", accountId);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+                else if (type == "Purchase Invoice Cash" || type == "Purchase Invoice")
+                {
+                    // Commented out as per original code
+                }
+                else if (type == "Sales Invoice Cash" || type == "Sales Invoice")
+                {
+                    // Commented out as per original code
+                }
+                else if (type.StartsWith("SalesReturn"))
+                {
+                    // Commented out as per original code
+                }
+                else if (type.StartsWith("PurchaseReturn"))
+                {
+                    // Commented out as per original code
+                }
+                else if (type == "Vendor Payment" || type == "Employee Loan Payment" ||
+                         type == "Employee Petty Cash Payment" || type == "Employee Salary Payment")
+                {
+                    // Commented out as per original code
+                }
+                else if (type == "Petty Cash")
+                {
+                    // Commented out as per original code
+                }
+                else if (type == "Customer Receipt" || type == "General Receipt")
+                {
+                    // Commented out as per original code
+                }
+                else if (type == "SALES RETURN")
+                {
+                    // Commented out as per original code
+                }
+                else if (type == "PURCHASE RETURN")
+                {
+                    // Commented out as per original code
+                }
+                else
+                {
+                    query = "";
+                }
+
             }
-            catch(Exception ex)
+
+            // Update voucher tables if totals are valid
+            if (totalDebitAmount >= 0 || totalCreditAmount >= 0)
             {
-                throw ex;
+                string amount = totalDebitAmount > totalCreditAmount ? totalDebitAmount.ToString() : totalCreditAmount.ToString();
+                await UpdateVoucherTablesAsync(conn, model.CurrentVoucherName, amount, currenthumId, model.CurrentVoucherId, model.UserId);
             }
-     
         }
 
+        private async Task UpdateVoucherTablesAsync(MySqlConnection conn, string type, string amount, string humId, string voucherId, string userId)
+        {
+            string query = "";
+
+            if (type == "Customer Opening Balance")
+            {
+                query = @"UPDATE tbl_customer SET Balance = @amount WHERE id = @humId";
+            }
+            else if (type == "Vendor Opening Balance")
+            {
+                query = @"UPDATE tbl_vendor SET Balance = @amount WHERE id = @humId";
+            }
+            else if (type == "Subcontractor Opening Balance")
+            {
+                query = @"UPDATE tbl_vendor SET Balance = @amount WHERE id = @humId";
+            }
+            else if (type == "Purchase Invoice Cash" || type == "Purchase Invoice")
+            {
+                // Commented out as per original code
+            }
+            else if (type == "Sales Invoice Cash" || type == "Sales Invoice")
+            {
+                // Commented out as per original code
+            }
+            else if (type.StartsWith("SalesReturn"))
+            {
+                // Commented out as per original code
+            }
+            else if (type.StartsWith("PurchaseReturn"))
+            {
+                // Commented out as per original code
+            }
+            else if (type == "Vendor Payment" || type == "Employee Loan Payment" ||
+                     type == "Employee Petty Cash Payment" || type == "Employee Salary Payment")
+            {
+                // Commented out as per original code
+            }
+            else if (type == "Customer Receipt" || type == "General Receipt")
+            {
+                // Commented out as per original code
+            }
+            else if (type == "SALES RETURN")
+            {
+                // Commented out as per original code
+            }
+            else if (type == "PURCHASE RETURN")
+            {
+                // Commented out as per original code
+            }
+
+            if (!string.IsNullOrEmpty(query))
+            {
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@amount", amount);
+                    cmd.Parameters.AddWithValue("@humId", humId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+
+            voucherId = string.IsNullOrEmpty(voucherId) ? "0" : voucherId;
+        }
 
         #endregion
 

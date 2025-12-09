@@ -1,7 +1,16 @@
-﻿@{
+﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+
+@{
     ViewData["Title"] = "General Journal Transaction";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var userId = HttpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
+
 }
+
+
+
 <style>
     .dt-buttons .btn-primary {
         background-color: #435EBE !important;
@@ -19,10 +28,12 @@
     <div class="container-fluid mt-3">
         <div class="card shadow-sm">
             <div class="card-header text-center">
-                <strong>General Journal Transaction</strong>
+                <strong style="color: #254acd; font-weight: 700; font-family: 'Georgia', serif; font-size: 1.25rem;">
+                    General Journal Voucher
+                </strong>
             </div>
             <div class="card-body">
-                <!-- Date, Voucher No, Name -->
+                @*       <!-- Date, Voucher No, Name -->
                 <div class="row mb-3">
                     <div class="col-md-3">
                         <label for="date" class="form-label">Date</label>
@@ -36,40 +47,88 @@
                         <label for="name" class="form-label">Name</label>
                         <input type="text" id="name" class="form-control" placeholder="Name" readonly required />
                     </div>
+                </div> *@
+
+                <div class="card-header d-flex justify-content-between align-items-center" style="padding: 1rem 1.5rem;">
+                    <!-- Left side: QR + Title -->
+                    <div class="d-flex align-items-center">
+                        <div style="width:70px; margin-right:1rem;">
+                            <img id="qrCodeImg" src="" style="width:100%; height:auto;" />
+                        </div>
+
+                    </div>
+
+                    <div id="headerRight" style="text-align: left; line-height: 1.5; font-weight: 600; color: #555;">
+                        <div><span style="font-weight: 700;">Date:</span> <span id="dateDisplay"></span></div>
+                        <div><span style="font-weight: 700;">J.V No:</span> <span id="voucherNoDisplay"></span></div>
+                        <div><span style="font-weight: 700;">User Id:</span> <span>@userId</span></div>
+                    </div>
+
+
                 </div>
+
 
                 <!-- Journal Table -->
                 <div class="table-responsive">
-                    <table class="table table-striped" id="journalTable">
+                    <table class="table" id="journalTable">
                         <thead>
                             <tr>
                                 <th>S.No</th>
                                 <th>AC Code</th>
                                 <th>Account Name</th>
+                                <th>Description</th>
                                 <th>Debit</th>
                                 <th>Credit</th>
-                                <th>Description</th>
+                                <th>Cost Center</th>
+
                             </tr>
                         </thead>
                         <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4" class="text-end">Total</th>
+                                <th id="totalDebitCell" class="text-end">0.00</th>
+                                <th id="totalCreditCell" class="text-end">0.00</th>
+                            </tr>
+                        </tfoot>
+
                     </table>
                 </div>
 
-                <!-- Totals -->
-                <div class="row mt-3">
-                    <div class="col-md-2 offset-md-8 text-end">
-                        <input type="text" id="totalDebit" class="form-control text-end" readonly />
-                    </div>
-                    <div class="col-md-2">
-                        <input type="text" id="totalCredit" class="form-control text-end" readonly />
-                    </div>
+
+
+                <div class="table-responsive" id="journalTableContainer" style="display:none;">
+                    <table class="table" id="journalTable">
+                        <thead>
+                            <tr>
+                                <th width="10px">S.No</th>
+                                <th>AC Code</th>
+                                <th>Account Name</th>
+                                <th>Description</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                                <th>Cost Center</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4" class="text-end">Total</th>
+                                <th id="totalDebitCell" class="text-end">0.00</th>
+                                <th id="totalCreditCell" class="text-end">0.00</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
 
                 <!-- Buttons -->
                 <div class="d-flex justify-content-end mt-4">
-                    <button type="submit" class="btn btn-primary me-2">Save</button>
+                    <button type="submit" class="btn btn-primary me-2" id="saveBtn">Save</button>
+                    <button type="button" class="btn btn-primary me-2" id="editBtn">Edit</button>
                     <button type="button" class="btn btn-secondary" onclick="window.history.back()">Close</button>
                 </div>
+
             </div>
         </div>
     </div>
@@ -84,6 +143,7 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
@@ -100,97 +160,202 @@
                 $('#voucherNo').val(refId);
                 $('#date').val(formatDateForInput(date));
 
+          $('#dateDisplay').text(formatDateForInput(date));
+        $('#voucherNoDisplay').text(refId);
                 // 🔹 Load account list first, then journal details
                 loadAccountList(() => loadJournalDetails(refId, vType, date));
             } else {
                 toastr.warning('Missing parameters.');
             }
 
-                  $('#journalForm').on('submit', function(e) {
-            e.preventDefault();
 
-            const form = this;
+               function parseDateForISO(dateStr) {
+            if (!dateStr) return new Date().toISOString(); // fallback to today
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2];
+                return `${year}-${month}-${day}T00:00:00`; // string format for C# DateTime
+            }
+            return new Date(dateStr).toISOString();
+        }
+
+
+                $('#journalForm').on('submit', function(e) {
+            e.preventDefault();
+            handleFormSubmit('save');
+        });
+
+        $('#editBtn').on('click', function() {
+            handleFormSubmit('edit');
+        });
+
+        function handleFormSubmit(actionType) {
+            // Validate form
+            const form = $('#journalForm')[0];
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
             }
 
+            // Get form data
             const refId = $('#voucherNo').val();
+            const voucherDate = $('#voucherDate').val(); // YYYY-MM-DD format
             const vType = 'General Journal';
-            const modifiedBy = parseInt($('#userId').val()) || 1;
+            const modifiedBy = $('#userId').val() || "1";
 
+            // Get the transaction ID from hidden field or first row
+            const transactionId = parseInt($('#transactionId').val()) ||
+                                  parseInt($('#journalTable tbody tr:first').data('transactionid')) || 0;
+
+            // Build entries array
             const entries = [];
-            let valid = true; // define valid flag
+            let valid = true;
+            let totalDebit = 0;
+            let totalCredit = 0;
 
             $('#journalTable tbody tr').each(function(index) {
                 const row = $(this);
-                const sn = row.find('td:eq(0)').text().trim();
-                const accountId = row.find('.account-name').val() || '';
-                const debit = parseFloat(row.find('.debit').val() || 0);
-                const credit = parseFloat(row.find('.credit').val() || 0);
+                const accountId = parseInt(row.find('.account-name').val()) || 0;
+                const debit = parseFloat(row.find('.debit').val()) || 0;
+                const credit = parseFloat(row.find('.credit').val()) || 0;
                 const description = row.find('.description').val() || '';
+                const humId = row.data('humid') || "0";
+                const rowId = parseInt(row.data('id')) || 0;
+                const rowTransactionId = parseInt(row.data('transactionid')) || transactionId;
 
-                if (!accountId || (debit === 0 && credit === 0)) {
-                    toastr.warning('Row ' + (index + 1) + ' must have an account and Debit or Credit greater than 0');
+                // Validate row
+                if (!accountId) {
+                    toastr.warning('Row ' + (index + 1) + ' must have a valid account selected');
                     valid = false;
-                    return false; // break out of each loop
+                    return false; // break loop
                 }
 
-                entries.push({
-                    Id: row.data('id') || 0,
-                    TransactionId: sn,
-                    AccountId: accountId,
-                    HumId: "0",
-                    Date: new Date($('#date').val()).toISOString(), // send ISO string
-                    Debit: debit,
-                    Credit: credit,
-                    Description: description
-                });
+                if (debit === 0 && credit === 0) {
+                    toastr.warning('Row ' + (index + 1) + ' must have Debit or Credit greater than 0');
+                    valid = false;
+                    return false; // break loop
+                }
+
+                totalDebit += debit;
+                totalCredit += credit;
+
+                     entries.push({
+            AccountId: accountId,           // int
+            AccountName: row.find('.account-name').val() || '',
+            Debit: debit,                   // decimal
+            Credit: credit,                 // decimal
+            Description: description,       // string
+            HumId: humId,                   // string
+            TId: rowId.toString()           // string
+        });
+
             });
 
-            if (!valid) return; // stop submission if any row is invalid
+            if (!valid) return;
 
             if (!entries.length) {
                 toastr.warning('No journal entries found to save.');
                 return;
             }
 
-            const payload = {
-                TransactionId: refId,
-                VoucherType: vType,
-                ModifiedBy: modifiedBy,
-                CurrentHumId: "0",
-                CurrentVoucherId: refId,
-                Entries: entries
-            };
+            if (totalDebit.toFixed(2) !== totalCredit.toFixed(2)) {
+                toastr.error('Debit Total (' + totalDebit.toFixed(2) + ') and Credit Total (' + totalCredit.toFixed(2) + ') are not equal.');
+                return;
+            }
 
+                 const payload = {
+            Id: transactionId,
+            Date: parseDateForISO(voucherDate),
+            VType: vType,
+            CurrentVoucherName: '',
+            CurrentVoucherId: refId,
+            UserId: modifiedBy.toString(),
+            JournalEntries: entries
+        };
+
+
+
+            // Send AJAX request
             $.ajax({
                 url: '/Lists/UpdateJournal',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(payload),
                 beforeSend: function() {
-                    $(form).find('button[type=submit]').prop('disabled', true).text('Saving...');
+                    if(actionType === 'save') {
+                        $('#saveBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+                    } else {
+                        $('#editBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating...');
+                    }
                 },
                 success: function(res) {
                     if (res.status) {
-                        toastr.success(res.message || 'Journal saved successfully!');
-                        $('#totalDebit').val(parseFloat(res.totalDebit).toFixed(2));
-                        $('#totalCredit').val(parseFloat(res.totalCredit).toFixed(2));
+                        toastr.success(res.message || (actionType === 'save' ? 'Journal saved successfully!' : 'Journal updated successfully!'));
+                        $('#totalDebitCell').text(totalDebit.toFixed(2));
+                        $('#totalCreditCell').text(totalCredit.toFixed(2));
+                        if (transactionId === 0 && res.journalId) {
+                            $('#transactionId').val(res.journalId);
+                        }
                     } else {
-                        toastr.error(res.message || 'Failed to save journal.');
+                        toastr.error(res.message || 'Failed to process journal.');
                     }
                 },
                 error: function(xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                    let errorMessage = 'An error occurred while processing the journal.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) errorMessage = xhr.responseJSON.message;
+                    toastr.error(errorMessage);
+                    console.error('Error:', xhr.responseText);
                 },
                 complete: function() {
-                    $(form).find('button[type=submit]').prop('disabled', false).text('Save');
+                    $('#saveBtn').prop('disabled', false).html('<i class="fas fa-save"></i> Save');
+                    $('#editBtn').prop('disabled', false).html('<i class="fas fa-edit"></i> Edit');
                 }
             });
-        });
+        }
+
+
+
+
+
+        generateQrCode(refId, vType, date);
+
+
+        const isScan = urlParams.get('scan');
+
+        // Hide QR-Table by default
+        $("#journalTableContainer").hide();
+
+        // Show only when scanned
+        if (isScan === "true") {
+            $("#journalTableContainer").show();
+        }
+
+
 
         });
+
+                function generateQrCode(refId, vType, date) {
+            if (!refId || !vType || !date) return;
+
+            const url = `${window.location.origin}/Lists/GeneralJournalTransaction?refId=${encodeURIComponent(refId)}&vType=${encodeURIComponent(vType)}&date=${encodeURIComponent(date)}&scan=true`;
+
+            $("#qrCodeImg").attr("src",
+                `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`
+            );
+        }
+
+
+
+
+
+                function formatNumber(num) {
+            return Number(num).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
 
 
         function loadAccountList(callback) {
@@ -199,7 +364,7 @@
                 type: 'GET',
                 success: function (data) {
                     accountList = data || [];
-                   
+
                     if (typeof callback === 'function') callback();
                 },
                 error: function (xhr, status, error) {
@@ -232,6 +397,7 @@
                         $("#journalTable").DataTable().clear().destroy();
                     }
                     $('#journalTable tbody').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+                     
                 },
                 success: function (res) {
                     const tbody = $('#journalTable tbody').empty();
@@ -247,8 +413,8 @@
                             totalDebit += parseFloat(row.debit || 0);
                             totalCredit += parseFloat(row.credit || 0);
 
-                                   tbody.append(`
-           <tr data-id="${row.id ?? ''}">
+                            tbody.append(`
+         <tr data-id="${row.id ?? ''}" data-transactionid="${row.transactionId ?? ''}">
                 <td>${row.sn ?? i + 1}</td>
                 <td>
                     <select class="form-select form-select-sm account-code">
@@ -266,49 +432,79 @@
                         ).join('')}
                     </select>
                 </td>
-                      <td class="text-end">
-            <input type="number" class="form-control form-control-sm debit text-end" value="${row.debit}" step="0.01" />
-        </td>
-        <td class="text-end">
-            <input type="number" class="form-control form-control-sm credit text-end" value="${row.credit}" step="0.01" />
-        </td>
-        <td>
+                 <td>
             <input type="text" class="form-control form-control-sm description" value="${row.description ?? ''}" />
         </td>
+                      <td class="text-end">
+            <input type="text" class="form-control form-control-sm debit text-end format-number"
+        value="${formatNumber(row.debit)}" />
+        </td>
+        <td class="text-end">
+            <input type="text" class="form-control form-control-sm credit text-end format-number"
+        value="${formatNumber(row.credit)}" />
+        </td>
+        <td class="text-end">-</td>
             </tr>
         `);
 
                         });
 
-                        // Update totals
-                        $('#totalDebit').val(totalDebit.toFixed(2));
-                        $('#totalCredit').val(totalCredit.toFixed(2));
+                        $('#totalDebitCell').text(formatNumber(totalDebit));
+                        $('#totalCreditCell').text(formatNumber(totalCredit));
                         $('#name').val(res.data[0].humName || '');
 
-                        // Initialize DataTable
-                        $('#journalTable').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    className: 'btn btn-primary btn-sm',
-                                    text: '<i class="fas fa-file-excel"></i> Excel',
-                                    title: 'General Journal Details',
-                                    exportOptions: { columns: ':visible' }
-                                },
-                                {
-                                    extend: 'pdfHtml5',
-                                    className: 'btn btn-primary btn-sm',
-                                    orientation: 'landscape',
-                                    pageSize: 'A4',
-                                    text: '<i class="fas fa-file-pdf"></i> PDF',
-                                    title: 'General Journal Details',
-                                    exportOptions: { columns: ':visible' }
-                                }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 15,
-                        });
+                                $('#journalTable').DataTable({
+            dom: 'Brtip', // Removed search bar
+            buttons: [
+                {
+                    extend: 'print',
+                    className: 'btn btn-primary btn-sm',
+                    text: '<i class="fas fa-print"></i> Print',
+                    title: 'General Journal Details',
+                    exportOptions: { columns: ':visible' ,
+                    format: {
+                    body: function (data, row, column, node) {
+                        // If cell contains an <input>, return its value
+                        if ($(node).find('input').length) {
+                            return $(node).find('input').val();
+                        }
+                        // If cell contains a <select>, return selected text
+                        if ($(node).find('select').length) {
+                            return $(node).find('select option:selected').text();
+                        }
+                        return data;
+                    }
+                    }
+                    }
+                },
+                {
+                    extend: 'pdfHtml5',
+                    className: 'btn btn-primary btn-sm',
+                    orientation: 'landscape',
+                    pageSize: 'A4',
+                    text: '<i class="fas fa-file-pdf"></i> PDF',
+                    title: 'General Journal Details',
+                    exportOptions: { columns: ':visible',
+                    format: {
+                    body: function (data, row, column, node) {
+                        if ($(node).find('input').length) {
+                            return $(node).find('input').val();
+                        }
+                        if ($(node).find('select').length) {
+                            return $(node).find('select option:selected').text();
+                        }
+                        return data;
+                    }
+                }
+            }
+                }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 15,
+            paging: false,
+            info: false,
+        });
+
 
 
                     } else {

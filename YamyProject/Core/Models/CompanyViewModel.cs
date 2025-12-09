@@ -812,28 +812,30 @@ namespace YamyProject.Core.Models
         public decimal QtyOut { get; set; }
         public string Description { get; set; }
     }
-    public class JournalUpdateRequest
-    {
-        
-        public int TransactionId { get; set; }
-        public string VoucherType { get; set; }
-        public int ModifiedBy { get; set; }
-        public string CurrentHumId { get; set; }
-        public string CurrentVoucherId { get; set; }
-        public List<JournalEntry> Entries { get; set; }
-    }
-
-    public class JournalEntry
+    public class JournalVoucherRequest
     {
         public int Id { get; set; }
-        public string TransactionId { get; set; }
-        public string AccountId { get; set; }
-        public string HumId { get; set; }
-        public DateTime? Date { get; set; }
+        public DateTime Date { get; set; }
+        public string VType { get; set; }
+        public string CurrentVoucherName { get; set; }
+        public string CurrentVoucherId { get; set; }
+        public string UserId { get; set; }
+        public List<JournalEntryItem> JournalEntries { get; set; }
+    }
+
+    public class JournalEntryItem
+    {
+        public int? AccountId { get; set; }
+        public string AccountName { get; set; }
         public decimal? Debit { get; set; }
         public decimal? Credit { get; set; }
         public string Description { get; set; }
+        public string HumId { get; set; }
+        public string TId { get; set; }
     }
+
+
+
 
     public class CityRequest
     {
