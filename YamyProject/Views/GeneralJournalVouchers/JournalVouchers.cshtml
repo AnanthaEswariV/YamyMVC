@@ -1,281 +1,618 @@
 ﻿@model JournalVoucherViewModel
 @{
-     ViewData["Title"] = "Journal Voucher";
-}
+    ViewData["Title"] = "Journal Voucher";
+    }
 
 <style>
     body {
-    background: #f4f6f8;
+        background: #dfe3ea;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
     }
 
-    .app-shell {
-    max-width: 1200px;
-    margin: 24px auto;
+    .window-shell {
+        max-width: 1320px;
+        margin: 10px auto;
+        border: 1px solid #9aa3b5;
+        box-shadow: 0 0 4px rgba(0, 0, 0, .25);
+        background: #f4f6f9;
     }
 
-    .jv-header {
-    background: #0b2a3f;
-    color: #fff;
-    border-radius: .75rem .75rem 0 0;
+    .window-titlebar {
+        background: #123b7a;
+        color: #fff;
+        text-align: center;
+        padding: 6px 12px;
+        font-weight: 600;
+        font-size: 1rem;
     }
 
-    .table thead th {
-    white-space: nowrap;
+    .window-body {
+        background: #f4f6f9;
+        padding: 0;
     }
 
-    .table tbody td {
-    vertical-align: middle;
+    .jv-toolbar-wrap {
+        background: #f7f8fb;
+        border-bottom: 1px solid #c7ccd6;
+        padding: 8px 16px 12px;
     }
+
+    .jv-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .jv-navbox {
+        display: flex;
+        align-items: center;
+        background: #e9ecf2;
+        border: 1px solid #c0c6d6;
+        border-radius: 2px;
+        padding: 4px 10px;
+        gap: 6px;
+    }
+
+        .jv-navbox span.badge-box {
+            min-width: 55px;
+            text-align: center;
+            background: #d2d7e2;
+            border-radius: 2px;
+            font-size: .85rem;
+            padding: 3px 0;
+        }
+
+        .jv-navbox button {
+            border: none;
+            background: transparent;
+            padding: 0 4px;
+            font-size: 1rem;
+            color: #495057;
+        }
+
+    .jv-toolgroup {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .jv-toolbtn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: .78rem;
+        color: #333;
+        cursor: pointer;
+        min-width: 60px;
+    }
+
+        .jv-toolbtn i {
+            font-size: 1.2rem;
+            margin-bottom: 2px;
+        }
+
+    .jv-checks {
+        margin-left: auto;
+        font-size: .8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .jv-headerline {
+        background: #f7f8fb;
+        border-bottom: 1px solid #c7ccd6;
+        padding: 10px 16px;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+    }
+
+        .jv-headerline label {
+            font-size: .85rem;
+            margin-bottom: 0;
+            margin-right: 6px;
+        }
+
+        .jv-headerline .form-control {
+            height: 30px;
+            padding: 2px 8px;
+            font-size: .85rem;
+        }
+
+    .jv-grid-wrap {
+        background: #ffffff;
+        border-top: 1px solid #c7ccd6;
+        border-bottom: 1px solid #c7ccd6;
+        padding: 0 0 4px;
+    }
+
+        .jv-grid-wrap .table {
+            margin-bottom: 0;
+            font-size: .85rem;
+        }
+
+        .jv-grid-wrap thead {
+            background: #d8dde6;
+        }
+
+            .jv-grid-wrap thead th {
+                border-bottom-width: 1px;
+                white-space: nowrap;
+                padding: 4px 6px;
+                font-weight: 600;
+            }
+
+        .jv-grid-wrap tbody td {
+            padding: 2px 4px;
+            vertical-align: middle;
+        }
+
+        .jv-grid-wrap .form-control,
+        .jv-grid-wrap .form-select {
+            font-size: .82rem;
+            padding: 2px 4px;
+            height: 24px;
+        }
 
     .number {
-    text-align: right;
+        text-align: right;
     }
 
-    .footer-bar {
-    background: #e9ecef;
-    border-radius: .5rem;
-    }
-
-    .titlebar {
-    font-weight: 700;
-    letter-spacing: .3px;
-    }
-
-    .small-muted {
-    font-size: .875rem;
-    color: #6c757d;
-    }
-
-    .del-row {
-    width: 2.25rem;
+    .del-row i {
+        font-size: .85rem;
     }
 
     .account-select {
-    min-width: 220px;
+        min-width: 260px;
+    }
+
+    .jv-bottom {
+        background: #e4e7ee;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .jv-bottom-left {
+        display: flex;
+        gap: 12px;
+    }
+
+        .jv-bottom-left label {
+            font-size: .8rem;
+            margin-bottom: 2px;
+        }
+
+        .jv-bottom-left .form-control {
+            width: 140px;
+            height: 26px;
+            font-size: .8rem;
+            padding: 2px 6px;
+            text-align: right;
+        }
+
+    .jv-bottom-right .btn {
+        min-width: 110px;
+        font-size: .82rem;
+        padding: 4px 14px;
+        border-radius: 2px;
+    }
+
+    .btn-navy {
+        background: #123b7a;
+        color: #fff;
+        border-color: #123b7a;
+    }
+
+        .btn-navy:hover {
+            background: #0d305f;
+        }
+
+    .btn-light-grey {
+        background: #f1f3f7;
+        border-color: #c7ccd6;
+    }
+
+    #alertBox {
+        border-radius: 0;
+        margin: 0;
     }
 </style>
 
-<div class="app-shell">
-    <div class="jv-header p-3 d-flex align-items-center justify-content-between">
-        <div class="h5 m-0 titlebar">New Journal Voucher</div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-light" onclick="window.location.reload()"><i class="fa fa-file"></i> New</button>
-            <button class="btn btn-sm btn-success" id="saveBtn"><i class="fa fa-save"></i> Save</button>
-        </div>
-    </div>
-    <div class="bg-white p-3 shadow-sm" style="border-radius:0 0 .75rem .75rem">
-        <div class="row g-3 mb-3">
-            <div class="col-md-3">
-                <label class="form-label">JV No</label>
-                <input class="form-control" value="JV-0005" readonly>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Date</label>
-                <input class="form-control" type="date" id="jvDate">
-            </div>
-        </div>
-        <div id="alertBox" class="alert alert-danger d-none"></div>
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle" id="linesTable">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:60px">#</th>
-                        <th style="width:140px">AC Code</th>
-                        <th>Account Name</th>
-                        <th style="width:140px">Debit</th>
-                        <th style="width:140px">Credit</th>
-                        <th>Description</th>
-                        <th style="width:160px">Partner</th>
-                        <th style="width:60px">DEL</th>
-                    </tr>
-                </thead>
-                <tbody>
-               @*      @if (Model.Customer != null && Model.Customer.Any())
-                        {
-                        @for (var Customers = 0; Customers < Model.Customer.Count; Customers++)
-                            {
-                                <tr>
-                                <td  class="text-muted"></td>
-                                <td>@(Customers+1)</td>
-                                <td><input class="form-control form-control-sm" asp-for="Customer[Customers].AccountCode" name="Customer[Customers].AcCode" readonly /></td>
-                                 <td>
-                                    <input type="text" asp-for="Customer[Customers].AccountId" list="itemOptions[Customers]" placeholder="Type or Account..." class="form-control item-name itemname" name="Lines[0].AccountName" />
-                                     <datalist id="itemOptions[Customers]"></datalist>
-                                 </td>
-                                <td><input class="form-control form-control-sm number debit" asp-for="Customer[Customers].DebitAmount" name="Customer[Customers].Debit" inputmode="decimal"></td>
-                                <td><input class="form-control form-control-sm number credit" asp-for="Customer[Customers].CreditAmount" name="Customer[Customers].Credit" inputmode="decimal"></td>
-                                <td><input class="form-control form-control-sm" asp-for="Customer[Customers].Description" name="Customer[Customers].Description" /></td>
-                                <td><input class="form-control form-control-sm" asp-for="Customer[Customers].Partner" name="Customer[Customers].Partner" /></td>
-                                <td class="text-center"><button class="btn btn-outline-danger btn-sm del-row"><i class="fa fa-trash"></i></button></td>
-                            </tr>
-                            }
-                        } *@
-          @*           else
-                        {
-                         <tr>                            
-                            <td  class="text-muted"></td>
-                            <td>1</td>
-                            <td><input class="form-control form-control-sm" name="Lines[0].AcCode" readonly /></td>
-                            <td>
-                                <div class="input-group input-group-sm">
-                                    <select class="form-select form-select-sm account-select">
-                                        <option value="" selected>Select account...</option>
-                                        @* <datalist id="itemOptions0"></datalist> 
-                                    </select>
-                                </div>
-                            </td>
-                            <td><input class="form-control form-control-sm number debit" name="Lines[0].Debit" inputmode="decimal"></td>
-                            <td><input class="form-control form-control-sm number credit" name="Lines[0].Credit" inputmode="decimal"></td>
-                            <td><input class="form-control form-control-sm" name="Lines[0].Description" /></td>
-                            <td><input class="form-control form-control-sm" name="Lines[0].Partner" /></td>
-                            <td class="text-center"><button class="btn btn-outline-danger btn-sm del-row"><i class="fa fa-trash"></i></button></td>
-                        </tr>
-                        } *@
-                </tbody>
-                </table>
-            </div>
-            <div class="footer-bar p-3 d-flex gap-3 align-items-end">
-                <div>
-                    <label class="form-label">Dr Amount</label>
-                    <input class="form-control" id="totalDebit" value="0.00" readonly>
-                </div>
-                <div>
-                    <label class="form-label">Cr Amount</label>
-                    <input class="form-control" id="totalCredit" value="0.00" readonly>
-                </div>
-            </div>
-        </div>
-    </div>
-<select id="tpl-vat" class="d-none" asp-items="@(new SelectList(Model.Accounts, "Value", "Text"))"></select>
+<form asp-controller="GeneralJournalVouchers"
+      asp-action="Create"
+      method="post"
+      id="jvForm">
+    @Html.AntiForgeryToken()
 
+    <div class="window-shell">
+        <div class="window-titlebar">
+            New Journal Voucher
+        </div>
+
+        <div class="window-body">
+            <!-- toolbar -->
+            <div class="jv-toolbar-wrap">
+                <div class="jv-toolbar">
+                    <!-- navigation box -->
+                    <div class="jv-navbox">
+                        <button type="button" title="Previous"><i class="fa fa-arrow-left"></i></button>
+                        <span class="badge-box">@Model.Journal</span>
+                        <button type="button" title="Next"><i class="fa fa-arrow-right"></i></button>
+                    </div>
+
+                    <!-- actions -->
+                    <div class="jv-toolgroup">
+                        <div class="jv-toolbtn" onclick="window.location.reload()">
+                            <i class="fa fa-file"></i>
+                            <span>New</span>
+                        </div>
+                        <div class="jv-toolbtn" id="tbSave">
+                            <i class="fa fa-save"></i>
+                            <span>Save</span>
+                        </div>
+                        <div class="jv-toolbtn">
+                            <i class="fa fa-trash"></i>
+                            <span>Delete</span>
+                        </div>
+                        <div class="jv-toolbtn" id="addRow">
+                            <i class="fa fa-copy"></i>
+                            <span>Create a Copy</span>
+                        </div>
+                        <div class="jv-toolbtn">
+                            <i class="fa fa-print"></i>
+                            <span>Print</span>
+                        </div>
+                        <div class="jv-toolbtn">
+                            <i class="fa fa-envelope"></i>
+                            <span>Email</span>
+                        </div>
+                        <div class="jv-checks">
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input me-1" /> Print Later
+                            </label>
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input me-1" /> Email Later
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JV no / date -->
+            <div class="jv-headerline">
+                <div class="d-flex align-items-center">
+                    <label>JV No</label>
+                    <input class="form-control ms-1" asp-for="JournalCode" readonly />
+                </div>
+                <div class="d-flex align-items-center">
+                    <label>Date</label>
+                    <input class="form-control ms-1" type="date" asp-for="Date" id="jvDate" />
+                </div>
+            </div>
+
+            <!-- alert -->
+            <div id="alertBox" class="alert alert-danger d-none"></div>
+
+            <!-- grid -->
+            <div class="jv-grid-wrap">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="linesTable">
+                        <thead>
+                            <tr>
+                                <th style="width:60px">#</th>
+                                <th style="width:130px">AC Code</th>
+                                <th>Account Name</th>
+                                <th style="width:110px" class="text-end">Debit</th>
+                                <th style="width:110px" class="text-end">Credit</th>
+                                <th>Description</th>
+                                <th style="width:140px">Partner</th>
+                                <th style="width:55px">DEL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @* rows are added by JS *@
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- bottom bar -->
+            <div class="jv-bottom">
+                <div class="jv-bottom-left">
+                    <div>
+                        <label>Dr Amount</label>
+                        <input class="form-control" id="totalDebit" value="0.00" readonly />
+                    </div>
+                    <div>
+                        <label>Cr Amount</label>
+                        <input class="form-control" id="totalCredit" value="0.00" readonly />
+                    </div>
+                </div>
+                <div class="jv-bottom-right">
+                    <button type="button" class="btn btn-navy me-1" id="saveCloseBtn">Save &amp; Close</button>
+                    <button type="button" class="btn btn-navy me-1" id="saveBtn">Save</button>
+                    <button type="button" class="btn btn-light-grey" onclick="window.history.back()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- TEMPLATE SELECT FOR ACCOUNTS (data only) -->
+<select id="tpl-accounts"
+        class="d-none"
+        asp-items="@(new SelectList(Model.Accounts, "Code", "Name"))">
+</select>
+
+    @section Scripts {
     <script>
-        // --- simple account master data
-        const ACCOUNTS = [
-          { code:'1201003', name:'Cars & Buses' },
-          { code:'1101001', name:'Cash on Hand' },
-          { code:'1302001', name:'Office Supplies' },
-          { code:'2101001', name:'Accounts Payable' }
-        ];
-        const parseDec = (v) => { const n = parseFloat((v||'').toString().replace(/,/g,'')); return isNaN(n)?0:n; };
-        function renumber(){
-          document.querySelectorAll('#linesTable tbody tr').forEach((tr,i)=>{
-            tr.querySelector('td[data-col="idx"]').textContent = i+1;
-          });
-        }
-        function enforceRowRule(tr){
-          const dInput = tr.querySelector('input.debit');
-          const cInput = tr.querySelector('input.credit');
-          const d = parseDec(dInput.value);
-          const c = parseDec(cInput.value);
-          if (d>0) { cInput.value = ''; }
-          if (c>0) { dInput.value = ''; }
-        }
-        function recalcTotals(){
-          let td=0, tc=0;
-          document.querySelectorAll('#linesTable tbody tr').forEach(tr=>{
-            const d = parseDec(tr.querySelector('input.debit').value);
-            const c = parseDec(tr.querySelector('input.credit').value);
-            if (d>0) td += d; if (c>0) tc += c;
-          });
-          document.getElementById('totalDebit').value = td.toFixed(2);
-          document.getElementById('totalCredit').value = tc.toFixed(2);
-        }
-        function showError(msg){
-          const el = document.getElementById('alertBox');
-          el.textContent = msg; el.classList.remove('d-none');
-          setTimeout(()=>el.classList.add('d-none'), 3000);
-        }
-        function accountOptionsHTML(){
-          return ACCOUNTS.map(a=>`<option value="${a.code}">${a.name}</option>`).join('');
-        }
-        function makeRow(i){
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td data-col="idx" class="text-muted">${i+1}</td>
-            <td><input class="form-control form-control-sm" name="Lines[${i}].AcCode" readonly/></td>
-            <td>
-              <div class="input-group input-group-sm">
-                <select class="form-select form-select-sm account-select" name="Lines[${i}].AccountName">
-                  <option value="" selected>Select account...</option>
-                  ${accountOptionsHTML()}
-                </select>
-              </div>
-            </td>
-            <td><input class="form-control form-control-sm number debit" name="Lines[${i}].Debit" inputmode="decimal"></td>
-            <td><input class="form-control form-control-sm number credit" name="Lines[${i}].Credit" inputmode="decimal"></td>
-            <td><input class="form-control form-control-sm" name="Lines[${i}].Description" /></td>
-            <td><input class="form-control form-control-sm" name="Lines[${i}].Partner" /></td>
-            <td class="text-center"><button class="btn btn-outline-danger btn-sm del-row"><i class="fa fa-trash"></i></button></td>`;
-          return tr;
-        }
-        function addRow(){
-          const tbody = document.querySelector('#linesTable tbody');
-          const i = tbody.querySelectorAll('tr').length;
-          const tr = makeRow(i);
-          tbody.appendChild(tr);
-          return tr;
-        }
-        function ensureTrailingBlankRow(changedTr){
-          const tbody = document.querySelector('#linesTable tbody');
-          const rows = Array.from(tbody.querySelectorAll('tr'));
-          const last = rows[rows.length-1];
-          // if the last row now has an account selected, append a new blank one
-          const lastSelect = last.querySelector('select.account-select');
-          if (lastSelect && lastSelect.value){
-            const newTr = addRow();
+        document.addEventListener('DOMContentLoaded', function () {
+            // ---- CONFIG / HELPERS ---------------------------------------
+
+            const getPartnerUrl = '@Url.Action("GetpartnerListAsync", "GeneralJournalVouchers")';
+
+            // Build ACCOUNTS from hidden select (server data)
+            const ACCOUNTS = Array.from(document.querySelectorAll('#tpl-accounts option'))
+                .filter(o => o.value) // skip empty
+                .map(o => ({
+                    code: o.value,
+                    name: o.textContent.trim()
+                }));
+
+            const parseDec = (v) => {
+                const n = parseFloat((v || '').toString().replace(/,/g, ''));
+                return isNaN(n) ? 0 : n;
+            };
+
+            function showError(msg) {
+                const el = document.getElementById('alertBox');
+                el.textContent = msg;
+                el.classList.remove('d-none');
+                setTimeout(() => el.classList.add('d-none'), 3000);
+            }
+
+            function renumber() {
+                document.querySelectorAll('#linesTable tbody tr').forEach((tr, i) => {
+                    tr.querySelector('td[data-col="idx"]').textContent = i + 1;
+                });
+            }
+
+            function enforceRowRule(tr) {
+                const dInput = tr.querySelector('input.debit');
+                const cInput = tr.querySelector('input.credit');
+                const d = parseDec(dInput.value);
+                const c = parseDec(cInput.value);
+                if (d > 0) { cInput.value = ''; }
+                if (c > 0) { dInput.value = ''; }
+            }
+
+            function recalcTotals() {
+                let td = 0, tc = 0;
+                document.querySelectorAll('#linesTable tbody tr').forEach(tr => {
+                    const d = parseDec(tr.querySelector('input.debit').value);
+                    const c = parseDec(tr.querySelector('input.credit').value);
+                    if (d > 0) td += d;
+                    if (c > 0) tc += c;
+                });
+                document.getElementById('totalDebit').value = td.toFixed(2);
+                document.getElementById('totalCredit').value = tc.toFixed(2);
+            }
+
+            function accountOptionsHTML() {
+                return ACCOUNTS
+                    .map(a => `<option value="${a.code}">${a.name}</option>`)
+                    .join('');
+            }
+
+            function fillPartnerOptions(selectEl, partners) {
+                let html = '<option value="">Select partner...</option>';
+                if (Array.isArray(partners)) {
+                    partners.forEach(p => {
+                        const id = p.id ?? p.Id;
+                        const name = p.name ?? p.Name;
+                        if (id != null && name != null) {
+                            html += `<option value="${id}">${name}</option>`;
+                        }
+                    });
+                }
+                selectEl.innerHTML = html;
+            }
+
+            // ---- ROW CREATION --------------------------------------------
+
+            function makeRow(i) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td data-col="idx" class="text-muted text-center">${i + 1}</td>
+                    <td>
+                        <input class="form-control form-control-sm"
+                               name="Lines[${i}].AcCode" />
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <select class="form-select form-select-sm account-select"
+                                    name="Lines[${i}].AccountName">
+                                <option value="" selected>Select account...</option>
+                                ${accountOptionsHTML()}
+                            </select>
+                        </div>
+                    </td>
+                    <td>
+                        <input class="form-control form-control-sm number debit"
+                               name="Lines[${i}].Debit"
+                               inputmode="decimal" />
+                    </td>
+                    <td>
+                        <input class="form-control form-control-sm number credit"
+                               name="Lines[${i}].Credit"
+                               inputmode="decimal" />
+                    </td>
+                    <td>
+                        <input class="form-control form-control-sm"
+                               name="Lines[${i}].Description" />
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm partner-select"
+                                name="Lines[${i}].PartnerId" disabled>
+                            <option value="">Select partner...</option>
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-danger btn-sm del-row" type="button">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>`;
+                return tr;
+            }
+
+            function addRow() {
+                const tbody = document.querySelector('#linesTable tbody');
+                const i = tbody.querySelectorAll('tr').length;
+                const tr = makeRow(i);
+                tbody.appendChild(tr);
+                return tr;
+            }
+
+            function ensureTrailingBlankRow() {
+                const tbody = document.querySelector('#linesTable tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const last = rows[rows.length - 1];
+                if (!last) return;
+
+                const lastSelect = last.querySelector('select.account-select');
+                if (lastSelect && lastSelect.value) {
+                    const newTr = addRow();
+                    renumber();
+                    newTr.querySelector('select.account-select').focus();
+                }
+            }
+
+            // ---- EVENTS ---------------------------------------------------
+
+            const linesTable = document.getElementById('linesTable');
+
+            // Debit/Credit typing
+            linesTable.addEventListener('input', (e) => {
+                if (e.target.matches('input.debit, input.credit')) {
+                    enforceRowRule(e.target.closest('tr'));
+                    recalcTotals();
+                }
+            });
+
+            // Account change -> set AcCode + load partners
+            linesTable.addEventListener('change', async (e) => {
+                if (e.target.matches('select.account-select')) {
+                    const tr = e.target.closest('tr');
+                    const selCode = e.target.value;
+                    const acc = ACCOUNTS.find(a => a.code === selCode);
+                    const acCodeInput = tr.querySelector('input[name*=".AcCode"]');
+
+                    if (acCodeInput) {
+                        acCodeInput.value = acc ? acc.code : '';
+                    }
+
+                    // Load partner list by account name (select text)
+                    const accountName = e.target.options[e.target.selectedIndex]?.text?.trim();
+                    const partnerSelect = tr.querySelector('select.partner-select');
+
+                    if (partnerSelect) {
+                        partnerSelect.disabled = true;
+                        fillPartnerOptions(partnerSelect, []); // reset
+
+                        if (accountName) {
+                            try {
+                                const resp = await fetch(`${getPartnerUrl}?name=${encodeURIComponent(accountName)}`);
+                                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                                const partners = await resp.json();
+                                fillPartnerOptions(partnerSelect, partners);
+                                partnerSelect.disabled = false;
+                            } catch (err) {
+                                console.error(err);
+                                showError('Cannot load partner list for this account.');
+                            }
+                        }
+                    }
+
+                    ensureTrailingBlankRow();
+                }
+            });
+
+            // Delete row
+            linesTable.addEventListener('click', (e) => {
+                const btn = e.target.closest('.del-row');
+                if (btn) {
+                    btn.closest('tr').remove();
+                    renumber();
+                    recalcTotals();
+                }
+            });
+
+            // Toolbar add row
+            document.getElementById('addRow').addEventListener('click', () => {
+                addRow();
+                renumber();
+            });
+
+            // ---- CLIENT VALIDATION ----------------------------------------
+
+            function clientValidate() {
+                let hasDebit = false, hasCredit = false;
+                let bad = false, msg = "";
+
+                document.querySelectorAll('#linesTable tbody tr').forEach(tr => {
+                    const d = parseDec(tr.querySelector('input.debit').value);
+                    const c = parseDec(tr.querySelector('input.credit').value);
+                    const ac = (tr.querySelector('input[name*=".AcCode"]')?.value || "").trim();
+                    const sel = tr.querySelector('select.account-select');
+                    const accSelected = sel && sel.value;
+
+                    if (d > 0) hasDebit = true;
+                    if (c > 0) hasCredit = true;
+                    if (d > 0 && c > 0) { bad = true; msg = "Enter either Debit OR Credit per row."; }
+                    if (d < 0 || c < 0) { bad = true; msg = "Amounts cannot be negative."; }
+                    if (!d && !c && (accSelected || ac)) { bad = true; msg = "Enter a Debit or Credit for each account row."; }
+                });
+
+                const td = parseDec(document.getElementById('totalDebit').value);
+                const tc = parseDec(document.getElementById('totalCredit').value);
+
+                if (!hasDebit || !hasCredit) { bad = true; msg = "Add at least one debit and one credit line."; }
+                if (td !== tc) { bad = true; msg = "Dr Amount must equal Cr Amount."; }
+
+                if (bad) {
+                    showError(msg);
+                    return false;
+                }
+                return true;
+            }
+
+            // Save buttons
+            document.getElementById('saveBtn').addEventListener('click', () => {
+                if (clientValidate()) {
+                    document.getElementById('jvForm').submit();
+                }
+            });
+
+            document.getElementById('saveCloseBtn').addEventListener('click', () => {
+                if (clientValidate()) {
+                    document.getElementById('jvForm').submit();
+                    // you can handle redirect on server side
+                }
+            });
+
+            // ---- INIT -----------------------------------------------------
+
+            const dateInput = document.getElementById('jvDate');
+            if (!dateInput.value) {
+                dateInput.valueAsDate = new Date();
+            }
+
+            addRow();  // first blank line
             renumber();
-            // focus the new row's account select
-            newTr.querySelector('select.account-select').focus();
-          }}
-        // --- events ---
-        document.getElementById('linesTable').addEventListener('input', (e)=>{
-          if(e.target.matches('input.debit, input.credit')){
-            enforceRowRule(e.target.closest('tr'));
             recalcTotals();
-          }});
-        document.getElementById('linesTable').addEventListener('change', (e)=>{
-          // When account is selected, set AC Code, and if it's the last row, auto-add a new one
-          if(e.target.matches('select.account-select')){
-            const tr = e.target.closest('tr');
-            const selCode = e.target.value;
-            const acc = ACCOUNTS.find(a=>a.code===selCode);
-            tr.querySelector('input[name*=".AcCode"]').value = acc ? acc.code : '';
-            ensureTrailingBlankRow(tr);
-          }});
-        document.getElementById('linesTable').addEventListener('click', (e)=>{
-          if(e.target.closest('.del-row')){
-            e.target.closest('tr').remove();
-            renumber(); recalcTotals();
-          }});
-        document.getElementById('addRow').addEventListener('click', ()=>{
-          addRow(); renumber();
         });
-        document.getElementById('saveBtn').addEventListener('click', ()=>{
-          // client rules
-          let hasDebit=false, hasCredit=false;
-          let bad=false, msg="";
-          document.querySelectorAll('#linesTable tbody tr').forEach(tr=>{
-            const d = parseDec(tr.querySelector('input.debit').value);
-            const c = parseDec(tr.querySelector('input.credit').value);
-            const ac = (tr.querySelector('input[name*=".AcCode"]').value||"").trim();
-            const sel = tr.querySelector('select.account-select');
-            const accSelected = sel && sel.value;
-            if(d>0) hasDebit=true; if(c>0) hasCredit=true;
-            if (d>0 && c>0){ bad=true; msg="Enter either Debit OR Credit per row."; }
-            if ((d===0 && c>0) || (c===0 && d>0)){ bad=true; msg="Amounts must be greater than 0."; }
-            if (!d && !c && (accSelected || ac)){ bad=true; msg="Enter a Debit or Credit for each account row."; }
-          });
-          const td = parseDec(document.getElementById('totalDebit').value);
-          const tc = parseDec(document.getElementById('totalCredit').value);
-          if (!hasDebit || !hasCredit){ bad=true; msg="Add at least one debit and one credit line."; }
-          if (td !== tc){ bad=true; msg="Dr Amount must equal Cr Amount."; }
-          if (bad){ showError(msg); return; }
-          showError('Looks good! (Preview only)');
-        });
-        // init
-        document.getElementById('jvDate').valueAsDate = new Date();
-        // seed one initial row and one example to mimic screenshot flow
-        addRow();
-        renumber();
-        recalcTotals();
     </script>
+    }

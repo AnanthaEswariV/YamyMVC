@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Services.Interfaces
+﻿using static YamyProject.Services.Implementations.GeneralJournalVouchersService;
+
+namespace YamyProject.Services.Interfaces
     {
     public interface IGeneralJournalVouchersService
         {
@@ -8,6 +10,7 @@
         Task CreateJournalVoucher(JournalVoucherViewModel Model);
         Task UpdateJournalVoucher(JournalVoucherViewModel Model);
         Task<JournalVoucherViewModel> GEtJournalVoucher(int Id);
-
+        Task<int> GenerateNextReceiptId();
+        Task<List<PartnerLookupDto>> GetPartnersByAccountNameAsync(string accountName);
         }
     }

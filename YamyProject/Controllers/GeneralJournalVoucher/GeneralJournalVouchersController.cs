@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Controllers.GeneralJournalVoucher
+﻿using Mysqlx;
+
+namespace YamyProject.Controllers.GeneralJournalVoucher
     {
     public class GeneralJournalVouchersController(IGeneralJournalVouchersService JournalVouchersService, IListServices listServices) : Controller
         {
@@ -19,6 +21,7 @@
         public async Task<IActionResult> Create()
             {
             var Code = await _JournalVouchersService.GenerateNextReceiptCode();
+            var Id = (int)await _JournalVouchersService.GenerateNextReceiptId();
             var Account = await _ListServices.GetAccountsAsync();
             var AccountList = Account.Select(c => new TblCoaLevel4
                 {
@@ -30,7 +33,9 @@
             return View("JournalVouchers", new JournalVoucherViewModel
                 {
                 Accounts = AccountList,
-                JournalCode = Code
+                JournalCode = Code,
+                Journal = Id,
+                Date=DateOnly.FromDateTime(DateTime.Now)
                 });
             }
         [HttpGet]
@@ -79,6 +84,16 @@
 
                 //  ModelState.AddModelError(string.Empty, result.ErrorMessage);
                 //}
+            }
+        [HttpGet("/GeneralJournalVouchers/GetpartnerListAsync")]
+        public async Task<IActionResult> GetpartnerListAsync(string Name)
+            {
+            var partnerListlist = await _JournalVouchersService.GetPartnersByAccountNameAsync(Name);
+
+            if (partnerListlist == null)
+                return Json(Array.Empty<object>());
+
+            return Json(partnerListlist);
             }
         }
 }

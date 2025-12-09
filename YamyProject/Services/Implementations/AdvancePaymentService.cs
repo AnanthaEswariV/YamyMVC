@@ -1,10 +1,10 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class AdvancePaymentService(YamyDbContext context): IAdvancePaymentService
+    public class AdvancePaymentService(YamyDbContext context, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IAdvancePaymentService
         {
         private readonly YamyDbContext _context = context;
-
-
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
 
         public async Task<AdvancePaymentVoucherViewModel> GetAdvancePayments()
             {
@@ -41,7 +41,7 @@
             }
         public async Task CreateAdvancePaymentAsync(AdvancePaymentViewModel model)
             {
-
+            var CODE = GenerateNextAdvancePaymentCode();
             var strategy = _context.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>
@@ -50,6 +50,8 @@
                 await using var tx = await _context.Database.BeginTransactionAsync();
                 try
                     {
+                    if (model.VoucherNo != CODE.ToString())
+                        { model.VoucherNo = CODE.ToString(); }
                     var advancePayment = new TblAdvancePaymentVoucher
                         {
                         PvCode = model.VoucherNo,
@@ -62,18 +64,41 @@
                         Description = model.Note,
                         CreditAccountId = model.CreditAccountId,
                         CreditCostCenterId = model.CreditCostCenterId,
-                        CreatedBy = 1, // Replace with actual user ID
+                        CreatedBy = -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, // Replace with actual user ID
                         CreatedDate = DateOnly.FromDateTime(DateTime.Now),
                         State = 0 // Assuming 0 means 'New' or 'Pending'
                         };
                     _context.TblAdvancePaymentVouchers.Add(advancePayment);
                     await _context.SaveChangesAsync();
                     var voucherId = advancePayment.Id;
-                 
+
+                    if (model.PaymentMethods.FirstOrDefault(i => i.Value == model.PaymentMethod?.ToString())?.Text == "Cheque")
+                        {
+                        foreach (var Row in model.Rows)
+                            {
+                            //  var chequeId = await GetChequeBookIdByCompanyOrFirstAsync();
+                            var checkDetailId = new TblCheckDetail
+                                {
+                                Date = model.Date,
+                                CheckId = 0,
+                                CheckNo = Row.CheckNo,
+                                CheckDate = Row.CheckDate,
+                                CheckType = "Advance Payment",                               
+                                PvcNo = voucherId,
+                                CheckName = Row.CheckName,
+                                Amount = Row.Amount,
+                                State = "New"
+                                };
+                            }
+                        }
+
+
                     await insertInvItems(model, voucherId);
                     await InsertCostCenterTransaction(model.Date,model.Amount,0, voucherId, "AdvancePayment","Advance Payment Debit Entry",(int)model.DebitCostCenterId);
                     await InsertCostCenterTransaction(model.Date, 0,model.Amount, voucherId, "AdvancePayment", "Advance Payment Credit Entry", (int)model.CreditCostCenterId);
-                    //Add log
+
+                    await _GlobalService.LogAudit(-_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Insert Advance Payment Voucher", "Advance Payment Voucher", voucherId, "Inserted Advance Payment Voucher: " + model.VoucherNo);
+
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
 
@@ -88,11 +113,11 @@
         public async Task insertInvItems(AdvancePaymentViewModel model, int voucherId)
             {
             var type = "";
-            if(model.PaymentType==1)
+            if( model.PaymentMethods.FirstOrDefault(x => x.Value == model.PaymentMethod.ToString())?.Text== "Cash")
                 {
                 type = "Vendor Advance Payment";
                 }
-            else if (model.PaymentType == 2)
+            else if (model.PaymentMethods.FirstOrDefault(x => x.Value == model.PaymentMethod.ToString())?.Text == "Check") 
                 {
                 type = "Customer Advance Payment";
                 }
@@ -106,7 +131,7 @@
                     Amount = i.Amount
 
                     };
-                if (model.PaymentMethod == 2)//cheque
+                if (model.PaymentMethods.FirstOrDefault(x => x.Value == model.PaymentMethod.ToString())?.Text == "Check")
                     {
                     AdvancePaymentVoucherDetail.BankName = i.BankId.ToString();
                     AdvancePaymentVoucherDetail.CheckName = i.CheckName;
@@ -115,7 +140,7 @@
                     AdvancePaymentVoucherDetail.BankAccountName = i.BankAccount;
                     AdvancePaymentVoucherDetail.BookNo = i.BookNo;
                     }
-                else if (model.PaymentMethod == 3)//transfer
+                else if (model.PaymentMethods.FirstOrDefault(x => x.Value == model.PaymentMethod.ToString())?.Text == "Transfer") 
                     {
                     AdvancePaymentVoucherDetail.TransDate = i.TransDate;
                     AdvancePaymentVoucherDetail.TransName = i.TransName;
@@ -125,36 +150,36 @@
                 await _context.SaveChangesAsync();
 
                 
-                if (model.PaymentMethod == 2) // Cheque
-                        {
-                    var CheckDetails = await _context.TblCheckDetails
-              .Where(d => d.PvcNo == voucherId && d.CheckType== "Payment" && d.CheckId==i.BookNo)
-                      .ToListAsync();
+              //  if (model.PaymentMethods.FirstOrDefault(x => x.Value == model.PaymentMethod.ToString())?.Text == "Check") // Cheque
+              //          {
+              //      var CheckDetails = await _context.TblCheckDetails
+              //.Where(d => d.PvcNo == voucherId && d.CheckType== "Payment" && d.CheckId==i.BookNo)
+              //        .ToListAsync();
 
-                    var cheque = new TblCheckDetail
-                            {
-                            Date = DateOnly.FromDateTime(DateTime.Now),
-                            CheckId = i.BookNo,
-                            CheckNo = i.CheckNo,
-                            CheckDate = i.CheckDate,
-                            CheckType = "Advance Payment",
-                            PvcNo = voucherId,
-                            CheckName = i.CheckName,
-                            Amount = i.Amount,
-                            State = "New",
-                            };
-                        _context.TblCheckDetails.Add(cheque);
-                        await _context.SaveChangesAsync();
-                        }
+              //      var cheque = new TblCheckDetail
+              //              {
+              //              Date = DateOnly.FromDateTime(DateTime.Now),
+              //              CheckId = i.BookNo,
+              //              CheckNo = i.CheckNo,
+              //              CheckDate = i.CheckDate,
+              //              CheckType = "Advance Payment",
+              //              PvcNo = voucherId,
+              //              CheckName = i.CheckName,
+              //              Amount = i.Amount,
+              //              State = "New",
+              //              };
+              //          _context.TblCheckDetails.Add(cheque);
+              //          await _context.SaveChangesAsync();
+              //          }
                 await AddTransactionEntry(model.Date, model.DebitAccountId, i.Amount, 0m, voucherId, i.partnerId , type,
-                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, 1, model.Date);
+                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.Now),model.VoucherNo);
                 await AddTransactionEntry(model.Date, model.CreditAccountId,  0m, i.Amount, voucherId, 0 , type,
-                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, 1, model.Date);
+                    "Advance PAYMENT", "ADVANCE Payment Voucher NO. " + model.VoucherNo, -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.Now),model.VoucherNo);
 
 
                 }
             }
-        public async Task AddTransactionEntry(DateOnly Date, int? accountId, decimal debit, decimal credit, int transactionId, int humId, string type, string voucher_name,string description, int createdBy, DateOnly createdDate)
+        public async Task AddTransactionEntry(DateOnly Date, int? accountId, decimal debit, decimal credit, int transactionId, int humId, string type, string voucher_name,string description, int createdBy, DateOnly createdDate,string VoucherNo)
             {
             var trx = new TblTransaction
                 {
@@ -168,7 +193,7 @@
                 Type = type,
                 Description = description,
                 CreatedBy = createdBy,
-                VoucherNo = voucher_name,
+                VoucherNo = VoucherNo,
                 CreatedDate = createdDate,
                 State = 0
                 };
@@ -277,12 +302,14 @@
                     _context.TblAdvancePaymentVouchers.Update(advancePayment);
                     await _context.SaveChangesAsync();
                     //---
-                    await RemoveAsync((int)Model.Id);
+                    // await RemoveAsync((int)Model.Id);
+                    await DeleteCostCenterTransactionEntry((int)Model.Id);
                     //---
                     await insertInvItems(Model, (int)Model.Id);
                     await InsertCostCenterTransaction(Model.Date, Model.Amount, 0, (int)Model.Id, "AdvancePayment", "Advance Payment Debit Entry", (int)Model.DebitCostCenterId);
                     await InsertCostCenterTransaction(Model.Date, 0, Model.Amount, (int)Model.Id, "AdvancePayment", "Advance Payment Credit Entry", (int)Model.CreditCostCenterId);
                     //Add log
+                    await _GlobalService.LogAudit(-_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Advance Payment Voucher", "Advance Payment Voucher", (int)Model.Id, "Updated Advance Payment Voucher: " +Model.VoucherNo);
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
 
@@ -294,28 +321,36 @@
                     }
             });
                 }
-        public async Task RemoveAsync(int id)
+        public async Task DeleteCostCenterTransactionEntry(int id)
             {
-            //remove advance payment voucher Details
-            var advancePaymentDetails = await _context.TblAdvancePaymentVoucherDetails
-                .Where(d => d.PaymentId == id)
-                        .ToListAsync();
-            if (advancePaymentDetails == null) throw new NotImplementedException();
-            _context.TblAdvancePaymentVoucherDetails.RemoveRange(advancePaymentDetails);
-            await _context.SaveChangesAsync();
-            //remove Transaction Entries
-            var Transactions = await _context.TblTransactions
-                     .Where(d => d.TransactionId == id)
-                     .ToListAsync();
-            _context.TblTransactions.RemoveRange(Transactions);
-            await _context.SaveChangesAsync();
-            //Remove Cost Center Transactions
             var CostCenterTransactions = await _context.TblCostCenterTransactions
-                     .Where(d => d.RefId == id)
-                     .ToListAsync();
+                    .Where(d => d.RefId == id && d.Type== "AdvancePayment")
+                    .ToListAsync();
             _context.TblCostCenterTransactions.RemoveRange(CostCenterTransactions);
             await _context.SaveChangesAsync();
             }
+        //public async Task RemoveAsync(int id)
+        //    {
+        //    //remove advance payment voucher Details
+        //    var advancePaymentDetails = await _context.TblAdvancePaymentVoucherDetails
+        //        .Where(d => d.PaymentId == id)
+        //                .ToListAsync();
+        //    if (advancePaymentDetails == null) throw new NotImplementedException();
+        //    _context.TblAdvancePaymentVoucherDetails.RemoveRange(advancePaymentDetails);
+        //    await _context.SaveChangesAsync();
+        //    //remove Transaction Entries
+        //    var Transactions = await _context.TblTransactions
+        //             .Where(d => d.TransactionId == id)
+        //             .ToListAsync();
+        //    _context.TblTransactions.RemoveRange(Transactions);
+        //    await _context.SaveChangesAsync();
+        //    //Remove Cost Center Transactions
+        //    var CostCenterTransactions = await _context.TblCostCenterTransactions
+        //             .Where(d => d.RefId == id && d.Type == "AdvancePayment")
+        //             .ToListAsync();
+        //    _context.TblCostCenterTransactions.RemoveRange(CostCenterTransactions);
+        //    await _context.SaveChangesAsync();
+        //    }
 
         }
 }

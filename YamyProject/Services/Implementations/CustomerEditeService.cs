@@ -46,12 +46,19 @@ namespace YamyProject.Services.Implementations
         }
         public  string GenerateNextCustomerCode()
             {
-            var prefix = "0000"; // Prefix for Credit Note
-            var lastCodeValue =  _context.TblCustomers
-               .Select(s => s.Code)
-               .MaxAsync();
-            prefix = lastCodeValue.ToString();
-            return $"{int.Parse(prefix) + 1:D5}";
+            //var prefix = "0000"; // Prefix for Credit Note
+            //var lastCodeValue =  _context.TblCustomers
+            //   .Select(s => s.Code)
+            //   .MaxAsync();
+            //prefix = lastCodeValue.ToString();
+            //return $"{int.Parse(prefix) + 1:D5}";
+
+            int lastCode = _context.TblCustomers
+       .Select(v => (int?)v.Code)
+       .Max() ?? 0;
+
+            int next = lastCode + 1;
+            return next.ToString("D5");
             }
         public async Task SaveCustomerAsync(TblCustomer customer)
         {
@@ -60,31 +67,40 @@ namespace YamyProject.Services.Implementations
             if (customer.Id == 0)
                 {
                 var code =  GenerateNextCustomerCode();
-                var customerRow = new TblCustomer {
+                var customerRow = new TblCustomer 
+                    {
+                    Date=customer.Date,
                     Name = customer.Name,
                     Code = int.Parse(code),//customer.Code,
                     CatId=customer.CatId,
                  //   if(customer.CreditNotes != null) ,
                     Balance=customer.Balance,
                     Mobile=customer.Mobile,
+                    WorkPhone=customer.WorkPhone,
+                    MainPhone=customer.MainPhone,
                     Email=customer.Email,
+                    Ccemail=customer.Ccemail,
                     Country=customer.Country,
                     City=customer.City,
                     Region=customer.Region,
                     BuildingName=customer.BuildingName,
+                    Website=customer.Website,
                     AccountId=customer.AccountId,
                     Trn=customer.Trn,
                     FaciltyName=customer.FaciltyName,
-                    Active=1,
+                    Active=customer.Active,
                     CreatedBy= _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                      CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                    State =customer.State,
+                    State =0,
                     ProjectId=customer.ProjectId,
-                    ProjectSite=customer.ProjectSite
+                    ProjectSite=customer.ProjectSite,
+                    
                     };
 
                 _context.TblCustomers.Add(customerRow);
-            ProcessOpeningBalanceTransactions(customerRow);
+                await _context.SaveChangesAsync();
+
+                ProcessOpeningBalanceTransactions(customerRow);
 
                 _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "INSERT", "Customer Center", customerRow.Id, "New Customer Created - Code: " + customerRow.Code + ", Name: " + customerRow.Name);
                 }
@@ -111,16 +127,26 @@ namespace YamyProject.Services.Implementations
                 customerRow.State = customer.State;
                 customerRow.ProjectId = customer.ProjectId;
                 customerRow.ProjectSite = customer.ProjectSite;
-               // _context.TblCustomers.Update(customer);
+                // _context.TblCustomers.Update(customer);
+                await _context.SaveChangesAsync();
+                var JorunalDetails = await _context.TblTransactions
+              .Where(d => d.TransactionId == customer.Id && d.Type == "Customer Opening Balance")
+              .ToListAsync();
+                _context.TblTransactions.RemoveRange(JorunalDetails);
+                await _context.SaveChangesAsync();
+
+                ProcessOpeningBalanceTransactions(customer);
+                _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "UPDATE", "Customer Center", customerRow.Id, "Customer UPDATE - Code: " + customerRow.Code + ", Name: " + customerRow.Name);
+
                 }
 
-            await _context.SaveChangesAsync();
-            ProcessOpeningBalanceTransactions(customer);
-        }
+
+            }
         public async Task ProcessOpeningBalanceTransactions(TblCustomer customer)
             {
             var Account = customer.AccountId;
-            var openingBalanceEquity = _ListServices.DefaultAccountsSet("Opening Balance Equity").ToString();
+            var openingBalanceAccount = await _ListServices.DefaultAccountsSet("Opening Balance Equity");
+            var openingBalanceEquity = openingBalanceAccount.ToString();
             var result = _context.TblCoaLevel4s
                 .FirstOrDefaultAsync(a => a.Name == "Opening Balance Equity");
             if (openingBalanceEquity == "0")

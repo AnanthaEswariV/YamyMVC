@@ -363,8 +363,8 @@
                             <label class="form-label">Bank Code</label>
                             <input asp-for="Credit.BankCode" class="form-control" />
                         </div>
-                        <div class="col-12 col-md-3">
-                            <label class="form-label">Cost Center</label>
+                        <div class="col-12 col-md-3  cheque-only d-none">
+                            <label class="form-label">Bank Name</label>
                             <select class="form-select" asp-for="DebitAccounts"
                                     asp-items="@(new SelectList(Model.DebitAccounts, "Id", "Code"))"
                                     id="filterDebitCostCenter">
@@ -377,19 +377,32 @@
                         <div class="col-12 col-md-2 cheque-only d-none">
                             <label class="form-label d-block">Cheque</label>
                             <div class="form-check mt-1">
-                                <input class="form-check-input" type="checkbox" asp-for="Credit.IsCheque" />
-                                <label class="form-check-label tiny">Is Cheque</label>
+                                <input class="form-check-input" type="form-select" asp-for="Credit.IsCheque" />
+                                @* <label class="form-check-label tiny">Is Cheque</label> *@
                             </div>
                         </div>
-                        <div class="col-12 col-md-3 cheque-only d-none">
+                       @*  <div class="col-12 col-md-3 cheque-only d-none">
                             <label class="form-label">Cheque No</label>
                             <input asp-for="Credit.ChequeNo" class="form-control" />
-                        </div>
+                        </div> *@
                         <div class="col-12 col-md-3 cheque-only d-none">
                             <label class="form-label">Cheque Date</label>
                             <input asp-for="Credit.ChequeDate" type="date" class="form-control" />
                         </div>
-
+                        <div class="col-12 col-md-3  cheque-only d-none">
+                            <label class="form-label">Bank Account Name</label>
+                            <select class="form-select" asp-for="DebitAccounts"
+                                    asp-items="@(new SelectList(Model.DebitAccounts, "Id", "Code"))"
+                                    id="filterDebitCostCenter">
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3  cheque-only d-none">
+                            <label class="form-label">Book No</label>
+                            <select class="form-select" asp-for="DebitAccounts"
+                                    asp-items="@(new SelectList(Model.DebitAccounts, "Id", "Code"))"
+                                    id="filterDebitCostCenter">
+                            </select>
+                        </div>
                         <!-- Transfer -->
                         <div class="col-12 col-md-3 transfer-only d-none">
                             <label class="form-label">Transfer Date</label>

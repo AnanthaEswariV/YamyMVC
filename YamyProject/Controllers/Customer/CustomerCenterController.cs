@@ -73,6 +73,7 @@ namespace YamyProject.Controllers
             var accounts = await _ListServices.GetAccountsAsync();
             var countries = await _ListServices.GetCountriesAsync();
             var cities = await _ListServices.GetCitysAsync();
+            var Projects = await _ListServices.GetProjectAsync();
             var Code = _service.GenerateNextCustomerCode();
 
             vm.Customer ??= new TblCustomer();
@@ -97,6 +98,12 @@ namespace YamyProject.Controllers
                 Value = c.Id.ToString()
             }).ToList() ?? new List<SelectListItem>();
             vm.Customer.Code = int.Parse(Code);
+            vm.Projects = Projects?.Select(p => new SelectListItem
+                {
+                Text = p.Name,
+                Value = p.Id.ToString()
+                }).ToList() ?? new List<SelectListItem>();
+
 
             return PartialView("CustomerForm", vm); // reuse Edit view
         //    return View("Edite", vm); // reuse Edit view
@@ -106,14 +113,14 @@ namespace YamyProject.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CustomerViewModel vm)
         {
-            if (!ModelState.IsValid)
-            {
-                // Reload dropdowns
-                var reloadVm = await _service.GetCreateCustomerFormAsync();
-                reloadVm.Customer = vm.Customer; // preserve entered data
-                return PartialView("CustomerForm", reloadVm);
-               // return View("Edite", reloadVm);
-            }
+            //if (!ModelState.IsValid)
+            //{
+            //    // Reload dropdowns
+            //    var reloadVm = await _service.GetCreateCustomerFormAsync();
+            //    reloadVm.Customer = vm.Customer; // preserve entered data
+            //    return PartialView("CustomerForm", reloadVm);
+            //   // return View("Edite", reloadVm);
+            //}
 
             await _service.SaveCustomerAsync(vm.Customer);
             return RedirectToAction(nameof(Index));
@@ -177,5 +184,11 @@ namespace YamyProject.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+
+        public async Task<IActionResult> GetCitiesByCountry(int Id)
+            {
+                var CityId = await _ListServices.GetCitysAsync(Id);
+            return Json(CityId);
+            }
     }
 }

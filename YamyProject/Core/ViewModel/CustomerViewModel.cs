@@ -3,13 +3,16 @@
     public class CustomerViewModel
     {
         public TblCustomer Customer { get; set; } = new TblCustomer();
-       
+       public bool Debit { get; set; }
+        public bool Credit { get; set; }
 
         public TblTransaction Transactions { get; set; } = new TblTransaction();
         public IEnumerable<SelectListItem> Categoriess { get; set; } = new List<SelectListItem>();
         public IEnumerable<SelectListItem> Citys { get; set; } = new List<SelectListItem>();
         public IEnumerable<SelectListItem> Account { get; set; } = new List<SelectListItem>();
         public IEnumerable<SelectListItem> Countriess { get; set; } = new List<SelectListItem>();
+        public IEnumerable<SelectListItem> Projects { get; set; } = new List<SelectListItem>();
+
 
         [Display(Name = "Search")]
         public string? SearchText { get; set; }

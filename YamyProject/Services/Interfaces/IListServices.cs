@@ -16,6 +16,7 @@
         Task<IEnumerable<TblWarehouse>> GetWarehousesAsync();
         Task<IEnumerable<TblCountry>> GetCountriesAsync();
         Task<IEnumerable<TblCity>> GetCitysAsync();
+        Task<int> GetCitysAsync(int Id);
         Task<IEnumerable<TblProject>> GetProjectAsync();
         Task<IEnumerable<TblCoaLevel4>> GetAccountsAsync();
         Task<IEnumerable<TblTax>> GetVatAsync();

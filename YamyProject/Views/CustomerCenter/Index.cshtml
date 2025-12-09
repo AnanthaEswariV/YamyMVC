@@ -477,7 +477,7 @@
     </div>
 </div>
 
-    @section Scripts {
+ @*    @section Scripts {
     <script>
         // NEW CUSTOMER
         $(function () {
@@ -489,7 +489,8 @@
 
                     var modalEl = document.getElementById('CustomerModal');
                     if (modalEl) {
-                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    //    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    var modal = new bootstrap.Modal(document.getElementById(modalEl));
                         modal.show();
                     }
                 });
@@ -511,11 +512,52 @@
 
                     var modalEl = document.getElementById('CustomerModal');
                     if (modalEl) {
-                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                       // var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                      var modal = new bootstrap.Modal(document.getElementById('myModal'));
+                      modal.show();
+                    }
+                });
+            });
+        });
+    </script>
+    } *@
+    @section Scripts {
+    <script>
+        $(function () {
+
+            // NEW CUSTOMER
+            $('#btnNewSubcontractor').on('click', function (e) {
+                e.preventDefault();
+
+                $.get('@Url.Action("Create", "CustomerCenter")', function (html) {
+                    $('#CustomerModalHost').html(html);
+
+                    var modalEl = document.getElementById('CustomerModal'); // id inside partial
+                    if (modalEl) {
+                        var modal = new bootstrap.Modal(modalEl); // use the element directly
                         modal.show();
                     }
                 });
             });
+
+            // EDIT CUSTOMER
+            $(document).on('click', '#btnEditCustomer', function (e) {
+                e.preventDefault();
+
+                var id = $(this).data('id');
+                if (!id) return;
+
+                $.get('@Url.Action("Edit", "CustomerCenter")', { id: id }, function (html) {
+                    $('#CustomerModalHost').html(html);
+
+                    var modalEl = document.getElementById('CustomerModal'); // same id
+                    if (modalEl) {
+                        var modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+
         });
     </script>
     }

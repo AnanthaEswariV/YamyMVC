@@ -1,6 +1,4 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
 {
     public class ItemStockSettlementService(YamyDbContext db, IMapper mapper, ILogger<ItemStockSettlementService> logger, IHttpContextAccessor httpContextAccessor
         , IListServices listServices, IGlobalService GlobalService) : IItemStockSettlementService

@@ -69,6 +69,13 @@ namespace YamyProject.Services.Implementations
             {
             return await _context.TblCities.ToListAsync();
             }
+        public async Task<int> GetCitysAsync(int Id)
+            {
+            return await _context.TblCities
+       .Where(c => c.CountryId == Id)
+       .Select(c => c.Id)
+       .FirstOrDefaultAsync();
+            }
         public async Task<IEnumerable<TblProject>> GetProjectAsync()
 
             {

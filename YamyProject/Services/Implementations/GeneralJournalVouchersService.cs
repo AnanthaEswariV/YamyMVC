@@ -1,8 +1,11 @@
 ﻿namespace YamyProject.Services.Implementations
     {
-    public class GeneralJournalVouchersService(YamyDbContext context) : IGeneralJournalVouchersService
+    public class GeneralJournalVouchersService(YamyDbContext context, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IGeneralJournalVouchersService
         {
         private readonly YamyDbContext _context = context;
+        private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
+
         public async Task<JournalVoucherMasterViewModel> GetCustmerData(DateOnly From = default, DateOnly To = default, bool All = true)
             {
             var query = _context.TblJournalVouchers
@@ -71,12 +74,19 @@
             prefix = lastCodeValue ?? prefix;
             return $"JV-{int.Parse(prefix) + 1:D4}";
             }
+        public async Task<int> GenerateNextReceiptId()
+            {
+            var prefix = 1;
+            var lastIdValue = await _context.TblJournalVouchers
+              .Select(s => s.Id)
+              .MaxAsync();
+            prefix = (lastIdValue !=0)? lastIdValue+1: prefix;
+            return prefix;
+            }
         public async Task CreateJournalVoucher(JournalVoucherViewModel Model)
             {
 
-            var invoiceNo = string.IsNullOrWhiteSpace(Model.JournalCode)
-                ? await GenerateNextReceiptCode()
-                : Model.JournalCode.Trim();
+            var invoiceNo =  await GenerateNextReceiptCode();
             var strategy = _context.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>
@@ -90,7 +100,7 @@
                         Date = Model.Date,
                         Debit = Model.DrAmount,
                         Credit = Model.CrAmount,
-                        CreatedBy = 1,
+                        CreatedBy = -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.Now),
                         State = 0
                         };
@@ -102,22 +112,21 @@
                         {
                         var journalVoucherDetail = new TblJournalVoucherDetail
                             {
-                           // Id = journalId,
                             Date = Model.Date,
-
-                            AccountId = Customer.Id,
                             Debit = Customer.DebitAmount,
                             Credit = Customer.CreditAmount,
+                            InvId= journalId,
                             Description = Customer.Description,
-                            Partner = Customer.Partner
+                            Partner = Customer.Partner,
+                            AccountId = Customer.Id
                             };
                         _context.TblJournalVoucherDetails.Add(journalVoucherDetail);
                         await _context.SaveChangesAsync();
                         await AddTransactionEntry(Model.Date, Customer.Id, Customer.DebitAmount, Customer.CreditAmount,
-                            journalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. "+ invoiceNo, 1,
-                            DateOnly.FromDateTime(DateTime.Now), journalVoucher.Code);
+                            journalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. "+ invoiceNo, -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
+                            DateOnly.FromDateTime(DateTime.Now), invoiceNo);
                         }
-
+                    await _GlobalService.LogAudit(-_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Create Journal Voucher", "Journal Voucher", journalId, "Created Journal Voucher: " + invoiceNo);
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
                     }
@@ -147,7 +156,7 @@
                     JournalVoucher.Date= Model.Date;
                     JournalVoucher.Debit= Model.DrAmount;
                     JournalVoucher.Credit= Model.CrAmount;
-                    JournalVoucher.ModifiedBy = 1;
+                    JournalVoucher.ModifiedBy = -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                     JournalVoucher.ModifiedDate = DateOnly.FromDateTime(DateTime.Now);
                     _context.TblJournalVouchers.Update(JournalVoucher);
                     await _context.SaveChangesAsync();
@@ -166,7 +175,7 @@
                         {
                         var journalVoucherDetail = new TblJournalVoucherDetail
                             {
-                            Id = Model.JournalId,
+                            InvId = Model.JournalId,
                             Date = Model.Date,
                             AccountId = Customer.Id,
                             Debit = Customer.DebitAmount,
@@ -177,10 +186,12 @@
                         _context.TblJournalVoucherDetails.Add(journalVoucherDetail);
                         await _context.SaveChangesAsync();
                         await AddTransactionEntry(Model.Date, Customer.Id, Customer.DebitAmount, Customer.CreditAmount,
-                            Model.JournalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. " + invoiceNo, 1,
+                            Model.JournalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. " + invoiceNo, -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                             DateOnly.FromDateTime(DateTime.Now), JournalVoucher.Code);
                         }
-                        await tx.CommitAsync();
+                    await _GlobalService.LogAudit(-_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Journal Voucher", "Journal Voucher", Model.JournalId, "Updated Journal Voucher: " + invoiceNo);
+                    await _context.SaveChangesAsync();
+                    await tx.CommitAsync();
                 }
                 catch
                 {
@@ -236,5 +247,124 @@
                     }).ToList()
                 };
             }
+        public class PartnerLookupDto
+            {
+            public int Id { get; set; }
+            public string Name { get; set; }  // "CODE - NAME"
+            }
+
+        //public async Task<List<PartnerLookupDto>> GetPartnersByAccountNameAsync(string accountName)
+        //    {
+        //    // Get the account id once (same in all three sub-queries)
+        //    var accountId = await _context.TblCoaLevel4s
+        //        .Where(a => a.Name == accountName)
+        //        .Select(a => a.Id)
+        //        .FirstOrDefaultAsync();
+
+        //    if (accountId == 0)
+        //        return new List<PartnerLookupDto>();
+
+        //    // vendors
+        //    var vendors = _context.TblVendors
+        //        .AsNoTracking()
+        //        .Where(v => v.AccountId == accountId)
+        //        .Select(v => new PartnerLookupDto
+        //            {
+        //            Id = v.Id,
+        //            Name = v.Code + " - " + v.Name
+        //            });
+
+        //    // customers
+        //    var customers = _context.TblCustomers
+        //        .AsNoTracking()
+        //        .Where(c => c.AccountId == accountId)
+        //        .Select(c => new PartnerLookupDto
+        //            {
+        //            Id = c.Id,
+        //            Name = c.Code + " - " + c.Name
+        //            });
+
+        //    // employees
+        //    var employees = _context.TblEmployees
+        //       .AsNoTracking()
+        //        .Where(e => e.AccountId == accountId)
+        //        .Select(e => new PartnerLookupDto
+        //            {
+        //            Id = e.Id,
+        //            Name = e.Code + " - " + e.Name
+        //            });
+
+        //    // UNION ALL  ->  Concat in LINQ
+        //    //var result = await vendors
+        //    //    .Concat(customers)
+        //    //    .Concat(employees)
+        //    //    .ToListAsync();
+        //    List<PartnerLookupDto> result = new(vendors.Count + customers.Count + employees.Count);
+        //    result.AddRange(vendors);
+        //    result.AddRange(customers);
+        //    result.AddRange(employees);
+
+        //   // return result;
+        //    return result;
+        //    }
+        public async Task<List<PartnerLookupDto>> GetPartnersByAccountNameAsync(string accountName)
+            {
+            // 1) Guard clause
+            if (string.IsNullOrWhiteSpace(accountName))
+                return new List<PartnerLookupDto>();
+
+            accountName = accountName.Trim();
+
+            // 2) Resolve account id by NAME (or CODE if needed)
+            var accountId = await _context.TblCoaLevel4s
+                .AsNoTracking()
+                .Where(a => a.Name == accountName)
+                .Select(a => (int?)a.Id)
+                .FirstOrDefaultAsync();
+
+            // If not found, return empty
+            if (accountId == null)
+                return new List<PartnerLookupDto>();
+
+            // 3) Load each partner type separately (no Concat in SQL)
+            var vendors = await _context.TblVendors
+                .AsNoTracking()
+                .Where(v => v.AccountId == accountId.Value)
+                .Select(v => new PartnerLookupDto
+                    {
+                    Id = v.Id,
+                    Name = v.Code + " - " + v.Name
+                    })
+                .ToListAsync();
+
+            var customers = await _context.TblCustomers
+                .AsNoTracking()
+                .Where(c => c.AccountId == accountId.Value)
+                .Select(c => new PartnerLookupDto
+                    {
+                    Id = c.Id,
+                    Name = c.Code + " - " + c.Name
+                    })
+                .ToListAsync();
+
+            var employees = await _context.TblEmployees
+                .AsNoTracking()
+                .Where(e => e.AccountId == accountId.Value)
+                .Select(e => new PartnerLookupDto
+                    {
+                    Id = e.Id,
+                    Name = e.Code + " - " + e.Name
+                    })
+                .ToListAsync();
+
+            // 4) Combine in memory (equivalent to UNION ALL)
+            var result = new List<PartnerLookupDto>(vendors.Count + customers.Count + employees.Count);
+            result.AddRange(vendors);
+            result.AddRange(customers);
+            result.AddRange(employees);
+
+            return result;
+            }
+
         }
     }
