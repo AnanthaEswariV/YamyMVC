@@ -2212,9 +2212,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     }
                     else
                     {
-                        // 🔹 INSERT Main Cost Center
-                        int newMainCode = 101;
-                        string getMaxMainCode = "SELECT MAX(code) FROM tbl_cost_center";
+                        int newMainCode = 1;
+                        string getMaxMainCode = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_cost_center";
                         using (var cmd = new MySqlCommand(getMaxMainCode, conn))
                         {
                             var result = await cmd.ExecuteScalarAsync();
@@ -2222,10 +2221,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                                 newMainCode = Convert.ToInt32(result) + 1;
                         }
 
+                        // Pad to always 2 digits
+                        string formattedMainCode = newMainCode.ToString("D2");
+
                         string insertQuery = "INSERT INTO tbl_cost_center (name, code, project_id) VALUES (@name,@code,@project_id)";
                         using var cmdInsert = new MySqlCommand(insertQuery, conn);
                         cmdInsert.Parameters.AddWithValue("@name", model.Name);
-                        cmdInsert.Parameters.AddWithValue("@code", newMainCode);
+                        cmdInsert.Parameters.AddWithValue("@code", formattedMainCode);
                         int projectIdValue = model.ProjectId ?? 0;
                         cmdInsert.Parameters.AddWithValue("@project_id", projectIdValue);
                         await cmdInsert.ExecuteNonQueryAsync();
@@ -2252,7 +2254,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     else
                     {
                         // 🔹 INSERT Sub Cost Center
-                        int newSubCode = 101;
+                        int newSubCode = 1;
                         string getMaxSubQuery = "SELECT MAX(code) FROM tbl_sub_cost_center WHERE main_id=@mainId";
                         using (var cmd = new MySqlCommand(getMaxSubQuery, conn))
                         {
@@ -2261,11 +2263,11 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                             if (result != DBNull.Value && result != null)
                                 newSubCode = Convert.ToInt32(result) + 1;
                         }
-
+                        string formattedSubCode = newSubCode.ToString("D3");
                         string insertSubQuery = "INSERT INTO tbl_sub_cost_center (name, code, main_id, project_id) VALUES (@name,@code,@main_id,@project_id)";
                         using var cmdInsert = new MySqlCommand(insertSubQuery, conn);
                         cmdInsert.Parameters.AddWithValue("@name", model.Name);
-                        cmdInsert.Parameters.AddWithValue("@code", newSubCode);
+                        cmdInsert.Parameters.AddWithValue("@code", formattedSubCode);
                         cmdInsert.Parameters.AddWithValue("@main_id", model.MainId);
                         int projectIdValue = model.ProjectId ?? 0;
                         cmdInsert.Parameters.AddWithValue("@project_id", projectIdValue);
