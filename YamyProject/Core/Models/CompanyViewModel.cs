@@ -372,6 +372,7 @@ namespace YamyProject.Core.Models
         public bool CreateJournal { get; set; }
         public int CreatedBy { get; set; }
         public int ManufactureId { get; set; }
+        public int? CostCenter { get; set; }
     }
 
 

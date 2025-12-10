@@ -907,6 +907,7 @@ namespace YamyProject.Controllers
                           `state` int DEFAULT '0',
                           `manufacture` int DEFAULT '0',
                           `manufactureStatus` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `costcenter` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

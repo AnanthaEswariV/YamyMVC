@@ -4641,6 +4641,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         CreatedDate= reader["created_date"] != DBNull.Value ? DateTime.Parse(reader["created_date"].ToString()) : (DateTime?)null,
                         ModifiedDate= reader["modified_date"] != DBNull.Value ? DateTime.Parse(reader["modified_date"].ToString()) : (DateTime?)null,
                         State= reader["state"],
+                        CostCenter = reader["costcenter"]
 
                     });
                 }
@@ -4693,9 +4694,9 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 // Insert Fixed Asset
                 var insertQuery = @"
             INSERT INTO tbl_fixed_assets
-                (date, code, name, brand, category_id, model, supplier, status, invoice_number, purchase_date, end_date, depreciation_life, purchase_price, debit_account_id, credit_account_id, expence_account_id, created_by, created_date, state, manufacture, manufactureStatus)
+                (date, code, name, brand, category_id, model, supplier, status, invoice_number, purchase_date, end_date, depreciation_life, purchase_price, debit_account_id, credit_account_id, expence_account_id, created_by, created_date, state, manufacture, manufactureStatus, costcenter)
             VALUES
-                (@date, @code, @name, @brand, @category_id, @model, @supplier, @status, @invoice_number, @purchase_date, @end_date, @depreciation_life, @purchase_price, @debit_account_id, @credit_account_id, @expence_account_id, @created_by, @created_date, 0, @manufacture, 'Draft');
+                (@date, @code, @name, @brand, @category_id, @model, @supplier, @status, @invoice_number, @purchase_date, @end_date, @depreciation_life, @purchase_price, @debit_account_id, @credit_account_id, @expence_account_id, @created_by, @created_date, 0, @manufacture, 'Draft', @costcenter);
             SELECT LAST_INSERT_ID();";
 
                 int assetId;
@@ -4720,6 +4721,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@created_by", model.CreatedBy);
                     cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
                     cmd.Parameters.AddWithValue("@manufacture", model.ManufactureId);
+                    cmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
 
                     assetId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                 }
@@ -4750,8 +4752,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             // Debit & Credit entry at purchase
             if (!string.IsNullOrEmpty(model.Supplier))
             {
-                await CommonInsertTransactionAsync(conn, startDate, model.DebitAccountId.ToString(), totalAmount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
-                await CommonInsertTransactionAsync(conn, startDate, model.CreditAccountId.ToString(), 0, totalAmount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
+                await CommonInsertTransactionAsync(conn, startDate, model.DebitAccountId.ToString(), totalAmount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy, model.CostCenter ?? 0);
+                await CommonInsertTransactionAsync(conn, startDate, model.CreditAccountId.ToString(), 0, totalAmount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy, model.CostCenter ?? 0);
             }
 
             DateTime currentMonthStart = startDate;
@@ -4773,8 +4775,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
                 actualTotal += amount;
 
-                await CommonInsertTransactionAsync(conn, periodEnd, expenseAccountId, amount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
-                await CommonInsertTransactionAsync(conn, periodEnd, model.CreditAccountId.ToString(), 0, amount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy);
+                await CommonInsertTransactionAsync(conn, periodEnd, expenseAccountId, amount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy, model.CostCenter ?? 0);
+                await CommonInsertTransactionAsync(conn, periodEnd, model.CreditAccountId.ToString(), 0, amount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy, model.CostCenter ?? 0);
 
                 currentMonthStart = currentMonthStart.AddMonths(1);
                 currentMonthStart = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 1);
@@ -4782,11 +4784,11 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
         }
 
         private async Task CommonInsertTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit,
-                                                         string transactionId, int humId, string type, string description, int createdBy)
+                                                         string transactionId, int humId, string type, string description, int createdBy, int costcenter)
         {
             var query = @"INSERT INTO tbl_transaction 
-                  (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state) 
-                  VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, '', @type, @description, @createdBy, @createdDate, 0);";
+                  (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, costcenter) 
+                  VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, '', @type, @description, @createdBy, @createdDate, 0, @costcenter);";
 
             using var cmd = new MySqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@date", date);
@@ -4799,6 +4801,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             cmd.Parameters.AddWithValue("@description", description);
             cmd.Parameters.AddWithValue("@createdBy", createdBy);
             cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+            cmd.Parameters.AddWithValue("@costcenter", costcenter);
 
             await cmd.ExecuteNonQueryAsync();
         }
@@ -4855,7 +4858,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 modified_by=@modified_by,
                 modified_date=@modified_date,
                 manufacture=@manufacture,
-                manufactureStatus='Draft'
+                manufactureStatus='Draft',
+                costcenter = @costcenter
             WHERE id=@id;";
 
                 using (var cmd = new MySqlCommand(updateQuery, conn))
@@ -4879,6 +4883,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@modified_by", model.CreatedBy); // or ModifiedBy field
                     cmd.Parameters.AddWithValue("@modified_date", DateTime.Now.Date);
                     cmd.Parameters.AddWithValue("@manufacture", model.ManufactureId);
+                    cmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
 
                     await cmd.ExecuteNonQueryAsync();
                 }

@@ -286,11 +286,49 @@
                 });
             }
 
+            function populateAndSelectCostCenter() {
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    console.log(res);  // Check the response structure here
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    if (!data.length) return;
+
+                    const allSelects = $('#costCenterSelect, #editcostCenterSelect');
+
+                    // Loop through each select dropdown
+                    allSelects.each(function () {
+                        const $select = $(this);
+                        const selectedId = $select.data('selected-id');  
+
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        // Populate the select with options
+                        $.each(data, function (i, item) {
+                            const isSelected = String(item.id) === String(selectedId);  
+                            const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                            $select.append(option);
+                        });
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error loading cost centers:", error);
+                    // Optionally, display a message for error
+                }
+            });
+        }
+
+
             loadFixedAssetCategories();
             loadAccounts();
+            populateAndSelectCostCenter();
             bindCategoryChangeHandlers();
+            
 
         });
+
+          
 
          function addFixedAssetsCategory() {
                     let model = {
@@ -328,119 +366,118 @@
                         }
                     });
                 }
-
         function loadAllFixedAssets() {
-            $.ajax({
-          url: '@Url.Action("GetAllFixedAssets", "Lists")',
-                type: 'GET',
-                success: function(res) {
-                    if (!res.status) {
-                        alert(res.message || "Failed to load assets");
-                        return;
-                    }
-                    console.log('✅ Loaded assets:', res.data);
+             $.ajax({
+           url: '@Url.Action("GetAllFixedAssets", "Lists")',
+                 type: 'GET',
+                 success: function(res) {
+                     if (!res.status) {
+                         alert(res.message || "Failed to load assets");
+                         return;
+                     }
+                     console.log('✅ Loaded assets:', res.data);
 
-                    const assets = res.data;
-                    const $tableBody = $('#fixedassetTable tbody');
-                    $tableBody.empty();
+                     const assets = res.data;
+                     const $tableBody = $('#fixedassetTable tbody');
+                     $tableBody.empty();
 
-                    assets.forEach(asset => {
-                        const PurchaseDate = asset.purchaseDate ? formatDate(asset.purchaseDate) : '';
-                        const EndDate = asset.endDate ? formatDate(asset.endDate) : '';
+                     assets.forEach(asset => {
+                         const PurchaseDate = asset.purchaseDate ? formatDate(asset.purchaseDate) : '';
+                         const EndDate = asset.endDate ? formatDate(asset.endDate) : '';
 
-                        // ✅ Properly escape JSON for HTML attribute
-                        const assetJsonForAttr = JSON.stringify(asset)
-                            .replace(/&/g, '&amp;')
-                            .replace(/'/g, '&#39;')
-                            .replace(/"/g, '&quot;')
-                            .replace(/</g, '&lt;')
-                            .replace(/>/g, '&gt;');
+                         // ✅ Properly escape JSON for HTML attribute
+                         const assetJsonForAttr = JSON.stringify(asset)
+                             .replace(/&/g, '&amp;')
+                             .replace(/'/g, '&#39;')
+                             .replace(/"/g, '&quot;')
+                             .replace(/</g, '&lt;')
+                             .replace(/>/g, '&gt;');
 
-                        const row = `<tr data-id="${asset.id}">
-                            <td>${asset.name || '-'}</td>
-                            <td>${PurchaseDate}</td>
-                            <td>${EndDate}</td>
-                            <td>${asset.purchasePrice}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary editAsset"
-                                        data-id="${asset.id}"
-                                        data-asset="${assetJsonForAttr}"
-                                        style="font-size: 10px; padding: 2px 6px;">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                                <button class="btn btn-sm btn-danger deleteAsset"
-                                        data-id="${asset.id}"
-                                        style="font-size: 10px; padding: 2px 6px;">
-                                    <i class="fas fa-prescription-bottle-alt"></i>
-                                </button>
-                            </td>
-                        </tr>`;
-                        $tableBody.append(row);
-                    });
+                         const row = `<tr data-id="${asset.id}">
+                             <td>${asset.name || '-'}</td>
+                             <td>${PurchaseDate}</td>
+                             <td>${EndDate}</td>
+                             <td>${asset.purchasePrice}</td>
+                             <td>
+                                 <button class="btn btn-sm btn-primary editAsset"
+                                         data-id="${asset.id}"
+                                         data-asset="${assetJsonForAttr}"
+                                         style="font-size: 10px; padding: 2px 6px;">
+                                     <i class="fas fa-pen"></i>
+                                 </button>
+                                 <button class="btn btn-sm btn-danger deleteAsset"
+                                         data-id="${asset.id}"
+                                         style="font-size: 10px; padding: 2px 6px;">
+                                     <i class="fas fa-prescription-bottle-alt"></i>
+                                 </button>
+                             </td>
+                         </tr>`;
+                         $tableBody.append(row);
+                     });
 
-                    console.log('✅ Table populated with', assets.length, 'rows');
+                     console.log('✅ Table populated with', assets.length, 'rows');
 
-                    // ✅ Auto-open edit modal if ID is in URL
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const AssetId = urlParams.get('Id');
+                     // ✅ Auto-open edit modal if ID is in URL
+                     const urlParams = new URLSearchParams(window.location.search);
+                     const AssetId = urlParams.get('Id');
 
-                    if (AssetId) {
-                        console.log('🔍 Looking for asset ID:', AssetId);
+                     if (AssetId) {
+                         console.log('🔍 Looking for asset ID:', AssetId);
 
-                        // Wait for DOM to be fully updated
-                        setTimeout(function() {
-                            // Find all edit buttons
-                            const allButtons = $('.editAsset');
-                            console.log('📋 Found', allButtons.length, 'edit buttons');
+                         // Wait for DOM to be fully updated
+                         setTimeout(function() {
+                             // Find all edit buttons
+                             const allButtons = $('.editAsset');
+                             console.log('📋 Found', allButtons.length, 'edit buttons');
 
-                            // Log all button IDs
-                            allButtons.each(function() {
-                                console.log('  - Button ID:', $(this).data('id'));
-                            });
+                             // Log all button IDs
+                             allButtons.each(function() {
+                                 console.log('  - Button ID:', $(this).data('id'));
+                             });
 
-                            // Find the matching button
-                            const editButton = $('.editAsset').filter(function() {
-                                const btnId = String($(this).data('id'));
-                                const targetId = String(AssetId);
-                                console.log(`Comparing: "${btnId}" === "${targetId}"`, btnId === targetId);
-                                return btnId === targetId;
-                            });
+                             // Find the matching button
+                             const editButton = $('.editAsset').filter(function() {
+                                 const btnId = String($(this).data('id'));
+                                 const targetId = String(AssetId);
+                                 console.log(`Comparing: "${btnId}" === "${targetId}"`, btnId === targetId);
+                                 return btnId === targetId;
+                             });
 
-                            if (editButton.length > 0) {
-                                console.log('✅ Found matching button for ID', AssetId);
-                                console.log('Asset data:', editButton.data('asset'));
-                                editButton.trigger('click');
-                            } else {
-                                console.log('❌ No button found on first attempt, retrying...');
-                                toastr.info(`Loading item #${AssetId}...`);
+                             if (editButton.length > 0) {
+                                 console.log('✅ Found matching button for ID', AssetId);
+                                 console.log('Asset data:', editButton.data('asset'));
+                                 editButton.trigger('click');
+                             } else {
+                                 console.log('❌ No button found on first attempt, retrying...');
+                                 toastr.info(`Loading item #${AssetId}...`);
 
-                                // Retry after 1.5 seconds
-                                setTimeout(function() {
-                                    const $retryBtn = $('.editAsset').filter(function() {
-                                        return String($(this).data('id')) === String(AssetId);
-                                    });
+                                 // Retry after 1.5 seconds
+                                 setTimeout(function() {
+                                     const $retryBtn = $('.editAsset').filter(function() {
+                                         return String($(this).data('id')) === String(AssetId);
+                                     });
 
-                                    if ($retryBtn.length > 0) {
-                                        console.log('✅ Found button on retry for ID', AssetId);
-                                        $retryBtn.trigger('click');
-                                    } else {
-                                        console.log('❌ Asset ID', AssetId, 'not found after retry');
-                                        console.log('Available IDs:', $('.editAsset').map(function() {
-                                            return $(this).data('id');
-                                        }).get());
-                                        toastr.warning(`Asset #${AssetId} not found`);
-                                    }
-                                }, 1500);
-                            }
-                        }, 300);
-                    }
-                },
-                error: function(err) {
-                    console.error("❌ Failed to fetch assets", err);
-                    toastr.error("Failed to load assets");
-                }
-            });
-        }
+                                     if ($retryBtn.length > 0) {
+                                         console.log('✅ Found button on retry for ID', AssetId);
+                                         $retryBtn.trigger('click');
+                                     } else {
+                                         console.log('❌ Asset ID', AssetId, 'not found after retry');
+                                         console.log('Available IDs:', $('.editAsset').map(function() {
+                                             return $(this).data('id');
+                                         }).get());
+                                         toastr.warning(`Asset #${AssetId} not found`);
+                                     }
+                                 }, 1500);
+                             }
+                         }, 300);
+                     }
+                 },
+                 error: function(err) {
+                     console.error("❌ Failed to fetch assets", err);
+                     toastr.error("Failed to load assets");
+                 }
+             });
+         }
 
         function formatDate(dateStr) {
             const d = new Date(dateStr);
@@ -670,7 +707,8 @@
             ExpenceAccountId: parseInt($('#depreciationExpense').val()) || 0,
             CreateJournal: $('#makeJournal').is(':checked'),
             CreatedBy: parseInt($('#createdBy').val()) || 0,
-            ManufactureId: parseInt($('#manufactureId').val()) || 0
+            ManufactureId: parseInt($('#manufactureId').val()) || 0,
+            CostCenter: parseInt($('#costCenterSelect').val()) || 0,
         };
 
 
@@ -702,7 +740,6 @@
             loadAllFixedAssets();
             $(document).on("click", ".editAsset", function () {
             let asset = $(this).data("asset");
-            console.log("Editing asset:", asset);
             $("#editFixedAssetId").val(asset.id);
             $("#editAssetCode").val(asset.code);
             $("#editAssetDate").val(asset.date?.split("T")[0]);
@@ -715,7 +752,7 @@
             $("#editInvoiceNumber").val(asset.invoiceNumber);
             $("#editTotalInvoice").val(asset.purchasePrice);
             $("#editPurchaseDate").val(asset.purchaseDate?.split("T")[0]);
-
+            $("#editcostCenterSelect").val(asset.costCenter);
 
                   // ✅ Call depreciation calculation immediately
         calculateDepreciation(
@@ -791,7 +828,8 @@
                 ExpenceAccountId: parseInt($("#editDepreciationExpense").val()) || 0,
                 CreateJournal: $("#editMakeJournal").is(":checked"),
                 CreatedBy: 0,
-                ManufactureId: 0  // ✅ Changed from false to 0 (int)
+                ManufactureId: 0,
+                CostCenter:  parseInt($("#editcostCenterSelect").val()) || 0,
             };
 
           
