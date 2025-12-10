@@ -2062,6 +2062,68 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
         }
 
         [HttpGet]
+        public async Task<IActionResult> GetCostCentersss()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var costCenters = new List<CostCenterRequest>();
+
+                // Get main cost centers
+                var mainQuery = "SELECT id, code, name FROM tbl_cost_center ORDER BY code";
+                using (var cmd = new MySqlCommand(mainQuery, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        costCenters.Add(new CostCenterRequest
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            IsMain = true,
+                            IsSub = false,
+                            //MainId = null
+                        });
+                    }
+                }
+
+                // Get sub cost centers
+                var subQuery = "SELECT id, code, name, main_id FROM tbl_sub_cost_center ORDER BY code";
+                using (var cmd = new MySqlCommand(subQuery, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        costCenters.Add(new CostCenterRequest
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Code = reader["code"].ToString(),
+                            Name = reader["name"].ToString(),
+                            IsMain = false,
+                            IsSub = true,
+                            MainId = Convert.ToInt32(reader["main_id"])
+                        });
+                    }
+                }
+
+                return Ok(costCenters);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
         public async Task<IActionResult> GetCostCenters()
         {
             try
@@ -2319,6 +2381,18 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     var count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
                     if (count > 0)
                         return BadRequest(new { status = false, message = "Already used in transactions" });
+                }
+
+                string checkQuery2 = @"SELECT COUNT(1) 
+                               FROM tbl_transaction 
+                               WHERE costcenter=@id";
+
+                using (var checkCmd2 = new MySqlCommand(checkQuery2, conn))
+                {
+                    checkCmd2.Parameters.AddWithValue("@id", id);
+                    var count2 = Convert.ToInt32(await checkCmd2.ExecuteScalarAsync());
+                    if (count2 > 0)
+                        return BadRequest(new { status = false, message = "This cost center is already used in journal transactions." });
                 }
 
                 // Delete sub cost center
@@ -3484,10 +3558,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS `ACName`, 
                 tbl_transaction.description AS `Description`,
                 tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`
+                tbl_transaction.credit AS `Credit`,
+                tbl_transaction.costcenter AS `CostCenter`,
+                 tbl_sub_cost_center.name AS CostCenterName
             FROM tbl_transaction 
             INNER JOIN tbl_coa_level_4 
                 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE (tbl_transaction.type = 'Sales Invoice Cash' OR tbl_transaction.type = 'Sales Invoice') 
                 AND tbl_transaction.state = 0";
                 }
@@ -3503,10 +3580,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS `ACName`, 
                 tbl_transaction.description AS `Description`,
                 tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`
+                tbl_transaction.credit AS `Credit`,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName
             FROM tbl_transaction 
             INNER JOIN tbl_coa_level_4 
                 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+             LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE (tbl_transaction.type = 'Purchase Invoice Cash' OR tbl_transaction.type = 'Purchase Invoice') 
                 AND tbl_transaction.state = 0";
                 }
@@ -3523,11 +3603,14 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_transaction.description AS Description, 
                 tbl_transaction.debit AS Debit, 
                 tbl_transaction.credit AS Credit, 
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName,
                 tbl_customer.name AS Partner
             FROM tbl_transaction  
             INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
             INNER JOIN tbl_sales ON tbl_transaction.transaction_id = tbl_sales.id 
             INNER JOIN tbl_customer ON tbl_sales.customer_id = tbl_customer.id 
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE transaction_id = @id AND tbl_transaction.t_type = 'SALES'";
                 }
                 else if (type?.ToLower() == "purchase")
@@ -3543,11 +3626,14 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_transaction.description AS Description, 
                 tbl_transaction.debit AS Debit, 
                 tbl_transaction.credit AS Credit, 
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName,
                 tbl_vendor.name AS Partner
             FROM tbl_transaction
             INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
             INNER JOIN tbl_purchase ON tbl_transaction.transaction_id = tbl_purchase.id
             INNER JOIN tbl_vendor ON tbl_purchase.vendor_id = tbl_vendor.id
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE transaction_id = @id AND t_type = 'PURCHASE'";
                 }
                 else if (type?.ToLower() == "purchase return")
@@ -3562,12 +3648,15 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS 'ACName', 
                 tbl_transaction.description AS Description, 
                 tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit, 
+                tbl_transaction.credit AS Credit,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName,
                 tbl_vendor.name AS Partner
             FROM tbl_transaction
             INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
             INNER JOIN tbl_purchase_return ON tbl_transaction.transaction_id = tbl_purchase_return.id
             INNER JOIN tbl_vendor ON tbl_purchase_return.vendor_id = tbl_vendor.id
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE transaction_id = @id AND t_type = 'PURCHASE RETURN'";
                 }
                 else if (type?.ToLower() == "payment")
@@ -3582,7 +3671,9 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS 'ACName', 
                 tbl_transaction.description AS Description, 
                 tbl_transaction.debit AS Debit, 
-                tbl_transaction.credit AS Credit, 
+                tbl_transaction.credit AS Credit,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName,
                 CASE 
                     WHEN tbl_payment_voucher.type = 'Vendor' THEN (
                         SELECT name FROM tbl_vendor
@@ -3604,6 +3695,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             FROM tbl_transaction
             INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
             INNER JOIN tbl_payment_voucher ON tbl_transaction.transaction_id = tbl_payment_voucher.id
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE transaction_id = @id AND t_type = 'PAYMENT'";
                 }
                 else if (type?.ToLower() == "receipt")
@@ -3619,6 +3711,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_transaction.description AS Description, 
                 tbl_transaction.debit AS Debit, 
                 tbl_transaction.credit AS Credit, 
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName,
                 CASE 
                     WHEN tbl_receipt_voucher.type = 'Customer' THEN (
                         SELECT name FROM tbl_customer
@@ -3635,6 +3729,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             FROM tbl_transaction
             INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
             INNER JOIN tbl_receipt_voucher ON tbl_transaction.transaction_id = tbl_receipt_voucher.id
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE transaction_id = @id AND t_type = 'RECEIPT'";
                 }
                 else if (type?.ToLower() == "journal")
@@ -3650,11 +3745,14 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_transaction.description AS Description, 
                 tbl_transaction.debit AS Debit, 
                 tbl_transaction.credit AS Credit, 
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName,
                 (SELECT partner FROM tbl_journal_voucher_details
                  WHERE inv_id = tbl_journal_voucher.id LIMIT 1) AS Partner
             FROM tbl_transaction
             INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id
             INNER JOIN tbl_journal_voucher ON tbl_transaction.transaction_id = tbl_journal_voucher.id
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE transaction_id = @id AND t_type = 'JOURNAL'";
                 }
                 else if (type?.ToLower() == "inventory")
@@ -3669,10 +3767,12 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS `ACName`, 
                 tbl_transaction.description AS `Description`,
                 tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`
+                tbl_transaction.credit AS `Credit`,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName
             FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 
-                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            INNER JOIN tbl_coa_level_4  ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE description LIKE @itemCode";
 
                     parameters.Add(new MySqlParameter("@itemCode", $"%- Item Code - {transactionId}"));
@@ -3689,10 +3789,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS `ACName`, 
                 tbl_transaction.description AS `Description`,
                 tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`
+                tbl_transaction.credit AS `Credit`,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName
             FROM tbl_transaction 
             INNER JOIN tbl_coa_level_4 
-                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+                ON tbl_transaction.account_id = tbl_coa_level_4.id
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE 1=1 " + condition + @" 
                 AND tbl_transaction.account_id = (
                     SELECT account_id FROM tbl_coa_config WHERE category = @vatType
@@ -3715,10 +3818,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS `ACName`, 
                 tbl_transaction.description AS `Description`,
                 tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`
+                tbl_transaction.credit AS `Credit`,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName
             FROM tbl_transaction 
             INNER JOIN tbl_coa_level_4 
                 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE 1=1 " + condition + " AND tbl_transaction.type LIKE @typePattern";
 
                     parameters.Add(new MySqlParameter("@typePattern", $"{typePrefix}%"));
@@ -3736,10 +3842,12 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 tbl_coa_level_4.name AS `ACName`, 
                 tbl_transaction.description AS `Description`,
                 tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`
+                tbl_transaction.credit AS `Credit`,
+                tbl_transaction.costcenter AS `CostCenter`,
+                tbl_sub_cost_center.name AS CostCenterName
             FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 
-                ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
+            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
             WHERE 1=1 " + condition;
                 }
 
@@ -3829,6 +3937,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                        ac.*, 
                        ac.code AS `Account Code`,
                         ac.name AS 'Account Name',
+                          t.costcenter AS `CostCenter`,
+                            scc.name AS `CostCenterName`,
                        CASE 
                            WHEN t.type IN ('Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Check Cancel (Customer)', 'Customer%', 'Sales%') 
                                 THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_customer WHERE id = hum_id), '')
@@ -3840,6 +3950,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                        END AS `hum name`
                 FROM tbl_transaction t 
                 INNER JOIN tbl_coa_level_4 ac ON ac.id = t.account_id
+                LEFT JOIN tbl_sub_cost_center scc  ON t.costcenter = scc.id  
                 WHERE (t.type = 'Sales Invoice Cash' or t.type = 'Sales Invoice') 
                   AND t.transaction_id = @id;";
                 }
@@ -3850,6 +3961,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                        ac.*, 
                        ac.code AS `Account Code`,
                        ac.name AS 'Account Name',
+                         t.costcenter AS `CostCenter`,
+                         scc.name AS `CostCenterName`,
                        CASE 
                            WHEN t.type IN ('Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Check Cancel (Customer)', 'Customer%', 'Sales%') 
                                 THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_customer WHERE id = hum_id), '')
@@ -3861,6 +3974,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                        END AS `hum name`
                 FROM tbl_transaction t 
                 INNER JOIN tbl_coa_level_4 ac ON ac.id = t.account_id
+                LEFT JOIN tbl_sub_cost_center scc ON t.costcenter = scc.id   
                 WHERE (t.type = 'Purchase Invoice Cash' or t.type = 'Purchase Invoice')
                   AND t.transaction_id = @id;";
                 }
@@ -3871,6 +3985,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                        ac.*, 
                        ac.code AS `Account Code`,
                        ac.name AS 'Account Name',
+                         t.costcenter AS `CostCenter`,
+                            scc.name AS `CostCenterName`,
                        CASE 
                            WHEN t.type IN ('Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Check Cancel (Customer)', 'Customer%', 'Sales%') 
                                 THEN IFNULL((SELECT CONCAT(CODE, ' - ', NAME) FROM tbl_customer WHERE id = hum_id), '')
@@ -3884,6 +4000,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                        END AS `hum name`
                 FROM tbl_transaction t 
                 INNER JOIN tbl_coa_level_4 ac ON ac.id = t.account_id
+                 LEFT JOIN tbl_sub_cost_center scc ON t.costcenter = scc.id 
                 WHERE t.TYPE = @type 
                   AND t.transaction_id = @id AND t.date = @date;";
                 }
@@ -3912,7 +4029,9 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         Credit = reader.IsDBNull(reader.GetOrdinal("Credit")) ? 0 : reader.GetDecimal(reader.GetOrdinal("Credit")),
                         Description = reader["Description"].ToString(),
                         Id = reader["id"].ToString(),
-                        HumId = reader["hum_id"].ToString()
+                        HumId = reader["hum_id"].ToString(),
+                        CostCenter = reader.IsDBNull(reader.GetOrdinal("CostCenter"))? 0  : reader.GetInt32(reader.GetOrdinal("CostCenter")),
+                        CostCenterName = reader["CostCenterName"] == DBNull.Value ? "" : reader["CostCenterName"].ToString()
                     });
                 }
 

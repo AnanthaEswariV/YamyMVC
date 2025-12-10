@@ -334,7 +334,7 @@
             $("#journalTableContainer").show();
         }
 
-
+        populateAndSelectCostCenter();
 
         });
 
@@ -404,7 +404,6 @@
                 success: function (res) {
                     const tbody = $('#journalTable tbody').empty();
                     let totalDebit = 0, totalCredit = 0;
-                    console.log(res);
                     if (res.status && res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             // Format numbers
@@ -445,7 +444,14 @@
             <input type="text" class="form-control form-control-sm credit text-end format-number"
         value="${formatNumber(row.credit)}" />
         </td>
-        <td class="text-end">-</td>
+                              <td class="text-end">
+            <select class="form-select form-select-sm costCenterName"
+                    data-selected-id="${row.costCenter ?? ''}">
+                <option value="">Loading...</option>
+            </select>
+        </td>
+
+
             </tr>
         `);
 
@@ -536,6 +542,49 @@
             const acc = accountList.find(a => a.id == selectedId);
             row.find('.account-name').val(acc?.id || '');
         });
+
+                function populateAndSelectCostCenter() {
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")', // Ensure this URL is correct
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    if (!data.length) return;
+
+                    console.log("AJAX response data:", data);  // Log to verify data structure
+
+                    // Select all dropdowns with class .costCenterName
+                    const allSelects = $('.costCenterName');
+                    console.log("Dropdowns found:", allSelects.length);  // Log number of dropdowns found
+
+                    allSelects.each(function () {
+                        const $select = $(this);
+                        const selectedId = $select.data('selected-id'); // Get the selected ID from data-selected-id
+                        console.log("Selected ID from data attribute:", selectedId); // Log the selected ID
+
+                        // Empty the dropdown and add the "Select" option
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        // Iterate through the data and create options
+                        data.forEach(item => {
+                            const isSelected = String(item.id) === String(selectedId); // Compare the selected ID
+                            console.log(`item.id: ${item.id}, selectedId: ${selectedId}`); // Log for comparison
+
+                            const option = `
+                                <option value="${item.id}" ${isSelected ? 'selected' : ''}>
+                                    ${item.code} - ${item.name}
+                                </option>`;
+                            $select.append(option);
+                        });
+                    });
+                },
+                error: function () {
+                    console.log("Error loading cost centers.");
+                }
+            });
+        }
+
+
 
 
     </script>

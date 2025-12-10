@@ -241,6 +241,8 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
         let costCenterData = [];
 
@@ -251,7 +253,7 @@
 
           
             $.ajax({
-             url: '@Url.Action("GetCostCenters", "Lists")',
+             url: '@Url.Action("GetCostCentersss", "Lists")',
                 type: 'GET',
                 success: function(response) {
                     console.log('Loaded cost centers:', response);
@@ -287,7 +289,7 @@
             });
         }
 
-                               function createNode(node, children = [], isMain = false) {
+             function createNode(node, children = [], isMain = false) {
             const hasChildren = children && children.length > 0;
             const childrenId = `children-${node.id}`;
 
