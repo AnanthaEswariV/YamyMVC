@@ -65,6 +65,12 @@
                     <label class="form-label">Due Date</label>
                     <input type="date" id="editDate" class="form-control" />
                 </div>
+                <div class="col-3">
+                    <label class="form-label fw-semibold">Cost Center</label>
+                    <select class="form-select form-select-sm editcostCenterSelect" data-selected-id="5">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -130,22 +136,30 @@
                         <label class="form-label fw-semibold">LEVEL 4</label>
                         <input type="text" id="txtLevel4" class="form-control form-control-sm" placeholder="Enter Level 4" required>
                     </div>
-
-                    <!-- Debit / Credit / Date -->
-                    <div class="row g-2 align-items-end">
-                        <div class="col-4">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-3">
                             <label class="form-label fw-semibold">Debit</label>
                             <input type="number" id="txtDebit" class="form-control form-control-sm" placeholder="Debit" value="0">
                         </div>
-                        <div class="col-4">
+
+                        <div class="col-3">
                             <label class="form-label fw-semibold">Credit</label>
                             <input type="number" id="txtCredit" class="form-control form-control-sm" placeholder="Credit" value="0">
                         </div>
-                        <div class="col-4">
+
+                        <div class="col-3">
                             <label class="form-label fw-semibold">Due Date</label>
                             <input type="date" id="txtDate" class="form-control form-control-sm">
                         </div>
+
+                        <div class="col-3">
+                            <label class="form-label fw-semibold">Cost Center</label>
+                            <select class="form-select form-select-sm costCenterSelect" data-selected-id="5">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
                     </div>
+
                 </div>
 
                 <!-- Footer -->
@@ -519,7 +533,7 @@
                 </div>
                 `;
             }
-
+               
             // --- Build tree recursively ---
             function buildTree(nodes, container) {
                 container.empty();
@@ -540,7 +554,7 @@
                 const debit = (node.debit === 0 || node.debit) ? node.debit : '';
                 const credit = (node.credit === 0 || node.credit) ? node.credit : '';
                 const date = formatDateForInput(node.date ?? node.due ?? '');
-
+                const costCenter  = node.costCenter  ?? '';
                 // --- Attach data attributes ---
                 nodeDiv.attr({
                     'data-id': id,
@@ -548,7 +562,8 @@
                     'data-name': name,
                     'data-debit': debit,
                     'data-credit': credit,
-                    'data-date': date
+                    'data-date': date,
+                     'data-costCenter': costCenter
                 });
 
                 // --- Toggle / dot ---
@@ -588,7 +603,8 @@
                             $node.attr('data-name'),
                             $node.attr('data-debit'),
                             $node.attr('data-credit'),
-                            $node.attr('data-date')
+                            $node.attr('data-date'),
+                            $node.attr('data-costCenter')
                         );
                     });
 
@@ -678,24 +694,52 @@
             }
 
 
-        function openEditModal(id, name, debit = 0, credit = 0, date = null) {
+                       function openEditModal(id, name, debit = 0, credit = 0, date = null, costCenter  = null) {
+
             $("#editAccountId").val(id);
             $("#editAccountName").val(name);
-                
             $("#editDebit").val(debit);
             $("#editCredit").val(credit);
-            $("#editDate").val(formatDateForInput(date)); 
-            $("#editAccountModal").modal("show");
+            $("#editDate").val(formatDateForInput(date));
+
+            const $editSelect = $(".editcostCenterSelect");
+
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+
+                    $editSelect.empty().append('<option value="">-- Select --</option>');
+
+                    data.forEach(item => {
+                        $editSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
+                    });
+
+                    // ✅ Set the selected value AFTER options are populated
+                    if (costCenter) {
+                        // Convert to string for comparison since HTML values are strings
+                        $editSelect.val(String(costCenter));
+                    }
+
+                    $("#editAccountModal").modal("show");
+                },
+                error: function(xhr) {
+                    toastr.error('Failed to load cost centers');
+                }
+            });
         }
 
 
-        $("#saveEditAccount").on("click", function () {
+                 $("#saveEditAccount").on("click", function () {
+
             const payload = {
                 Id: parseInt($("#editAccountId").val()) || 0,
                 Name: $("#editAccountName").val(),
                 Debit: parseFloat($("#editDebit").val()) || 0,
                 Credit: parseFloat($("#editCredit").val()) || 0,
-                Date: $("#editDate").val() || null
+                Date: $("#editDate").val() || null,
+                CostCenter: $(".editcostCenterSelect").val() || null // ✅ get value from edit dropdown
             };
 
             $.ajax({
@@ -707,18 +751,18 @@
                     if (res.status) {
                         toastr.success(res.message || "Account updated successfully");
                         $("#editAccountModal").modal("hide");
-                            setTimeout(function () {
-                                location.reload();
-                            }, 1500);
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.warning(res.message || "Failed to update");
                     }
                 },
-                error: function (xhr) {
+                error: function () {
                     toastr.error("Error updating account");
                 }
             });
         });
+
+
 
             function formatDateForInput(d) {
             if (!d) return '';
@@ -766,10 +810,37 @@
             window.openEditModal = openEditModal;
         });
 
+               function populateAndSelectCostCenter() {
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    if (!data.length) return;
+
+                    const allSelects = $('.costCenterSelect, .editcostCenterSelect');
+
+                    allSelects.each(function () {
+                        const $select = $(this);
+                        const selectedId = $select.data('selected-id');
+
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(data, function (i, item) {
+                            const isSelected = String(item.id) === String(selectedId);
+                            const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                            $select.append(option);
+                        });
+                    });
+                }
+            });
+        }
+
+
 
 
         $(document).ready(function () {
-
+              populateAndSelectCostCenter();
             // Load LEVEL 1 (All)
             function loadLevel1() {
                 $.ajax({
@@ -797,7 +868,6 @@
                 $ddl2.empty().append('<option value="">Select Level 2</option>');
                 $ddl3.empty().append('<option value="">Select Level 3</option>');
                 if (!level1Id) return;
-                console.log(level1Id);
                 $.ajax({
                    url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
                     type: 'GET',
@@ -856,10 +926,10 @@
             });
 
                // 🔹 Submit form
-        $('#coaForm').on('submit', function (e) {
+              $('#coaForm').on('submit', function (e) {
             e.preventDefault();
-
             const form = this;
+
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
@@ -868,10 +938,13 @@
             const idVal = $('#level4Id').val();
             const isEdit = idVal && parseInt(idVal) > 0;
 
-            // ✅ Safe defaults
             const debitVal = parseFloat($('#txtDebit').val()) || 0;
             const creditVal = parseFloat($('#txtCredit').val()) || 0;
             const dateVal = $('#txtDate').val() || null;
+
+            const costCenterVal = isEdit
+                ? $('.editcostCenterSelect').val() || null
+                : $('.costCenterSelect').val() || null;
 
             const payload = {
                 Id: isEdit ? parseInt(idVal) : 0,
@@ -879,13 +952,14 @@
                 Level3Id: parseInt($('#ddlLevel3').val()),
                 Debit: debitVal,
                 Credit: creditVal,
-                Date: dateVal
+                Date: dateVal,
+                CostCenter: costCenterVal
             };
 
             $.ajax({
-               url: isEdit 
-    ? '@Url.Action("UpdateLevel4Account", "Lists")' 
-    : '@Url.Action("AddLevel4Account", "Lists")',
+                url: isEdit
+                    ? '@Url.Action("UpdateLevel4Account", "Lists")'
+                    : '@Url.Action("AddLevel4Account", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(payload),
@@ -897,9 +971,7 @@
                         $('#level4Id').val(0);
                         $('#coaModalLabel').text('COA - New Account');
                         form.classList.remove('was-validated');
-                             setTimeout(function () {
-                                location.reload();
-                            }, 1500);
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.error(res.message);
                     }

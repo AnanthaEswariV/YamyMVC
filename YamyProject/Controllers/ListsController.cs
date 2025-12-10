@@ -733,8 +733,8 @@ namespace YamyProject.Controllers
                 // ✅ 6️⃣ Insert into Level 4 table
                 int newId;
                 string insertQuery = @"
-            INSERT INTO tbl_coa_level_4 (name, code, main_id, debit, credit, date)
-            VALUES (@name, @code, @main_id, @debit, @credit, @date);
+            INSERT INTO tbl_coa_level_4 (name, code, main_id, debit, credit, date, costcenter)
+            VALUES (@name, @code, @main_id, @debit, @credit, @date, costcenter);
             SELECT LAST_INSERT_ID();";
 
                 using (var insertCmd = new MySqlCommand(insertQuery, conn))
@@ -745,6 +745,7 @@ namespace YamyProject.Controllers
                     insertCmd.Parameters.AddWithValue("@debit", debit);
                     insertCmd.Parameters.AddWithValue("@credit", credit);
                     insertCmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
+                    insertCmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
                     newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
                 }
 
@@ -964,7 +965,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 using (var conn = new MySqlConnection(connStr))
                 {
                     await conn.OpenAsync();
-                    string query = "SELECT id, code, name, main_id, debit, credit, date FROM tbl_coa_level_4 ORDER BY id";
+                    string query = "SELECT id, code, name, main_id, debit, credit, date, costcenter FROM tbl_coa_level_4 ORDER BY id";
 
                     using var cmd = new MySqlCommand(query, conn);
                     using var reader = await cmd.ExecuteReaderAsync();
@@ -978,7 +979,9 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                             Name = reader["name"].ToString(),
                             Debit = reader["debit"] != DBNull.Value ? reader.GetDecimal("debit") : 0,
                             Credit = reader["credit"] != DBNull.Value ? reader.GetDecimal("credit") : 0,
-                            Date = reader["date"] != DBNull.Value ? reader.GetDateTime("date") : null
+                            Date = reader["date"] != DBNull.Value ? reader.GetDateTime("date") : null,
+                            CostCenter = reader.IsDBNull(reader.GetOrdinal("costcenter"))?  0 : reader.GetInt32(reader.GetOrdinal("costcenter"))
+
                         };
 
                         int parent = reader.GetInt32("main_id");
@@ -1112,7 +1115,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             SET name = @name,
                 debit = @debit,
                 credit = @credit,
-                date = @date
+                date = @date,
+                costCenter = @costCenter
             WHERE id = @id", conn))
                 {
                     cmd.Parameters.AddWithValue("@name", model.Name.Trim());
@@ -1120,6 +1124,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@credit", model.Credit ?? 0);
                     cmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
                     cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@costCenter", model.CostCenter ?? 0);
                     await cmd.ExecuteNonQueryAsync();
                 }
 
@@ -1142,7 +1147,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     await InsertTransactionsAsync(
                         conn,
                         model.Id,
-                        existingCode,                   // KEEP old code
+                        existingCode,                   
                         model.Debit ?? 0,
                         model.Credit ?? 0,
                         model.Date ?? DateTime.Now,
@@ -1162,7 +1167,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         Code = existingCode,
                         Debit = model.Debit ?? 0,
                         Credit = model.Credit ?? 0,
-                        Date = model.Date
+                        Date = model.Date,
+                        CostCenter = model.CostCenter ?? 0
                     }
                 });
             }
@@ -2069,23 +2075,23 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 var costCenters = new List<CostCenterRequest>();
 
                 // Get main cost centers
-                var mainQuery = "SELECT id, code, name FROM tbl_cost_center ORDER BY code";
-                using (var cmd = new MySqlCommand(mainQuery, conn))
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        costCenters.Add(new CostCenterRequest
-                        {
-                            Id = Convert.ToInt32(reader["id"]),
-                            Code = reader["code"].ToString(),
-                            Name = reader["name"].ToString(),
-                            IsMain = true,
-                            IsSub = false,
-                            //MainId = null
-                        });
-                    }
-                }
+                //var mainQuery = "SELECT id, code, name FROM tbl_cost_center ORDER BY code";
+                //using (var cmd = new MySqlCommand(mainQuery, conn))
+                //using (var reader = await cmd.ExecuteReaderAsync())
+                //{
+                //    while (await reader.ReadAsync())
+                //    {
+                //        costCenters.Add(new CostCenterRequest
+                //        {
+                //            Id = Convert.ToInt32(reader["id"]),
+                //            Code = reader["code"].ToString(),
+                //            Name = reader["name"].ToString(),
+                //            IsMain = true,
+                //            IsSub = false,
+                //            //MainId = null
+                //        });
+                //    }
+                //}
 
                 // Get sub cost centers
                 var subQuery = "SELECT id, code, name, main_id FROM tbl_sub_cost_center ORDER BY code";

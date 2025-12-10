@@ -55,6 +55,7 @@ namespace YamyProject.Core.Models
         public decimal Credit { get; set; }
         public decimal Debit { get; set; }
         public DateTime? Date { get; set; }
+        public int? CostCenter { get; set; }
         public List<CoaNode> Children { get; set; } = new List<CoaNode>();
     }
     public class TaxViewModel
@@ -486,6 +487,7 @@ namespace YamyProject.Core.Models
         public decimal? Debit { get; set; }
         public decimal? Credit { get; set; }
         public DateTime? Date { get; set; }
+        public int? CostCenter { get; set; }
     }
 
     public class Level1AccountRequest
