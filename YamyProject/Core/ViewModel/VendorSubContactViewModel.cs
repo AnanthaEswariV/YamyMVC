@@ -8,8 +8,8 @@
         public string Code { get; set; }
         public IEnumerable<TblVendorCategory> Categoriess { get; set; } = new List<TblVendorCategory>();
         public int CategoryId { get; set; }
-        public decimal Debit { get; set; }
-        public decimal Credit { get; set; }
+        public string OpeningType { get; set; }
+        //public bool Credit { get; set; }
         public decimal OpeningAmount { get; set; }
         public DateOnly Date {  get; set; }
         public string MainPhone { get; set; }

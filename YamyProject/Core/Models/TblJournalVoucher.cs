@@ -2,7 +2,6 @@
 public partial class TblJournalVoucher
 {
     public int Id { get; set; }
-  //  [ForeignKey("Id")]
     public virtual TblTransaction Transaction { get; set; }
 
     public DateOnly? Date { get; set; }

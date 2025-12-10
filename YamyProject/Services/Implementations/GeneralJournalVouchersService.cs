@@ -23,13 +23,15 @@
 
             var rows = await query
                 .OrderBy(s => s.Date)
+                .Where(s => s.State == 0)
                 .Select(s => new JournalVoucherMasterCustomerViewModel
                     {
                     Id = s.Id,
                     Date = s.Date,
                     JournalCode = s.Code,
-                    JVNo = (s.Transaction != null && s.Transaction.TType == "JOURNAL"
-                                    ? (s.Transaction.TransactionId ?? 0): 0).ToString().PadLeft(4, '0'),
+                    //JVNo = (s.Transaction != null && s.Transaction.TransactionId==s.Id && s.Transaction.TType.ToUpper().Contains("JOURNAL")
+                    //                ? (s.Transaction.TransactionId ?? 0): 0).ToString().PadLeft(4, '0'),
+                    JVNo = s.Id.ToString().PadLeft(4, '0'),
                     //(s.Transaction == null && (s.Transaction.TType == null || s.Transaction.TType != "JOURNAL")
                     //        ? 0 : (s.Transaction.TransactionId ?? 0)
                     //            ).ToString().PadLeft(4, '0'),
@@ -100,7 +102,7 @@
                         Date = Model.Date,
                         Debit = Model.DrAmount,
                         Credit = Model.CrAmount,
-                        CreatedBy = -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
+                        CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.Now),
                         State = 0
                         };
@@ -110,21 +112,25 @@
 
                     foreach (var Customer in Model.Customer)
                         {
-                        var journalVoucherDetail = new TblJournalVoucherDetail
+                        if (Customer.AccountId != 0)
                             {
-                            Date = Model.Date,
-                            Debit = Customer.DebitAmount,
-                            Credit = Customer.CreditAmount,
-                            InvId= journalId,
-                            Description = Customer.Description,
-                            Partner = Customer.Partner,
-                            AccountId = Customer.Id
-                            };
-                        _context.TblJournalVoucherDetails.Add(journalVoucherDetail);
-                        await _context.SaveChangesAsync();
-                        await AddTransactionEntry(Model.Date, Customer.Id, Customer.DebitAmount, Customer.CreditAmount,
-                            journalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. "+ invoiceNo, -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
-                            DateOnly.FromDateTime(DateTime.Now), invoiceNo);
+                            var journalVoucherDetail = new TblJournalVoucherDetail
+                                {
+                                Date = Model.Date,
+                                Debit = Customer.DebitAmount,
+                                Credit = Customer.CreditAmount,
+                                InvId = journalId,
+                                Description = Customer.Description,
+                                Partner = Customer.Partner,
+                                AccountId = Customer.AccountId
+                                };
+                            _context.TblJournalVoucherDetails.Add(journalVoucherDetail);
+                            await _context.SaveChangesAsync();
+
+                            await AddTransactionEntry(Model.Date, Customer.AccountId, Customer.DebitAmount, Customer.CreditAmount,
+                                journalVoucherDetail.InvId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. " + invoiceNo, _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
+                                DateOnly.FromDateTime(DateTime.Now), invoiceNo);
+                            }
                         }
                     await _GlobalService.LogAudit(-_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Create Journal Voucher", "Journal Voucher", journalId, "Created Journal Voucher: " + invoiceNo);
                     await _context.SaveChangesAsync();
@@ -156,7 +162,7 @@
                     JournalVoucher.Date= Model.Date;
                     JournalVoucher.Debit= Model.DrAmount;
                     JournalVoucher.Credit= Model.CrAmount;
-                    JournalVoucher.ModifiedBy = -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
+                    JournalVoucher.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                     JournalVoucher.ModifiedDate = DateOnly.FromDateTime(DateTime.Now);
                     _context.TblJournalVouchers.Update(JournalVoucher);
                     await _context.SaveChangesAsync();
@@ -177,7 +183,7 @@
                             {
                             InvId = Model.JournalId,
                             Date = Model.Date,
-                            AccountId = Customer.Id,
+                            AccountId = Customer.AccountId,
                             Debit = Customer.DebitAmount,
                             Credit = Customer.CreditAmount,
                             Description = Customer.Description,
@@ -185,8 +191,9 @@
                             };
                         _context.TblJournalVoucherDetails.Add(journalVoucherDetail);
                         await _context.SaveChangesAsync();
-                        await AddTransactionEntry(Model.Date, Customer.Id, Customer.DebitAmount, Customer.CreditAmount,
-                            Model.JournalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. " + invoiceNo, -_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
+                        await AddTransactionEntry(Model.Date, Customer.AccountId, Customer.DebitAmount, Customer.CreditAmount,
+                            Model.JournalId, 0, "JOURNAL VOUCHER", "JOURNAL", "Journal Voucher NO. " + invoiceNo,
+                            _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                             DateOnly.FromDateTime(DateTime.Now), JournalVoucher.Code);
                         }
                     await _GlobalService.LogAudit(-_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Journal Voucher", "Journal Voucher", Model.JournalId, "Updated Journal Voucher: " + invoiceNo);
@@ -201,8 +208,8 @@
             }); 
     }
         //Add Transaction Entry
-        public async Task AddTransactionEntry(DateOnly date, int? accountId, decimal debit, decimal credit, int transactionId, int humId, string type, string voucher_name,
-                    string description, int createdBy, DateOnly createdDate, string VoucherNo)
+        public async Task AddTransactionEntry(DateOnly date, int accountId,decimal debit,decimal credit,int transactionId,int humId,string type,string voucher_name,
+                    string description,int createdBy,DateOnly createdDate,string VoucherNo)
             {
             var trx = new TblTransaction
                 {
@@ -216,7 +223,7 @@
                 Type = type,
                 Description = description,
                 CreatedBy = createdBy,
-                VoucherNo = voucher_name,
+                VoucherNo = VoucherNo,
                 CreatedDate = createdDate,
                 State = 0
                 };
@@ -238,7 +245,7 @@
                 JournalId = JournalVoucher.Id,
                 Customer = JournalVoucher.JournalDetils.Select(j => new JournalVoucherCustomerViewModel
                     {
-                    Id = j.AccountId,
+                    AccountId = j.AccountId,
                     AccountCode = j.Account.Code,
                     DebitAmount = j.Debit,
                     CreditAmount = j.Credit,

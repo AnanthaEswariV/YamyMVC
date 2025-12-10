@@ -86,7 +86,7 @@
                 Name = c.Name
                 }).ToList();
             var Accounts = await _listServices.GetAccountsAsync();
-            var AccountslectList = Accounts.Select(c => new TblCountry
+            var AccountslectList = Accounts.Select(c => new TblCoaLevel4
                 {
                 Id = c.Id,
                 Name = c.Name
@@ -98,6 +98,7 @@
                 Code = c.Code,
                 Name = c.Name
                 }).ToList();
+
             var codes = _vendorService.GenerateNextCode();
             var code = codes.ToString();
 
@@ -108,6 +109,7 @@
                 City=citylectList,
                 Country=countrylectList,
                 Project=projectlectList,
+                Account=AccountslectList,
                 Code=code,
                 Type= "Subcontractor"
                 }
@@ -147,22 +149,43 @@
                 Code = c.Code,
                 Name = c.Name
                 }).ToList();
+            var Accounts = await _listServices.GetAccountsAsync();
+            var AccountslectList = Accounts.Select(c => new TblCoaLevel4
+                {
+                Id = c.Id,
+                Name = c.Name
+                }).ToList();
 
-            var Vendor=await _context.TblVendors.FindAsync(id);
-
+            var Vendor =await _context.TblVendors.FindAsync(id);
+            string OpeningType;
+            decimal? Balance;
+            if (Vendor.Balance >= 0)
+                {
+                OpeningType = "Debit";
+                Balance = Vendor.Balance;
+                }
+            else
+                {
+                OpeningType = "Credit";
+                Balance = Vendor.Balance*-1;
+                }
             return PartialView("_SubContract", new VendorSubContactViewModel
                 {
-                Categoriess = CategorylectList,
+              
+
+                    Categoriess = CategorylectList,
                 City = citylectList,
                 Country = countrylectList,
                 Project = projectlectList,
+                Account=AccountslectList,
                 Type = "Subcontractor",
-                Code=Vendor.Code.ToString(),
-                Name= Vendor.Name,
+                Code = Vendor.Code.ToString(),
+                Name = Vendor.Name,
                 CategoryId = (int)Vendor.CatId,
-                OpeningAmount = Vendor.Balance??0m,
-                Debit = Vendor.Balance ?? 0m,
-                Credit = Vendor.Balance ?? 0m,
+                OpeningType= OpeningType,
+                OpeningAmount = Math.Abs((decimal)Vendor.Balance!),
+                // Debit = Vendor.Balance ?? 0m,
+                // Credit = Vendor.Balance ?? 0m,
                 Date = (DateOnly)Vendor.Date,
                 MainPhone = Vendor.MainPhone,
                 WorkPhone = Vendor.WorkPhone,
@@ -177,7 +200,7 @@
                 BulidingNumber = Vendor.BuildingName,
                 AccountId = (int)Vendor.AccountId,
                 TRN = Vendor.Trn,
-                IsActive = Vendor.Active==1,
+                IsActive = Vendor.Active == 1
 
                 });
             }
@@ -243,6 +266,7 @@
                     t.Id,
                     t.Date,
                     t.VoucherNo,
+                    t.TransactionId,
                     VoucherType = t.Type,
                     Description = _context.TblCoaLevel4s
                                    .Where(a => a.Id == t.AccountId)
@@ -258,13 +282,18 @@
             int sn = 0;
             foreach (var r in raw)
                 {
+                string Voucher;
+                if (r.VoucherNo == null || r.VoucherNo == "" || r.VoucherNo == " ")
+                    Voucher = "GV-00" + r.TransactionId;
+                else
+                    Voucher = r.VoucherNo;
                 running += (r.Credit - r.Debit);
 
                 result.Add(new VendorTxnViewModel
                     {
                     Sn = ++sn,
                     Date = r.Date,
-                    VoucherNo = r.VoucherNo ?? "",
+                    VoucherNo = Voucher,
                     VoucherType = r.VoucherType ?? "",
                     Description = r.Description,
                     Debit = r.Debit,

@@ -2,7 +2,9 @@
     {
     public class VendorTxnViewModel
         {
+        public int Id { get; init; }
         public int Sn { get; init; }
+        public int invoiceId { get; init; }
         public DateOnly? Date { get; init; }
         public string VoucherNo { get; init; } = "";
         public string VoucherType { get; init; } = "";

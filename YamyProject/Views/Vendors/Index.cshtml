@@ -7,7 +7,6 @@
     var txns = ViewBag.Transactions as IEnumerable<VendorTxnViewModel>;
     var cash = ViewBag.CashInvoices as IEnumerable<CashInvoiceListViewModel>;
     }
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
 <style>
     .vendor-wrap {
@@ -216,9 +215,309 @@
 </div>
 
     @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+       <script>
+        (function () {
+            const $header = $('#vendorHeader');
+            const $trx = $('#transactionsTable');
+            const $cash = $('#cashTable');
+            let currentVendorId = null;
+            let isLoading = false;
+
+            // Search
+            $('#txtSearch').on('input', function () {
+                const q = this.value.toLowerCase();
+                $('#vendorList .vendor-item').each(function () {
+                    const t = $(this).text().toLowerCase();
+                    $(this).toggle(t.includes(q));
+                });
+            });
+            $('#btnClear').on('click', function () { $('#txtSearch').val('').trigger('input'); });
+
+            // Delegated click on left rows (works for current/future rows)
+            $(document).on('click', '#vendorList .vendor-item', async function () {
+                if (isLoading) return;
+
+                const id = Number($(this).data('id'));
+                if (!id || id === currentVendorId) return;
+
+                currentVendorId = id;
+                $('#vendorList .vendor-item.active').removeClass('active');
+                $(this).addClass('active');
+                showLoading();
+
+                try {
+                    const [hRes, tRes, cRes] = await Promise.all([
+                        fetch(`/Vendors/Header?id=${encodeURIComponent(id)}`, { headers: { 'Accept': 'application/json' } }),
+                        fetch(`/Vendors/Transactions?vendorId=${encodeURIComponent(id)}`, { headers: { 'Accept': 'application/json' } }),
+                        fetch(`/Vendors/Cash?vendorId=${encodeURIComponent(id)}`, { headers: { 'Accept': 'application/json' } })
+                    ]);
+                    if (!hRes.ok || !tRes.ok || !cRes.ok) throw new Error('Load failed');
+
+                    const [header, rowsTrx, rowsCash] = await Promise.all([hRes.json(), tRes.json(), cRes.json()]);
+                    renderHeader(header);
+                    renderTransactions(rowsTrx || []);
+                    // supports either array or { rows: [...] }
+                    renderCash(Array.isArray(rowsCash) ? rowsCash : (rowsCash?.rows || []));
+                } catch (e) {
+                    console.error(e);
+                    $header.html(`<div class="text-danger">Failed to load vendor data.</div>`);
+                    $trx.empty(); $cash.empty();
+                } finally {
+                    hideLoading();
+                }
+            });
+
+            function showLoading() {
+                isLoading = true;
+                $header.html(`<div class="spinner-border spinner-border-sm me-2"></div> Loading vendor...`);
+                $trx.html(`<div class="text-muted">Loading transactions...</div>`);
+                $cash.html(`<div class="text-muted">Loading cash invoices...</div>`);
+            }
+            function hideLoading() { isLoading = false; }
+
+            function renderHeader(h) {
+                const safe = s => (s ?? '-');
+
+                $header.html(`
+            <!-- Title + Edit button -->
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                <h5 class="mb-0 fw-semibold">Vendor Information</h5>
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        id="btnEditVendor"
+                        data-id="${h.id}"
+                        title="Edit Vendor">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </div>
+
+            <!-- Details -->
+            <div class="row small">
+                <!-- Left column -->
+                <div class="col-md-6">
+                    <table class="table table-borderless table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted pe-3">Vendor Code</td>
+                                <td class="fw-semibold">${safe(h.code)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted pe-3">Vendor Name</td>
+                                <td class="fw-semibold">${safe(h.name)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted pe-3">TRN</td>
+                                <td>${safe(h.trn)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted pe-3">Email</td>
+                                <td>${safe(h.email)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Right column -->
+                <div class="col-md-6">
+                    <table class="table table-borderless table-sm mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted pe-3">Work Phone</td>
+                                <td>${safe(h.workPhone)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted pe-3">Main Phone</td>
+                                <td>${safe(h.mainPhone)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted pe-3">Vendor Category</td>
+                                <td>${safe(h.category)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted pe-3">Address</td>
+                                <td class="text-truncate">${safe(h.address)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `);
+            }
+
+            function renderTransactions(rows) {
+                if (!rows.length) { $trx.html(`<div class="text-muted">No transactions.</div>`); return; }
+                let i = 0;
+                const html = [
+                    `<div class="table-responsive"><table class="table table-sm table-striped align-middle">
+                <thead><tr>
+                  <th>SN#</th><th>Date</th><th>Voucher No</th><th>Voucher Type</th>
+                  <th>Description</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th>
+                </tr></thead><tbody>`
+                ];
+
+                for (const r of rows) {
+                    const rawDate = r.date
+                        ? (typeof r.date === 'string'
+                            ? r.date.split('T')[0]    
+                            : r.date.toISOString().split('T')[0]) 
+                        : '';
+
+                    html.push(`<tr class="txn-row"
+                    data-type="${safe(r.voucherType)}"
+                    data-form="${safe(r.voucherType)}"
+                    data-invoice-id="${r.invoiceId}"
+                    data-vendor-id="${r.id}"
+                    data-date="${rawDate}">
+                <td>${++i}</td>
+                <td>${fmtDate(r.date)}</td>
+                <td>${safe(r.voucherNo)}</td>
+                <td>${safe(r.voucherType)}</td>
+                <td>${safe(r.description)}</td>
+                <td class="text-end">${fmtAmt(r.debit)}</td>
+                <td class="text-end">${fmtAmt(r.credit)}</td>
+                <td class="text-end">${fmtAmt(r.balance)}</td>
+              </tr>`);
+                }
+                html.push(`</tbody></table></div>`);
+                $trx.html(html.join(''));
+            }
+
+            function renderCash(rows) {
+                if (!rows.length) { $cash.html(`<div class="text-muted">No cash invoices.</div>`); return; }
+                let i = 0, total = 0;
+                const body = rows.map(r => {
+                    const amt = Number(r.amount) || 0;
+                    total += amt;
+                    return `<tr>
+                    <td>${++i}</td>
+                    <td>${safe(r.voucherNo)}</td>
+                    <td>${fmtDate(r.date)}</td>
+                    <td>${safe(r.accountName)}</td>
+                    <td>${safe(r.voucherType)}</td>
+                    <td class="text-end">${fmtAmt(amt)}</td>
+                  </tr>`;
+                }).join('');
+
+                $cash.html(`
+                  <div class="table-responsive"><table class="table table-sm table-striped align-middle">
+                    <thead><tr>
+                      <th>Sn</th><th>V - No</th><th>Date</th><th>Account Name</th><th>Type</th><th class="text-end">Amount</th>
+                    </tr></thead>
+                    <tbody>${body}</tbody>
+                    <tfoot><tr>
+                      <th colspan="5" class="text-end">Total</th>
+                      <th class="text-end">${fmtAmt(total)}</th>
+                    </tr></tfoot>
+                  </table></div>
+                `);
+            }
+
+            // utils
+            function safe(v) { return (v ?? ''); }
+            function fmtAmt(n) { return (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 }); }
+            function fmtDate(d) {
+                if (!d) return '';
+                const dt = (typeof d === 'string' || d instanceof String) ? new Date(d) : d;
+                if (Number.isNaN(dt.getTime())) return '';
+                return dt.toLocaleDateString();
+            }
+
+            // Auto-select first vendor on load
+            $(function () {
+                const $first = $('#vendorList .vendor-item:first');
+                if ($first.length) $first.trigger('click');
+            });
+        })();
+
+        // New Vendor
+        $(function () {
+            $('#btnNewVendor').on('click', function (e) {
+                e.preventDefault();
+
+                $.get('@Url.Action("Create", "Vendors")', function (html) {
+                    $('#VendorModalHost').html(html);
+
+                    var modalEl = document.getElementById('VendorModal');
+                    if (modalEl) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+        });
+
+        // Edit Vendor 
+        $(function () {
+            $(document).on('click', '#btnEditVendor', function (e) {
+                e.preventDefault();
+
+                var id = $(this).data('id');
+                if (!id) return;
+
+                $.get('@Url.Action("Edit", "Vendors")', { id: id }, function (html) {
+                    $('#VendorModalHost').html(html);
+
+                    var modalEl = document.getElementById('VendorModal');
+                    if (modalEl) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+        });
+    </script>
 
     <script>
+        $(document).on('dblclick', '#transactionsTable .txn-row', function () {
+            const formNameRaw = $(this).data('form');
+            const type        = $(this).data('type');
+            const invoiceId   = $(this).data('invoiceId');
+            const vendorId    = $(this).data('vendorId');
+            const date        = $(this).data('date');   // <-- FIXED
+
+            const formName = (formNameRaw || '').toString().toLowerCase();
+
+            debugger;
+
+            if (!formName || !invoiceId) return;
+
+            if (formName.includes('purchase invoice') && !formName.includes('purchase return')) {
+                window.location.href =
+                    '@Url.Action("Edit", "PurchasesCenter")' + '?id=' + invoiceId;
+            }
+            else if (formName.includes('purchase return')) {
+                window.location.href =
+                    '@Url.Action("Edit", "PurchasesReturn")' + '?id=' + invoiceId;
+            }
+            else if (formName.includes('vendor payment')) {
+                window.location.href =
+                    '@Url.Action("GetVendorInvoiceRowsAsync", "ReceiveVoucher")'
+                    + '?vendorId=' + vendorId;
+            }
+            else if (formName.includes('advance payment')) {
+                window.location.href =
+                    '@Url.Action("Details", "AdvancePayments")'
+                    + '?id=' + invoiceId + '&vendorId=' + vendorId;
+            }
+            else if (formName.includes('vendor opening balance')) {
+                const params = new URLSearchParams({
+                    refId: invoiceId,
+                    vType: formNameRaw,
+                    date:  date || ''
+                });
+                window.location.href = '@Url.Action("GeneralJournal", "Lists")' + '?' + params.toString();
+            }
+            else if (formName.includes('debit note')) {
+                window.location.href =
+                    '@Url.Action("Edite", "DebitNotes")'
+                    + '?id=' + invoiceId;
+            }
+        });
+    </script>
+
+
+   @*  <script>
         (function () {
           const $header = $('#vendorHeader');
           const $trx = $('#transactionsTable');
@@ -359,8 +658,19 @@
                   <th>Description</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th>
                 </tr></thead><tbody>`
             ];
+                
             for (const r of rows){
-              html.push(`<tr>
+                            const rawDate = r.date
+                    ? (typeof r.date === 'string'
+                        ? r.date.split('T')[0]      // "2025-12-10T00:00:00" → "2025-12-10"
+                        : r.date.toISOString().split('T')[0]) // Date object → "2025-12-10"
+                    : '';
+              html.push(`<tr class="txn-row"
+                    data-type="${safe(r.voucherType)}"
+                    data-form="${safe(r.voucherType)}"
+                    data-invoice-id="${r.invoiceId}"
+                    data-vendor-id="${r.id}"
+                                            data-date="${rawDate}">
                 <td>${++i}</td>
                 <td>${fmtDate(r.date)}</td>
                 <td>${safe(r.voucherNo)}</td>
@@ -437,7 +747,6 @@
                 });
             });
         });
-
 //Edit Vendor 
         $(function () {
 
@@ -460,5 +769,53 @@
 
         });
     </script>
+    <script>
+    $(document).on('dblclick', '#transactionsTable .txn-row', function () {
+            const formNameRaw = $(this).data('form');    
+            const type        = $(this).data('type');   
+            const invoiceId   = $(this).data('invoiceId'); 
+            const vendorId    = $(this).data('vendorId');
+            const date        =$(this).date('date');
+            const formName = (formNameRaw).toString().toLowerCase();
 
+            debugger;
+
+            if (!formName || !invoiceId) return;
+
+            if (formName.includes('purchase invoice') && !formName.includes('purchase return')) {
+                window.location.href =
+                    '@Url.Action("Edit", "PurchasesCenter")' + '?id=' + invoiceId;
+            }
+            else if (formName.includes('purchase return')) {
+                window.location.href =
+                    '@Url.Action("Edit", "PurchasesReturn")' + '?id=' + invoiceId;
+            }
+            else if (formName.includes('vendor payment')) {
+                window.location.href =
+                    '@Url.Action("GetVendorInvoiceRowsAsync", "ReceiveVoucher")'
+                    + '?vendorId=' + vendorId;
+            }
+            else if (formName.includes('advance payment')) {
+                window.location.href =
+                    '@Url.Action("Details", "AdvancePayments")'
+                    + '?id=' + invoiceId + '&vendorId=' + vendorId;
+            }
+            else if (formName.includes('vendor opening balance')) {
+                // window.location.href =
+                //     '@Url.Action("Edit", "GeneralJournalVouchers")'
+                //     + '?id=' + invoiceId;
+                          const params = new URLSearchParams({
+                            refId: invoiceId,
+                            vType: formNameRaw,
+                            date: date });
+            window.location.href = '@Url.Action("GeneralJournal", "Lists")' + '?' + params.toString();
+
+            }
+            else if (formName.includes('debit note')) {
+                window.location.href =
+                    '@Url.Action("Edite", "DebitNotes")'
+                    + '?id=' + invoiceId;
+            }
+        });
+    </script> *@
 }

@@ -3,7 +3,7 @@
     public interface IEditeCustomerService
     {
         Task<CustomerViewModel> GetCustomerFormDataAsync(int? id);
-        Task SaveCustomerAsync(TblCustomer customer);
+        Task SaveCustomerAsync(CustomerViewModel customer);
         Task<CustomerViewModel> GetCreateCustomerFormAsync();
         string GenerateNextCustomerCode();
     }

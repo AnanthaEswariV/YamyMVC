@@ -8,7 +8,7 @@
       aria-labelledby="subContractModalLabel" aria-hidden="true" >
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content shadow-lg border-0">
-            <form method="post">
+            <form id="subContractForm" asp-controller="Subcontractors">
                 <!-- HEADER -->
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="subContractModalLabel">
@@ -18,6 +18,7 @@
                             data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <input type="hidden" class="form-control" asp-for="Id" id="Type" value="@Model.Id" readonly />
+                <input type="hidden" class="form-control" asp-for="Type" value="@Model.Type" readonly />
 
                 <input type="hidden" class="form-control" asp-for="CategoryId" id="CategoryId" value="@Model.CategoryId" readonly />
                 <input type="hidden" class="form-control" asp-for="CountryId" id="CountryId" value="@Model.CountryId" readonly />
@@ -65,13 +66,13 @@
                                 <label class="form-label d-block">Opening Balance</label>
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <div class="btn-group" role="group">
-                                        <input type="radio" class="btn-check" name="OpeningType" asp-for="Debit"
+                                        <input type="radio" class="btn-check" asp-for="OpeningType" 
                                                id="obDebit" value="Debit" checked />
                                         <label class="btn btn-outline-primary" for="obDebit">
                                             Debit
                                         </label>
 
-                                        <input type="radio" class="btn-check" name="OpeningType" asp-for="Credit"
+                                        <input type="radio" class="btn-check" asp-for="OpeningType"
                                                id="obCredit" value="Credit" />
                                         <label class="btn btn-outline-primary" for="obCredit">
                                             Credit
@@ -82,7 +83,7 @@
                                            style="max-width: 140px;"
                                            placeholder="Amount" />
 
-                                    <input type="date" name="OpeningDate" asp-for="Date"
+                                    <input type="date" asp-for="Date"
                                            class="form-control" style="max-width: 200px;" />
                                 </div>
                             </div>
@@ -247,43 +248,54 @@
     <small id="openingPreview" class="text-muted ms-2"></small>
 
     <script>
-        function updateOpeningPreview() {
-            const type = document.querySelector('input[name="OpeningType"]:checked')?.value;
-            const amt  = parseFloat(document.getElementById('OpeningAmount').value) || 0;
-            const sign = type === 'Credit' ? -Math.abs(amt) : Math.abs(amt);
-            document.getElementById('openingPreview').textContent = sign.toFixed(2);
-        }
+        // function updateOpeningPreview() {
+        //     const type = document.querySelector('input[name="OpeningType"]:checked')?.value;
+        //     const amt  = parseFloat(document.getElementById('OpeningAmount').value) || 0;
+        //     const sign = type === 'Credit' ? -Math.abs(amt) : Math.abs(amt);
+        //     document.getElementById('openingPreview').textContent = sign.toFixed(2);
+        // }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const radios = document.querySelectorAll('input[name="OpeningType"]');
-            const amtInput = document.getElementById('OpeningAmount');
+        // document.addEventListener('DOMContentLoaded', function () {
+        //     const radios = document.querySelectorAll('input[name="OpeningType"]');
+        //     const amtInput = document.getElementById('OpeningAmount');
 
-            radios.forEach(r => r.addEventListener('change', updateOpeningPreview));
-            if (amtInput) amtInput.addEventListener('input', updateOpeningPreview);
+        //     radios.forEach(r => r.addEventListener('change', updateOpeningPreview));
+        //     if (amtInput) amtInput.addEventListener('input', updateOpeningPreview);
 
-            updateOpeningPreview();
+        //     updateOpeningPreview();
+        // });
+        //         document.addEventListener('DOMContentLoaded', function () {
+        //     // ... (preview wiring above)
+
+        //     const form = document.getElementById('subContractForm');
+        //     if (!form) return;
+
+        //     form.addEventListener('submit', function (e) {
+        //         // read Id from hidden field
+        //         const idField = form.querySelector('input[name="Id"]');
+        //         const idVal = parseInt(idField?.value || '0', 10);
+
+        //         // if Id > 0 => Edit, else => Create
+        //         if (idVal && idVal > 0) {
+        //             form.action = '@Url.Action("Edit", "Subcontractors")';
+        //         } else {
+        //             form.action = '@Url.Action("Create", "Subcontractors")';
+        //         }
+
+        //     });
+        // });
+           $(document).on('submit', '#subContractForm', function (e) {
+            const form = this;
+            const idField = form.querySelector('input[name="Id"]');
+            const idVal = parseInt(idField?.value || '0', 10);
+            debugger
+            // Just in case you still want separate actions:
+            if (idVal && idVal > 0) {
+                form.action = '@Url.Action("Edit", "Subcontractors")';
+            } else {
+                form.action = '@Url.Action("Create", "Subcontractors")';
+            }
         });
-                document.addEventListener('DOMContentLoaded', function () {
-            // ... (preview wiring above)
-
-            const form = document.getElementById('subContractForm');
-            if (!form) return;
-
-            form.addEventListener('submit', function (e) {
-                // read Id from hidden field
-                const idField = form.querySelector('input[name="Id"]');
-                const idVal = parseInt(idField?.value || '0', 10);
-
-                // if Id > 0 => Edit, else => Create
-                if (idVal && idVal > 0) {
-                    form.action = '@Url.Action("Edit", "SubcontractorsC")';
-                } else {
-                    form.action = '@Url.Action("Create", "SubcontractorsC")';
-                }
-
-            });
-        });
-
     </script>
 
     }

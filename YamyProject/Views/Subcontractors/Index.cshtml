@@ -1,11 +1,7 @@
 ﻿@model IEnumerable<VendorIndexViewModel>
+
 @{
     ViewData["Title"] = "Subcontractor Center";
-
-    // Optional dynamic payloads (so you can keep IEnumerable<> as the model)
-    var sel = ViewBag.SelectedVendor as VendorDetailViewModel;
-    var txns = ViewBag.Transactions as IEnumerable<VendorTxnViewModel>;
-    var cash = ViewBag.CashInvoices as IEnumerable<CashInvoiceListViewModel>;
     }
 
 <style>
@@ -37,7 +33,8 @@
         gap: .5rem;
     }
 
-        .vendor-item.active, .vendor-item:hover {
+        .vendor-item.active,
+        .vendor-item:hover {
             background: #eef4ff;
         }
 
@@ -73,44 +70,23 @@
     <div class="d-flex justify-content-between align-items-center bg-light p-2 border rounded">
         <div class="d-flex gap-2">
             <div class="dropdown">
-               @* <button class="btn btn-sm btn-outline-primary " @*  "dropdown-toggle" data-bs-toggle="dropdown" *>
-                    <a asp-action="Create" asp-controller="Subcontractors">New Subcontractor</a>
-                </button>*@
                 <button type="button"
                         class="btn btn-sm btn-outline-primary"
                         id="btnNewSubcontractor">
                     New Subcontractor
                 </button>
+
+                <!-- host for create/edit modal -->
                 <div id="subContractModalHost"></div>
-             
             </div>
-
-        @*     <div class="dropdown">
-                <button class="btn btn-sm btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
-                    New Transactions
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" asp-controller="Purchase" asp-action="CreateInvoice">Purchase Invoice</a></li>
-                    <li><a class="dropdown-item" asp-controller="Cash" asp-action="ReceivePayment">Receive Payment</a></li>
-                </ul>
-            </div> *@
-
-        @*     <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                    Print
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">Subcontractor List</a></li>
-                    <li><a class="dropdown-item" href="#">Transaction List – Credit & Payment</a></li>
-                    <li><a class="dropdown-item" href="#">Transaction List – Cash</a></li>
-                </ul>
-            </div> *@
         </div>
 
         <div class="input-group input-group-sm" style="max-width:360px;">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input id="txtSearch" class="form-control" placeholder="Search by Name, Code">
-            <button class="btn btn-outline-secondary" id="btnClear"><i class="bi bi-x-lg"></i></button>
+            <input id="txtSearch" class="form-control" placeholder="Search by Name, Code" />
+            <button class="btn btn-outline-secondary" id="btnClear">
+                <i class="bi bi-x-lg"></i>
+            </button>
         </div>
     </div>
 
@@ -124,7 +100,6 @@
                 </div>
             </div>
 
-            <!-- FIX: id="vendorList" -->
             <div class="vendor-list bg-white" id="vendorList">
                 <div class="d-flex fw-semibold px-3 py-2 border-bottom">
                     <div class="flex-grow-1">Name</div>
@@ -135,9 +110,7 @@
                     {
                     foreach (var v in Model)
                         {
-                        var isActive = (sel?.Id == v.Id) ? "active" : "";
-                        <!-- FIX: data-id with vendor id -->
-                        <div class="text-decoration-none text-body vendor-item @isActive" data-id="@v.Id">
+                        <div class="text-decoration-none text-body vendor-item" data-id="@v.Id">
                             <span class="text-truncate flex-grow-1" title="@($"{v.Code} - {v.Name}")">
                                 @v.Code - @v.Name
                             </span>
@@ -154,26 +127,10 @@
 
         <!-- Right Panel: Subcontractor Info -->
         <div class="card shadow-sm">
-            @*  <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">Subcontractor Information</h6>
-                @if (sel != null)
-                    {
-                    <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-controller="Vendor" asp-route-id="@sel.Id">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                    }
-            </div> *@
-
             <div class="card-body">
-                @*    @if (sel == null)
-                    {
-                    <div class="text-muted">Choose a vendor from the left to view details.</div>
-                    }
-                else
-                    { *@
                 <div class="col-12">
                     <div id="vendorHeader" class="mb-3">
-                        <!-- filled by JS -->
+                        <!-- placeholder until first vendor loads -->
                         <div class="placeholder-glow">
                             <span class="placeholder col-3"></span>
                             <span class="placeholder col-2"></span>
@@ -205,280 +162,385 @@
                         </div>
                     </div>
                 </div>
-                @* } *@
             </div>
         </div>
     </div>
 </div>
 
     @section Scripts {
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
     <script>
         (function () {
-          const $header = $('#vendorHeader');
-          const $trx = $('#transactionsTable');
-          const $cash = $('#cashTable');
-          let currentVendorId = null;
-          let isLoading = false;
+            const $header = $('#vendorHeader');
+            const $trx = $('#transactionsTable');
+            const $cash = $('#cashTable');
 
-          // Search
-          $('#txtSearch').on('input', function(){
-            const q = this.value.toLowerCase();
-            $('#vendorList .vendor-item').each(function(){
-              const t = $(this).text().toLowerCase();
-              $(this).toggle(t.includes(q));
+            // MVC URLs (no hard-coded paths)
+            const headerUrl = '@Url.Action("Header", "Subcontractors")';
+            const trxUrl = '@Url.Action("Transactions", "Subcontractors")';
+            const cashUrl = '@Url.Action("Cash", "Subcontractors")';
+
+            let currentVendorId = null;
+            let isLoading = false;
+
+            // Search
+            $('#txtSearch').on('input', function () {
+                const q = this.value.toLowerCase();
+                $('#vendorList .vendor-item').each(function () {
+                    const t = $(this).text().toLowerCase();
+                    $(this).toggle(t.includes(q));
+                });
             });
-          });
-          $('#btnClear').on('click', function(){ $('#txtSearch').val('').trigger('input'); });
 
-          // Delegated click on left rows (works for current/future rows)
-          $(document).on('click', '#vendorList .vendor-item', async function () {
-            if (isLoading) return;
+            $('#btnClear').on('click', function () {
+                $('#txtSearch').val('').trigger('input');
+            });
 
-            const id = Number($(this).data('id'));
-            if (!id || id === currentVendorId) return;
+            // Click on left vendor rows
+            $(document).on('click', '#vendorList .vendor-item', async function () {
+                if (isLoading) return;
 
-            currentVendorId = id;
-            $('#vendorList .vendor-item.active').removeClass('active');
-            $(this).addClass('active');
-            showLoading();
+                const id = Number($(this).data('id'));
+                if (!id || id === currentVendorId) return;
 
-            try {
-              const [hRes, tRes, cRes] = await Promise.all([
-                fetch(`/Subcontractors/Header?id=${encodeURIComponent(id)}`, { headers:{ 'Accept':'application/json' } }),
-                fetch(`/Subcontractors/Transactions?vendorId=${encodeURIComponent(id)}`, { headers:{ 'Accept':'application/json' } }),
-                fetch(`/Subcontractors/Cash?vendorId=${encodeURIComponent(id)}`, { headers:{ 'Accept':'application/json' } })
-              ]);
-              if (!hRes.ok || !tRes.ok || !cRes.ok) throw new Error('Load failed');
+                currentVendorId = id;
+                $('#vendorList .vendor-item.active').removeClass('active');
+                $(this).addClass('active');
+                showLoading();
 
-              const [header, rowsTrx, rowsCash] = await Promise.all([hRes.json(), tRes.json(), cRes.json()]);
-              renderHeader(header);
-              renderTransactions(rowsTrx || []);
-              // supports either array or { rows: [...] }
-              renderCash(Array.isArray(rowsCash) ? rowsCash : (rowsCash?.rows || []));
-            } catch (e) {
-              console.error(e);
-              $header.html(`<div class="text-danger">Failed to load Subcontractors data.</div>`);
-              $trx.empty(); $cash.empty();
-            } finally {
-              hideLoading();
+                try {
+                    const [hRes, tRes, cRes] = await Promise.all([
+                        fetch(`${headerUrl}?id=${encodeURIComponent(id)}`, { headers: { 'Accept': 'application/json' } }),
+                        fetch(`${trxUrl}?vendorId=${encodeURIComponent(id)}`, { headers: { 'Accept': 'application/json' } }),
+                        fetch(`${cashUrl}?vendorId=${encodeURIComponent(id)}`, { headers: { 'Accept': 'application/json' } })
+                    ]);
+
+                    if (!hRes.ok || !tRes.ok || !cRes.ok) throw new Error('Load failed');
+
+                    const [header, rowsTrx, rowsCash] = await Promise.all([
+                        hRes.json(),
+                        tRes.json(),
+                        cRes.json()
+                    ]);
+
+                    renderHeader(header);
+                    renderTransactions(rowsTrx || []);
+                    renderCash(Array.isArray(rowsCash) ? rowsCash : (rowsCash?.rows || []));
+                } catch (e) {
+                    console.error(e);
+                    $header.html(`<div class="text-danger">Failed to load subcontractor data.</div>`);
+                    $trx.empty();
+                    $cash.empty();
+                } finally {
+                    hideLoading();
+                }
+            });
+
+            function showLoading() {
+                isLoading = true;
+                $header.html(`<div class="spinner-border spinner-border-sm me-2"></div> Loading subcontractor...`);
+                $trx.html(`<div class="text-muted">Loading transactions...</div>`);
+                $cash.html(`<div class="text-muted">Loading cash invoices...</div>`);
             }
-          });
 
-          function showLoading(){
-            isLoading = true;
-            $header.html(`<div class="spinner-border spinner-border-sm me-2"></div> Loading vendor...`);
-            $trx.html(`<div class="text-muted">Loading transactions...</div>`);
-            $cash.html(`<div class="text-muted">Loading cash invoices...</div>`);
-          }
-          function hideLoading(){ isLoading = false; }
-
-          function renderHeader(h){
-            const safe = s => (s ?? '-');
-            const num = n => (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 });
-
-            // $header.html(`
-            //   <div class="row g-2">
-            //      <button type="button"
-            //     class="btn btn-sm btn-outline-secondary"
-            //     id="btnEditSubcontractor"
-            //     data-id="${h.id}">
-            // <i class="bi bi-pencil"></i> Edit
-            //  </button>
-            //     <div class="col-3"><strong>Vendor Code</strong><div>${safe(h.code)}</div></div>
-            //     <div class="col-5"><strong>Vendor Name</strong><div>${safe(h.name)}</div></div>
-            //     <div class="col-2"><strong>TRN</strong><div>${safe(h.trn)}</div></div>
-            //     <div class="col-2"><strong>Balance</strong><div>${num(h.balance)}</div></div>
-
-            //     <div class="col-3"><strong>Work Phone</strong><div>${safe(h.workPhone)}</div></div>
-            //     <div class="col-3"><strong>Main Phone</strong><div>${safe(h.mainPhone)}</div></div>
-            //     <div class="col-3"><strong>Vendor Category</strong><div>${safe(h.category)}</div></div>
-            //     <div class="col-3"><strong>Region</strong><div>${safe(h.region)}</div></div>
-
-            //     <div class="col-6"><strong>Email</strong><div>${safe(h.email)}</div></div>
-            //     <div class="col-6"><strong>Address</strong><div class="text-truncate">${safe(h.address)}</div></div>
-            //   </div>
-            // `);
-                  $header.html(`
-            <!-- Title + Edit button -->
-            <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
-                <h5 class="mb-0 fw-semibold">Subcontractor Information</h5>
-
-                <button type="button"
-                        class="btn btn-sm btn-outline-secondary"
-                        id="btnEditSubcontractor"
-                        data-id="${h.id}"
-                        title="Edit subcontractor">
-                    <i class="bi bi-pencil"></i>
-                </button>
-            </div>
-
-            <!-- Details -->
-            <div class="row small">
-                <!-- Left column -->
-                <div class="col-md-6">
-                    <table class="table table-borderless table-sm mb-0">
-                        <tbody>
-                            <tr>
-                                <td class="text-muted pe-3">Subcontractor Code</td>
-                                <td class="fw-semibold">${safe(h.code)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted pe-3">Subcontractor Name</td>
-                                <td class="fw-semibold">${safe(h.name)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted pe-3">TRN</td>
-                                <td>${safe(h.trn)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted pe-3">Email</td>
-                                <td>${safe(h.email)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Right column -->
-                <div class="col-md-6">
-                    <table class="table table-borderless table-sm mb-0">
-                        <tbody>
-                            <tr>
-                                <td class="text-muted pe-3">Work Phone</td>
-                                <td>${safe(h.workPhone)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted pe-3">Main Phone</td>
-                                <td>${safe(h.mainPhone)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted pe-3">Subcontractor Category</td>
-                                <td>${safe(h.category)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted pe-3">Address</td>
-                                <td class="text-truncate">${safe(h.address)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `);
-          }
-
-          function renderTransactions(rows){
-            if (!rows.length) { $trx.html(`<div class="text-muted">No transactions.</div>`); return; }
-            let i = 0;
-            const html = [
-              `<div class="table-responsive"><table class="table table-sm table-striped align-middle">
-                <thead><tr>
-                  <th>SN#</th><th>Date</th><th>Voucher No</th><th>Voucher Type</th>
-                  <th>Description</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th>
-                </tr></thead><tbody>`
-            ];
-            for (const r of rows){
-              html.push(`<tr>
-                <td>${++i}</td>
-                <td>${fmtDate(r.date)}</td>
-                <td>${safe(r.voucherNo)}</td>
-                <td>${safe(r.voucherType)}</td>
-                <td>${safe(r.description)}</td>
-                <td class="text-end">${fmtAmt(r.debit)}</td>
-                <td class="text-end">${fmtAmt(r.credit)}</td>
-                <td class="text-end">${fmtAmt(r.balance)}</td>
-              </tr>`);
+            function hideLoading() {
+                isLoading = false;
             }
-            html.push(`</tbody></table></div>`);
-            $trx.html(html.join(''));
-          }
 
-          function renderCash(rows){
-            if (!rows.length) { $cash.html(`<div class="text-muted">No cash invoices.</div>`); return; }
-            let i = 0, total = 0;
-            const body = rows.map(r => {
-              const amt = Number(r.amount) || 0;
-              total += amt;
-              return `<tr>
-                <td>${++i}</td>
-                <td>${safe(r.voucherNo)}</td>
-                <td>${fmtDate(r.date)}</td>
-                <td>${safe(r.accountName)}</td>
-                <td>${safe(r.voucherType)}</td>
-                <td class="text-end">${fmtAmt(amt)}</td>
-              </tr>`;
-            }).join('');
+            function renderHeader(h) {
+                const safe = s => (s ?? '-');
 
-            $cash.html(`
-              <div class="table-responsive"><table class="table table-sm table-striped align-middle">
-                <thead><tr>
-                  <th>Sn</th><th>V - No</th><th>Date</th><th>Account Name</th><th>Type</th><th class="text-end">Amount</th>
-                </tr></thead>
-                <tbody>${body}</tbody>
-                <tfoot><tr>
-                  <th colspan="5" class="text-end">Total</th>
-                  <th class="text-end">${fmtAmt(total)}</th>
-                </tr></tfoot>
-              </table></div>
-            `);
-          }
+                $header.html(`
+                    <!-- Title + Edit button -->
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                        <h5 class="mb-0 fw-semibold">Subcontractor Information</h5>
 
-          // utils
-          function safe(v){ return (v ?? ''); }
-          function fmtAmt(n){ return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3}); }
-          function fmtDate(d){
-            if(!d) return '';
-            const dt = (typeof d === 'string' || d instanceof String) ? new Date(d) : d;
-            if(Number.isNaN(dt.getTime())) return '';
-            return dt.toLocaleDateString();
-          }
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                id="btnEditSubcontractor"
+                                data-id="${h.id}"
+                                title="Edit subcontractor">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
 
-          // Auto-select first vendor on load
-          $(function(){
-            const $first = $('#vendorList .vendor-item:first');
-            if($first.length) $first.trigger('click');
-          });
+                    <!-- Details -->
+                    <div class="row small">
+                        <!-- Left column -->
+                        <div class="col-md-6">
+                            <table class="table table-borderless table-sm mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted pe-3">Subcontractor Code</td>
+                                        <td class="fw-semibold">${safe(h.code)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Subcontractor Name</td>
+                                        <td class="fw-semibold">${safe(h.name)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">TRN</td>
+                                        <td>${safe(h.trn)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Email</td>
+                                        <td>${safe(h.email)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Right column -->
+                        <div class="col-md-6">
+                            <table class="table table-borderless table-sm mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted pe-3">Work Phone</td>
+                                        <td>${safe(h.workPhone)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Main Phone</td>
+                                        <td>${safe(h.mainPhone)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Subcontractor Category</td>
+                                        <td>${safe(h.category)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted pe-3">Address</td>
+                                        <td class="text-truncate">${safe(h.address)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `);
+            }
+
+            function renderTransactions(rows) {
+                if (!rows || !rows.length) {
+                    $trx.html(`<div class="text-muted">No transactions.</div>`);
+                    return;
+                }
+
+                let i = 0;
+                const html = [
+                    `<div class="table-responsive"><table class="table table-sm table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>SN#</th>
+                                <th>Date</th>
+                                <th>Voucher No</th>
+                                <th>Voucher Type</th>
+                                <th>Description</th>
+                                <th class="text-end">Debit</th>
+                                <th class="text-end">Credit</th>
+                                <th class="text-end">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>`
+                ];
+
+               for (const r of rows) {
+                    const rawDate = r.date
+                        ? (typeof r.date === 'string'
+                            ? r.date.split('T')[0]
+                            : r.date.toISOString().split('T')[0])
+                        : '';
+
+                    html.push(`<tr class="txn-row"
+                    data-type="${safe(r.voucherType)}"
+                    data-form="${safe(r.voucherType)}"
+                    data-invoice-id="${r.invoiceId}"
+                    data-vendor-id="${r.id}"
+                    data-date="${rawDate}">
+                        <td>${++i}</td>
+                        <td>${fmtDate(r.date)}</td>
+                        <td>${safe(r.voucherNo)}</td>
+                        <td>${safe(r.voucherType)}</td>
+                        <td>${safe(r.description)}</td>
+                        <td class="text-end">${fmtAmt(r.debit)}</td>
+                        <td class="text-end">${fmtAmt(r.credit)}</td>
+                        <td class="text-end">${fmtAmt(r.balance)}</td>
+                    </tr>`);
+                }
+
+                html.push(`</tbody></table></div>`);
+                $trx.html(html.join(''));
+            }
+
+            function renderCash(rows) {
+                if (!rows || !rows.length) {
+                    $cash.html(`<div class="text-muted">No cash invoices.</div>`);
+                    return;
+                }
+
+                let i = 0, total = 0;
+                const body = rows.map(r => {
+                    const amt = Number(r.amount) || 0;
+                    total += amt;
+                    return `<tr>
+                        <td>${++i}</td>
+                        <td>${safe(r.voucherNo)}</td>
+                        <td>${fmtDate(r.date)}</td>
+                        <td>${safe(r.accountName)}</td>
+                        <td>${safe(r.voucherType)}</td>
+                        <td class="text-end">${fmtAmt(amt)}</td>
+                    </tr>`;
+                }).join('');
+
+                $cash.html(`
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Sn</th>
+                                    <th>V - No</th>
+                                    <th>Date</th>
+                                    <th>Account Name</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>${body}</tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="5" class="text-end">Total</th>
+                                    <th class="text-end">${fmtAmt(total)}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `);
+            }
+
+            // shared helpers
+            function safe(v) { return (v ?? ''); }
+
+            function fmtAmt(n) {
+                return (Number(n) || 0)
+                    .toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+            }
+
+            function fmtDate(d) {
+                if (!d) return '';
+                const dt = (typeof d === 'string' || d instanceof String) ? new Date(d) : d;
+                if (Number.isNaN(dt.getTime())) return '';
+                return dt.toLocaleDateString();
+            }
+
+            // Auto-select first vendor on load
+            $(function () {
+                const $first = $('#vendorList .vendor-item:first');
+                if ($first.length) $first.trigger('click');
+            });
         })();
     </script>
     <script>
         $(function () {
+            // NEW SUBCONTRACTOR
             $('#btnNewSubcontractor').on('click', function (e) {
                 e.preventDefault();
 
-                $.get('@Url.Action("Create", "Subcontractors")', function (html) {
-                    $('#subContractModalHost').html(html);
+                $.get('@Url.Action("Create", "Subcontractors")')
+                    .done(function (html) {
+                        // Put the partial view (your modal) into a host div
+                        $('#subContractModalHost').html(html);
 
-                    var modalEl = document.getElementById('subContractModal');
-                    if (modalEl) {
-                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        // Find the modal element
+                        var modalEl = document.getElementById('subContractModal');
+
+                        if (!modalEl) {
+                            console.error('#subContractModal not found in returned HTML');
+                            return;
+                        }
+
+                        // Works with Bootstrap 5 (any minor version)
+                        // Try to get instance, otherwise create a new one
+                        var modal = bootstrap.Modal.getInstance(modalEl);
+                        if (!modal) {
+                            modal = new bootstrap.Modal(modalEl);
+                        }
+
                         modal.show();
-                    }
-                });
+                    })
+                    .fail(function (xhr, status, error) {
+                        console.error('Error loading Create Subcontractor modal:', status, error);
+                        console.error(xhr.responseText);
+                    });
             });
-        });
 
-    </script>
-    <script>
-        
-        $(function () {
-
+            // EDIT SUBCONTRACTOR
             $(document).on('click', '#btnEditSubcontractor', function (e) {
                 e.preventDefault();
 
-                var id = $(this).data('id');   
+                var id = $(this).data('id');
                 if (!id) return;
 
-                $.get('@Url.Action("Edit", "Subcontractors")', { id: id }, function (html) {
-                    $('#subContractModalHost').html(html);
+                $.get('@Url.Action("Edit", "Subcontractors")', { id: id })
+                    .done(function (html) {
+                        $('#subContractModalHost').html(html);
 
-                    var modalEl = document.getElementById('subContractModal');
-                    if (modalEl) {
-                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        var modalEl = document.getElementById('subContractModal');
+                        if (!modalEl) {
+                            console.error('#subContractModal not found in Edit HTML');
+                            return;
+                        }
+
+                        var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                         modal.show();
-                    }
-                });
+                    })
+                    .fail(function (xhr, status, error) {
+                        console.error('Error loading Edit Subcontractor modal:', status, error);
+                        console.error(xhr.responseText);
+                    });
             });
-
         });
     </script>
+    <script>
+        $(document).on('dblclick', '#transactionsTable .txn-row', function () {
+                const formNameRaw = $(this).data('form');
+                const type        = $(this).data('type');
+                const invoiceId   = $(this).data('invoiceId');
+                const vendorId    = $(this).data('vendorId');
+                const formName = (formNameRaw).toString().toLowerCase();
+
+                debugger;
+
+                if (!formName || !invoiceId) return;
+
+                if (formName.includes('purchase invoice') && !formName.includes('purchase return')) {
+                    window.location.href =
+                        '@Url.Action("Edit", "PurchasesCenter")' + '?id=' + invoiceId;
+                }
+                else if (formName.includes('purchase return')) {
+                    window.location.href =
+                        '@Url.Action("Edit", "PurchasesReturn")' + '?id=' + invoiceId;
+                }
+                else if (formName.includes('Subcontractor payment')) {
+                    window.location.href =
+                        '@Url.Action("GetVendorInvoiceRowsAsync", "ReceiveVoucher")'
+                        + '?vendorId=' + vendorId;
+                }
+                else if (formName.includes('advance payment')) {
+                    window.location.href =
+                        '@Url.Action("Details", "AdvancePayments")'
+                        + '?id=' + invoiceId + '&vendorId=' + vendorId;
+                }
+                else if (formName.includes('Subcontractor opening balance')) {                   
+                const params = new URLSearchParams({
+                    refId: invoiceId,
+                    vType: formNameRaw,
+                    date:  date || ''
+                });
+                window.location.href = '@Url.Action("GeneralJournal", "Lists")' + '?' + params.toString();
+            }
+                else if (formName.includes('debit note')) {
+                    window.location.href =
+                        '@Url.Action("Edite", "DebitNotes")'
+                        + '?id=' + invoiceId;
+                }
+            });
+    </script>
+
     }
+
