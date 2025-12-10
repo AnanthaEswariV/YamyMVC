@@ -213,6 +213,10 @@
                                 <label class="form-label">As Of</label>
                                 <input type="date" class="form-control" id="asOfDateInput" required>
                             </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted">Cost Center</label>
+                                <select id="costCenterSelect" class="form-select"><option value="">Loading...</option></select>
+                            </div>
                         </div>
                     </div>
 
@@ -544,7 +548,8 @@
                                     data-method="${item.method ?? ''}"
                                     data-categoryid="${item.category_id ?? 0}"
                                     data-positem="${item.posItem ?? 0}"
-                                    data-itemtype="${item.item_type ?? ''}">
+                                    data-itemtype="${item.item_type ?? ''}"
+                                     data-costcenter="${item.costcenter ?? 0}">
                                     <i class="fas fa-pen"></i>
                                 </button>`;
 
@@ -675,7 +680,6 @@
         // ===== Load Units =====
               function loadUnitsDropdown(selector = "#mainUnit") {
             $.get('/Lists/GetUnit', function (res) {
-                console.log(res);
                 const dropdown = $(selector);
                 dropdown.empty().append('<option value="">-- Select Unit --</option>');
 
@@ -776,7 +780,6 @@
                  Active: $('#employeeActive').is(':checked') ? 1 : 0
              };
 
-             console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
 
              $.ajax({
                  url: url,
@@ -933,7 +936,7 @@
 
         $(document).on("click", ".edit-item", function () {
             const data = $(this).data();  
-
+            console.log(data);
             // Fill modal inputs
             $("#itemId").val(data.id);
             $("#itemNameInput").val(data.name);
@@ -956,6 +959,7 @@
             $("#asOfDateInput").val(data.date);
             $("#itemActive").prop("checked", data.active == 1);
             $("#inventoryType").val(data.itemtype);
+             $("#costCenterSelect").val(data.costcenter);
 
             // Fill assembly table
             const assembliesStr = data.assemblies || '[]';
@@ -1013,7 +1017,8 @@
                 Active: $("#itemActive").is(":checked"),
                 ItemType: $("#inventoryType").val(),
                 Units: [{ UnitId: parseInt($("#mainUnit").val()), Factor: 1 }],
-                Assemblies: []
+                Assemblies: [],
+                 CostCenter:  parseInt($("#costCenterSelect").val()) || 0
             };
 
             // Collect Assembly Items if needed
@@ -1066,9 +1071,6 @@
         }
 
 
-
-
-
         function loadManagersDropdown(selector, selectedId = null) {
              $.getJSON('@Url.Action("GetAllEmployees", "Inventory")', function(employees) {
                  const $dropdown = $(selector);
@@ -1117,7 +1119,32 @@
                   }
               });
           }
-        
+
+               function populateAndSelectCostCenter() {
+             $.ajax({
+                 url: '@Url.Action("GetCostCenters", "Lists")',
+                 type: 'GET',
+                 success: function (res) {
+                     const data = Array.isArray(res) ? res : (res.data || []);
+                     if (!data.length) return;
+
+                     const allSelects = $('#costCenterSelect');
+
+                     allSelects.each(function () {
+                         const $select = $(this);
+                         const selectedId = $select.data('selected-id');
+
+                         $select.empty().append('<option value="">-- Select --</option>');
+
+                         $.each(data, function (i, item) {
+                             const isSelected = String(item.id) === String(selectedId);
+                             const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                             $select.append(option);
+                         });
+                     });
+                 }
+             });
+         }
 
         // ==================
         // INIT ON PAGE LOAD
@@ -1131,7 +1158,7 @@
             loadUnitsDropdown("#mainUnit");
            loadManagersDropdown('#manager');
           loadManagersDropdown('#editManager');
-
+           populateAndSelectCostCenter();
             // Event bindings
             $("#costPriceInput, #onHandInput").on("input", recalcTotal);
             $("#stateFilter, #categoryDropdown, #typeDropdown, #allCat, #allType").on("change", loadItems);
@@ -1194,7 +1221,6 @@
                     },
                     error: function (err) {
                         console.error("Error loading transactions:", err);
-                        toastr.error("Failed to load transactions.");
                     }
                 });
             });

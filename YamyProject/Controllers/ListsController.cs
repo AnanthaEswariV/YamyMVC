@@ -729,7 +729,7 @@ namespace YamyProject.Controllers
                 // ✅ 5️⃣ Default debit/credit
                 decimal debit = model.Debit ?? 0;
                 decimal credit = model.Credit ?? 0;
-
+                int costCenter = model.CostCenter ?? 0;
                 // ✅ 6️⃣ Insert into Level 4 table
                 int newId;
                 string insertQuery = @"
@@ -756,7 +756,7 @@ namespace YamyProject.Controllers
                     if (userId <= 0)
                         return Unauthorized(new { status = false, message = "User not logged in" });
 
-                    await InsertTransactionsAsync(conn, newId, newCode, debit, credit, model.Date ?? DateTime.Now, userId);
+                    await InsertTransactionsAsync(conn, newId, newCode, debit, credit, model.Date ?? DateTime.Now, userId, costCenter);
                 }
 
                 // ✅ 8️⃣ Return success
@@ -775,7 +775,7 @@ namespace YamyProject.Controllers
         }
 
 
-        private async Task InsertTransactionsAsync(MySqlConnection conn, int refId, string code, decimal debit, decimal credit, DateTime date, int userId)
+        private async Task InsertTransactionsAsync(MySqlConnection conn, int refId, string code, decimal debit, decimal credit, DateTime date, int userId, int costCenter)
         {
             string accountId = refId.ToString();
 
@@ -802,11 +802,11 @@ namespace YamyProject.Controllers
             {
                 await AddTransactionAsync(conn, date, openingBalanceEquityId, credit, 0,
                     refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
-                    "Opening Balance Equity - Ledger", userId, DateTime.Now.Date, "");
+                    "Opening Balance Equity - Ledger", userId, DateTime.Now.Date, "", costCenter);
 
                 await AddTransactionAsync(conn, date, accountId, 0, credit,
                     refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
-                    "Account Payable - Ledger Code", userId, DateTime.Now.Date, "");
+                    "Account Payable - Ledger Code", userId, DateTime.Now.Date, "", costCenter);
             }
 
             // ✅ Debit entries
@@ -814,25 +814,25 @@ namespace YamyProject.Controllers
             {
                 await AddTransactionAsync(conn, date, openingBalanceEquityId, 0, debit,
                     refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
-                    "Opening Balance Equity - Ledger Code", userId, DateTime.Now.Date, "");
+                    "Opening Balance Equity - Ledger Code", userId, DateTime.Now.Date, "" ,costCenter);
 
                 await AddTransactionAsync(conn, date, accountId, debit, 0,
                     refId.ToString(), "0", "GENERAL LEDGER OPENING BALANCE", "General Ledger Opening Balance",
-                    "Account Payable - Ledger Code", userId, DateTime.Now.Date, "");
+                    "Account Payable - Ledger Code", userId, DateTime.Now.Date, "", costCenter);
             }
         }
 
 
         private async Task AddTransactionAsync(MySqlConnection conn, DateTime date, string accountId, decimal debit, decimal credit,
                                string transactionId, string humId, string type, string voucher_name, string description,
-                               int createdBy, DateTime createdDate, string VoucherNo)
+                               int createdBy, DateTime createdDate, string VoucherNo, int costCenter)
         {
             try
             {
                 string query = @"
 INSERT INTO tbl_transaction 
-(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
-VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no);";
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no, costcenter) 
+VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no, @costcenter);";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@date", date);
@@ -847,6 +847,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 cmd.Parameters.AddWithValue("@createdBy", createdBy);
                 cmd.Parameters.AddWithValue("@createdDate", createdDate);
                 cmd.Parameters.AddWithValue("@voucher_no", VoucherNo);
+                cmd.Parameters.AddWithValue("@costcenter", costCenter);
 
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -1151,7 +1152,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         model.Debit ?? 0,
                         model.Credit ?? 0,
                         model.Date ?? DateTime.Now,
-                        userId
+                        userId,
+                        model.CostCenter ?? 0
                     );
                 }
 
@@ -2722,7 +2724,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         method as Method,
                         category_id as Category_id,
                         posItem as PosItem,
-                        item_type as Item_type
+                        item_type as Item_type,
+                       costcenter as CostCenter
             FROM tbl_items
             WHERE state = 0";
 
@@ -2778,7 +2781,8 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         method = reader.GetString("Method"),
                         category_id = reader.IsDBNull("Category_id") ? (int?)null : reader.GetInt32("Category_id"),
                         posItem = reader.IsDBNull("PosItem") ? (int?)null : reader.GetInt32("PosItem"),
-                        item_type = reader.GetString("Item_type")
+                        item_type = reader.GetString("Item_type"),
+                        costcenter = reader.GetInt32("CostCenter"),
                     });
 
                 }
@@ -2837,12 +2841,12 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         `code`, `warehouse_id`, `type`, `category_id`, `name`, `unit_id`, `barcode`, 
                         `cost_price`, `cogs_account_id`, `vendor_id`, `sales_price`, `income_account_id`, 
                         `asset_account_id`, `min_amount`, `max_amount`, `on_hand`, `method`, `total_value`, 
-                        `date`, `img`, `active`, `state`, `created_By`, `created_date`, `Item_type`
+                        `date`, `img`, `active`, `state`, `created_By`, `created_date`, `Item_type`, `costcenter`
                     ) VALUES (
                         @code, @warehouseId, @type, @category, @name, @unit_id, @barcode, @cost_price, 
                         @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
                         @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, 
-                        @state, @created_By, @created_date, @Item_type
+                        @state, @created_By, @created_date, @Item_type, @costcenter
                     ); 
                     SELECT LAST_INSERT_ID();";
 
@@ -2874,6 +2878,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@created_By", model.CreatedBy);
                     cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
                     cmd.Parameters.AddWithValue("@Item_type", model.ItemType ?? "");
+                    cmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
 
                     itemId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                 }
@@ -2954,7 +2959,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         asset_account_id = @asset_account_id, min_amount = @min_amount, max_amount = @max_amount, 
                         on_hand = @on_hand, method = @method, total_value = @total_value, date = @date, 
                         img = @img, active = @active, state = @state, created_By = @created_By, 
-                        created_date = @created_date, Item_type = @Item_type 
+                        created_date = @created_date, Item_type = @Item_type , costcenter = @costcenter
                     WHERE id = @id";
 
                 using (var cmd = new MySqlCommand(updateQuery, conn))
@@ -2983,6 +2988,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
                     cmd.Parameters.AddWithValue("@Item_type", model.ItemType ?? "");
                     cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
 
                     await cmd.ExecuteNonQueryAsync();
                 }
@@ -3290,11 +3296,11 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
             await InsertTransactionEntryAsync(conn, model.Date, inventoryAccountId, model.TotalValue.ToString(), "0",
                 itemId.ToString(), itemId.ToString(), "Opening Qty",
-                $"Opening Balance - Item Code - {itemCode}", model.CreatedBy, DateTime.Now.Date);
+                $"Opening Balance - Item Code - {itemCode}", model.CreatedBy, DateTime.Now.Date, model.CostCenter ?? 0);
 
             await InsertTransactionEntryAsync(conn, model.Date, equityAccountId, "0", model.TotalValue.ToString(),
                 itemId.ToString(), "0", "Opening Qty",
-                $"Opening Balance Equity - Item Code - {itemCode}", model.CreatedBy, DateTime.Now.Date);
+                $"Opening Balance Equity - Item Code - {itemCode}", model.CreatedBy, DateTime.Now.Date, model.CostCenter ?? 0);
         }
 
         private async Task<string> SelectDefaultLevelAccountAsync(MySqlConnection conn, string accountType)
@@ -3316,11 +3322,11 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
         private async Task InsertTransactionEntryAsync(MySqlConnection conn, DateTime date, string accountId,
             string debit, string credit, string transactionId, string humId, string type, string description,
-            int createdBy, DateTime createdDate)
+            int createdBy, DateTime createdDate, int costcenter)
         {
             var query = @"INSERT INTO tbl_transaction 
-                         (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state) 
-                         VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0);";
+                         (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, costcenter) 
+                         VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @costcenter);";
 
             using var cmd = new MySqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@date", date);
@@ -3334,6 +3340,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             cmd.Parameters.AddWithValue("@description", description);
             cmd.Parameters.AddWithValue("@createdBy", createdBy);
             cmd.Parameters.AddWithValue("@createdDate", createdDate);
+            cmd.Parameters.AddWithValue("@costcenter", costcenter);
             await cmd.ExecuteNonQueryAsync();
         }
 

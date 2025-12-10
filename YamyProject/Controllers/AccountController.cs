@@ -987,6 +987,7 @@ namespace YamyProject.Controllers
 	                    `category_id` INT(10) NULL DEFAULT NULL,
 	                    `posItem` INT(10) NULL DEFAULT NULL,
                         `item_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+                         `costcenter` INT(10) NULL DEFAULT NULL,
 	                    PRIMARY KEY (`id`) USING BTREE
                     )
                     COLLATE='utf8mb4_general_ci' ENGINE=InnoDB ;
@@ -2046,6 +2047,7 @@ namespace YamyProject.Controllers
                           `state` int DEFAULT NULL,
                           `voucher_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
                           `project_id` INT NOT NULL DEFAULT 0,
+                          `costcenter` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

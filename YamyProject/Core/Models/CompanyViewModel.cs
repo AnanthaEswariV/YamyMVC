@@ -329,6 +329,7 @@ namespace YamyProject.Core.Models
         public int CreatedBy { get; set; }
         public List<UnitRequest> Units { get; set; } = new();
         public List<AssemblyRequest> Assemblies { get; set; } = new();
+        public int? CostCenter { get; set; }
     }
 
     public class UnitRequest
