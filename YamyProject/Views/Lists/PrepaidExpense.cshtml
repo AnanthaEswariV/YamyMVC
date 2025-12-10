@@ -129,17 +129,21 @@
 
                     <!-- Debit and Credit Accounts -->
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="debitAccount" class="form-label text-muted">Debit Account</label>
                             <select class="form-select" id="debitAccount">
                                 <option value="">-- Select --</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="creditAccount" class="form-label text-muted">Credit Account</label>
                             <select class="form-select" id="creditAccount">
                                 <option value="">Select Account</option>
                             </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted">Cost Center</label>
+                            <select id="costCenterSelect" class="form-select"><option value="">Loading...</option></select>
                         </div>
                     </div>
 
@@ -276,6 +280,33 @@
             });
         }
 
+
+                function populateAndSelectCostCenter() {
+             $.ajax({
+                 url: '@Url.Action("GetCostCenters", "Lists")',
+                 type: 'GET',
+                 success: function (res) {
+                     const data = Array.isArray(res) ? res : (res.data || []);
+                     if (!data.length) return;
+
+                     const allSelects = $('#costCenterSelect');
+
+                     allSelects.each(function () {
+                         const $select = $(this);
+                         const selectedId = $select.data('selected-id');
+
+                         $select.empty().append('<option value="">-- Select --</option>');
+
+                         $.each(data, function (i, item) {
+                             const isSelected = String(item.id) === String(selectedId);
+                             const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                             $select.append(option);
+                         });
+                     });
+                 }
+             });
+         }
+
                 $(document).ready(function() {
 
                    
@@ -313,7 +344,7 @@
             });
             populateCategories();
              populateBankAccounts();
-
+             populateAndSelectCostCenter();
 
                   const urlParams = new URLSearchParams(window.location.search);
         const prepaidId = urlParams.get('Id');
@@ -354,6 +385,7 @@
             $("#agreementAmount").val(prepaid.amount ?? 0);
             $("#feesAmount").val(prepaid.fee ?? 0);
             $("#agreementTotal").val(prepaid.total ?? 0);
+            $("#costCenterSelect").val(prepaid.costCenter ?? 0);
 
             // 🔹 Calculate total days
             if (prepaid.startDate && prepaid.endDate) {
@@ -394,9 +426,10 @@
                 EndDate: $('#endDate').val(),
                 Amount: parseFloat($('#agreementAmount').val()) || 0,
                 Fee: parseFloat($('#feesAmount').val()) || 0,
-                Total: parseFloat($('#agreementTotal').val()) || 0
+                Total: parseFloat($('#agreementTotal').val()) || 0,
+                Costcenter: parseInt($('#costCenterSelect').val()) || 0,
             };
-
+            
             $.ajax({
                url: '@Url.Action("SavePrepaidExpense", "Lists")',
                 type: 'POST',

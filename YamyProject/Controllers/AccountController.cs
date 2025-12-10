@@ -1332,7 +1332,8 @@ namespace YamyProject.Controllers
                           `created_date` date DEFAULT NULL,
                           `modified_by` int DEFAULT NULL,
                           `modified_date` date DEFAULT NULL,
-                          `state` int DEFAULT '0',
+                          `state` int DEFAULT '0',,
+                          `costcenter` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

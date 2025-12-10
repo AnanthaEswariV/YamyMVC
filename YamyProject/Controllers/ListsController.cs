@@ -6625,8 +6625,10 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
                         EndDate = reader.GetDateTime("end_date").ToString("yyyy-MM-dd"),
                         Amount = reader.GetDecimal("amount"),
                         Fee = reader.GetDecimal("fee"),
-                        Total = reader.GetDecimal("total")
-                    });
+                        Total = reader.GetDecimal("total"),
+                        CostCenter = reader.IsDBNull("costcenter") ? 0 : reader.GetInt32("costcenter")
+
+                });
                 }
 
                 return Ok(new { status = true, data = expenses });
@@ -6674,9 +6676,9 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
                     // Insert new prepaid expense
                     string insertQuery = @"
                 INSERT INTO tbl_prepaid_expense
-                (code, name, category_id, debit_account_id, credit_account_id, start_date, end_date, amount, fee, total, created_by, created_date)
+                (code, name, category_id, debit_account_id, credit_account_id, start_date, end_date, amount, fee, total, created_by, created_date, costcenter)
                 VALUES
-                (@code, @name, @category_id, @debit_account_id, @credit_account_id, @start_date, @end_date, @amount, @fee, @total, @created_by, @created_date);
+                (@code, @name, @category_id, @debit_account_id, @credit_account_id, @start_date, @end_date, @amount, @fee, @total, @created_by, @created_date, @costcenter);
                 SELECT LAST_INSERT_ID();";
 
                     using var cmd = new MySqlCommand(insertQuery, conn);
@@ -6692,6 +6694,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
                     cmd.Parameters.AddWithValue("@total", model.Total);
                     cmd.Parameters.AddWithValue("@created_by", userId);
                     cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
 
                     var insertedId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
@@ -6707,7 +6710,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
                 UPDATE tbl_prepaid_expense
                 SET name=@name, category_id=@category_id, debit_account_id=@debit_account_id, credit_account_id=@credit_account_id,
                     start_date=@start_date, end_date=@end_date, amount=@amount, fee=@fee, total=@total,
-                    modified_by=@modified_by, modified_date=@modified_date
+                    modified_by=@modified_by, modified_date=@modified_date, costcenter = @costcenter
                 WHERE id=@id;";
 
                     using var cmd = new MySqlCommand(updateQuery, conn);
@@ -6723,6 +6726,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
                     cmd.Parameters.AddWithValue("@total", model.Total);
                     cmd.Parameters.AddWithValue("@modified_by", userId);
                     cmd.Parameters.AddWithValue("@modified_date", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@costcenter", model.CostCenter ?? 0);
 
                     int affected = await cmd.ExecuteNonQueryAsync();
 
@@ -6771,11 +6775,11 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
 
             await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfFirstMonth,
                 model.DebitAccountId.ToString(), firstMonthAmount.ToString(), "0", pId.ToString(), "0", "Prepaid Expense",
-                model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+                model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now, model.CostCenter ?? 0);
 
             await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfFirstMonth,
                 model.CreditAccountId.ToString(), "0", firstMonthAmount.ToString(), pId.ToString(), "0", "Prepaid Expense",
-                model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+                model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now, model.CostCenter ?? 0);
 
             currentDate = lastDateOfFirstMonth.AddDays(1);
 
@@ -6790,11 +6794,11 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
 
                 await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfMonth,
                     model.DebitAccountId.ToString(), monthlyAmount.ToString(), "0", pId.ToString(), "0", "Prepaid Expense",
-                    model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+                    model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now, model.CostCenter ?? 0);
 
                 await CommonInsert.InsertTransactionEntryAsync(conn, lastDateOfMonth,
                     model.CreditAccountId.ToString(), "0", monthlyAmount.ToString(), pId.ToString(), "0", "Prepaid Expense",
-                    model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now);
+                    model.Name + " - Prepaid Expense No. " + pId, userId, DateTime.Now, model.CostCenter ?? 0);
 
                 currentDate = lastDateOfMonth.AddDays(1);
             }
@@ -6813,13 +6817,13 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
         string type,
         string description,
         int createdBy,
-        DateTime createdDate)
+        DateTime createdDate, int costcenter)
     {
         string query = @"
             INSERT INTO tbl_transaction 
-            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state)
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, costcenter)
             VALUES 
-            (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0);";
+            (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @costcenter);";
 
         using var cmd = new MySqlCommand(query, conn);
         cmd.Parameters.AddWithValue("@date", date);
@@ -6833,6 +6837,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
         cmd.Parameters.AddWithValue("@description", description);
         cmd.Parameters.AddWithValue("@createdBy", createdBy);
         cmd.Parameters.AddWithValue("@createdDate", createdDate);
+        cmd.Parameters.AddWithValue("@costcenter", costcenter);
 
         await cmd.ExecuteNonQueryAsync();
     }

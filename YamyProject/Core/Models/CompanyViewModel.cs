@@ -529,6 +529,7 @@ namespace YamyProject.Core.Models
         public decimal Amount { get; set; }
         public decimal Fee { get; set; }
         public decimal Total { get; set; }
+        public int? CostCenter { get; set; }
     }
 
     public class ProjectRequest
