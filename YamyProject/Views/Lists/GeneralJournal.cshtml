@@ -427,16 +427,16 @@
                                         </select>
                                     </td>
                                     <td>
-                                        <input type="text" class="form-control form-control-sm description" value="${row.description ?? ''}"  readonly/>
+                                        <input type="text" class="form-control form-control-sm description" value="${row.description ?? ''}"  />
                                     </td>
                                     <td class="text-end">
-                                        <input type="text" class="form-control form-control-sm debit text-end format-number" value="${formatNumber(row.debit)}" readonly/>
+                                        <input type="text" class="form-control form-control-sm debit text-end format-number" value="${formatNumber(row.debit)}" />
                                     </td>
                                     <td class="text-end">
-                                        <input type="text" class="form-control form-control-sm credit text-end format-number" value="${formatNumber(row.credit)}" readonly/>
+                                        <input type="text" class="form-control form-control-sm credit text-end format-number" value="${formatNumber(row.credit)}" />
                                     </td>
                                     <td class="text-end">
-                                        <select class="form-select form-select-sm costCenterName" data-selected-id="${row.costCenter ?? ''}" disabled>
+                                        <select class="form-select form-select-sm costCenterName" data-selected-id="${row.costCenter ?? ''}" >
                                             <option value="">Loading...</option>
                                         </select>
                                     </td>

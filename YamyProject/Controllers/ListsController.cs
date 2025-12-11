@@ -3419,6 +3419,185 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
         }
 
 
+        [HttpGet]
+        public async Task<IActionResult> GetItemTransactions(int itemId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = @"
+            SELECT id, date, reference, type, qty_in, qty_out, cost_price, sales_price
+            FROM tbl_item_transaction
+            WHERE item_id = @itemId
+            ORDER BY date ASC, id ASC";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@itemId", itemId);
+
+                var transactions = new List<object>();
+                decimal qtyBalance = 0;
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var qtyIn = reader.IsDBNull("qty_in") ? 0 : reader.GetDecimal("qty_in");
+                    var qtyOut = reader.IsDBNull("qty_out") ? 0 : reader.GetDecimal("qty_out");
+                    qtyBalance += (qtyIn - qtyOut);
+
+                    transactions.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        date = reader.GetDateTime("date").ToString("dd-MM-yyyy"),
+                        reference = reader.IsDBNull("reference") ? "" : reader.GetString("reference"),
+                        type = reader.GetString("type"),
+                        qtyIn = qtyIn.ToString("N2"),
+                        qtyOut = qtyOut.ToString("N2"),
+                        costPrice = reader.IsDBNull("cost_price") ? "0.00" : reader.GetDecimal("cost_price").ToString("N2"),
+                        salesPrice = reader.IsDBNull("sales_price") ? "0.00" : reader.GetDecimal("sales_price").ToString("N2"),
+                        qtyBalance = qtyBalance.ToString("N2")
+                    });
+                }
+
+                return Ok(new { status = true, data = transactions });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItemCardTransactions(int itemId)
+        {
+            try
+            {
+                // Build connection string with dynamic DB from session
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                                ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 1️⃣ Get item info (on_hand, method)
+                string method = "";
+                decimal onHand = 0;
+                using (var cmdItem = new MySqlCommand(
+                    "SELECT on_hand, method FROM tbl_items WHERE id = @itemId", conn))
+                {
+                    cmdItem.Parameters.AddWithValue("@itemId", itemId);
+                    using var itemReader = await cmdItem.ExecuteReaderAsync();
+                    if (await itemReader.ReadAsync())
+                    {
+                        method = itemReader["method"]?.ToString().Trim() ?? "";
+                        onHand = itemReader["on_hand"] == DBNull.Value ? 0 : Convert.ToDecimal(itemReader["on_hand"]);
+                    }
+                }
+
+                // 2️⃣ Get transactions with warehouse name using JOIN
+                var transactions = new List<object>();
+                decimal qtyBalance = 0;
+                decimal currentCostPrice = 0;
+                List<decimal> fifoPrices = new List<decimal>();
+                List<decimal> fifoQtys = new List<decimal>();
+                decimal lastPrice = 0;
+                bool fifoSet = false;
+
+                string query = @"
+            SELECT icd.id, icd.date, icd.wharehouse_id, icd.inv_no, icd.trans_no, icd.trans_type, icd.description,
+                   icd.price, icd.qty_in, icd.qty_out, icd.qty_balance, icd.debit, icd.credit, icd.balance, icd.fifo_qty, icd.fifo_cost,
+                   w.name AS warehouseName
+            FROM tbl_item_card_details icd
+            LEFT JOIN tbl_warehouse w ON icd.wharehouse_id = w.id
+            WHERE icd.itemId = @itemId
+            ORDER BY icd.date, icd.id";
+
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@itemId", itemId);
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        string warehouseName = reader["warehouseName"]?.ToString() ?? "";
+                        decimal qtyIn = reader["qty_in"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_in"]);
+                        decimal qtyOut = reader["qty_out"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_out"]);
+                        decimal price = reader["price"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["price"]);
+
+                        // FIFO / LIFO / AVG logic
+                        if (qtyIn > 0)
+                        {
+                            fifoPrices.Add(price);
+                            fifoQtys.Add(qtyIn);
+                            lastPrice = price;
+
+                            if (method.ToUpper() == "FIFO" && !fifoSet)
+                            {
+                                currentCostPrice = price;
+                                fifoSet = true;
+                            }
+                        }
+
+                        if (method.ToUpper() == "AVG")
+                        {
+                            decimal qtyBal = reader["qty_balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["qty_balance"]);
+                            decimal bal = reader["balance"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["balance"]);
+                            currentCostPrice = qtyBal != 0 ? bal / qtyBal : 0;
+                        }
+
+                        qtyBalance += (qtyIn - qtyOut);
+
+                        transactions.Add(new
+                        {
+                            id = reader["id"],
+                            date = reader["date"] == DBNull.Value ? "" : Convert.ToDateTime(reader["date"]).ToString("dd-MM-yyyy"),
+                            warehouseName,
+                            invNo = reader["inv_no"]?.ToString() ?? "",
+                            transNo = reader["trans_no"]?.ToString() ?? "",
+                            transType = reader["trans_type"]?.ToString() ?? "",
+                            description = reader["description"]?.ToString() ?? "",
+                            price = price.ToString("N2"),
+                            qtyIn = qtyIn.ToString("N2"),
+                            qtyOut = qtyOut.ToString("N2"),
+                            qtyBalance = qtyBalance.ToString("N2"),
+                            debit = reader["debit"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["debit"]).ToString("N2"),
+                            credit = reader["credit"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["credit"]).ToString("N2"),
+                            balance = reader["balance"] == DBNull.Value ? "0.00" : Convert.ToDecimal(reader["balance"]).ToString("N2")
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    item = new
+                    {
+                        itemId,
+                        method,
+                        onHand,
+                        currentCostPrice = currentCostPrice.ToString("N2")
+                    },
+                    transactions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteItem(int id)
         {
@@ -4386,40 +4565,32 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 }
                 else if (type == "Purchase Invoice Cash" || type == "Purchase Invoice")
                 {
-                    // Commented out as per original code
+                   
                 }
                 else if (type == "Sales Invoice Cash" || type == "Sales Invoice")
                 {
-                    // Commented out as per original code
                 }
                 else if (type.StartsWith("SalesReturn"))
                 {
-                    // Commented out as per original code
                 }
                 else if (type.StartsWith("PurchaseReturn"))
                 {
-                    // Commented out as per original code
                 }
                 else if (type == "Vendor Payment" || type == "Employee Loan Payment" ||
                          type == "Employee Petty Cash Payment" || type == "Employee Salary Payment")
                 {
-                    // Commented out as per original code
                 }
                 else if (type == "Petty Cash")
                 {
-                    // Commented out as per original code
                 }
                 else if (type == "Customer Receipt" || type == "General Receipt")
                 {
-                    // Commented out as per original code
                 }
                 else if (type == "SALES RETURN")
                 {
-                    // Commented out as per original code
                 }
                 else if (type == "PURCHASE RETURN")
                 {
-                    // Commented out as per original code
                 }
                 else
                 {
@@ -4454,36 +4625,28 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
             else if (type == "Purchase Invoice Cash" || type == "Purchase Invoice")
             {
-                // Commented out as per original code
             }
             else if (type == "Sales Invoice Cash" || type == "Sales Invoice")
             {
-                // Commented out as per original code
             }
             else if (type.StartsWith("SalesReturn"))
             {
-                // Commented out as per original code
             }
             else if (type.StartsWith("PurchaseReturn"))
             {
-                // Commented out as per original code
             }
             else if (type == "Vendor Payment" || type == "Employee Loan Payment" ||
                      type == "Employee Petty Cash Payment" || type == "Employee Salary Payment")
             {
-                // Commented out as per original code
             }
             else if (type == "Customer Receipt" || type == "General Receipt")
             {
-                // Commented out as per original code
             }
             else if (type == "SALES RETURN")
             {
-                // Commented out as per original code
             }
             else if (type == "PURCHASE RETURN")
             {
-                // Commented out as per original code
             }
 
             if (!string.IsNullOrEmpty(query))
@@ -4498,7 +4661,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
             voucherId = string.IsNullOrEmpty(voucherId) ? "0" : voucherId;
         }
-
+        
         #endregion
 
         #region Fixed Asset Category
