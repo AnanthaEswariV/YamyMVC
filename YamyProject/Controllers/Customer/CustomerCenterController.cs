@@ -18,8 +18,8 @@ namespace YamyProject.Controllers
         public async Task<IActionResult> Index(string state = "Active", int? selectedId = null, string? searchText = null)
         {
             // Load all customers (filtered by state)
-            var customers = await _customerService.GetAllAsync(state);
-
+            var customers = await _customerService.GetAllcustomersAsync(state);
+            var customer = await _customerService.GetAllAsync(state);
             // Apply search filter if provided
             if (!string.IsNullOrWhiteSpace(searchText))
             {
@@ -32,14 +32,13 @@ namespace YamyProject.Controllers
             TblCustomer? selectedCustomer = null;
             if (selectedId.HasValue)
             {
-                selectedCustomer = customers.FirstOrDefault(c => c.Id == selectedId.Value);
+                selectedCustomer = customer.FirstOrDefault(c => c.Id == selectedId.Value);
             }
-
-            // Load transactions for selected customer
+            
             var transactions = selectedCustomer != null
                 ? await _customerService.GetTransactionsAsync(selectedCustomer.Id)
-                : new List<TblTransaction>();
-
+                : new List<VendorTxnViewModel>();
+           
             // Prepare the view model
             var vm = new CustomerCenterViewModel
             {
@@ -104,7 +103,7 @@ namespace YamyProject.Controllers
                 Value = p.Id.ToString()
                 }).ToList() ?? new List<SelectListItem>();
 
-
+            vm.OpeningType = "Debit";
             return PartialView("CustomerForm", vm); // reuse Edit view
         //    return View("Edite", vm); // reuse Edit view
         }
@@ -122,7 +121,7 @@ namespace YamyProject.Controllers
             //   // return View("Edite", reloadVm);
             //}
 
-            await _service.SaveCustomerAsync(vm.Customer);
+            await _service.SaveCustomerAsync(vm);
             return RedirectToAction(nameof(Index));
         }
         // GET: Edit Form
@@ -167,7 +166,7 @@ namespace YamyProject.Controllers
             if (!ModelState.IsValid)
                 return View(vm);
 
-            await _service.SaveCustomerAsync(vm.Customer);
+            await _service.SaveCustomerAsync(vm);
             return RedirectToAction(nameof(Index));
         }
         // GET: Delete Customer

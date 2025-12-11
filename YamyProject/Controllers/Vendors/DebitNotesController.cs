@@ -31,7 +31,7 @@
             return View("MasterDebitNote", new DebitNoteViewModel
                 {
                 Vendors = VendorSelectList,
-                DebitAccounts = AccountList,
+                DebitAccounts = AccountList
                 });
             }
         [HttpPost]
@@ -64,7 +64,11 @@
                 Code = c.Code
                 }).ToList();
 
-            return View("MasterDebitNote");
+            return View("MasterDebitNote", new DebitNoteViewModel
+                {
+                Vendors = VendorSelectList,
+                DebitAccounts = AccountList
+                });
             }
         [HttpPost]
         public async Task<IActionResult> Edit(DebitNoteViewModel model)

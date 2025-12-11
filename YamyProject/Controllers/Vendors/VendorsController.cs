@@ -30,85 +30,30 @@
             var items = await vendorsQuery
                 .Select(v => new VendorIndexViewModel
                 {
-                
                     Id = v.Id,
                     Name =  (v.Name ?? ""),
                     Code = v.Code.ToString(),
-
                     WorkPhone = v.WorkPhone,
                     MainPhone = v.MainPhone,
-                    CategoryName = _context.TblVendorCategories
-                         .Where(c => c.Id == v.CatId)
-                         .Select(c => c.Name)
+                    CategoryName = _context.TblVendorCategories.Where(c => c.Id == v.CatId).Select(c => c.Name)
                          .FirstOrDefault(),
                     Region = v.Region,
                     Email = v.Email,
                     TRN = v.Trn,
-
                     Balance = v.Balance ?? 0m,
                     Date = v.Date,
-
-                    // Opening sums (same filter as in SQL)
                     OpeningDebit = _context.TblTransactions
-                         .Where(t => t.State == 0
-                                  && t.HumId == v.Id
-                                  && wanted.Contains(t.Type) )
-                         .Sum(t => (decimal?)t.Debit) ?? 0m,
-
-                    OpeningCredit = _context.TblTransactions
-                          .Where(t => t.State == 0
-                                   && t.HumId == v.Id
-                                   && wanted.Contains(t.Type))
+                         .Where(t => t.State == 0 && t.HumId == v.Id && wanted.Contains(t.Type)).Sum(t => (decimal?)t.Debit) ?? 0m,
+                    OpeningCredit = _context.TblTransactions.Where(t => t.State == 0 && t.HumId == v.Id && wanted.Contains(t.Type))
                           .Sum(t => (decimal?)t.Credit) ?? 0m,
-
                     Amount = _context.TblTransactions
-                   .Where(t => t.State == 0
-                            && t.HumId == v.Id
-                            && wanted.Contains(t.Type))
-                   .Sum(t => (decimal?)(t.Credit - t.Debit)) ?? 0m,
-
+                   .Where(t => t.State == 0 && t.HumId == v.Id
+                            && wanted.Contains(t.Type)).Sum(t => (decimal?)(t.Credit - t.Debit)) ?? 0m,
                     Active = (v.Active == 0)
                     })
                 .ToListAsync();                    
             return View(items);
         }
-
-        //public async Task<IActionResult> Edit(int id, CancellationToken cancellationToken = default)
-        //{
-        //    var vendor = await _context.TblVendors
-        //                          .AsNoTracking()
-        //                          .Where(v => v.Id == id && v.State == 0)
-        //                          .FirstOrDefaultAsync(cancellationToken);
-
-        //    if (vendor == null) return NotFound();
-
-        //    var vm = new VendorEditViewModel
-        //    {
-        //        Id = vendor.Id,
-        //        Code = vendor.Code.ToString("D5"),
-        //        Name = vendor.Name,
-        //        CatId = vendor.CatId,
-        //        AccountId = vendor.AccountId,
-        //        Trn = vendor.Trn,
-        //        MainPhone = vendor.MainPhone,
-        //        WorkPhone = vendor.WorkPhone,
-        //        Mobile = vendor.Mobile,
-        //        Email = vendor.Email,
-        //        Ccemail = vendor.Ccemail,
-        //        Website = vendor.Website,
-        //        Country = vendor.Country,
-        //        City = vendor.City,
-        //        Region = vendor.Region,
-        //        BuildingName = vendor.BuildingName,
-        //        Date = vendor.Date.HasValue ? vendor.Date.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
-        //        OpeningDebit = await _context.TblTransactions.Where(t => t.HumId == id && t.Type == "Vendor Opening Balance").SumAsync(t => (decimal?)t.Debit) ?? 0m,
-        //        OpeningCredit = await _context.TblTransactions.Where(t => t.HumId == id && t.Type == "Vendor Opening Balance").SumAsync(t => (decimal?)t.Credit) ?? 0m,
-        //        Active = vendor.Active == 0,
-        //        CategorySelectList = await _context.TblVendorCategories.AsNoTracking().Select(c => new SelectListItem(c.Name, c.Id.ToString())).ToListAsync(cancellationToken),
-        //        AccountSelectList = await _context.TblCoaLevel4s.AsNoTracking().Select(a => new SelectListItem(a.Name, a.Id.ToString())).ToListAsync(cancellationToken)
-        //    };
-        //    return View(vm);
-        //}
 
         [HttpGet]
         public async Task<IActionResult> Create()
@@ -157,10 +102,11 @@
                 Account=AccountslectList,
                 Date=DateOnly.FromDateTime(DateTime.UtcNow),
                 Code = code,
-                Type = "Vendor"
+                Type = "Vendor" 
+                //,
+                //Debit=true
                 }
-            );
-            }
+            );}
         [HttpPost]
         public async Task<IActionResult> Create(VendorSubContactViewModel model)
             {
@@ -200,21 +146,34 @@
                 Name = c.Name
                 })
             .ToList();
+            var Accounts = await _listServices.GetAccountsAsync();
+            var AccountslectList = Accounts.Select(c => new TblCoaLevel4
+                {
+                Id = c.Id,
+                Name = c.Name
+                }).ToList();
 
             var Vendor = await _context.TblVendors.FindAsync(id);
-
+            string balance; 
+            if (Vendor.Balance > 0)
+                balance = "Debit";
+            else
+                balance = "Credit";
             return PartialView("~/Views/Vendors/_Vendor.cshtml", new VendorSubContactViewModel
                 {
                 Categoriess = CategorylectList,
                 City = citylectList,
                 Country = countrylectList,
                 Project = projectlectList,
+                Account=AccountslectList,
                 Type = "Vendor",
                 Code = Vendor.Code.ToString(),
                 Name = Vendor.Name,
                 CategoryId = (int)Vendor.CatId,
-                Debit = Vendor.Balance ?? 0m,
-                Credit = Vendor.Balance ?? 0m,
+                OpeningType = balance,
+                // Debit = Vendor.Balance ?? 0m,
+                // Credit = Vendor.Balance ?? 0m,
+                OpeningAmount= Math.Abs((decimal)Vendor.Balance!),
                 Date = (DateOnly)Vendor.Date,
                 MainPhone = Vendor.MainPhone,
                 WorkPhone = Vendor.WorkPhone,
@@ -229,7 +188,7 @@
                 BulidingNumber = Vendor.BuildingName,
                 AccountId = (int)Vendor.AccountId,
                 TRN = Vendor.Trn,
-                IsActive = Vendor.Active == 1,
+                IsActive = Vendor.Active == 0,
 
                 });
             }
@@ -264,7 +223,7 @@
             })
         .FirstOrDefaultAsync();
 
-            if (dto is null) return NotFound();   // 404 if vendor not found
+            if (dto is null) return NotFound();  
             return Json(dto);
             }
         [HttpGet] public async Task<IActionResult> Transactions(int vendorId)
@@ -282,7 +241,7 @@
               "Debit Note",
               "PDC Payable"
              };
-            // Pull raw rows first (ordered) — no explicit joins
+
             var raw = await _context.TblTransactions
                 .AsNoTracking()
                 .Where(t => t.State == 0
@@ -294,7 +253,8 @@
                     {
                     t.Id,
                      t.Date,
-                    t.VoucherNo,        
+                    t.VoucherNo,
+                    t.TransactionId,
                     VoucherType = t.Type,
                     Description = _context.TblCoaLevel4s
                                    .Where(a => a.Id == t.AccountId)
@@ -310,13 +270,20 @@
             int sn = 0;
             foreach (var r in raw)
                 {
+                string Voucher;
+                if (r.VoucherNo == null || r.VoucherNo == "" || r.VoucherNo == " ")
+                    Voucher = "GV-00" + r.TransactionId;
+                else
+                    Voucher = r.VoucherNo;
                 running += (r.Credit - r.Debit);
 
                 result.Add(new VendorTxnViewModel
                     {
+                    Id = r.Id,
+                    invoiceId=(int)r.TransactionId,
                     Sn = ++sn,
                     Date = r.Date,
-                    VoucherNo = r.VoucherNo ?? "",
+                    VoucherNo = Voucher,
                     VoucherType = r.VoucherType ?? "",
                     Description = r.Description,  
                     Debit = r.Debit,

@@ -245,7 +245,7 @@
 
                     <!-- actions -->
                     <div class="jv-toolgroup">
-                        <div class="jv-toolbtn" onclick="window.location.reload()">
+                        <div class="jv-toolbtn">
                             <i class="fa fa-file"></i>
                             <span>New</span>
                         </div>
@@ -303,6 +303,7 @@
                         <thead>
                             <tr>
                                 <th style="width:60px">#</th>
+                                <th class="d-none" style="width:130px">AC Id</th>
                                 <th style="width:130px">AC Code</th>
                                 <th>Account Name</th>
                                 <th style="width:110px" class="text-end">Debit</th>
@@ -324,11 +325,11 @@
                 <div class="jv-bottom-left">
                     <div>
                         <label>Dr Amount</label>
-                        <input class="form-control" id="totalDebit" value="0.00" readonly />
+                        <input class="form-control" id="totalDebit" asp-for="DrAmount" value="0.00" readonly />
                     </div>
                     <div>
                         <label>Cr Amount</label>
-                        <input class="form-control" id="totalCredit" value="0.00" readonly />
+                        <input class="form-control" id="totalCredit" asp-for="CrAmount" value="0.00" readonly />
                     </div>
                 </div>
                 <div class="jv-bottom-right">
@@ -342,9 +343,18 @@
 </form>
 
 <!-- TEMPLATE SELECT FOR ACCOUNTS (data only) -->
-<select id="tpl-accounts"
-        class="d-none"
-        asp-items="@(new SelectList(Model.Accounts, "Code", "Name"))">
+<select id="tpl-accounts" class="d-none">
+    @if (Model.Accounts != null)
+        {
+        foreach (var a in Model.Accounts)
+            {
+            <option value="@a.Code"
+                    data-id="@a.Id"
+                    data-name="@a.Name">
+                @a.Name
+            </option>
+            }
+        }
 </select>
 
     @section Scripts {
@@ -359,7 +369,8 @@
                 .filter(o => o.value) // skip empty
                 .map(o => ({
                     code: o.value,
-                    name: o.textContent.trim()
+                    id:   o.dataset.id,
+                    name: o.dataset.name
                 }));
 
             const parseDec = (v) => {
@@ -427,14 +438,19 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td data-col="idx" class="text-muted text-center">${i + 1}</td>
+                    <td class="d-none">
+                        <input type="hidden"
+                               name="Customer[${i}].AccountId"
+                               class="account-id" />
+                    </td>
                     <td>
                         <input class="form-control form-control-sm"
-                               name="Lines[${i}].AcCode" />
+                               name="Customer[${i}].AccountCode" />
                     </td>
                     <td>
                         <div class="input-group input-group-sm">
                             <select class="form-select form-select-sm account-select"
-                                    name="Lines[${i}].AccountName">
+                                    name="Customer[${i}].AccountName">
                                 <option value="" selected>Select account...</option>
                                 ${accountOptionsHTML()}
                             </select>
@@ -442,21 +458,21 @@
                     </td>
                     <td>
                         <input class="form-control form-control-sm number debit"
-                               name="Lines[${i}].Debit"
+                               name="Customer[${i}].DebitAmount"
                                inputmode="decimal" />
                     </td>
                     <td>
                         <input class="form-control form-control-sm number credit"
-                               name="Lines[${i}].Credit"
+                               name="Customer[${i}].CreditAmount"
                                inputmode="decimal" />
                     </td>
                     <td>
                         <input class="form-control form-control-sm"
-                               name="Lines[${i}].Description" />
+                               name="Customer[${i}].Description" />
                     </td>
                     <td>
                         <select class="form-select form-select-sm partner-select"
-                                name="Lines[${i}].PartnerId" disabled>
+                                name="Customer[${i}].HumId" disabled>
                             <option value="">Select partner...</option>
                         </select>
                     </td>
@@ -502,16 +518,23 @@
                 }
             });
 
-            // Account change -> set AcCode + load partners
+            // Account change -> set AccountCode + AccountId + load partners
             linesTable.addEventListener('change', async (e) => {
                 if (e.target.matches('select.account-select')) {
                     const tr = e.target.closest('tr');
                     const selCode = e.target.value;
+
                     const acc = ACCOUNTS.find(a => a.code === selCode);
-                    const acCodeInput = tr.querySelector('input[name*=".AcCode"]');
+
+                    const acCodeInput = tr.querySelector('input[name*=".AccountCode"]');
+                    const idInput     = tr.querySelector('input[name*=".AccountId"]');
 
                     if (acCodeInput) {
                         acCodeInput.value = acc ? acc.code : '';
+                    }
+
+                    if (idInput) {
+                        idInput.value = acc ? acc.id : '';
                     }
 
                     // Load partner list by account name (select text)
@@ -565,7 +588,7 @@
                 document.querySelectorAll('#linesTable tbody tr').forEach(tr => {
                     const d = parseDec(tr.querySelector('input.debit').value);
                     const c = parseDec(tr.querySelector('input.credit').value);
-                    const ac = (tr.querySelector('input[name*=".AcCode"]')?.value || "").trim();
+                    const ac = (tr.querySelector('input[name*=".AccountCode"]')?.value || "").trim();
                     const sel = tr.querySelector('select.account-select');
                     const accSelected = sel && sel.value;
 
@@ -599,7 +622,7 @@
             document.getElementById('saveCloseBtn').addEventListener('click', () => {
                 if (clientValidate()) {
                     document.getElementById('jvForm').submit();
-                    // you can handle redirect on server side
+                    // redirect on server side if needed
                 }
             });
 

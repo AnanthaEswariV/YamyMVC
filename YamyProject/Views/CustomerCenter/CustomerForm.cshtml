@@ -92,13 +92,14 @@
                             <label class="form-label d-block">Opening Balance</label>
                             <div class="d-flex flex-wrap gap-2 align-items-center">
                                 <div class="btn-group" role="group">
-                                    <input type="radio" class="btn-check" name="OpeningType" asp-for="Debit"
-                                           id="obDebit" value="Debit" checked />
+                                    <input type="radio" class="btn-check" asp-for="OpeningType"
+                                           value="Debit"
+                                           id="obDebit" checked />
                                     <label class="btn btn-outline-primary" for="obDebit">
                                         Debit
                                     </label>
 
-                                    <input type="radio" class="btn-check" name="OpeningType" asp-for="Credit"
+                                    <input type="radio" class="btn-check" asp-for="OpeningType"
                                            id="obCredit" value="Credit" />
                                     <label class="btn btn-outline-primary" for="obCredit">
                                         Credit

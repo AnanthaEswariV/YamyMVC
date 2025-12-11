@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace YamyProject.Services.Implementations
+﻿namespace YamyProject.Services.Implementations
     {
     public class ListServices : IListServices
         {
@@ -128,7 +126,7 @@ namespace YamyProject.Services.Implementations
         public async Task<int> DefaultAccountsSet(string Category)
             {
             var Account = await _context.TblCoaConfigs
-               .Where(t => t.Category == t.Category)
+               .Where(t => t.Category == Category)
                .Select(t=>t.AccountId)
                 .FirstOrDefaultAsync();
             return Account??0;

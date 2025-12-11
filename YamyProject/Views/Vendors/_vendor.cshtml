@@ -1,29 +1,28 @@
 ﻿@model VendorSubContactViewModel
 @{
     ViewData["Title"] = "New Vendor";
- 
-}
+    }
+
 <div class="modal fade" id="VendorModal" tabindex="-1"
      aria-labelledby="VendorModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content shadow-lg border-0">
-            <form method="post">
+
+            <!-- IMPORTANT: added id="VendorForm" so JS can find the form -->
+            <form id="VendorForm" asp-controller="Vendors">
                 <!-- HEADER -->
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="VendorModalLabel">
-                         New 
+                        New
                     </h5>
                     <button type="button" class="btn-close btn-close-white"
                             data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <input type="hidden" class="form-control" asp-for="Id" id="Type" value="@Model.Id" readonly />
 
-                <input type="hidden" class="form-control" asp-for="CategoryId" id="CategoryId" value="@Model.CategoryId" readonly />
-                <input type="hidden" class="form-control" asp-for="CountryId" id="CountryId" value="@Model.CountryId" readonly />
-                <input type="hidden" class="form-control" asp-for="CityId" id="CityId" value="@Model.CityId" readonly />
-                <input type="hidden" class="form-control" asp-for="AccountId" id="AccountId" value="@Model.AccountId" readonly />
-                <input type="hidden" class="form-control" asp-for="ProjectId" id="ProjectId" value="@Model.ProjectId" readonly />
-                
+                <!-- Hidden fields: Id is enough; the others are already bound via selects -->
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="Type" readonly />
+
                 <!-- BODY -->
                 <div class="modal-body">
                     <!-- BASIC DATA -->
@@ -31,32 +30,25 @@
                         <div class="fw-semibold mb-3 small text-uppercase">Basic Data</div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="VendorName" class="form-label">
-                                    Vendor Name
-                                </label>
-                                <input id="VendorName" asp-for="Name"
-                                       class="form-control" />
+                                <label asp-for="Name" class="form-label">Vendor Name</label>
+                                <input asp-for="Name" class="form-control" />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="VendorCode" class="form-label">
-                                    Vendor Cod
-                                </label>
-                                <input id="VendorCode"  asp-for="Code" 
-                                       class="form-control" readonly />
+                                <label asp-for="Code" class="form-label">Vendor Code</label>
+                                <input asp-for="Code" class="form-control" readonly />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="Category" class="form-label">Category</label>
+                                <label asp-for="CategoryId" class="form-label">Category</label>
                                 <div class="input-group">
-                                    <select id="Category" name="Category" asp-for="CategoryId" asp-items="@(new SelectList(Model.Categoriess, "Id", "Name"))"
-                                            class="form-select">
-                                        @* <option>vendors_test1</option> *@
-                                        <!-- more options here -->
+                                    <select asp-for="CategoryId"
+                                            class="form-select"
+                                            asp-items="@(new SelectList(Model.Categoriess, "Id", "Name"))">
                                     </select>
-                                    <a type="button" class="btn btn-outline-secondary">
-                                        <i class="fas fa-plus-circle fs-6"></i>  @* Add New *@
-                                    </a>
+                                    <button type="button" class="btn btn-outline-secondary">
+                                        <i class="fas fa-plus-circle fs-6"></i>
+                                    </button>
                                 </div>
                             </div>
 
@@ -64,25 +56,39 @@
                                 <label class="form-label d-block">Opening Balance</label>
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <div class="btn-group" role="group">
-                                        <input type="radio" class="btn-check" name="OpeningType" asp-for="Debit"
-                                               id="obDebit" value="Debit" checked />
+                                        <!-- NOTE: no asp-for here – just plain radios posting OpeningType -->
+                                        <input  type="radio"
+                                               class="btn-check"
+                                               asp-for="OpeningType"
+                                               id="obDebit"
+                                               value="Debit"
+                                               checked />
                                         <label class="btn btn-outline-primary" for="obDebit">
                                             Debit
                                         </label>
 
-                                        <input type="radio" class="btn-check" name="OpeningType" asp-for="Credit"
-                                               id="obCredit" value="Credit" />
+                                        <input type="radio"
+                                               class="btn-check"
+                                               asp-for="OpeningType"
+                                               id="obCredit"
+                                               value="Credit" />
                                         <label class="btn btn-outline-primary" for="obCredit">
                                             Credit
                                         </label>
                                     </div>
+
                                     <input asp-for="OpeningAmount"
                                            class="form-control text-end"
                                            style="max-width: 140px;"
                                            placeholder="Amount" />
 
-                                    <input type="date" name="OpeningDate" asp-for="Date"
-                                           class="form-control" style="max-width: 200px;" />
+                                    <input asp-for="Date"
+                                           type="date"
+                                           class="form-control"
+                                           style="max-width: 200px;" />
+
+                                    <!-- Preview text for opening balance -->
+                                    <small id="openingPreview" class="text-muted ms-2"></small>
                                 </div>
                             </div>
                         </div>
@@ -95,60 +101,60 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label for="MainPhone" class="form-label" >Main Phone</label>
-                                <input id="MainPhone" name="MainPhone" asp-for="MainPhone" class="form-control" />
+                                <label asp-for="MainPhone" class="form-label">Main Phone</label>
+                                <input asp-for="MainPhone" class="form-control" />
                             </div>
+
                             <div class="col-md-4">
-                                <label for="WorkPhone" class="form-label">Work Phone</label>
-                                <input id="WorkPhone" name="WorkPhone" asp-for="WorkPhone" class="form-control" />
+                                <label asp-for="WorkPhone" class="form-label">Work Phone</label>
+                                <input asp-for="WorkPhone" class="form-control" />
                             </div>
+
                             <div class="col-md-4">
-                                <label for="MobileOrFax" class="form-label">
-                                    Mobile_Or_Fax
-                                </label>
-                                <input id="MobileOrFax" name="MobileOrFax" asp-for="Fax"
-                                       class="form-control" />
+                                <label class="form-label">Mobile / Fax</label>
+                                <input asp-for="Fax" class="form-control" />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="Email" class="form-label">Email</label>
-                                <input id="Email" name="Email" asp-for="Email" class="form-control" />
-                            </div>
-                            <div class="col-md-6">
-                                <label for="CcEmail" class="form-label">CC Email</label>
-                                <input id="CcEmail" name="CcEmail" asp-for="EmailCC" class="form-control" />
+                                <label asp-for="Email" class="form-label">Email</label>
+                                <input asp-for="Email" class="form-control" />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="Website" class="form-label">Website</label>
-                                <input id="Website" name="Website" class="form-control" asp-for="Website" />
+                                <label asp-for="EmailCC" class="form-label">CC Email</label>
+                                <input asp-for="EmailCC" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Website" class="form-label">Website</label>
+                                <input asp-for="Website" class="form-control" />
                             </div>
 
                             <div class="col-md-3">
-                                <label for="Country" class="form-label">Country</label>
-                                <select id="Country" name="Country" class="form-select" asp-for="CountryId" asp-items="@(new SelectList(Model.Country, "Id", "Name"))">
-                                    @* <option>Albania</option> *@
-                                    <!-- more countries -->
+                                <label asp-for="CountryId" class="form-label">Country</label>
+                                <select asp-for="CountryId"
+                                        class="form-select"
+                                        asp-items="@(new SelectList(Model.Country, "Id", "Name"))">
                                 </select>
                             </div>
+
                             <div class="col-md-3">
-                                <label for="City" class="form-label">City</label>
-                                <select id="City" name="City" class="form-select" asp-for="CountryId" asp-items="@(new SelectList(Model.City, "Id", "Name"))">
-                                    @* <option>Tirana</option> *@
-                                    <!-- more cities -->
+                                <label asp-for="CityId" class="form-label">City</label>
+                                <!-- IMPORTANT: asp-for="CityId", not CountryId -->
+                                <select asp-for="CityId"
+                                        class="form-select"
+                                        asp-items="@(new SelectList(Model.City, "Id", "Name"))">
                                 </select>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="Region" class="form-label">Region</label>
-                                <input id="Region" name="Region" class="form-control" asp-for="Region" />
+                                <label asp-for="Region" class="form-label">Region</label>
+                                <input asp-for="Region" class="form-control" />
                             </div>
+
                             <div class="col-md-6">
-                                <label for="BuildingName" class="form-label">
-                                    Building Name
-                                </label>
-                                <input id="BuildingName" name="BuildingName" asp-for="BulidingNumber"
-                                       class="form-control" />
+                                <label asp-for="BulidingNumber" class="form-label">Building Name</label>
+                                <input asp-for="BulidingNumber" class="form-control" />
                             </div>
                         </div>
                     </section>
@@ -160,29 +166,27 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="Account" class="form-label">Account</label>
-                                <select id="Account" name="Account" class="form-select" asp-for="AccountId" asp-items="@(new SelectList(Model.Account, "Id", "Name"))">
-                                    @* <option>2101001 - Vendors</option> *@
-                                    <!-- more accounts -->
+                                <label asp-for="AccountId" class="form-label">Account</label>
+                                <select asp-for="AccountId"
+                                        class="form-select"
+                                        asp-items="@(new SelectList(Model.Account, "Id", "Name"))">
                                 </select>
                             </div>
 
                             <div class="col-md-6">
-                                <label for="TRN" class="form-label">TRN</label>
-                                <input id="TRN" name="TRN" class="form-control" asp-for="TRN"/>
+                                <label asp-for="TRN" class="form-label">TRN</label>
+                                <input asp-for="TRN" class="form-control" />
                             </div>
 
                             <div class="col-md-6">
-                                <label for="FacilityName" class="form-label">Facility_Name</label>
-                                <input id="FacilityName" name="FacilityName" asp-for="FaciltyName"
-                                       class="form-control" />
+                                <label asp-for="FaciltyName" class="form-label">Facility Name</label>
+                                <input asp-for="FaciltyName" class="form-control" />
                             </div>
 
                             <div class="col-md-6 d-flex align-items-center">
                                 <div class="form-check mt-4">
-                                    <input class="form-check-input" type="checkbox" asp-for="IsActive"
-                                           id="Active" name="Active" checked />
-                                    <label class="form-check-label" for="Active">
+                                    <input class="form-check-input" asp-for="IsActive" />
+                                    <label class="form-check-label" asp-for="IsActive">
                                         Active
                                     </label>
                                 </div>
@@ -192,30 +196,43 @@
                                 <label class="form-label">Project</label>
                                 <div class="border rounded-3 p-2"
                                      style="max-height: 150px; overflow-y: auto;">
+                                    <!-- TODO: bind these from your model instead of hard-coded -->
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj135" name="Projects" value="135" />
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="proj135"
+                                               name="Projects"
+                                               value="135" />
                                         <label class="form-check-label" for="proj135">
                                             135 - p1-135
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj136" name="Projects" value="136" />
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="proj136"
+                                               name="Projects"
+                                               value="136" />
                                         <label class="form-check-label" for="proj136">
                                             136 - fxc-136
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj137" name="Projects" value="137" />
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="proj137"
+                                               name="Projects"
+                                               value="137" />
                                         <label class="form-check-label" for="proj137">
                                             137 - tjhgn
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox"
-                                               id="proj153" name="Projects" value="153" />
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               id="proj153"
+                                               name="Projects"
+                                               value="153" />
                                         <label class="form-check-label" for="proj153">
                                             153 - Eissa Mohammed Ali Ahmed K…
                                         </label>
@@ -243,46 +260,48 @@
     </div>
 </div>
     @section Scripts {
-    <small id="openingPreview" class="text-muted ms-2"></small>
-
     <script>
         function updateOpeningPreview() {
-            const type = document.querySelector('input[name="OpeningType"]:checked')?.value;
-            const amt  = parseFloat(document.getElementById('OpeningAmount').value) || 0;
+            const typeRadio = document.querySelector('input[name="OpeningType"]:checked');
+            const type = typeRadio ? typeRadio.value : 'Debit';
+
+            const amtInput = document.getElementById('OpeningAmount');
+            const amt = amtInput ? parseFloat(amtInput.value || '0') || 0 : 0;
+
             const sign = type === 'Credit' ? -Math.abs(amt) : Math.abs(amt);
-            document.getElementById('openingPreview').textContent = sign.toFixed(2);
+            const preview = document.getElementById('openingPreview');
+
+            if (preview) {
+                preview.textContent = sign.toFixed(2);
+            }
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const radios = document.querySelectorAll('input[name="OpeningType"]');
-            const amtInput = document.getElementById('OpeningAmount');
-
-            radios.forEach(r => r.addEventListener('change', updateOpeningPreview));
-            if (amtInput) amtInput.addEventListener('input', updateOpeningPreview);
-
+        // When modal content is inserted and opened
+        $(document).on('shown.bs.modal', '#VendorModal', function () {
             updateOpeningPreview();
         });
-                document.addEventListener('DOMContentLoaded', function () {
-            // ... (preview wiring above)
 
-            const form = document.getElementById('VendorForm');
-            if (!form) return;
-
-            form.addEventListener('submit', function (e) {
-                // read Id from hidden field
-                const idField = form.querySelector('input[name="Id"]');
-                const idVal = parseInt(idField?.value || '0', 10);
-
-                // if Id > 0 => Edit, else => Create
-                if (idVal && idVal > 0) {
-                    form.action = '@Url.Action("Edit", "Vendor")';
-                } else {
-                    form.action = '@Url.Action("Create", "Vendor")';
-                }
-
-            });
+        // When user changes Debit/Credit or amount
+        $(document).on('change', 'input[name="OpeningType"]', function () {
+            updateOpeningPreview();
         });
 
-    </script>
+        $(document).on('input', '#OpeningAmount', function () {
+            updateOpeningPreview();
+        });
 
+        // Optional: dynamic action (Create vs Edit) before submit
+        $(document).on('submit', '#VendorForm', function (e) {
+            const form = this;
+            const idField = form.querySelector('input[name="Id"]');
+            const idVal = parseInt(idField?.value || '0', 10);
+
+            // Just in case you still want separate actions:
+            if (idVal && idVal > 0) {
+                form.action = '@Url.Action("Edit", "Vendors")';
+            } else {
+                form.action = '@Url.Action("Create", "Vendors")';
+            }
+        });
+    </script>
     }

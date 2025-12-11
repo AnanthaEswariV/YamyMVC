@@ -203,6 +203,14 @@
                                     </td>
                                     <td class="right">@v.DebitAmount</td>
                                     <td class="right">@v.CreditAmount</td>
+                                <td>
+                                    <a class="menu-link px-3 js-render-modal"
+                                       asp-controller="GeneralJournalVouchers"
+                                       asp-action="Edit"
+                                       asp-route-id="@v.Id">
+                                        Edit
+                                    </a>
+                                </td>
                                 </tr>
                                 }
                             }
@@ -238,6 +246,7 @@
                                     <td class="right">@d.CreditAmount.ToString("N3")</td>
                                     <td>@d.Partner</td>
                                     <td>@d.Description</td>
+                             
                                 </tr>
                                 }
                             }
