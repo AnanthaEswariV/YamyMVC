@@ -75,20 +75,19 @@
                     <table class="table" id="journalTable">
                         <thead>
                             <tr>
-                                <th>S.No</th>
-                                <th>AC Code</th>
-                                <th>Account Name</th>
-                                <th>Description</th>
-                                <th>Debit</th>
-                                <th>Credit</th>
-                                <th>Cost Center</th>
-
+                                <th style="width: 20px;">S.No</th>
+                                <th style="width: 110px;">AC Code</th>
+                                <th style="width: 200px;">Account Name</th>
+                                <th style="width: 250px;">Description</th>
+                                <th style="width: 120px;">Debit</th>
+                                <th style="width: 120px;">Credit</th>
+                                <th style="width: 180px;">Cost Center</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="4" class="text-end">Total</th>
+                                <th colspan="5" class="text-end">Total</th>
                                 <th id="totalDebitCell" class="text-end">0.00</th>
                                 <th id="totalCreditCell" class="text-end">0.00</th>
                             </tr>
@@ -115,7 +114,7 @@
                         <tbody></tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="4" class="text-end">Total</th>
+                                <th colspan="5" class="text-end">Total</th>
                                 <th id="totalDebitCell" class="text-end">0.00</th>
                                 <th id="totalCreditCell" class="text-end">0.00</th>
                                 <th></th>
@@ -334,11 +333,10 @@
             $("#journalTableContainer").show();
         }
 
-        populateAndSelectCostCenter();
 
         });
 
-                function generateQrCode(refId, vType, date) {
+            function generateQrCode(refId, vType, date) {
             if (!refId || !vType || !date) return;
 
             const url = `${window.location.origin}/Lists/GeneralJournalTransaction?refId=${encodeURIComponent(refId)}&vType=${encodeURIComponent(vType)}&date=${encodeURIComponent(date)}&scan=true`;
@@ -349,10 +347,7 @@
         }
 
 
-
-
-
-                function formatNumber(num) {
+           function formatNumber(num) {
             return Number(num).toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -382,138 +377,131 @@
             return dateStr;
         }
 
-        function loadJournalDetails(refId, vType, date) {
-
+         function loadJournalDetails(refId, vType, date) {
             const data = {
                 refId: refId,
                 vType: vType,
                 date: date
             };
+
             $.ajax({
                 url: '/Lists/GetJournalDetails',
                 type: 'GET',
                 data: data,
                 beforeSend: function () {
-                    // Destroy existing DataTable before showing loading message
                     if ($.fn.DataTable.isDataTable("#journalTable")) {
                         $("#journalTable").DataTable().clear().destroy();
                     }
                     $('#journalTable tbody').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
-                     
                 },
                 success: function (res) {
                     const tbody = $('#journalTable tbody').empty();
                     let totalDebit = 0, totalCredit = 0;
+
                     if (res.status && res.data && res.data.length > 0) {
                         $.each(res.data, function (i, row) {
                             // Format numbers
                             const debit = row.debit != null ? parseFloat(row.debit).toFixed(2) : '0.00';
                             const credit = row.credit != null ? parseFloat(row.credit).toFixed(2) : '0.00';
 
-                            // Increment totals
                             totalDebit += parseFloat(row.debit || 0);
                             totalCredit += parseFloat(row.credit || 0);
 
                             tbody.append(`
-         <tr data-id="${row.id ?? ''}" data-transactionid="${row.transactionId ?? ''}">
-                <td>${row.sn ?? i + 1}</td>
-                <td>
-                    <select class="form-select form-select-sm account-code">
-                        <option value="">-- Select --</option>
-                        ${accountList.map(acc =>
-                            `<option value="${acc.id}" data-code="${acc.code}" ${acc.code == row.accountCode ? 'selected' : ''}>${acc.code}</option>`
-                        ).join('')}
-                    </select>
-                </td>
-                <td>
-                    <select class="form-select form-select-sm account-name">
-                        <option value="">-- Select --</option>
-                        ${accountList.map(acc =>
-                            `<option value="${acc.id}" data-code="${acc.code}" ${acc.id == row.accountId ? 'selected' : ''}>${acc.name}</option>`
-                        ).join('')}
-                    </select>
-                </td>
-                 <td>
-            <input type="text" class="form-control form-control-sm description" value="${row.description ?? ''}" />
-        </td>
-                      <td class="text-end">
-            <input type="text" class="form-control form-control-sm debit text-end format-number"
-        value="${formatNumber(row.debit)}" />
-        </td>
-        <td class="text-end">
-            <input type="text" class="form-control form-control-sm credit text-end format-number"
-        value="${formatNumber(row.credit)}" />
-        </td>
-                              <td class="text-end">
-            <select class="form-select form-select-sm costCenterName"
-                    data-selected-id="${row.costCenter ?? ''}">
-                <option value="">Loading...</option>
-            </select>
-        </td>
-
-
-            </tr>
-        `);
-
+                                <tr data-id="${row.id ?? ''}" data-transactionid="${row.transactionId ?? ''}">
+                                    <td>${row.sn ?? i + 1}</td>
+                                    <td>
+                                        <select class="form-select form-select-sm account-code">
+                                            <option value="">-- Select --</option>
+                                            ${accountList.map(acc =>
+                                                `<option value="${acc.id}" data-code="${acc.code}" ${acc.code == row.accountCode ? 'selected' : ''}>${acc.code}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm account-name">
+                                            <option value="">-- Select --</option>
+                                            ${accountList.map(acc =>
+                                                `<option value="${acc.id}" data-code="${acc.code}" ${acc.id == row.accountId ? 'selected' : ''}>${acc.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm description" value="${row.description ?? ''}"  readonly/>
+                                    </td>
+                                    <td class="text-end">
+                                        <input type="text" class="form-control form-control-sm debit text-end format-number" value="${formatNumber(row.debit)}" readonly/>
+                                    </td>
+                                    <td class="text-end">
+                                        <input type="text" class="form-control form-control-sm credit text-end format-number" value="${formatNumber(row.credit)}" readonly/>
+                                    </td>
+                                    <td class="text-end">
+                                        <select class="form-select form-select-sm costCenterName" data-selected-id="${row.costCenter ?? ''}" disabled>
+                                            <option value="">Loading...</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            `);
                         });
 
                         $('#totalDebitCell').text(formatNumber(totalDebit));
                         $('#totalCreditCell').text(formatNumber(totalCredit));
                         $('#name').val(res.data[0].humName || '');
 
-                                $('#journalTable').DataTable({
-            dom: 'Brtip', // Removed search bar
-            buttons: [
-                {
-                    extend: 'print',
-                    className: 'btn btn-primary btn-sm',
-                    text: '<i class="fas fa-print"></i> Print',
-                    title: 'General Journal Details',
-                    exportOptions: { columns: ':visible' ,
-                    format: {
-                    body: function (data, row, column, node) {
-                        // If cell contains an <input>, return its value
-                        if ($(node).find('input').length) {
-                            return $(node).find('input').val();
-                        }
-                        // If cell contains a <select>, return selected text
-                        if ($(node).find('select').length) {
-                            return $(node).find('select option:selected').text();
-                        }
-                        return data;
-                    }
-                    }
-                    }
-                },
-                {
-                    extend: 'pdfHtml5',
-                    className: 'btn btn-primary btn-sm',
-                    orientation: 'landscape',
-                    pageSize: 'A4',
-                    text: '<i class="fas fa-file-pdf"></i> PDF',
-                    title: 'General Journal Details',
-                    exportOptions: { columns: ':visible',
-                    format: {
-                    body: function (data, row, column, node) {
-                        if ($(node).find('input').length) {
-                            return $(node).find('input').val();
-                        }
-                        if ($(node).find('select').length) {
-                            return $(node).find('select option:selected').text();
-                        }
-                        return data;
-                    }
-                }
-            }
-                }
-            ],
-            order: [[0, 'asc']],
-            pageLength: 15,
-            paging: false,
-            info: false,
-        });
+                        $('#journalTable').DataTable({
+                            dom: 'Brtip',
+                            buttons: [
+                                {
+                                    extend: 'print',
+                                    className: 'btn btn-primary btn-sm',
+                                    text: '<i class="fas fa-print"></i> Print',
+                                    title: 'General Journal Details',
+                                    exportOptions: {
+                                        columns: ':visible',
+                                        format: {
+                                            body: function (data, row, column, node) {
+                                                if ($(node).find('input').length) {
+                                                    return $(node).find('input').val();
+                                                }
+                                                if ($(node).find('select').length) {
+                                                    return $(node).find('select option:selected').text();
+                                                }
+                                                return data;
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    text: '<i class="fas fa-file-pdf"></i> PDF',
+                                    title: 'General Journal Details',
+                                    exportOptions: {
+                                        columns: ':visible',
+                                        format: {
+                                            body: function (data, row, column, node) {
+                                                if ($(node).find('input').length) {
+                                                    return $(node).find('input').val();
+                                                }
+                                                if ($(node).find('select').length) {
+                                                    return $(node).find('select option:selected').text();
+                                                }
+                                                return data;
+                                            }
+                                        }
+                                    }
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 15,
+                            paging: false,
+                            info: false,
+                        });
 
-
+                        // Call to populate cost center dropdown after table is loaded
+                        populateAndSelectCostCenter();
 
                     } else {
                         tbody.append('<tr><td colspan="6" class="text-center py-4 text-muted"><i class="fas fa-info-circle"></i> No records found</td></tr>');
@@ -528,47 +516,24 @@
             });
         }
 
-
-        $('#journalTable').off('change', '.account-name').on('change', '.account-name', function () {
-            const selectedId = $(this).val();
-            const row = $(this).closest('tr');
-            const acc = accountList.find(a => a.id == selectedId);
-            row.find('.account-code').val(acc?.id || '');
-        });
-
-        $('#journalTable').off('change', '.account-code').on('change', '.account-code', function () {
-            const selectedId = $(this).val();
-            const row = $(this).closest('tr');
-            const acc = accountList.find(a => a.id == selectedId);
-            row.find('.account-name').val(acc?.id || '');
-        });
-
-                function populateAndSelectCostCenter() {
+        function populateAndSelectCostCenter() {
             $.ajax({
-                url: '@Url.Action("GetCostCenters", "Lists")', // Ensure this URL is correct
+                url: '@Url.Action("GetCostCenters", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     const data = Array.isArray(res) ? res : (res.data || []);
                     if (!data.length) return;
 
-                    console.log("AJAX response data:", data);  // Log to verify data structure
-
-                    // Select all dropdowns with class .costCenterName
                     const allSelects = $('.costCenterName');
-                    console.log("Dropdowns found:", allSelects.length);  // Log number of dropdowns found
 
                     allSelects.each(function () {
                         const $select = $(this);
-                        const selectedId = $select.data('selected-id'); // Get the selected ID from data-selected-id
-                        console.log("Selected ID from data attribute:", selectedId); // Log the selected ID
+                        const selectedId = $select.data('selected-id');
 
-                        // Empty the dropdown and add the "Select" option
                         $select.empty().append('<option value="">-- Select --</option>');
 
-                        // Iterate through the data and create options
                         data.forEach(item => {
-                            const isSelected = String(item.id) === String(selectedId); // Compare the selected ID
-                            console.log(`item.id: ${item.id}, selectedId: ${selectedId}`); // Log for comparison
+                            const isSelected = String(item.id) === String(selectedId);
 
                             const option = `
                                 <option value="${item.id}" ${isSelected ? 'selected' : ''}>
@@ -586,6 +551,20 @@
 
 
 
+        $('#journalTable').off('change', '.account-name').on('change', '.account-name', function () {
+            const selectedId = $(this).val();
+            const row = $(this).closest('tr');
+            const acc = accountList.find(a => a.id == selectedId);
+            row.find('.account-code').val(acc?.id || '');
+        });
 
+        $('#journalTable').off('change', '.account-code').on('change', '.account-code', function () {
+            const selectedId = $(this).val();
+            const row = $(this).closest('tr');
+            const acc = accountList.find(a => a.id == selectedId);
+            row.find('.account-name').val(acc?.id || '');
+        });
+
+            
     </script>
 }

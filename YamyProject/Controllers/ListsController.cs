@@ -4323,12 +4323,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 var updateQuery = @"UPDATE tbl_transaction 
                 SET date = @date, 
                     account_id = @accountId, 
-                    debit = @debit, 
-                    credit = @credit, 
-                    transaction_id = @transactionId, 
-                    hum_id = @hum_id,
-                    type = @type,
-                    description = @description, 
+                   
                     modified_by = @modifiedBy, 
                     modified_date = @modifiedDate
                 WHERE id = @journalId;";
@@ -4337,12 +4332,13 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 {
                     cmd.Parameters.AddWithValue("@date", date);
                     cmd.Parameters.AddWithValue("@accountId", accountId);
-                    cmd.Parameters.AddWithValue("@debit", debitAmount);
-                    cmd.Parameters.AddWithValue("@credit", creditAmount);
-                    cmd.Parameters.AddWithValue("@transactionId", 1);
-                    cmd.Parameters.AddWithValue("@hum_id", humId);
-                    cmd.Parameters.AddWithValue("@type", model.VType);
-                    cmd.Parameters.AddWithValue("@description", description);
+                    //cmd.Parameters.AddWithValue("@debit", debitAmount);
+                    //cmd.Parameters.AddWithValue("@credit", creditAmount);
+                    ////cmd.Parameters.AddWithValue("@transactionId", 1);
+                    //cmd.Parameters.AddWithValue("@transactionId", model.Id);
+                    //cmd.Parameters.AddWithValue("@hum_id", humId);
+                    //cmd.Parameters.AddWithValue("@type", model.VType);
+                    //cmd.Parameters.AddWithValue("@description", description);
                     cmd.Parameters.AddWithValue("@modifiedBy", model.UserId);
                     cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
                     cmd.Parameters.AddWithValue("@journalId", tId);
