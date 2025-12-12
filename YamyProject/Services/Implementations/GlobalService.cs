@@ -1,4 +1,7 @@
-﻿namespace YamyProject.Services.Implementations
+﻿using System.Net;
+using System.Net.Sockets;
+
+namespace YamyProject.Services.Implementations
     {
     public class GlobalService(YamyDbContext context, ILogger<GlobalService> logger, IHttpContextAccessor httpContextAccessor) : IGlobalService
         {
@@ -17,7 +20,7 @@
                     ModuleName = Module,
                     RecordId = RecordId,
                     Details = Details,
-                    IpAddress = GetClientIpAddress(),
+                    IpAddress = GetServerIpAddress(),
                     MachineName = Environment.MachineName,
                  //   CreatedAt = DateTime.UtcNow
                     };
@@ -32,25 +35,25 @@
                     UserId, ActionType, Module, RecordId);
                 }
             }
-        public string  GetClientIpAddress() 
-            { 
-             var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext == null)
-                return "127.0.0.1";
-
-            // If behind a proxy / load balancer
-            var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(forwardedFor))
+        public string GetServerIpAddress()
             {
-                // Can contain multiple IPs: "client, proxy1, proxy2"
-                var firstIp = forwardedFor.Split(',').FirstOrDefault();
-                if (!string.IsNullOrWhiteSpace(firstIp))
-                    return firstIp.Trim();
-            }
+            // First, try the IP bound to the server for this request
+            var httpContext = _httpContextAccessor.HttpContext;
+            var localIp = httpContext?.Connection.LocalIpAddress;
 
-            var ipAddress = httpContext.Connection.RemoteIpAddress;
-            return ipAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
-        }
+            if (localIp != null && localIp.AddressFamily == AddressFamily.InterNetwork)
+                return localIp.ToString();
+
+            // Fallback: resolve host machine IPs
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
+                {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                    return ip.ToString();
+                }
+
+            return "127.0.0.1";
+            }
         //public async Task LogErrorAsync(string procedureName, object message, int userId)
         //    {
         //    try

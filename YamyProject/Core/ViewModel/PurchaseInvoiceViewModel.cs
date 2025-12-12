@@ -2,7 +2,8 @@
     {
     public class PurchaseInvoiceViewModel
         {
-        public int Id { get; set; }
+        public int PurchaseId { get; set; }
+        public int Id { get; set; } = 0;
         public bool VendorsType { get; set; } // Vendor or Subcontractor
         public string VendorType { get; set; } = "Vendor"; // Vendor or Subcontractor
         public int PurchasesRefId { get; set; }
@@ -30,6 +31,7 @@
         public String PONo { get; set; }
         public int AccountId { get; set; }
         public int PurchaseTypeId { get; set; }
+        public String PurchaseType { get; set; }
         public String? InvoiceNo { get; set; }
         public String Description { get; set; }
         public DateOnly Date { get; set; }

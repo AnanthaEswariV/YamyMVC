@@ -6,9 +6,10 @@ public partial class TblPaymentVoucherDetail
     public int Id { get; set; }
 
     public DateOnly? Date { get; set; }
-
     public int? PaymentId { get; set; }
+    [ForeignKey(nameof(PaymentId))]
 
+    public virtual TblPaymentVoucher? PaymentVoucher { get; set; }
     public int? HumId { get; set; }
     [ForeignKey(nameof(HumId))]
     public virtual TblEmployee Employee { get; set; }

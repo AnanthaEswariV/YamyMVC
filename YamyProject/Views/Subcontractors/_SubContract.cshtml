@@ -248,42 +248,7 @@
     <small id="openingPreview" class="text-muted ms-2"></small>
 
     <script>
-        // function updateOpeningPreview() {
-        //     const type = document.querySelector('input[name="OpeningType"]:checked')?.value;
-        //     const amt  = parseFloat(document.getElementById('OpeningAmount').value) || 0;
-        //     const sign = type === 'Credit' ? -Math.abs(amt) : Math.abs(amt);
-        //     document.getElementById('openingPreview').textContent = sign.toFixed(2);
-        // }
-
-        // document.addEventListener('DOMContentLoaded', function () {
-        //     const radios = document.querySelectorAll('input[name="OpeningType"]');
-        //     const amtInput = document.getElementById('OpeningAmount');
-
-        //     radios.forEach(r => r.addEventListener('change', updateOpeningPreview));
-        //     if (amtInput) amtInput.addEventListener('input', updateOpeningPreview);
-
-        //     updateOpeningPreview();
-        // });
-        //         document.addEventListener('DOMContentLoaded', function () {
-        //     // ... (preview wiring above)
-
-        //     const form = document.getElementById('subContractForm');
-        //     if (!form) return;
-
-        //     form.addEventListener('submit', function (e) {
-        //         // read Id from hidden field
-        //         const idField = form.querySelector('input[name="Id"]');
-        //         const idVal = parseInt(idField?.value || '0', 10);
-
-        //         // if Id > 0 => Edit, else => Create
-        //         if (idVal && idVal > 0) {
-        //             form.action = '@Url.Action("Edit", "Subcontractors")';
-        //         } else {
-        //             form.action = '@Url.Action("Create", "Subcontractors")';
-        //         }
-
-        //     });
-        // });
+ 
            $(document).on('submit', '#subContractForm', function (e) {
             const form = this;
             const idField = form.querySelector('input[name="Id"]');

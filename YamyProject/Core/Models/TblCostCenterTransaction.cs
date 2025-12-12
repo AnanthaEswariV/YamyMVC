@@ -1,5 +1,4 @@
 ﻿namespace YamyProject.Core.Models;
-
 public partial class TblCostCenterTransaction
 {
     public int Id { get; set; }
@@ -9,7 +8,7 @@ public partial class TblCostCenterTransaction
     public DateOnly? Date { get; set; }
 
     public int? RefId { get; set; }
-
+    public virtual TblPaymentVoucher? PaymentVoucher { get; set; }
     public decimal? Debit { get; set; }
 
     public decimal? Credit { get; set; }

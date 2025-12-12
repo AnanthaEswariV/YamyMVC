@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
-
-namespace YamyProject.Core.Models;
+﻿namespace YamyProject.Core.Models;
 
 public partial class YamyDbContext : DbContext
 {
@@ -920,7 +915,24 @@ public partial class YamyDbContext : DbContext
                 .HasMaxLength(50)
                 .HasDefaultValueSql("''")
                 .HasColumnName("type");
+
         });
+        //modelBuilder.Entity<TblCostCenterTransaction>()
+        //    .Ignore("PaymentVoucherId");
+
+        modelBuilder.Entity<TblCostCenterTransaction>(e =>
+{
+    e.HasOne(x => x.PaymentVoucher)
+     .WithMany()
+     .HasForeignKey(x => x.RefId); // <-- real DB column (NOT PaymentVoucherId)
+});
+        //modelBuilder.Entity<TblPaymentVoucherDetail>(e =>
+        //{
+        //    e.HasOne(d => d.PaymentVoucher)
+        //   //  .WithMany(p => p.PaymentVoucherDetails)
+        //     .HasForeignKey(d => d.PaymentId)     // ✅ your real FK column
+        //     .HasPrincipalKey(p => p.Id);
+        //});
 
         modelBuilder.Entity<TblCountry>(entity =>
         {

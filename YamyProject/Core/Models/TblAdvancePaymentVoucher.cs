@@ -2,9 +2,9 @@
 public partial class TblAdvancePaymentVoucher
 {
     public int Id { get; set; }
-    [ForeignKey(nameof(Id))]
+   // [ForeignKey(nameof(Id))]
     public virtual TblTransaction? Transaction { get; set; }
-    [ForeignKey(nameof(Id))]
+    //[ForeignKey(nameof(Id))]
     public virtual TblAdvancePaymentVoucherDetail? AdvancePaymentVoucherDetail  { get; set; }
 
     public DateOnly? Date { get; set; }

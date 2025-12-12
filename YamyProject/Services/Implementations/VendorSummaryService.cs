@@ -16,22 +16,13 @@
             "Purchase Return Invoice",
             "Debit Note",
             "PDC Payable"
-                                                                         //"Subcontractor Payment",
-                                                             //"Purchase Invoice",
-                                                             //"Subcontractor Opening Balance",
-                                                             //"Check Cancel (Vendor)",
-                                                             //"Purchase Return Invoice",
-                                                             //"Debit Note",
-                                                             //"PDC Payable"
     };
 
             var query =
       _context.TblTransactions
-          .Where(t => t.Vendors != null)                    // <== navigation
-          .Where(t => t.Vendors.State == 0)                 // v.state = 0
-          .Where(t => allowedTypes.Contains(t.Type))         // t.type IN (...)
-                                                             // .Where(t => !dateFrom.HasValue || t.Date >= dateFrom.Value)
-                                                             //  .Where(t => !dateTo.HasValue || t.Date <= dateTo.Value)
+          .Where(t => t.Vendors != null)                   
+          .Where(t => t.Vendors.State == 0)            
+          .Where(t => allowedTypes.Contains(t.Type))    
           .GroupBy(t => new
               {
               t.Vendors.Id,
