@@ -1,0 +1,2330 @@
+﻿@{
+    ViewData["Title"] = "User";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    body {
+        background-color: #f5f6f8;
+    }
+
+    .access-header-bar {
+        background-color: #003b73;
+        color: #fff;
+        padding: 4px 12px;
+        font-size: .95rem;
+    }
+
+    .access-card {
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+    }
+
+    /* left user list */
+    #UserList table {
+        font-size: .8rem;
+    }
+
+    #UserList thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    /* right side */
+    .user-info-title {
+        font-size: 1.6rem;
+        font-weight: 300;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .user-info-small-label {
+        font-size: .8rem;
+        color: #666;
+    }
+
+    .user-info-small-value {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-left: .25rem;
+    }
+
+    .permissions-wrapper {
+        background-color: #f8f8f8;
+        border-top: 1px solid #e5e5e5;
+        padding: 8px 12px;
+    }
+
+    .permission-row {
+        font-size: .8rem;
+        padding: 4px 0;
+    }
+
+        .permission-row + .permission-row {
+            border-top: 1px solid #f0f0f0;
+        }
+
+    .permission-category-label {
+        white-space: nowrap;
+        font-weight: 500;
+        color: #555;
+    }
+
+    .permission-arrow-btn {
+        border: none;
+        background: transparent;
+        padding: 0 4px 0 0;
+        line-height: 1;
+    }
+
+        .permission-arrow-btn i {
+            font-size: .75rem;
+        }
+
+    .permission-select-all {
+        font-size: .75rem;
+    }
+
+    .permission-items-panel {
+        background-color: #f9f9f9;
+        border-radius: 2px;
+        padding: 4px 10px;
+    }
+
+    .permission-items-table td {
+        padding: 2px 4px;
+        vertical-align: middle;
+        font-size: .75rem;
+    }
+
+    .permission-items-table .form-check {
+        margin-bottom: 0;
+    }
+
+    .permission-items-table .form-check-label {
+        font-size: .75rem;
+    }
+
+    .permission-items-table .text-danger {
+        font-weight: 500;
+    }
+
+    .project-access-title {
+        font-size: .8rem;
+        font-weight: 600;
+        margin-top: 10px;
+        margin-bottom: 4px;
+    }
+</style>
+
+<div class="container-fluid py-1">
+    <!-- top blue bar -->
+    <div class="row mb-2">
+        <div class="col">
+            <div class="access-header-bar d-flex justify-content-center">
+                <strong>Access User Control</strong>
+            </div>
+        </div>
+    </div>
+
+    <form>
+        <div class="row g-2">
+            <!-- LEFT: user list -->
+            <div class="col-3">
+                <div class="card access-card h-100">
+                    <div class="card-header py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-1">
+                                <!-- NEW USER BUTTON -->
+                                <button type="button"
+                                        id="btnNewUser"
+                                        class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newUserModal">
+                                    <i class="bi bi-person-plus"></i>
+                                </button>
+                                <span class="small fw-semibold">Add New User</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body border-top pt-2 pb-1">
+                        <!-- status filter -->
+                        <div class="mb-1">
+                            <select id="statusFilter" name="StatusFilter" class="form-select form-select-sm">
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+
+                        </div>
+
+
+                        <!-- users -->
+                        <div class="table-responsive" style="max-height: 70vh;" id="UserList">
+                            <table id="table1"  class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>SN</th>
+                                        <th>Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: info + permissions -->
+            <div class="col-9">
+                <div class="card access-card h-100">
+                    <div class="card-body p-2">
+                        <!-- hidden selected user for POST -->
+                        <input type="hidden" name="SelectedUserId" id="SelectedUserId" />
+                        <input type="hidden" id="targetUserId" name="SelectedUserId" />
+
+                        <!-- big title -->
+                        <div class="mb-2 border-bottom pb-1">
+                            <div class="user-info-title">
+                                <h4>User Information</h4>
+                            </div>
+                        </div>
+
+                        <!-- User information (will be dynamically updated) -->
+                        <div class="row g-4 small">
+                            <div class="col-md-3">
+                                <span class="user-info-small-label">User Code</span>
+                                <span class="user-info-small-value" id="userCode">- </span> <!-- Initially empty -->
+                            </div>
+                            <div class="col-md-3">
+                                <span class="user-info-small-label">User Name</span>
+                                <span class="user-info-small-value" id="userName">- </span> <!-- Initially empty -->
+                            </div>
+                            <div class="col-md-3">
+                                <span class="user-info-small-label">Name</span>
+                                <span class="user-info-small-value" id="userFullName">- </span> <!-- Initially empty -->
+                            </div>
+                            <div class="col-md-3">
+                                <span class="user-info-small-label">Status</span>
+                                <span class="user-info-small-value" id="userStatus">- </span> <!-- Initially empty -->
+                            </div>
+                        </div>
+
+
+                        <div class="permissions-wrapper" id="PermissionsArea" style="max-height:65vh; overflow:auto;">
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-0" aria-expanded="false" aria-controls="perm-cat-0">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-0" disabled>
+                                                <b><i class="bi bi-caret-down-fill"></i></b>
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Accountant
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="0" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-0">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="0" data-submenu-id="1" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Chart Of Account
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="1" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="1" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="0" data-submenu-id="2" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Cost Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    @*     <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="2" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="2" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="0" data-submenu-id="3" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Transactions Journal
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        @* <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="3" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="3" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="0" data-submenu-id="4" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Fixed Assets
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="4" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="4" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="0" data-submenu-id="5" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Vouchers
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="5" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="5" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="0" data-submenu-id="7" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Petty Cash
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="7" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="7" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-1" aria-expanded="false" aria-controls="perm-cat-1">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                            @* <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-1" disabled>
+                                                <b><i class="bi bi-caret-down-fill"></i></b>
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Bank
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="1" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-1">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="1" data-submenu-id="36" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Bank Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="36" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="36" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="1" data-submenu-id="37" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Open Bank Card
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="37" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="37" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="1" data-submenu-id="38" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Cheques
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="38" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="38" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="1" data-submenu-id="39" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    PDC
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="39" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="39" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-2" aria-expanded="false" aria-controls="perm-cat-2">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-2" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Construction
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="2" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-2">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="2" data-submenu-id="56" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Project DashBoard
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    @*     <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="56" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="56" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="2" data-submenu-id="57" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Project Tender
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="57" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="57" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="2" data-submenu-id="58" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Project Estimate
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                   @*      <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="58" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="58" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="2" data-submenu-id="59" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Project Planning
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="59" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="59" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-3" aria-expanded="false" aria-controls="perm-cat-3">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-3" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Customer
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="3" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-3">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="12" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Customer Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="12" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="12" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="13" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Sales Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="13" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="13" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="14" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Create Invoice
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="14" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="14" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="15" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Receipt Voucher
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                 @*        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="15" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="15" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="16" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Credit Note
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="16" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="16" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="17" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Quotation
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="17" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="17" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="18" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Sales Order
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="18" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="18" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="19" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Sales Return
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                   @*      <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="19" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="19" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="3" data-submenu-id="20" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Sales Proforma
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="20" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="20" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-4" aria-expanded="false" aria-controls="perm-cat-4">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-4" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                File
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="4" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-4">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="4" data-submenu-id="53" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Company List
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="53" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="53" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="4" data-submenu-id="54" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Back Up Company
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="54" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="54" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="4" data-submenu-id="55" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Restore Company
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="55" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="55" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-5" aria-expanded="false" aria-controls="perm-cat-5">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-5" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                HR
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="5" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-5">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="28" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Human Resource Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="28" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="28" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="29" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Attendance Sheet
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="29" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="29" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="30" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Salary Sheet
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="30" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="30" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="31" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Leave Salary
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="31" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="31" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="32" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    End Of Services
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                        @* <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="32" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="32" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="33" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Loans
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="33" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="33" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="5" data-submenu-id="34" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Final Settlement
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="34" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="34" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-6" aria-expanded="false" aria-controls="perm-cat-6">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                          @*   <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-6" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Inventory
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="6" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-6">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="6" data-submenu-id="8" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Inventory Items
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="8" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="8" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="6" data-submenu-id="9" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Stock Management
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="9" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="9" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="6" data-submenu-id="10" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Inventory Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="10" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="10" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="6" data-submenu-id="11" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Warehouse Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="11" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="11" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-7" aria-expanded="false" aria-controls="perm-cat-7">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-7" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Report
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="7" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-7">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="40" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Company
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    @*     <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="40" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="40" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="41" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Customer &amp; Receivable
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    @*     <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="41" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="41" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="42" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Sales
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="42" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="42" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="43" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Vendor &amp; Payable
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="43" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="43" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="44" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Purchases
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                   @*      <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="44" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="44" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="45" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Employees
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="45" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="45" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="46" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Accountant
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="46" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="46" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="47" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Inventory
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                  @*       <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="47" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="47" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="7" data-submenu-id="48" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    List
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="48" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="48" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-8" aria-expanded="false" aria-controls="perm-cat-8">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                           @*  <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-8" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Setting
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="8" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-8">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="8" data-submenu-id="49" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Setting
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="49" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="49" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="8" data-submenu-id="50" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Change Current Password
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="50" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="50" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="8" data-submenu-id="51" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Clear Data
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                   @*      <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="51" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="51" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="8" data-submenu-id="52" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Users
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="52" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="52" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-row">
+                                <div class="row align-items-start">
+                                    <div class="col-3">
+                                        <div class="d-flex align-items-center">
+                                            <button type="button" class="permission-arrow-btn" data-bs-toggle="collapse" data-bs-target="#perm-cat-9" aria-expanded="false" aria-controls="perm-cat-9">
+                                                <i class="bi bi-caret-right-fill"></i>
+                                            </button>
+                                            @* <button type="button" class="permission-arrow-btn" aria-expanded="true" aria-controls="perm-cat-9" disabled>
+                                                <i class="bi bi-caret-down-fill"></i> <!-- changed from caret-right-fill to caret-down-fill -->
+                                            </button> *@
+                                            <span class="permission-category-label">
+                                                Vendor
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-9">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="form-check permission-select-all">
+                                                <input class="form-check-input" type="checkbox" data-category-select-all="true" data-category-index="9" checked>
+                                                <label class="form-check-label">Select All</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="collapse permission-items-panel" id="perm-cat-9">
+                                            <table class="table table-borderless table-sm permission-items-table mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="21" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Vendor Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="21" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="21" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="22" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Purchases Center
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                      @*   <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="22" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="22" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="23" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Create Purchases
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="23" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="23" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="24" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Payment Voucher
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                       @*  <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="24" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="24" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="25" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Debit Note
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="25" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="25" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="26" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Purchase Order
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                     @*    <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="26" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="26" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="w-50">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-item-checkbox="true" data-category-index="9" data-submenu-id="27" data-perm-type="view" checked>
+                                                                <label class="form-check-label">
+                                                                    Purchase Return
+                                                                </label>
+                                                            </div>
+                                                        </td>
+                                                    @*     <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="27" data-perm-type="edit" checked>
+                                                                <label class="form-check-label">Edit</label>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input perm-checkbox" type="checkbox" data-submenu-id="27" data-perm-type="delete" checked>
+                                                                <label class="form-check-label text-danger">Delete</label>
+                                                            </div>
+                                                        </td> *@
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div class="mt-2 text-end">
+                            <button type="button" id="savePermissionsBtn" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Permissions
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- MODAL CONTAINER FOR NEW / EDIT USER -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" id="userModalBody">
+        </div>
+    </div>
+</div>
+
+
+
+<div class="modal fade" id="newUserModal" tabindex="-1" aria-labelledby="newUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content custom-modal">
+            <div class="modal-header custom-modal-header">
+                <h5 class="modal-title fw-bold" id="newUserModalLabel">Users - New User</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="newUserForm" novalidate>
+                    <input type="hidden" id="userId" value="0" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="firstName" class="form-label fw-semibold">First Name</label>
+                            <input type="text" class="form-control" id="firstName" placeholder="First Name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="lastName" class="form-label fw-semibold">Last Name</label>
+                            <input type="text" class="form-control" id="lastName" placeholder="Last Name" />
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="w-75">
+                                <label for="role" class="form-label fw-semibold">Role</label>
+                                <select id="role" class="form-select">
+                                    <option value="">-- Select Role --</option>
+                                </select>
+                            </div>
+                            <button class="ms-2 text-decoration-none align-self-end small" type="button" id="btnNew" data-bs-toggle="modal" data-bs-target="#newRoleModal">New</button>
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="w-75">
+                                <label for="employee" class="form-label fw-semibold">Employee</label>
+                                <select id="empName" class="form-select">
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="userName" placeholder="User Name" />
+                            <div class="form-check ms-3">
+                                <input class="form-check-input" type="checkbox" id="activeCheck" checked>
+                                <label class="form-check-label small" for="activeCheck">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6"></div>
+
+                        <div class="col-md-6 position-relative">
+                            <label for="password" class="form-label fw-semibold">Password</label>
+                            <input type="password" class="form-control" id="password" placeholder="Enter Password" />
+                            <button type="button" class="btn btn-outline-secondary btn-sm password-toggle" tabindex="-1" title="Show/Hide Password" style="position:absolute; top: 38px; right: 10px;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+
+                        <div class="col-md-6 position-relative">
+                            <label for="confirmPassword" class="form-label fw-semibold">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm Your Password" />
+                            <button type="button" class="btn btn-outline-secondary btn-sm password-toggle" tabindex="-1" title="Show/Hide Password" style="position:absolute; top: 38px; right: 10px;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer justify-content-between custom-modal-footer">
+                <button type="button" class="btn btn-primary px-4">Save</button>
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="newRoleModal" tabindex="-1" aria-labelledby="newRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="newRoleModalLabel">Roles - New Role</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form id="roleForm">
+                <div class="modal-body">
+                    <input type="hidden" id="roleId" value="0" />
+                    <input type="text" id="roleName" class="form-control" placeholder="Role Name" required />
+                </div>
+
+                <div class="modal-footer bg-light">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+        document.querySelectorAll('.password-toggle').forEach(button => {
+          button.addEventListener('click', () => {
+            const input = button.previousElementSibling;
+            if (input.type === "password") {
+              input.type = "text";
+              button.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            } else {
+              input.type = "password";
+              button.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+          });
+        });
+
+               function loadUsers(state = "all") {
+            $.ajax({
+                url: '@Url.Action("GetUsers", "Account")' + '?state=' + state,
+                type: "GET",
+                success: function (res) {
+                    console.log(res);
+
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+
+                    let table = $("#table1");
+
+                    if (table.find("tbody").length === 0) {
+                        table.append("<tbody></tbody>");
+                    }
+
+                    let tbody = table.find("tbody");
+                    tbody.empty();
+
+                    if (res.status && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            tbody.append(`
+                                <tr data-user-id="${row.id}" data-user-name="${row.userName}"
+                                    data-user-fullname="${row.firstName} ${row.lastName}"
+                                    data-user-status="${row.active}"
+                                    data-user-code="${row.sn}">
+                                    <td>${row.sn}</td>
+                                    <td>${row.userName}</td>
+                                </tr>
+                            `);
+                        });
+
+                        // Add click event to each row - UPDATED TO SET TARGET USER ID
+                        table.find("tbody tr").on("click", function () {
+                            // Remove highlight from other rows
+                            table.find("tbody tr").removeClass("table-active");
+                            $(this).addClass("table-active");
+
+                            const userId = $(this).data("user-id");
+                            const userCode = $(this).data("user-code");
+                            const userName = $(this).data("user-name");
+                            const userFullName = $(this).data("user-fullname");
+                            const userStatus = $(this).data("user-status");
+
+                            // SET THE TARGET USER ID - THIS WAS MISSING!
+                            $('#targetUserId').val(userId);
+                            $('#SelectedUserId').val(userId);
+
+
+                            // Dynamically update the user info section
+                            $('#userCode').text('- ' + userCode);
+                            $('#userName').text('- ' + userName);
+                            $('#userFullName').text('- ' + userFullName);
+                            $('#userStatus').text('- ' + (userStatus === "Active" ? "Active" : "Inactive"));
+
+                            // Optional: Load permissions for this user
+                            loadUserPermissions(userId);
+                        });
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="2" class="text-center">No records found</td>
+                            </tr>
+                        `);
+                    }
+                }
+            });
+        }
+
+
+                function loadUserPermissions(targetUserId) {
+            $.ajax({
+                url: '@Url.Action("GetUserPermissions", "Account")',
+                type: 'GET',
+                data: { targetUserId: targetUserId },
+                success: function(res) {
+                    if(res.status && res.data) {
+                        // First uncheck all checkboxes
+                        $('.perm-checkbox[data-item-checkbox="true"]').prop('checked', false);
+
+                        // Loop through the permissions and check the relevant checkboxes
+                        res.data.forEach(perm => {
+                            if (perm.canView) {
+                                $(`.perm-checkbox[data-submenu-id="${perm.subMenuId}"][data-perm-type="view"]`).prop('checked', true);
+                            }
+                            if (perm.canEdit) {
+                                $(`.perm-checkbox[data-submenu-id="${perm.subMenuId}"][data-perm-type="edit"]`).prop('checked', true);
+                            }
+                            if (perm.canDelete) {
+                                $(`.perm-checkbox[data-submenu-id="${perm.subMenuId}"][data-perm-type="delete"]`).prop('checked', true);
+                            }
+                        });
+
+                        // Ensure "Select All" checkboxes are updated based on current selection
+                        updateSelectAllCheckboxes();
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Could not load permissions', xhr);
+                }
+            });
+        }
+
+
+        // Helper function to update "Select All" checkboxes
+        function updateSelectAllCheckboxes() {
+            for(let i = 0; i <= 9; i++) {
+                const totalInCategory = $(`.perm-checkbox[data-item-checkbox="true"][data-category-index="${i}"]`).length;
+                const checkedInCategory = $(`.perm-checkbox[data-item-checkbox="true"][data-category-index="${i}"]:checked`).length;
+                const selectAllCheckbox = $(`[data-category-select-all="true"][data-category-index="${i}"]`);
+                selectAllCheckbox.prop('checked', totalInCategory === checkedInCategory);
+            }
+        }
+
+        // Function to collect all permissions from the form
+        function collectPermissions() {
+            const permissions = [];
+
+            // Loop through all permission checkboxes
+            $('.perm-checkbox[data-item-checkbox="true"]').each(function() {
+                const checkbox = $(this);
+                const subMenuId = parseInt(checkbox.data('submenu-id'));
+                const canView = checkbox.is(':checked');
+
+                permissions.push({
+                    SubMenuId: subMenuId,
+                    CanView: canView,
+                    CanEdit: false,  // Set to true if you have edit checkboxes
+                    CanDelete: false // Set to true if you have delete checkboxes
+                });
+            });
+
+            return permissions;
+        }
+
+        // Event listener for "Select All" checkboxes
+        $(document).on('change', '[data-category-select-all="true"]', function() {
+            const categoryIndex = $(this).data('category-index');
+            const isChecked = $(this).is(':checked');
+
+            // Update all checkboxes in this category
+            $(`.perm-checkbox[data-category-index="${categoryIndex}"]`).prop('checked', isChecked);
+        });
+
+        // Update "Select All" checkbox when individual items change
+        $(document).on('change', '.perm-checkbox[data-item-checkbox="true"]', function() {
+            const categoryIndex = $(this).data('category-index');
+            const totalInCategory = $(`.perm-checkbox[data-item-checkbox="true"][data-category-index="${categoryIndex}"]`).length;
+            const checkedInCategory = $(`.perm-checkbox[data-item-checkbox="true"][data-category-index="${categoryIndex}"]:checked`).length;
+
+            // Update the "Select All" checkbox state
+            const selectAllCheckbox = $(`[data-category-select-all="true"][data-category-index="${categoryIndex}"]`);
+            selectAllCheckbox.prop('checked', totalInCategory === checkedInCategory);
+        });
+        function loadEmployeeDropdown(selectedId = null) {
+          $.getJSON('@Url.Action("GetAllEmployees", "Inventory")', function (employees) {
+                const $employeeSelect = $('#empName');
+                $employeeSelect.empty().append('<option value="">Select Employee</option>');
+
+                employees.forEach(emp => {
+                    // Convert both to string for safe comparison (to avoid type mismatch)
+                    const selected = selectedId && String(emp.id) === String(selectedId) ? 'selected' : '';
+                    $employeeSelect.append(`
+                        <option value="${emp.id}" data-code="${emp.code}" data-name="${emp.name}" ${selected}>
+                            ${emp.name}
+                        </option>
+                    `);
+                });
+            });
+        }
+
+        function loadRolesDropdown() {
+            $.ajax({
+                url: '@Url.Action("GetRoles", "Account")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const select = $('#role');
+                        select.empty(); // clear existing options
+                        select.append('<option value="">-- Select Role --</option>');
+
+                        res.data.forEach(role => {
+                            select.append(`<option value="${role.id}">${role.name}</option>`);
+                        });
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        }
+
+
+        $(document).ready(function () {
+               loadUsers("all");
+
+               $("#statusFilter").change(function () {
+            const state = $(this).val();
+            loadUsers(state);
+        });
+
+               loadEmployeeDropdown();
+               loadRolesDropdown();
+               $('#roleForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#roleId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const roleData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Name: $('#roleName').val().trim()
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveRole", "Account")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(roleData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Role updated successfully' : 'Role added successfully');
+                        $('#newRoleModal').modal('hide');
+
+                        // Optional: refresh role list after saving
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+               $('#newUserModal .btn-primary').on('click', function(e) {
+            e.preventDefault();
+
+            const userData = {
+                Id: $('#userId').val() ? parseInt($('#userId').val()) : 0, // Add hidden input for edit
+                Username: $('#userName').val().trim(),
+                Password: $('#password').val().trim(),
+                ConfirmPassword: $('#confirmPassword').val().trim(),
+                FirstName: $('#firstName').val().trim(),
+                LastName: $('#lastName').val().trim(),
+                RoleId: $('#role').val() ? parseInt($('#role').val()) : 0,
+                EmployeeId: $('#empName').val() ? parseInt($('#empName').val()) : -1,
+                IsActive: $('#activeCheck').is(':checked')
+            };
+
+            // Simple client-side validation
+             if(!userData.FirstName) {
+                toastr.warning("Enter First Name");
+                return;
+            }
+            if(!userData.Username) {
+                toastr.warning("Enter at least User Name");
+                return;
+            }
+            if(userData.RoleId <= 0) {
+                toastr.warning("Choose Role First");
+                return;
+            }
+           if(userData.EmployeeId <= 0) {
+                toastr.warning("Choose Employee First");
+                return;
+            }
+            if(userData.Id === 0) { // new user
+                if(!userData.Password) {
+                    toastr.warning("Enter your new password");
+                    return;
+                }
+                if(userData.Password !== userData.ConfirmPassword) {
+                    toastr.warning("Confirm password mismatch");
+                    return;
+                }
+            }
+
+            $.ajax({
+                url: '@Url.Action("SaveUser", "Account")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(userData),
+                success: function(res) {
+                    if(res.status) {
+                        toastr.success(res.message);
+                        $('#newUserModal').modal('hide');
+                                // Optional: refresh role list after saving
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+
+                  
+
+
+
+        // Save Permissions Button Click Handler
+        $('#savePermissionsBtn').on('click', function (e) {
+            e.preventDefault();
+
+            // Get the target user ID
+            const targetUserId = $('#targetUserId').val();
+            console.log(targetUserId);
+            if (!targetUserId || parseInt(targetUserId) <= 0) {
+                toastr.error('Please select a user from the list first');
+                return;
+            }
+
+            // Collect all permissions from the form
+            const permissions = collectPermissions();
+
+            if (permissions.length === 0) {
+                toastr.warning('No permissions to save');
+                return;
+            }
+
+            // Show loading state
+            const $btn = $(this);
+            const originalText = $btn.html();
+            $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Saving...');
+
+            // Save permissions
+            $.ajax({
+                url: `@Url.Action("BulkUpdatePermissions", "Account")?targetUserId=${targetUserId}`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    Permissions: permissions
+                }),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Permissions updated successfully');
+                    } else {
+                        toastr.error('Permissions update failed: ' + res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Permissions update failed: ' + (xhr.responseJSON?.message || xhr.statusText));
+                },
+                complete: function() {
+                    // Restore button state
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        });
+
+
+        });
+
+
+
+    </script>
+}

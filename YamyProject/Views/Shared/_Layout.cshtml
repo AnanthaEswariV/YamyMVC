@@ -213,6 +213,47 @@
             e.preventDefault();
             $('#sidebar').addClass('active');
         });
+
+
+
+            // Step 1: Hide everything first
+            $("#dynamicMenu li[data-item]").hide();
+            $("#dynamicMenu li[data-sub]").hide();
+            $("#dynamicMenu li[data-main]").hide();
+
+            // Step 2: Fetch allowed menus
+            $.get("/Account/GetUserMenu", function (res) {
+
+                if (!res.status) return;
+
+                res.data.forEach(main => {
+                    main.subMenus.forEach(sub => {
+
+                        const itemName = sub.name.trim();
+
+                        // Show matching final menu item
+                        const item = $(`[data-item="${itemName}"]`);
+                        item.show();
+
+                        // Show its parent sub group
+                        item.closest("li[data-sub]").show();
+
+                        // Show its main menu parent
+                        item.closest("li[data-main]").show();
+                    });
+                });
+
+                // Optional: hide empty parents
+                $("#dynamicMenu li[data-main]").each(function() {
+                    if ($(this).find("li:visible").length === 0) {
+                        $(this).hide();
+                    }
+                });
+
+            });
+
+
+
         });
     </script>
 

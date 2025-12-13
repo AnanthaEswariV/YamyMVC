@@ -924,5 +924,53 @@ namespace YamyProject.Core.Models
         public decimal NetAccruals { get; set; }
     }
 
+    public class PermissionRequest
+    {
+        public int SubMenuId { get; set; }
+        public bool CanView { get; set; }
+        public bool CanEdit { get; set; }
+        public bool CanDelete { get; set; }
+    }
+
+    public class BulkPermissionRequest
+    {
+        public List<PermissionRequest> Permissions { get; set; }
+    }
+
+
+    public class RoleRequest
+    {
+        public int Id { get; set; } 
+        public string Name { get; set; }
+    }
+
+    public class UserRequest
+    {
+        public int Id { get; set; } // 0 for new users
+        public string Username { get; set; }
+        public string Password { get; set; } // for new users
+        public string ConfirmPassword { get; set; } // for new users
+        public int? EmployeeId { get; set; } // optional, -1 if not selected
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public int RoleId { get; set; }
+        public bool IsActive { get; set; }
+    }
+    public class MenuDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public List<SubMenuDto> SubMenus { get; set; }
+    }
+
+    public class SubMenuDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Url { get; set; }
+        public bool CanView { get; set; }
+        public bool CanEdit { get; set; }
+        public bool CanDelete { get; set; }
+    }
 
 }

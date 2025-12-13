@@ -7,7 +7,7 @@
         private readonly YamyDbContext _context = context;
         
 
-    public async Task<IActionResult> Index(string state = "Active")
+        public async Task<IActionResult> Index(string state = "Active")
             {
             var user = await _UserService.GetUSerAsync(state);
 
@@ -30,7 +30,7 @@
         [HttpGet]
         public async Task<IActionResult> UserRoleandPermission(int id)
             { 
-            var Permission = await _UserService.GetUserPermissionAsync(id);
+            var Permission = await _UserService.GetUserPermissionAsync(id); 
             if (Permission is null) return NotFound();
             return Json(Permission);
             }

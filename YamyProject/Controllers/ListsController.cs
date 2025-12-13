@@ -3596,8 +3596,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
-
-
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteItem(int id)
         {

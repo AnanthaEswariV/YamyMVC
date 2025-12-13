@@ -4741,5 +4741,653 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
         #endregion
 
 
+        public IActionResult User()
+        {
+            return View();
+        }
+
+        private MySqlConnection GetConnection()
+        {
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+            return new MySqlConnection(connStrBuilder.ConnectionString);
+        }
+
+        // 1. GET ALL USERS
+        [HttpGet]
+        public async Task<IActionResult> GetUsers(string state = "all")
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, CONCAT(first_name, ' ', last_name) as name, 
+                                user_name, first_name, last_name, active
+                                FROM tbl_sec_users WHERE id > 0";
+
+                if (state == "active")
+                    query += " AND active = 0";
+                else if (state == "inactive")
+                    query += " AND active != 0";
+
+                query += " ORDER BY id DESC";
+
+                var data = new List<object>();
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        int sn = 1;
+                        while (await reader.ReadAsync())
+                        {
+                            data.Add(new
+                            {
+                                sn = sn++,
+                                id = reader["id"],
+                                name = reader["name"],
+                                userName = reader["user_name"],
+                                firstName = reader["first_name"],
+                                lastName = reader["last_name"],
+                                active = Convert.ToInt32(reader["active"]) == 0 ? "Active" : "Inactive",
+                               // email = reader["email"]
+                            });
+                        }
+                    }
+                }
+
+                return Ok(new { status = true, data });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveRole([FromBody] RoleRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter a Role name" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔎 Check for duplicate role name
+                var checkQuery = @"SELECT id FROM tbl_sec_roles WHERE name = @name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+                    await using var reader = await checkCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        int existingId = Convert.ToInt32(reader["id"]);
+                        if (model.Id == 0 || model.Id != existingId)
+                            return BadRequest(new { status = false, message = "Role already exists. Please enter another name." });
+                    }
+                }
+
+                if (model.Id == 0) // INSERT
+                {
+                    var insertQuery = "INSERT INTO tbl_sec_roles (name) VALUES (@name)";
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new { status = true, message = "Role added successfully" });
+                }
+                else // UPDATE
+                {
+                    var updateQuery = "UPDATE tbl_sec_roles SET name=@name WHERE id=@id";
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Role not found" });
+
+                    return Ok(new { status = true, message = "Role updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = "Error saving role: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetRoles()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var roles = new List<object>();
+                var query = "SELECT id, name FROM tbl_sec_roles ORDER BY name";
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        roles.Add(new
+                        {
+                            Id = reader.GetInt32("id"),
+                            Name = reader.GetString("name")
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = roles });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveUser([FromBody] UserRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.Username))
+                return BadRequest(new { status = false, message = "Enter at least User Name" });
+
+            if (model.RoleId <= 0)
+                return BadRequest(new { status = false, message = "Choose Role First" });
+
+            if (model.Id == 0) // New user
+            {
+                if (string.IsNullOrWhiteSpace(model.Password))
+                    return BadRequest(new { status = false, message = "Enter your new password" });
+
+                if (model.Password != model.ConfirmPassword)
+                    return BadRequest(new { status = false, message = "Confirm password mismatch" });
+            }
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔎 Check for duplicate username
+                var checkQuery = "SELECT id FROM tbl_sec_users WHERE user_name = @name";
+                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@name", model.Username.Trim());
+                    await using var reader = await checkCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync() && Convert.ToInt32(reader["id"]) != model.Id)
+                        return BadRequest(new { status = false, message = "Username already exists" });
+                }
+
+                if (model.Id == 0) // INSERT
+                {
+                    // Hash password
+                    string salt;
+                    string passwordHash = PasswordHelper.HashPassword(model.Password, out salt);
+
+                    var insertQuery = @"INSERT INTO tbl_sec_users 
+                                (user_name, passwordhash, salt, emp_id, first_name, last_name, role_id, active, state)
+                                VALUES (@user_name, @passwordhash, @salt, @emp_id, @first_name, @last_name, @role_id, @active, 0)";
+                    await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@user_name", model.Username.Trim());
+                    insertCmd.Parameters.AddWithValue("@passwordhash", passwordHash);
+                    insertCmd.Parameters.AddWithValue("@salt", salt);
+                    insertCmd.Parameters.AddWithValue("@emp_id", model.EmployeeId ?? -1);
+                    insertCmd.Parameters.AddWithValue("@first_name", model.FirstName?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@last_name", model.LastName?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@role_id", model.RoleId);
+                    insertCmd.Parameters.AddWithValue("@active", model.IsActive ? 0 : 1);
+
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new { status = true, message = "User added successfully" });
+                }
+                else // UPDATE
+                {
+                    var updateQuery = @"UPDATE tbl_sec_users SET 
+                                user_name=@user_name, 
+                                emp_id=@emp_id, 
+                                first_name=@first_name, 
+                                last_name=@last_name, 
+                                role_id=@role_id, 
+                                active=@active
+                                WHERE id=@id";
+                    await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@user_name", model.Username.Trim());
+                    updateCmd.Parameters.AddWithValue("@emp_id", model.EmployeeId ?? -1);
+                    updateCmd.Parameters.AddWithValue("@first_name", model.FirstName?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@last_name", model.LastName?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@role_id", model.RoleId);
+                    updateCmd.Parameters.AddWithValue("@active", model.IsActive ? 0 : 1);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "User not found" });
+
+                    return Ok(new { status = true, message = "User updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        // 2. GET MENU STRUCTURE
+        [HttpGet]
+        public async Task<IActionResult> GetMenus()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                string query = @"SELECT a.id AS main_id, a.name AS main_name,
+                                b.id AS sub_id, b.name AS sub_name
+                                FROM tbl_main_menus a
+                                INNER JOIN tbl_sub_menus b ON a.id = b.m_id
+                                ORDER BY a.id, b.id";
+
+                var menuDict = new Dictionary<int, dynamic>();
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            int mainId = Convert.ToInt32(reader["main_id"]);
+                            string mainName = reader["main_name"].ToString();
+
+                            if (!menuDict.ContainsKey(mainId))
+                            {
+                                menuDict[mainId] = new
+                                {
+                                    id = mainId,
+                                    name = mainName,
+                                    subMenus = new List<object>()
+                                };
+                            }
+
+                            ((List<object>)menuDict[mainId].subMenus).Add(new
+                            {
+                                id = reader["sub_id"],
+                                name = reader["sub_name"]
+                            });
+                        }
+                    }
+                }
+
+                return Ok(new { status = true, data = menuDict.Values.ToList() });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // 3. GET USER PERMISSIONS
+        [HttpGet]
+        public async Task<IActionResult> GetUserPermissions(int targetUserId)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                // Check if user has permissions
+                string countQuery = @"SELECT COUNT(*) FROM tbl_user_permissions WHERE user_id = @userId";
+                int count = 0;
+                using (var cmd = new MySqlCommand(countQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@userId", targetUserId);
+                    count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                if (count == 0)
+                {
+                    return Ok(new { status = true, data = new List<object>(), hasPermissions = false });
+                }
+
+                // Get permissions with menu details
+                string query = @"SELECT p.id, p.user_id, s.id AS sub_menu_id, s.name AS sub_menu_name,
+                                m.id AS main_menu_id, m.name AS main_menu_name,
+                                p.can_view, p.can_edit, p.can_delete
+                                FROM tbl_user_permissions p
+                                INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
+                                INNER JOIN tbl_main_menus m ON s.m_id = m.id
+                                WHERE p.user_id = @userId
+                                ORDER BY m.id, s.id";
+
+                var data = new List<object>();
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@userId", targetUserId);
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            data.Add(new
+                            {
+                                id = reader["id"],
+                                userId = reader["user_id"],
+                                subMenuId = reader["sub_menu_id"],
+                                subMenuName = reader["sub_menu_name"],
+                                mainMenuId = reader["main_menu_id"],
+                                mainMenuName = reader["main_menu_name"],
+                                canView = Convert.ToBoolean(reader["can_view"]),
+                                canEdit = Convert.ToBoolean(reader["can_edit"]),
+                                canDelete = Convert.ToBoolean(reader["can_delete"])
+                            });
+                        }
+                    }
+                }
+
+                return Ok(new { status = true, data, hasPermissions = true });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // 4. UPDATE/CREATE SINGLE PERMISSION
+        [HttpPost]
+        public async Task<IActionResult> UpdatePermission(int targetUserId, [FromBody] PermissionRequest request)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                if (request.SubMenuId <= 0)
+                    return BadRequest(new { status = false, message = "Sub menu ID is required" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                string query = @"INSERT INTO tbl_user_permissions 
+                                (user_id, sub_menu_id, can_view, can_edit, can_delete)
+                                VALUES (@userId, @subMenuId, @canView, @canEdit, @canDelete)
+                                ON DUPLICATE KEY UPDATE 
+                                can_view = @canView,
+                                can_edit = @canEdit,
+                                can_delete = @canDelete";
+
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@userId", targetUserId);
+                    cmd.Parameters.AddWithValue("@subMenuId", request.SubMenuId);
+                    cmd.Parameters.AddWithValue("@canView", request.CanView);
+                    cmd.Parameters.AddWithValue("@canEdit", request.CanEdit);
+                    cmd.Parameters.AddWithValue("@canDelete", request.CanDelete);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "Permission updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // 5. BULK UPDATE PERMISSIONS
+        [HttpPost]
+        public async Task<IActionResult> BulkUpdatePermissions(int targetUserId, [FromBody] BulkPermissionRequest request)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                if (request.Permissions == null || request.Permissions.Count == 0)
+                    return BadRequest(new { status = false, message = "Permissions array is required" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                using var transaction = await conn.BeginTransactionAsync();
+                try
+                {
+                    string query = @"INSERT INTO tbl_user_permissions 
+                                    (user_id, sub_menu_id, can_view, can_edit, can_delete)
+                                    VALUES (@userId, @subMenuId, @canView, @canEdit, @canDelete)
+                                    ON DUPLICATE KEY UPDATE 
+                                    can_view = @canView,
+                                    can_edit = @canEdit,
+                                    can_delete = @canDelete";
+
+                    foreach (var perm in request.Permissions)
+                    {
+                        using (var cmd = new MySqlCommand(query, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@userId", targetUserId);
+                            cmd.Parameters.AddWithValue("@subMenuId", perm.SubMenuId);
+                            cmd.Parameters.AddWithValue("@canView", perm.CanView);
+                            cmd.Parameters.AddWithValue("@canEdit", perm.CanEdit);
+                            cmd.Parameters.AddWithValue("@canDelete", perm.CanDelete);
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+                    return Ok(new { status = true, message = "Permissions updated successfully" });
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // 6. GET USER MENU (Only accessible menus)
+        [HttpGet]
+        public async Task<IActionResult> GetUserMenu()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                m.id AS main_menu_id,
+                m.name AS main_menu_name,
+                s.id AS sub_menu_id,
+                s.name AS sub_menu_name,
+                p.can_view,
+                p.can_edit,
+                p.can_delete
+            FROM tbl_user_permissions p
+            INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
+            INNER JOIN tbl_main_menus m ON s.m_id = m.id
+            WHERE p.user_id = @userId AND p.can_view = 1
+            ORDER BY m.id, s.id";
+
+                var menuDict = new Dictionary<int, MenuDto>();
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@userId", userId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    int mainId = Convert.ToInt32(reader["main_menu_id"]);
+
+                    if (!menuDict.ContainsKey(mainId))
+                    {
+                        menuDict[mainId] = new MenuDto
+                        {
+                            Id = mainId,
+                            Name = reader["main_menu_name"].ToString(),
+                            SubMenus = new List<SubMenuDto>()
+                        };
+                    }
+
+                    menuDict[mainId].SubMenus.Add(new SubMenuDto
+                    {
+                        Id = Convert.ToInt32(reader["sub_menu_id"]),
+                        Name = reader["sub_menu_name"].ToString(),
+                        CanView = Convert.ToBoolean(reader["can_view"]),
+                        CanEdit = Convert.ToBoolean(reader["can_edit"]),
+                        CanDelete = Convert.ToBoolean(reader["can_delete"])
+                    });
+                }
+
+                return Ok(new { status = true, data = menuDict.Values });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        // 7. CHECK USER PERMISSION (Helper for other controllers)
+        [HttpGet]
+        public async Task<IActionResult> CheckPermission(string subMenuName, string action = "view")
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                string query = @"SELECT p.can_view, p.can_edit, p.can_delete
+                                FROM tbl_user_permissions p
+                                INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
+                                WHERE p.user_id = @userId AND s.name = @subMenuName";
+
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@subMenuName", subMenuName);
+
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        if (!await reader.ReadAsync())
+                            return StatusCode(403, new { status = false, message = "Access denied" });
+
+                        bool hasPermission = action.ToLower() switch
+                        {
+                            "view" => Convert.ToBoolean(reader["can_view"]),
+                            "edit" => Convert.ToBoolean(reader["can_edit"]),
+                            "delete" => Convert.ToBoolean(reader["can_delete"]),
+                            _ => false
+                        };
+
+                        if (!hasPermission)
+                            return StatusCode(403, new { status = false, message = $"You don't have {action} permission" });
+
+                        return Ok(new { status = true, message = "Permission granted" });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        // 8. DELETE USER PERMISSION
+        [HttpDelete]
+        public async Task<IActionResult> DeletePermission(int targetUserId, int subMenuId)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                string query = @"DELETE FROM tbl_user_permissions 
+                                WHERE user_id = @userId AND sub_menu_id = @subMenuId";
+
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@userId", targetUserId);
+                    cmd.Parameters.AddWithValue("@subMenuId", subMenuId);
+
+                    int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                    if (rowsAffected > 0)
+                        return Ok(new { status = true, message = "Permission deleted successfully" });
+                    else
+                        return NotFound(new { status = false, message = "Permission not found" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
     }
 }

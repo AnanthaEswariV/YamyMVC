@@ -2,7 +2,7 @@
     <div class="d-flex align-items-center  w-100">
 
         <!-- Left: Navigation Menu -->
-        <ul class="navbar-links">
+        <ul class="navbar-links"  id="dynamicMenu">
             <li class="dropdown">
                 File
                 <ul class="submenu">
@@ -10,21 +10,9 @@
                     <li @* class="dropdown has-submenu" *@>
                         <a href="javascript:void(0);"
                            onclick="openCompanyProfileModal()">Company Profile</a>
-
-                        @*   <a href="">Company Profile</a>
-                        <ul class="submenu">
-                            <li><a asp-controller="CompanyCenter" asp-action="Index">Company Center</a></li>
-                            @* <li><a asp-controller="Reminders" asp-action="Index">Reminders</a></li> 
-                            <li>Reminders</li>
-                        </ul> *@
-                    </li>
-                   @*  <li><a href="">Restore Company</a></li>
-                    <li><a href="">Backup Company</a></li> *@
-               @*      <li><a href="#" onclick="window.close(); return false;">Exit</a></li> *@
-
                 </ul>
             </li>
-            <li class="dropdown">
+            <li class="dropdown" data-main="Accountant">
                 Lists
                 <ul class="submenu">
                     <li>
@@ -43,7 +31,7 @@
             <li class="dropdown">
                 Accountant
                 <ul class="submenu">
-                    <li class="dropdown has-submenu">
+                    <li class="dropdown has-submenu" data-main="Accountant" data-sub="Account Center">
                         <a href="">Account Center</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("ChartOfAccount", "Lists")">Chart Of Account</a></li>
@@ -333,7 +321,7 @@
                 <ul class="submenu">
                     <li><a asp-controller="MasterSettings" asp-action="Index">Settings</a></li>
                     <li><a href="@Url.Action("ChangePassword", "Settings")">Change Current Password</a></li>
-                    <li><a asp-controller="UserAccounts" asp-action="Index">User</a></li>
+                    <li><a href="@Url.Action("User", "Account")">User</a></li>
                 </ul>
             </li>
         </ul>
@@ -360,3 +348,49 @@
         </div>
     </div>
 </div>
+
+
+
+<script>
+    $(document).ready(function () {
+        loadUserMenu();
+    });
+
+    function loadUserMenu() {
+        $.ajax({
+            url: '/Account/GetUserMenu',
+            type: 'GET',
+            success: function (res) {
+                if (!res.status) return;
+
+                let html = '';
+
+                res.data.forEach(main => {
+                    html += `
+                        <li class="dropdown">
+                            ${main.name}
+                            <ul class="submenu">
+                    `;
+
+                    main.subMenus.forEach(sub => {
+                        html += `
+                            <li>
+                                <a href="${sub.url}">${sub.name}</a>
+                            </li>
+                        `;
+                    });
+
+                    html += `
+                            </ul>
+                        </li>
+                    `;
+                });
+
+                $("#dynamicMenu").html(html);
+            },
+            error: function () {
+                toastr.error("Failed to load menu");
+            }
+        });
+    }
+</script>
