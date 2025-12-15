@@ -1,16 +1,11 @@
 
+using Microsoft.AspNetCore.HttpOverrides;
 using YamyProject.Core.Consts.Mapping;
 using YamyProject.Services;
 using YamyProject.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-//// Add DbContext with SQL Server
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseSqlServer(ConnectionString));
-
-// Add services to the container.
 
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IListServices, ListServices>();
@@ -52,14 +47,12 @@ builder.Services.AddScoped<ICurrentUserContextService, CurrentUserContextService
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
 builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
 
-////
-// Microservice HTTP client
-//builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>(client =>
-//{
-//    client.BaseAddress = new Uri(builder.Configuration["Microservices:SettlementApi"]);
-//    client.Timeout = TimeSpan.FromSeconds(10);
-//});
-
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // You can also specify KnownProxies/KnownNetworks if needed
+});
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("ApiClient", client =>
 {
@@ -78,12 +71,7 @@ builder.Services.AddSession(options =>
 });
 
 
-// Add DbContext with SQL Server
-//builder.Services.AddDbContext<YamyDbContext>(options =>
-//    options.UseMySql(ConnectionString,
-//        ServerVersion.AutoDetect(ConnectionString)
-//    )
-//);
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddDbContext<YamyDbContext>((serviceProvider, options) =>

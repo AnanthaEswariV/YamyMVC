@@ -2,19 +2,17 @@
 public partial class TblPaymentVoucher
 {
     public int Id { get; set; }
-    [ForeignKey(nameof(Id))]
     public virtual TblTransaction? Transaction { get; set; }
-    [ForeignKey(nameof(Id))]
-    public virtual TblPaymentVoucherDetail PaymentVoucher { get; set; }
+    public virtual TblPaymentVoucherDetail PaymentVoucherDetail { get; set; }
+       //public virtual ICollection<TblPaymentVoucherDetail> PaymentVoucherDetails { get; set; }
+       // = new List<TblPaymentVoucherDetail>();
     public DateOnly? Date { get; set; }
     public string? Code { get; set; }
     public string? Type { get; set; }
     public string? Method { get; set; }
     public decimal? Amount { get; set; }
     public bool IsSubcontractor { get; set; }
-    public int? HumId { get; set; }
-    [ForeignKey(nameof(HumId))]
-    public virtual TblCustomer? Customer { get; set; }
+
     public int? DebitAccountId { get; set; }
     [ForeignKey(nameof(DebitAccountId))]
     public virtual TblCoaLevel4? DebitAccount { get; set; }

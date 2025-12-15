@@ -1,8 +1,10 @@
-﻿using YamyProject.Core.Models;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using YamyProject.Core.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace YamyProject.Services.Implementations
     {
-    public class VendorsCenterService(YamyDbContext context, IListServices ListServices, IHttpContextAccessor httpContextAccessor) : IVendorsCenterService
+    public class VendorsCenterService(YamyDbContext context, IListServices ListServices, IHttpContextAccessor httpContextAccessor, IGlobalService GlobalService) : IVendorsCenterService
         {
         private string Vendors = null;
         private DateOnly Starting = default;
@@ -11,6 +13,7 @@ namespace YamyProject.Services.Implementations
         private readonly YamyDbContext _context = context;
         private readonly IListServices _ListServices= ListServices;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IGlobalService _GlobalService = GlobalService;
 
         public async Task<IEnumerable<PurchaseRowViewModel>> GetPurchaseAsync(bool Subcontractors = false, string selectVendors = null, bool Custmer = true, DateOnly From = default, DateOnly To = default, bool Date = true, string selectionMethod = "Default", string selectionMethodPay = null, bool Pay = true, string VendorType = "")
             {
@@ -47,19 +50,15 @@ namespace YamyProject.Services.Implementations
               .Include(s => s.Vendors)
               .OrderBy(s => s.Date)
               .AsQueryable();
-              // Apply Vendors filter if provided
               if (!string.IsNullOrEmpty(Vendors))
                   query = query.Where(s => s.VendorId == int.Parse(Vendors) || s.Vendors.Name == Vendors);
-              // Apply Starting date filter if provided
-              if (Starting != default)// && Starting!= DateOnly.FromDateTime(DateTime.Today))
+              if (Starting != default)
                   query = query.Where(s => s.Date >= Starting);
-              // Apply Ending date filter if provided
-              if (Ending != default)// && Starting != DateOnly.FromDateTime(DateTime.Today))
+              if (Ending != default)
                   query = query.Where(s => s.Date <= Ending);
-              // Apply Payment Method filter if provided
               if (!string.IsNullOrEmpty(PayMethod))
                   query = query.Where(s => s.PaymentMethod == PayMethod);
-              const string Collation = "utf8mb4_0900_ai_ci"; // or your column’s exact collation
+              const string Collation = "utf8mb4_0900_ai_ci"; 
 
             var sales = await query
     .Select(s => new
@@ -129,20 +128,15 @@ namespace YamyProject.Services.Implementations
                     .Include(s => s.Vendors)
                     .OrderBy(s => s.Date)
                     .AsQueryable();
-            // Apply Vendors filter if provided
             if (!string.IsNullOrEmpty(Vendors))
                 query = query.Where(s => s.VendorId == int.Parse(Vendors) || s.Vendors.Name == Vendors);
-            // Apply Starting date filter
             if (Starting != default)
                 query = query.Where(s => s.Date >= Starting);
-            // Apply Ending date filter
             if (Ending != default)
                 query = query.Where(s => s.Date <= Ending);
-            // Apply Payment Method filter
             if (!string.IsNullOrEmpty(PayMethod))
                 query = query.Where(s => s.PaymentMethod == PayMethod);
             const string Collation = "utf8mb4_0900_ai_ci"; 
-            // Project into anonymous type with customer and details
             var sales = await query
                 .Select(s => new
                     {
@@ -163,7 +157,7 @@ namespace YamyProject.Services.Implementations
                     })
                 .ToListAsync();
             var flat = sales
-    .OrderBy(x => x.Sale.Date) // for SN like ROW_NUMBER() OVER (ORDER BY date)
+    .OrderBy(x => x.Sale.Date)
     .SelectMany(x => x.Details.Select(d => new
         {
         x.Sale.Date,
@@ -180,7 +174,6 @@ namespace YamyProject.Services.Implementations
         Item_Vat = d.VendorsDetails.Vat,
         Item_Total = d.VendorsDetails.Total
         }))
-    // optional: group if you truly need it (mirrors SQL GROUP BY)
     .GroupBy(r => new
         {
         r.Date,
@@ -197,7 +190,7 @@ namespace YamyProject.Services.Implementations
         r.Item_Vat,
         r.Item_Total
         })
-    .Select(g => g.Key) // keys are the grouped rows
+    .Select(g => g.Key) 
     .Select((r, idx) => new
         {
         SN = idx + 1,
@@ -245,9 +238,20 @@ namespace YamyProject.Services.Implementations
                 }
             return result;
             }
+        public async Task<int> GenerateVendorsInvoiceIdAsync()
+            {
+            const int increment = 1;
+
+            var lastId = await _context.TblPurchases
+                .Select(s => (int?)s.Id)  
+                .MaxAsync() ?? 0;
+
+            // Next invoice id
+            return lastId + increment;
+            }
         public async Task<string> GenerateVendorsInvoiceNoAsync()
             {
-            var prefix = "0000"; // Prefix for Credit Note
+            var prefix = "0000"; 
             var lastCodeValue =await _context.TblPurchases
                .Select(s => s.InvoiceId.Substring(3))
                .MaxAsync();
@@ -255,11 +259,8 @@ namespace YamyProject.Services.Implementations
             return $"PL-{int.Parse(prefix) + 1:D4}";
             }
         public async Task<PurchaseInvoiceViewModel> GetEditAsync(int id, string formType = "", string VendorType = "")
-            {
-           
-                
+            {   
             var vm = new PurchaseInvoiceViewModel();
-            // if (sale == null) throw new KeyNotFoundException($"Sale {id} not found.");
 
             if (formType == "PO")
                 {
@@ -286,20 +287,14 @@ namespace YamyProject.Services.Implementations
                 Id = c.Id,
                 Name = c.Name
                 }).ToList();
-
-           // var Vendors = VendorType== "Subcontractor"  await _ListServices.GetVendorSubcontractorsAsync(): await _ListServices.GetVendorsAsync();
             var vendors = string.Equals(VendorType, "Subcontractor", StringComparison.OrdinalIgnoreCase)
-                                              ? await _ListServices.GetVendorSubcontractorsAsync()
-                                              : await _ListServices.GetVendorsAsync();
-            var VendorslectList = vendors?
-           .Select(c => new TblVendor
+             ? await _ListServices.GetVendorSubcontractorsAsync(): await _ListServices.GetVendorsAsync();
+            var VendorslectList = vendors?.Select(c => new TblVendor
                {
                Id = c.Id,
                Code = c.Code,
                Name = c.Name
-               })
-           .ToList()
-           ?? new List<TblVendor>();
+               }).ToList()?? new List<TblVendor>();
             var Account = await _ListServices.GetAccountsAsync();
             var AccountList = Account.Select(c => new TblCoaLevel4
                 {
@@ -318,7 +313,7 @@ namespace YamyProject.Services.Implementations
                 Id = c.Id,
                 Code = c.Code
                 }).ToList();
-              var FixedAsset = await _ListServices.GetFixedAssetAsync();
+            var FixedAsset = await _ListServices.GetFixedAssetAsync();
             var FixedAssetList = FixedAsset.Select(c => new TblFixedAssetsCategory
                 {
                 Id = c.Id,
@@ -331,12 +326,10 @@ namespace YamyProject.Services.Implementations
             vm.Accounts = AccountList;
             vm.CostCenters = CostCenterList;
             vm.Vat = VatList;
-            //    await PopulateLookupsAsync(vm);
             return vm;
             }
         private static PurchaseInvoiceViewModel MapPurchaseToViewModel(TblPurchase s)
             {
-            // Coalesce details to an empty list to avoid NRE on OrderBy/Select
             var details = s.PurchaseDetails?? [];
 
             return new PurchaseInvoiceViewModel
@@ -366,40 +359,36 @@ namespace YamyProject.Services.Implementations
 
                     .Select(d =>
                     {
-                        // null-safe access for the navigation 'Items'
-
-                        // If your schema has nullable decimals, coalesce to 0m as needed.
                         var qty = d.Qty;
                         var price = d.CostPrice;
                         var disc = 0;
-                        var vatAmt = d.Vatp;   // amount (keep as-is if that’s your schema)
+                        var vatAmt = d.Vatp;  
                         var netPrice = (price * qty) - disc + vatAmt;
 
                         return new PurchaseItemViewModel
                             {
                             Id = d.Id,
-                            ItemId = d.ItemId ?? 0,                         // if non-nullable in DB, make model int (not int?) and remove ??
-                            ItemCode = d.Items.Code ?? string.Empty,       // null-safe
-                            ItemName = d.Items.Name ?? string.Empty,       // null-safe
-                            Method = d.Items.Method ?? string.Empty,       // null-safe
-                            Type = d.Items.Type ?? string.Empty,       // null-safe
+                            ItemId = d.ItemId ?? 0,                        
+                            ItemCode = d.Items.Code ?? string.Empty,     
+                            ItemName = d.Items.Name ?? string.Empty,     
+                            Method = d.Items.Method ?? string.Empty,    
+                            Type = d.Items.Type ?? string.Empty,       
                             QTY = d.Qty,
                             CostPrice = d.CostPrice,
                             Disc = 0,
                             NetPrice = netPrice,
-                            VatPersint = d.Vat,                                  // percent (if that’s your schema)
-                            VatAmonut = d.Vatp,                                 // amount
+                            VatPersint = d.Vat,                                
+                            VatAmonut = d.Vatp,                                
                             Amount = d.Total,
                             Price = d.Price,
-                            WarehouseId = d.Items.WarehouseId,                  // if VM property is int? use: it?.WarehouseId
-                            CostCenterId = d.CostCenterId                          // if nullable in DB, use: d.CostCenterId ?? 0
+                            WarehouseId = d.Items.WarehouseId,                 
+                            CostCenterId = d.CostCenterId                      
                             };
                     })]
                 };
             }
         private static PurchaseInvoiceViewModel MapOrdersToViewModel(TblPurchaseOrder s)
             {
-            // Coalesce details to an empty list to avoid NRE on OrderBy/Select
             var details = s.PurchaseOrderDetail ?? [];
 
             return new PurchaseInvoiceViewModel
@@ -428,33 +417,31 @@ namespace YamyProject.Services.Implementations
 
                     .Select(d =>
                     {
-                        // null-safe access for the navigation 'Items'
 
-                        // If your schema has nullable decimals, coalesce to 0m as needed.
                         var qty = d.Qty;
                         var price = d.CostPrice;
                         var disc = 0;
-                        var vatAmt = d.Vatp;   // amount (keep as-is if that’s your schema)
+                        var vatAmt = d.Vatp;  
                         var netPrice = (price * qty) - disc + vatAmt;
 
                         return new PurchaseItemViewModel
                             {
                             Id = d.Id,
-                            ItemId = d.ItemId ?? 0,                         // if non-nullable in DB, make model int (not int?) and remove ??
-                            ItemCode = d.Items.Code ?? string.Empty,       // null-safe
-                            ItemName = d.Items.Name ?? string.Empty,       // null-safe
-                            Method = d.Items.Method ?? string.Empty,       // null-safe
-                            Type = d.Items.Type ?? string.Empty,       // null-safe
+                            ItemId = d.ItemId ?? 0,                         
+                            ItemCode = d.Items.Code ?? string.Empty,       
+                            ItemName = d.Items.Name ?? string.Empty,       
+                            Method = d.Items.Method ?? string.Empty,       
+                            Type = d.Items.Type ?? string.Empty, 
                             QTY = d.Qty,
                             CostPrice = d.CostPrice,
                             Disc = 0,
                             NetPrice = netPrice,
-                            VatPersint = d.Vat,                                  // percent (if that’s your schema)
-                            VatAmonut = d.Vatp,                                 // amount
+                            VatPersint = d.Vat,                                  
+                            VatAmonut = d.Vatp,                                 
                             Amount = d.Total,
                             Price = d.Price,
-                            WarehouseId = d.Items.WarehouseId,                  // if VM property is int? use: it?.WarehouseId
-                            CostCenterId = d.CostCenterId                          // if nullable in DB, use: d.CostCenterId ?? 0
+                            WarehouseId = d.Items.WarehouseId,                  
+                            CostCenterId = d.CostCenterId                       
                             };
                     })]
                 };
@@ -462,10 +449,10 @@ namespace YamyProject.Services.Implementations
         public async Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm)
             {
             // 0) Guards
-            if (vm is null) throw new ArgumentNullException(nameof(vm));
-            if (vm.Items is null || vm.Items.Count == 0)
-                throw new InvalidOperationException("Invoice must contain at least one item.");
-            // 1) Server-side totals
+            //if (vm is null) throw new ArgumentNullException(nameof(vm));
+            //if (vm.Items is null || vm.Items.Count == 0)
+            //    throw new InvalidOperationException("Invoice must contain at least one item.");
+            //// 1) Server-side totals
             decimal totalBeforeVat = 0m, totalVat = 0m, netAmount = 0m, totalDiscount = 0m;
             foreach (var r in vm.Items.Where(i => i != null))
                 {
@@ -486,26 +473,30 @@ namespace YamyProject.Services.Implementations
                     }
                 }
             // 2) Generate invoice no (async)
-             var invoiceNo = vm.Invoce;
+             var Code =await GenerateVendorsInvoiceNoAsync();
+            var invoiceNo = Code.ToString();
             //if (vm.Invoce == null)
             //     invoiceNo = GenerateVendorsInvoiceNoAsync();
             // 3) Strategy + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
+            var FixedAssetId= vm.FixedAssetId;
             await strategy.ExecuteAsync(async () =>
             {
                 await using var tx = await _context.Database.BeginTransactionAsync();
                 try
                     {
-                    // 4) Header
-                    var Purchase = new TblPurchase
+                    if (vm.PurchaseType != "Fixed Assets")
+                        FixedAssetId = 0;
+                        // 4) Header
+                        var Purchase = new TblPurchase
                         {
                         Date = vm.Date,
                         VendorId = vm.VendorId ?? 0,
                         InvoiceId = invoiceNo,
+                        City = vm.Emirate ?? string.Empty,
                         WarehouseId = vm.WarehouseId ?? 0,
                         PoNum = vm.PONO ?? string.Empty,
                         BillTo = vm.VendorName ?? string.Empty,
-                        City = vm.Emirate ?? string.Empty,
                         SalesMan = vm.SalesMane ?? string.Empty,
                         ShipDate = vm.ShipDate,
                         ShipVia = vm.Via ?? string.Empty,
@@ -522,8 +513,9 @@ namespace YamyProject.Services.Implementations
                         CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State = 0,
-                      //  Discount = totalDiscount,
-                        Description = vm.Description ?? string.Empty
+                        PurchaseType= vm.PurchaseType,
+                        Description = vm.Description ?? string.Empty,
+                        FixedAssetCategoryId = FixedAssetId
                         };
                     _context.TblPurchases.Add(Purchase);
                     await _context.SaveChangesAsync(); // need sale.Id
@@ -546,9 +538,10 @@ namespace YamyProject.Services.Implementations
                         level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
                        level4Inventory: await _ListServices.DefaultAccountsSet("Inventory"),
                         invid: PurchaseId,
-                        invoiceNo: vm.Invoce ?? invoiceNo,
+                        invoiceNo:invoiceNo,
                         level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
                     await UpdateOrAddFixedAssets(PurchaseId, vm.FixedAssetId);
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Purchase Invoice", "PURCHASE", PurchaseId, "Added Purchase Invoice: " +  invoiceNo);
                     await tx.CommitAsync();
                     }
                 catch
@@ -558,6 +551,7 @@ namespace YamyProject.Services.Implementations
                     }
             });
             }
+      
         public async Task InsertInvItems(PurchaseInvoiceViewModel vm, int PurchaseId = 0, string invoiceNo = "")
             {
             var details = new List<TblPurchaseDetail>(vm.Items.Count);
@@ -574,7 +568,6 @@ namespace YamyProject.Services.Implementations
                     var lineBase = (price * qty) - disc;
                     var lineVat = (decimal)(lineBase * (vatPct / 100m));
                     var lineTot = lineBase + lineVat;
-
                     details.Add(new TblPurchaseDetail
                         {
                         PurchaseId = PurchaseId,
@@ -588,13 +581,13 @@ namespace YamyProject.Services.Implementations
                         Total = lineTot,
                         CostCenterId = r.CostCenterId ?? 0
                         });
-
                     // Inventory logic (no overlap, fully awaited)
                     if (!string.IsNullOrWhiteSpace(r.Type))
                         {
                         if (r.Type.Contains("inventory part", StringComparison.OrdinalIgnoreCase))
                             {
                             await InsertItemTransaction(r, vm.Date, PurchaseId.ToString(), invoiceNo, (int)vm.WarehouseId);
+                            AddItemCardDetails(r, vm.Date, PurchaseId.ToString(), invoiceNo, (int)vm.WarehouseId);
                             UpdateOnHandItemAsync(r.ItemId??0);
                             }               
                         // Cost Center per row (if present)
@@ -605,7 +598,7 @@ namespace YamyProject.Services.Implementations
                                 debit: (decimal)lineTot,
                                 credit:0,
                                 refId: PurchaseId.ToString(),
-                                type: "Purchase",
+                                type: "PURCHASE",
                                 description: "",
                                 costCenterId: r.CostCenterId.Value
                             );
@@ -639,21 +632,21 @@ namespace YamyProject.Services.Implementations
             var row = new TblItemTransaction
                 {
                 Date = date,
-                Type = vmRow.Type ?? "Purchase Invoice",
+                Type ="Purchase Invoice",
                 Reference = invId,
                 ItemId = vmRow.ItemId,
                 CostPrice = vmRow.CostPrice,
                 QtyIn = vmRow.QTY,
-                SalesPrice = vmRow.Price,
+                QtyInc = vmRow.QTY,
+                SalesPrice =0,
                 QtyOut = 0,
                 Description = $"Purchase Invoice No. {invoiceNo}",
                 WarehouseId = warehouseId
                 };
-
             _context.TblItemTransactions.Add(row);
             await _context.SaveChangesAsync();
-
              }
+        
         public async Task TransferSaleAsync(string formType, int invId, string poNoOrId)
             {
             if (string.IsNullOrEmpty(formType)) return;
@@ -666,6 +659,7 @@ namespace YamyProject.Services.Implementations
                         .SetProperty(q => q.VendorId, invId));
                 }
             }
+    
         public async Task Transaction(PurchaseInvoiceViewModel model, int level4PaymentCreditMethodId, int level4Inventory, int invid = 0, string invoiceNo = "", int level4VatId = 0)
             {
             invid = invid != 0 ? invid : model.Id;
@@ -681,18 +675,18 @@ namespace YamyProject.Services.Implementations
                 model.Date, accountId,  0,(int) model.TotaAmount,
                 invid, model.VendorId ?? 0,
                 model.InvoiceType == "Credit" ? "Purchase Invoice" : "Purchase Invoice Cash",
-                "Purchase", $"Purchase Invoice NO. {invoiceNo}",
+                "PURCHASE", $"Purchase Invoice NO. {invoiceNo}",
                 createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                VoucherNo: model.NextCode
+                VoucherNo: invoiceNo
             );
             // Revenue
             await AddTransactionEntry(
                 model.Date, level4Inventory, (int)model.TotalBeforeVat, 0, 
                 invid, 0,
-                model.InvoiceType == "Credit" ? "Purchase Invoice" : "Purchase Invoice Cash",
-                "Purchase", $"Purchase  For Invoice No. {invoiceNo}",
+                 "Purchase Invoice",
+                "PURCHASE", $"Purchase  For Invoice No. {invoiceNo}",
                 createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                VoucherNo: model.NextCode
+                VoucherNo: invoiceNo
             );
             // VAT
             if (model.TotalVat > 0)
@@ -700,10 +694,10 @@ namespace YamyProject.Services.Implementations
                 await AddTransactionEntry(
                     model.Date, level4VatId, (decimal)model.TotalVat, 0, 
                     invid, 0,
-                    model.InvoiceType == "Credit" ? "Purchase Invoice" : "Purchase Invoice Cash",
-                    "Purchase", $"Vat Input For Invoice No. {invoiceNo}",
+                     "Purchase Invoice",
+                    "PURCHASE", $"Vat Input For Invoice No. {invoiceNo}",
                     createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                    VoucherNo: model.NextCode
+                    VoucherNo: invoiceNo
                 );
                 }
             }
@@ -742,9 +736,7 @@ namespace YamyProject.Services.Implementations
                        VoucherNo = s.InvoiceId,
                        DATE = s.Date,
                        NAME = s.Vendors != null ? s.Vendors.Name : null
-
                 }).FirstOrDefaultAsync();
-
             if (PurchaseRow != null)
                 {
                 var FixedAsset = await _context.TblFixedAssets
@@ -829,6 +821,25 @@ namespace YamyProject.Services.Implementations
             }
         public async Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel Model)
             {
+            decimal totalBeforeVat = 0m, totalVat = 0m, netAmount = 0m, totalDiscount = 0m;
+            foreach (var r in Model.Items.Where(i => i != null))
+                {
+                if (r.ItemId != null && r.ItemId != 0)
+                    {
+                    var linePrice = r.CostPrice * r.QTY;
+                    var lineDisc = r.Disc;
+                    var lineBase = linePrice - lineDisc;
+                    var vatPct = (r.VatPersint ?? 0) / 100m;
+
+                    var lineVat = (decimal)(lineBase * vatPct);
+                    var lineTotal = lineBase + lineVat;
+
+                    totalBeforeVat += (decimal)lineBase;
+                    totalVat += lineVat;
+                    totalDiscount += lineDisc;
+                    netAmount += (decimal)lineTotal;
+                    }
+                }
             decimal paidAmount = 0;
             decimal? changeAmount = 0;
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -850,12 +861,13 @@ namespace YamyProject.Services.Implementations
                             changeAmount = paidAmount - Model.TotaAmount;
                             }
                         }
-                    var Sales = _context.TblPurchases.Find(Model.Id) ?? throw new KeyNotFoundException($"Purchase Invoice with ID {Model.Id} not found.");
+
+                    var Sales = _context.TblPurchases.Find(Model.Id);//?? throw new KeyNotFoundException($"Purchase Invoice with ID {Model.Id} not found.");
                         
                     Sales.Date = Model.Date;
                     Sales.VendorId = Model.VendorId ?? 0;
-                    Sales.InvoiceId = Model.Invoce; ;
-                    Sales.City = Model.Emirate ?? string.Empty; ;
+                    Sales.InvoiceId = Model.Invoce; 
+                    Sales.City = Model.Emirate ?? string.Empty; 
                     Sales.WarehouseId = Model.WarehouseId ?? 0;
                     Sales.PoNum = Model.PONO ?? string.Empty;
                     Sales.BillTo = Model.VendorName ?? string.Empty;
@@ -867,28 +879,22 @@ namespace YamyProject.Services.Implementations
                     Sales.AccountCashId = Model.AccountId ;
                     Sales.PaymentTerms = Model.PaymentTerm ;
                     Sales.PaymentDate = Model.DueTo;
-                    Sales.Vat = (decimal)Model.TotalVat;
-                    Sales.Total = (decimal)Model.TotalBeforeVat;
-                    Sales.Net = (decimal)Model.TotaAmount;
+                    Sales.Total = totalBeforeVat;
+                    Sales.Vat = totalVat;
+                    Sales.Net = netAmount;
                     Sales.Description = Model.Description ?? string.Empty;
-
-                    if (Model.Id == 0)
-                        {
-                        Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
-                        }
-                    else
-                        {
-                        Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
-                        }
-
+                    Sales.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+                    Sales.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                     Sales.Pay = paidAmount;
                     Sales.Change = (decimal)changeAmount;
+                    Sales.PurchaseType = Model.PurchaseType;
+                    if(Model.PurchaseType== "Fixed Assets")
+                    Sales.FixedAssetCategoryId = Model.FixedAssetId;
+
                     await _context.SaveChangesAsync();
 
                     //Delete existing details and transactions and item transactions and item card details and cost center transactions and 
-                    await ReturnItemsToInventory(Model.Id);
+                  //  await ReturnItemsToInventory(Model.Id);
                     await DeleteItemsFromInventory(Model.Id);
                     //insert the new details and transactions and item transactions and item card details and cost center transactions
                     await InsertInvItems(Model);
@@ -897,8 +903,11 @@ namespace YamyProject.Services.Implementations
                        level4Inventory: await _ListServices.DefaultAccountsSet("Inventory"),
                         invoiceNo: Model.Invoce,
                         level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
+                    await UpdateOrAddFixedAssets(Model.Id, Model.FixedAssetId);
 
-            await tx.CommitAsync();
+                    await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Update Purchase Invoice", "PURCHASE", Model.Id, "Update Purchase Invoice: " + Model.InvoiceNo);
+
+                    await tx.CommitAsync();
                     }
                 catch
                     {
@@ -907,84 +916,119 @@ namespace YamyProject.Services.Implementations
                     }
             });
          }
-        public async Task ReturnItemsToInventory(int PurchaseId)
-            {
-            var rows = await _context.TblPurchaseDetails
-                 .AsNoTracking()
-                 .Where(sd => sd.PurchaseId == PurchaseId)
-                 .Select(sd => new
-                     {
-                     Id = sd.ItemId,
-                     qty = sd.Qty ?? 0m,
-                     sd.Items.Type
-                     })
-                 .ToListAsync();
-            foreach (var r in rows)
-                {
-
-                if (!string.IsNullOrWhiteSpace(r.Type))
-                    {
-                    if (r.Type.Contains("inventory part", StringComparison.OrdinalIgnoreCase))
-                        {
-                        await _context.TblItems
-                       .Where(i => i.Id == r.Id)
-                       .ExecuteUpdateAsync(setters => setters
-                           .SetProperty(i => i.OnHand, i => i.OnHand + r.qty)
-                       );
-                        }
-                  
-                    }
-                }
-            }
         public async Task DeleteItemsFromInventory(int PurchaseId)
             {
-            var SalesDetails = await _context.TblPurchaseDetails
-                      .Where(d => d.PurchaseId == PurchaseId)
-                      .ToListAsync();
-            _context.TblPurchaseDetails.RemoveRange(SalesDetails);
-            await _context.SaveChangesAsync();
-
-
             var ItemTransactions = await _context.TblItemTransactions
-                     .Where(d => d.Reference == PurchaseId.ToString()&& d.Type== "Purchase Invoice")
-                     .ToListAsync();
+                    .Where(d => d.Reference == PurchaseId.ToString() && d.Type == "Purchase Invoice").ToListAsync();
             _context.TblItemTransactions.RemoveRange(ItemTransactions);
             await _context.SaveChangesAsync();
             var ItemCardDetails = await _context.TblItemCardDetails
-                     .Where(d => d.TransNo == PurchaseId && d.TransType == "Purchase Invoice")
-                     .ToListAsync();
+                    .Where(d => d.TransNo == PurchaseId && d.TransType == "Purchase Invoice").ToListAsync();
             _context.TblItemCardDetails.RemoveRange(ItemCardDetails);
             await _context.SaveChangesAsync();
-
+            var SalesDetails = await _context.TblPurchaseDetails
+                     .Where(d => d.PurchaseId == PurchaseId).ToListAsync();
+            _context.TblPurchaseDetails.RemoveRange(SalesDetails);
+            await _context.SaveChangesAsync();
             var CostCenterTransactions = await _context.TblCostCenterTransactions
-                     .Where(d => d.RefId == PurchaseId && d.Type == "Purchase")
-                     .ToListAsync();
+                   .Where(d => d.RefId == PurchaseId && d.Type == "Purchase")
+                   .ToListAsync();
             _context.TblCostCenterTransactions.RemoveRange(CostCenterTransactions);
             await _context.SaveChangesAsync();
-
             var Transactions = await _context.TblTransactions
-                     .Where(d => d.TransactionId == PurchaseId && d.Type == "Purchase")
-                     .ToListAsync();
+                .Where(d => d.TransactionId == PurchaseId && d.Type == "PURCHASE")
+                .ToListAsync();
             _context.TblTransactions.RemoveRange(Transactions);
             await _context.SaveChangesAsync();
 
             }
+
+        //public async Task ReturnItemsToInventory(int PurchaseId)
+        //    {
+        //    var rows = await _context.TblPurchaseDetails
+        //         .AsNoTracking()
+        //         .Where(sd => sd.PurchaseId == PurchaseId)
+        //         .Select(sd => new
+        //             {
+        //             Id = sd.ItemId,
+        //             qty = sd.Qty ?? 0m,
+        //             sd.Items.Type
+        //             })
+        //         .ToListAsync();
+        //    foreach (var r in rows)
+        //        {
+
+        //        if (!string.IsNullOrWhiteSpace(r.Type))
+        //            {
+        //            if (r.Type.Contains("inventory part", StringComparison.OrdinalIgnoreCase))
+        //                {
+        //                await _context.TblItems
+        //               .Where(i => i.Id == r.Id)
+        //               .ExecuteUpdateAsync(setters => setters
+        //                   .SetProperty(i => i.OnHand, i => i.OnHand + r.qty)
+        //               );
+        //                }
+
+        //            }
+        //        }
+        //    }
+
         public async Task UpdateOnHandItemAsync(int itemId)
-            {
-            // 1) Calculate on_hand from tbl_item_transaction
-            var onHand = await _context.TblItemTransactions
-                .Where(t => t.ItemId == itemId)
-                .SumAsync(t => (decimal?)(t.QtyIn - t.QtyOut)) ?? 0m; // handle null -> 0
-
-            // 2) Load item and update its OnHand field
-            var item = await _context.TblItems
-                .FirstOrDefaultAsync(i => i.Id == itemId);
-
-            if (item != null)
                 {
-                item.OnHand = onHand;
-                await _context.SaveChangesAsync();
+                // 1) Calculate on_hand from tbl_item_transaction
+                var onHand = await _context.TblItemTransactions
+                    .Where(t => t.ItemId == itemId)
+                    .SumAsync(t => (decimal?)(t.QtyIn - t.QtyOut)) ?? 0m; 
+
+                // 2) Load item and update its OnHand field
+                var item = await _context.TblItems
+                    .FirstOrDefaultAsync(i => i.Id == itemId);
+
+                if (item != null)
+                    {
+                    item.OnHand = onHand;
+                    await _context.SaveChangesAsync();
+                    }
                 }
+        public async Task AddItemCardDetails(PurchaseItemViewModel vmRow, DateOnly date, string invId, string invoiceNo, int warehouseId)
+            {
+            decimal debit = (decimal)(vmRow.QTY * vmRow.CostPrice);
+            decimal credit = 0 ;
+            var agg = await _context.TblItemCardDetails
+       .Where(c => c.ItemId == vmRow.ItemId)
+       .GroupBy(c => c.ItemId)
+       .Select(g => new
+           {
+           QtyBalance = g.Sum(x => (decimal?)((x.QtyIn ) - (x.QtyOut ))) ?? 0m,
+           Balance = g.Sum(x => (decimal?)((x.Debit ) - (x.Credit ))) ?? 0m
+           }).FirstOrDefaultAsync();
+            decimal previousQtyBalance = agg?.QtyBalance ?? 0m;
+            decimal previousBalance = agg?.Balance ?? 0m;
+
+            decimal qtyBalance =(decimal)(previousQtyBalance + (vmRow.QTY - 0));
+            decimal balance = previousBalance + (debit - credit);
+            var cardRow = new TblItemCardDetail
+                {
+                ItemId = (int)vmRow.ItemId,
+                Date = date,
+                WharehouseId = warehouseId,
+                InvNo = invoiceNo,
+                TransNo = int.Parse(invId),
+                TransType = "Purchase Invoice",
+                Description = $"Purchase Invoice No. {invoiceNo}",
+                Price = (decimal)vmRow.CostPrice,
+                QtyIn = (decimal)vmRow.QTY,
+                QtyOut = 0,
+                QtyBalance = qtyBalance,
+                Debit = debit,
+                Credit = credit,
+                Balance = balance,
+                FifoQty = 0,
+                FifoCost = 0
+                };
+            _context.TblItemCardDetails.Add(cardRow);
+            await _context.SaveChangesAsync();
+
             }
 
         }

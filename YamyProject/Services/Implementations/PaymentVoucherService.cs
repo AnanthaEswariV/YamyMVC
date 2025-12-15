@@ -32,8 +32,8 @@
               .Include(s => s.Transaction)
               .Include(s => s.CreditAccount)
               .Include(s => s.DebitAccount)
-              .Include(s => s.PaymentVoucher)
-              .Include(s => s.Customer)
+              .Include(s => s.PaymentVoucherDetail)
+         //     .Include(s => s.Customer)
               .OrderBy(s => s.Date)
               .AsQueryable();
 
@@ -47,17 +47,16 @@
             if (Ending != default)
                 query = query.Where(s => s.Date <= Ending);
 
-
             //       const string Collation = "utf8mb4_0900_ai_ci"; // or your column’s exact collation
 
             var sales = await query
                 .OrderBy(s => s.Date)
                 .Select(s => new
                     {
-                    s.PaymentVoucher.Id,
-                    s.PaymentVoucher.Date,
+                    s.PaymentVoucherDetail.Id,
+                    s.PaymentVoucherDetail.Date,
                     ReceiptCode = s.Code,
-                    JVNO = s.PaymentVoucher.Id.ToString("D4"),
+                    JVNO = s.PaymentVoucherDetail.Id.ToString("D4"),
                     s.Amount,
                     DebitAccount = s.DebitAccount.Name,
                     CreditAccount = s.CreditAccount.Name
@@ -88,7 +87,7 @@
             }
         public async Task<string> GenerateNextPaymentCode()
             {
-            var prefix = "0000"; // Prefix for Credit Note
+            var prefix = "0000"; 
             var lastCodeValue = await _context.TblPaymentVouchers
                .Select(s => s.Code.Substring(3))
                .MaxAsync();
@@ -98,7 +97,7 @@
             }
         public async Task<string> GenerateNextPaymentId()
             {
-            string newCode = "0"; // Prefix for Credit Note
+            string newCode = "0"; 
             var lastCodeValue = await _context.TblPaymentVouchers
                .Select(s => s.Code.Substring(3))
                .MaxAsync();
@@ -108,23 +107,23 @@
         // Create Payment Voucher
         public async Task CreatePvAsync(ReceiveVoucherViewModel Model)
             {
-            if (Model is null) throw new ArgumentNullException(nameof(Model));
-            if (Model.Items is null || Model.Items.Count == 0)
-                throw new InvalidOperationException("Invoice must contain at least one item.");
+            //if (Model is null) throw new ArgumentNullException(nameof(Model));
+            //if (Model.Items is null || Model.Items.Count == 0)
+            //    throw new InvalidOperationException("Invoice must contain at least one item.");
 
             // 1) Generate invoice no (async)
             var invoiceNo =  await GenerateNextPaymentCode();
-
+            int CreditCostCenterId, DebitCostCenterId;
             // 2) Voucher + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
 
+
             await strategy.ExecuteAsync(async () =>
             {
-
                 await using var tx = await _context.Database.BeginTransactionAsync();
                 try
                     {// 3) Payment Voucher
-                    var New_PaymentVoucher = new TblPaymentVoucher
+                    var NewPaymentVoucher = new TblPaymentVoucher
                         {
                         Code = invoiceNo,
                         Date = Model.Date,
@@ -133,29 +132,32 @@
                         Amount = Model.Amount,
                         IsSubcontractor= Model.IsSubcontractor,
                         DebitAccountId = Model.DebitAccountId,
-                        DebitCostCenterId = Model.DebitCostCenterId,
+                        DebitCostCenterId = Model.DebitCostCenterId??0,
                         Description = Model.Debit.Note,
                         CreditAccountId = Model.CreditAccountId,
-                        CreditCostCenterId = Model.CreditCostCenterId,
+                        CreditCostCenterId = Model.CreditCostCenterId??0,
+                        //Bank
                         BankId = Model.Debit.BankId,
                         BankAccountId = Model.Debit.BankAccountId,
                         BookNo = Model.Debit.BookNo,
                         CheckName = Model.Debit.ChequeName,
                         CheckNo = Model.Debit.ChequeNo,
                         CheckDate = Model.Debit.ChequeDate,
+                        //Trans
                         TransDate = Model.Debit.TransFerDate,
                         TransName = Model.Debit.TRNSNAme,
                         TransRef = Model.Debit.TRNSRef,
+                        //
                         CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0 , // TODO: Current User
                         CreatedDate = DateOnly.FromDateTime(DateTime.Now),
-                        //  VendorId = Model.vendorId,
-                        //  DebitEmployeeId = Model.DebitEmployeeId,
+                        
                         State = 0
                         };
-                    _context.TblPaymentVouchers.Add(New_PaymentVoucher);
+                    _context.TblPaymentVouchers.Add(NewPaymentVoucher);
+
                     await _context.SaveChangesAsync(); // need sale.Id
-                    var PaymentVoucherId = New_PaymentVoucher.Id;
-                    if (PaymentVoucherId <= 0)
+                    var PaymentVoucherId = NewPaymentVoucher.Id;
+                    if (PaymentVoucherId <= 0 || PaymentVoucherId==null)
                         throw new InvalidOperationException("Failed to create Payment Voucher.");
                     // 4) Cheque
                     if (Model.PaymentMethods.FirstOrDefault(i => i.Value == Model.PaymentMethod?.ToString())?.Text == "Cheque")
@@ -171,8 +173,6 @@
                             CheckName = Model.Debit.ChequeName,
                             Amount = Model.Amount,
                             State = "New",
-                            //CreatedBy = 1, // TODO: Current User
-                            //CreatedDate = DateOnly.FromDateTime(DateTime.Now)
                             };
                         _context.TblCheckDetails.Add(New_Cheque);
                         await _context.SaveChangesAsync();
@@ -182,12 +182,13 @@
                     //7) Add User Log
                     await _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Insert Payment Voucher", "Payment Voucher", PaymentVoucherId, "Insered Payment Voucher: " + invoiceNo);
                     //8)Debit Costcenter Entry
-                    await InsertCostCenterTransaction(Model.Date, Model.Amount, 0, PaymentVoucherId, "Payment", "Payment Debit Entry", (int)Model.Debit.CostCenterId);
+                //    DebitCostCenterId = (int)Model.Debit.CostCenterId ?? 0;
+                    await InsertCostCenterTransaction   (Model.Date, Model.Amount, 0, PaymentVoucherId, "Payment", "Payment Debit Entry", (int)Model.DebitCostCenterId);
                     //9)Credit Costcenter Entry
-                    await InsertCostCenterTransaction(Model.Date, 0, Model.Amount, PaymentVoucherId, "Payment", "Payment Credit Entry", (int)Model.Credit.CostCenterId);
+                    CreditCostCenterId = Model.CreditCostCenterId ?? 0;
+                    await InsertCostCenterTransaction(Model.Date, 0, Model.Amount, PaymentVoucherId, "Payment", "Payment Credit Entry", (int)CreditCostCenterId);
                     await _context.SaveChangesAsync();
                     await tx.CommitAsync();
-
                     }
                 catch
                     {
@@ -198,91 +199,90 @@
             }
         private async Task AddPaymentVoucherDetailsAsync(ReceiveVoucherViewModel Model, int PaymentVoucherId, string invoiceNo)
             {
-
             var details = new List<TblPaymentVoucherDetail>(Model.Items.Count);
             var Type = "";
-
-
             foreach (var i in Model.Items.Where(i => i != null))
                 {
-                details.Add(new TblPaymentVoucherDetail
+                if (i.Pay != null || i.Pay != false)
                     {
-                    PaymentId = PaymentVoucherId,
-                    Date = i.Date,
-                    HumId = i.humId,
-                    InvCode = i.InvoiceNo,
-                    InvId = i.invId,
-                    Payment = i.Payment,
-                    Description = i.Description,
-                    VoucherType = i.VoucherType
-                    }
-                 );
-                _context.TblPaymentVoucherDetails.AddRange(details);
-
-                if (Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text == "Employee")
-                    {
-                    if (i.VoucherType == "Salary")
+                    details.Add(new TblPaymentVoucherDetail
                         {
-                        var affected = await _context.TblAttendanceSalaries
-                            .Where(t => t.Id == i.invId)
-                            .ExecuteUpdateAsync(updates => updates
-                                .SetProperty(t => t.Pay, i.Payment)
-                                .SetProperty(t => t.Change, i.Amount - i.Payment)
-                           );
-                        Type = "Employee Salary Payment";
+                        PaymentId = PaymentVoucherId,
+                        Date = i.Date,
+                        HumId = i.humId,
+                        Total = i.Amount,
+                        InvCode = i.InvoiceNo,
+                        InvId = i.invId,
+                        Payment = i.Payment,
+                        Description = i.Description,
+                        VoucherType = i.VoucherType
                         }
-                    else if (i.VoucherType == "Employee Loan Payment")
+                     );
+                    _context.TblPaymentVoucherDetails.AddRange(details);
+
+                    if (Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text == "Employee")
                         {
+                        if (i.VoucherType == "Salary")
+                            {
+                            var affected = await _context.TblAttendanceSalaries
+                                .Where(t => t.Id == i.invId)
+                                .ExecuteUpdateAsync(updates => updates
+                                    .SetProperty(t => t.Pay, t => t.Pay + i.Payment)
+                                    .SetProperty(t => t.Change, i.Amount - i.Payment)
+                               );
+                            Type = "Employee Salary Payment";
+                            }
+                        else if (i.VoucherType == "Employee Loan Payment")
+                            {
+                            var affected = await _context.TblLoans
+                                .Where(t => t.EmployeeId == i.invId.ToString() && t.LoanDate == i.Date)
+                                .ExecuteUpdateAsync(updates => updates
+                                    .SetProperty(t => t.Pay, t => t.Pay + i.Payment)
+                                    .SetProperty(t => t.Change, i.Amount - i.Payment));
 
-                        var affected = await _context.TblLoans
-                            .Where(t => t.EmployeeId == i.invId.ToString() && t.LoanDate == i.Date)
-                            .ExecuteUpdateAsync(updates => updates
-                                .SetProperty(t => t.Pay, i.Payment)
-                                .SetProperty(t => t.Change, i.Amount - i.Payment));
-                        Type = "Employee Loan Payment";
+                            Type = "Employee Loan Payment";
+                            }
+                        await InsertJournals(Type, Model.DebitEmployeeId.ToString(), i.VoucherType, i.Payment.ToString(), Model.Date, (int)Model.DebitAccountId, (int)Model.CreditAccountId, PaymentVoucherId, invoiceNo);
                         }
-                    await InsertJournals(Type, Model.DebitEmployeeId.ToString(), i.VoucherType, i.Payment.ToString(), Model.Date, (int)Model.Debit.AccountId, PaymentVoucherId, invoiceNo);
-                    }
-                else if (Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text != "Employee")
-                    {
-                    decimal? net = await _context.TblPurchases
-                     .AsNoTracking()
-                     .Where(p => p.Id == i.invId)
-                     .Select(p => (decimal?)p.Net)
-                     .FirstOrDefaultAsync() ?? 0m;
-                    decimal totalPaid = await _context.TblPaymentVoucherDetails
-                      .AsNoTracking()
-                      .Where(d => d.InvId == i.invId)
-                      .SumAsync(d => (decimal?)d.Payment) ?? 0m;
+                    else if (Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text != "Employee")
+                        {
+                        decimal? net = await _context.TblPurchases
+                         .AsNoTracking()
+                         .Where(p => p.Id == i.invId)
+                         .Select(p => (decimal?)p.Net)
+                         .FirstOrDefaultAsync() ?? 0m;
+                        decimal totalPaid = await _context.TblPaymentVoucherDetails
+                          .AsNoTracking()
+                          .Where(d => d.InvId == i.invId)
+                          .SumAsync(d => (decimal?)d.Payment) ?? 0m;
 
-                    var affected = await _context.TblPurchases
-                              .Where(t => t.Id == i.invId)
-                              .ExecuteUpdateAsync(updates => updates
-                                  .SetProperty(t => t.Pay, totalPaid)
-                                  .SetProperty(t => t.Change, net - totalPaid )
-                             );
-                    if (Model.IsSubcontractor)
-                        Type = "Subcontractor Payment";
-                    else
-                        Type = "Vendor Payment";
-                    await InsertJournals(Type, Model.vendorId.ToString(), i.VoucherType, i.Payment.ToString(), Model.Date, (int)Model.Debit.AccountId, PaymentVoucherId, invoiceNo);
-                    }
-                if (Model.Items == null || Model.Items.Count == 0)
-                    {
-                    throw new InvalidOperationException("No items to add to Payment Voucher Details.");
+                        var affected = await _context.TblPurchases
+                                  .Where(t => t.Id == i.invId)
+                                  .ExecuteUpdateAsync(updates => updates
+                                      .SetProperty(t => t.Pay, totalPaid)
+                                      .SetProperty(t => t.Change, net - totalPaid)
+                                 );
+                        if (Model.IsSubcontractor)
+                            Type = "Subcontractor Payment";
+                        else
+                            Type = "Vendor Payment";
+                        await InsertJournals(Type, Model.vendorId.ToString(), i.VoucherType, i.Payment.ToString(), Model.Date, (int)Model.DebitAccountId, (int)Model.CreditAccountId, PaymentVoucherId, invoiceNo);
+                        }
+                    //if (Model.Items == null || Model.Items.Count == 0)
+                    //    {
+                    //    throw new InvalidOperationException("No items to add to Payment Voucher Details.");
+                    //    }
                     }
                 }
-
             await _context.SaveChangesAsync();
-
             }
         // Insert Journals
-        public async Task InsertJournals(string Type, string humId, string voucherType, string amount, DateOnly Date, int AccountId, int TransactionId, string Code)
+        public async Task InsertJournals(string Type, string humId, string voucherType, string amount, DateOnly Date, int DebitAccountId, int CreditAccountId, int TransactionId, string Code)
             {
             //The Debit Entry
             await AddTransactionEntry(
                 Date,
-                AccountId,
+                DebitAccountId,
                 decimal.Parse(amount),
                 0,
                 TransactionId,
@@ -292,12 +292,12 @@
                 "Payment Voucher NO" + Code,
                 _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,//Add The User ID
                 DateOnly.FromDateTime(DateTime.Now),
-                VoucherNo: Code
+                Code
                 );
             //The Credit Entry
             await AddTransactionEntry(
                 Date,
-                AccountId,
+                CreditAccountId,
                 0,
                 decimal.Parse(amount),
                 TransactionId,
@@ -335,7 +335,7 @@
             await _context.SaveChangesAsync();
             }
         //Cost Center Transaction
-        public async Task InsertCostCenterTransaction(DateOnly Date, decimal Debit, decimal Credit, int RefId, string Type, string Description, int CostCenterId)
+        public async Task InsertCostCenterTransaction(DateOnly Date, decimal Debit, decimal Credit, int RefId, string Type, string Description, int CostCenterId=0)
             {
             var CostCenter = new TblCostCenterTransaction
                 {
@@ -363,7 +363,10 @@
                     {
                     //1) Update Payment Voucher
                     var PaymentVoucher = _context.TblPaymentVouchers.Find(Model.Id);
-                    if (PaymentVoucher == null) throw new KeyNotFoundException($"Sales Invoice with ID {Model.Id} not found.");
+                    if (PaymentVoucher == null) 
+                        {
+                      //  throw new KeyNotFoundException($"Sales Invoice with ID {Model.Id} not found."); 
+                        }
                     PaymentVoucher.Date = Model.Date;
                     PaymentVoucher.Code = Model.VoucherNo;
                     PaymentVoucher.Type = Model.PaymentTypes.FirstOrDefault(i => i.Value == Model.PaymentType?.ToString())?.Text;
@@ -374,15 +377,18 @@
                     PaymentVoucher.Description = Model.Debit.Note;
                     PaymentVoucher.CreditAccountId = Model.CreditAccountId;
                     PaymentVoucher.CreditCostCenterId = Model.CreditCostCenterId;
+                    //Bank
                     PaymentVoucher.BankId = Model.Debit.BankId;
                     PaymentVoucher.BankAccountId = Model.Debit.BankAccountId;
                     PaymentVoucher.BookNo = Model.Debit.BookNo;
                     PaymentVoucher.CheckName = Model.Debit.ChequeName;
                     PaymentVoucher.CheckNo = Model.Debit.ChequeNo;
                     PaymentVoucher.CheckDate = Model.Debit.ChequeDate;
+                    //Trans
                     PaymentVoucher.TransDate = Model.Debit.TransFerDate;
                     PaymentVoucher.TransName = Model.Debit.TRNSNAme;
                     PaymentVoucher.TransRef= Model.Debit.TRNSRef;
+                    //
                     PaymentVoucher.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0; // TODO: Current User
                     PaymentVoucher.ModifiedDate = DateOnly.FromDateTime(DateTime.Now);
                     await _context.SaveChangesAsync();
@@ -391,11 +397,11 @@
                     var Transactions = await _context.TblTransactions
                   .Where(d => d.TransactionId == Model.Id && d.Type == "PAYMENT")
                   .ToListAsync();                   
+                   _context.TblTransactions.RemoveRange(Transactions);
                     var PaymentVoucherDetails = await _context.TblPaymentVoucherDetails
                    .Where(d => d.PaymentId ==Model.Id)
                    .ToListAsync();
                     _context.TblPaymentVoucherDetails.RemoveRange(PaymentVoucherDetails);
-                   _context.TblTransactions.RemoveRange(Transactions);
                     await _context.SaveChangesAsync();
                     //3) Cheque
                     if (Model.PaymentMethods.FirstOrDefault(i => i.Value == Model.PaymentMethod?.ToString())?.Text== "Cheque")
@@ -416,9 +422,9 @@
                                            .SetProperty(c => c.Amount, Model.Amount)
                                            .SetProperty(c => c.PvcNo, Model.Id)
                                            .SetProperty(c => c.CheckType, "Payment")
-                                           .SetProperty(c => c.CheckId, Model.Credit.BookNo)
-                                           
-                                       );
+                                           .SetProperty(c => c.CheckId, Model.Credit.BookNo));
+                            await _context.SaveChangesAsync();
+
                             }
                         else
                             {
@@ -437,22 +443,18 @@
                                 //CreatedDate = DateOnly.FromDateTime(DateTime.Now)
                                 };
                             _context.TblCheckDetails.Add(New_Cheque);
-                            await _context.SaveChangesAsync();
-
-                            }
+                            await _context.SaveChangesAsync();}
                             }
                     //4) Transfer
-                    else if (Model.PaymentMethods.FirstOrDefault(i => i.Value == Model.PaymentMethod?.ToString())?.Text== "Transfer")
-                        { }
+                    //else if (Model.PaymentMethods.FirstOrDefault(i => i.Value == Model.PaymentMethod?.ToString())?.Text== "Transfer")
+                    //    { }
                     //5) Payment Voucher Details + Update Employ + Update Vendor(Purchase) + Entry journals
                     await AddPaymentVoucherDetailsAsync(Model, (int)Model.Id, Model.VoucherNo);
 
                     var PaymentCostCenter = await _context.TblCostCenterTransactions
-                 .Where(d => d.RefId == Model.Id&& d.Type== "Payment")
-                 .ToListAsync();
+                    .Where(d => d.RefId == Model.Id&& d.Type== "Payment")
+                    .ToListAsync();
                     _context.TblCostCenterTransactions.RemoveRange(PaymentCostCenter);
-
-
                     //6)Debit Costcenter Entry
                     await InsertCostCenterTransaction(Model.Date, Model.Amount, 0, (int)Model.Id, "Payment", "Payment Debit Entry", (int)Model.Debit.CostCenterId);
                     //7)Credit Costcenter Entry
@@ -469,15 +471,14 @@
                     }
             });
          }
-
         public async Task<ReceiveVoucherViewModel> GetEditAsync(int id)
             {
             var PaymentVoucher = await _context.TblPaymentVouchers
                 .AsNoTracking()
                 .Where(s => s.Id == id)
                 .Include(s => s.Transaction)
-                .Include(s => s.PaymentVoucher)
-                .Include(s => s.Customer)
+                .Include(s => s.PaymentVoucherDetail)
+             //   .Include(s => s.Customer)
                 .Select(s => new ReceiveVoucherViewModel
                     {
                     Id = s.Id,
@@ -508,19 +509,19 @@
                         ChequeNo = s.CheckNo,
                         ChequeDate = s.CheckDate
                         },
-                    Items = s.PaymentVoucher == null
+                    Items = s.PaymentVoucherDetail == null
                               ? new List<RvItemViewModel>()
                               : new List<RvItemViewModel> {
                                   new RvItemViewModel {
                                       SN = 1,
-                                      humId = s.PaymentVoucher.HumId,
-                                      invId = s.PaymentVoucher.InvId,
-                                      Date = (DateOnly)s.PaymentVoucher.Date!,
+                                      humId = s.PaymentVoucherDetail.HumId,
+                                      invId = s.PaymentVoucherDetail.InvId,
+                                      Date = (DateOnly)s.PaymentVoucherDetail.Date!,
                                       InvoiceNo = s.Code,
-                                      Amount = (decimal)s.PaymentVoucher.Total!,
-                                      Payment = (decimal)s.PaymentVoucher.Payment!,
-                                      Description = s.PaymentVoucher.Description,
-                                      VoucherType =s.PaymentVoucher.VoucherType
+                                      Amount = (decimal)s.PaymentVoucherDetail.Total!,
+                                      Payment = (decimal)s.PaymentVoucherDetail.Payment!,
+                                      Description = s.PaymentVoucherDetail.Description,
+                                      VoucherType =s.PaymentVoucherDetail.VoucherType
                                       } }}
                                   )
                 .FirstOrDefaultAsync();

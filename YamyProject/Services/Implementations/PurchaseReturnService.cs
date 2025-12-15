@@ -10,8 +10,6 @@
         private readonly IListServices _ListServices = listServices;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
         private readonly IGlobalService _GlobalService = GlobalService;
-
-
         public async Task<IEnumerable<PurchaseRowViewModel>> GetPurchaseREturnAsync(string selectVendor = null, bool Custmer = true, DateOnly From = default, DateOnly To = default, bool Date = true, string selectionMethod = "Default", string selectionMethodPay = null, bool Pay = true)
             {
             if (Custmer == true)
@@ -26,13 +24,11 @@
                     {
                     To = DateOnly.FromDateTime(DateTime.Today);
                     }
-
                 Starting = From;
                 Ending = To;
                 }
             if (Pay == true)
                 PayMethod = selectionMethodPay;
-
             if (selectionMethod == "Default")
                 return await GetDefaultReportAsync();
             else
@@ -40,33 +36,25 @@
             }
         public async Task<IEnumerable<PurchaseRowViewModel>> GetDefaultReportAsync()
             {
-            //var transactions = await _context.TblTransactions.ToListAsync();
-
             var query = _context.TblPurchaseReturns
               .Where(s => s.State == 0)
               .Include(s => s.Transaction)
               .Include(s => s.Vendor)
               .OrderBy(s => s.Date)
               .AsQueryable();
-
             // Apply Vendor filter if provided
             if (!string.IsNullOrEmpty(Vendor))
                 query = query.Where(s => s.VendorId == int.Parse(Vendor) || s.Vendor.Name == Vendor);
-
             // Apply Starting date filter if provided
             if (Starting != default)
                 query = query.Where(s => s.Date >= Starting);
-
             // Apply Ending date filter if provided
             if (Ending != default)
                 query = query.Where(s => s.Date <= Ending);
-
             // Apply Payment Method filter if provided
             if (!string.IsNullOrEmpty(PayMethod))
                 query = query.Where(s => s.PaymentMethod == PayMethod);
-
-            const string Collation = "utf8mb4_0900_ai_ci"; // or your column’s exact collation
-
+            const string Collation = "utf8mb4_0900_ai_ci";
             var sales = await query
     .Select(s => new
         {
@@ -153,8 +141,7 @@
             if (!string.IsNullOrEmpty(PayMethod))
                 query = query.Where(s => s.PaymentMethod == PayMethod);
 
-            const string Collation = "utf8mb4_0900_ai_ci"; // or your column’s exact collation
-
+            const string Collation = "utf8mb4_0900_ai_ci"; 
             // Project into anonymous type with customer and details
             var sales = await query
                 .Select(s => new
@@ -272,7 +259,6 @@
         {
 
             var vm = new PurchaseInvoiceViewModel();
-            // if (sale == null) throw new KeyNotFoundException($"Sale {id} not found.");
 
                 var sale = await _context.TblPurchaseReturns
                                   .Include(s => s.PurchaseReturnDetail)
@@ -318,19 +304,18 @@
             vm.Accounts = AccountList;
             vm.CostCenters = CostCenterList;
             vm.Vat = VatList;
-            //    await PopulateLookupsAsync(vm);
             return vm;
             }
         public async Task CreateTaxInvoiceAsync(PurchaseInvoiceViewModel vm)
             {
             // 0) Guards
-            if (vm is null)
-                {
-                throw new ArgumentNullException(nameof(vm));
-                }
+            //if (vm is null)
+            //    {
+            //    throw new ArgumentNullException(nameof(vm));
+            //    }
 
-            if (vm.Items is null || vm.Items.Count == 0)
-                throw new InvalidOperationException("Invoice must contain at least one item.");
+            //if (vm.Items is null || vm.Items.Count == 0)
+            //    throw new InvalidOperationException("Invoice must contain at least one item.");
             // 1) Server-side totals
             decimal totalBeforeVat = 0m, totalVat = 0m, netAmount = 0m, totalDiscount = 0m;
             foreach (var r in vm.Items.Where(i => i != null))
@@ -352,9 +337,7 @@
                     }
                 }
             // 2) Generate invoice no (async)
-            var invoiceNo = vm.Invoce;
-            if (vm.Invoce == null)
-                 invoiceNo = await GenerateReturnInvoiceNoAsync();
+            var invoiceNo = await GenerateReturnInvoiceNoAsync();
             // 3) Strategy + Transaction
             var strategy = _context.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
@@ -368,10 +351,10 @@
                         Date = vm.Date,
                         VendorId = vm.VendorId ?? 0,
                         InvoiceId = invoiceNo,
+                        City = vm.Emirate ?? string.Empty,
                         WarehouseId = vm.WarehouseId ?? 0,
                         PoNum = vm.PONO ?? string.Empty,
                         BillTo = vm.VendorName ?? string.Empty,
-                        City = vm.Emirate ?? string.Empty,
                         SalesMan = vm.SalesMane ?? string.Empty,
                         ShipDate = vm.ShipDate,
                         ShipVia = vm.Via ?? string.Empty,
@@ -388,7 +371,6 @@
                         CreatedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,
                         CreatedDate = DateOnly.FromDateTime(DateTime.UtcNow),
                         State = 0,
-                        //  Discount = totalDiscount,
                         Description = vm.Description ?? string.Empty
                         };
                     _context.TblPurchaseReturns.Add(Purchase);
@@ -396,7 +378,6 @@
                     var PurchaseId = Purchase.Id;
                     if (PurchaseId == 0)
                         throw new InvalidOperationException("Failed to create sale record.");
-                                      
                     // 5) Details (batch add), then inventory moves per line
                     await InsertInvItems(vm, PurchaseId, invoiceNo);
                     // 6) Transfer flags + accounting entries
@@ -404,8 +385,8 @@
                         level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
                         level4PurchaseReturnId: await _ListServices.DefaultAccountsSet("PurchaseReturn"),
                         invid: PurchaseId,
-                        invoiceNo: vm.Invoce ?? invoiceNo,
-                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Input"));
+                        invoiceNo:  invoiceNo,
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
                  _GlobalService.LogAudit(_httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, "Add Purchase Return Invoice", "Purchase Return", PurchaseId, "Added Purchase Return Invoice No. " + invoiceNo);
                     await tx.CommitAsync();
                     }
@@ -416,19 +397,17 @@
                     }
             });
             }
-
         public async Task UpdateTaxInvoiceAsync(PurchaseInvoiceViewModel Model)
             {
             decimal paidAmount = 0;
             decimal? changeAmount = 0;
             var strategy = _context.Database.CreateExecutionStrategy();
-
             await strategy.ExecuteAsync(async () =>
             {
                 await using var tx = await _context.Database.BeginTransactionAsync();
                 try
-                    {                
-                    var Purchase = _context.TblPurchaseReturns.Find(Model.Id) ?? throw new KeyNotFoundException($"Purchase Invoice with ID {Model.Id} not found.");
+                    {
+                    var Purchase = _context.TblPurchaseReturns.Find(Model.Id);//?? throw new KeyNotFoundException($"Purchase Invoice with ID {Model.Id} not found.");
                     Purchase.Date = Model.Date;
                     Purchase.VendorId = Model.VendorId ?? 0;
                     Purchase.InvoiceId = Model.Invoce; ;
@@ -448,22 +427,11 @@
                     Purchase.Total = (decimal)Model.TotalBeforeVat;
                     Purchase.Net = (decimal)Model.TotaAmount;
                     Purchase.Description = Model.Description ?? string.Empty;
-
-                    if (Model.Id == 0)
-                        {
-                        Purchase.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Purchase.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
-                        }
-                    else
-                        {
-                        Purchase.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                        Purchase.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
-                        }
-
+                    Purchase.ModifiedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+                    Purchase.ModifiedBy = _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
                     Purchase.Pay = paidAmount;
                     Purchase.Change = (decimal)changeAmount;
                     await _context.SaveChangesAsync();
-
                     //Delete existing details and transactions and item transactions and item card details and cost center transactions and 
                     await ReturnItemsToInventory(Model.Id);
                     await DeleteItemsFromInventory(Model.Id);
@@ -472,9 +440,8 @@
                     await Transaction(Model,
                          level4PaymentCreditMethodId: await _ListServices.DefaultAccountsSet("Vendor"),
                         level4PurchaseReturnId: await _ListServices.DefaultAccountsSet("PurchaseReturn"),
-                        invoiceNo: Model.Invoce,
-                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Input"));
-
+                        invoiceNo: Model.Invoce, invid: Model.Id,
+                        level4VatId: await _ListServices.DefaultAccountsSet("Vat Output"));
                     await tx.CommitAsync();
                     }
                 catch
@@ -484,12 +451,9 @@
                     }
             });
             }
-
         private static PurchaseInvoiceViewModel MapPurchaseToViewModel(TblPurchaseReturn s)
             {
-            // Coalesce details to an empty list to avoid NRE on OrderBy/Select
             var details = s.PurchaseReturnDetail ?? [];
-
             return new PurchaseInvoiceViewModel
                 {
                 Invoce = s.InvoiceId,
@@ -511,39 +475,35 @@
                 TotalVat = s.Vat,
                 TotaDiscount = 0,
                 TotaAmount = s.Net,
-
                 Items = [.. s.PurchaseReturnDetail
                     .OrderBy(d => d.Id)
 
                     .Select(d =>
                     {
-                        // null-safe access for the navigation 'Items'
-
-                        // If your schema has nullable decimals, coalesce to 0m as needed.
                         var qty = d.Qty;
                         var price = d.CostPrice;
                         var disc = 0;
-                        var vatAmt = d.Vatp;   // amount (keep as-is if that’s your schema)
+                        var vatAmt = d.Vatp;  
                         var netPrice = (price * qty) - disc + vatAmt;
 
                         return new PurchaseItemViewModel
                             {
                             Id = d.Id,
-                            ItemId = d.ItemId ?? 0,                         // if non-nullable in DB, make model int (not int?) and remove ??
-                            ItemCode = d.Items.Code ?? string.Empty,       // null-safe
-                            ItemName = d.Items.Name ?? string.Empty,       // null-safe
-                            Method = d.Items.Method ?? string.Empty,       // null-safe
-                            Type = d.Items.Type ?? string.Empty,       // null-safe
+                            ItemId = d.ItemId ?? 0,                        
+                            ItemCode = d.Items.Code ?? string.Empty,       
+                            ItemName = d.Items.Name ?? string.Empty,      
+                            Method = d.Items.Method ?? string.Empty,      
+                            Type = d.Items.Type ?? string.Empty,      
                             QTY = d.Qty,
                             CostPrice = d.CostPrice,
                             Disc = 0,
                             NetPrice = netPrice,
-                            VatPersint = d.Vat,                                  // percent (if that’s your schema)
-                            VatAmonut = d.Vatp,                                 // amount
+                            VatPersint = d.Vat,                                
+                            VatAmonut = d.Vatp,                                
                             Amount = d.Total,
                             Price = d.Price,
-                            WarehouseId = d.Items.WarehouseId,                  // if VM property is int? use: it?.WarehouseId
-                            CostCenterId = d.CostCenterId                          // if nullable in DB, use: d.CostCenterId ?? 0
+                            WarehouseId = d.Items.WarehouseId,                 
+                            CostCenterId = d.CostCenterId                          
                             };
                     })]
                 };
@@ -564,7 +524,6 @@
                     var lineBase = (price * qty) - disc;
                     var lineVat = (decimal)(lineBase * (vatPct / 100m));
                     var lineTot = lineBase + lineVat;
-
                     details.Add(new TblPurchaseReturnDetail
                         {
                         PurchaseId = PurchaseId,
@@ -581,13 +540,14 @@
                     // Batch insert details then save once
                     _context.TblPurchaseReturnDetails.AddRange(details);
                     await _context.SaveChangesAsync();
-
                     // Inventory logic (no overlap, fully awaited)
                     if (!string.IsNullOrWhiteSpace(r.Type))
                         {
                         if (r.Type.Contains("inventory part", StringComparison.OrdinalIgnoreCase))
                             {
                             await InsertItemTransaction(r, vm.Date, PurchaseId.ToString(), invoiceNo, (int)vm.WarehouseId);
+                            await UpdateOnHandItemAsync(r.ItemId ?? 0);
+                            await AddItemCardDetails(r, vm.Date, PurchaseId.ToString(), invoiceNo, (int)vm.WarehouseId);
                             }
                         // Cost Center per row (if present)
                         if (r.CostCenterId is not null)
@@ -606,7 +566,6 @@
                     
                     }
                 }
-
             }
         public async Task InsertItemTransaction(PurchaseItemViewModel vmRow, DateOnly date, string invId,string invoiceNo,int warehouseId)
             {
@@ -618,16 +577,70 @@
                 ItemId = vmRow.ItemId,
                 CostPrice = vmRow.CostPrice,
                 QtyIn = 0,
+                QtyInc=0,
                 SalesPrice = vmRow.Price,
                 QtyOut = vmRow.QTY,
                 Description = $"Purchase Return Invoice No. {invoiceNo}",
                 WarehouseId = warehouseId
                 };
-
             _context.TblItemTransactions.Add(row);
             await _context.SaveChangesAsync();
-
              }
+        public async Task UpdateOnHandItemAsync(int itemId)
+            {
+            // 1) Calculate on_hand from tbl_item_transaction
+            var onHand = await _context.TblItemTransactions
+                .Where(t => t.ItemId == itemId)
+                .SumAsync(t => (decimal?)(t.QtyIn - t.QtyOut)) ?? 0m;
+
+            // 2) Load item and update its OnHand field
+            var item = await _context.TblItems
+                .FirstOrDefaultAsync(i => i.Id == itemId);
+
+            if (item != null)
+                {
+                item.OnHand = onHand;
+                await _context.SaveChangesAsync();
+                }
+            }
+        public async Task AddItemCardDetails(PurchaseItemViewModel vmRow, DateOnly date, string invId, string invoiceNo, int warehouseId)
+            {
+            decimal credit = (decimal)(vmRow.QTY * vmRow.CostPrice);
+            decimal debit = 0;
+            var agg = await _context.TblItemCardDetails
+       .Where(c => c.ItemId == vmRow.ItemId)
+       .GroupBy(c => c.ItemId)
+       .Select(g => new
+           {
+           QtyBalance = g.Sum(x => (decimal?)((x.QtyIn) - (x.QtyOut))) ?? 0m,
+           Balance = g.Sum(x => (decimal?)((x.Debit) - (x.Credit))) ?? 0m
+           }).FirstOrDefaultAsync();
+            decimal previousQtyBalance = agg?.QtyBalance ?? 0m;
+            decimal previousBalance = agg?.Balance ?? 0m;
+            decimal qtyBalance = (decimal)(previousQtyBalance + (0 - vmRow.QTY));
+            decimal balance = previousBalance + (debit - credit);
+            var cardRow = new TblItemCardDetail
+                {
+                ItemId = (int)vmRow.ItemId,
+                Date = date,
+                WharehouseId = warehouseId,
+                InvNo = invoiceNo,
+                TransNo = int.Parse(invId),
+                TransType = "Purchase Return Invoice",
+                Description = $"Purchase Return Invoice No. {invoiceNo}",
+                Price = (decimal)vmRow.CostPrice,
+                QtyIn =0,
+                QtyOut = (decimal)vmRow.QTY,
+                QtyBalance = qtyBalance,
+                Debit = debit,
+                Credit = credit,
+                Balance = balance,
+                FifoQty = 0,
+                FifoCost = 0
+                };
+            _context.TblItemCardDetails.Add(cardRow);
+            await _context.SaveChangesAsync();
+            }
         public async Task InsertCostCenterTransactionAsync(DateOnly date, decimal debit, decimal credit, string refId, string type, string description, int costCenterId)
             {
             var trx = new TblCostCenterTransaction
@@ -641,49 +654,44 @@
                 CostCenterId = costCenterId,
                 ProjectId = 0
                 };
-
             _context.TblCostCenterTransactions.Add(trx);
             await _context.SaveChangesAsync();
             }
-
         public async Task Transaction(PurchaseInvoiceViewModel model, int level4PaymentCreditMethodId,int level4PurchaseReturnId, int invid = 0, string invoiceNo = "", int level4VatId = 0)
             {
             invid = invid != 0 ? invid : model.Id;
             invoiceNo = !string.IsNullOrWhiteSpace(invoiceNo) ? invoiceNo : model.Invoce;
             level4VatId = level4VatId != 0 ? level4VatId : (int)model.AccountId;
             if (model.TotaAmount <= 0) return;
-
             var accountId = (model.InvoiceType == "Credit")
                 ? level4PaymentCreditMethodId
                 : model.AccountId;
             // AR / Cash
             await AddTransactionEntry(
-                model.Date, accountId, (int)model.TotaAmount, 0, 
+                model.Date, accountId, 0, (int)model.TotaAmount, 
                 invid, model.VendorId ?? 0,
                 model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
-                "Purchase Return", $"Purchase Return Invoice NO. {invoiceNo}",
-                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                VoucherNo: model.NextCode
+                "PURCHASE RETURN", "Purchase Return Invoice NO. "+ invoiceNo,
+                 _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,DateOnly.FromDateTime(DateTime.UtcNow),
+                 invoiceNo
             );
             // Revenue
             await AddTransactionEntry(
-                model.Date, level4PurchaseReturnId,  0, (int)model.TotalBeforeVat,
-                invid, 0,
-                model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
-                "Purchase Return", $"Purchase Return For Invoice No. {invoiceNo}",
-                createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                VoucherNo: model.NextCode
+                model.Date, level4PurchaseReturnId, (int)model.TotalBeforeVat, 0, 
+                invid, 0,"Purchase Return Invoice",
+                "PURCHASE RETURN", "Purchase Return For Invoice No. "+ invoiceNo,
+                _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, DateOnly.FromDateTime(DateTime.UtcNow),
+                 invoiceNo
             );
             // VAT
             if (model.TotalVat > 0)
                 {
                 await AddTransactionEntry(
-                    model.Date, level4VatId,  0, (decimal)model.TotalVat,
-                    invid, 0,
-                    model.InvoiceType == "Credit" ? "Purchase Return Invoice" : "Purchase Return Invoice ",
-                    "Purchase Return", $"Vat Input For Return Invoice No. {invoiceNo}",
-                    createdBy: _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0, createdDate: DateOnly.FromDateTime(DateTime.UtcNow),
-                    VoucherNo: model.NextCode
+                    model.Date, level4VatId, (decimal)model.TotalVat, 0, invid, 0,
+                    "Purchase Return Invoice",
+                    "PURCHASE RETURN", "Vat Input For Return Invoice No. "+ invoiceNo,
+                     _httpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0,  DateOnly.FromDateTime(DateTime.UtcNow),
+                     invoiceNo
                 );
                 }
             }
@@ -706,14 +714,12 @@
                 CreatedDate = createdDate,
                 State = 0
                 };
-
             _context.TblTransactions.Add(trx);
             await _context.SaveChangesAsync();
             }
-
         public async Task ReturnItemsToInventory(int PurchaseId)
             {
-            var rows = await _context.TblPurchaseDetails
+            var rows = await _context.TblPurchaseReturnDetails
                  .AsNoTracking()
                  .Where(sd => sd.PurchaseId == PurchaseId)
                  .Select(sd => new
@@ -746,7 +752,6 @@
                       .ToListAsync();
             _context.TblPurchaseReturnDetails.RemoveRange(SalesDetails);
             await _context.SaveChangesAsync();
-
             var ItemTransactions = await _context.TblItemTransactions
                      .Where(d => d.Reference == PurchaseId.ToString() && d.Type == "Purchase Return Invoice")
                      .ToListAsync();
@@ -757,19 +762,16 @@
                      .ToListAsync();
             _context.TblItemCardDetails.RemoveRange(ItemCardDetails);
             await _context.SaveChangesAsync();
-
             var CostCenterTransactions = await _context.TblCostCenterTransactions
                      .Where(d => d.RefId == PurchaseId && d.Type == "Purchase Return")
                      .ToListAsync();
             _context.TblCostCenterTransactions.RemoveRange(CostCenterTransactions);
             await _context.SaveChangesAsync();
-
             var Transactions = await _context.TblTransactions
-                     .Where(d => d.TransactionId == PurchaseId && d.Type == "Purchase Return")
+                     .Where(d => d.TransactionId == PurchaseId && d.Type == "PURCHASE RETURN")
                      .ToListAsync();
             _context.TblTransactions.RemoveRange(Transactions);
             await _context.SaveChangesAsync();
             }
-
         }
     }

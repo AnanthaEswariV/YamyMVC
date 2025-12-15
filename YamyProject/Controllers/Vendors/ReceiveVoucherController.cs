@@ -1,5 +1,4 @@
-﻿using YamyProject.Core.Models;
-
+﻿
 namespace YamyProject.Controllers.Vendors
     {
     public class ReceiveVoucherController(IPaymentVoucherService PaymentVoucher, IListServices listServices, YamyDbContext context) : Controller
@@ -9,7 +8,7 @@ namespace YamyProject.Controllers.Vendors
         private readonly YamyDbContext _context = context;
 
 
-        public async Task<IActionResult> Index(DateOnly from, DateOnly to, bool all = false, CancellationToken ct = default)
+        public async Task<IActionResult> Index(DateOnly from, DateOnly to, bool all = true, CancellationToken ct = default)
             {
             ReceiveVoucherCenterViewModel vm = await _PaymentVoucher.QueryPurchaseAsync(from, to, all, ct);
             return View(vm); // ✅ passes the actual model, not a Task
@@ -48,12 +47,13 @@ namespace YamyProject.Controllers.Vendors
             return View("ReceiveVoucher", new ReceiveVoucherViewModel
                 {
                 Type = "Vendor",
+                PaymentType=1,
                 Employees = EmployeelectList,
                 VoucherNo = await _PaymentVoucher.GenerateNextPaymentCode(),
                 Date = DateOnly.FromDateTime(DateTime.Now),
                 Accounts = AccountList,
-                DebitAccountId = 2101001,
-                CreditAccountId= 1103006,
+                DebitAccountId = 16,
+                CreditAccountId= 7,
                 vendors = vendorSelectList,
                 CostCenters = CostCenterList
                 }

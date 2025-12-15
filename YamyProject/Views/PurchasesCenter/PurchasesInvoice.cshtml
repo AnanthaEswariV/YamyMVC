@@ -1,99 +1,413 @@
 ﻿@model PurchaseInvoiceViewModel
+@using System.Text.Json
+
 @{
     ViewData["Title"] = "Purchase Invoice";
+
     var controllerName = string.Equals(Model?.VendorType, "Subcontractor", StringComparison.OrdinalIgnoreCase)
-      ? "SubcontractorPurchasesCenter"
-      : "PurchasesCenter";
+        ? "SubcontractorPurchasesCenter"
+        : "PurchasesCenter";
     }
 
-<div class="container-fluid mt-3">
-    <div class="card shadow-sm border-0">
-        <div class="card-header  justify-content-between align-items-center">
-            <h5 class="mb-0">Purchase Invoice</h5>
+<style>
+    body {
+        background: #e6edf4;
+    }
+
+    .pi-shell {
+        margin-top: 6px;
+    }
+
+    .pi-window {
+        border-radius: 0;
+        border: 1px solid #c4ccd7;
+        overflow: hidden;
+    }
+
+    /* top blue bar  */
+    .pi-titlebar {
+        background: #0b3555;
+        color: #fff;
+        padding: 4px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        font-size: 1.05rem;
+    }
+
+    .pi-titlebar-controls i {
+        font-size: .8rem;
+        margin-left: 10px;
+        cursor: pointer;
+    }
+
+    /* toolbar (New / Save / Delete / Print / etc.)  */
+    .pi-toolbar {
+        background: #f4f6f9;
+        border-bottom: 1px solid #d2d7e0;
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .pi-toolbar .btn {
+            padding: 4px 10px;
+            font-size: .8rem;
+            border-radius: 0;
+        }
+
+            .pi-toolbar .btn i {
+                margin-right: 4px;
+            }
+
+    .pi-toolbar-spacer {
+        flex: 1 1 auto;
+    }
+
+    /* light blue band for header fields */
+    .pi-header-strip {
+        background: #e3edf7;
+        border-bottom: 1px solid #cbd5e4;
+        padding: 10px 12px 6px 12px;
+    }
+
+        .pi-header-strip .form-label {
+            font-size: .75rem;
+            margin-bottom: 1px;
+        }
+
+        .pi-header-strip .form-control,
+        .pi-header-strip .form-select {
+            height: 30px;
+            padding: 2px 6px;
+            font-size: .8rem;
+        }
+
+        .pi-header-strip .tiny-link {
+            font-size: .7rem;
+            margin-left: 4px;
+            cursor: pointer;
+            color: #0d6efd;
+        }
+
+        .pi-header-strip .pi-inline-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: flex-end;
+        }
+
+            .pi-header-strip .pi-inline-row > div {
+                min-width: 130px;
+            }
+
+            .pi-header-strip .pi-inline-row .pi-grow {
+                flex: 1 1 auto;
+            }
+
+    .jv-toolbar-wrap {
+        background: #f7f8fb;
+        border-bottom: 1px solid #c7ccd6;
+        padding: 8px 16px 12px;
+    }
+
+    .jv-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .jv-navbox {
+        display: flex;
+        align-items: center;
+        background: #e9ecf2;
+        border: 1px solid #c0c6d6;
+        border-radius: 2px;
+        padding: 4px 10px;
+        gap: 6px;
+    }
+
+        .jv-navbox span.badge-box {
+            min-width: 55px;
+            text-align: center;
+            background: #d2d7e2;
+            border-radius: 2px;
+            font-size: .85rem;
+            padding: 3px 0;
+        }
+
+        .jv-navbox button {
+            border: none;
+            background: transparent;
+            padding: 0 4px;
+            font-size: 1rem;
+            color: #495057;
+        }
+
+    .jv-toolgroup {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .jv-toolbtn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: .78rem;
+        color: #333;
+        cursor: pointer;
+        min-width: 60px;
+    }
+
+        .jv-toolbtn i {
+            font-size: 1.2rem;
+            margin-bottom: 2px;
+        }
+
+    .jv-checks {
+        margin-left: auto;
+        font-size: .8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    /* grid area */
+    .pi-body-inner {
+        padding: 8px 12px 0 12px;
+        background: #fff;
+    }
+
+    .pi-grid-wrapper {
+        border: 1px solid #d2d7e0;
+        border-radius: 0;
+        height: calc(100vh - 360px);
+        min-height: 280px;
+        overflow: auto;
+    }
+
+    #itemsTable {
+        margin-bottom: 0;
+        font-size: .8rem;
+    }
+
+        #itemsTable thead th {
+            background: #eef2f7;
+            border-bottom: 1px solid #cbd5e4;
+            white-space: nowrap;
+        }
+
+        #itemsTable tbody td {
+            padding: 3px 4px;
+        }
+
+        #itemsTable input.form-control,
+        #itemsTable select.form-select {
+            font-size: .78rem;
+            padding: 2px 4px;
+            height: 28px;
+        }
+
+    /* notes + totals */
+    .pi-footer-panel {
+        padding: 6px 12px 8px 12px;
+        background: #f4f6f9;
+        border-top: 1px solid #cbd5e4;
+    }
+
+    .pi-notes textarea {
+        resize: vertical;
+        min-height: 80px;
+        font-size: .82rem;
+    }
+
+    .pi-totals-box {
+        background: #e3edf7;
+        border: 1px solid #cbd5e4;
+        border-radius: 2px;
+        padding: 6px 8px;
+        font-size: .78rem;
+    }
+
+        .pi-totals-box .row + .row {
+            margin-top: 4px;
+        }
+
+    .pi-totals-label {
+        font-weight: 600;
+    }
+
+    .pi-totals-value {
+        text-align: right;
+        min-width: 90px;
+    }
+
+    /* bottom buttons */
+    .pi-bottom-bar {
+        background: #dfe4ee;
+        border-top: 1px solid #c4ccd7;
+        padding: 6px 14px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+        .pi-bottom-bar .btn {
+            min-width: 110px;
+            border-radius: 0;
+            font-size: .82rem;
+        }
+
+        .pi-bottom-bar .btn-primary {
+            background: #0b3555;
+            border-color: #0b3555;
+        }
+
+        .pi-bottom-bar .btn-success {
+            background: #0f6b31;
+            border-color: #0f6b31;
+        }
+</style>
+
+<div class="container-fluid pi-shell">
+    <div class="pi-window card shadow-sm">
+        <!-- Title bar -->
+        <div class="pi-titlebar justify-content-between align-items-center">
+            <div>Purchase Invoice</div>
         </div>
 
-        <div class="card-body">
-            <div class="mb-3">
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <!-- Toolbar / navigation -->
+        <div class="jv-toolbar-wrap">
+            <div class="jv-toolbar">
+                <!-- navigation box -->
+                <div class="jv-navbox">
+                    <button type="button" title="Previous"><i class="fa fa-arrow-left"></i></button>
+                    <span class="badge-box">@Model.PurchaseId</span>
+                    <button type="button" title="Next"><i class="fa fa-arrow-right"></i></button>
+                </div>
+
+                <!-- actions -->
+                <div class="jv-toolgroup">
+                    <div class="jv-toolbtn">
+                        <i class="fa fa-file"></i>
+                        <span>New</span>
+                    </div>
+                    <div class="jv-toolbtn" id="tbSave">
+                        <i class="fa fa-save"></i>
+                        <span>Save</span>
+                    </div>
+                    <div class="jv-toolbtn">
+                        <i class="fa fa-trash"></i>
+                        <span>Delete</span>
+                    </div>
+                    <div class="jv-toolbtn" id="addRow">
+                        <i class="fa fa-copy"></i>
+                        <span>Create a Copy</span>
+                    </div>
+                    <div class="jv-toolbtn">
+                        <i class="fa fa-print"></i>
+                        <span>Print</span>
+                    </div>
+                    <div class="jv-toolbtn">
+                        <i class="fa fa-envelope"></i>
+                        <span>Email</span>
+                    </div>
+                    <div class="jv-checks">
+                        <label class="form-check-label">
+                            <input type="checkbox" class="form-check-input me-1" /> Print Later
+                        </label>
+                        <label class="form-check-label">
+                            <input type="checkbox" class="form-check-input me-1" /> Email Later
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form enctype="multipart/form-data" id="invoiceForm">
+            @Html.AntiForgeryToken()
+
+            @if (Model?.Id > 0)
+                {
+                <input type="hidden" asp-for="Id" />
+                }
+            <input type="hidden" asp-for="From" />
+            <input type="hidden" asp-for="IdFromOtherTybe" />
+
+            <!-- Validation -->
+            <div class="px-3 pt-2">
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
             </div>
 
-            <form enctype="multipart/form-data" id="invoiceForm">
-                @Html.AntiForgeryToken()
-                @if (Model.Id > 0)
-                    {
-                    <input type="hidden" asp-for="Id" />
-                    }
-                <input type="hidden" asp-for="From" />
-                <input type="hidden" asp-for="IdFromOtherTybe" />
-
-                <!-- Header: Vendor Code/ Vendor / Invoice Date/Invoice -->
-                <input type="hidden" class="form-control" asp-for="VendorId" id="VendorId" value="@Model.VendorId" readonly />
-
-                <div class="row g-5">
-                    <div class="col-md-2">
-                        <label class="form-label">Vendor Code</label>
-                        <input class="form-control" asp-for="VendorCode" id="VendorCode" value="@Model.VendorCode" readonly />
+            <!-- Light blue header strip: vendor + main info -->
+            <div class="pi-header-strip">
+                <!-- Row 1 -->
+                <div class="pi-inline-row mb-1">
+                    <div>
+                        <label class="form-label">Code</label>
+                        <input class="form-control" asp-for="VendorCode" id="VendorCode" readonly />
+                        <input type="hidden" asp-for="VendorId" id="VendorId" />
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="pi-grow">
                         <label class="form-label">Vendor</label>
-                        <select class="form-select" asp-for="VendorId"
-                                asp-items="@(new SelectList(Model.Vendors, "Id", "Name"))"
-                                id="filterVendor">
-                            @* <option value="">-- Select Vendor --</option> *@
+                        <div class="d-flex gap-1">
+                            <select class="form-select" asp-for="VendorId"
+                                    asp-items="@(new SelectList(Model.Vendors, "Id", "Name"))"
+                                    id="filterVendor"></select>
+                            <span class="tiny-link align-self-center">New</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Bill</label>
+                        <input class="form-control" asp-for="VendorName" id="VendorName" />
+                    </div>
+
+                    <div class="pi-grow">
+                        <label class="form-label">Ship</label>
+                        <input class="form-control" asp-for="ShipTo" id="ShipTo" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">Ship Date</label>
+                        <input asp-for="ShipDate" type="date" class="form-control" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">Via</label>
+                        <select asp-for="Via" class="form-select">
+                            <option value="DHl">DHl</option>
+                            <option value="MAIl">MAIl</option>
+                            <option value="OnSite">On Site</option>
+                            <option value="Other">Other</option>
                         </select>
-                        <span class="text-danger" asp-validation-for="VendorId"></span>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Vendor Name</label>
-                        <input class="form-control" asp-for="VendorName" id="VendorName" value="@Model.VendorName" />
-
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Invoice Date</label>
-                        <input asp-for="DueTo" type="date" class="form-control" />
-                        <span class="text-danger" asp-validation-for="DueTo"></span>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Invoice Date</label>
-                        <input asp-for="Date" type="date" class="form-control" />
-                        <span class="text-danger" asp-validation-for="Date"></span>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label">Invoice #</label>
-                        <input class="form-control" asp-for="Invoce" value="@Model.Invoce" readonly />
                     </div>
                 </div>
 
-                <!-- Second Row: Types / Locations / Warehouse -->
-                <div class="row g-5 mt-1">
-                    <div class="col-md-2">
+                <!-- Row 2 -->
+                <div class="pi-inline-row mt-1">
+                    <div>
                         <label class="form-label">Invoice Type</label>
-                        <select asp-for="InvoiceType" class="form-select">
+                        <select asp-for="InvoiceType" class="form-select" id="InvoiceType">
                             <option value="Cash">Cash</option>
                             <option value="Credit">Credit</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Emirate</label>
-                        <select asp-for="Emirate" class="form-select">
-                            <option>Abu Dhabi</option>
-                            <option>Dubai</option>
-                            <option>Sharjah</option>
-                            <option>Ajman</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
+
+                    <div>
                         <label class="form-label">Warehouse</label>
                         <select class="form-select js-select2" asp-for="WarehouseId"
                                 asp-items="@(new SelectList(Model.Warehouses, "Id", "Name"))"
                                 id="filterWarehouse">
-                            @* <option value="">-- Select Warehouse --</option> *@
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Payment Terms (Days)</label>
+
+                    <div>
+                        <label class="form-label">Payment Terms</label>
                         <select asp-for="PaymentTermDays" class="form-select">
                             <option>30</option>
                             <option>60</option>
@@ -109,23 +423,74 @@
                             <option>360</option>
                         </select>
                     </div>
-                </div>
 
-                <!-- Third Row: Account -->
-                <div class="row g-5 mt-1">
-                    <div class="col-md-3">
-                        <label class="form-label">Account Name</label>
-                        <select class="form-select" asp-for="AccountId"
-                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))">
-                            <option value="">-- Select Account --</option>
-                        </select>
+                    <div>
+                        <label class="form-label">Due To</label>
+                        <input asp-for="DueTo" type="date" class="form-control" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">P.O NO</label>
+                        <input class="form-control" asp-for="PONo" id="PONo" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">Invoice #</label>
+                        <input class="form-control" asp-for="Invoce" readonly />
                     </div>
                 </div>
 
-                <!-- Items (DataTable) -->
-                <div class="table-responsive mt-4">
-                    <table id="itemsTable" class="table table-striped table-bordered table-sm align-middle table-responsive{-sm|-md|-lg|-xl}">
-                        <thead class="">
+                <!-- Row 3 -->
+                <div class="pi-inline-row mt-1">
+                    <div>
+                        <label class="form-label">Emirate</label>
+                        <select asp-for="Emirate" class="form-select">
+                            <option>Abu Dhabi</option>
+                            <option>Dubai</option>
+                            <option>Sharjah</option>
+                            <option>Ajman</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Sales Man</label>
+                        <input class="form-control" asp-for="SalesMane" id="SalesMane" />
+                    </div>
+                    <div>
+                        <label class="form-label">Account Name</label>
+                        <select class="form-select" asp-for="AccountId"
+                                asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
+                                id="AccountId">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Purchase Type</label>
+                        <select asp-for="PurchaseType" class="form-select" id="PurchaseType">
+                            <option>Inventory</option>
+                            <option>Fixed Assets</option>
+                            <option>Expense</option>
+                        </select>
+                    </div>
+                    <div id="fixedAssetWrapper" class="d-none">
+                        <label class="form-label">Fixed AssetId</label>
+                        <select class="form-select" asp-for="FixedAssetId"
+                                asp-items="@(new SelectList(Model.FixedAssets, "Id", "CategoryName"))"
+                                id="FixedAssetId">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Date</label>
+                        <input asp-for="Date" type="date" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- White body: grid -->
+            <div class="pi-body-inner">
+                <div class="pi-grid-wrapper table-responsive">
+                    <table id="itemsTable" class="table table-bordered table-sm align-middle mb-0">
+                        <thead>
                             <tr>
                                 <th style="display:none">Id</th>
                                 <th>#</th>
@@ -135,11 +500,11 @@
                                 <th>Cost Price</th>
                                 <th>Disc</th>
                                 <th>Net Price</th>
-                                <th>VAT %</th>
-                                <th>VAT Amount</th>
+                                <th>Vat</th>
+                                <th>Vat Amount</th>
                                 <th>Amount</th>
                                 <th>Cost Center</th>
-                                <th>Remove</th>
+                                <th>DEL</th>
                                 <th style="display:none">Price</th>
                                 <th style="display:none">Type</th>
                                 <th style="display:none">Method</th>
@@ -148,40 +513,67 @@
                         <tbody>
                             @if (Model.Items != null && Model.Items.Any())
                                 {
-
-
-                                @for (var item = 0; item < Model.Items.Count; item++)
+                                for (var item = 0; item < Model.Items.Count; item++)
                                     {
-
                                     <tr>
-                                        <td style="display:none;"><input type="hidden" asp-for="Items[item].ItemId" class="form-control item-id hidden" /></td>
-
+                                        <td style="display:none;">
+                                            <input type="hidden"
+                                                   asp-for="Items[item].ItemId"
+                                                   class="form-control item-id" />
+                                        </td>
                                         <td>@(item + 1)</td>
                                         <td>
-                                            <input type="text" asp-for="Items[item].ItemCode" list="itemOptions[item]" placeholder="Type or select..." class="form-control item-code itemCode" />
-                                            <datalist id="itemOptions[item]"></datalist>
+                                            <input type="text"
+                                                   asp-for="Items[item].ItemCode"
+                                                   list="itemOptions@(item)"
+                                                   placeholder="Type or select..."
+                                                   class="form-control item-code itemCode" />
+                                            <datalist id="itemOptions@(item)"></datalist>
                                         </td>
                                         <td>
-                                            <input type="text" asp-for="Items[item].ItemName" list="itemOptions[item]" placeholder="Type or select..." class="form-control item-name itemname" />
-                                            <datalist id="itemOptions[item]"></datalist>
+                                            <input type="text"
+                                                   asp-for="Items[item].ItemName"
+                                                   list="itemOptions@(item)"
+                                                   placeholder="Type or select..."
+                                                   class="form-control item-name itemname" />
+                                            <datalist id="itemOptions@(item)"></datalist>
                                         </td>
-                                        <td><input class="form-control form-control-sm item-QTY" asp-for="Items[item].QTY" /></td>
-                                        <td><input class="form-control item-CostPrice " asp-for="Items[item].CostPrice" /></td>
-                                        <td><input class="form-control form-control-sm item-Disc" asp-for="Items[item].Disc" /></td>
-                                        <td><input class="form-control form-control-sm item-NetPrice" asp-for="Items[item].NetPrice" readonly /></td>
                                         <td>
-                                            @*   <select class="form-select form-select-sm" asp-for="Items.VatPersint"
-                                                     asp-items="@(new SelectList(Model.Vat, "Value", "Name"))">
-                                             *@   
-                                             <select class="form-select form-select-sm item-VatPersint"
-                                                           asp-for="Items[item].VatPct"
-                                                           asp-items="Model.Vat">
+                                            <input class="form-control item-QTY"
+                                                   asp-for="Items[item].QTY" />
+                                        </td>
+                                        <td>
+                                            <input class="form-control item-CostPrice"
+                                                   asp-for="Items[item].CostPrice" />
+                                        </td>
+                                        <td>
+                                            <input class="form-control item-Disc"
+                                                   asp-for="Items[item].Disc" />
+                                        </td>
+                                        <td>
+                                            <input class="form-control item-NetPrice"
+                                                   asp-for="Items[item].NetPrice"
+                                                   readonly />
+                                        </td>
+                                        <td>
+                                            <select class="form-select item-VatPersint"
+                                                    asp-for="Items[item].VatPersint"
+                                                    asp-items="Model.Vat">
                                             </select>
                                         </td>
-                                        <td><input class="form-control form-control-sm item-VatAmonut" asp-for="Items[item].VatAmonut" readonly /></td>
-                                        <td><input class="form-control form-control-sm item-Amount" asp-for="Items[item].Amount" readonly /></td>
                                         <td>
-                                            <select class="form-select form-select-sm" asp-for="Items[item].CostCenterId"
+                                            <input class="form-control item-VatAmonut"
+                                                   asp-for="Items[item].VatAmonut"
+                                                   readonly />
+                                        </td>
+                                        <td>
+                                            <input class="form-control item-Amount"
+                                                   asp-for="Items[item].Amount"
+                                                   readonly />
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm"
+                                                    asp-for="Items[item].CostCenterId"
                                                     asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))">
                                                 <option value="">--</option>
                                             </select>
@@ -189,43 +581,64 @@
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-danger remove-row">×</button>
                                         </td>
-                                        <td style="display:none;"><input type="hidden" class="form-control form-control-sm item-Price hidden" asp-for="Items[item].Price" /></td>
-                                        <td style="display:none;"><input type="hidden" name="Items[item].Type" asp-for="Items[item].Type" value="Items.Type" class="form-control item-Type hidden" /></td>
-                                        <td style="display:none;"><input type="hidden" name="Items[item].Method" asp-for="Items[item].Method" value="Items.Method" class="form-control item-Method hidden" /></td>
-                                   
+                                        <td style="display:none;">
+                                            <input type="hidden"
+                                                   class="form-control item-Price"
+                                                   asp-for="Items[item].Price" />
+                                        </td>
+                                        <td style="display:none;">
+                                            <input type="hidden"
+                                                   asp-for="Items[item].Type"
+                                                   class="form-control item-Type" />
+                                        </td>
+                                        <td style="display:none;">
+                                            <input type="hidden"
+                                                   asp-for="Items[item].Method"
+                                                   class="form-control item-Method" />
+                                        </td>
                                     </tr>
-
                                     }
                                 }
                             else
                                 {
                                 <tr>
-                                    <td style="display:none;"><input type="hidden" name="Items[0].ItemId" class="form-control item-id  hidden" readonly /></td>
-
+                                    <td style="display:none;">
+                                        <input type="hidden"
+                                               name="Items[0].ItemId"
+                                               class="form-control item-id" />
+                                    </td>
                                     <td>1</td>
                                     <td>
-                                        <input type="text" name="Items[0].ItemCode" list="itemOptions0" placeholder="Type or select..." class="form-control item-code itemCode" />
+                                        <input type="text"
+                                               name="Items[0].ItemCode"
+                                               list="itemOptions0"
+                                               placeholder="Type or select..."
+                                               class="form-control item-code itemCode" />
                                         <datalist id="itemOptions0"></datalist>
                                     </td>
                                     <td>
-                                        <input type="text" name="Items[0].ItemName" class="form-control item-name" list="itemOptions0" placeholder="Type or select..." class="form-control item-name itemname" />
+                                        <input type="text"
+                                               name="Items[0].ItemName"
+                                               list="itemOptions0"
+                                               placeholder="Type or select..."
+                                               class="form-control item-name itemname" />
                                         <datalist id="itemOptions0"></datalist>
                                     </td>
-                                    <td><input type="text" class="form-control form-control-sm item-QTY" name="Items[0].QTY" /></td>
-                                    <td><input type="text" name="Items[0].CostPrice" class="form-control item-CostPrice "  /></td>
-                                    <td><input type="text" class="form-control form-control-sm item-Disc" name="Items[0].Disc" /></td>
-                                    <td><input type="text" class="form-control form-control-sm item-NetPrice" name="Items[0].NetPrice" readonly /></td>
+                                    <td><input class="form-control item-QTY" name="Items[0].QTY" /></td>
+                                    <td><input class="form-control item-CostPrice" name="Items[0].CostPrice" /></td>
+                                    <td><input class="form-control item-Disc" name="Items[0].Disc" /></td>
+                                    <td><input class="form-control item-NetPrice" name="Items[0].NetPrice" readonly /></td>
                                     <td>
-                                        <select class="form-select form-select-sm item-VatPersint" name="Items[0].VatPersint"
+                                        <select class="form-select form-select-sm item-VatPersint"
+                                                name="Items[0].VatPersint"
                                                 asp-items="Model.Vat">
-                                            @* asp-items="@(new SelectList(Model.Vat, "Value", "Name"))"> *@
-                                            @* <option value="">--</option> *@
                                         </select>
                                     </td>
-                                    <td><input type="text" class="form-control form-control-sm item-VatAmonut" name="Items[0].VatAmonut" readonly /></td>
-                                    <td><input type="text" class="form-control form-control-sm item-Amount" name="Items[0].Amount" readonly /></td>
+                                    <td><input class="form-control item-VatAmonut" name="Items[0].VatAmonut" readonly /></td>
+                                    <td><input class="form-control item-Amount" name="Items[0].Amount" readonly /></td>
                                     <td>
-                                        <select class="form-select form-select-sm" name="Items[0].CostCenterId"
+                                        <select class="form-select form-select-sm"
+                                                name="Items[0].CostCenterId"
                                                 asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))">
                                             <option value="">--</option>
                                         </select>
@@ -233,571 +646,122 @@
                                     <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-danger remove-row">×</button>
                                     </td>
-                                    <td style="display:none;"><input type="hidden" class="form-control form-control-sm item-Price" name="Items[0].Price" readonly /></td>
-                                    <td style="display:none;"><input type="hidden" name="Items[0].Type" class="form-control item-Type hidden" readonly /></td>
-                                    <td style="display:none;"><input type="hidden" name="Items[0].Method" class="form-control item-Method hidden" readonly /></td>
-
+                                    <td style="display:none;">
+                                        <input type="hidden" class="form-control item-Price"
+                                               name="Items[0].Price" />
+                                    </td>
+                                    <td style="display:none;">
+                                        <input type="hidden" name="Items[0].Type"
+                                               class="form-control item-Type" />
+                                    </td>
+                                    <td style="display:none;">
+                                        <input type="hidden" name="Items[0].Method"
+                                               class="form-control item-Method" />
+                                    </td>
                                 </tr>
                                 }
                         </tbody>
                     </table>
                 </div>
+            </div>
 
-                <div class="row g-3 mt-3">
-                    <div class="col-md-8">
-                        <label class="form-label">Description</label>
-                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            <!-- Notes + totals + bottom buttons -->
+            <div class="pi-footer-panel">
+                <div class="row g-2">
+                    <div class="col-md-8 pi-notes">
+                        <label class="form-label small">Notes</label>
+                        <textarea asp-for="Description" class="form-control"></textarea>
                     </div>
                     <div class="col-md-4">
-                        <div class="border rounded p-3 bg-light">
-                            <div class="mb-2 d-flex justify-content-between">
-                                <strong>Total Before VAT:</strong>
-                                <span class="total-BeforeVat">@Model.TotalBeforeVat</span>
+                        <div class="pi-totals-box">
+                            <div class="row">
+                                <div class="col-7 pi-totals-label">Total Before Vat</div>
+                                <div class="col-5 pi-totals-value total-BeforeVat">@Model.TotalBeforeVat</div>
                             </div>
-                            <div class="mb-2 d-flex justify-content-between">
-                                <strong>Total VAT:</strong>
-                                <span class="total-Vat">@Model.TotalVat</span>
+                            <div class="row">
+                                <div class="col-7 pi-totals-label">Total Vat</div>
+                                <div class="col-5 pi-totals-value total-Vat">@Model.TotalVat</div>
                             </div>
-                            <div class="mb-2 d-flex justify-content-between">
-                                <strong>Total Discount:</strong>
-                                <span class="tota-Discount">@Model.TotaDiscount</span>
+                            <div class="row">
+                                <div class="col-7 pi-totals-label">Total Discount</div>
+                                <div class="col-5 pi-totals-value tota-Discount">@Model.TotaDiscount</div>
                             </div>
-                            <div class="d-flex justify-content-between">
-                                <strong>Net Amount:</strong>
-                                <span class="fw-bold net-Amount">@Model.TotaAmount</span>
+                            <div class="row">
+                                <div class="col-7 pi-totals-label">Net Amount</div>
+                                <div class="col-5 pi-totals-value fw-bold net-Amount">@Model.TotaAmount</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button type="button" id="btnAjaxSave" class="btn btn-primary">Save</button>
-                    <button type="button" id="btnAjaxSaveClose" class="btn btn-success">Save &amp; Close</button>
-                    <a asp-action="Index" class="btn btn-secondary">Close</a>
-                </div>
-            </form>
-        </div>
+            </div>
+
+            <!-- Hidden totals for posting -->
+            <input type="hidden" asp-for="TotalBeforeVat" />
+            <input type="hidden" asp-for="TotalVat" />
+            <input type="hidden" asp-for="TotaDiscount" />
+            <input type="hidden" asp-for="TotaAmount" />
+
+            <div class="pi-bottom-bar">
+                <button type="button" id="btnAjaxSaveClose" class="btn btn-primary">Save &amp; Close</button>
+                <button type="button" id="btnAjaxSave" class="btn btn-success">Save</button>
+                <a asp-action="Index" asp-controller="@controllerName" class="btn btn-secondary">Close</a>
+            </div>
+        </form>
+
+        <!-- hidden templates for JS -->
+        <select id="tpl-vat" class="d-none" asp-items="Model.Vat"></select>
+        <select id="tpl-cc" class="d-none" asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"></select>
     </div>
-    <!-- Hidden templates so Razor renders options server-side -->
-     <select id="tpl-vat" class="d-none" asp-items="@(new SelectList(Model.Vat, "Value", "Text"))"></select>
-    <select id="tpl-cc" class="d-none" asp-items="@(new SelectList(Model.CostCenters, "Id", "Code"))"></select>
- 
 </div>
 
     @section Scripts {
     <script>
-          function isLastRow($row) {
-          return $row.is(':last-child');
-        }
-
-          $('#itemsTable tbody tr').each(function () {
-                var $row = $(this);
-                setupAutocomplete($row);
-                // recalcRow($row);
-            });
-
-         function updateRowIndexes() {
-          $('#itemsTable tbody tr').each(function (i) {
-            // 2nd cell is the visible serial column
-            $(this).find('td').eq(1).text(i + 1);
-
-            // Re-point names if you want contiguous indexes (optional, sparse is OK)
-            $(this).find('input, select').each(function () {
-              const name = $(this).attr('name');
-              if (name) $(this).attr('name', name.replace(/Items\[\d+\]/, `Items[${i}]`));
-            });
-          });
-        }
-
-          function fillRowFromItem($row, item) {
-
-          const get = (o, a, b) => o[a] ?? o[b];
-          $row.find('.item-id').val(get(item, 'Id', 'id'));
-          $row.find('.item-code').val(get(item, 'Code', 'code'));
-          $row.find('.item-name').val(get(item, 'Name', 'name'));
-          $row.find('.item-CostPrice').val(get(item, 'CostPrice', 'costPrice'));
-          $row.find('.item-QTY').val(0);
-          $row.find('.item-Disc').val(0);
-          $row.find('.item-NetPrice').val(0);
-          $row.find('.item-VatAmonut').val(0);
-          $row.find('.item-Amount').val(0);
-          $row.find('.item-Price').val(get(item, 'SalesPrice', 'salesPrice'));
-          $row.find('.item-Type').val(get(item, 'Type', 'type'));
-          $row.find('.item-Method').val(get(item, 'Method', 'method'));
-
-              // your own function
-              if (typeof recalcRow === 'function') recalcRow($row);
-            }
-          function setupAutocomplete($row) {
-          // --- helper: get the <datalist> for an input (scoped to row, then global) ---
-          function getDatalist($input, $scope = $(document)) {
-            const el = $input[0];
-            if (!el) return $();
-            if (el.list) return $(el.list); // native reference
-            const id = $input.attr('list');
-            if (!id) return $();
-            const $scoped = $scope.find('#' + id);
-            return $scoped.length ? $scoped : $('#' + id);
-          }
-
-          const $code = $row.find('.item-code');
-          const $name = $row.find('.item-name');
-
-          const $codeDL = getDatalist($code, $row);
-          const $nameDL = getDatalist($name, $row);
-
-          let cacheItems = []; // last fetched items for this row
-
-          function fetchItems(term, cb) {
-            $.getJSON('@Url.Action("GetItems", "PurchasesCenter")', {
-              term: term,
-              warehouseId: document.querySelector('.js-select2')?.value
-            }, function (data) {
-              const itemsArray = Array.isArray(data) ? data : data?.items;
-              const arr = Array.isArray(itemsArray) ? itemsArray : [];
-              cacheItems = arr;
-              cb(arr);
-            });
-          }
-
-          // fill <datalist> with "code - name" label, but value differs:
-          // - for code field: option.value = code
-          // - for name field: option.value = name
-          function populateDatalist($dl, arr, valueKey) {
-            if (!$dl || !$dl.length) return;
-            $dl.empty();
-            arr.slice(0, 50).forEach(item => {
-              const code = item.Code ?? item.code;
-              const name = item.Name ?? item.name;
-              const value = valueKey === 'code' ? code : name;
-              $('<option />', { value: value, text: `${code} - ${name}` }).appendTo($dl);
-            });
-          }
-          // Try resolve from whichever input triggered (code or name)
-          function resolveAndFill($input) {
-            if (!cacheItems.length) return;
-
-            const isCode = $input.is('.item-code');
-            const val = ($input.val() || '').trim();
-            if (!val) return;
-
-            const chosen = cacheItems.find(x => {
-              const code = x.Code ?? x.code;
-              const name = x.Name ?? x.name;
-              return isCode ? code === val : name === val;
-            });
-
-            if (chosen) {
-              fillRowFromItem($row, chosen);
-              if (isLastRow($row)) {
-              NewRow();
-              }
-            }
-          }
-
-          // -- wiring: CODE input --
-          if ($codeDL.length) {
-            $code.on('input', function () {
-              const term = this.value || '';
-              if (term.length < 1) { $codeDL.empty(); return; }
-              fetchItems(term, function (arr) {
-                populateDatalist($codeDL, arr, 'code');
-              });
-            });
-            $code.on('change blur', function () { resolveAndFill($code); });
-          }
-
-          // -- wiring: NAME input --
-          if ($nameDL.length) {
-            $name.on('input', function () {
-              const term = this.value || '';
-              if (term.length < 1) { $nameDL.empty(); return; }
-              fetchItems(term, function (arr) {
-                populateDatalist($nameDL, arr, 'name');
-              });
-            });
-            $name.on('change blur', function () { resolveAndFill($name); });
-          }
-        }
-               // Example: remove row with delegation
-        $(document).on('click', '.remove-row', function () {
-          $(this).closest('tr').remove();
-        NewRow();
-        updateRowIndexes();});
-
-    </script>
-    <script>
-        //Cl
-         (function () {
-
-         // ---- helpers
-         const num = v => {
-           if (v == null) return 0;
-           const n = parseFloat(String(v).replace(/,/g, ''));
-           return Number.isFinite(n) ? n : 0;
-         };
-         const fmt = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-         // ---- calc a single row
-         function calcRow($tr) {
-              let disc=0;
-            const qty    = num($tr.find('.item-QTY').val());
-            const price  = num($tr.find('.item-CostPrice').val());
-            if (qty>0 && price>0)
-             disc   = num($tr.find('.item-Disc').val());
-
-            const vatPct = num($tr.find('.item-VatPersint').val());
-
-           // Your formulas
-
-           const net     = (qty * price) - disc;          // Net Price
-           const vatAmt  = net * (vatPct / 100);        // VATAMT
-           const amount  = net + vatAmt;                // Amount
-           const Discount=disc;
-
-           // write back
-            $tr.find('.item-NetPrice').val(fmt(net));
-            $tr.find('.item-VatAmonut').val(fmt(vatAmt));
-            $tr.find('.item-Amount').val(fmt(amount));
-            $tr.find('.item-Disc').val(fmt(Discount));
-
-           // return pieces used in totals
-             return { net, vatAmt, amount, Discount };
-         }
-
-         // ---- calc all totals
-         function calcTotals() {
-           let totalPrice = 0, totalVat = 0, totalAmount = 0,totalDiscount = 0;
-           $('#itemsTable tbody tr').each(function () {
-             const r = calcRow($(this));
-             totalPrice    += r.net;   // Total Before VAT = sum of prices
-             totalVat      += r.vatAmt;  // Total VAT       = sum of VATAmt
-             totalDiscount += r.Discount;  // Total VAT       = sum of VATAmt
-             totalAmount   += r.amount;  // Net Amount      = sum of Amount
-           });
-
-           $('.total-BeforeVat').text(fmt(totalPrice));
-           $('.total-Vat').text(fmt(totalVat));
-           $('.tota-Discount').text(fmt(totalDiscount));
-           $('.net-Amount').text(fmt(totalAmount));
-
-            const set = (name, val) => { const el = document.querySelector(`input[name="${name}"]`); if (el) el.value = val; };
-            set('TotalBeforeVat', totalPrice);
-            set('TotalVat', totalVat);
-            set('TotaDiscount', totalDiscount);
-            set('TotaAmount', totalAmount);
-
-         }
-
-         // ---- wire events (works for existing and future rows)
-          $('#itemsTable').on('input change', '.item-QTY,.item-CostPrice,.item-Disc,.item-VatPersint', function () {
-           const $tr = $(this).closest('tr');
-          calcRow($tr);
-           calcTotals();
-         });
-
-         // ---- initialize once on load
-         $(function () { calcTotals(); });
-        })();
-    </script>
-    <script>
-             //get the user id to the input
-            // Build a lookup: id -> { id, code, name }
-                      const Vendors = @Html.Raw(JsonSerializer.Serialize(
-                                                                    Model.Vendors.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
-                                                    ));
-    const byId = Object.fromEntries(Vendors.map(x => [String(x.id), x]));
-
-            const sel       = document.getElementById('filterVendor');
-            const hiddenId  = document.getElementById('VendorId');   // note your current id is 'VendorId'
-            const codeInput = document.getElementById('VendorCode');
-            const nameInput = document.getElementById('VendorName');
-
-            function syncFromSelect() {
-              const m = byId[sel.value];
-              if (!m) { codeInput.value = ""; nameInput.value = ""; return; }
-              if (hiddenId) hiddenId.value = String(m.id);
-              codeInput.value = m.code ?? "";
-              nameInput.value = m.name ?? "";
-            }
-
-            // If you have a pre-selected VendorId in the hidden field, apply it to the <select> first.
-            (function init() {
-              const pre = hiddenId?.value;
-              if (pre && byId[pre]) sel.value = pre;   // set selection from model
-              syncFromSelect();
-              sel.addEventListener('change', syncFromSelect);
-            })();
-    </script>
-    <script>
-          // ---------- helpers ----------
-          function toNum(v){
-            const n = parseFloat((v ?? '').toString().replace(/,/g, ''));
-            return Number.isFinite(n) ? n : null;
-          }
-          function clearInvalid($el){
-            $el.removeClass('is-invalid');
-            $el.siblings('.invalid-feedback').remove();
-          }
-          function setInvalid($el, message){
-            $el.addClass('is-invalid');
-            let $fb = $el.siblings('.invalid-feedback');
-            if ($fb.length === 0){
-              $fb = $('<div class="invalid-feedback"></div>');
-              $el.after($fb);
-            }
-            $fb.text(message);
-          }
-        //////
-          function isTemplateRow($tr){
-            return $tr.hasClass('template') || $tr.is('[data-template="true"]');
-          }
-          //show message error
-          function showMessagesSpread(messages){
-            if (!messages.length) return;
-            if (window.toastr){
-              toastr.options = Object.assign({}, toastr.options, {
-                positionClass: "toast-top-center",
-                closeButton: true,
-                progressBar: true,
-                timeOut: 4500
-              });
-              messages.forEach((m, i) => setTimeout(() => toastr.error(m), i * 200));
-            }
-            else {
-              alert(messages.join('\n'));
-            }
-          }
-
-          // ---------- single-field live revalidation ----------
-          function validateFieldAndMaybeClear($input){
-            const $tr   = $input.closest('tr');
-            const rowNo = $tr.index() + 1;
-
-            const isFirstRow = $tr.is($('#itemsTable tbody tr').filter((_, tr)=>!isTemplateRow($(tr))).first());
-            const v = ($input.val() ?? '').toString().trim();
-
-            // decide rule by class
-              if ($input.is('.item-id')){
-              if (isFirstRow && v === '') {
-                setInvalid($input, 'Item ID is required for the first row.');
-                return false;
-              }
-              clearInvalid($input); return true;
-            }
-
-            else if ($input.is('.item-code')){
-              if (v === '') { setInvalid($input, `Item Code is required (row ${rowNo}).`); return false; }
-              clearInvalid($input); return true;
-            }
-            else if ($input.is('.item-name')){
-              if (v === '') { setInvalid($input, `Item Name is required (row ${rowNo}).`); return false; }
-              clearInvalid($input); return true;
-            }
-            else if ($input.is('.item-QTY, .qty')){
-              const q = toNum(v);
-              if (q === null || q <= 0) { setInvalid($input, `QTY must be greater than 0 (row ${rowNo}).`); return false; }
-              clearInvalid($input); return true;
-            }
-            else if ($input.is('.item-CostPrice, .price')){
-              const p = toNum(v);
-            else if ($input.is('.item-Amount, .Amount')){
-              const p = toNum(v);
-              if (p === null || p < 0) { setInvalid($input, `Amount must be More Than zero (row ${rowNo}).`); return false; }
-              clearInvalid($input); return true;
-            }
-            // if unknown field, just clear
-            clearInvalid($input);
-            return true;
-          }
-
-          // nice UX: only clear error if the field becomes valid
-          $(document).on('input change',
-              '#itemsTable tbody tr .item-id, '+
-            '#itemsTable tbody tr .item-code, '+
-            '#itemsTable tbody tr .item-name, '+
-            '#itemsTable tbody tr .item-QTY, #itemsTable tbody tr .qty, '+
-            '#itemsTable tbody tr .item-Price, #itemsTable tbody tr .price',
-            function(){
-              validateFieldAndMaybeClear($(this));
-              // if the row has no more invalid fields, remove row highlight
-              const $tr = $(this).closest('tr');
-
-              if ($tr.find('.is-invalid').length === 0)
-              $tr.removeClass('table-danger');
-               $('#itemsTable tbody tr').each(function () {
-                            var $row = $(this);
-                            setupAutocomplete($row);
-                });
-            }
-            );
-
-          // ---------- submit gate (with else-if chain) ----------
-          $(document).on('submit', '#invoiceForm', function(e){
-            // cleanup previous state
-        
-            $('#itemsTable tbody tr input, #itemsTable tbody tr select').each(function(){
-              // don't clear here unconditionally; live handler will clear when valid
-            });
-            const $rows = $('#itemsTable tbody tr').filter((_, tr)=> !isTemplateRow($(tr)));
-            const messages = [];
-
-            // 1) require at least one row
-            if ($rows.length === 1){
-              e.preventDefault();
-              messages.push('At least one item row is required.');
-              showMessagesSpread(messages);
-              const $maybe = $('#itemsTable tbody tr').first().find('.item-code, .item-name, .item-QTY, .qty, .item-CostPrice, .price').first();
-              $maybe.get(0)?.focus?.();
-              return false;
-            }
-            // 2) first row: item-idd required
-            const $first = $rows.first();
-              const $firstId = $first.find('.item-id');
-            if ($firstId.length && !$firstId.val()?.trim()){
-              setInvalid($firstId, 'Item ID is required for the first row.');
-              messages.push('First row: Item ID is required.');
-            }
-            // 3) per-row checks with ELSE-IF (first failing rule only)
-            $rows.each(function(i){
-              const rowNo = i + 1;
-              const $tr    = $(this);
-              const $code  = $tr.find('.item-code');
-              const $name  = $tr.find('.item-name');
-              const $qty   = $tr.find('.item-QTY, .qty');
-              const $price = $tr.find('.item-CostPrice, .price');
-               const Amount = $tr.find('.item-Amount, .Amount');
-
-              // else-if chain
-              if(i < $rows.length - 1){
-             
-               if ($code.length && !$code.val()?.trim() ){
-                setInvalid($code, `Item Code is required (row ${rowNo}).`);
-                messages.push(`Row ${rowNo}: Item Code is required.`);
-                $tr.addClass('table-danger');
-              }
-              else if ($name.length && !$name.val()?.trim()){
-                setInvalid($name, `Item Name is required (row ${rowNo}).`);
-                messages.push(`Row ${rowNo}: Item Name is required.`);
-                $tr.addClass('table-danger');
-              }
-              else if ($qty.length){
-                const qv = toNum($qty.val());
-                if (qv === null || qv <= 0){
-                  setInvalid($qty, `QTY must be greater than 0 (row ${rowNo}).`);
-                  messages.push(`Row ${rowNo}: QTY must be > 0.`);
-                  $tr.addClass('table-danger');
-                }
-              } else if ($price.length){
-                const pv = toNum($price.val());
-                if (pv === null || pv <= 0){
-                  setInvalid($price, `Cost Price must be positive (row ${rowNo}).`);
-                  messages.push(`Row ${rowNo}: Cost Price must be > 0.`);
-                  $tr.addClass('table-danger');
-                }
-              }else if (Amount.length){
-                const pv = toNum(Amount.val());
-                if (pv === null || pv <= 0){
-                  setInvalid(Amount, `Total must be More than 0 (row ${rowNo}).`);
-                  messages.push(`Row ${rowNo}: Cost Amount must be > 0.`);
-                  $tr.addClass('table-danger');
-                }
-              } else {
-                // row ok
-                $tr.removeClass('table-danger');
-              }
-              }
-            });
-            if (messages.length){
-              e.preventDefault();
-              const $firstInvalid = $('.is-invalid').first();
-              $firstInvalid.get(0)?.focus?.();
-              $firstInvalid.get(0)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              showMessagesSpread(messages);
-              return false;
-            }
-          });
-
-    </script>
-    <script>
-        //new Row
-           function NewRow(){
-
-                  var index = $('#itemsTable tbody tr').length;
-                  const vatOptions = $('#tpl-vat').html() || '';
-                  const ccOptions  = $('#tpl-cc').html()  || '';
-                  var newRow = $(`
-                      <tr>
-                            <td style="display:none;"><input type="hidden" name="Items[${index}].ItemId" class="form-control item-id" readonly/></td>
-                          <td>${index + 1}</td>
-                          <td><input name="Items[${index}].ItemCode" list="itemOptions${index}" placeholder="Type or select..." class="form-control item-code itemCode" />
-                               <datalist id="itemOptions${index}"></datalist>
-                          </td>
-                          <td><input name="Items[${index}].ItemName"  list="itemOptions${index}" placeholder="Type or select..." class="form-control item-name itemname"  />
-                               <datalist id="itemOptions${index}"></datalist>
-                          </td>
-                          <td><input name="Items[${index}].QTY" class="form-control item-QTY" /></td>
-                          <td><input name="Items[${index}].CostPrice" class="form-control item-CostPrice" ></td>
-
-                          <td><input name="Items[${index}].Disc"class="form-control item-Disc"  /></td>
-                          <td><input name="Items[${index}].NetPrice" class="form-control item-NetPrice"readonly /></td>
-                           <td>
-                               <select class="form-select form-select-sm item-VatPersint" name="Items[${index}].VatPersint">
-                                 ${vatOptions}
-                               </select>
-                           </td>
-                          <td><input name="Items[${index}].VatAmonut" class="form-control item-VatAmonut" readonly /></td>
-                          <td><input name="Items[${index}].Amount" class="form-control item-Amount" readonly></td>
-                           <td>
-                               <select class="form-select form-select-sm" name="Items[${index}].CostCenterId">
-                                            <option value="">--</option>
-                                 ${ccOptions}
-                               </select>
-                           </td>
-                          <td class="text-center"><button  type="button" class="btn btn-sm btn-outline-danger remove-row">x</button></td>
-                          <td style="display:none;"><inpu  type="hidden" name="Items[${index}].Price" class="form-control item-Price"  readonly/></td>
-                          <td style="display:none;"><input type="hidden" name="Items[${index}].Type" class="form-control item-Type" readonly></td>
-                          <td style="display:none;"><input type="hidden" name="Items[${index}].Method" class="form-control item-Method hidden" readonly /></td>
-                      </tr>
-                  `);
-                  $('#itemsTable tbody').append(newRow);
-                    const $row = newRow;
-                   }
-    </script>
-    <script>
-        (function () {
-          const $form  = $('#invoiceForm');
-          const token  = $form.find('input[name="__RequestVerificationToken"]').val();
-
-          // Prevent Enter key from native-submitting
-          $form.on('keydown', 'input,select,textarea', function(e){
-            if (e.key === 'Enter') e.preventDefault();
-          });
-          debugger
-                // Ajax Save button
-          function getUrlFromId(){
-                    debugger
-         
-            const idVal = Number($form.find('input[name="Id"]').val() || 0);
-            return idVal > 0
-          ? '@Url.Action("Edit", "PurchasesCenter")'
-          : '@Url.Action("Create", "PurchasesCenter")';
-          }
-
-          // ---- helpers already in your page ----
-          const num = v => {
+        // ------------------------
+        // Shared helpers
+        // ------------------------
+        const num = v => {
             if (v == null) return 0;
             const n = parseFloat(String(v).replace(/,/g, ''));
             return Number.isFinite(n) ? n : 0;
-          };
-          const fmt = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
 
-          function calcRow($tr) {
+        const fmt = n => n.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        function isTemplateRow($tr) {
+            return $tr.hasClass('template') || $tr.is('[data-template="true"]');
+        }
+
+        function isLastRow($row) {
+            return $row.is(':last-child');
+        }
+
+        function updateRowIndexes() {
+            $('#itemsTable tbody tr').each(function (i) {
+                $(this).find('td').eq(1).text(i + 1);
+                $(this).find('input, select').each(function () {
+                    const name = $(this).attr('name');
+                    if (!name) return;
+                    $(this).attr('name', name.replace(/Items\[\d+\]/, `Items[${i}]`));
+                });
+            });
+        }
+
+        // ------------------------
+        // Row calculation
+        // ------------------------
+        function calcRow($tr) {
             let disc = 0;
-            const qty   = num($tr.find('.item-QTY').val());
+            const qty = num($tr.find('.item-QTY').val());
             const price = num($tr.find('.item-CostPrice').val());
-            if (qty > 0 && price > 0) disc = num($tr.find('.item-Disc').val());
+            if (qty > 0 && price > 0) {
+                disc = num($tr.find('.item-Disc').val());
+            }
             const vatPct = num($tr.find('.item-VatPersint').val());
 
-            const net    = (qty * price) - disc;
+            const net = (qty * price) - disc;
             const vatAmt = net * (vatPct / 100);
             const amount = net + vatAmt;
 
@@ -807,186 +771,573 @@
             $tr.find('.item-Disc').val(fmt(disc));
 
             return { net, vatAmt, amount, Discount: disc };
-          }
+        }
 
-          function calcTotals() {
-            let totalPrice = 0, totalVat = 0, totalAmount = 0, totalDiscount = 0;
+        function calcTotals() {
+            let totalNet = 0, totalVat = 0, totalAmount = 0, totalDiscount = 0;
+
             $('#itemsTable tbody tr').each(function () {
-              const r = calcRow($(this));
-              totalPrice += r.net;
-              totalVat   += r.vatAmt;
-              totalDiscount += r.Discount;
-              totalAmount+= r.amount;
+                const $tr = $(this);
+                if (isTemplateRow($tr)) return;
+                const r = calcRow($tr);
+                totalNet += r.net;
+                totalVat += r.vatAmt;
+                totalDiscount += r.Discount;
+                totalAmount += r.amount;
             });
 
-            $('.total-BeforeVat').text(fmt(totalPrice));
+            $('.total-BeforeVat').text(fmt(totalNet));
             $('.total-Vat').text(fmt(totalVat));
             $('.tota-Discount').text(fmt(totalDiscount));
             $('.net-Amount').text(fmt(totalAmount));
 
             const set = (name, val) => {
-              const el = document.querySelector(`input[name="${name}"]`);
-              if (el) el.value = val;
+                const el = document.querySelector(`input[name="${name}"]`);
+                if (el) el.value = val;
             };
-            set('TotalBeforeVat', totalPrice);
+            set('TotalBeforeVat', totalNet);
             set('TotalVat', totalVat);
             set('TotaDiscount', totalDiscount);
             set('TotaAmount', totalAmount);
-          }
+        }
 
-          // recalc when user edits numeric fields
-          $('#itemsTable').on('input change', '.item-QTY,.item-CostPrice,.item-Disc,.item-VatPersint', function () {
-            calcRow($(this).closest('tr'));
+        $(document).on('input change',
+            '#itemsTable .item-QTY, #itemsTable .item-CostPrice, #itemsTable .item-Disc, #itemsTable .item-VatPersint',
+            function () {
+                const $tr = $(this).closest('tr');
+                calcRow($tr);
+                calcTotals();
+            });
+
+        // ------------------------
+        // Autocomplete + items
+        // ------------------------
+        function fillRowFromItem($row, item) {
+            const get = (o, a, b) => o[a] ?? o[b];
+
+            $row.find('.item-id').val(get(item, 'Id', 'id'));
+            $row.find('.item-code').val(get(item, 'Code', 'code'));
+            $row.find('.item-name').val(get(item, 'Name', 'name'));
+            $row.find('.item-CostPrice').val(get(item, 'CostPrice', 'costPrice'));
+            $row.find('.item-QTY').val(0);
+            $row.find('.item-Disc').val(0);
+            $row.find('.item-NetPrice').val(0);
+            $row.find('.item-VatAmonut').val(0);
+            $row.find('.item-Amount').val(0);
+            $row.find('.item-Price').val(get(item, 'SalesPrice', 'salesPrice'));
+            $row.find('.item-Type').val(get(item, 'Type', 'type'));
+            $row.find('.item-Method').val(get(item, 'Method', 'method'));
+
+            calcRow($row);
             calcTotals();
-          });
-          $(function(){ calcTotals(); });
+        }
 
-          // ---- validation reused by both buttons
-          function toNum(v){
-            const n = parseFloat((v ?? '').toString().replace(/,/g, ''));
-            return Number.isFinite(n) ? n : null;
-          }
-          function clearInvalid($el){
+        function setupAutocomplete($row) {
+            function getDatalist($input, $scope = $(document)) {
+                const el = $input[0];
+                if (!el) return $();
+                if (el.list) return $(el.list);
+                const id = $input.attr('list');
+                if (!id) return $();
+                const $scoped = $scope.find('#' + id);
+                return $scoped.length ? $scoped : $('#' + id);
+            }
+
+            const $code = $row.find('.item-code');
+            const $name = $row.find('.item-name');
+            const $codeDL = getDatalist($code, $row);
+            const $nameDL = getDatalist($name, $row);
+
+            let cacheItems = [];
+
+            function fetchItems(term, cb) {
+                $.getJSON('@Url.Action("GetItems", "PurchasesCenter")', {
+                    term: term,
+                    warehouseId: document.querySelector('.js-select2')?.value
+                }, function (data) {
+                    const itemsArray = Array.isArray(data) ? data : data?.items;
+                    const arr = Array.isArray(itemsArray) ? itemsArray : [];
+                    cacheItems = arr;
+                    cb(arr);
+                });
+            }
+
+            function populateDatalist($dl, arr, valueKey) {
+                if (!$dl || !$dl.length) return;
+                $dl.empty();
+                arr.slice(0, 50).forEach(item => {
+                    const code = item.Code ?? item.code;
+                    const name = item.Name ?? item.name;
+                    const value = valueKey === 'code' ? code : name;
+                    $('<option />', { value: value, text: `${code} - ${name}` }).appendTo($dl);
+                });
+            }
+
+            function resolveAndFill($input) {
+                if (!cacheItems.length) return;
+
+                const isCode = $input.is('.item-code');
+                const val = ($input.val() || '').trim();
+                if (!val) return;
+
+                const chosen = cacheItems.find(x => {
+                    const code = x.Code ?? x.code;
+                    const name = x.Name ?? x.name;
+                    return isCode ? code === val : name === val;
+                });
+
+                if (chosen) {
+                    fillRowFromItem($row, chosen);
+                    if (isLastRow($row)) {
+                        const $new = NewRow();
+                        setupAutocomplete($new);
+                    }
+                }
+            }
+
+            if ($codeDL.length) {
+                $code.on('input', function () {
+                    const term = this.value || '';
+                    if (term.length < 1) { $codeDL.empty(); return; }
+                    fetchItems(term, function (arr) {
+                        populateDatalist($codeDL, arr, 'code');
+                    });
+                });
+                $code.on('change blur', function () { resolveAndFill($code); });
+            }
+
+            if ($nameDL.length) {
+                $name.on('input', function () {
+                    const term = this.value || '';
+                    if (term.length < 1) { $nameDL.empty(); return; }
+                    fetchItems(term, function (arr) {
+                        populateDatalist($nameDL, arr, 'name');
+                    });
+                });
+                $name.on('change blur', function () { resolveAndFill($name); });
+            }
+        }
+
+        // ------------------------
+        // New row / delete row
+        // ------------------------
+        function NewRow() {
+            const index = $('#itemsTable tbody tr').length;
+            const vatOptions = $('#tpl-vat').html() || '';
+            const ccOptions = $('#tpl-cc').html() || '';
+
+            const $row = $(`
+                <tr>
+                    <td style="display:none;">
+                        <input type="hidden" name="Items[${index}].ItemId" class="form-control item-id" readonly />
+                    </td>
+                    <td>${index + 1}</td>
+                    <td>
+                        <input name="Items[${index}].ItemCode" list="itemOptions${index}" placeholder="Type or select..." class="form-control item-code itemCode" />
+                        <datalist id="itemOptions${index}"></datalist>
+                    </td>
+                    <td>
+                        <input name="Items[${index}].ItemName" list="itemOptions${index}" placeholder="Type or select..." class="form-control item-name itemname" />
+                        <datalist id="itemOptions${index}"></datalist>
+                    </td>
+                    <td><input name="Items[${index}].QTY" class="form-control item-QTY" /></td>
+                    <td><input name="Items[${index}].CostPrice" class="form-control item-CostPrice" /></td>
+                    <td><input name="Items[${index}].Disc" class="form-control item-Disc" /></td>
+                    <td><input name="Items[${index}].NetPrice" class="form-control item-NetPrice" readonly /></td>
+                    <td>
+                        <select class="form-select item-VatPersint" name="Items[${index}].VatPersint">
+                            ${vatOptions}
+                        </select>
+                    </td>
+                    <td><input name="Items[${index}].VatAmonut" class="form-control item-VatAmonut" readonly /></td>
+                    <td><input name="Items[${index}].Amount" class="form-control item-Amount" readonly /></td>
+                    <td>
+                        <select class="form-select form-select-sm" name="Items[${index}].CostCenterId">
+                            <option value="">--</option>
+                            ${ccOptions}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-row">×</button>
+                    </td>
+                    <td style="display:none;">
+                        <input type="hidden" name="Items[${index}].Price" class="form-control item-Price" readonly />
+                    </td>
+                    <td style="display:none;">
+                        <input type="hidden" name="Items[${index}].Type" class="form-control item-Type" readonly />
+                    </td>
+                    <td style="display:none;">
+                        <input type="hidden" name="Items[${index}].Method" class="form-control item-Method" readonly />
+                    </td>
+                </tr>
+            `);
+
+            $('#itemsTable tbody').append($row);
+            updateRowIndexes();
+            return $row;
+        }
+
+        $(document).on('click', '.remove-row', function () {
+            const $tr = $(this).closest('tr');
+            $tr.remove();
+            if ($('#itemsTable tbody tr').length === 0) {
+                const $new = NewRow();
+                setupAutocomplete($new);
+            } else {
+                updateRowIndexes();
+            }
+            calcTotals();
+        });
+
+        // Toolbar "Create a Copy" = new row
+        $('#addRow').on('click', function () {
+            const $new = NewRow();
+            setupAutocomplete($new);
+        });
+
+        // ------------------------
+        // Vendor selection sync
+        // ------------------------
+        $(function () {
+            const Vendors = @Html.Raw(JsonSerializer.Serialize(
+                                                                    Model.Vendors.Select(c => new { id = c.Id, code = c.Code, name = c.Name })
+                                                                ));
+        const byId = Object.fromEntries(Vendors.map(x => [String(x.id), x]));
+
+            const sel = document.getElementById('filterVendor');
+            const hiddenId = document.getElementById('VendorId');
+            const codeInput = document.getElementById('VendorCode');
+            const nameInput = document.getElementById('VendorName');
+
+            function syncFromSelect() {
+                const m = byId[sel.value];
+                if (!m) {
+                    if (hiddenId) hiddenId.value = '';
+                    codeInput.value = '';
+                    nameInput.value = '';
+                    return;
+                }
+                if (hiddenId) hiddenId.value = String(m.id);
+                codeInput.value = m.code ?? '';
+                nameInput.value = m.name ?? '';
+            }
+
+            if (sel) {
+                const pre = hiddenId?.value;
+                if (pre && byId[pre]) sel.value = pre;
+                syncFromSelect();
+                sel.addEventListener('change', syncFromSelect);
+            }
+        });
+
+        // ------------------------
+        // Validation helpers
+        // ------------------------
+        function clearInvalid($el) {
             $el.removeClass('is-invalid');
             $el.siblings('.invalid-feedback').remove();
-          }
-          function setInvalid($el, message){
+        }
+
+        function setInvalid($el, message) {
             $el.addClass('is-invalid');
             let $fb = $el.siblings('.invalid-feedback');
-            if ($fb.length === 0){
-              $fb = $('<div class="invalid-feedback"></div>');
-              $el.after($fb);
+            if ($fb.length === 0) {
+                $fb = $('<div class="invalid-feedback"></div>');
+                $el.after($fb);
             }
             $fb.text(message);
-          }
-          function isTemplateRow($tr){
-            return $tr.hasClass('template') || $tr.is('[data-template="true"]');
-          }
-          function showMessagesSpread(messages){
+        }
+
+        function showMessagesSpread(messages) {
             if (!messages.length) return;
-            if (window.toastr){
-              toastr.options = Object.assign({}, toastr.options, {
-                positionClass: "toast-top-center",
-                closeButton: true,
-                progressBar: true,
-                timeOut: 4500
-              });
-              messages.forEach((m, i) => setTimeout(() => toastr.error(m), i * 200));
+            if (window.toastr) {
+                toastr.options = Object.assign({}, toastr.options, {
+                    positionClass: "toast-top-center",
+                    closeButton: true,
+                    progressBar: true,
+                    timeOut: 4500
+                });
+                messages.forEach((m, i) => setTimeout(() => toastr.error(m), i * 200));
             } else {
-              alert(messages.join('\n'));
+                alert(messages.join('\n'));
             }
-          }
-          function validateForm(){
-            const $rows = $('#itemsTable tbody tr').filter((_, tr)=> !isTemplateRow($(tr)));
+        }
+
+        // ------------------------
+        // validateForm: ignore last completely empty row
+        // ------------------------
+        function validateForm() {
+            const $rows = $('#itemsTable tbody tr').filter((_, tr) => !isTemplateRow($(tr)));
             const messages = [];
 
-            // FIX: require at least one row (was ===1)
-            if ($rows.length === 0){
-              messages.push('At least one item row is required.');
-            }
-
-            // Require first-row ItemId
-            const $first = $rows.first();
-            const $firstId = $first.find('.item-id');
-            if ($firstId.length && !$firstId.val()?.trim()){
-              setInvalid($firstId, 'Item ID is required for the first row.');
-              messages.push('First row: Item ID is required.');
-            }
-
-            // Per-row checks; skip the very last row only if it's a template you append later
-            $rows.each(function(i){
-              const rowNo = i + 1;
-              const $tr    = $(this);
-              const $code  = $tr.find('.item-code');
-              const $name  = $tr.find('.item-name');
-              const $qty   = $tr.find('.item-QTY');
-              const $price = $tr.find('.item-CostPrice');
-              if(i < $rows.length - 1){
-                  if ($code.length && !$code.val()?.trim()){
-                setInvalid($code, `Item Code is required (row ${rowNo}).`);
-                messages.push(`Row ${rowNo}: Item Code is required.`);
-                $tr.addClass('table-danger');
-                return; // next row
-              }
-              if ($name.length && !$name.val()?.trim()){
-                setInvalid($name, `Item Name is required (row ${rowNo}).`);
-                messages.push(`Row ${rowNo}: Item Name is required.`);
-                $tr.addClass('table-danger');
-                return;
-              }
-              if ($qty.length){
-                const qv = toNum($qty.val());
-                if (qv === null || qv <= 0){
-                  setInvalid($qty, `QTY must be greater than 0 (row ${rowNo}).`);
-                  messages.push(`Row ${rowNo}: QTY must be > 0.`);
-                  $tr.addClass('table-danger');
-                  return;
-                }
-              }
-              if ($price.length){
-                const pv = toNum($price.val());
-                if (pv === null || pv < 0){
-                  setInvalid($price, `Price must be zero or positive (row ${rowNo}).`);
-                  messages.push(`Row ${rowNo}: Price must be ≥ 0.`);
-                  $tr.addClass('table-danger');
-                  return;
-                }
-              }}
-              // row ok
-              $tr.removeClass('table-danger');
+            // Clear previous invalid states
+            $rows.find('input, select').each(function () {
+                clearInvalid($(this));
             });
 
-            if (messages.length){
-              showMessagesSpread(messages);
-              const $firstInvalid = $('.is-invalid').first();
-              $firstInvalid.get(0)?.focus?.();
-              $firstInvalid.get(0)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              return false;
+            let validRowCount = 0;
+
+            $rows.each(function (i) {
+                const $tr = $(this);
+                const rowNo = i + 1;
+
+                const $code = $tr.find('.item-code');
+                const $name = $tr.find('.item-name');
+                const $qty = $tr.find('.item-QTY');
+                const $price = $tr.find('.item-CostPrice');
+                const $amount = $tr.find('.item-Amount');
+                const $itemId = $tr.find('.item-id');
+
+                const codeVal = ($code.val() || '').trim();
+                const nameVal = ($name.val() || '').trim();
+                const qtyVal = num($qty.val());
+                const priceVal = num($price.val());
+                const amountVal = num($amount.val());
+
+                const isLast = (i === $rows.length - 1);
+                const isCompletelyEmpty =
+                    !codeVal &&
+                    !nameVal &&
+                    qtyVal === 0 &&
+                    priceVal === 0 &&
+                    amountVal === 0;
+
+                // Ignore last empty row if there is another row
+                if (isLast && isCompletelyEmpty && $rows.length > 1) {
+                    return;
+                }
+
+                validRowCount++;
+                $tr.removeClass('table-danger');
+
+                if (validRowCount === 1 && $itemId.length && !$itemId.val()?.trim()) {
+                    setInvalid($itemId, 'Item ID is required for the first row.');
+                    messages.push('First row: Item ID is required.');
+                    $tr.addClass('table-danger');
+                    return;
+                }
+
+                if ($code.length && !codeVal) {
+                    setInvalid($code, `Item Code is required (row ${rowNo}).`);
+                    messages.push(`Row ${rowNo}: Item Code is required.`);
+                    $tr.addClass('table-danger');
+                    return;
+                }
+
+                if ($name.length && !nameVal) {
+                    setInvalid($name, `Item Name is required (row ${rowNo}).`);
+                    messages.push(`Row ${rowNo}: Item Name is required.`);
+                    $tr.addClass('table-danger');
+                    return;
+                }
+
+                if ($qty.length) {
+                    if (qtyVal <= 0) {
+                        setInvalid($qty, `QTY must be greater than 0 (row ${rowNo}).`);
+                        messages.push(`Row ${rowNo}: QTY must be > 0.`);
+                        $tr.addClass('table-danger');
+                        return;
+                    }
+                }
+
+                if ($price.length) {
+                    if (priceVal < 0) {
+                        setInvalid($price, `Cost Price must be positive (row ${rowNo}).`);
+                        messages.push(`Row ${rowNo}: Cost Price must be ≥ 0.`);
+                        $tr.addClass('table-danger');
+                        return;
+                    }
+                }
+
+                if ($amount.length) {
+                    if (amountVal <= 0) {
+                        setInvalid($amount, `Amount must be greater than 0 (row ${rowNo}).`);
+                        messages.push(`Row ${rowNo}: Amount must be > 0.`);
+                        $tr.addClass('table-danger');
+                        return;
+                    }
+                }
+            });
+
+            if (validRowCount === 0) {
+                messages.push('At least one item row with data is required.');
             }
+
+            if (messages.length) {
+                showMessagesSpread(messages);
+                const $firstInvalid = $('.is-invalid').first();
+                if ($firstInvalid.length) {
+                    $firstInvalid.get(0).focus?.();
+                    $firstInvalid.get(0).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return false;
+            }
+
             return true;
-          }
+        }
 
-          function postAjax(saveAndClose){
-            // make sure totals are up-to-date before serialize
-            calcTotals();
+        // ------------------------
+        // AJAX Save
+        // ------------------------
+        (function () {
+            const $form = $('#invoiceForm');
+            const token = $form.find('input[name="__RequestVerificationToken"]').val();
 
-            // If you reindex to contiguous: updateRowIndexes();
-            const payload = $form.serialize();
-            const url = getUrlFromId();
-
-            $.ajax({
-              url,
-              type: 'POST',
-              data: payload,
-              headers: { 'RequestVerificationToken': token },
-              success: function(res){
-                if (saveAndClose) {
-                  window.location.href = (res && res.redirectUrl) || '@Url.Action("Index", "PurchasesCenter")';
-                } else {
-                  alert((res && res.message) || 'Saved.');
-                }
-              },
-              error: function(xhr){
-                try {
-                  const r = JSON.parse(xhr.responseText);
-                  showMessagesSpread([r.message || 'Error while saving.']);
-                  console.error(r.errors || r);
-                } catch {
-                  showMessagesSpread(['Error while saving.']);
-                }
-              }
+            // prevent Enter key from native submit
+            $form.on('keydown', 'input,select,textarea', function (e) {
+                if (e.key === 'Enter') e.preventDefault();
             });
-          }
 
-          // Buttons drive the flow (no native submit)
-          $('#btnAjaxSave').on('click', function(){
-            if (!validateForm()) return;
-            postAjax(false);
-          });
-          $('#btnAjaxSaveClose').on('click', function(){
-            if (!validateForm()) return;
-            postAjax(true);
-          });
+            function getUrlFromId() {
+                const idVal = Number($form.find('input[name="Id"]').val() || 0);
+                return idVal > 0
+                    ? '@Url.Action("Edit", controllerName)'
+                    : '@Url.Action("Create", controllerName)';
+            }
+
+            function postAjax(saveAndClose) {
+                calcTotals();
+                const payload = $form.serialize();
+                const url = getUrlFromId();
+
+                $.ajax({
+                    url,
+                    type: 'POST',
+                    data: payload,
+                    headers: { 'RequestVerificationToken': token },
+                    success: function (res) {
+                        if (saveAndClose) {
+                            window.location.href = (res && res.redirectUrl)
+                                ?? '@Url.Action("Index", controllerName)';
+                        } else {
+                            showMessagesSpread([(res && res.message) || 'Saved.']);
+                        }
+                    },
+                    error: function (xhr) {
+                        try {
+                            const r = JSON.parse(xhr.responseText);
+                            showMessagesSpread([r.message || 'Error while saving.']);
+                            console.error(r.errors || r);
+                        } catch {
+                            showMessagesSpread(['Error while saving.']);
+                        }
+                    }
+                });
+            }
+
+            $('#btnAjaxSave').on('click', function () {
+                if (!validateForm()) return;
+                postAjax(false);
+            });
+
+            $('#btnAjaxSaveClose').on('click', function () {
+                if (!validateForm()) return;
+                postAjax(true);
+            });
         })();
+
+        // ------------------------
+        // Initialisation
+        // ------------------------
+        $(function () {
+            $('#itemsTable tbody tr').each(function () {
+                setupAutocomplete($(this));
+            });
+            calcTotals();
+        });
+
+        // ------------------------
+        // InvoiceType -> Default Account mapping
+        // ------------------------
+        $(function () {
+            const $invoiceType = $('#InvoiceType, select[name="InvoiceType"]');
+            const $accountSelect = $('#AccountId, select[name="AccountId"]');
+
+            if (!$invoiceType.length || !$accountSelect.length) {
+                console.error('InvoiceType or AccountId select not found.');
+                return;
+            }
+
+            function loadDefaultAccount() {
+                const type = ($invoiceType.val() || '').trim();
+                let accountKey = null;
+
+                if (type === 'Cash') {
+                    accountKey = 'Purchase Payment Cash Method';
+                } else if (type === 'Credit') {
+                    accountKey = 'Vendor';
+                } else {
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetDefolutAccount", "PurchasesCenter")',
+                    type: 'GET',
+                    data: { account: accountKey },
+                    success: function (result) {
+                        console.log('GetDefolutAccount result:', result);
+
+                        if (result == null) return;
+
+                        let accountId;
+
+                        if (typeof result === 'number' || typeof result === 'string') {
+                            accountId = String(result);
+                        } else if (typeof result === 'object') {
+                            accountId = String(
+                                result.accountId ??
+                                result.id ??
+                                result.AccountId ??
+                                ''
+                            );
+                        }
+
+                        if (!accountId) {
+                            console.warn('No accountId in result:', result);
+                            return;
+                        }
+
+                        $accountSelect.val(accountId);
+
+                        if ($accountSelect.val() !== accountId) {
+                            console.warn('No option with value =', accountId,
+                                'Available:', $accountSelect.find('option').map(function () {
+                                    return $(this).val();
+                                }).get()
+                            );
+                            return;
+                        }
+
+                        $accountSelect.trigger('change');
+                    },
+                    error: function (xhr, status, err) {
+                        console.error('GetDefolutAccount AJAX error:', status, err, xhr.responseText);
+                    }
+                });
+            }
+
+            $invoiceType.on('change', loadDefaultAccount);
+            loadDefaultAccount();
+        });
+
+        // ------------------------
+        // show/hide Fixed Assets based on Purchase Type
+        // ------------------------
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const purchaseTypeSelect = document.getElementById('PurchaseType');
+            const fixedAssetDiv = document.getElementById('fixedAssetWrapper');
+
+            function toggleFixedAsset() {
+                if (purchaseTypeSelect.value === 'Fixed Assets') {
+                    fixedAssetDiv.classList.remove('d-none');
+                } else {
+                    fixedAssetDiv.classList.add('d-none');
+                }
+            }
+
+            purchaseTypeSelect.addEventListener('change', toggleFixedAsset);
+            toggleFixedAsset();
+        });
     </script>
 }

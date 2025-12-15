@@ -137,7 +137,7 @@
     </div>
 
     <!-- Tabs (Main / Reports) -->
-    <div class="pv-tabs">
+   @*  <div class="pv-tabs">
         <ul class="nav nav-tabs border-0">
             <li class="nav-item">
                 <a class="nav-link active" href="#">Main</a>
@@ -146,7 +146,7 @@
                 <a class="nav-link disabled" tabindex="-1">Reports</a>
             </li>
         </ul>
-    </div>
+    </div> *@
 
     <!-- Ribbon -->
     <div class="pv-ribbon">
@@ -256,6 +256,7 @@
             <input type="hidden" asp-for="CreditCostCenterId" id="CreditCostCenterId" />
             <input type="hidden" asp-for="DebitAccountId" id="DebitAccountId" />
             <input type="hidden" asp-for="DebitCostCenterId" id="DebitCostCenterId" />
+            <input type="hidden" asp-for="PaymentType" id="PaymentTypee" />
             <input type="hidden" asp-for="DebitEmployeeId" id="DebitEmployeeId" />
             <input type="hidden" asp-for="vendorId" id="vendorId" />
 
@@ -272,9 +273,9 @@
                             <label class="form-label">Account Name</label>
                             <select class="form-select" asp-for="DebitAccountId"
                                     asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
-                                    id="filterCreditAccount">
+                                    id="filterDebitAccount">
                             </select>
-                            <span class="text-danger" asp-validation-for="DebitAccountId"></span>
+                            @* <span class="text-danger" asp-validation-for="DebitAccountId"></span> *@
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label">Cost Center</label>
@@ -343,9 +344,9 @@
                         </div>
                         <div class="col-12 col-md-4">
                             <label class="form-label">Account Name</label>
-                            <select class="form-select" asp-for="DebitAccountId"
+                            <select class="form-select" asp-for="CreditAccountId"
                                     asp-items="@(new SelectList(Model.Accounts, "Id", "Name"))"
-                                    id="filterDebitAccount">
+                                    id="filterCreditAccount">
                             </select>
                         </div>
                         <div class="col-12 col-md-3">
@@ -886,13 +887,13 @@
             byCostsel.addEventListener('change', syncCostFromSelect);
         })();
     </script>
-
     <script>
         // Toggle Vendor / Employee panels by PaymentType
         $(function () {
             const $paymentType = $('#PaymentType');
             const $panelEmp = $('#panelEmployee');
             const $panelVendor = $('#panelVendor');
+            const $paymentHidden = $('#PaymentTypee'); 
 
             function setDisabled($c, disabled) {
                 $c.find('input, select, textarea, button').prop('disabled', disabled);
@@ -902,17 +903,18 @@
                 const text = String($paymentType.find('option:selected').text() ?? '').trim().toLowerCase();
                 return val === 'vendor' || val === '1' || text === 'vendor';
             }
-
+                 function syncPaymentType() {
+            $paymentHidden.val($paymentType.val());
+        }
             function swapPanels() {
                 const isVendor = isVendorSelected();
-
+                 syncPaymentType();
                 $panelVendor.toggleClass('d-none', !isVendor);
                 $panelEmp.toggleClass('d-none', isVendor);
 
                 setDisabled($panelVendor, !isVendor);
                 setDisabled($panelEmp, isVendor);
             }
-
             $paymentType.on('change', swapPanels);
             swapPanels(); // initial
         });

@@ -68,17 +68,18 @@
             return View("PurchasesInvoice",
                 new PurchaseInvoiceViewModel
                     {
+                    PurchaseId=_PurchaseService.GenerateVendorsInvoiceIdAsync().GetAwaiter().GetResult(),
                     Invoce = _PurchaseService.GenerateVendorsInvoiceNoAsync().GetAwaiter().GetResult(),
                     NextCode = _PurchaseService.GenerateVendorsInvoiceNoAsync().GetAwaiter().GetResult(),
                     Date = DateOnly.FromDateTime(DateTime.Today),
-                    DueTo = DateOnly.FromDateTime(DateTime.Today.AddDays(30)),
+                    DueTo = DateOnly.FromDateTime(DateTime.Today),
                     ShipDate = DateOnly.FromDateTime(DateTime.Today),
                     Vendors = VendorslectList,
                     Warehouses = WarehouseSelectList,
                     Accounts = AccountList,
                     CostCenters = CostCenterList,
                     FixedAssets = FixedAssetList,
-
+                   // AccountId=
                     Vat = VatList
                     });
             }
@@ -88,12 +89,11 @@
             if (model.Items == null || model.Items.Count == 0) return BadRequest("At least one item is required.");
             if (model.VendorId is null) return BadRequest("Vendor is required.");
             if (model.WarehouseId is null) return BadRequest("Warehouse is required.");
-            var userId = 1;
-
+         
             await _PurchaseService.CreateTaxInvoiceAsync(model);
             return RedirectToAction(nameof(Index));
             }
-            [HttpGet]
+        [HttpGet]
         public async Task<IActionResult> GetItems(string term, int warehouseId)
             {
             if (string.IsNullOrEmpty(term))
@@ -155,6 +155,11 @@
 
                    }).ToListAsync();
             return Json(result);
+            }
+        public async Task<IActionResult> GetDefolutAccount(string Account)
+            {
+            var accountid =await _ListServices.DefaultAccountsSet(Account);
+            return Json(accountid);
             }
 
         }
