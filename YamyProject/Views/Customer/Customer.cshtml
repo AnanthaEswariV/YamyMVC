@@ -1,0 +1,921 @@
+﻿@{
+    ViewData["Title"] = "Customer";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .warehouse-header {
+        background: #4472c4;
+        color: white;
+        margin: -15px -15px 0 -15px;
+        padding: 8px 15px;
+        font-weight: bold;
+    }
+
+    .employee-toolbar {
+        background: #e7e6e6;
+        margin: 0 -15px;
+        padding: 5px 15px;
+        border-bottom: 1px solid #ccc;
+        font-size: 12px;
+    }
+
+        .employee-toolbar .nav-link {
+            color: #333;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+
+    .dataTables_wrapper {
+        padding: 50px;
+    }
+    /* Force scroll inside modal */
+    .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+</style>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<div class="warehouse-header">
+    <center> Customer Center</center>
+</div>
+<div class="employee-toolbar">
+    <div class="container">
+
+        <!-- Top Controls -->
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-8">
+                <ul class="nav nav-pills">
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                            <i class="bi bi-gear-fill me-1"></i> Customer Operations
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+                                    <i class="bi bi-plus-circle me-2"></i> New Customer
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item me-2">
+                        <a class="nav-link" href="/Inventory/WarehouseTransfer" id="btnTransfer">
+                            <i class="bi bi-arrow-left-right me-1"></i> New Transcation
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Warehouse Table -->
+            <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-striped custom-table mb-0" id="customerTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Amount</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Customer Informations</h5>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Customer Name:</strong>
+                                    <span id="customerName"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Customer Code:</strong>
+                                    <span id="customerCode"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Email:</strong>
+                                    <span id="customerEmail"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Phone Number:</strong>
+                                    <span id="customerPhone"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <ul class="nav nav-tabs" id="myTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home"
+                                   role="tab" aria-controls="home" aria-selected="true">Transactions</a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="profile-tab" data-bs-toggle="tab" href="#profile"
+                                   role="tab" aria-controls="profile" aria-selected="false">Cash Invoice</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="home" role="tabpanel"
+                                 aria-labelledby="home-tab">
+                                <div class="table-responsive" style="overflow-y: auto;">
+                                    <table class="table table-striped custom-table mb-0" id="pettyCashVoucherTable">
+                                        <thead class="table-ligh">
+                                            <tr>
+                                                <th>S.No</th>
+                                                <th>Date</th>
+                                                <th>Voucher No</th>
+                                                <th>Voucher Type</th>
+                                                <th>Description</th>
+                                                <th>Debit</th>
+                                                <th>Credit</th>
+                                                <th>Balance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Rows will be loaded dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="profile" role="tabpanel"
+                                 aria-labelledby="profile-tab">
+                                <div class="table-responsive" style="overflow-y: auto;">
+                                    <table class="table table-striped custom-table mb-0" id="pettyCashTransactionsTable">
+                                        <thead class="table-ligh">
+                                            <tr>
+                                                <th>S.No</th>
+                                                <th>V - No</th>
+                                                <th>Date</th>
+                                                <th>Account Name</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<div class="modal fade" id="newCustomerModal" tabindex="-1"
+     aria-labelledby="newCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <!-- scrollable added -->
+        <div class="modal-content">
+            <form id="newCustomerForm" class="needs-validation" novalidate>
+                <input type="hidden" id="customerId" value="0" />
+                <!-- Header -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newCustomerModalLabel">
+                        Customers - New Customer
+                    </h5>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+
+                    <!-- Customer Information -->
+                    <h6 class="mb-3">Customer Information</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="customerName" class="form-label">Customer Name</label>
+                            <input type="text" class="form-control" id="customerName"
+                                   placeholder="Customer Name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="customerCode" class="form-label">Customer Code</label>
+                            <input type="text" class="form-control" id="customerCode"
+                                   placeholder="Customer Code">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="customerCategory" class="form-label">Customer Category</label>
+                            <select id="customerCategory" class="form-select" required>
+                                <option value="">-- Select Category --</option>
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="Add new category" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        </div>
+
+                        <div class="row align-items-center g-2 mt-3">
+                            <label for="debitAmount" class="col-auto col-form-label fw-bold">Opening Balance</label>
+
+                            <div class="col-auto">
+                                <input type="number" class="form-control form-control-sm" id="debitAmount" placeholder="Debit" style="width: 80px;">
+                            </div>
+
+                            <div class="col-auto">
+                                <input type="number" class="form-control form-control-sm" id="creditAmount" placeholder="Credit" style="width: 80px;">
+                            </div>
+
+                            <div class="col-auto">
+                                <input type="date" class="form-control form-control-sm" id="balanceDate" style="width: 130px;" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Contact & Address -->
+                    <h6 class="mb-3">Contact & Address Data</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="mainPhone" class="form-label">Main Phone</label>
+                            <input type="text" id="mainPhone" class="form-control" placeholder="Main Phone">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="workPhone" class="form-label">Work Phone</label>
+                            <input type="text" id="workPhone" class="form-control" placeholder="Work Phone">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="mobileFax" class="form-label">Mobile / Fax</label>
+                            <input type="text" id="mobileFax" class="form-control" placeholder="Mobile / Fax">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" id="email" class="form-control" placeholder="Email">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ccEmail" class="form-label">CC Email</label>
+                            <input type="email" id="ccEmail" class="form-control" placeholder="CC Email">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="website" class="form-label">Website</label>
+                            <input type="text" id="website" class="form-control" placeholder="Website">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Country</label>
+                            <select id="countryDropdown" class="form-select form-select-sm" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">City</label>
+                            <select id="cityDropdown" class="form-select form-select-sm" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="region" class="form-label">Region</label>
+                            <input type="text" id="region" class="form-control" placeholder="Region">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="buildingName" class="form-label">Building Name</label>
+                            <input type="text" id="buildingName" class="form-control" placeholder="Building Name">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Account Settings -->
+                    <h6 class="mb-3">Account Settings & Other</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="accountReceivable" class="form-label">Account Receivable</label>
+                            <select id="accruedSalaries" class="form-select form-select-sm" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="trn" class="form-label">TRN</label>
+                            <input type="text" id="trn" class="form-control" placeholder="TRN">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="facilityName" class="form-label">Facility Name</label>
+                            <input type="text" id="facilityName" class="form-control" placeholder="Facility Name">
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="activeCheckbox" checked>
+                                <label class="form-check-label" for="activeCheckbox">Active</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Project</label>
+                            <div id="projectContainer" class="form-control" style="height:120px; overflow-y:auto;">
+                                <!-- checkboxes will be inserted here -->
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="addCategoryForm" novalidate>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addCategoryModalLabel">Add New Category</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="newCategoryName" class="form-control" placeholder="Category Name" required />
+                    <div class="invalid-feedback">Please enter a category name.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+
+        $(document).ready(function () {
+            loadCustomerCategories();
+            loadCustomers();
+            let countryCities = [];
+
+            function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+                   const $country = $(countryIdSelector);
+                   const $city = $(cityIdSelector);
+
+                   $.getJSON(apiUrl, function (data) {
+                       countryCities = data; // store globally
+
+                       // Populate country dropdown
+                       $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
+                   });
+
+                   // Event: When country changes, populate cities
+                   $country.on('change', function () {
+                       const selectedCountryId = $(this).val();
+
+                       // Reset city dropdown
+                       $city.html('<option value="">-- Select --</option>');
+
+                       if (selectedCountryId) {
+                           const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
+                           $city.append(cities.map(city => `<option value="${city.id}">${city.name}</option>`));
+                       }
+                   });
+               }
+
+            loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
+
+            $.ajax({
+                       url: '@Url.Action("GetCountryOfIssue", "HR")',
+                       type: 'GET',
+                       success: function (data) {
+                           let $ddl = $('#countryOfIssue');
+                           $ddl.empty().append('<option value="">-- Select --</option>');
+
+                           $.each(data, function (i, country) {
+                               $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
+                           });
+                       },
+                       error: function () {
+                           alert("Error loading countries");
+                       }
+                   });
+
+            $.ajax({
+                     url: '@Url.Action("GetAccruedSalaries", "HR")',
+                     type: 'GET',
+                     success: function (data) {
+
+                         // List of dropdowns with their matching code textbox
+                         const dropdowns = [
+                             { ddl: '#accruedSalaries', codeBox: '#code1' },
+                         ];
+
+                         dropdowns.forEach(set => {
+                             let $ddl = $(set.ddl);
+
+
+                             $ddl.empty().append('<option value="">-- Select --</option>');
+
+                             $.each(data, function (i, item) {
+                                 $ddl.append(
+                                     $('<option>', {
+                                         value: item.id,
+                                         text: item.code + ' - ' + item.name,
+                                         'data-code': item.code
+                                     })
+                                 );
+                             });
+
+
+
+                             // On change, update the code textbox
+                             $ddl.on('change', function () {
+                                 let selected = $(this).find(':selected');
+                                 let code = selected.data('code');
+
+
+                                 $(set.codeBox).val(code || "");
+                             });
+                         });
+                     },
+                     error: function (xhr, status, error) {
+                         console.error("❌ Error loading accounts:", status, error);
+                     }
+                 });
+
+            $.ajax({
+                url: '@Url.Action("GetProjects", "Construction")',
+                type: 'GET',
+                success: function(res) {
+                    if (!res.status || !res.data) return;
+
+                    const container = $('#projectContainer');
+                    container.empty();
+
+                    $.each(res.data, function(i, item) {
+                        const checkboxId = 'project_' + item.id;
+
+                        const checkbox = $('<div class="form-check">')
+                            .append(
+                                $('<input>', {
+                                    type: 'checkbox',
+                                    class: 'form-check-input project-checkbox',
+                                    id: checkboxId,
+                                    'data-code': item.code,
+                                    'data-name': item.name
+                                })
+                            )
+                            .append(
+                                $('<label>', {
+                                    class: 'form-check-label',
+                                    for: checkboxId,
+                                    text: item.code + ' ' + item.name
+                                })
+                            );
+
+                        container.append(checkbox);
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Error loading projects:", status, error);
+                }
+            });
+
+            // Edit Customer button click
+        $(document).on("click", ".editCustomerBtn", function () {
+            const customer = $(this).data("customer"); // matches data-customer
+            if (!customer) return;
+
+            // Set modal fields with existing customer data
+            $("#customerId").val(customer.id || 0);
+            $("#customerCode").val(customer.code || '');
+            $("#customerName").val(customer.name || '');
+            $("#customerCategory").val(customer.cat_id || ''); // Assuming this dropdown is populated
+            $("#debitAmount").val(customer.debit != null ? customer.debit : 0); // Fix the assignment for debitAmount
+            $("#creditAmount").val(customer.credit != null ? customer.credit : 0); // Fix the assignment for creditAmount
+            $("#balanceDate").val(customer.date ? new Date(customer.date).toISOString().slice(0, 10) : ''); // Use the correct date format
+            $("#mainPhone").val(customer.mainPhone || '');
+            $("#workPhone").val(customer.workPhone || '');
+            $("#mobileFax").val(customer.mobile || '');
+            $("#email").val(customer.email || '');
+            $("#ccEmail").val(customer.ccMail || '');
+            $("#website").val(customer.website || '');
+            $("#countryDropdown").val(customer.country || ''); // Assuming the country dropdown is populated
+            $("#cityDropdown").val(customer.city || ''); // Assuming the city dropdown is populated
+            $("#region").val(customer.region || '');
+            $("#buildingName").val(customer.buildingName || '');
+            $("#accruedSalaries").val(customer.accountId || '');
+            $("#trn").val(customer.trn || '');
+            $("#facilityName").val(customer.facilityName || '');
+            $("#facilityCode").val(customer.projectId || ''); // Use correct projectId for facilityCode
+
+            // Active checkbox
+            $("#activeCheckbox").prop("checked", customer.active === 0);
+
+            // Project Sites: Populate checkboxes with selected projects
+            $.ajax({
+                url: '@Url.Action("GetProjects", "Construction")',
+                type: 'GET',
+                success: function (res) {
+                    if (!res.status || !res.data) return;
+
+                    const container = $('#projectContainer');
+                    container.empty(); // Clear existing checkboxes
+
+                    let selectedProjects = [];
+
+                    $.each(res.data, function (i, item) {
+                        const checkboxId = 'project_' + item.id;
+                        const isChecked = customer.ProjectSites && customer.ProjectSites.includes(item.name);
+
+                        if (isChecked) selectedProjects.push(item.id); // Use project ID, not name
+
+                        // Create a checkbox for each project
+                        const checkbox = $('<div class="form-check">')
+                            .append(
+                                $('<input>', {
+                                    type: 'checkbox',
+                                    class: 'form-check-input project-checkbox',
+                                    id: checkboxId,
+                                    'data-id': item.id, // Store the project ID here
+                                    'data-name': item.name,
+                                    checked: isChecked // Check if this project was previously selected
+                                })
+                            )
+                            .append(
+                                $('<label>', {
+                                    class: 'form-check-label',
+                                    for: checkboxId,
+                                    text: item.code + ' ' + item.name
+                                })
+                            );
+
+                        container.append(checkbox);
+                    });
+
+                    // Update textarea or input with selected projects (ID-based)
+                    $('#additionalNotes').val(selectedProjects.join(', ')); // This is where the project IDs are set in the textarea
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading projects:", status, error);
+                }
+            });
+
+            // Update modal title
+            $("#newCustomerModalLabel").text("Edit Customer");
+
+            // Show modal
+            $("#newCustomerModal").modal("show");
+        });
+
+          $('#newCustomerForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const customerId = $('#customerId').val();
+            const isEdit = customerId && parseInt(customerId) > 0;
+
+            // Collect selected project IDs for submission
+            const selectedProjectIds = $('.project-checkbox:checked').map(function () {
+                return $(this).data('id'); // Get the project ID
+            }).get();
+
+            // Prepare customer data to be sent to the server
+                const customerData = {
+            Id: isEdit ? parseInt(customerId) : 0,
+            Code: $('#customerCode').val().trim(),
+            Name: $('#customerName').val().trim(),
+            CategoryId: $('#customerCategory').val() ? parseInt($('#customerCategory').val()) : null,
+            Debit: parseFloat($('#debitAmount').val()) || 0,
+            Credit: parseFloat($('#creditAmount').val()) || 0,
+            OpeningBalanceDate: $('#balanceDate').val() ? new Date($('#balanceDate').val()).toISOString() : null,
+            MainPhone: $('#mainPhone').val().trim(),
+            WorkPhone: $('#workPhone').val().trim(),
+            Mobile: $('#mobileFax').val().trim(),
+            Email: $('#email').val().trim(),
+            CCEmail: $('#ccEmail').val().trim(),
+            Website: $('#website').val().trim(),
+            CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
+            CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
+            Region: $('#region').val().trim(),
+            BuildingName: $('#buildingName').val().trim(),
+            AccountId: $('#accruedSalaries').val() ? parseInt($('#accruedSalaries').val()) : null,
+            TRN: $('#trn').val().trim(),
+            FacilityName: $('#facilityName').val().trim(),
+            Active: $('#activeCheckbox').is(':checked') ? 1 : 0,
+            ProjectSites: selectedProjectIds
+        };
+
+
+        console.log(JSON.stringify(customerData)); // Log the serialized JSON to ensure it looks correct
+
+
+
+                          $.ajax({
+            url: '@Url.Action("SaveCustomer", "Customer")',
+            type: 'POST',
+            contentType: 'application/json',
+            dataType: 'json',
+            data: JSON.stringify(customerData),
+            success: function (res) {
+                if (res.status) {
+                    toastr.success(isEdit ? 'Customer updated successfully' : 'Customer added successfully');
+                    $('#newCustomerModal').modal('hide');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    toastr.error(res.message);
+                }
+            },
+            error: function (xhr) {
+                console.error("❌ AJAX ERROR", xhr);
+                toastr.error(xhr.responseJSON?.message || xhr.statusText);
+            }
+        });
+
+        });
+
+            $('#addCategoryForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const categoryName = $('#newCategoryName').val().trim();
+
+            $.ajax({
+                url: '@Url.Action("AddCategory", "Customer")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ Name: categoryName }),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Category added successfully');
+                        $('#addCategoryModal').modal('hide');
+
+                        // Add new category to dropdown and select it
+                        $('#customerCategory').append(new Option(res.name, res.id, true, true));
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+
+            
+        });
+
+           function loadCustomerCategories(selectedId = null) {
+            $.ajax({
+                url: '@Url.Action("GetCustomerCategories", "Customer")',
+                type: 'GET',
+                success: function (res) {
+                    const $ddl = $('#customerCategory');
+                    $ddl.empty().append('<option value="">-- Select Category --</option>');
+
+                    if (res && res.length > 0) {
+                        res.forEach(cat => {
+                            const option = new Option(cat.name, cat.id, selectedId == cat.id, selectedId == cat.id);
+                            $ddl.append(option);
+                        });
+                    }
+                },
+                error: function (xhr) {
+                    console.error('❌ Error loading categories:', xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        }
+
+         });
+
+        function loadCustomers(state = "All") {
+            $.ajax({
+                url: '@Url.Action("GetCustomers", "Customer")',
+                type: "GET",
+                data: { state: state },
+                success: function (res) {
+                    if (res.status) {
+
+                        // Destroy existing DataTable if any
+                        if ($.fn.DataTable.isDataTable("#customerTable")) {
+                            $("#customerTable").DataTable().destroy();
+                        }
+
+                        let tbody = $("#customerTable tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let rowData = JSON.stringify(row);
+
+                                let tr = `
+                                    <tr class="customer-row" data-customer-id="${row.id}">
+                                        <td>${row.code} - ${row.name}</td>
+                                        <td>${row.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editCustomerBtn"
+                                                data-customer='${rowData}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger deleteCustomerBtn"
+                                                data-id='${row.id}'>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            // Add double-click event to load customer details
+                            $(".customer-row").on("dblclick", function () {
+                                let customerId = $(this).data("customer-id");
+                                loadCustomerDetails(customerId);
+                            });
+
+                        } else {
+                            tbody.append(`<tr><td colspan="3" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
+                            $('.dt-buttons').hide();
+                        }
+
+                    } else {
+                        tbody.html(`<tr><td colspan="3" class="text-center" style="color:red; padding:40px;">Error: ${res.message || 'Failed to load data'}</td></tr>`);
+                        $('.dt-buttons').hide();
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if ($.fn.DataTable.isDataTable("#customerTable")) {
+                        $("#customerTable").DataTable().destroy();
+                    }
+                    $("#customerTable tbody").html(`<tr><td colspan="3" class="text-center" style="color:red; padding:40px;">Error loading data: ${error}</td></tr>`);
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+        function loadCustomerDetails(customerId) {
+            // Fetch customer details first
+            $.ajax({
+                url: '@Url.Action("GetCustomerDetails", "Customer")',
+                type: "GET",
+                data: { id: customerId },
+                success: function (res) {
+                    console.log(res);
+                    if (res.status) {
+                        let customer = res.data.customer;  // Access the 'customer' object
+                        // Populate customer details in the card
+                        $("#customerName").text(customer.name || '-');   // Default if value is empty
+                        $("#customerCode").text(customer.code || '-');   // Default if value is empty
+                        $("#customerEmail").text(customer.email || '-'); // Default if value is empty
+                        $("#customerPhone").text(customer.mobile || '-'); // Default if value is empty
+
+                        // Load transactions for this customer
+                        loadTransactions(customerId);
+                        loadCashInvoices(customerId);
+                    } else {
+                        // If something goes wrong with fetching customer details
+                        alert("Failed to load customer details.");
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error fetching customer details: " + error);
+                }
+            });
+        }
+
+        function loadTransactions(customerId) {
+            $.ajax({
+                url: '@Url.Action("GetInvoices", "Customer")',
+                type: "GET",
+                data: { id: customerId },
+                success: function (res) {
+                    console.log(res);
+                    if (res.status) {
+                        let tbody = $("#pettyCashVoucherTable tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.date}</td>
+                                        <td>${row.voucherNo}</td>
+                                        <td>${row.type}</td>
+                                        <td>${row.accountName}</td>
+                                        <td>${row.debit}</td>
+                                        <td>${row.credit}</td>
+                                        <td>${row.balance}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="8" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No transactions found</td></tr>`);
+                        }
+                    } else {
+                        alert("Error loading transactions: " + res.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error loading transactions: " + error);
+                }
+            });
+        }
+
+        function loadCashInvoices(customerId) {
+            $.ajax({
+                url: '@Url.Action("GetCashInvoice", "Customer")',
+                type: "GET",
+                data: { id: customerId },
+                success: function (res) {
+                    console.log(res);
+                    if (res.status) {
+                        let tbody = $("#pettyCashTransactionsTable tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, row) {
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.voucherNo}</td>
+                                        <td>${row.date}</td>
+                                        <td>${row.accountName}</td>
+                                        <td>${row.type}</td>
+                                        <td>${row.amount}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="6" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No cash invoices found</td></tr>`);
+                        }
+                    } else {
+                        alert("Error loading cash invoices: " + res.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error loading cash invoices: " + error);
+                }
+            });
+        }
+
+
+
+    </script>
+
+}
