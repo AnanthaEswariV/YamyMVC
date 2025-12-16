@@ -36,8 +36,20 @@ namespace YamyProject.Controllers
             if (model.CountryId == null || model.CountryId <= 0)
                 return Json(new { status = false, message = "Please select country" });
 
-            if (model.OpeningBalanceDate > DateTime.Now.Date)
+            if (model.OpeningBalanceDate.HasValue &&
+    model.OpeningBalanceDate.Value.Date > DateTime.Now.Date)
+            {
                 return Json(new { status = false, message = "Opening balance date must be today or earlier" });
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.TRN))
+            {
+                if (model.TRN.Length < 3 || model.TRN.Length > 15)
+                {
+                    return Json(new { status = false, message = "TRN must be between 3 and 15 characters" });
+                }
+            }
+
 
             int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
             if (userId <= 0)
@@ -80,7 +92,7 @@ namespace YamyProject.Controllers
                     formattedCode = (lastCode + 1).ToString("D5");
 
                     // Insert customer
-                    var projectSite = string.Join(",", model.ProjectSites ?? new List<string>());
+                    var projectSite = string.Join(",", model.ProjectSites);
                     var insertQuery = @"INSERT INTO tbl_customer 
         (code, NAME, Cat_id, Balance, DATE, main_phone, work_phone, mobile, email, ccemail, website, 
         country, city, region, building_name, account_id, trn, facilty_name, active, created_by, created_date, state, project_site)
@@ -122,7 +134,8 @@ namespace YamyProject.Controllers
                 }
                 else // Update
                 {
-                    var projectSite = string.Join(",", model.ProjectSites ?? new List<string>());
+
+                    var projectSite = string.Join(",", model.ProjectSites);
                     var updateQuery = @"UPDATE tbl_customer SET 
                             code=@code, NAME=@name, Cat_id=@cat_id, DATE=@date, main_phone=@main_phone,
                             work_phone=@work_phone, mobile=@mobile, email=@email, ccemail=@ccemail, website=@website,

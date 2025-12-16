@@ -102,25 +102,25 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <strong>Customer Name:</strong>
-                                    <span id="customerName"></span>
+                                    <span id="customerNames"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <strong>Customer Code:</strong>
-                                    <span id="customerCode"></span>
+                                    <span id="customerCodes"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <strong>Email:</strong>
-                                    <span id="customerEmail"></span>
+                                    <span id="customerEmails"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <strong>Phone Number:</strong>
-                                    <span id="customerPhone"></span>
+                                    <span id="customerPhones"></span>
                                 </div>
                             </div>
                         </div>
@@ -216,7 +216,7 @@
                         <div class="col-md-4">
                             <label for="customerCode" class="form-label">Customer Code</label>
                             <input type="text" class="form-control" id="customerCode"
-                                   placeholder="Customer Code">
+                                   placeholder="Customer Code" readonly>
                         </div>
 
                         <div class="col-md-4">
@@ -528,9 +528,10 @@
                 }
             });
 
-            // Edit Customer button click
-        $(document).on("click", ".editCustomerBtn", function () {
-            const customer = $(this).data("customer"); // matches data-customer
+                $(document).on("click", ".editCustomerBtn", function () {
+            const customer = $(this).data("customer"); // Get customer data
+            console.log(customer); // Debug the customer object
+
             if (!customer) return;
 
             // Set modal fields with existing customer data
@@ -538,30 +539,40 @@
             $("#customerCode").val(customer.code || '');
             $("#customerName").val(customer.name || '');
             $("#customerCategory").val(customer.cat_id || ''); // Assuming this dropdown is populated
-            $("#debitAmount").val(customer.debit != null ? customer.debit : 0); // Fix the assignment for debitAmount
-            $("#creditAmount").val(customer.credit != null ? customer.credit : 0); // Fix the assignment for creditAmount
-            $("#balanceDate").val(customer.date ? new Date(customer.date).toISOString().slice(0, 10) : ''); // Use the correct date format
+
+            // For fields like debitAmount and creditAmount, ensure fallback to 0 if not present
+            $("#debitAmount").val(customer.debit != null ? customer.debit : 0);
+            $("#creditAmount").val(customer.credit != null ? customer.credit : 0);
+
+            // Ensure valid date format or fallback if undefined
+            const balanceDate = customer.date ? new Date(customer.date).toISOString().slice(0, 10) : '';
+            $("#balanceDate").val(balanceDate);
+
+            // Assign values for other fields
             $("#mainPhone").val(customer.mainPhone || '');
             $("#workPhone").val(customer.workPhone || '');
             $("#mobileFax").val(customer.mobile || '');
             $("#email").val(customer.email || '');
             $("#ccEmail").val(customer.ccMail || '');
             $("#website").val(customer.website || '');
-            $("#countryDropdown").val(customer.country || ''); // Assuming the country dropdown is populated
-            $("#cityDropdown").val(customer.city || ''); // Assuming the city dropdown is populated
+            // $("#countryDropdown").val(customer.country || '');
+            // $("#cityDropdown").val(customer.city || '');
+            $("#countryDropdown").val(customer.country).trigger('change');
+            setTimeout(() => {
+                $("#cityDropdown").val(customer.city);
+            }, 100);
             $("#region").val(customer.region || '');
             $("#buildingName").val(customer.buildingName || '');
             $("#accruedSalaries").val(customer.accountId || '');
             $("#trn").val(customer.trn || '');
             $("#facilityName").val(customer.facilityName || '');
-            $("#facilityCode").val(customer.projectId || ''); // Use correct projectId for facilityCode
 
-            // Active checkbox
+            // Set Active checkbox (customer.active might be 0 or 1, so treat accordingly)
             $("#activeCheckbox").prop("checked", customer.active === 0);
 
-            // Project Sites: Populate checkboxes with selected projects
+            // Populate Project Sites
             $.ajax({
-                url: '@Url.Action("GetProjects", "Construction")',
+                url: '@Url.Action("GetProjects", "Construction")', // Make sure this URL is correct
                 type: 'GET',
                 success: function (res) {
                     if (!res.status || !res.data) return;
@@ -569,39 +580,36 @@
                     const container = $('#projectContainer');
                     container.empty(); // Clear existing checkboxes
 
-                    let selectedProjects = [];
-
+                    const selectedProjects = customer.projectSite  ? customer.projectSite.split(',').map(Number) : [];
                     $.each(res.data, function (i, item) {
-                        const checkboxId = 'project_' + item.id;
-                        const isChecked = customer.ProjectSites && customer.ProjectSites.includes(item.name);
+            const checkboxId = 'project_' + item.id;
 
-                        if (isChecked) selectedProjects.push(item.id); // Use project ID, not name
+            const isChecked = selectedProjects.includes(item.id);
 
-                        // Create a checkbox for each project
-                        const checkbox = $('<div class="form-check">')
-                            .append(
-                                $('<input>', {
-                                    type: 'checkbox',
-                                    class: 'form-check-input project-checkbox',
-                                    id: checkboxId,
-                                    'data-id': item.id, // Store the project ID here
-                                    'data-name': item.name,
-                                    checked: isChecked // Check if this project was previously selected
-                                })
-                            )
-                            .append(
-                                $('<label>', {
-                                    class: 'form-check-label',
-                                    for: checkboxId,
-                                    text: item.code + ' ' + item.name
-                                })
-                            );
+            const checkbox = $('<div class="form-check">')
+                .append(
+                    $('<input>', {
+                        type: 'checkbox',
+                        class: 'form-check-input project-checkbox',
+                        id: checkboxId,
+                        'data-id': item.id,
+                        checked: isChecked
+                    })
+                )
+                .append(
+                    $('<label>', {
+                        class: 'form-check-label',
+                        for: checkboxId,
+                        text: item.code + ' ' + item.name
+                    })
+                );
 
-                        container.append(checkbox);
-                    });
+            container.append(checkbox);
+        });
 
-                    // Update textarea or input with selected projects (ID-based)
-                    $('#additionalNotes').val(selectedProjects.join(', ')); // This is where the project IDs are set in the textarea
+
+                    // Update additional notes or other fields with selected project IDs
+                    $('#additionalNotes').val(selectedProjects.join(', ')); // Store selected projects
                 },
                 error: function (xhr, status, error) {
                     console.error("❌ Error loading projects:", status, error);
@@ -615,7 +623,8 @@
             $("#newCustomerModal").modal("show");
         });
 
-          $('#newCustomerForm').on('submit', function (e) {
+
+                 $('#newCustomerForm').on('submit', function (e) {
             e.preventDefault();
 
             const form = this;
@@ -633,58 +642,55 @@
             }).get();
 
             // Prepare customer data to be sent to the server
-                const customerData = {
-            Id: isEdit ? parseInt(customerId) : 0,
-            Code: $('#customerCode').val().trim(),
-            Name: $('#customerName').val().trim(),
-            CategoryId: $('#customerCategory').val() ? parseInt($('#customerCategory').val()) : null,
-            Debit: parseFloat($('#debitAmount').val()) || 0,
-            Credit: parseFloat($('#creditAmount').val()) || 0,
-            OpeningBalanceDate: $('#balanceDate').val() ? new Date($('#balanceDate').val()).toISOString() : null,
-            MainPhone: $('#mainPhone').val().trim(),
-            WorkPhone: $('#workPhone').val().trim(),
-            Mobile: $('#mobileFax').val().trim(),
-            Email: $('#email').val().trim(),
-            CCEmail: $('#ccEmail').val().trim(),
-            Website: $('#website').val().trim(),
-            CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
-            CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
-            Region: $('#region').val().trim(),
-            BuildingName: $('#buildingName').val().trim(),
-            AccountId: $('#accruedSalaries').val() ? parseInt($('#accruedSalaries').val()) : null,
-            TRN: $('#trn').val().trim(),
-            FacilityName: $('#facilityName').val().trim(),
-            Active: $('#activeCheckbox').is(':checked') ? 1 : 0,
-            ProjectSites: selectedProjectIds
-        };
+            const customerData = {
+                Id: isEdit ? parseInt(customerId) : 0,
+                Code: $('#customerCode').val().trim(),
+                Name: $('#customerName').val().trim(),
+                CategoryId: $('#customerCategory').val() ? parseInt($('#customerCategory').val()) : null,
+                Debit: parseFloat($('#debitAmount').val()) || 0,
+                Credit: parseFloat($('#creditAmount').val()) || 0,
+                OpeningBalanceDate: $('#balanceDate').val() ? new Date($('#balanceDate').val()).toISOString() : null,
+                MainPhone: $('#mainPhone').val().trim(),
+                WorkPhone: $('#workPhone').val().trim(),
+                Mobile: $('#mobileFax').val().trim(),
+                Email: $('#email').val().trim(),
+                CCEmail: $('#ccEmail').val().trim(),
+                Website: $('#website').val().trim(),
+                CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
+                CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
+                Region: $('#region').val().trim(),
+                BuildingName: $('#buildingName').val().trim(),
+                AccountId: $('#accruedSalaries').val() ? parseInt($('#accruedSalaries').val()) : null,
+                TRN: $('#trn').val().trim(),
+                FacilityName: $('#facilityName').val().trim(),
+                Active: $('#activeCheckbox').is(':checked'),
+                ProjectSites: selectedProjectIds
+            };
 
+            console.log(JSON.stringify(customerData)); // Log the serialized JSON to ensure it looks correct
 
-        console.log(JSON.stringify(customerData)); // Log the serialized JSON to ensure it looks correct
-
-
-
-                          $.ajax({
-            url: '@Url.Action("SaveCustomer", "Customer")',
-            type: 'POST',
-            contentType: 'application/json',
-            dataType: 'json',
-            data: JSON.stringify(customerData),
-            success: function (res) {
-                if (res.status) {
-                    toastr.success(isEdit ? 'Customer updated successfully' : 'Customer added successfully');
-                    $('#newCustomerModal').modal('hide');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    toastr.error(res.message);
+            $.ajax({
+                url: '@Url.Action("SaveCustomer", "Customer")',
+                type: 'POST',
+                contentType: 'application/json',
+                dataType: 'json',
+                data: JSON.stringify(customerData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit ? 'Customer updated successfully' : 'Customer added successfully');
+                        $('#newCustomerModal').modal('hide');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    console.error("❌ AJAX ERROR", xhr);
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
                 }
-            },
-            error: function (xhr) {
-                console.error("❌ AJAX ERROR", xhr);
-                toastr.error(xhr.responseJSON?.message || xhr.statusText);
-            }
+            });
         });
 
-        });
 
             $('#addCategoryForm').on('submit', function (e) {
             e.preventDefault();
@@ -741,6 +747,13 @@
                 }
             });
         }
+
+                $('#btnAddCustomer').on('click', function () {
+            clearCustomerForm();
+            $("#newCustomerModalLabel").text("New Customer");
+            $("#newCustomerModal").modal("show");
+        });
+
 
          });
 
@@ -819,10 +832,10 @@
                     if (res.status) {
                         let customer = res.data.customer;  // Access the 'customer' object
                         // Populate customer details in the card
-                        $("#customerName").text(customer.name || '-');   // Default if value is empty
-                        $("#customerCode").text(customer.code || '-');   // Default if value is empty
-                        $("#customerEmail").text(customer.email || '-'); // Default if value is empty
-                        $("#customerPhone").text(customer.mobile || '-'); // Default if value is empty
+                        $("#customerNames").text(customer.name || '-');   // Default if value is empty
+                        $("#customerCodes").text(customer.code || '-');   // Default if value is empty
+                        $("#customerEmails").text(customer.email || '-'); // Default if value is empty
+                        $("#customerPhones").text(customer.mobile || '-'); // Default if value is empty
 
                         // Load transactions for this customer
                         loadTransactions(customerId);
@@ -914,6 +927,11 @@
             });
         }
 
+                function clearCustomerForm() {
+            $('#newCustomerForm')[0].reset();
+            $('#customerId').val(0);
+            $('#projectContainer').empty();
+        }
 
 
     </script>
