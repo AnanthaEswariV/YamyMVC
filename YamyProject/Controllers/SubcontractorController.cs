@@ -621,7 +621,6 @@ namespace YamyProject.Controllers
         }
 
 
-
         [HttpPost]
         public async Task<IActionResult> SaveVendorCategory([FromBody] VendorCategoryRequest model)
         {

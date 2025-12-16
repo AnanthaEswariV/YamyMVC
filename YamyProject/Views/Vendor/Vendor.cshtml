@@ -1,8 +1,9 @@
 ﻿
 @{
-    ViewData["Title"] = "Subcontractor";
+    ViewData["Title"] = "Vendor";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
 <style>
     .warehouse-header {
         background: #4472c4;
@@ -38,7 +39,7 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <div class="warehouse-header">
-    <center> Subcontractor Center</center>
+    <center> Vendor Center</center>
 </div>
 <div class="employee-toolbar">
     <div class="container">
@@ -49,12 +50,12 @@
                 <ul class="nav nav-pills">
                     <li class="nav-item dropdown me-2">
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-                            <i class="bi bi-gear-fill me-1"></i> Subcontractor Operations
+                            <i class="bi bi-gear-fill me-1"></i> Vendor Operations
                         </a>
                         <ul class="dropdown-menu">
                             <li>
                                 <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
-                                    <i class="bi bi-plus-circle me-2"></i> New Subcontractor
+                                    <i class="bi bi-plus-circle me-2"></i> New Vendor
                                 </a>
                             </li>
                         </ul>
@@ -94,20 +95,20 @@
             <div class="col-12 col-md-8">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title">Subcontractor Informations</h5>
+                        <h5 class="card-title">Vendor Informations</h5>
                     </div>
                     <div class="card-body">
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Subcontractor Name:</strong>
+                                    <strong>Vendor Name:</strong>
                                     <span id="customerNames"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Subcontractor Code:</strong>
+                                    <strong>Vendor Code:</strong>
                                     <span id="customerCodes"></span>
                                 </div>
                             </div>
@@ -196,7 +197,7 @@
                 <!-- Header -->
                 <div class="modal-header">
                     <h5 class="modal-title" id="newCustomerModalLabel">
-                        Subcontractor - New Subcontractor
+                        Vendor - New Vendor
                     </h5>
                     <button type="button" class="btn-close"
                             data-bs-dismiss="modal"></button>
@@ -206,25 +207,25 @@
                 <div class="modal-body">
 
                     <!-- Customer Information -->
-                    <h6 class="mb-3">Subcontractor Information</h6>
+                    <h6 class="mb-3">Vendor Information</h6>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="customerName" class="form-label">Subcontractor Name</label>
+                            <label for="customerName" class="form-label">Vendor Name</label>
                             <input type="text" class="form-control" id="customerName"
-                                   placeholder="Subcontractor Name" required>
+                                   placeholder="Vendor Name" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="customerCode" class="form-label">Subcontractor Code</label>
+                            <label for="customerCode" class="form-label">Vendor Code</label>
                             <input type="text" class="form-control" id="customerCode"
-                                   placeholder="Subcontractor Code" readonly>
+                                   placeholder="Vendor Code" readonly>
                         </div>
 
                         <div class="col-md-4">
-                            <label for="customerCategory" class="form-label">Subcontractor Category</label>
+                            <label for="customerCategory" class="form-label">Vendor Category</label>
                             <select id="customerCategory" class="form-select" required>
                                 <option value="">-- Select Category --</option>
                             </select>
-                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="Add subcontractor category" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="Add Vendor category" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                                 <i class="bi bi-plus-lg"></i>
                             </button>
                         </div>
@@ -483,6 +484,7 @@
                      }
                  });
 
+
             $.ajax({
                 url: '@Url.Action("GetProjects", "Construction")',
                 type: 'GET',
@@ -660,14 +662,14 @@
 
 
             $.ajax({
-                url: '@Url.Action("SaveSubContract", "Subcontractor")',
+                url: '@Url.Action("SaveVendor", "Vendor")',
                 type: 'POST',
                 contentType: 'application/json',
                 dataType: 'json',
                 data: JSON.stringify(customerData),
                 success: function (res) {
                     if (res.status) {
-                        toastr.success(isEdit ? 'Subcontractor updated successfully' : 'Subcontractor added successfully');
+                        toastr.success(isEdit ? 'Vendor updated successfully' : 'Vendor added successfully');
                         $('#newCustomerModal').modal('hide');
                         setTimeout(() => location.reload(), 1500);
                     } else {
@@ -749,7 +751,7 @@
 
         function loadCustomers(state = "All") {
             $.ajax({
-                url: '@Url.Action("GetSubContractors", "Subcontractor")',
+                url: '@Url.Action("GetVendor", "Vendor")',
                 type: "GET",
                 data: { state: state },
                 success: function (res) {
@@ -788,7 +790,6 @@
                             // Add double-click event to load customer details
                             $(".customer-row").on("dblclick", function () {
                                 let customerId = $(this).data("customer-id");
-                                console.log(customerId);
                                 loadCustomerDetails(customerId);
                             });
 
@@ -843,14 +844,14 @@
 
         function loadTransactions(customerId) {
             $.ajax({
-                url: '@Url.Action("GetInvoices", "Customer")',
+                url: '@Url.Action("GetVendorInvoices", "Vendor")',
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
                     if (res.status) {
                         let tbody = $("#pettyCashVoucherTable tbody");
                         tbody.empty();
-
+                        console.log(res);
                         if (res.data && res.data.length > 0) {
                             $.each(res.data, function (i, row) {
                                 let tr = `
@@ -859,7 +860,7 @@
                                         <td>${row.date}</td>
                                         <td>${row.voucherNo}</td>
                                         <td>${row.type}</td>
-                                        <td>${row.accountName}</td>
+                                        <td>${row.description}</td>
                                         <td>${row.debit}</td>
                                         <td>${row.credit}</td>
                                         <td>${row.balance}</td>
@@ -881,7 +882,7 @@
 
         function loadCashInvoices(customerId) {
             $.ajax({
-                url: '@Url.Action("GetCashInvoice", "Customer")',
+                url: '@Url.Action("GetVendorCashInvoices", "Vendor")',
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
@@ -921,5 +922,5 @@
             $('#projectContainer').empty();
         }
 
-    </script>   
-    }
+    </script>
+}
