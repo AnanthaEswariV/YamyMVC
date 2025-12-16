@@ -1,5 +1,6 @@
-﻿@{
-    ViewData["Title"] = "Customer";
+﻿
+@{
+    ViewData["Title"] = "Subcontractor";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 <style>
@@ -37,7 +38,7 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <div class="warehouse-header">
-    <center> Customer Center</center>
+    <center> Subcontractor Center</center>
 </div>
 <div class="employee-toolbar">
     <div class="container">
@@ -48,12 +49,12 @@
                 <ul class="nav nav-pills">
                     <li class="nav-item dropdown me-2">
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-                            <i class="bi bi-gear-fill me-1"></i> Customer Operations
+                            <i class="bi bi-gear-fill me-1"></i> Subcontractor Operations
                         </a>
                         <ul class="dropdown-menu">
                             <li>
                                 <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
-                                    <i class="bi bi-plus-circle me-2"></i> New Customer
+                                    <i class="bi bi-plus-circle me-2"></i> New Subcontractor
                                 </a>
                             </li>
                         </ul>
@@ -100,13 +101,13 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Customer Name:</strong>
+                                    <strong>Subcontractor Name:</strong>
                                     <span id="customerNames"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Customer Code:</strong>
+                                    <strong>Subcontractor Code:</strong>
                                     <span id="customerCodes"></span>
                                 </div>
                             </div>
@@ -195,7 +196,7 @@
                 <!-- Header -->
                 <div class="modal-header">
                     <h5 class="modal-title" id="newCustomerModalLabel">
-                        Customers - New Customer
+                        Subcontractor - New Subcontractor
                     </h5>
                     <button type="button" class="btn-close"
                             data-bs-dismiss="modal"></button>
@@ -208,22 +209,22 @@
                     <h6 class="mb-3">Customer Information</h6>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="customerName" class="form-label">Customer Name</label>
+                            <label for="customerName" class="form-label">Subcontractor Name</label>
                             <input type="text" class="form-control" id="customerName"
-                                   placeholder="Customer Name" required>
+                                   placeholder="Subcontractor Name" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="customerCode" class="form-label">Customer Code</label>
+                            <label for="customerCode" class="form-label">Subcontractor Code</label>
                             <input type="text" class="form-control" id="customerCode"
-                                   placeholder="Customer Code" readonly>
+                                   placeholder="Subcontractor Code" readonly>
                         </div>
 
                         <div class="col-md-4">
-                            <label for="customerCategory" class="form-label">Customer Category</label>
+                            <label for="customerCategory" class="form-label">Subcontractor Category</label>
                             <select id="customerCategory" class="form-select" required>
                                 <option value="">-- Select Category --</option>
                             </select>
-                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="Add new category" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="Add subcontractor category" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                                 <i class="bi bi-plus-lg"></i>
                             </button>
                         </div>
@@ -358,12 +359,12 @@
         <form id="addCategoryForm" novalidate>
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addCategoryModalLabel">Add New Category</h5>
+                    <h5 class="modal-title" id="addCategoryModalLabel">Add New Vendor Category</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <input type="text" id="newCategoryName" class="form-control" placeholder="Category Name" required />
-                    <div class="invalid-feedback">Please enter a category name.</div>
+                    <div class="invalid-feedback">Please enter a vendor category name.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -522,7 +523,6 @@
 
             $(document).on("click", ".editCustomerBtn", function () {
             const customer = $(this).data("customer"); // Get customer data
-            console.log(customer); // Debug the customer object
 
             if (!customer) return;
 
@@ -632,43 +632,42 @@
                 return $(this).data('id'); // Get the project ID
             }).get();
 
-            // Prepare customer data to be sent to the server
-            const customerData = {
-                Id: isEdit ? parseInt(customerId) : 0,
-                Code: $('#customerCode').val().trim(),
-                Name: $('#customerName').val().trim(),
-                CategoryId: $('#customerCategory').val() ? parseInt($('#customerCategory').val()) : null,
-                Debit: parseFloat($('#debitAmount').val()) || 0,
-                Credit: parseFloat($('#creditAmount').val()) || 0,
-                OpeningBalanceDate: $('#balanceDate').val() ? new Date($('#balanceDate').val()).toISOString() : null,
-                MainPhone: $('#mainPhone').val().trim(),
-                WorkPhone: $('#workPhone').val().trim(),
-                Mobile: $('#mobileFax').val().trim(),
-                Email: $('#email').val().trim(),
-                CCEmail: $('#ccEmail').val().trim(),
-                Website: $('#website').val().trim(),
-                CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
-                CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
-                Region: $('#region').val().trim(),
-                BuildingName: $('#buildingName').val().trim(),
-                AccountId: $('#accruedSalaries').val() ? parseInt($('#accruedSalaries').val()) : null,
-                TRN: $('#trn').val().trim(),
-                FacilityName: $('#facilityName').val().trim(),
-                Active: $('#activeCheckbox').is(':checked'),
-                ProjectSites: selectedProjectIds
-            };
+                  const customerData = {
+            Id: isEdit ? parseInt(customerId) : 0,
+            Code: $('#customerCode').val().trim(),
+            Name: $('#customerName').val().trim(),
+            CategoryId: $('#customerCategory').val() ? parseInt($('#customerCategory').val()) : null,
+            Debit: parseFloat($('#debitAmount').val()) || 0,
+            Credit: parseFloat($('#creditAmount').val()) || 0,
+            OpeningBalanceDate: $('#balanceDate').val() ? new Date($('#balanceDate').val()).toISOString() : null,
+            MainPhone: $('#mainPhone').val().trim(),
+            WorkPhone: $('#workPhone').val().trim(),
+            Mobile: $('#mobileFax').val().trim(),
+            Email: $('#email').val().trim(),
+            CCEmail: $('#ccEmail').val().trim(),
+            Website: $('#website').val().trim(),
+            CountryId: $('#countryDropdown').val() ? parseInt($('#countryDropdown').val()) : null,
+            CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
+            Region: $('#region').val().trim(),
+            BuildingName: $('#buildingName').val().trim(),
+            AccountId: $('#accruedSalaries').val() ? parseInt($('#accruedSalaries').val()) : null,
+            TRN: $('#trn').val().trim(),
+            FacilityName: $('#facilityName').val().trim(),
+           Active: $('#activeCheckbox').is(':checked'),
+          ProjectSites: selectedProjectIds
+        };
 
-            console.log(JSON.stringify(customerData)); // Log the serialized JSON to ensure it looks correct
+
 
             $.ajax({
-                url: '@Url.Action("SaveCustomer", "Customer")',
+                url: '@Url.Action("SaveSubContract", "Subcontractor")',
                 type: 'POST',
                 contentType: 'application/json',
                 dataType: 'json',
                 data: JSON.stringify(customerData),
                 success: function (res) {
                     if (res.status) {
-                        toastr.success(isEdit ? 'Customer updated successfully' : 'Customer added successfully');
+                        toastr.success(isEdit ? 'Subcontractor updated successfully' : 'Subcontractor added successfully');
                         $('#newCustomerModal').modal('hide');
                         setTimeout(() => location.reload(), 1500);
                     } else {
@@ -694,7 +693,7 @@
             const categoryName = $('#newCategoryName').val().trim();
 
             $.ajax({
-                url: '@Url.Action("AddCategory", "Customer")',
+                url: '@Url.Action("SaveVendorCategory", "Subcontractor")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ Name: categoryName }),
@@ -714,19 +713,19 @@
                 }
             });
 
-            
+
         });
 
-            function loadCustomerCategories(selectedId = null) {
+             function loadCustomerCategories(selectedId = null) {
             $.ajax({
-                url: '@Url.Action("GetCustomerCategories", "Customer")',
+                url: '@Url.Action("GetVendorCategories", "Subcontractor")',
                 type: 'GET',
                 success: function (res) {
                     const $ddl = $('#customerCategory');
                     $ddl.empty().append('<option value="">-- Select Category --</option>');
 
-                    if (res && res.length > 0) {
-                        res.forEach(cat => {
+                    if (res && res.status && res.data && res.data.length > 0) {
+                        res.data.forEach(cat => {
                             const option = new Option(cat.name, cat.id, selectedId == cat.id, selectedId == cat.id);
                             $ddl.append(option);
                         });
@@ -737,6 +736,7 @@
                 }
             });
         }
+
 
             $('#btnAddCustomer').on('click', function () {
             clearCustomerForm();
@@ -749,7 +749,7 @@
 
         function loadCustomers(state = "All") {
             $.ajax({
-                url: '@Url.Action("GetCustomers", "Customer")',
+                url: '@Url.Action("GetSubContractors", "Subcontractor")',
                 type: "GET",
                 data: { state: state },
                 success: function (res) {
@@ -788,6 +788,7 @@
                             // Add double-click event to load customer details
                             $(".customer-row").on("dblclick", function () {
                                 let customerId = $(this).data("customer-id");
+                                console.log(customerId);
                                 loadCustomerDetails(customerId);
                             });
 
@@ -814,11 +815,10 @@
         function loadCustomerDetails(customerId) {
             // Fetch customer details first
             $.ajax({
-                url: '@Url.Action("GetCustomerDetails", "Customer")',
+                url: '@Url.Action("GetCustomerDetails", "Subcontractor")',
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
-                    console.log(res);
                     if (res.status) {
                         let customer = res.data.customer;  // Access the 'customer' object
                         // Populate customer details in the card
@@ -847,7 +847,6 @@
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
-                    console.log(res);
                     if (res.status) {
                         let tbody = $("#pettyCashVoucherTable tbody");
                         tbody.empty();
@@ -886,7 +885,6 @@
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
-                    console.log(res);
                     if (res.status) {
                         let tbody = $("#pettyCashTransactionsTable tbody");
                         tbody.empty();
@@ -923,7 +921,5 @@
             $('#projectContainer').empty();
         }
 
-
-    </script>
-
-}
+    </script>   
+    }
