@@ -117,15 +117,6 @@
                     toDate: endDate || null,
                     includeAllDates: includeAllDates
                 },
-                beforeSend: function () {
-                    $('#table2 tbody').html(`
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
-                                <div class="spinner-border text-primary me-2"></div>Loading...
-                            </td>
-                        </tr>
-                    `);
-                },
                 success: function (res) {
                     if (!res || !res.data || res.data.length === 0) {
                         toastr.warning('No data found for this selection.');

@@ -31,70 +31,82 @@ namespace YamyProject.Controllers
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Step 1: Load top-level accounts with balance
+                // Step 1: Load top-level accounts with balances
                 string queryTop = @"
-WITH AccountBalances AS (
-    SELECT l1.id, l1.name, l1.category_code,
-           COALESCE(SUM(t.debit) - SUM(t.credit),0) AS Balance
-    FROM tbl_coa_level_1 l1
-    LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
-    LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
-    LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
-    LEFT JOIN tbl_transaction t ON t.account_id = l4.id AND t.state=0 AND t.date <= @dated
-    WHERE l1.category_code IN ('ASSET','LIABILITY','EQUITY')
-    GROUP BY l1.id, l1.name, l1.category_code
-),
-FinalBalance AS (
-    SELECT COALESCE((SELECT SUM(t.debit-t.credit) FROM tbl_coa_level_1 l1
-                    LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id=l1.id
-                    LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id=l2.id
-                    LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id=l3.id
-                    LEFT JOIN tbl_transaction t ON t.account_id=l4.id AND t.state=0 AND t.date<=@dated
-                    WHERE l1.category_code='INCOME'),0)
-         - COALESCE((SELECT SUM(t.debit-t.credit) FROM tbl_coa_level_1 l1
-                     LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id=l1.id
-                     LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id=l2.id
-                     LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id=l3.id
-                     LEFT JOIN tbl_transaction t ON t.account_id=l4.id AND t.state=0 AND t.date<=@dated
-                     WHERE l1.category_code='COST'),0)
-         - COALESCE((SELECT SUM(t.debit-t.credit) FROM tbl_coa_level_1 l1
-                     LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id=l1.id
-                     LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id=l2.id
-                     LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id=l3.id
-                     LEFT JOIN tbl_transaction t ON t.account_id=l4.id AND t.state=0 AND t.date<=@dated
-                     WHERE l1.category_code='EXPENSE'),0) AS Balance
-)
-SELECT ab.id, ab.name, ab.category_code, 
-       CASE WHEN ab.category_code='EQUITY' THEN ab.Balance + (SELECT Balance FROM FinalBalance)
-            ELSE ab.Balance END AS Balance
-FROM AccountBalances ab
-ORDER BY ab.id;
+SELECT 
+    l1.id,
+    l1.name,
+    l1.category_code,
+    CASE 
+        WHEN l1.category_code='EQUITY' THEN
+            (COALESCE(SUM(t.debit) - SUM(t.credit), 0) 
+             + (
+                SELECT 
+                    COALESCE(
+                        (SELECT SUM(t.debit - t.credit) FROM tbl_coa_level_1 l1i
+                         LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
+                         LEFT JOIN tbl_coa_level_3 l3i ON l3i.main_id = l2i.id
+                         LEFT JOIN tbl_coa_level_4 l4i ON l4i.main_id = l3i.id
+                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND t.date <= @dated
+                         WHERE l1i.category_code='INCOME'
+                        ),0)
+                    - COALESCE(
+                        (SELECT SUM(t.debit - t.credit) FROM tbl_coa_level_1 l1i
+                         LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
+                         LEFT JOIN tbl_coa_level_3 l3i ON l3i.main_id = l2i.id
+                         LEFT JOIN tbl_coa_level_4 l4i ON l4i.main_id = l3i.id
+                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND t.date <= @dated
+                         WHERE l1i.category_code='COST'
+                        ),0)
+                    - COALESCE(
+                        (SELECT SUM(t.debit - t.credit) FROM tbl_coa_level_1 l1i
+                         LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
+                         LEFT JOIN tbl_coa_level_3 l3i ON l3i.main_id = l2i.id
+                         LEFT JOIN tbl_coa_level_4 l4i ON l4i.main_id = l3i.id
+                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND t.date <= @dated
+                         WHERE l1i.category_code='EXPENSE'
+                        ),0)
+             )
+            )
+        ELSE COALESCE(SUM(t.debit) - SUM(t.credit), 0)
+    END AS Balance
+FROM tbl_coa_level_1 l1
+LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
+LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
+LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
+LEFT JOIN tbl_transaction t ON t.account_id = l4.id AND t.state=0 AND t.date <= @dated
+WHERE l1.category_code IN ('ASSET','LIABILITY','EQUITY')
+GROUP BY l1.id, l1.name, l1.category_code
+ORDER BY l1.id;
 ";
 
                 var topAccounts = new List<AccountNode>();
                 await using (var cmd = new MySqlCommand(queryTop, conn))
                 {
                     cmd.Parameters.AddWithValue("@dated", date.Date);
+
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {
                         topAccounts.Add(new AccountNode
                         {
                             Id = reader.GetInt32("id"),
-                            Name = reader["name"].ToString(),
-                            Balance = reader.GetDecimal("Balance"),
-                            CurrLvl = 1
+                            Name = reader["name"]?.ToString() ?? "",
+                            Balance = reader.IsDBNull(reader.GetOrdinal("Balance")) ? 0 : reader.GetDecimal("Balance"),
+                            CurrLvl = 1,
+                            Children = new List<AccountNode>()
                         });
                     }
                 }
 
-                // Step 2: Recursively load children with balances in one query per level
+                // Step 2: Recursively load children for each account
                 foreach (var account in topAccounts)
                 {
                     await LoadChildAccountsOptimizedAsync(conn, account, date, 1);
@@ -160,13 +172,11 @@ ORDER BY l.code;
         {
             return View();
         }
-
         [HttpGet]
         public async Task<IActionResult> GetEmployeeBalanceSummary(bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
         {
             try
             {
-                // ✅ Build connection string dynamically
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
@@ -176,42 +186,38 @@ ORDER BY l.code;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // ✅ Prepare base query
+                // Base query
                 var query = @"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY v.id) AS SN,
-                v.id,
-                CONCAT(v.code, ' - ', v.name) AS Name,
-                IFNULL(SUM(
-                    CASE 
-                        WHEN t.type IN ('Employee Salary', 'Loan Request') THEN t.debit
-                        ELSE 0
-                    END
-                ), 0) AS Credit,
-                IFNULL(SUM(
-                    CASE 
-                        WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment') THEN t.debit
-                        ELSE 0
-                    END
-                ), 0) AS Debit,
-                IFNULL(SUM(
-                    CASE 
-                        WHEN t.type IN ('Employee Salary', 'Loan Request') THEN t.debit
-                        WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment') THEN -t.debit
-                        ELSE 0
-                    END
-                ), 0) AS Balance
-            FROM
-                tbl_employee v
-            INNER JOIN
-                tbl_transaction t ON v.id = t.hum_id AND t.state = 0
-            WHERE
-                v.state = 0
+        SELECT 
+            v.id,
+            CONCAT(v.code, ' - ', v.name) AS Name,
+            IFNULL(SUM(
+                CASE 
+                    WHEN t.type IN ('Employee Salary', 'Loan Request') THEN t.debit
+                    ELSE 0
+                END
+            ), 0) AS Credit,
+            IFNULL(SUM(
+                CASE 
+                    WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment') THEN t.debit
+                    ELSE 0
+                END
+            ), 0) AS Debit,
+            IFNULL(SUM(
+                CASE 
+                    WHEN t.type IN ('Employee Salary', 'Loan Request') THEN t.debit
+                    WHEN t.type IN ('Employee Salary Payment', 'Employee Loan Payment') THEN -t.debit
+                    ELSE 0
+                END
+            ), 0) AS Balance
+        FROM tbl_employee v
+        INNER JOIN tbl_transaction t ON v.id = t.hum_id AND t.state = 0
+        WHERE v.state = 0
         ";
 
                 var parameters = new List<MySqlParameter>();
 
-                // ✅ Apply date range filter only if showAll = false
+                // Apply date filter if needed
                 if (!showAll && startDate.HasValue && endDate.HasValue)
                 {
                     query += " AND t.date >= @dateFrom AND t.date <= @dateTo";
@@ -219,7 +225,7 @@ ORDER BY l.code;
                     parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
                 }
 
-                query += " GROUP BY v.id, v.code, v.name;";
+                query += " GROUP BY v.id, v.code, v.name ORDER BY v.id;";
 
                 await using var cmd = new MySqlCommand(query, conn);
                 if (parameters.Any())
@@ -255,7 +261,7 @@ ORDER BY l.code;
                 await reader.CloseAsync();
                 await conn.CloseAsync();
 
-                // ✅ Add TOTAL summary row
+                // Add TOTAL row
                 employeeBalances.Add(new
                 {
                     SN = "",
@@ -312,11 +318,7 @@ ORDER BY l.code;
                 t.type AS `Type`,
                 coa.code AS `AccountCode`,
                 coa.name AS `AccountName`,
-                (t.debit - t.credit) AS `Amount`,
-                SUM(t.debit - t.credit) OVER (
-                    PARTITION BY t.hum_id 
-                    ORDER BY t.date, t.id
-                ) AS `Balance`
+                (t.debit - t.credit) AS `Amount`
             FROM 
                 tbl_transaction t
             JOIN 
@@ -349,14 +351,15 @@ ORDER BY l.code;
                 await using var reader = await cmd.ExecuteReaderAsync();
 
                 var transactionList = new List<object>();
-                decimal totalAmount = 0, totalBalance = 0;
+                decimal runningBalance = 0, totalAmount = 0;
 
                 while (await reader.ReadAsync())
                 {
                     if (reader["Date"] == DBNull.Value) continue;
 
                     decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
-                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+                    runningBalance += amount;
+                    totalAmount += amount;
 
                     transactionList.Add(new
                     {
@@ -366,15 +369,13 @@ ORDER BY l.code;
                         Type = reader["Type"]?.ToString(),
                         Account = reader["AccountName"]?.ToString(),
                         Amount = amount.ToString("N2"),
-                        Balance = balance.ToString("N2")
+                        Balance = runningBalance.ToString("N2")
                     });
-
-                    totalAmount += amount;
-                    totalBalance = balance;
                 }
 
                 await reader.CloseAsync();
 
+                // Add TOTAL row
                 transactionList.Add(new
                 {
                     Date = "",
@@ -383,7 +384,7 @@ ORDER BY l.code;
                     Type = "",
                     Account = "TOTAL",
                     Amount = totalAmount.ToString("N2"),
-                    Balance = totalBalance.ToString("N2")
+                    Balance = runningBalance.ToString("N2")
                 });
 
                 await conn.CloseAsync();
@@ -395,6 +396,7 @@ ORDER BY l.code;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         #endregion
 
@@ -564,7 +566,6 @@ ORDER BY l.code;
         {
             try
             {
-                // Build connection string based on active database
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
@@ -573,25 +574,27 @@ ORDER BY l.code;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Handle optional date filter
+                // Optional date filter
                 string dateFilter = includeAllDates ? "" : " AND t.date >= @startDate AND t.date <= @endDate";
 
+                // MySQL 5.7 compatible query without window functions
                 string query = $@"
-            SELECT 
-                t.date,
-                t.type,
-                t.hum_id,
-                t.description,
-                t.transaction_id,
-                t.debit,
-                t.credit,
-                SUM(t.debit - t.credit) OVER (PARTITION BY t.account_id ORDER BY t.date, t.id) AS Amount
-            FROM tbl_transaction t
-            WHERE t.account_id = @accountId
-            {dateFilter}
-            ORDER BY t.date, t.id;";
+        SELECT 
+            t.id,
+            t.date,
+            t.type,
+            t.hum_id,
+            t.description,
+            t.transaction_id,
+            t.debit,
+            t.credit
+        FROM tbl_transaction t
+        WHERE t.account_id = @accountId
+        {dateFilter}
+        ORDER BY t.date, t.id;";
 
-                var result = new List<Dictionary<string, object>>();
+                var transactions = new List<Dictionary<string, object>>();
+                decimal runningTotal = 0;
 
                 await using (var cmd = new MySqlCommand(query, conn))
                 {
@@ -602,16 +605,20 @@ ORDER BY l.code;
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {
+                        decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
+                        decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
+                        runningTotal += debit - credit;
+
                         var row = new Dictionary<string, object>();
                         for (int i = 0; i < reader.FieldCount; i++)
-                        {
                             row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        }
-                        result.Add(row);
+
+                        row["RunningBalance"] = runningTotal; // add running total
+                        transactions.Add(row);
                     }
                 }
 
-                return Ok(new { status = true, data = result });
+                return Ok(new { status = true, data = transactions });
             }
             catch (Exception ex)
             {
@@ -1052,7 +1059,11 @@ ORDER BY l.code;
             return View();
         }
         [HttpGet]
-        public async Task<IActionResult> GetCostCenterReport(DateTime? fromDate = null, DateTime? toDate = null, bool includeAllDates = false, int? costCenterId = null)
+        public async Task<IActionResult> GetCostCenterReport(
+        DateTime? fromDate = null,
+        DateTime? toDate = null,
+        bool includeAllDates = false,
+        int? costCenterId = null)
         {
             try
             {
@@ -1064,21 +1075,19 @@ ORDER BY l.code;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Prepare SQL query
-                string query = @"
+                var query = @"
             SELECT 
                 c.id, 
                 c.name, 
                 COUNT(t.id) AS Num, 
                 SUM(t.debit) AS Total_Debit, 
                 SUM(t.credit) AS Total_Credit
-            FROM tbl_cost_center c 
+            FROM tbl_cost_center c
             JOIN tbl_cost_center_transaction t ON c.id = t.cost_center_id
-            WHERE c.id > 0";
+            WHERE 1 = 1";
 
                 var parameters = new List<MySqlParameter>();
 
-                // Date filter
                 if (!includeAllDates && fromDate.HasValue && toDate.HasValue)
                 {
                     query += " AND t.date >= @fromDate AND t.date <= @toDate";
@@ -1086,41 +1095,38 @@ ORDER BY l.code;
                     parameters.Add(new MySqlParameter("@toDate", toDate.Value.Date));
                 }
 
-                // Cost Center filter
                 if (costCenterId.HasValue && costCenterId > 0)
                 {
                     query += " AND c.id = @cId";
                     parameters.Add(new MySqlParameter("@cId", costCenterId.Value));
                 }
 
-                query += " GROUP BY c.id, c.name ORDER BY c.id";
+                query += " GROUP BY c.id, c.name ORDER BY c.id;";
 
                 var result = new List<object>();
                 decimal totalBalance = 0;
 
-                await using (var cmd = new MySqlCommand(query, conn))
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Count > 0)
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
-                    if (parameters.Count > 0)
-                        cmd.Parameters.AddRange(parameters.ToArray());
+                    decimal debit = reader["Total_Debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total_Debit"]);
+                    decimal credit = reader["Total_Credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total_Credit"]);
+                    decimal balance = debit - credit;
+                    totalBalance += balance;
 
-                    await using var reader = await cmd.ExecuteReaderAsync();
-                    while (await reader.ReadAsync())
+                    result.Add(new
                     {
-                        decimal debit = reader["Total_Debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total_Debit"]);
-                        decimal credit = reader["Total_Credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total_Credit"]);
-                        decimal balance = debit - credit;
-                        totalBalance += balance;
-
-                        result.Add(new
-                        {
-                            Id = reader["id"],
-                            Name = reader["name"],
-                            VoucherNo = reader["Num"],
-                            Debit = debit.ToString("N2"),
-                            Credit = credit.ToString("N2"),
-                            Balance = balance.ToString("N2")
-                        });
-                    }
+                        Id = reader["id"],
+                        Name = reader["name"],
+                        VoucherNo = reader["Num"],
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
+                        Balance = balance.ToString("N2")
+                    });
                 }
 
                 return Ok(new
@@ -1163,19 +1169,20 @@ ORDER BY l.code;
 
                 // Prepare SQL query
                 string query = @"
-            SELECT 
-                t.id, 
-                c.name, 
-                DATE_FORMAT(t.date, '%M %d %Y') AS Date,
-                t.type,
-                t.debit, 
-                t.credit, 
-                t.ref_id AS VoucherNo, 
-                t.description,
-                0 AS Balance
-            FROM tbl_cost_center_transaction t
-            JOIN tbl_cost_center c ON c.id = t.cost_center_id
-            WHERE c.id = @cId";
+           SELECT 
+    t.id,
+    c.name AS CostCenter,
+    DATE_FORMAT(t.date, '%M %d %Y') AS Date,
+    t.type,
+    t.debit,
+    t.credit,
+    t.ref_id AS VoucherNo,
+    t.description,
+    SUM(t.debit - t.credit) OVER (PARTITION BY t.cost_center_id ORDER BY t.date, t.id) AS Balance
+FROM tbl_cost_center_transaction t
+JOIN tbl_cost_center c ON c.id = t.cost_center_id
+WHERE c.id = @cId
+";
 
                 var parameters = new List<MySqlParameter>
         {
@@ -1249,33 +1256,42 @@ ORDER BY l.code;
                 // Build connection string based on active database
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true 
                 };
+
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Handle optional date filter
-                string dateFilter = includeAllDates ? "" : "WHERE f.purchase_date BETWEEN @startDate AND @endDate";
+                // SQL query with row number emulation
+                string query = @"
+SELECT 
+    @rownum := @rownum + 1 AS SN,
+    f.id,
+    f.name AS AssetName,
+    f.purchase_date AS Date,
+    f.purchase_price AS TotalPrice,
+    f.depreciation_life AS DepreciationLife
+FROM tbl_fixed_assets f,
+(SELECT @rownum := 0) r";
 
-                string query = $@"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY f.id) AS SN,
-                f.id,
-                f.name AS `Asset Name`,
-                f.purchase_date AS `Date`,
-                f.purchase_price AS `Total Price`,
-                f.depreciation_life AS `Depreciation Life`
-            FROM tbl_fixed_assets f
-            {dateFilter};";
+                if (!includeAllDates)
+                {
+                    query += " WHERE f.purchase_date BETWEEN @startDate AND @endDate";
+                }
+
+                query += " ORDER BY f.id;";
 
                 var result = new List<Dictionary<string, object>>();
 
                 await using (var cmd = new MySqlCommand(query, conn))
                 {
-                    // Add parameters
-                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
-                    cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1)); 
+                    if (!includeAllDates)
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+                    }
 
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
@@ -1284,10 +1300,10 @@ ORDER BY l.code;
                         {
                             ["SN"] = reader["SN"],
                             ["id"] = reader["id"],
-                            ["AssetName"] = reader["Asset Name"],
+                            ["AssetName"] = reader["AssetName"],
                             ["Date"] = Convert.ToDateTime(reader["Date"]).ToString("MMM dd, yyyy"),
-                            ["TotalPrice"] = Convert.ToDecimal(reader["Total Price"]).ToString("N2"),
-                            ["DepreciationLife"] = reader["Depreciation Life"] 
+                            ["TotalPrice"] = Convert.ToDecimal(reader["TotalPrice"]).ToString("N2"),
+                            ["DepreciationLife"] = reader["DepreciationLife"]
                         };
                         result.Add(row);
                     }
@@ -1305,7 +1321,6 @@ ORDER BY l.code;
         {
             return View();
         }
-
         [HttpGet]
         public async Task<IActionResult> GetFixedAssetDetails(string transactionId, DateTime startDate, DateTime endDate, bool includeAllDates = false)
         {
@@ -1314,33 +1329,36 @@ ORDER BY l.code;
                 // Build connection string dynamically based on active DB in session
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true // <-- Required for @rownum
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Handle optional date filter
+                // Optional date filter
                 string dateFilter = includeAllDates ? "" : " AND t.date BETWEEN @startDate AND @endDate";
 
                 string query = $@"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY t.date) AS SN,
-                t.date,
-                t.transaction_id,
-                t.type AS `Type`,
-                c.code AS `A/C CODE`,
-                c.name AS `A/C NAME`,
-                t.debit AS `DEBIT`,
-                t.credit AS `CREDIT`
-            FROM 
-                tbl_transaction t
-            INNER JOIN 
-                tbl_coa_level_4 c ON t.account_id = c.id
-            WHERE 
-                t.transaction_id = @transaction_id
-                AND t.type = 'Fixed Assets'
-                {dateFilter};";
+SELECT 
+    @rownum := @rownum + 1 AS SN,
+    t.date,
+    t.transaction_id,
+    t.type AS `Type`,
+    c.code AS `A/C CODE`,
+    c.name AS `A/C NAME`,
+    t.debit AS `DEBIT`,
+    t.credit AS `CREDIT`
+FROM 
+    tbl_transaction t
+INNER JOIN 
+    tbl_coa_level_4 c ON t.account_id = c.id,
+(SELECT @rownum := 0) r
+WHERE 
+    t.transaction_id = @transaction_id
+    AND t.type = 'Fixed Assets'
+    {dateFilter}
+ORDER BY t.date;";
 
                 var result = new List<Dictionary<string, object>>();
                 decimal totalDebit = 0;
@@ -1349,8 +1367,12 @@ ORDER BY l.code;
                 await using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@transaction_id", transactionId);
-                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
-                    cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+
+                    if (!includeAllDates)
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+                    }
 
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
@@ -1398,6 +1420,7 @@ ORDER BY l.code;
             }
         }
 
+
         #endregion
 
         #region Prepaid Expense Summary
@@ -1414,7 +1437,8 @@ ORDER BY l.code;
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
-                               ?? _config.GetConnectionString("DefaultDatabase")
+                                ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true // required for @rownum
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -1423,15 +1447,17 @@ ORDER BY l.code;
                 string dateFilter = includeAllDates ? "" : "WHERE p.start_date BETWEEN @startDate AND @endDate";
 
                 string query = $@"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY p.id) AS SN,
-                p.id,
-                p.name AS `Asset Name`,
-                p.start_date AS `Start Date`,
-                p.end_date AS `End Date`,
-                p.total AS `Total Price`
-            FROM tbl_prepaid_expense p
-            {dateFilter};";
+        SELECT 
+            @rownum := @rownum + 1 AS SN,
+            p.id,
+            p.name AS `Asset Name`,
+            p.start_date AS `Start Date`,
+            p.end_date AS `End Date`,
+            p.total AS `Total Price`
+        FROM tbl_prepaid_expense p,
+        (SELECT @rownum := 0) r
+        {dateFilter}
+        ORDER BY p.id;";
 
                 var result = new List<Dictionary<string, object>>();
 
@@ -1461,7 +1487,6 @@ ORDER BY l.code;
                                 ? Convert.ToDecimal(reader["Total Price"]).ToString("N2")
                                 : "0.00"
                         };
-
                         result.Add(row);
                     }
                 }
@@ -1474,6 +1499,7 @@ ORDER BY l.code;
             }
         }
 
+
         public IActionResult PrepaidExpenseDetails()
         {
             return View();
@@ -1484,36 +1510,34 @@ ORDER BY l.code;
         {
             try
             {
-                // Build connection string dynamically based on active database
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true // required for @rownum
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Handle optional date filtering
                 string dateFilter = includeAllDates ? "" : " AND t.date BETWEEN @startDate AND @endDate";
 
                 string query = $@"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY t.date) AS SN,
-                t.date,
-                t.transaction_id,
-                t.type AS `Type`,
-                c.code AS `A/C CODE`,
-                c.name AS `A/C NAME`,
-                t.debit AS `DEBIT`,
-                t.credit AS `CREDIT`
-            FROM 
-                tbl_transaction t
-            INNER JOIN 
-                tbl_coa_level_4 c ON t.account_id = c.id
-            WHERE 
-                t.transaction_id = @transaction_id
-                AND t.type = 'Prepaid Expense'
-                {dateFilter};";
+        SELECT 
+            @rownum := @rownum + 1 AS SN,
+            t.date,
+            t.transaction_id,
+            t.type AS `Type`,
+            c.code AS `A/C CODE`,
+            c.name AS `A/C NAME`,
+            t.debit AS `DEBIT`,
+            t.credit AS `CREDIT`
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 c ON t.account_id = c.id,
+        (SELECT @rownum := 0) r
+        WHERE t.transaction_id = @transaction_id
+          AND t.type = 'Prepaid Expense'
+          {dateFilter}
+        ORDER BY t.date;";
 
                 var result = new List<Dictionary<string, object>>();
                 decimal totalDebit = 0;
@@ -1521,10 +1545,13 @@ ORDER BY l.code;
 
                 await using (var cmd = new MySqlCommand(query, conn))
                 {
-                    // Add parameters
                     cmd.Parameters.AddWithValue("@transaction_id", transactionId);
-                    cmd.Parameters.AddWithValue("@startDate", startDate.Date);
-                    cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+
+                    if (!includeAllDates)
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+                    }
 
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
@@ -1551,7 +1578,7 @@ ORDER BY l.code;
                     }
                 }
 
-                // ✅ Add total summary row at the bottom
+                // Add total row
                 result.Add(new Dictionary<string, object>
                 {
                     ["SN"] = "",
@@ -1571,6 +1598,7 @@ ORDER BY l.code;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         #endregion
 
@@ -1986,30 +2014,33 @@ ORDER BY l.code;
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true // <-- THIS IS REQUIRED
                 };
+
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
                 string query = @"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY i.id) AS `SN`,
-                i.code,
-                i.name,
-                i.barcode,
-                i.cost_price AS CostPrice,
-                i.sales_price AS SalesPrice,
-                SUM(CASE WHEN t.type = 'Opening Qty' THEN t.qty_in ELSE 0 END) AS OpeningQty,
-                SUM(CASE WHEN t.type = 'Purchase Invoice' THEN t.qty_in ELSE 0 END) AS Purchase,
-                SUM(CASE WHEN t.type = 'Sales Invoice' THEN t.qty_out ELSE 0 END) AS Sales,
-                SUM(CASE WHEN t.type = 'Purchase Return Invoice' THEN t.qty_out ELSE 0 END) AS PurchaseReturn,
-                SUM(CASE WHEN t.type = 'Sales Return Invoice' THEN t.qty_in ELSE 0 END) AS SalesReturn,
-                SUM(CASE WHEN t.type = 'Damage' THEN t.qty_out ELSE 0 END) AS Damage,
-                SUM(t.qty_in - t.qty_out) AS BalanceQty
-            FROM tbl_items i
-            INNER JOIN tbl_item_transaction t ON i.id = t.item_id
-            WHERE i.type = '11 - Inventory Part' AND i.active = 0
+          SELECT 
+    @rownum := @rownum + 1 AS SN,
+    i.code,
+    i.name,
+    i.barcode,
+    i.cost_price AS CostPrice,
+    i.sales_price AS SalesPrice,
+    SUM(CASE WHEN t.type = 'Opening Qty' THEN t.qty_in ELSE 0 END) AS OpeningQty,
+    SUM(CASE WHEN t.type = 'Purchase Invoice' THEN t.qty_in ELSE 0 END) AS Purchase,
+    SUM(CASE WHEN t.type = 'Sales Invoice' THEN t.qty_out ELSE 0 END) AS Sales,
+    SUM(CASE WHEN t.type = 'Purchase Return Invoice' THEN t.qty_out ELSE 0 END) AS PurchaseReturn,
+    SUM(CASE WHEN t.type = 'Sales Return Invoice' THEN t.qty_in ELSE 0 END) AS SalesReturn,
+    SUM(CASE WHEN t.type = 'Damage' THEN t.qty_out ELSE 0 END) AS Damage,
+    SUM(t.qty_in - t.qty_out) AS BalanceQty
+FROM tbl_items i
+INNER JOIN tbl_item_transaction t ON i.id = t.item_id,
+(SELECT @rownum := 0) r
+WHERE i.type = '11 - Inventory Part' AND i.active = 0
         ";
 
                 var parameters = new List<MySqlParameter>();
@@ -2037,7 +2068,7 @@ ORDER BY l.code;
                     {
                         invoices.Add(new InvoiceDto
                         {
-                            SN = reader.GetInt32("SN"),
+                            SN = Convert.ToInt32(reader["SN"]),
                             Code = reader["code"].ToString(),
                             Name = reader["name"].ToString(),
                             Barcode = reader["barcode"].ToString(),//   <td>${row.barcode ?? ''}</td>
@@ -2168,25 +2199,27 @@ ORDER BY l.code;
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
-                               ?? _config.GetConnectionString("DefaultDatabase")
+                               ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true // <-- Required for @rownum
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Base query
+                // Base query with @rownum for row numbering
                 string query = @"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY wt.id DESC) AS SN,
-                wt.id AS Id,
-                w.Name AS WarehouseName,
-                i.id AS ItemId,
-                CONCAT(i.code,' - ',i.name) AS ItemName,
-                wt.qty AS Qty
-            FROM tbl_items_warehouse wt
-            INNER JOIN tbl_warehouse w ON wt.warehouse_id = w.id
-            INNER JOIN tbl_items i ON wt.item_id = i.id AND i.state = 0
-            WHERE 1=1
+        SELECT 
+            @rownum := @rownum + 1 AS SN,
+            wt.id AS Id,
+            w.Name AS WarehouseName,
+            i.id AS ItemId,
+            CONCAT(i.code,' - ',i.name) AS ItemName,
+            wt.qty AS Qty
+        FROM tbl_items_warehouse wt
+        INNER JOIN tbl_warehouse w ON wt.warehouse_id = w.id
+        INNER JOIN tbl_items i ON wt.item_id = i.id AND i.state = 0,
+        (SELECT @rownum := 0) r
+        WHERE 1=1
         ";
 
                 var parameters = new List<MySqlParameter>();
@@ -2197,7 +2230,7 @@ ORDER BY l.code;
                     parameters.Add(new MySqlParameter("@warehouseId", warehouseId.Value));
                 }
 
-                query += " ORDER BY wt.id DESC";
+                query += " ORDER BY wt.id DESC;";
 
                 var result = new List<WarehouseItemDto>();
 
@@ -2228,6 +2261,7 @@ ORDER BY l.code;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         public IActionResult WareHouseHistory()
         {
@@ -3328,14 +3362,13 @@ ORDER BY l.code;
 
         [HttpGet]
         public async Task<IActionResult> GetSalesData(
-        int id,
-        DateTime? startDate = null,
-        DateTime? endDate = null,
-        bool includeAllDates = false)
+      int id,
+      DateTime? startDate = null,
+      DateTime? endDate = null,
+      bool includeAllDates = false)
         {
             try
             {
-                // 🔹 Dynamic database connection based on session
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
@@ -3345,26 +3378,21 @@ ORDER BY l.code;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔹 Get ENABLE PETTYCASH APPROVAL dynamically from DB
                 string barcodeS = await GeneralSettingsStateAsync("ENABLE PETTYCASH APPROVAL", connStrBuilder.ConnectionString);
                 bool enableApproval = !string.IsNullOrEmpty(barcodeS)
                                        && int.TryParse(barcodeS, out int statusValue)
                                        && statusValue > 0;
 
-                // 🔹 Prepare result variables
                 var result = new List<Dictionary<string, object>>();
-                decimal totalAmount = 0, totalBalance = 0;
+                decimal totalAmount = 0, runningBalance = 0;
                 int rowId = 1;
 
                 string query;
-
-                // 🔹 Set default dates if null (helps with parameters)
                 var start = startDate ?? DateTime.MinValue;
                 var end = endDate ?? DateTime.MaxValue;
 
                 if (!enableApproval)
                 {
-                    // 🔹 Query when approval is not enabled
                     query = @"
                 SELECT 
                     DATE_FORMAT(t.date, '%Y-%m-%d') AS `Date`,
@@ -3384,11 +3412,7 @@ ORDER BY l.code;
                     t.type AS `Type`,
                     coa.code AS `A/C CODE`,
                     coa.name AS `A/C NAME`,
-                    (t.credit - t.debit) AS `Amount`,
-                    SUM(t.credit - t.debit) OVER (
-                        PARTITION BY t.hum_id
-                        ORDER BY t.date, t.id
-                    ) AS `Balance`
+                    (t.credit - t.debit) AS `Amount`
                 FROM tbl_transaction t
                 JOIN tbl_coa_level_4 coa ON t.account_id = coa.id
                 WHERE t.hum_id = @id
@@ -3404,7 +3428,6 @@ ORDER BY l.code;
                 }
                 else
                 {
-                    // 🔹 Query when approval is enabled
                     query = @"
                 SELECT 
                     p.id,
@@ -3412,8 +3435,7 @@ ORDER BY l.code;
                     'Petty Cash Request' AS `Type`,
                     CONCAT('Petty Cash Approval - REF - ', p.id) AS `Num`,
                     e.name AS `Account`,
-                    pd.amount AS `Amount`,
-                    '' AS `Balance`
+                    pd.amount AS `Amount`
                 FROM tbl_petty_cash p
                 INNER JOIN tbl_employee e ON p.employee_id = e.id
                 INNER JOIN tbl_petty_cash_details pd ON pd.petty_cash_id = p.id
@@ -3423,7 +3445,6 @@ ORDER BY l.code;
             ";
                 }
 
-                // 🔹 Execute the query
                 await using (var cmd = new MySqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@id", id);
@@ -3442,7 +3463,8 @@ ORDER BY l.code;
                             if (reader["Date"] == DBNull.Value) continue;
 
                             decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
-                            decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+                            runningBalance += amount;
+                            totalAmount += amount;
 
                             result.Add(new Dictionary<string, object>
                             {
@@ -3453,14 +3475,11 @@ ORDER BY l.code;
                                 ["Num"] = reader["Num"].ToString(),
                                 ["Account"] = reader["A/C NAME"].ToString(),
                                 ["Amount"] = amount.ToString("N2"),
-                                ["Balance"] = balance.ToString("N2") + " ◀"
+                                ["Balance"] = runningBalance.ToString("N2") + " ◀"
                             });
-
-                            totalAmount += amount;
-                            totalBalance += balance;
                         }
 
-                        // 🔹 Add total row
+                        // Total row
                         result.Add(new Dictionary<string, object>
                         {
                             ["SN"] = "",
@@ -3469,7 +3488,7 @@ ORDER BY l.code;
                             ["Type"] = "",
                             ["Account"] = "",
                             ["Amount"] = totalAmount.ToString("N2"),
-                            ["Balance"] = totalBalance.ToString("N2")
+                            ["Balance"] = runningBalance.ToString("N2")
                         });
                     }
                     else
@@ -3479,6 +3498,7 @@ ORDER BY l.code;
                             if (reader["Date"] == DBNull.Value) continue;
 
                             decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
+                            totalAmount += amount;
 
                             result.Add(new Dictionary<string, object>
                             {
@@ -3489,13 +3509,10 @@ ORDER BY l.code;
                                 ["Num"] = reader["Num"].ToString(),
                                 ["Account"] = reader["Account"].ToString(),
                                 ["Amount"] = amount.ToString("N2"),
-                                ["Balance"] = "" // No balance here
+                                ["Balance"] = ""
                             });
-
-                            totalAmount += amount;
                         }
 
-                        // 🔹 Add total row
                         result.Add(new Dictionary<string, object>
                         {
                             ["SN"] = "",
@@ -3509,7 +3526,6 @@ ORDER BY l.code;
                     }
                 }
 
-                // 🔹 Include current date/time in response
                 var now = DateTime.Now;
 
                 return Ok(new
@@ -3525,6 +3541,7 @@ ORDER BY l.code;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         private async Task<string> GeneralSettingsStateAsync(string name, string connectionString)
         {
@@ -3550,15 +3567,14 @@ ORDER BY l.code;
         }
         [HttpGet]
         public async Task<IActionResult> GetPettyCashData(
-    int humId,
-    int? empId = null,
-    DateTime? startDate = null,
-    DateTime? endDate = null,
-    bool includeAllDates = false)
+     int humId,
+     int? empId = null,
+     DateTime? startDate = null,
+     DateTime? endDate = null,
+     bool includeAllDates = false)
         {
             try
             {
-                // 🔹 Database connection
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
@@ -3567,18 +3583,15 @@ ORDER BY l.code;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔹 Check if approval is enabled
                 string approvalStatus = await GeneralSettingsStateAsync("ENABLE PETTYCASH APPROVAL", connStrBuilder.ConnectionString);
                 bool enableApproval = !string.IsNullOrEmpty(approvalStatus)
                                        && int.TryParse(approvalStatus, out int statusValue)
                                        && statusValue > 0;
 
-                // 🔹 Result list and totals
                 var result = new List<Dictionary<string, object>>();
-                decimal totalAmount = 0, totalBalance = 0;
+                decimal totalAmount = 0, runningBalance = 0;
                 int rowId = 1;
 
-                // 🔹 Default date filters
                 var start = startDate ?? DateTime.MinValue;
                 var end = endDate ?? DateTime.MaxValue;
 
@@ -3597,20 +3610,14 @@ ORDER BY l.code;
                              FROM tbl_petty_cash_request pr 
                              WHERE pr.id = t.transaction_id
                              LIMIT 1)
-                        WHEN t.type = 'Petty Cash Submission' THEN 
-                            'Petty Cash Submission NO.'
-                        WHEN t.type = 'Employee Petty Cash Payment' THEN 
-                            'Employee Petty Cash Payment'
+                        WHEN t.type = 'Petty Cash Submission' THEN 'Petty Cash Submission NO.'
+                        WHEN t.type = 'Employee Petty Cash Payment' THEN 'Employee Petty Cash Payment'
                         ELSE ''
                     END AS `Num`,
                     t.type AS `Type`,
                     coa.code AS `A/C CODE`,
                     coa.name AS `A/C NAME`,
-                    (t.credit - t.debit) AS `Amount`,
-                    SUM(t.credit - t.debit) OVER (
-                        PARTITION BY t.hum_id
-                        ORDER BY t.date, t.id
-                    ) AS `Balance`
+                    (t.credit - t.debit) AS `Amount`
                 FROM tbl_transaction t
                 JOIN tbl_coa_level_4 coa ON t.account_id = coa.id
                 WHERE t.hum_id = @humId
@@ -3648,8 +3655,7 @@ ORDER BY l.code;
                     'Petty Cash Request' AS `Type`,
                     CONCAT('Petty Cash Approval - REF - ', p.id) AS `Num`,
                     e.name AS `Account`,
-                    pd.amount AS `Amount`,
-                    '' AS `Balance`
+                    pd.amount AS `Amount`
                 FROM tbl_petty_cash p
                 INNER JOIN tbl_employee e ON p.employee_id = e.id
                 INNER JOIN tbl_petty_cash_details pd ON pd.petty_cash_id = p.id
@@ -3669,30 +3675,21 @@ ORDER BY l.code;
                     query += " ORDER BY p.voucher_date, p.id;";
                 }
 
-                // 🔹 Execute query
                 await using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddRange(parameters.ToArray());
+
                 await using var reader = await cmd.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
                 {
                     if (reader["Date"] == DBNull.Value) continue;
 
-                    decimal amount = 0;
-                    decimal balance = 0;
+                    decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
 
-                    var amountValue = reader["Amount"];
-                    if (amountValue != DBNull.Value && !string.IsNullOrWhiteSpace(amountValue.ToString()))
+                    if (!enableApproval)
                     {
-                        amount = Convert.ToDecimal(amountValue);
+                        runningBalance += amount;
                     }
-
-                    var balanceValue = reader["Balance"];
-                    if (balanceValue != DBNull.Value && !string.IsNullOrWhiteSpace(balanceValue.ToString()))
-                    {
-                        balance = Convert.ToDecimal(balanceValue);
-                    }
-
 
                     result.Add(new Dictionary<string, object>
                     {
@@ -3701,16 +3698,15 @@ ORDER BY l.code;
                         ["Type"] = reader["Type"].ToString(),
                         ["Date"] = Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd"),
                         ["Num"] = reader["Num"].ToString(),
-                        ["Account"] = reader["Account"] != DBNull.Value ? reader["Account"].ToString() : reader["A/C NAME"].ToString(),
+                        ["Account"] = enableApproval ? reader["Account"].ToString() : reader["A/C NAME"].ToString(),
                         ["Amount"] = amount.ToString("N2"),
-                        ["Balance"] = enableApproval ? "" : balance.ToString("N2") + " ◀"
+                        ["Balance"] = enableApproval ? "" : runningBalance.ToString("N2") + " ◀"
                     });
 
                     totalAmount += amount;
-                    totalBalance += balance;
                 }
 
-                // 🔹 Add total row
+                // Add TOTAL row
                 result.Add(new Dictionary<string, object>
                 {
                     ["SN"] = "",
@@ -3719,7 +3715,7 @@ ORDER BY l.code;
                     ["Type"] = "",
                     ["Account"] = "",
                     ["Amount"] = totalAmount.ToString("N2"),
-                    ["Balance"] = enableApproval ? "" : totalBalance.ToString("N2")
+                    ["Balance"] = enableApproval ? "" : runningBalance.ToString("N2")
                 });
 
                 return Ok(new
@@ -3735,6 +3731,7 @@ ORDER BY l.code;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
 
         #endregion

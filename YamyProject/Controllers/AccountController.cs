@@ -4786,6 +4786,9 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
         #endregion
 
 
+        #region User Permission
+
+
         public IActionResult User()
         {
             return View();
@@ -5433,6 +5436,9 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
+        #endregion
 
     }
 }
