@@ -785,6 +785,183 @@
 
         #endregion
 
+        #region Stock Management
+
+        public IActionResult StockManagement()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetStockSettlements(
+    string selectionMethod,
+    bool ignoreDate,
+    DateTime? dateFrom,
+    DateTime? dateTo)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query;
+
+                if (selectionMethod == "Default")
+                {
+                    query = @"
+                SELECT 
+                    ROW_NUMBER() OVER (ORDER BY s.date) AS SN,
+                    s.date AS Date,
+                    s.id,
+                    CONCAT('000', MAX(t.transaction_id)) AS JVNO,
+                    s.code AS INVNO
+                FROM tbl_item_stock_settlement s
+                INNER JOIN tbl_transaction t 
+                    ON s.id = t.transaction_id
+                WHERE s.state = 0";
+                }
+                else
+                {
+                    query = @"
+                SELECT 
+                    ROW_NUMBER() OVER (ORDER BY s.date) AS SN,
+                    s.date AS Date,
+                    s.id,
+                    s.code AS INVNO,
+                    CONCAT(i.code,' - ',i.name) AS ItemName,
+                    d.on_hand AS Qty,
+                    d.price AS CostPrice,
+                    d.new_on_hand,
+                    d.minusamount,
+                    d.plusamount
+                FROM tbl_item_stock_settlement s
+                INNER JOIN tbl_item_stock_settlement_details d 
+                    ON s.id = d.settle_id
+                INNER JOIN tbl_items i 
+                    ON d.item_id = i.id
+                WHERE s.state = 0";
+                }
+
+                if (!ignoreDate && dateFrom.HasValue && dateTo.HasValue)
+                    query += " AND s.date BETWEEN @dateFrom AND @dateTo";
+
+                if (selectionMethod == "Default")
+                {
+                    query += @" GROUP BY s.id, s.date, s.code";
+                }
+                else
+                {
+                    query += @" GROUP BY s.id, s.date, s.code,
+                        i.code, i.name,
+                        d.on_hand, d.price,
+                        d.new_on_hand, d.minusamount, d.plusamount";
+                }
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                if (!ignoreDate && dateFrom.HasValue && dateTo.HasValue)
+                {
+                    cmd.Parameters.AddWithValue("@dateFrom", dateFrom.Value.Date);
+                    cmd.Parameters.AddWithValue("@dateTo", dateTo.Value.Date);
+                }
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var result = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    result.Add(new
+                    {
+                        SN = reader["SN"],
+                        Date = reader["Date"],
+                        Id = reader["id"],
+                        InvoiceNo = reader["INVNO"],
+                        JVNo = selectionMethod == "Default" ? reader["JVNO"] : null,
+                        ItemName = selectionMethod != "Default" ? reader["ItemName"] : null,
+                        Qty = selectionMethod != "Default" ? reader["Qty"] : null,
+                        CostPrice = selectionMethod != "Default" ? reader["CostPrice"] : null,
+                        NewOnHand = selectionMethod != "Default" ? reader["new_on_hand"] : null,
+                        MinusAmount = selectionMethod != "Default" ? reader["minusamount"] : null,
+                        PlusAmount = selectionMethod != "Default" ? reader["plusamount"] : null
+                    });
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetStockSettlementItems(int settlementId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                CONCAT(i.code,' - ',i.name) AS ItemName,
+                d.on_hand AS Qty,
+                d.price AS CostPrice,
+                d.new_on_hand AS NewOnHand
+            FROM tbl_item_stock_settlement_details d
+            INNER JOIN tbl_items i ON d.item_id = i.id
+            WHERE d.settle_id = @id";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", settlementId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var items = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        ItemName = reader["ItemName"],
+                        Qty = reader["Qty"],
+                        CostPrice = reader["CostPrice"],
+                        NewOnHand = reader["NewOnHand"]
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
     }
 }
 

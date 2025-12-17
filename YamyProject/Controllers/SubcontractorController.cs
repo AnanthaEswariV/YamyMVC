@@ -817,7 +817,185 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        [HttpGet]
+        public async Task<IActionResult> GetVendorInvoices(int id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                t.id,
+                t.transaction_id AS InvoiceId,
+                t.voucher_no AS VoucherNo,
+                t.date,
+                t.type,
+                ta.name AS Description,
+                t.debit,
+                t.credit
+            FROM tbl_transaction t
+            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+            WHERE t.hum_id = @id 
+              AND t.state = 0
+              AND t.type IN (
+                  'Subcontractor Payment',
+                  'Petty Cash', 
+                  'Purchase Invoice', 
+                  'Purchase Invoice Cash', 
+                  'Subcontractor Opening Balance', 
+                  'Check Cancel (Subcontractor)', 
+                  'Purchase Return Invoice', 
+                  'Debit Note', 
+                  'PDC Payable'
+              )
+            ORDER BY t.id;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var transactions = new List<object>();
+                int snCounter = 1;
+                decimal balance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "0";
+                    int invoiceId = 0;
+                    int.TryParse(invoiceIdStr, out invoiceId);
+
+                    decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
+                    decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
+                    balance += credit - debit;
+
+                    transactions.Add(new
+                    {
+                        SN = snCounter++,
+                        Id = Convert.ToInt32(reader["id"]),
+                        InvoiceId = invoiceId,
+                        Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
+                        VoucherNo = string.IsNullOrEmpty(reader["VoucherNo"]?.ToString()) ? $"GV-00{invoiceId}" : reader["VoucherNo"].ToString(),
+                        Type = reader["type"]?.ToString() ?? "",
+                        Description = reader["Description"]?.ToString() ?? "",
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
+                        Balance = balance.ToString("N2")
+                    });
+                }
+
+                return Ok(new { status = true, data = transactions });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetVendorCashInvoices(int id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                List<string> includeTypes = new() { "%Purchase Invoice Cash%" };
+
+                string query = @"
+            SELECT 
+                t.id,
+                t.transaction_id AS InvoiceId,
+                t.voucher_no AS VoucherNo,
+                t.date,
+                CONCAT(ta.code, ' - ', ta.name) AS AccountName,
+                t.type,
+                CASE 
+                    WHEN t.type LIKE 'Purchase Invoice Cash%' THEN IF(t.debit = 0, t.credit, t.debit)
+                    ELSE 0
+                END AS Amount
+            FROM tbl_transaction t
+            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+            WHERE t.hum_id = @id AND t.state = 0";
+
+                if (includeTypes.Any())
+                    query += " AND (" + string.Join(" OR ", includeTypes.Select((t, i) => $"t.type LIKE @include{i}")) + ")";
+
+                query += " ORDER BY t.date, t.id;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+                for (int i = 0; i < includeTypes.Count; i++)
+                    cmd.Parameters.AddWithValue($"@include{i}", includeTypes[i]);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var invoices = new List<object>();
+                decimal totalAmount = 0;
+                int snCounter = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "0";
+                    int invoiceId = 0;
+                    int.TryParse(invoiceIdStr, out invoiceId);
+
+                    decimal amount = reader.IsDBNull(reader.GetOrdinal("Amount")) ? 0 : reader.GetDecimal("Amount");
+                    totalAmount += amount;
+
+                    invoices.Add(new
+                    {
+                        SN = snCounter++,
+                        InvoiceId = invoiceId,
+                        VoucherNo = string.IsNullOrEmpty(reader["VoucherNo"]?.ToString()) ? $"GV-00{invoiceId}" : reader["VoucherNo"].ToString(),
+                        Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
+                        AccountName = reader["AccountName"]?.ToString() ?? "",
+                        Type = reader["type"]?.ToString() ?? "",
+                        Amount = amount.ToString("F2")
+                    });
+                }
+
+                // Total row
+                invoices.Add(new
+                {
+                    SN = "Total",
+                    InvoiceId = "",
+                    VoucherNo = "",
+                    Date = "",
+                    AccountName = "Total",
+                    Type = "",
+                    Amount = totalAmount.ToString("F2")
+                });
+
+                return Ok(new { status = true, data = invoices });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region Purchase Center
+
+        public IActionResult PurchaseCenter()
+        {
+            return View();
+        }
 
         #endregion
 

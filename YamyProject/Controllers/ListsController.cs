@@ -3682,6 +3682,10 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
+                // Enable MySQL user variables
+                connStrBuilder.AllowUserVariables = true;
+
+
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
@@ -3692,19 +3696,19 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 // Build base condition based on selectionMethod
                 if (selectionMethod == "General Ledger")
                 {
-                    condition = " AND tbl_transaction.state = 0 AND tbl_transaction.hum_id != 0 ";
+                    condition = " AND t.state = 0 AND t.hum_id != 0 ";
                 }
                 else if (selectionMethod == "Default")
                 {
-                    condition = " AND tbl_transaction.state = 0 ";
+                    condition = " AND t.state = 0 ";
                 }
                 else if (selectionMethod == "Inventory Opening Stock")
                 {
-                    condition = " AND tbl_transaction.state = 0 AND tbl_transaction.type = 'Opening Balance' ";
+                    condition = " AND t.state = 0 AND t.type = 'Opening Balance' ";
                 }
                 else
                 {
-                    condition = " AND tbl_transaction.state = 0 AND tbl_transaction.type = @selType";
+                    condition = " AND t.state = 0 AND t.type = @selType";
                     parameters.Add(new MySqlParameter("@selType", selectionMethod));
                 }
 
@@ -4008,24 +4012,29 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 }
                 else
                 {
-                    // Default query
-                    query = @"SELECT 
-                ROW_NUMBER() OVER (ORDER BY tbl_transaction.date) AS `SN`,
-                CONCAT('000', transaction_id) AS `RefId`,
-                tbl_transaction.date AS `Date`, 
-                tbl_transaction.transaction_id,
-                tbl_transaction.type AS `Type`,
-                tbl_coa_level_4.code AS 'ACCode',
-                tbl_coa_level_4.name AS `ACName`, 
-                tbl_transaction.description AS `Description`,
-                tbl_transaction.debit AS `Debit`, 
-                tbl_transaction.credit AS `Credit`,
-                tbl_transaction.costcenter AS `CostCenter`,
-                tbl_sub_cost_center.name AS CostCenterName
-            FROM tbl_transaction 
-            INNER JOIN tbl_coa_level_4 ON tbl_transaction.account_id = tbl_coa_level_4.id 
-            LEFT JOIN tbl_sub_cost_center ON tbl_transaction.costcenter = tbl_sub_cost_center.id
-            WHERE 1=1 " + condition;
+                     query = @"
+    SELECT 
+        (@sn := @sn + 1) AS `SN`,
+        CONCAT('000', t.transaction_id) AS `RefId`,
+        t.date AS `Date`,
+        t.transaction_id,
+        t.type AS `Type`,
+        c.code AS `ACCode`,
+        c.code AS `ACCode`,
+        c.name AS `ACName`,
+        t.description AS `Description`,
+        t.debit AS `Debit`,
+        t.credit AS `Credit`,
+        t.costcenter AS `CostCenter`,
+        s.name AS CostCenterName
+    FROM tbl_transaction t
+    INNER JOIN tbl_coa_level_4 c ON t.account_id = c.id
+    LEFT JOIN tbl_sub_cost_center s ON t.costcenter = s.id
+    CROSS JOIN (SELECT @sn := 0) AS init
+    WHERE 1=1 " + condition + @"
+    ORDER BY t.date;
+";
+
                 }
 
                 // Execute query
@@ -4035,14 +4044,16 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 var journalEntries = new List<Dictionary<string, object?>>();
                 using var reader = await cmd.ExecuteReaderAsync();
 
+                int sn = 1;
                 while (await reader.ReadAsync())
                 {
                     var entry = new Dictionary<string, object?>();
+                    entry["SN"] = sn++;  // Row number in C#
                     for (int i = 0; i < reader.FieldCount; i++)
                     {
                         string fieldName = reader.GetName(i);
-                        object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                        entry[fieldName] = value;
+                        if (fieldName != "SN") // Skip if SN is already added
+                            entry[fieldName] = reader.IsDBNull(i) ? null : reader.GetValue(i);
                     }
                     journalEntries.Add(entry);
                 }

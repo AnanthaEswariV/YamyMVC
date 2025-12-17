@@ -68,7 +68,40 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
                 await conn.OpenAsync();
 
-                var cmd = new MySqlCommand("SELECT IFNULL(MAX(id),0) FROM yamycompany.tbl_company;", conn);
+                // Step 1: Check if the table exists
+                var checkTableCmd = new MySqlCommand("SHOW TABLES LIKE 'tbl_company';", conn);
+                var tableExists = await checkTableCmd.ExecuteScalarAsync();
+
+                // Step 2: If the table doesn't exist, create it
+                if (tableExists == null)
+                {
+                    var createTableCmd = new MySqlCommand(@"
+                CREATE TABLE IF NOT EXISTS `tbl_company` (
+                    `id` int NOT NULL AUTO_INCREMENT,
+                    `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `descriptions` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `phone1` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `phone2` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `gmail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `mobile_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `website` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `address` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `trn_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `country_id` int NOT NULL DEFAULT 0,
+                    `logoComp` longblob,
+                    `code` varchar(100) NULL,
+                    `default_company` int NULL,
+                    `customer_code` varchar(100) NULL,
+                    `stampComp` longblob NULL,
+                    PRIMARY KEY (`id`) USING BTREE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;", conn);
+
+                    await createTableCmd.ExecuteNonQueryAsync();
+                    Console.WriteLine("Table 'tbl_company' was created successfully.");
+                }
+
+                // Step 3: Retrieve the last ID to generate the next sales code
+                var cmd = new MySqlCommand("SELECT IFNULL(MAX(id), 0) FROM tbl_company;", conn);
                 var lastId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                 int newId = lastId + 1;
 
@@ -76,9 +109,12 @@ namespace YamyProject.Controllers
             }
             catch (Exception ex)
             {
-                throw ex;
+                // Log the exception and throw it
+                Console.WriteLine($"Error: {ex.Message}");
+                throw;
             }
         }
+
 
 
         private async Task CreateDatabase(string dbName, CompanyModels request)
@@ -556,25 +592,6 @@ namespace YamyProject.Controllers
                             (38, 1, 'Salaries'),
                             (39, 31, 'Stock Settlement');
 
-                        CREATE TABLE IF NOT EXISTS `tbl_company` (
-                          `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `descriptions` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `phone1` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `phone2` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `gmail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `mobile_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `website` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `address` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `trn_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `country_id` int NOT NULL DEFAULT(0),
-                          `logoComp` longblob,
-                           `code` varchar(100) NULL,
-                           `default_company` int NULL,
-                           `customer_code` varchar(100) NULL,
-                           `stampComp` longblob NULL,
-                          PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_corporate_tax_configration` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -2463,13 +2480,13 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE tbl_project_activity (
                             id INT AUTO_INCREMENT PRIMARY KEY,
-                            planning_id INT NOT NULL DEFAULT(0),
+                            planning_id INT NOT NULL DEFAULT 0, 
                             code VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
                             name VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
                             start_date DATE NOT NULL,
                             end_date DATE NOT NULL,
                             progress DECIMAL(20,3) NOT NULL DEFAULT '0.000',
-                            status VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci'
+                            status VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci'
                         );
 
                         CREATE TABLE `tbl_project_work_done` (
@@ -2483,21 +2500,21 @@ namespace YamyProject.Controllers
 	                        `state` TINYINT(3) NULL DEFAULT '0',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
+                        COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
                         CREATE TABLE `tbl_project_work_done_details` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
 	                        `ref_id` INT(10) NOT NULL,
 	                        `item_id` INT(10) NOT NULL,
 	                        `main_id` INT(10) NOT NULL,
-	                        `code` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `code` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `qty_total` DECIMAL(10,2) NULL DEFAULT '0.00',
-	                        `unit` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `unit` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `qty_used` DECIMAL(10,2) NULL DEFAULT '0.00',
 	                        `created_at` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
+                        COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
 
                         CREATE TABLE tbl_project_activity_assignment (
                             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2507,26 +2524,26 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `batchname` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `batchname` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `Costamount` DECIMAL(64,2) NULL DEFAULT NULL,
 	                        `amount` DECIMAL(62,2) NULL DEFAULT NULL,
 	                        `hours` DECIMAL(10,0) NULL DEFAULT NULL,
-	                        `userinsert` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `userinsert` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `date` DATE NULL DEFAULT NULL,
-	                        `Description` VARCHAR(1000) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `Description` VARCHAR(1000) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `fixedassetsID` INT(10) NULL DEFAULT NULL,
-	                        `fixedStatus` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `fixedStatus` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `product_id` INT(10) NULL DEFAULT '0',
 	                        `warehouse_id` INT(10) NULL DEFAULT '0',
                             `product_qty` DECIMAL(10,0) NULL DEFAULT '0',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_0900_ai_ci'
+                        COLLATE='utf8mb4_general_ci'
                         ENGINE=InnoDB;
 
                         CREATE TABLE `tbl_manufacturer_batchdetails` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `batchID` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `batchID` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `itemid` INT(10) NULL DEFAULT NULL,
 	                        `cost` DECIMAL(63,2) NULL DEFAULT NULL,
 	                        `qty` DECIMAL(20,2) NULL DEFAULT NULL,
@@ -2535,7 +2552,7 @@ namespace YamyProject.Controllers
 	                        `ReceiveQty` DECIMAL(20,2) NULL DEFAULT '0.00',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_0900_ai_ci'
+                        COLLATE='utf8mb4_general_ci'
                         ENGINE=InnoDB;
 
                         CREATE TABLE `tbl_manufacturer_task` (
@@ -2544,11 +2561,11 @@ namespace YamyProject.Controllers
 	                        `BatchID` INT(10) NULL DEFAULT NULL,
 	                        `StartTime` DATETIME NULL DEFAULT NULL,
 	                        `EndTime` DATETIME NULL DEFAULT NULL,
-	                        `Status` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `Status` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        `userID` INT(10) NULL DEFAULT NULL,
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_0900_ai_ci'
+                        COLLATE='utf8mb4_general_ci'
                         ENGINE=InnoDB;
 
                         CREATE TABLE tbl_manufacturer_task_details (
@@ -2564,10 +2581,10 @@ namespace YamyProject.Controllers
                         
                         CREATE TABLE `tbl_printconfg` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `PrintName` VARCHAR(150) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `PrintName` VARCHAR(150) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_0900_ai_ci'
+                        COLLATE='utf8mb4_general_ci'
                         ENGINE=InnoDB
                         ;
                         ";
@@ -2980,46 +2997,74 @@ namespace YamyProject.Controllers
             {
                 using var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
                 await conn.OpenAsync();
+
+                // ✅ Ensure database_name column exists
+                string checkColumnQuery = @"
+            SELECT COUNT(*) 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = 'yamycompany'
+              AND TABLE_NAME = 'tbl_company'
+              AND COLUMN_NAME = 'database_name';
+        ";
+
+                using (var checkCmd = new MySqlCommand(checkColumnQuery, conn))
+                {
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (exists == 0)
+                    {
+                        string alterQuery = @"
+                    ALTER TABLE yamycompany.tbl_company
+                    ADD COLUMN database_name VARCHAR(255);
+                ";
+
+                        using var alterCmd = new MySqlCommand(alterQuery, conn);
+                        await alterCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // Generate code
                 string code = await GenerateNextSalesCode();
                 string codeNumber = code.Replace("db", "");
+
                 string insertCompanyQuery = @"
-        INSERT INTO yamycompany.tbl_company
-        (
-            database_name, name, code, descriptions,
-            phone1, phone2, gmail, mobile_number,
-            website, address, trn_no, logoComp,
-            default_company, customer_code
-        )
-        VALUES
-        (
-            @DatabaseName, @Name, @Code, @Descriptions,
-            @Phone1, @Phone2, @Gmail, @MobileNumber,
-            @Website, @Address, @TrnNo, @LogoComp,
-            @DefaultCompany, @CustomerCode
-        );";
+            INSERT INTO yamycompany.tbl_company
+            (
+                database_name, name, code, descriptions,
+                phone1, phone2, gmail, mobile_number,
+                website, address, trn_no, logoComp,
+                default_company, customer_code, StampComp
+            )
+            VALUES
+            (
+                @DatabaseName, @Name, @Code, @Descriptions,
+                @Phone1, @Phone2, @Gmail, @MobileNumber,
+                @Website, @Address, @TrnNo, @LogoComp,
+                @DefaultCompany, @CustomerCode, @StampComp
+            );
+        ";
 
-                using (var insertCmd = new MySqlCommand(insertCompanyQuery, conn))
-                {
-                    insertCmd.Parameters.AddWithValue("@DatabaseName", dbCode);
-                    insertCmd.Parameters.AddWithValue("@Name", request.CompanyName);
-                    insertCmd.Parameters.AddWithValue("@Code", codeNumber);
-                    insertCmd.Parameters.AddWithValue("@Descriptions", request.Address ?? "");
-                    insertCmd.Parameters.AddWithValue("@Phone1", request.Phone1 ?? "");
-                    insertCmd.Parameters.AddWithValue("@Phone2", request.Phone2 ?? "");
-                    insertCmd.Parameters.AddWithValue("@Gmail", request.Gmail ?? "");
-                    insertCmd.Parameters.AddWithValue("@MobileNumber", request.MobileNumber ?? "");
-                    insertCmd.Parameters.AddWithValue("@Website", request.Website ?? "");
-                    insertCmd.Parameters.AddWithValue("@Address", request.Address ?? "");
-                    insertCmd.Parameters.AddWithValue("@TrnNo", request.TrnNo ?? "");
-                    insertCmd.Parameters.AddWithValue("@LogoComp", DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("@DefaultCompany", request.DefaultCompany ?? 0);
-                    insertCmd.Parameters.AddWithValue("@CustomerCode",
-                        Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User) ?? "");
+                using var insertCmd = new MySqlCommand(insertCompanyQuery, conn);
 
-                    await insertCmd.ExecuteNonQueryAsync();
-                }
+                insertCmd.Parameters.AddWithValue("@DatabaseName", dbCode);
+                insertCmd.Parameters.AddWithValue("@Name", request.CompanyName ?? "");
+                insertCmd.Parameters.AddWithValue("@Code", codeNumber);
+                insertCmd.Parameters.AddWithValue("@Descriptions", request.Address ?? "");
+                insertCmd.Parameters.AddWithValue("@Phone1", request.Phone1 ?? "");
+                insertCmd.Parameters.AddWithValue("@Phone2", request.Phone2 ?? "");
+                insertCmd.Parameters.AddWithValue("@Gmail", request.Gmail ?? "");
+                insertCmd.Parameters.AddWithValue("@MobileNumber", request.MobileNumber ?? "");
+                insertCmd.Parameters.AddWithValue("@Website", request.Website ?? "");
+                insertCmd.Parameters.AddWithValue("@Address", request.Address ?? "");
+                insertCmd.Parameters.AddWithValue("@TrnNo", request.TrnNo ?? "");
+                insertCmd.Parameters.AddWithValue("@LogoComp", DBNull.Value);
+                insertCmd.Parameters.AddWithValue("@DefaultCompany", request.DefaultCompany ?? 0);
+                insertCmd.Parameters.AddWithValue("@CustomerCode",
+                    Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User) ?? "");
+                insertCmd.Parameters.AddWithValue("@StampComp", DBNull.Value);
+
+                await insertCmd.ExecuteNonQueryAsync();
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
                 throw ex;
             }

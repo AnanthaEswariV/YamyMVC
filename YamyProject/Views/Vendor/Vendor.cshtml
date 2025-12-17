@@ -490,7 +490,7 @@
                 type: 'GET',
                 success: function(res) {
                     if (!res.status || !res.data) return;
-
+                    console.log(res);
                     const container = $('#projectContainer');
                     container.empty();
 
@@ -503,6 +503,7 @@
                                     type: 'checkbox',
                                     class: 'form-check-input project-checkbox',
                                     id: checkboxId,
+                                     'data-id': item.id,
                                     'data-code': item.code,
                                     'data-name': item.name
                                 })
@@ -630,7 +631,7 @@
             const isEdit = customerId && parseInt(customerId) > 0;
 
             // Collect selected project IDs for submission
-            const selectedProjectIds = $('.project-checkbox:checked').map(function () {
+          const selectedProjectIds = $('.project-checkbox:checked').map(function () {
                 return $(this).data('id'); // Get the project ID
             }).get();
 

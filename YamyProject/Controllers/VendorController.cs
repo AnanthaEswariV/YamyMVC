@@ -13,6 +13,8 @@ namespace YamyProject.Controllers
             _config = config;
         }
 
+        #region Vendor CRUD Operation
+
         public IActionResult Vendor()
         {
             return View();  
@@ -445,7 +447,6 @@ namespace YamyProject.Controllers
 
                 string query = @"
             SELECT 
-                ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
                 t.id,
                 t.transaction_id AS InvoiceId,
                 t.voucher_no AS VoucherNo,
@@ -454,9 +455,7 @@ namespace YamyProject.Controllers
                 ta.name AS Description,
                 t.debit,
                 t.credit,
-                SUM(t.credit - t.debit) OVER (
-                    ORDER BY t.id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-                ) AS Balance
+                0 AS Balance  -- placeholder, compute in C# if needed
             FROM tbl_transaction t
             INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
             WHERE t.hum_id = @id
@@ -476,28 +475,35 @@ namespace YamyProject.Controllers
             ORDER BY t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.Add(new MySqlParameter("@id", id));
+                cmd.Parameters.AddWithValue("@id", id);
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 var transactions = new List<object>();
+                int snCounter = 1;
+                decimal balance = 0;
 
                 while (await reader.ReadAsync())
                 {
-                    string invoiceId = reader["InvoiceId"]?.ToString() ?? "0";
+                    string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "0";
+                    int invoiceId = 0;
+                    int.TryParse(invoiceIdStr, out invoiceId);
+
+                    decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
+                    decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
+                    balance += credit - debit; // compute balance manually
+
                     transactions.Add(new
                     {
-                        SN = reader.GetInt32("SN"),
-                        Id = reader.GetInt32("id"),
+                        SN = snCounter++,
+                        Id = Convert.ToInt32(reader["id"]),
                         InvoiceId = invoiceId,
                         Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
-                        VoucherNo = string.IsNullOrEmpty(reader["VoucherNo"]?.ToString())
-                                    ? $"GV-00{invoiceId}"
-                                    : reader["VoucherNo"].ToString(),
+                        VoucherNo = reader["VoucherNo"]?.ToString() ?? $"GV-00{invoiceId}",
                         Type = reader["type"]?.ToString() ?? "",
                         Description = reader["Description"]?.ToString() ?? "",
-                        Debit = reader.GetDecimal("debit").ToString("N2"),
-                        Credit = reader.GetDecimal("credit").ToString("N2"),
-                        Balance = reader.GetDecimal("Balance").ToString("N2")
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
+                        Balance = balance.ToString("N2")
                     });
                 }
 
@@ -524,13 +530,11 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 List<string> includeTypes = new() { "%Purchase Invoice Cash%" };
-                List<string> excludeTypes = new();
 
                 string query = @"
             SELECT 
                 t.id,
                 t.transaction_id AS InvoiceId,
-                ROW_NUMBER() OVER (ORDER BY t.date, t.id) AS SN,
                 t.voucher_no AS VoucherNo,
                 t.date,
                 CONCAT(ta.code, ' - ', ta.name) AS AccountName,
@@ -538,7 +542,7 @@ namespace YamyProject.Controllers
                 CASE 
                     WHEN t.type = 'Purchase Invoice Cash' 
                         THEN IF(t.debit = 0, t.credit, t.debit)
-                    ELSE NULL
+                    ELSE 0
                 END AS Amount
             FROM tbl_transaction t
             INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
@@ -546,41 +550,41 @@ namespace YamyProject.Controllers
 
                 if (includeTypes.Any())
                     query += " AND (" + string.Join(" OR ", includeTypes.Select((t, i) => $"t.type LIKE @include{i}")) + ")";
-                if (excludeTypes.Any())
-                    query += " AND (" + string.Join(" AND ", excludeTypes.Select((t, i) => $"t.type NOT LIKE @exclude{i}")) + ")";
 
                 query += " ORDER BY t.date, t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.Add(new MySqlParameter("@id", id));
-
+                cmd.Parameters.AddWithValue("@id", id);
                 for (int i = 0; i < includeTypes.Count; i++)
-                    cmd.Parameters.Add(new MySqlParameter($"@include{i}", includeTypes[i]));
-                for (int i = 0; i < excludeTypes.Count; i++)
-                    cmd.Parameters.Add(new MySqlParameter($"@exclude{i}", excludeTypes[i]));
+                    cmd.Parameters.AddWithValue($"@include{i}", includeTypes[i]);
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 var invoices = new List<object>();
                 decimal totalAmount = 0;
+                int snCounter = 1;
 
                 while (await reader.ReadAsync())
                 {
-                    decimal amount = reader.IsDBNull("Amount") ? 0 : reader.GetDecimal("Amount");
+                    string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "0";
+                    int invoiceId = 0;
+                    int.TryParse(invoiceIdStr, out invoiceId);
+
+                    decimal amount = reader.IsDBNull(reader.GetOrdinal("Amount")) ? 0 : reader.GetDecimal("Amount");
                     totalAmount += amount;
 
                     invoices.Add(new
                     {
-                        SN = reader.GetInt32("SN"),
-                        InvoiceId = reader.GetInt32("InvoiceId"),
-                        VoucherNo = reader["VoucherNo"]?.ToString() ?? "",
+                        SN = snCounter++,
+                        InvoiceId = invoiceId,
+                        VoucherNo = reader["VoucherNo"]?.ToString() ?? $"GV-00{invoiceId}",
                         Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
                         AccountName = reader["AccountName"]?.ToString() ?? "",
                         Type = reader["type"]?.ToString() ?? "",
-                        Amount = amount.ToString("F3")
+                        Amount = amount.ToString("F2")
                     });
                 }
 
-                // Add total row like WinForms
+                // Add total row
                 invoices.Add(new
                 {
                     SN = "Total",
@@ -589,7 +593,7 @@ namespace YamyProject.Controllers
                     Date = "",
                     AccountName = "Total",
                     Type = "",
-                    Amount = totalAmount.ToString("F3")
+                    Amount = totalAmount.ToString("F2")
                 });
 
                 return Ok(new { status = true, data = invoices });
@@ -600,7 +604,7 @@ namespace YamyProject.Controllers
             }
         }
 
-
+        #endregion
 
 
     }

@@ -1,0 +1,94 @@
+﻿
+@{
+    ViewData["Title"] = "PurchaseCenter";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <bold> <strong>Purchase Center</strong></bold>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Project Type -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Vendor/Subcontractor</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectType" checked>
+                </div>
+                <select class="form-select" id="projectType" disabled>
+                    <option value="">-- Select Type --</option>
+                </select>
+            </div>
+
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Selection Method</h6>
+                </div>
+                <select class="form-select" id="projectName">
+                    <option value="Default">Default</option>
+                    <option value="Item Wise">Item Wise</option>
+                </select>
+            </div>
+
+            <!-- Project Status -->
+            <div style="min-width: 250px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">Payment Method</h6>
+                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectStatus" checked>
+                </div>
+                <select class="form-select" id="projectStatus" disabled>
+                    <option value="">-- Select Method --</option>
+                </select>
+            </div>
+
+
+            <!-- Add Tender Button -->
+            <div class="text-center">
+                <button class="btn btn-primary rounded-3" id="addPlanningBtn" data-bs-toggle="modal" data-bs-target="#planningModal">
+                    <i class="fas fa-plus me-2"></i> Add Planning
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>Project Name</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                    <th>Project Type</th>
+                    <th>Est Budget</th>
+                    <th>Progress</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>

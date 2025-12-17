@@ -561,87 +561,79 @@ namespace YamyProject.Controllers
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true // Required to use @rownum and @balance
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Prepare the query
                 string query = @"
-        SELECT 
-            ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
+        SELECT
+            @rownum := @rownum + 1 AS SN,
             t.id,
-            t.transaction_id AS 'InvoiceId',
-            t.voucher_no AS 'V - No',
+            t.transaction_id AS InvoiceId,
+            t.voucher_no AS VoucherNo,
             t.date,
-            ta.name AS 'Account Name',
+            ta.name AS AccountName,
             t.type,
             t.debit,
             t.credit,
-            SUM(t.debit - t.credit) OVER (ORDER BY t.id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 'Balance'
-        FROM 
-            tbl_transaction t
-        INNER JOIN 
-            tbl_coa_level_4 ta ON t.account_id = ta.id
-        WHERE
-            t.hum_id = @id 
-            AND t.state = 0 
-            AND t.type IN (
-                'Customer Receipt', 
-                'Sales Invoice', 
-                'Sales Invoice Cash', 
-                'Customer Opening Balance', 
-                'Customer Advance Payment',
-                'Check Cancel (Customer)', 
-                'SalesReturn Invoice', 
-                'Credit Note', 
-                'PDC Receivable'
-            )";
+            @balance := @balance + (t.debit - t.credit) AS Balance
+        FROM (SELECT @rownum := 0, @balance := 0) AS vars, tbl_transaction t
+        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE t.hum_id = @id
+          AND t.state = 0
+          AND t.type IN (
+                'Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 
+                'Customer Opening Balance', 'Customer Advance Payment',
+                'Check Cancel (Customer)', 'SalesReturn Invoice', 
+                'Credit Note', 'PDC Receivable'
+          )
+        ORDER BY t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.Add(new MySqlParameter("@id", id));
+                cmd.Parameters.AddWithValue("@id", id);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 var transactions = new List<object>();
-                decimal totalAmount = 0, totalPaidAmount = 0, amount = 0, paidAmount = 0;
-                string _type = "";
+                decimal totalAmount = 0, totalPaidAmount = 0;
 
-                // Read the data and calculate totals
                 while (await reader.ReadAsync())
                 {
-                    _type = reader.IsDBNull(reader.GetOrdinal("type")) ? "" : reader.GetString("type");
-
-                    amount = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
-                    paidAmount = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
-
+                    decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
+                    decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
                     decimal balance = reader.IsDBNull(reader.GetOrdinal("Balance")) ? 0 : reader.GetDecimal("Balance");
 
-                    totalAmount += amount - paidAmount;
-                    totalPaidAmount += paidAmount;
+                    totalAmount += debit - credit;
+                    totalPaidAmount += credit;
 
-                    // Safe retrieval of InvoiceId (use GetString and convert to Int32 only if valid)
-                    string invoiceIdStr = reader.IsDBNull(reader.GetOrdinal("InvoiceId")) ? null : reader.GetString("InvoiceId");
+                    string invoiceIdStr = reader.IsDBNull(reader.GetOrdinal("InvoiceId"))
+                    ? null
+                    : reader.GetString("InvoiceId");
+
                     int invoiceId = 0;
                     if (!string.IsNullOrEmpty(invoiceIdStr))
                     {
-                        int.TryParse(invoiceIdStr, out invoiceId);  // Safely try parsing to int
+                        int.TryParse(invoiceIdStr, out invoiceId); // safely parse to int if possible
                     }
+
 
                     transactions.Add(new
                     {
-                        SN = reader.GetInt32("SN"),
-                        Id = reader.GetInt32("id"),
-                        InvoiceId = invoiceId, // Store as an integer (or 0 if parse failed)
-                        Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"), // Format the date
-                        VoucherNo = string.IsNullOrEmpty(reader.GetString("V - No")) ? $"GV-00{invoiceId}" : reader.GetString("V - No"),
-                        Type = _type,
-                        AccountName = reader.GetString("Account Name"),
-                        Debit = amount.ToString("N2"),
-                        Credit = paidAmount.ToString("N2"),
+                        SN = Convert.ToInt32(reader["SN"]),          
+                        Id = Convert.ToInt32(reader["id"]),         
+                        InvoiceId = invoiceId,
+                        Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
+                        VoucherNo = string.IsNullOrEmpty(reader.GetString("VoucherNo")) ? $"GV-00{invoiceId}" : reader.GetString("VoucherNo"),
+                        Type = reader.IsDBNull(reader.GetOrdinal("type")) ? "" : reader.GetString("type"),
+                        AccountName = reader.GetString("AccountName"),
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
                         Balance = balance.ToString("N2")
                     });
+
                 }
 
                 // Add total row
@@ -667,7 +659,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetCashInvoice(int id)
         {
@@ -681,32 +672,30 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Prepare the query
                 List<string> includeTypes = new List<string> { "%Sales Invoice Cash%" };
                 List<string> excludeTypes = new List<string>();
+
+                // Use aliases without spaces
                 string query = @"
-            SELECT 
-                t.id, 
-                t.transaction_id AS 'InvoiceId',
-                ROW_NUMBER() OVER (ORDER BY t.date, t.id) AS SN,
-                t.voucher_no AS 'V - No',
-                t.date AS 'Date', 
-                CONCAT(ta.code, ' - ', ta.name) AS 'Account Name',
-                t.type, 
-                CASE 
-                    WHEN t.type = 'Customer Receipt' THEN -IF(t.debit = 0, t.credit, t.debit)
-                    WHEN t.type = 'Customer Advance Payment' THEN -IF(t.debit = 0, t.credit, t.debit)
-                    WHEN t.type = 'Sales Invoice Cash' THEN IF(t.debit = 0, t.credit, t.debit)
-                    WHEN t.type = 'Customer Opening Balance' AND t.credit > 0 THEN -t.credit
-                    WHEN t.type = 'Check Cancel (Customer)' THEN t.debit
-                    WHEN t.type LIKE 'Customer%' OR t.type LIKE 'Sales%' THEN 
-                        IF(t.debit = 0, t.credit, t.debit)
-                    ELSE NULL 
-                END AS 'Amount',
-                '' AS Balance 
-            FROM tbl_transaction t
-            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-            WHERE t.hum_id = @id AND t.state = 0";
+        SELECT 
+            t.id,
+            t.transaction_id AS InvoiceId,
+            t.voucher_no AS VoucherNo,
+            t.date AS Date,
+            CONCAT(ta.code, ' - ', ta.name) AS AccountName,
+            t.type, 
+            CASE 
+                WHEN t.type = 'Customer Receipt' THEN -IF(t.debit = 0, t.credit, t.debit)
+                WHEN t.type = 'Customer Advance Payment' THEN -IF(t.debit = 0, t.credit, t.debit)
+                WHEN t.type = 'Sales Invoice Cash' THEN IF(t.debit = 0, t.credit, t.debit)
+                WHEN t.type = 'Customer Opening Balance' AND t.credit > 0 THEN -t.credit
+                WHEN t.type = 'Check Cancel (Customer)' THEN t.debit
+                WHEN t.type LIKE 'Customer%' OR t.type LIKE 'Sales%' THEN IF(t.debit = 0, t.credit, t.debit)
+                ELSE NULL 
+            END AS Amount
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE t.hum_id = @id AND t.state = 0";
 
                 if (includeTypes.Count > 0)
                     query += " AND (" + string.Join(" OR ", includeTypes.Select((t, i) => $"t.type LIKE @include{i}")) + ")";
@@ -716,30 +705,35 @@ namespace YamyProject.Controllers
                 query += " ORDER BY t.date, t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.Add(new MySqlParameter("@id", id));
+                cmd.Parameters.AddWithValue("@id", id);
                 for (int i = 0; i < includeTypes.Count; i++)
-                    cmd.Parameters.Add(new MySqlParameter($"@include{i}", includeTypes[i]));
+                    cmd.Parameters.AddWithValue($"@include{i}", includeTypes[i]);
                 for (int i = 0; i < excludeTypes.Count; i++)
-                    cmd.Parameters.Add(new MySqlParameter($"@exclude{i}", excludeTypes[i]));
+                    cmd.Parameters.AddWithValue($"@exclude{i}", excludeTypes[i]);
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 var invoices = new List<object>();
-                decimal totalAmount = 0, amount = 0;
+                decimal totalAmount = 0;
+                int snCounter = 1; // manually generate SN since ROW_NUMBER() may not work in MySQL <8.0
 
-                // Read the data and calculate total
                 while (await reader.ReadAsync())
                 {
-                    amount = reader.IsDBNull(reader.GetOrdinal("Amount")) ? 0 : reader.GetDecimal("Amount");
+                    decimal amount = reader.IsDBNull(reader.GetOrdinal("Amount")) ? 0 : reader.GetDecimal("Amount");
                     totalAmount += amount;
+
+                    string invoiceIdStr = reader.IsDBNull(reader.GetOrdinal("InvoiceId")) ? null : reader.GetString("InvoiceId");
+                    int invoiceId = 0;
+                    if (!string.IsNullOrEmpty(invoiceIdStr))
+                        int.TryParse(invoiceIdStr, out invoiceId); // safely parse
 
                     invoices.Add(new
                     {
-                        Sn = reader.GetInt32("SN"),
-                        InvoiceId = reader.GetInt32("InvoiceId"),
-                        VoucherNo = reader.GetString("V - No"),
-                        Date = reader.GetDateTime("Date").ToString("yyyy-MM-dd"), // Format date
-                        AccountName = reader.GetString("Account Name"),
+                        Sn = snCounter++,  // manual serial number
+                        InvoiceId = invoiceId,
+                        VoucherNo = reader.IsDBNull(reader.GetOrdinal("VoucherNo")) ? $"GV-00{invoiceId}" : reader.GetString("VoucherNo"),
+                        Date = reader.GetDateTime("Date").ToString("yyyy-MM-dd"),
+                        AccountName = reader.GetString("AccountName"),
                         Type = reader.GetString("type"),
                         Amount = amount.ToString("N2")
                     });
@@ -754,7 +748,7 @@ namespace YamyProject.Controllers
                     Date = "",
                     AccountName = "Total",
                     Type = "",
-                    Amount = totalAmount.ToString("F3")
+                    Amount = totalAmount.ToString("F2")
                 });
 
                 return Ok(new { status = true, data = invoices });
@@ -764,6 +758,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
 
         #endregion

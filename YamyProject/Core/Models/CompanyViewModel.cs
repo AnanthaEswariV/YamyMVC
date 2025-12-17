@@ -92,6 +92,7 @@ namespace YamyProject.Core.Models
         public byte[]? LogoComp { get; set; }
         public int? DefaultCompany { get; set; }
         public string? CustomerCode { get; set; }
+        public byte[]? StampComp { get; set; }
     }
     public class UserResponse
     {

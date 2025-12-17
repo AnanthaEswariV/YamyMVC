@@ -1,0 +1,343 @@
+﻿
+@{
+    ViewData["Title"] = "StockManagement";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header position-relative text-center">
+        <strong>Stock Management</strong>
+
+        <button class="btn btn-primary btn-sm position-absolute end-0 top-50 translate-middle-y me-3"
+                id="btnAddStock" data-bs-toggle="modal"
+                data-bs-target="#stockSettlementModal">
+            <i class="fas fa-plus me-1"></i> Add Stock
+        </button>
+    </div>
+
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <select class="form-select" id="type">
+                    <option value="">-- Select Type --</option>
+                    @* <option value="Default" selected>Default</option> *@
+                    <option value="Item Wise">Item Wise</option>
+                </select>
+
+            </div>
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>INV No</th>
+                    <th>JV No</th>
+                    <th>Item Name</th>
+                    <th>QTY</th>
+                    <th>Cost Price</th>
+                    <th>New On Hand</th>
+                    <th>MinusAmount</th>
+                    <th>PlusAmount</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Stock Settlement Modal -->
+<div class="modal fade" id="stockSettlementModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white justify-content-center position-relative">
+                <h5 class="modal-title fw-bold">Stock Settlement - New</h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white position-absolute end-0 me-3"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+
+                <!-- Top Controls -->
+                <div class="row g-3 mb-3 align-items-end">
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Date</label>
+                        <input type="date" class="form-control">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Warehouse</label>
+                        <select class="form-select">
+                            <option>WH-0001 - Building A</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 d-flex gap-2">
+                        <button class="btn btn-outline-secondary w-50">Previous</button>
+                        <button class="btn btn-outline-secondary w-50">Next</button>
+                    </div>
+
+                    <div class="col-md-2 d-flex justify-content-end gap-2">
+                        <button class="btn btn-outline-primary">&larr;</button>
+                        <button class="btn btn-outline-primary">&rarr;</button>
+                    </div>
+
+                </div>
+
+                <!-- Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle text-center">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>#</th>
+                                <th>Item Code</th>
+                                <th>Item Name</th>
+                                <th>SYS QTY</th>
+                                <th>Price</th>
+                                <th>SYS Amount</th>
+                                <th>New QTY</th>
+                                <th>QTY DIF</th>
+                                <th>Amount (-)</th>
+                                <th>Amount (+)</th>
+                                <th>DEL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td></td>
+                                <td class="text-start"></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm">
+                                </td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger">✕</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totals -->
+                <div class="row mt-3">
+                    <div class="col-md-8"></div>
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Amount (-)</span>
+                            <span>0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Amount (+)</span>
+                            <span>0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer justify-content-end gap-2">
+                <button class="btn btn-primary">Save &amp; New</button>
+                <button class="btn btn-primary">Save</button>
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+  @section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+ <script>
+        $(document).ready(function () {
+
+            loadStockSettlements();
+
+            // Enable / Disable Date fields
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+            });
+
+            // Filter button
+            $('#filterBtn').click(function () {
+                loadStockSettlements();
+            });
+
+            // Type change (Default / Item Wise)
+            $('#type').change(function () {
+                loadStockSettlements();
+            });
+
+            function loadStockSettlements() {
+
+                const selectionMethod = $('#type').val();
+                const ignoreDate = $('#chkAllData').is(':checked');
+                const dateFrom = $('#startDate').val();
+                const dateTo = $('#endDate').val();
+
+                if (!ignoreDate && (!dateFrom || !dateTo)) {
+                    toastr.warning('Please select both start and end dates.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetStockSettlements", "Inventory")',
+                    type: 'GET',
+                    data: {
+                        selectionMethod: selectionMethod,
+                        ignoreDate: ignoreDate,
+                        dateFrom: dateFrom || null,
+                        dateTo: dateTo || null
+                    },
+                    beforeSend: function () {
+                        $('#table2 tbody').html(`
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    <div class="spinner-border text-primary me-2"></div>Loading...
+                                </td>
+                            </tr>
+                        `);
+                    },
+                    success: function (res) {
+                        console.log(res);
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to load stock data');
+                            return;
+                        }
+
+                        if ($.fn.DataTable.isDataTable('#table2')) {
+                            $('#table2').DataTable().clear().destroy();
+                        }
+
+                        const tbody = $('#table2 tbody');
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+
+                            $.each(res.data, function (i, row) {
+
+                                const tr = `
+                                    <tr data-id="${row.id}">
+                                        <td>${i + 1}</td>
+                                        <td>${formatDate(row.date)}</td>
+                                        <td>${row.invoiceNo ?? ''}</td>
+                                        <td>${row.jvNo ?? ''}</td>
+                                        <td>${row.itemName ?? ''}</td>
+                                        <td class="text-end">${row.qty ?? ''}</td>
+                                        <td class="text-end">${row.costPrice ?? ''}</td>
+                                        <td class="text-end">${row.newOnHand ?? ''}</td>
+                                        <td class="text-end">${row.minusAmount ?? ''}</td>
+                                        <td class="text-end">${row.plusAmount ?? ''}</td>
+                                    </tr>`;
+                                tbody.append(tr);
+                            });
+
+                            $('#table2').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm',
+                                        orientation: 'landscape',
+                                        pageSize: 'A4'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 15
+                            });
+
+                        } else {
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted py-4">
+                                        No records found
+                                    </td>
+                                </tr>
+                            `);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading stock settlement data');
+                    }
+                });
+            }
+
+            function formatDate(dateString) {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                return date.toLocaleDateString();
+            }
+        });
+    </script>
+
+ }

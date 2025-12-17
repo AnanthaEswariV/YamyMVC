@@ -501,6 +501,7 @@
                                     type: 'checkbox',
                                     class: 'form-check-input project-checkbox',
                                     id: checkboxId,
+                                     'data-id': item.id,
                                     'data-code': item.code,
                                     'data-name': item.name
                                 })
@@ -843,7 +844,7 @@
 
         function loadTransactions(customerId) {
             $.ajax({
-                url: '@Url.Action("GetInvoices", "Customer")',
+                url: '@Url.Action("GetVendorInvoices", "Subcontractor")',
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
@@ -859,7 +860,7 @@
                                         <td>${row.date}</td>
                                         <td>${row.voucherNo}</td>
                                         <td>${row.type}</td>
-                                        <td>${row.accountName}</td>
+                                        <td>${row.description}</td>
                                         <td>${row.debit}</td>
                                         <td>${row.credit}</td>
                                         <td>${row.balance}</td>
@@ -881,7 +882,7 @@
 
         function loadCashInvoices(customerId) {
             $.ajax({
-                url: '@Url.Action("GetCashInvoice", "Customer")',
+                url: '@Url.Action("GetVendorCashInvoices", "Subcontractor")',
                 type: "GET",
                 data: { id: customerId },
                 success: function (res) {
