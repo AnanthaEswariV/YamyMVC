@@ -4785,7 +4785,6 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
         #endregion
 
-
         #region User Permission
 
 

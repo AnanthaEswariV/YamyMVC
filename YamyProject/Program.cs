@@ -14,7 +14,6 @@ var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IListServices, ListServices>();
 builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
-builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>();
 builder.Services.AddHttpClient<IMicroserviceClient, MicroserviceClient>();
 builder.Services.AddScoped<IEditeCustomerService, CustomerEditeService>();
 builder.Services.AddScoped<ISalesCreateService, SalesCreateService>();
@@ -47,11 +46,11 @@ builder.Services.AddScoped<IVatCorporateService, VatCorporateService>();
 
 builder.Services.AddScoped<IGlobalService, GlobalService>();
 builder.Services.AddScoped<ICurrentUserContextService, CurrentUserContextService>();
-builder.Services.AddScoped<ISalesClientService, SalesClientService>();
+
 builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
-builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementService>();
+
 
 ////
 // Microservice HTTP client
@@ -76,9 +75,9 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromHours(24);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.Path = "/YamyProject"; // Virtual folder
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // If using HTTP
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+    //options.Cookie.Path = "/YamyProject"; // Virtual folder
+    //options.Cookie.SecurePolicy = CookieSecurePolicy.None; // If using HTTP
+    //options.Cookie.SecurePolicy = CookieSecurePolicy.None;
 });
 
 
@@ -132,8 +131,11 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
 app.UseSession();
+
 app.UseAuthorization();
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=CompanyList}/{id?}");
