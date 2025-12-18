@@ -108,34 +108,23 @@
 
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Date</label>
-                        <input type="date" class="form-control">
+                        <input type="date" class="form-control" id="date">
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Warehouse</label>
-                        <select class="form-select">
-                            <option>WH-0001 - Building A</option>
-                        </select>
+                        <label class="form-label fw-semibold text-muted">Warehouse</label>
+                        <select class="form-select" id="warehouseDropdown"><option value="">Select Warehouse</option></select>
                     </div>
 
-                    <div class="col-md-3 d-flex gap-2">
-                        <button class="btn btn-outline-secondary w-50">Previous</button>
-                        <button class="btn btn-outline-secondary w-50">Next</button>
-                    </div>
-
-                    <div class="col-md-2 d-flex justify-content-end gap-2">
-                        <button class="btn btn-outline-primary">&larr;</button>
-                        <button class="btn btn-outline-primary">&rarr;</button>
-                    </div>
 
                 </div>
 
                 <!-- Table -->
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm align-middle text-center">
-                        <thead class="table-secondary">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
                             <tr>
-                                <th>#</th>
+                                <th>No</th>
                                 <th>Item Code</th>
                                 <th>Item Name</th>
                                 <th>SYS QTY</th>
@@ -143,28 +132,22 @@
                                 <th>SYS Amount</th>
                                 <th>New QTY</th>
                                 <th>QTY DIF</th>
-                                <th>Amount (-)</th>
-                                <th>Amount (+)</th>
-                                <th>DEL</th>
+                                <th>Amount(-)</th>
+                                <th>Amount(+)</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="stockManagementTable">
                             <tr>
                                 <td>1</td>
-                                <td></td>
-                                <td class="text-start"></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td>
-                                    <input type="number" class="form-control form-control-sm">
-                                </td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-danger">✕</button>
-                                </td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
                             </tr>
                         </tbody>
                     </table>
@@ -189,7 +172,6 @@
 
             <!-- Footer -->
             <div class="modal-footer justify-content-end gap-2">
-                <button class="btn btn-primary">Save &amp; New</button>
                 <button class="btn btn-primary">Save</button>
                 <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
             </div>
@@ -215,7 +197,8 @@
         $(document).ready(function () {
 
             loadStockSettlements();
-
+            loadWarehouses();
+            loadItem();
             // Enable / Disable Date fields
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
@@ -337,7 +320,83 @@
                 const date = new Date(dateString);
                 return date.toLocaleDateString();
             }
+
+
+             function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+            // Set today's date when modal is opened
+            document.getElementById('stockSettlementModal').addEventListener('shown.bs.modal', function () {
+            const todayDate = getTodayDate();
+
+            // Fill all date fields
+            const dateFields = [
+                'date'
+            ];
+
+            dateFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value) {
+                    field.value = todayDate;
+                }
+            });
         });
+
+        });
+
+          function loadWarehouses(selector = "#warehouse, #warehouseDropdown") {
+            $.ajax({
+              url: '@Url.Action("GetWarehouses", "Inventory")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const dropdowns = $(selector);
+                        dropdowns.empty().append('<option value="">Select Warehouse</option>');
+                        res.data.forEach(w => {
+                            dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
+                        });
+                    } else {
+                        alert(res.message);
+                    }
+                },
+                error: function (err) {
+                    console.error("Error fetching warehouses:", err);
+                }
+            });
+        }
+
+
+          function loadItem(selector = ".itemNameSelect") {
+            $.ajax({
+                url: '@Url.Action("GetItems", "List")',
+                type: 'GET',
+                success: function (res) {
+                    console.log(res);
+                    if (res.status) {
+                        // Ensure you only target dropdowns within the table
+                        const dropdowns = $(selector);
+                        dropdowns.empty().append('<option value="">Select Item</option>');
+
+                        // Populate dropdowns for each row
+                        res.data.forEach(item => {
+                            dropdowns.append(`<option value="${item.id}">${item.name}</option>`);
+                        });
+                    } else {
+                        alert(res.message);
+                    }
+                },
+                error: function (err) {
+                    console.error("Error fetching Item:", err);
+                }
+            });
+        }
+
+
     </script>
 
  }
