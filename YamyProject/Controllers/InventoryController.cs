@@ -792,13 +792,12 @@
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetStockSettlements(
-    string selectionMethod,
-    bool ignoreDate,
-    DateTime? dateFrom,
-    DateTime? dateTo)
+            string selectionMethod,
+            bool ignoreDate,
+            DateTime? dateFrom,
+            DateTime? dateTo)
         {
             try
             {
@@ -810,7 +809,8 @@
                     _config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
-                               ?? _config.GetConnectionString("DefaultDatabase")
+                               ?? _config.GetConnectionString("DefaultDatabase"),
+                    AllowUserVariables = true 
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -821,37 +821,39 @@
                 if (selectionMethod == "Default")
                 {
                     query = @"
-                SELECT 
-                    ROW_NUMBER() OVER (ORDER BY s.date) AS SN,
-                    s.date AS Date,
-                    s.id,
-                    CONCAT('000', MAX(t.transaction_id)) AS JVNO,
-                    s.code AS INVNO
-                FROM tbl_item_stock_settlement s
-                INNER JOIN tbl_transaction t 
-                    ON s.id = t.transaction_id
-                WHERE s.state = 0";
+            SELECT 
+                @rownum := @rownum + 1 AS SN,
+                s.date AS Date,
+                s.id,
+                CONCAT('000', MAX(t.transaction_id)) AS JVNO,
+                s.code AS INVNO
+            FROM tbl_item_stock_settlement s
+            INNER JOIN tbl_transaction t 
+                ON s.id = t.transaction_id,
+                (SELECT @rownum := 0) r
+            WHERE s.state = 0";
                 }
                 else
                 {
                     query = @"
-                SELECT 
-                    ROW_NUMBER() OVER (ORDER BY s.date) AS SN,
-                    s.date AS Date,
-                    s.id,
-                    s.code AS INVNO,
-                    CONCAT(i.code,' - ',i.name) AS ItemName,
-                    d.on_hand AS Qty,
-                    d.price AS CostPrice,
-                    d.new_on_hand,
-                    d.minusamount,
-                    d.plusamount
-                FROM tbl_item_stock_settlement s
-                INNER JOIN tbl_item_stock_settlement_details d 
-                    ON s.id = d.settle_id
-                INNER JOIN tbl_items i 
-                    ON d.item_id = i.id
-                WHERE s.state = 0";
+            SELECT 
+                @rownum := @rownum + 1 AS SN,
+                s.date AS Date,
+                s.id,
+                s.code AS INVNO,
+                CONCAT(i.code,' - ',i.name) AS ItemName,
+                d.on_hand AS Qty,
+                d.price AS CostPrice,
+                d.new_on_hand,
+                d.minusamount,
+                d.plusamount
+            FROM tbl_item_stock_settlement s
+            INNER JOIN tbl_item_stock_settlement_details d 
+                ON s.id = d.settle_id
+            INNER JOIN tbl_items i 
+                ON d.item_id = i.id,
+                (SELECT @rownum := 0) r
+            WHERE s.state = 0";
                 }
 
                 if (!ignoreDate && dateFrom.HasValue && dateTo.HasValue)
@@ -864,9 +866,9 @@
                 else
                 {
                     query += @" GROUP BY s.id, s.date, s.code,
-                        i.code, i.name,
-                        d.on_hand, d.price,
-                        d.new_on_hand, d.minusamount, d.plusamount";
+                    i.code, i.name,
+                    d.on_hand, d.price,
+                    d.new_on_hand, d.minusamount, d.plusamount";
                 }
 
                 using var cmd = new MySqlCommand(query, conn);
@@ -885,7 +887,7 @@
                 {
                     result.Add(new
                     {
-                        SN = reader["SN"],
+                        SN = Convert.ToInt32(reader["SN"]),
                         Date = reader["Date"],
                         Id = reader["id"],
                         InvoiceNo = reader["INVNO"],

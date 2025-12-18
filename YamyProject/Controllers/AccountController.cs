@@ -78,15 +78,15 @@ namespace YamyProject.Controllers
                     var createTableCmd = new MySqlCommand(@"
                 CREATE TABLE IF NOT EXISTS `tbl_company` (
                     `id` int NOT NULL AUTO_INCREMENT,
-                    `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `descriptions` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `phone1` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `phone2` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `gmail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `mobile_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `website` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `address` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                    `trn_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                    `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `descriptions` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `phone1` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `phone2` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `gmail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `mobile_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `website` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `address` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                    `trn_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                     `country_id` int NOT NULL DEFAULT 0,
                     `logoComp` longblob,
                     `code` varchar(100) NULL,
@@ -94,7 +94,7 @@ namespace YamyProject.Controllers
                     `customer_code` varchar(100) NULL,
                     `stampComp` longblob NULL,
                     PRIMARY KEY (`id`) USING BTREE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;", conn);
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;", conn);
 
                     await createTableCmd.ExecuteNonQueryAsync();
                     Console.WriteLine("Table 'tbl_company' was created successfully.");
@@ -158,13 +158,13 @@ namespace YamyProject.Controllers
                          CREATE TABLE IF NOT EXISTS `tbl_advance_payment_voucher` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `pv_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `pv_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,4) DEFAULT NULL,
                           `debit_account_id` int DEFAULT NULL,
                           `debit_cost_center_id` int DEFAULT NULL,
-                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `credit_account_id` int DEFAULT NULL,
                           `credit_cost_center_id` int DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
@@ -174,26 +174,26 @@ namespace YamyProject.Controllers
                           `state` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_advance_payment_voucher_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `payment_id` int NOT NULL DEFAULT '0',
-                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `bank_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `check_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `bank_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `check_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `check_no` int DEFAULT NULL,
                           `check_date` date DEFAULT NULL,
-                          `bank_account_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `bank_account_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `book_no` int DEFAULT NULL,
                           `trans_date` date DEFAULT NULL,
-                          `trans_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `trans_ref` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `trans_name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `trans_ref` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,6) DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_attendancesheet` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -202,17 +202,17 @@ namespace YamyProject.Controllers
                           `WorkDate` date NOT NULL,
                           `TimeIn` time DEFAULT NULL,
                           `TimeOut` time DEFAULT NULL,
-                          `DayOfWeek` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Ref_Code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `DayOfWeek` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Ref_Code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_attendance_salary` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `emp_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `emp_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `absence_days` int DEFAULT NULL,
                           `total_absence` decimal(20,6) DEFAULT NULL,
                           `delay_minutes` decimal(20,6) DEFAULT NULL,
@@ -225,43 +225,43 @@ namespace YamyProject.Controllers
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_bank` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `abb_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ent_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `route_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `abb_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ent_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `route_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `country_id` int DEFAULT NULL,
                           `state` int DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_bank_card` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `bank_id` int DEFAULT NULL,
-                          `account_name` varchar(70) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `account_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `account_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `swift` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `iban_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `branch_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `emirates` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `currency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `account_manager` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `account_sign` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `account_mob` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `account_name` varchar(70) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `account_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `account_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `swift` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `iban_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `branch_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `emirates` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `currency` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `account_manager` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `account_sign` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `account_mob` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `account_id` int DEFAULT NULL,
                           `state` int DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `company_ac` int DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_bank_register` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -269,7 +269,7 @@ namespace YamyProject.Controllers
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_check_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -277,36 +277,36 @@ namespace YamyProject.Controllers
                           `check_id` int DEFAULT NULL,
                           `check_no` int DEFAULT NULL,
                           `check_date` date DEFAULT NULL,
-                          `check_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `check_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `pvc_no` int DEFAULT NULL,
-                          `check_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `check_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,6) DEFAULT NULL,
                           `pass_date` date DEFAULT NULL,
                           `return_date` date DEFAULT NULL,
                           `hold_date` date DEFAULT NULL,
                           `cancel_date` date DEFAULT NULL,
-                          `state` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `state` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_cheque` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `bank_card_id` int DEFAULT NULL,
                           `chq_book_no` int DEFAULT NULL,
                           `chq_book_qty` int DEFAULT NULL,
-                          `leaves_start_from` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `leaves_end_in` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `leaves_start_from` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `leaves_end_in` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_city` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `country_id` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_city` (`name`, `country_id`) VALUES
 	                        ('Dubai', 49),
@@ -372,25 +372,25 @@ namespace YamyProject.Controllers
                         CREATE TABLE IF NOT EXISTS `tbl_coa` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `company_id` int NOT NULL,
-                          `account_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `account_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `account_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `account_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           `parent_id` int DEFAULT NULL,
-                          `account_type` enum('Asset','Liability','Equity','Revenue','Expense') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `account_type` enum('Asset','Liability','Equity','Revenue','Expense') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           `level` int NOT NULL,
-                          `account_category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `account_category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `is_group` tinyint(1) DEFAULT '1',
                           PRIMARY KEY (`id`),
                           UNIQUE KEY `account_code` (`account_code`),
                           KEY `parent_id` (`parent_id`),
                           CONSTRAINT `tbl_coa_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `tbl_coa` (`id`) ON DELETE CASCADE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_coa_config` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `account_id` int DEFAULT NULL,
-                          `category` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL UNIQUE,
+                          `category` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL UNIQUE,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;";
 
 
                         using (var cmd = new MySqlCommand(query, conn))
@@ -413,11 +413,11 @@ namespace YamyProject.Controllers
                         string querys = @" USE " + dbName + @";
                        CREATE TABLE IF NOT EXISTS `tbl_coa_level_1` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           `code` int DEFAULT NULL,
-                          `category_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `category_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_coa_level_1` (`id`, `name`, `code`, `category_code`) VALUES
 	                        (1, 'Assets', 1,'ASSET'),
@@ -429,11 +429,11 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_coa_level_2` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           `code` int NOT NULL,
                           `main_id` int NOT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_coa_level_2` (`id`, `name`, `code`, `main_id`) VALUES
 	                        (1, 'Current Assets', 11, 1),
@@ -451,11 +451,11 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_coa_level_3` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           `code` int NOT NULL,
                           `main_id` int NOT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_coa_level_3` (`id`, `name`, `code`, `main_id`) VALUES
 	                        (1, 'Banks', 1101, 1),
@@ -495,7 +495,7 @@ namespace YamyProject.Controllers
 
                             CREATE TABLE IF NOT EXISTS `tbl_coa_level_4` (
                               `id` int NOT NULL AUTO_INCREMENT,
-                              `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                              `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                               `code` int NOT NULL,
                               `main_id` int NOT NULL,
                               `debit` decimal(20,3) DEFAULT 0.000,
@@ -503,7 +503,7 @@ namespace YamyProject.Controllers
                               `date` datetime DEFAULT NULL,
                               `costcenter` int DEFAULT NULL,  
                               PRIMARY KEY (`id`)
-                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
                             
 
                         INSERT INTO `tbl_coa_level_4` (`id`, `name`, `code`, `main_id`, `debit`, `credit`, `date`, `costcenter`) VALUES
@@ -595,27 +595,27 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_corporate_tax_configration` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `corporateTax_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `corporateTax_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `trn_issue_date` date DEFAULT NULL,
                           `corporatetax_start_date` date DEFAULT NULL,
                           `corporatetax_end_date` date DEFAULT NULL,
                           `corporatetax_due_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_cost_center` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` int DEFAULT NULL,
-                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_country` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_country` (`id`, `name`) VALUES
 	                        (1, 'Albania'),
@@ -677,12 +677,12 @@ namespace YamyProject.Controllers
                           `date` date DEFAULT NULL,
                           `credit_account` int DEFAULT '0',
                           `debit_account` int NOT NULL DEFAULT '0',
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `amount` decimal(20,2) DEFAULT '0.00',
                           `vat` decimal(20,2) DEFAULT '0.00',
                           `total` decimal(20,2) DEFAULT '0.00',
-                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `created_date` date DEFAULT NULL,
                           `created_by` int NOT NULL DEFAULT '0',
                           `modified_by` int NOT NULL DEFAULT '0',
@@ -690,15 +690,15 @@ namespace YamyProject.Controllers
                           `state` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_credit_note_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `ref_id` int NOT NULL DEFAULT '0',
                           `invoice_id` int NOT NULL DEFAULT '0',
-                          `inv_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `inv_no` varchar(50) COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `invoice_date` date DEFAULT NULL,
-                          `invoice_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `total` decimal(20,2) NOT NULL DEFAULT '0.00',
                           `vat` decimal(20,2) NOT NULL DEFAULT '0.00',
                           `amount` decimal(20,2) NOT NULL DEFAULT '0.00',
@@ -706,50 +706,50 @@ namespace YamyProject.Controllers
                           `remaining` decimal(20,2) NOT NULL DEFAULT '0.00',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_customer` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` int NOT NULL DEFAULT '0',
-                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Cat_id` int DEFAULT NULL,
                           `Balance` decimal(20,4) DEFAULT NULL,
                           `date` date DEFAULT NULL,
-                          `main_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `work_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ccemail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `website` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `country` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `building_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `main_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `work_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ccemail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `website` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `country` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `building_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `account_id` int DEFAULT NULL,
-                          `trn` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `facilty_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `trn` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `facilty_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `active` int DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `state` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
-                          `project_site` VARCHAR(150) DEFAULT '' COLLATE 'utf8mb4_general_ci',
+                          `project_site` VARCHAR(150) DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_customer_category` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_damage` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `reference_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `reference_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `reported_by` int NOT NULL DEFAULT '0',
-                          `damage_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `damage_reason` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `account_id` int NOT NULL DEFAULT '0',
                           `created_by` int NOT NULL DEFAULT '0',
@@ -758,7 +758,7 @@ namespace YamyProject.Controllers
                           `modified_date` date DEFAULT NULL,
                           `state` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_damage_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -768,19 +768,19 @@ namespace YamyProject.Controllers
                           `cost_price` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_debit_note` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
                           `credit_account` int DEFAULT '0',
                           `debit_account` int NOT NULL DEFAULT '0',
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `amount` decimal(20,2) DEFAULT '0.00',
                           `vat` decimal(20,2) DEFAULT '0.00',
                           `total` decimal(20,2) DEFAULT '0.00',
-                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `created_date` date DEFAULT NULL,
                           `created_by` int NOT NULL DEFAULT '0',
                           `modified_by` int NOT NULL DEFAULT '0',
@@ -788,15 +788,15 @@ namespace YamyProject.Controllers
                           `state` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_debit_note_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `ref_id` int NOT NULL DEFAULT '0',
                           `invoice_id` int NOT NULL DEFAULT '0',
-                          `inv_no` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `inv_no` varchar(50) COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `invoice_date` date DEFAULT NULL,
-                          `invoice_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `amount` decimal(20,2) NOT NULL DEFAULT '0.00',
                           `vat` decimal(20,2) NOT NULL DEFAULT '0.00',
                           `total` decimal(20,2) NOT NULL DEFAULT '0.00',
@@ -804,55 +804,55 @@ namespace YamyProject.Controllers
                           `remaining` decimal(20,2) NOT NULL DEFAULT '0.00',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_departments` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Department` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Department` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_employee` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` int NOT NULL DEFAULT '0',
-                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `city_id` int DEFAULT NULL,
-                          `address` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `address` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `birth_day` date DEFAULT NULL,
-                          `Social_Status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Social_Insurance_Number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `EmergencyName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `EmergencyAddress` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `EmergencyPhone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Relation` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `Social_Status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Social_Insurance_Number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `EmergencyName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `EmergencyAddress` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `EmergencyPhone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Relation` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `BasicSalary` decimal(10,2) DEFAULT NULL,
                           `HousingAllowance` decimal(10,2) DEFAULT NULL,
                           `TransportationAllowance` decimal(10,2) DEFAULT NULL,
                           `Other` decimal(10,2) DEFAULT NULL,
                           `bank_id` int DEFAULT NULL,
-                          `Iban_Number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Bank_account_Number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `EmiratesIDFileNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `EmiratesIDIssuingAuthority` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `Iban_Number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Bank_account_Number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `EmiratesIDFileNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `EmiratesIDIssuingAuthority` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `EmiratesIDIssueDate` date DEFAULT NULL,
                           `EmiratesIDExpiryDate` date DEFAULT NULL,
-                          `PassportNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `CountryOfIssue` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `PassportNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `CountryOfIssue` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `PassportIssueDate` date DEFAULT NULL,
                           `PassportExpiryDate` date DEFAULT NULL,
-                          `WorkContractNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `WorkContractType` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `WorkContractNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `WorkContractType` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Position_id` int DEFAULT NULL,
                           `Department_id` int DEFAULT NULL,
                           `WorkDays` int DEFAULT NULL,
                           `workinghours` int DEFAULT NULL,
                           `ContractIssueDate` date DEFAULT NULL,
                           `ContractExpiryDate` date DEFAULT NULL,
-                          `ResidencyFileNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ResidencyIssuingAuthority` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `ResidencyFileNumber` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ResidencyIssuingAuthority` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `ResidencyIssueDate` date DEFAULT NULL,
                           `ResidencyExpiryDate` date DEFAULT NULL,
                           `account_id` int DEFAULT NULL,
@@ -863,29 +863,29 @@ namespace YamyProject.Controllers
                           `Petty_Cash_id` int DEFAULT NULL,
                           `active` int NOT NULL DEFAULT '0',
                           `state` int NOT NULL DEFAULT '0',
-                          `sRole` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+                          `sRole` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_end_of_service` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `code` int DEFAULT NULL,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `debit` decimal(20,6) DEFAULT NULL,
                           `leave_days` decimal(20,6) DEFAULT NULL,
                           `credit` decimal(20,6) DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_final_settlement` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Date` date DEFAULT NULL,
                           `emp_id` int DEFAULT NULL,
                           `DateCommencement` date DEFAULT NULL,
@@ -898,19 +898,19 @@ namespace YamyProject.Controllers
                           `TotalDeductions` decimal(20,2) DEFAULT NULL,
                           `NetAccruals` decimal(20,2) DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_fixed_assets` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `brand` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `brand` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `category_id` int DEFAULT NULL,
-                          `model` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `supplier` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `status` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `invoice_number` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `model` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `supplier` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `status` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `invoice_number` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `purchase_date` date DEFAULT NULL,
                           `end_date` date DEFAULT NULL,
                           `depreciation_life` int DEFAULT NULL,
@@ -924,19 +924,19 @@ namespace YamyProject.Controllers
                           `modified_date` date DEFAULT NULL,
                           `state` int DEFAULT '0',
                           `manufacture` int DEFAULT '0',
-                          `manufactureStatus` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `manufactureStatus` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `costcenter` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_fixed_assets_category` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `category_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `category_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
 	                      `assets_account_id` INT(10) NOT NULL DEFAULT '0',
 	                      `depreciation_account_id` INT(10) NOT NULL DEFAULT '0',
 	                      `expence_account_id` INT(10) NOT NULL DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;";
 
                         using (var cmd = new MySqlCommand(querys, conn))
                         {
@@ -958,12 +958,12 @@ namespace YamyProject.Controllers
                         string queryss = @" USE " + dbName + @";
                        CREATE TABLE IF NOT EXISTS `tbl_general_settings` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `value` int NOT NULL DEFAULT '0',
-                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `status` int DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_general_settings` (`id`, `name`, `value`, `description`, `status`) VALUES
 	                        (1, 'ALL ITEMS IN SALES', 0, '', 0),
@@ -977,12 +977,12 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE `tbl_items` (
 	                    `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                    `code` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
-	                    `type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+	                    `code` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
+	                    `type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
 	                    `warehouse_id` INT(10) NOT NULL DEFAULT '0',
-	                    `name` VARCHAR(500) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+	                    `name` VARCHAR(500) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
 	                    `unit_id` INT(10) NOT NULL DEFAULT '0',
-	                    `barcode` VARCHAR(70) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+	                    `barcode` VARCHAR(70) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
 	                    `cost_price` DECIMAL(20,4) NOT NULL DEFAULT '0.000',
 	                    `cogs_account_id` INT(10) NOT NULL DEFAULT '0',
 	                    `vendor_id` INT(10) NOT NULL DEFAULT '0',
@@ -998,18 +998,18 @@ namespace YamyProject.Controllers
 	                    `img` BLOB NULL DEFAULT NULL,
                         `ItemImg` LONGBLOB NULL DEFAULT NULL,
 	                    `active` INT(10) NOT NULL DEFAULT '0',
-	                    `method` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+	                    `method` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
 	                    `state` INT(10) NOT NULL DEFAULT '0',
 	                    `created_By` INT(10) NOT NULL DEFAULT '0',
 	                    `created_date` DATE NOT NULL,
 	                    `deleted_by` INT(10) NOT NULL DEFAULT '0',
 	                    `category_id` INT(10) NULL DEFAULT NULL,
 	                    `posItem` INT(10) NULL DEFAULT NULL,
-                        `item_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+                        `item_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
                           `costcenter` int DEFAULT NULL,
 	                    PRIMARY KEY (`id`) USING BTREE
                     )
-                    COLLATE='utf8mb4_general_ci' ENGINE=InnoDB ;
+                    COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB ;
 
                         CREATE TABLE IF NOT EXISTS `tbl_items_unit` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1017,7 +1017,7 @@ namespace YamyProject.Controllers
                           `unit_id` int NOT NULL DEFAULT '0',
                           `factor` int NOT NULL DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_items_warehouse` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1025,7 +1025,7 @@ namespace YamyProject.Controllers
                           `item_id` int DEFAULT NULL,
                           `qty` decimal(20,6) DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_assembly` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1033,18 +1033,18 @@ namespace YamyProject.Controllers
                           `item_id` int DEFAULT NULL,
                           `qty` decimal(20,4) DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_category` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '0',
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '0',
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_stock_settlement` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `date` date DEFAULT NULL,
                           `warehouse_id` int DEFAULT NULL,
                           `total_plus` decimal(20,6) DEFAULT NULL,
@@ -1055,7 +1055,7 @@ namespace YamyProject.Controllers
                           `modified_date` date DEFAULT NULL,
                           `state` int DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_stock_settlement_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1068,24 +1068,24 @@ namespace YamyProject.Controllers
                           `minusamount` decimal(20,4) DEFAULT NULL,
                           `plusamount` decimal(20,4) DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_transaction` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `item_id` int DEFAULT NULL,
                           `cost_price` decimal(20,8) DEFAULT NULL,
                           `qty_in` decimal(20,4) DEFAULT NULL,
                           `sales_price` decimal(20,4) DEFAULT NULL,
                           `qty_out` decimal(20,4) DEFAULT NULL,
                           `qty_inc` decimal(20,4) DEFAULT NULL,
-                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `warehouse_id` INT NOT NULL DEFAULT 0,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_warehouse_transaction` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1094,17 +1094,17 @@ namespace YamyProject.Controllers
                           `warehouse_to` int DEFAULT NULL,
                           `item_id` int DEFAULT NULL,
                           `qty` decimal(20,6) DEFAULT NULL,
-                          `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_journal_voucher` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `debit` decimal(20,4) DEFAULT NULL,
                           `credit` decimal(20,4) DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
@@ -1114,7 +1114,7 @@ namespace YamyProject.Controllers
                           `state` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_journal_voucher_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1122,90 +1122,90 @@ namespace YamyProject.Controllers
                           `debit` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `credit` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `inv_id` int NOT NULL DEFAULT '0',
-                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `partner` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `partner` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `account_id` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_leave_salary` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `code` int DEFAULT NULL,
-                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Reference` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `debit` decimal(20,6) DEFAULT '0.000000',
                           `leave_days` decimal(20,6) DEFAULT NULL,
                           `credit` decimal(20,6) DEFAULT '0.000000',
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_ledger` (
                           `ledger_id` int NOT NULL AUTO_INCREMENT,
                           `code` int NOT NULL DEFAULT '0',
-                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `balance` decimal(20,4) DEFAULT '0.0000',
-                          `phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `website` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `country` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '0',
-                          `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `website` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `country` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '0',
+                          `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `active` int NOT NULL DEFAULT '0',
                           `created_by` int DEFAULT '0',
                           `created_date` date DEFAULT NULL,
                           `state` int DEFAULT '0',
-                          `entity_type` enum('vendor','bank','level4','customer','employee') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `entity_type` enum('vendor','bank','level4','customer','employee') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           PRIMARY KEY (`ledger_id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_loan` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `LoanDate` date DEFAULT NULL,
-                          `EmployeeID` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `EmployeeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `EmployeeID` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `EmployeeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `RequestAmount` decimal(20,6) DEFAULT NULL,
                           `Installments` int DEFAULT NULL,
                           `StartDate` date DEFAULT NULL,
                           `EndDate` date DEFAULT NULL,
                           `loanDates` date DEFAULT NULL,
-                          `Months` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `Months` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Amount` decimal(20,6) DEFAULT NULL,
                           `debit_account_id` int DEFAULT NULL,
                           `credit_account_id` int DEFAULT NULL,
                           `pay` decimal(20,6) DEFAULT '0.000000',
                           `change` decimal(20,6) DEFAULT '0.000000',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_payment_voucher` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,4) DEFAULT NULL,
                           `debit_account_id` int DEFAULT NULL,
                           `debit_cost_center_id` int DEFAULT NULL,
-                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `credit_account_id` int DEFAULT NULL,
                           `credit_cost_center_id` int DEFAULT NULL,
                           `bank_id` int DEFAULT NULL,
                           `bank_account_id` int DEFAULT NULL,
                           `book_no` int DEFAULT NULL,
-                          `check_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `check_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `check_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `check_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `check_date` date DEFAULT NULL,
                           `trans_date` date DEFAULT NULL,
-                          `trans_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `trans_ref` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `trans_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `trans_ref` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `modified_by` int DEFAULT NULL,
@@ -1213,7 +1213,7 @@ namespace YamyProject.Controllers
                           `state` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_payment_voucher_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1221,57 +1221,57 @@ namespace YamyProject.Controllers
                           `payment_id` int DEFAULT NULL,
                           `hum_id` int DEFAULT NULL,
                           `inv_id` int DEFAULT NULL,
-                          `inv_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `inv_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `total` decimal(20,6) DEFAULT NULL,
                           `payment` decimal(20,6) DEFAULT NULL,
-                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `voucher_type` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `voucher_type` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_petty_cash_card` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `account_id` int DEFAULT NULL,
-                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `whatsapp_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `email` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `whatsapp_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `email` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_petty_cash_category` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_petty_cash_request` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `request_date` date DEFAULT NULL,
-                          `request_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `Petty_cash_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `request_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `Petty_cash_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,6) DEFAULT NULL,
-                          `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `debit_account_id` int DEFAULT NULL,
                           `credit_account_id` int DEFAULT NULL,
                           `approved_date` date DEFAULT NULL,
-                          `state` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `state` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `pay` decimal(20,6) DEFAULT NULL,
                           `change` decimal(20,6) DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_petty_cash_submition` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,6) DEFAULT NULL,
                           `total_before_vat` decimal(20,6) DEFAULT NULL,
                           `total_vat` decimal(20,6) DEFAULT NULL,
@@ -1279,7 +1279,7 @@ namespace YamyProject.Controllers
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_petty_cash_submition_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1291,10 +1291,10 @@ namespace YamyProject.Controllers
                           `amount` decimal(20,6) DEFAULT NULL,
                           `vat` decimal(20,6) DEFAULT NULL,
                           `total` decimal(20,6) DEFAULT NULL,
-                          `note` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `state` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+                          `note` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `state` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE tbl_petty_cash(
                             id int NOT NULL AUTO_INCREMENT,
@@ -1329,15 +1329,15 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_position` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `department_id` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_prepaid_expense` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `category_id` int DEFAULT NULL,
                           `debit_account_id` int DEFAULT NULL,
                           `credit_account_id` int DEFAULT NULL,
@@ -1353,13 +1353,13 @@ namespace YamyProject.Controllers
                           `state` int DEFAULT '0',
                           `costcenter` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_prepaid_expense_category` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_print_config` (
                           `table_border` int DEFAULT '0',
@@ -1367,24 +1367,24 @@ namespace YamyProject.Controllers
                           `portrait` int DEFAULT '0',
                           `landscape` int DEFAULT '0',
                           `orientation` int DEFAULT '1'
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `vendor_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1396,11 +1396,11 @@ namespace YamyProject.Controllers
                           `modified_by` int DEFAULT NULL,
                           `modified_date` date DEFAULT NULL,
                           `state` int NOT NULL DEFAULT '0',
-                          `purchase_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+                          `purchase_type` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
                           `fixed_asset_category_id` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1416,24 +1416,24 @@ namespace YamyProject.Controllers
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase_order` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `vendor_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1449,7 +1449,7 @@ namespace YamyProject.Controllers
                           `purchase_id` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase_order_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1465,24 +1465,24 @@ namespace YamyProject.Controllers
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase_return` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `vendor_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1496,7 +1496,7 @@ namespace YamyProject.Controllers
                           `state` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_purchase_return_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1512,32 +1512,32 @@ namespace YamyProject.Controllers
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_receipt_voucher` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(20,6) DEFAULT NULL,
                           `hum_id` int DEFAULT NULL,
                           `credit_account_id` int DEFAULT NULL,
                           `credit_cost_center_id` int DEFAULT NULL,
-                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `debit_account_id` int DEFAULT NULL,
                           `debit_cost_center_id` int DEFAULT NULL,
                           `bank_account_id` int DEFAULT NULL,
                           `book_no` int DEFAULT NULL,
                           `bank_id` int DEFAULT NULL,
                           `bank_account` int DEFAULT NULL,
-                          `bank_code` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `check_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `check_no` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `bank_code` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `check_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `check_no` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `check_date` date DEFAULT NULL,
                           `trans_date` date DEFAULT NULL,
-                          `trans_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `trans_ref` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `trans_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `trans_ref` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `state` int DEFAULT NULL,
@@ -1545,7 +1545,7 @@ namespace YamyProject.Controllers
                           `modified_date` date DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_receipt_voucher_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1553,14 +1553,14 @@ namespace YamyProject.Controllers
                           `payment_id` int DEFAULT NULL,
                           `inv_id` int DEFAULT NULL,
                           `hum_id` int DEFAULT NULL,
-                          `inv_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `inv_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `total` decimal(20,2) DEFAULT '0.00',
                           `payment` decimal(20,2) DEFAULT '0.00',
-                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_rmsdetails` (
                           `DetailID` int NOT NULL AUTO_INCREMENT,
@@ -1570,7 +1570,7 @@ namespace YamyProject.Controllers
                           `Price` decimal(65,2) DEFAULT NULL,
                           `amount` decimal(65,2) DEFAULT NULL,
                           PRIMARY KEY (`DetailID`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_rmsmain` (
                           `MainId` int NOT NULL AUTO_INCREMENT,
@@ -1590,20 +1590,20 @@ namespace YamyProject.Controllers
                           `UserSale` varchar(50) DEFAULT NULL,
                           `PaidSt` varchar(50) DEFAULT NULL,
                           PRIMARY KEY (`MainId`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_rmstables` (
                           `tid` int NOT NULL AUTO_INCREMENT,
                           `tname` varchar(50) NOT NULL,
                           PRIMARY KEY (`tid`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_salary` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `employee_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `employee_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `date` date DEFAULT NULL,
-                          `month` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `month` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `year` int DEFAULT NULL,
                           `salary` decimal(20,6) DEFAULT NULL,
                           `pay` decimal(20,6) DEFAULT NULL,
@@ -1611,36 +1611,36 @@ namespace YamyProject.Controllers
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_salary_adjustments` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `adjustment_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `adjustment_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `amount` decimal(10,6) DEFAULT NULL,
                           `date` date DEFAULT NULL,
                           `ref_id` int NOT NULL DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `customer_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1656,7 +1656,7 @@ namespace YamyProject.Controllers
                           `cost_center_id` decimal(20,6) NOT NULL DEFAULT '0.000000',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;";
 
                         using (var cmd = new MySqlCommand(queryss, conn))
                         {
@@ -1691,25 +1691,25 @@ namespace YamyProject.Controllers
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_order` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `customer_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
                           `inv_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1725,7 +1725,7 @@ namespace YamyProject.Controllers
                           `sales_id` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_order_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1741,24 +1741,24 @@ namespace YamyProject.Controllers
                           `cost_center_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_proforma` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `customer_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1774,7 +1774,7 @@ namespace YamyProject.Controllers
                           `sales_id` int DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_proforma_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1790,24 +1790,24 @@ namespace YamyProject.Controllers
                           `total` decimal(20,4) DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_quotation` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `customer_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1823,7 +1823,7 @@ namespace YamyProject.Controllers
                           `sales_id` int DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_quotation_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1839,24 +1839,24 @@ namespace YamyProject.Controllers
                           `total` decimal(20,4) DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_return` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date NOT NULL,
                           `customer_id` int NOT NULL DEFAULT '0',
-                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `invoice_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `warehouse_id` int NOT NULL DEFAULT '0',
-                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `po_num` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `bill_to` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `sales_man` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `ship_date` date DEFAULT NULL,
-                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
-                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `ship_via` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ship_to` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+                          `payment_method` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `account_cash_id` int NOT NULL DEFAULT '0',
-                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `payment_terms` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `payment_date` date NOT NULL,
                           `total` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `vat` decimal(20,4) NOT NULL DEFAULT '0.000',
@@ -1870,7 +1870,7 @@ namespace YamyProject.Controllers
                           `state` int NOT NULL DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sales_return_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -1886,36 +1886,36 @@ namespace YamyProject.Controllers
                           `total` decimal(20,4) DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sec_roles` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sec_role_form` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `role_id` int DEFAULT NULL,
                           `form_id` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_sec_users` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `user_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `PasswordHash` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `salt` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `emp_id` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `first_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `last_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `user_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `PasswordHash` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `salt` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `emp_id` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `first_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `last_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Role_Id` int NOT NULL,
                           `active` int NOT NULL,
                           `state` int NOT NULL,
                           `password_updated_by` int DEFAULT NULL,
                           `password_last_update` date DEFAULT NULL,
                           PRIMARY KEY (`id`) USING BTREE
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS tbl_deleted_records (
                             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1928,32 +1928,32 @@ namespace YamyProject.Controllers
                         CREATE TABLE IF NOT EXISTS `tbl_setting_attendance` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
-                          `day` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `day` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `timein` time DEFAULT NULL,
                           `timeout` time DEFAULT NULL,
                           `state` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_setting_deduction_config` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `latearrivaldeduction` decimal(20,2) DEFAULT NULL,
                           `delaytime` time DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_setting_default_account` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `level4_id` int NOT NULL DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_set_main_menu` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_set_main_menu` (`id`, `name`) VALUES
 	                        (1, 'Accountant'),
@@ -1967,12 +1967,12 @@ namespace YamyProject.Controllers
                         CREATE TABLE IF NOT EXISTS `tbl_set_menu_forms` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `menu_id` int DEFAULT NULL,
-                          `form_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `form_text` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `params` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `form_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `form_text` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `params` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `seq` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_set_menu_forms` (`id`, `menu_id`, `form_name`, `form_text`, `params`, `seq`) VALUES
 	                        (1, 1, 'MasterChartOfAccount', 'Chart of Account', 'MainForm', 1),
@@ -2003,20 +2003,20 @@ namespace YamyProject.Controllers
                         CREATE TABLE IF NOT EXISTS `tbl_sub_cost_center` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` int DEFAULT NULL,
-                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `main_id` int DEFAULT NULL,
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_tax` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `value` int DEFAULT NULL,
-                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `state` int DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_tax` (`id`, `name`, `value`, `description`, `state`) VALUES
 	                        (1, 'TAX', 5, '', 0),
@@ -2024,10 +2024,10 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_tools` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `tool_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `tool_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `is_selected` int DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         INSERT INTO `tbl_tools` (`id`, `tool_name`, `is_selected`) VALUES
 	                        (1, 'Chart Of Account', 0),
@@ -2055,31 +2055,31 @@ namespace YamyProject.Controllers
                           `account_id` int DEFAULT NULL,
                           `debit` decimal(20,4) DEFAULT NULL,
                           `credit` decimal(20,4) DEFAULT NULL,
-                          `transaction_id` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `transaction_id` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `hum_id` int DEFAULT '0',
-                          `type` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `t_type` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `type` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `t_type` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `description` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `modified_by` int DEFAULT NULL,
                           `modified_date` date DEFAULT NULL,
                           `state` int DEFAULT NULL,
-                          `voucher_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `voucher_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `project_id` INT NOT NULL DEFAULT 0,
                           `costcenter` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_unit` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_vat_configration` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `registration_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `registration_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `TRNIssue_date` date DEFAULT NULL,
                           `quarter_one_start_date` date DEFAULT NULL,
                           `quarter_one_end_date` date DEFAULT NULL,
@@ -2094,80 +2094,80 @@ namespace YamyProject.Controllers
                           `quarter_four_end_date` date DEFAULT NULL,
                           `quarter_four_due_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_vendor` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` int NOT NULL DEFAULT '0',
-                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Cat_id` int DEFAULT NULL,
                           `Balance` decimal(20,4) DEFAULT NULL,
                           `date` date DEFAULT NULL,
-                          `main_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `work_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `ccemail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `website` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `country` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `building_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `main_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `work_phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `mobile` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `ccemail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `website` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `country` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `building_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `account_id` int DEFAULT NULL,
-                          `trn` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `facilty_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `trn` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `facilty_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `active` int DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           `state` int DEFAULT NULL,
-                          `type` VARCHAR(150) NULL DEFAULT 'Vendor' COLLATE 'utf8mb4_general_ci',
+                          `type` VARCHAR(150) NULL DEFAULT 'Vendor' COLLATE 'utf8mb4_0900_ai_ci',
                           `project_id` INT NOT NULL DEFAULT 0,
-                          `project_site` VARCHAR(150) DEFAULT '' COLLATE 'utf8mb4_general_ci',
+                          `project_site` VARCHAR(150) DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_vendor_category` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_warehouse` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `emp_id` int DEFAULT NULL,
-                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `building_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `city` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `building_name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `account_id` int DEFAULT NULL,
                           `state` int DEFAULT NULL,
                           `created_by` int DEFAULT NULL,
                           `created_date` date DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_cost_center_transaction` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `type` varchar(50) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `type` varchar(50) COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `date` datetime DEFAULT NULL,
                           `ref_id` int DEFAULT '0',
                           `debit` decimal(20,4) DEFAULT '0.000',
                           `credit` decimal(20,4) DEFAULT '0.000',
-                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `description` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `cost_center_id` int DEFAULT '0',
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE `tbl_item_card_details` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
 	                        `itemId` INT(10) NOT NULL DEFAULT '0',
 	                        `date` DATE NULL DEFAULT NULL,
 	                        `wharehouse_id` INT(10) NOT NULL DEFAULT '0',
-	                        `inv_no` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+	                        `inv_no` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
 	                        `trans_no` INT(10) NOT NULL DEFAULT '0',
-	                        `trans_type` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
-	                        `description` VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+	                        `trans_type` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
+	                        `description` VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
 	                        `price` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
 	                        `qty_in` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
 	                        `qty_out` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
@@ -2179,7 +2179,7 @@ namespace YamyProject.Controllers
 	                        `fifo_cost` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci'
+                        COLLATE='utf8mb4_0900_ai_ci'
                         ENGINE=InnoDB
                         ;
 
@@ -2204,35 +2204,35 @@ namespace YamyProject.Controllers
                         string queryssss = @" USE " + dbName + @";
                         CREATE TABLE `tbl_crmcustomer` (
 	                        `ID` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `LeadName` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `LeadName` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `custcode` INT(10) NULL DEFAULT NULL,
-	                        `CustName` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
-	                        `openlvl` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
-	                        `Stage` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `CustName` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `openlvl` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `Stage` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `Date` DATETIME NULL DEFAULT NULL,
 	                        `Amount` DECIMAL(15,2) NULL DEFAULT NULL,
-	                        `Discription` VARCHAR(1000) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
-	                        `Assigendto` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `Discription` VARCHAR(1000) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+	                        `Assigendto` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `CreateAt` DATETIME NULL DEFAULT NULL,
 	                        PRIMARY KEY (`ID`) USING BTREE
-                        ) COLLATE='utf8mb4_general_ci' ENGINE=InnoDB ;
+                        ) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB ;
 
                         CREATE TABLE IF NOT EXISTS `tbl_items_boq` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `sr` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `sr` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `ref_id` int NOT NULL,
-                          `type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-                          `unit_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+                          `unit_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `qty` decimal(10,2) DEFAULT NULL,
                           `price` decimal(10,2) DEFAULT NULL,
                           `amount` decimal(10,2) DEFAULT NULL,
                           `length` decimal(10,2) DEFAULT NULL,
                           `width` decimal(10,2) DEFAULT NULL,
-                          `thickness` VARCHAR(20) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
-                          `note` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+                          `thickness` VARCHAR(20) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
+                          `note` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_items_boq_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -2262,7 +2262,7 @@ namespace YamyProject.Controllers
                           `created_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
                           `ref_id` int DEFAULT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_item_assembly_bos` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -2270,14 +2270,14 @@ namespace YamyProject.Controllers
                           `item_id` int NOT NULL,
                           `qty` decimal(10,2) NOT NULL,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_projects` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `category` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `description` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `category` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `description` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `start_date` date DEFAULT NULL,             
                           `end_date` date DEFAULT NULL,
                           `country_id` int NOT NULL DEFAULT '0',
@@ -2321,18 +2321,18 @@ namespace YamyProject.Controllers
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
                           `project_id` int NOT NULL DEFAULT '0',
-                          `location` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `location` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `site` int NOT NULL DEFAULT '0',
-                          `plot_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `plot_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `start_date` date DEFAULT NULL,
                           `end_date` date DEFAULT NULL,
-                          `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `project_type` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `project_type` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `estimated_budget` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `fund_account_id` int NOT NULL DEFAULT '0',
-                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `fund_period` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `assigned_team` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `fund_period` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `assigned_team` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `progress` float DEFAULT '0',
                           `tender_id` int DEFAULT '0',
                           `tender_name_id` int DEFAULT '0',
@@ -2348,18 +2348,18 @@ namespace YamyProject.Controllers
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
                           `project_id` int NOT NULL DEFAULT '0',
-                          `location` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `location` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `site` int NOT NULL DEFAULT '0',
-                          `plot_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                          `plot_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `start_date` date DEFAULT NULL,
                           `end_date` date DEFAULT NULL,
-                          `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `project_type` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `project_type` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `estimated_budget` decimal(20,4) NOT NULL DEFAULT '0.000',
                           `fund_account_id` int NOT NULL DEFAULT '0',
-                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `fund_period` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `assigned_team` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `fund_period` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `assigned_team` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `progress` float DEFAULT '0',
                           `tender_id` int DEFAULT '0',
                           `tender_name_id` int DEFAULT '0',
@@ -2373,11 +2373,11 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_project_sites` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `location_id` int DEFAULT '0',
-                          `plot_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
-                          `address` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `plot_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
+                          `address` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -2389,9 +2389,9 @@ namespace YamyProject.Controllers
                           `project_id` int NOT NULL DEFAULT '0',
                           `fees` decimal(20,4) NOT NULL DEFAULT '0.0000',
                           `submission_date` date NOT NULL,
-                          `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `tender_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
-                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `tender_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                          `description` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `warehouse_id` int NOT NULL DEFAULT '0',
                           `created_by` int NOT NULL DEFAULT '0',
                           `created_date` date DEFAULT NULL,
@@ -2407,11 +2407,11 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE IF NOT EXISTS `tbl_project_tender_details` (
                           `id` int NOT NULL AUTO_INCREMENT,
-                          `sr` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `sr` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `tender_id` int NOT NULL DEFAULT '0',
-                          `item_id` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+                          `item_id` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
                           `qty` decimal(20,4) NOT NULL DEFAULT '0.0000',
-                          `unit_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '0',
+                          `unit_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
                           `rate` decimal(20,4) NOT NULL DEFAULT '0.0000',
                           `amount` decimal(20,4) NOT NULL DEFAULT '0.0000',
                           `margin_percentage` decimal(20,4) NOT NULL DEFAULT '0.0000',
@@ -2423,8 +2423,8 @@ namespace YamyProject.Controllers
                           `end_date` date DEFAULT NULL,
 	                      `length` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
 	                      `width` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
-	                      `thickness` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
-	                      `note` VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+	                      `thickness` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
+	                      `note` VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -2437,10 +2437,10 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE `tbl_contractor` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `name` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `name` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `country_id` INT(10) NULL DEFAULT NULL,
 	                        PRIMARY KEY (`id`) USING BTREE
-                        ) COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
+                        ) COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
                         
                         CREATE TABLE `tbl_project_material_requests` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
@@ -2450,7 +2450,7 @@ namespace YamyProject.Controllers
 	                        `IssuedDate` DATE NULL DEFAULT NULL,
 	                        `ReceivedDate` DATE NULL DEFAULT NULL,
 	                        `itemId` INT(10) NOT NULL DEFAULT '0',
-	                        `unit` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_general_ci',
+	                        `unit` VARCHAR(50) NOT NULL DEFAULT '0' COLLATE 'utf8mb4_0900_ai_ci',
 	                        `RequestedQty` DECIMAL(10,2) NOT NULL DEFAULT '0.00',
                             `IssuedQty` DECIMAL(10,2) NOT NULL DEFAULT '0.00',
                             `ReceivedQty` DECIMAL(10,2) NOT NULL DEFAULT '0.00',
@@ -2459,12 +2459,12 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE tbl_project_resource (
                             `id` int NOT NULL AUTO_INCREMENT,
-                            `code` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+                            `code` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
                             `date` date DEFAULT NULL,
-                            `name` VARCHAR(200) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+                            `name` VARCHAR(200) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
                             `role` INT(10) NOT NULL DEFAULT '0',
-                            `phone` VARCHAR(20) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
-                            `type` VARCHAR(80) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+                            `phone` VARCHAR(20) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
+                            `type` VARCHAR(80) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
 	                        `price_unit` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
 	                        `unit_time` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
 	                        `max_unit_time` DECIMAL(20,4) NOT NULL DEFAULT '0.0000',
@@ -2474,19 +2474,19 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE tbl_project_role (
                             id INT AUTO_INCREMENT PRIMARY KEY,
-                            code VARCHAR(50) NOT NULL UNIQUE COLLATE 'utf8mb4_general_ci',
-                            name VARCHAR(100) NOT NULL COLLATE 'utf8mb4_general_ci'
+                            code VARCHAR(50) NOT NULL UNIQUE COLLATE 'utf8mb4_0900_ai_ci',
+                            name VARCHAR(100) NOT NULL COLLATE 'utf8mb4_0900_ai_ci'
                         );
 
                         CREATE TABLE tbl_project_activity (
                             id INT AUTO_INCREMENT PRIMARY KEY,
                             planning_id INT NOT NULL DEFAULT 0, 
-                            code VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
-                            name VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+                            code VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
+                            name VARCHAR(500) NOT NULL DEFAULT '' COLLATE 'utf8mb4_0900_ai_ci',
                             start_date DATE NOT NULL,
                             end_date DATE NOT NULL,
                             progress DECIMAL(20,3) NOT NULL DEFAULT '0.000',
-                            status VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci'
+                            status VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci'
                         );
 
                         CREATE TABLE `tbl_project_work_done` (
@@ -2500,21 +2500,21 @@ namespace YamyProject.Controllers
 	                        `state` TINYINT(3) NULL DEFAULT '0',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
+                        COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
                         CREATE TABLE `tbl_project_work_done_details` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
 	                        `ref_id` INT(10) NOT NULL,
 	                        `item_id` INT(10) NOT NULL,
 	                        `main_id` INT(10) NOT NULL,
-	                        `code` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `code` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `qty_total` DECIMAL(10,2) NULL DEFAULT '0.00',
-	                        `unit` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `unit` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `qty_used` DECIMAL(10,2) NULL DEFAULT '0.00',
 	                        `created_at` DATETIME NULL DEFAULT CURRENT_TIMESTAMP,
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci' ENGINE=InnoDB;
+                        COLLATE='utf8mb4_0900_ai_ci' ENGINE=InnoDB;
 
                         CREATE TABLE tbl_project_activity_assignment (
                             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2524,26 +2524,26 @@ namespace YamyProject.Controllers
 
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `batchname` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `batchname` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `Costamount` DECIMAL(64,2) NULL DEFAULT NULL,
 	                        `amount` DECIMAL(62,2) NULL DEFAULT NULL,
 	                        `hours` DECIMAL(10,0) NULL DEFAULT NULL,
-	                        `userinsert` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `userinsert` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `date` DATE NULL DEFAULT NULL,
-	                        `Description` VARCHAR(1000) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `Description` VARCHAR(1000) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `fixedassetsID` INT(10) NULL DEFAULT NULL,
-	                        `fixedStatus` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `fixedStatus` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `product_id` INT(10) NULL DEFAULT '0',
 	                        `warehouse_id` INT(10) NULL DEFAULT '0',
                             `product_qty` DECIMAL(10,0) NULL DEFAULT '0',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci'
+                        COLLATE='utf8mb4_0900_ai_ci'
                         ENGINE=InnoDB;
 
                         CREATE TABLE `tbl_manufacturer_batchdetails` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `batchID` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `batchID` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `itemid` INT(10) NULL DEFAULT NULL,
 	                        `cost` DECIMAL(63,2) NULL DEFAULT NULL,
 	                        `qty` DECIMAL(20,2) NULL DEFAULT NULL,
@@ -2552,7 +2552,7 @@ namespace YamyProject.Controllers
 	                        `ReceiveQty` DECIMAL(20,2) NULL DEFAULT '0.00',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci'
+                        COLLATE='utf8mb4_0900_ai_ci'
                         ENGINE=InnoDB;
 
                         CREATE TABLE `tbl_manufacturer_task` (
@@ -2561,11 +2561,11 @@ namespace YamyProject.Controllers
 	                        `BatchID` INT(10) NULL DEFAULT NULL,
 	                        `StartTime` DATETIME NULL DEFAULT NULL,
 	                        `EndTime` DATETIME NULL DEFAULT NULL,
-	                        `Status` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `Status` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        `userID` INT(10) NULL DEFAULT NULL,
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci'
+                        COLLATE='utf8mb4_0900_ai_ci'
                         ENGINE=InnoDB;
 
                         CREATE TABLE tbl_manufacturer_task_details (
@@ -2581,10 +2581,10 @@ namespace YamyProject.Controllers
                         
                         CREATE TABLE `tbl_printconfg` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
-	                        `PrintName` VARCHAR(150) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+	                        `PrintName` VARCHAR(150) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',
 	                        PRIMARY KEY (`id`) USING BTREE
                         )
-                        COLLATE='utf8mb4_general_ci'
+                        COLLATE='utf8mb4_0900_ai_ci'
                         ENGINE=InnoDB
                         ;
                         ";
@@ -2729,7 +2729,7 @@ namespace YamyProject.Controllers
                             ip_address VARCHAR(45),
                             machine_name VARCHAR(100)
                         )
-                        COLLATE='utf8mb4_general_ci'
+                        COLLATE='utf8mb4_0900_ai_ci'
                         ENGINE=InnoDB
                         ;
 
@@ -2739,7 +2739,7 @@ namespace YamyProject.Controllers
 	                        `TextColor` VARCHAR(50) NOT NULL DEFAULT 'Black',
 	                        PRIMARY KEY (`id`)
                         )
-                        COLLATE='utf8mb4_general_ci';
+                        COLLATE='utf8mb4_0900_ai_ci';
                         INSERT INTO `tbl_color` (id, headerColor, TextColor)
                         VALUES (1,'RoyalBlue','White');
                         ";

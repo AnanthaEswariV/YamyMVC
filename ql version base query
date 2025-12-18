@@ -1,0 +1,198 @@
+[33mc593cb8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fixed mysql version base  query
+[33md484dbe[m Fixed Error
+[33m11031bd[m The Vendor Center page design is completed. Add and Edit functionality has also been completed. After that, the Vendor Information, Transactions, and Cash Invoices tabs were also completed.
+[33m361a3de[m The Subcontractor Center page design is completed. Add and Edit functionality has also been completed. After that, the Subcontractor Information, Transactions, and Cash Invoices tabs were also completed.
+[33m8dcbb1e[m Fixed Customer Center issue
+[33me0c55e8[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m8489992[m The Customer Center page design is completed. Add and Edit functionality has also been completed. After that, the Customer Information, Transactions, and Cash Invoices tabs were also completed.
+[33mbce4751[m Implemented User permission
+[33m5c474aa[m update  purchases update ReciveVousher
+[33m222267d[m Merged Code
+[33m6e4185e[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33mf019bd1[m Retrived Cost center in transcation journal
+[33m67d5856[m Edit the in test
+[33m7bdbd1a[m A validation has been implemented: if a Cost Center is already used in Journal Transactions, it cannot be deleted. Cost Center data is now correctly retrieved in the Transaction Journal.
+[33m96dd0dd[m The Cost Center has been successfully linked with the Prepaid Expenses
+[33mfaf5364[m The Cost Center has been successfully linked with the Fixed Assets.
+[33mbef5b86[m The Cost Center has been successfully linked with the Item List.
+[33m02f8b2d[m The Cost Center has been successfully linked with the Chart of Account.
+[33m068cdee[m Cost Center Code modified
+[33mdb63191[m Reduce font size
+[33mb477a7b[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m9dc3cfe[m Redesign General Journal Page
+[33mebf3e65[m Edit o Test
+[33mcbbdd25[m Merged code
+[33m314c04e[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m1ad0075[m HR attendance add journal entry
+[33m12af764[m Check The Model
+[33m4a95a15[m Merged Code
+[33m9f251da[m Merged Code
+[33md55a14e[m Implemented City and Country Add functionality
+[33mab80984[m Sidebar Submenu completed
+[33m3b30f34[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m00b9e33[m Fixed issue
+[33m90699a7[m Edit the Recipt Voucher Edit the receive Voucher Edit the header Edit the layout
+[33m5eba078[m Layout issue
+[33m5266015[m -
+[33m4d92d63[m Edite the Header That not work Edite the purchasesReport
+[33md2a8f64[m Item list and warehouse list issue fixed
+[33mdccd012[m IIS Issue Fixed
+[33mcb4c8ce[m Merged
+[33m1e496b8[m IIS base Change the code
+[33m8a3500d[m Update the View for Vendor and customer and  Subcontractors
+[33mb5de3d9[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m1f0d3c6[m Change password toastr issue fixed
+[33m70bd301[m Edit for test
+[33m16f5192[m Fixed Bugs
+[33m38aa0b1[m Merged code
+[33m5a86e85[m Completed Chart
+[33m5389433[m Fixed Issue
+[33mf2b3b70[m Merged Code
+[33m11a9aca[m Merge
+[33m8a7ad2e[m Login base username retrived. Implemented Logout functionality.
+[33m9cb5b97[m Edit the Customer Mdel Edit The Enventory Model Add List Of Customer One the Report Add Purchass On the Report Edit The sales Summary On the report Edit Subcontractor Add ViewModel And Services Add View Edit View Edit Program Edit the Headr Edit The Mainlayout
+[33mce66b4d[m Retrived the gantt data table
+[33m3db0614[m Designed Gantt Chart
+[33mea03c9b[m Complemented the petty cash submission journal - view transaction details.
+[33m7a79157[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33ma465f85[m Petty issue Fixed
+[33me7bfb3e[m Add The Roprt Tab Add Company Report Model Add Customer Report Model Add Sales Report Model Add Vendor Report Model Add The User Sitting Model And View Add The View Model ANd View And Controller
+[33m1a5e1d5[m Merged Code
+[33mc54dae1[m Petty Cash page, Project Tender and Project Estimation page issue fixed
+[33m8870b6b[m Completed P&L
+[33m7afe578[m Completed Final Settlement
+[33m0744b63[m Completed Employee Loan
+[33mbc54e28[m Completed Hr Dashboard Design
+[33medf2017[m MergedCode
+[33m9276979[m Modified Register, Login , CompanyList API
+[33m38cbff7[m Modified ChartofAccount and fixed asset item list API
+[33mc27c233[m Redesigned Unit Page
+[33m7c9b7ad[m Redesigned tax page
+[33m0123f4e[m Redesigned Item Category
+[33mb48a9b4[m Completed Leave Salary and EOS
+[33m304cc42[m Completed Salarysheet design
+[33m86163a1[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m9567a48[m Completed Attendance Report
+[33m10964db[m Add  journal Voucher Model Add The View AD The veiw Model Create Edit And New Journal VoucherModel
+[33m314e39b[m Completed Employees and Departments
+[33m12318d1[m Employee List
+[33m2127996[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m07460dc[m Completed Petty Cash Summary and details
+[33m9d390e2[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m8c0d9d7[m Add Advance Payment Model Add Advance Payment Create Add  Advance Payment Edit Add  Advance Payment Service Add Advance Payment View And View Model
+[33m0480fc1[m Report Fixed Asset List , Fixed Asset Item List, Item List , warehouse, Employee List Completed
+[33m92b8946[m Completed Fixed Asset List and Fixed Asset Item List
+[33m11fe763[m Cheque Inquiry, Bank Balance Summary, PDC Outstanding, PDC Cleared History, Returned cheques Report, Cheques linked to Payment/Receipt design is completed. After that data retrived with pdf and excel export options.
+[33md767a10[m Item Transaction Completed
+[33m70f014b[m Completed Prepaid Expense details Update functionality
+[33m613cba5[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m25ebc00[m Journal Entry Redirect General Journal Transaction Update functionality is completed.
+[33m40b7732[m Add customer modell Add customer center Add customer sales And Return Add Receipt Voucher Add Credite Note Moell Add Vendor Modell Add purchase And Return Add Recive Voucher Add Debit Note Modell Add Subconstractor Modell Add Purchase Add Recive Voucher Add Recive Voucher To Employee Add View And View Model For Etch Add Master Setting Add Service
+[33m9ce019c[m Completed WareHouseSummary
+[33m94e84c8[m Completed Item Wise Profit
+[33m486dcab[m Completed Item Moving Report
+[33mcf10b75[m Completed Account -> Balance Sheet
+[33mecbb57c[m Employee Transaction Completed
+[33m1192770[m Completed VAT Report
+[33m38326f4[m Completed Prepaid expense
+[33m9f01a0e[m Completed Cost center
+[33me1143e5[m Completed VAT Report
+[33m08daff3[m Completed VAT, General Report
+[33md1d07de[m Trial Balance design is completed, with filter-based data retrival. Transaction By Account design is completed, with filter-based data retrival.  Transaction by account data selected base load the transacation journal data completed, with filter-based data retrival.
+[33m555b1eb[m Completed Employee Balance Summary
+[33m0fe2a3c[m Create Account Balance Report
+[33ma141102[m Completed Project TimeLine
+[33m669363a[m Completed Project Dashboard
+[33mcfe9356[m Project Management  completed
+[33m9caeb47[m Project Active Summary design is completed. Implemented filter-based data retrieval with Excel and PDF export options. Project Assign Summary design is also completed, with filter-based data retrieval and Excel/PDF export functionality.
+[33m7a8325a[m Project Management Summary is retrieved successfully. Project Summary Add and Edit functionalities are completed.
+[33m080e9d0[m Project Summary design is completed, and filter-based Project Summary retrieval is implemented.
+[33m1d14b87[m Project Work Done Add functionality completed.
+[33m18745dc[m Project Work Done page design is completed. Implemented filter-based project retrieval functionality and completed View Item functionality. Integrated Project Name, Site, Tender Name, and Account Name dropdowns in the Add modal. Item retrieval based on Project Name, Tender Name, and Site filters is also completed.
+[33mcdcf4db[m Cost Center design is completed. Add, Edit, Get, and Delete APIs and their integration are also completed.
+[33mdaf714e[m Fixed planningID issue
+[33m773b337[m Assign resources to the activity resource retrived. Completed Activity resource assigned.
+[33m6b72549[m Activity Update option
+[33m6b64416[m Resource Assign functionality Completed
+[33mf03fcae[m Completed Role Add functionality and appended Role and Employee dropdowns. Project Resource Add functionality is also completed.
+[33m2cb33ed[m Completed  New Resource, Role design
+[33mb8859d2[m Fixed Tab
+[33mbd1ae39[m Completed Receive Material
+[33mb4388c3[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33m2fd7938[m Request material functionality is completed
+[33m9b3811e[m Add The Sales Center Add The Sales Invoice (Add ,Edit) add the Sales Quotation(Add ,Edit ,convert to Invoice) Add the Sales Order(Add ,Edit ,convert to Invoice) Add The Sales Proforma(Add ,Edit ,convert to Quotation) Add ViewMOdel For Etch one Add View
+[33mf98a0fd[m Merged Code
+[33m716cc33[m Completed Project Planning Activity, Request Material, Issue Material, and Receive Material tab data retrieval.”
+[33mf6d26bb[m Retrived project planning activity tab
+[33m6de61ff[m Completed Update planning functionality. Activity, Request Material, Issue Material, Receive Material, Resource Design part is completed.
+[33m3445cfb[m Completed Project Tender Import BOQ button
+[33m1ceb274[m Completed Project planning save functionality
+[33mcd71779[m BOQ Total Calculation Completed
+[33m5b70f36[m Project Planning design is completed. Integrated Add Planning dropdown. Implemented filter-based retrieval of project planning data by project name, project type, and project status. And also add planning dropdown inside implemented the project and project item retrived.
+[33m804de5b[m Save, Edit, Retrive Estimation are completed
+[33m6482ee8[m Fixed Save Estimation API
+[33m82c9ea6[m Project Estimation calculation base redesign. Project qty and rate base amount calculation. Project Estimation margin base calculation. project  Estimation grandtotal calculation
+[33me7a0ee9[m Merged Code
+[33me5bd869[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33mb3e8e0c[m Fixed grandtotal calculation issue
+[33m696f57f[m Edit The model of Sales Add Service For the New Add ViewModel For use it on the Model Add The service To Program
+[33m05dca35[m Merged Code
+[33m7409a6f[m changed Restore API
+[33madbc33c[m Completed Project Tender Save, Update, Delete, Retrieve Deleted Project Tender, and Restore functionalities — including design, API, and integration.”
+[33mc74435c[m Project Tender design is completed. Project Tender retrieves project names based on filters. The ‘View’ button functionality and tender item retrieval are implemented. Add Tender Modal design is completed, with Project, Tender, and Account dropdowns integrated.
+[33m084743d[m Tender Center and Site Center Design and CRUD Operation Completed
+[33m7cf357e[m Completed Tender Center CRUD Operation
+[33m135cb60[m Completed Project Center CRUD Operation
+[33m56e34bf[m Completed Prepaid Category Get, Add, and Edit functionalities and design, with Excel and PDF export options. Completed Prepaid Expenses Get, Add, and Edit functionalities and design, with Excel and PDF export options. Report also integrated prepaid category and prepaid expenses. Prepared view journal for prepaid expenses
+[33m655f1ab[m Completed Delete petty cash voucher
+[33m59b0223[m Completed petty cash log page design. Integrated the petty cash log API.
+[33m401464c[m Add New Tax INvoice
+[33m9328b50[m Add Cusmomer modell Add Coustmer Center Add scrien For new Customer Add Sales Center Add Service For Customer And Sales Add View Model For Customer And Seles
+[33mb56019c[m Petty Cash Voucher: Fixed Employee ID issue when saving. Implemented filter-based data retrieval. Completed Edit functionality.
+[33m0b81990[m Fixed Employee ID issue in save Petty Cash Voucher.
+[33m9505dd9[m  Petty Cash Voucher page design is completed, and the Add Petty Cash functionality is implemented.
+[33m6d824f4[m Chart of Account Add, Edit , Delete are completed.
+[33m988ceeb[m Merged Code
+[33md00088f[m Chart of Account Level 1,2 and 3 design and CRUD operations are completed. Reports page has been integrated.
+[33m5efc87d[m Merged Code
+[33md3e4e92[m Dashboard Design implemented
+[33m37a6bdf[m Button design changed
+[33m37f4a81[m Completed Item list issue , edit and delete functionalities.
+[33m1c79532[m Item List issue Fixed
+[33m0930ecc[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33ma643e13[m Completed P.C. Category Edit and Delete functionalities.
+[33me8fdf85[m Edite the Company controller Edite the custmer center Add the Inventory Mangement Edite the home controller add the view and servicess to Inventory Edite the main layout Add Java scrept fial for the Inventory
+[33ma390aac[m Completed P.C. Category Add, Get, and Edit functionalities.
+[33mb8abfc6[m Commented Bank Reconciliation
+[33m24a3759[m Completed Post-Dated Cheque pass, return, hold, and cancel functionalities.
+[33m424fe24[m Completed Post date cheque design part and filter base retrive functionality
+[33mf512279[m Completed Cheque Edit Function
+[33md9f9e2c[m Fixed Cheque Add and Get functionality Issue
+[33m04211cb[m Completed Cheque page design , add cheque, and retrive cheque functionalities.
+[33m981e7bd[m Changed Fixed Assets Cagegory design
+[33m4d444d4[m Fixed Bank Name issue
+[33m2f9c0aa[m Completed Bank card CRUD API implementation and designed the Bank card page. Successfully integrated the functionalities, including the Recycle API and integrated.
+[33m53a58fd[m Completed Bank CRUD API implementation and designed the Bank page. Successfully integrated the functionalities, including the Recycle API and integrated.
+[33m67cba29[m While adding or editing a Fixed Asset, category-based loading of Fixed, Accumulated, and Depreciation IDs is implemented.
+[33m17f811a[m Layout issue fixed
+[33meafb85f[m 1
+[33m17d4143[m Merged Code
+[33m5a6f8f4[m Edite the Inventory Model add New ViewMOde For Inventory Edit rhe service Edite the app.css to make the bodey down for 150 px
+[33maefd6ba[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33mbc7a37a[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33ma8ce157[m Fixed Asset Category CRUD operations are completed. Fixed Asset design and CRUD operations are completed. And retrived the fixed data
+[33m771232c[m a
+[33m9aeccf4[m Edite The companyCenter Edite The Enventoey Model add The View Model Add Service For Enventoey Edite the Main Layout Edite the Global
+[33m1cd490a[m FixedAssetsCategory CRUD Completed
+[33mae97d60[m Fixed Save Item List
+[33m1f07cfd[m Fixed Edit and Delete button issue
+[33mc0614cb[m Fixed transacational journal table error
+[33mda8c796[m  TransacationJournal design part and intergration is completed
+[33m3eafeb4[m Completed category- and type-based item loading.
+[33m80a5b13[m Completed item transactions and retrieved item card transactions.
+[33m284aadb[m New Item modal loads type-based options: Inventory Part, Service, and Inventory Assembly.
+[33mffb5876[m Completed Item List page design and New Item modal design. Integrated dropdowns for Warehouse, Category, Unit, CoGS Account, Income Account, Asset Account, and Preferred Account. Implemented Active/Inactive base loading for the Item List.
+[33m72291b0[m Edite the Company tab Edite Vender tab add vender view add services acdd View add In the shared fail 1-Erro 2-_Aside 3-_Heder 4-model 5-Model footer 6-_footer seclusion Style to=>MainLayout Script to=>MainJs
+[33me079061[m Merge branch 'main' of https://github.com/sidig288/YamyERpSystem
+[33mb9c185b[m Completed ITem List Page Design
+[33mec64721[m Edite the company center Add Reminder controller and view add inve

@@ -86,7 +86,7 @@ builder.Services.AddSession(options =>
 //builder.Services.AddDbContext<YamyDbContext>(options =>
 //    options.UseMySql(ConnectionString,
 //        ServerVersion.AutoDetect(ConnectionString)
-//    )
+//    )WWW
 //);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();

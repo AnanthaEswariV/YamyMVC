@@ -562,7 +562,7 @@ namespace YamyProject.Controllers
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
-                    AllowUserVariables = true // Required to use @rownum and @balance
+                   
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -570,7 +570,7 @@ namespace YamyProject.Controllers
 
                 string query = @"
         SELECT
-            @rownum := @rownum + 1 AS SN,
+            ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
             t.id,
             t.transaction_id AS InvoiceId,
             t.voucher_no AS VoucherNo,
@@ -579,29 +579,38 @@ namespace YamyProject.Controllers
             t.type,
             t.debit,
             t.credit,
-            @balance := @balance + (t.debit - t.credit) AS Balance
-        FROM (SELECT @rownum := 0, @balance := 0) AS vars, tbl_transaction t
-        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-        WHERE t.hum_id = @id
-          AND t.state = 0
-          AND t.type IN (
-                'Customer Receipt', 'Sales Invoice', 'Sales Invoice Cash', 
-                'Customer Opening Balance', 'Customer Advance Payment',
-                'Check Cancel (Customer)', 'SalesReturn Invoice', 
-                'Credit Note', 'PDC Receivable'
-          )
-        ORDER BY t.id;";
+           SUM(t.debit - t.credit) OVER (ORDER BY t.id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS 'Balance'
+        FROM 
+            tbl_transaction t
+        INNER JOIN 
+            tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE
+            t.hum_id = @id 
+            AND t.state = 0 
+            AND t.type IN (
+                'Customer Receipt', 
+                'Sales Invoice', 
+                'Sales Invoice Cash', 
+                'Customer Opening Balance', 
+                'Customer Advance Payment',
+                'Check Cancel (Customer)', 
+                'SalesReturn Invoice', 
+                'Credit Note', 
+                'PDC Receivable'
+            )";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@id", id);
+                cmd.Parameters.Add(new MySqlParameter("@id", id));
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 var transactions = new List<object>();
-                decimal totalAmount = 0, totalPaidAmount = 0;
+                decimal totalAmount = 0, totalPaidAmount = 0, amount = 0, paidAmount = 0;
+                string _type = "";
 
                 while (await reader.ReadAsync())
                 {
+
                     decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
                     decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
                     decimal balance = reader.IsDBNull(reader.GetOrdinal("Balance")) ? 0 : reader.GetDecimal("Balance");
