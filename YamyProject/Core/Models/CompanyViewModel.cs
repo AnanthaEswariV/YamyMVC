@@ -1084,5 +1084,30 @@ namespace YamyProject.Core.Models
         public string Name { get; set; }
     }
 
+    public class SaleDto
+    {
+        public int SN { get; set; }
+        public DateTime Date { get; set; }
+        public string InvoiceNo { get; set; }
+        public string CustomerName { get; set; }
+        public string PaymentMethod { get; set; }
+        public decimal Total { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Net { get; set; }
+        public string JvNo { get; set; }
+
+        public List<SaleItemDto> Items { get; set; } = new();
+    }
+
+    public class SaleItemDto
+    {
+        public string ItemName { get; set; }
+        public decimal Qty { get; set; }
+        public decimal Price { get; set; }
+        public decimal ItemVat { get; set; }
+        public decimal ItemTotal { get; set; }
+    }
+
+
 
 }

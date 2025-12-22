@@ -1,0 +1,750 @@
+﻿@{
+    ViewData["Title"] = "SalesCenter";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+    /* Highlight selected row */
+    #table1 tbody tr.selected {
+        background-color: #c7e5b4;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong class="mx-auto">Sales Center</strong>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#salesModal">
+            <i class="bi bi-plus-circle"></i> New Invoice
+        </button>
+    </div>
+    <div class="card-body" style="font-size:small">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <div style="min-width: 150px;">
+                <select class="form-select" id="type">
+                    <option value="">-- Select Customer --</option>
+                </select>
+            </div>
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+
+            <div style="min-width: 150px;">
+                <select class="form-select" id="method">
+                    <option value="">-- Select method --</option>
+                    <option value="Default" selected>Default</option>
+                    <option value="Item Wise">Item Wise</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Default method: Two tables -->
+        <div id="defaultTables" style="height: 80vh; display: flex; flex-direction: column;">
+            <div class="card-body flex-grow-1" style="overflow-y: auto;">
+                <table class="table table-striped" id="table1">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Date</th>
+                            <th>INV No</th>
+                            <th>Customer Name</th>
+                            <th>Payment Method</th>
+                            <th>Total</th>
+                            <th>VAT</th>
+                            <th>Net</th>
+                            <th>JV No</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card-footer p-0" style="height: 150px; overflow-y: auto;">
+                <table class="table table-striped" id="table2">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>QTY</th>
+                            <th>Price</th>
+                            <th>Item VAT</th>
+                            <th>Item Total</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Item Wise method: Single combined table -->
+        <div id="itemWiseTable" style="display:none; height: 80vh; overflow-y: auto;">
+            <table class="table table-striped" id="itemWiseTableData">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Date</th>
+                        <th>INV No</th>
+                        <th>Customer Name</th>
+                        <th>Payment Method</th>
+                        <th>Total</th>
+                        <th>VAT</th>
+                        <th>Net</th>
+                        <th>JV No</th>
+                        <th>Item Name</th>
+                        <th>QTY</th>
+                        <th>Price</th>
+                        <th>Item VAT</th>
+                        <th>Item Total</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="salesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title fw-bold mx-auto">Sales Invoice</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+
+                <!-- Row 1 -->
+                <div class="row g-2">
+                    <div class="col-md-2">
+                        <label class="form-label">Customer</label>
+                        <select class="form-select form-select-sm" id="customerName">
+                            <option value="">-- Select Customer --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control form-control-sm">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice</label>
+                        <input class="form-control form-control-sm">
+                    </div>
+                     <div class="col-md-2">
+                        <label class="form-label">P.O No</label>
+                        <input class="form-control form-control-sm">
+                    </div>
+                     <div class="col-md-2">
+                        <label class="form-label">Performa Invoice No</label>
+                        <input class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Quotation No</label>
+                        <input class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <!-- Row 2 -->
+                <div class="row g-2 mt-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Bill To</label>
+                        <input class="form-control form-control-sm">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Invoice Type</label>
+                        <select class="form-select form-select-sm" id="invoiceType">
+                            <option value="Cash" selected>Cash</option>
+                            <option value="Credit">Credit</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Emirates</label>
+                        <select class="form-select form-select-sm" id="emirates">
+                            <option value="Abu Dhabi" selected>Abu Dhabi</option>
+                            <option value="Dubai">Dubai</option>
+                            <option value="Sharjah">Sharjah</option>
+                            <option value="Ajman">Ajman</option>
+                            <option value="Fujairah">Fujairah</option>
+                            <option value="Ras Al Khaimah"></option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Warehouse</label>
+                        <select class="form-select" id="warehouseDropdown"><option value="">Select Warehouse</option></select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Payment Terms</label>
+                        <select class="form-select form-select-sm" id="paymentTerms">
+                            <option value="30" selected>30</option>
+                            <option value="60">60</option>
+                            <option value="90">90</option>
+                            <option value="120">120</option>
+                            <option value="150">150</option>
+                            <option value="180">180</option>
+                            <option value="210">210</option>
+                            <option value="240">240</option>
+                            <option value="270">270</option>
+                            <option value="300">300</option>
+                            <option value="330">330</option>    
+                            <option value="360">360</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 3 -->
+                <div class="row g-2 mt-2">
+
+                    <div class="col-md-2">
+                        <label class="form-label">Due to</label>
+                        <input type="date" class="form-control form-control-sm" id="duedate">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Ship</label>
+                        <input class="form-control form-control-sm" id="ship">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Ship Date</label>
+                        <input type="date" class="form-control form-control-sm" id="shipDate">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Via</label>
+                        <select class="form-select form-select-sm" id="viaType">
+                            <option value="DHL" selected>DHL</option>
+                            <option value="MAIL">MAIL</option>
+                            <option value="On Site">On Site</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Sales Man</label>
+                        <input type="text" class="form-control form-control-sm" id="salesMan">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label for="accountName" class="form-label">Account Name</label>
+                        <select id="accountName" class="form-select form-select-sm" required>
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+
+
+
+
+
+                </div>
+
+                <!-- Table -->
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>S.No</th>
+                                <th>Item</th>
+                                <th>Item Name</th>
+                                <th>QTY</th>
+                                <th>Price</th>
+                                <th>Disc</th>
+                                <th>Net</th>
+                                <th>VAT</th>
+                                <th>Amount</th>
+                                <th>Cost Center</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td><input type="text" class="form-control form-control-sm"></td>
+                                <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                                <td><input class="form-control form-control-sm"></td>
+                                <td><input class="form-control form-control-sm"></td>
+                                <td><input class="form-control form-control-sm"></td>
+                                <td class="text-center">0</td>
+                                <td>
+                                    <select class="form-select form-select-sm tax"></select>
+                                </td>
+                                <td class="text-center">0</td>
+                                <td>
+                                    <select class="form-select form-select-sm costCenterSelect"></select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Notes & Totals -->
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" rows="4"></textarea>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="mb-2">
+                            <label>Total Before VAT</label>
+                            <input class="form-control form-control-sm text-end" readonly>
+                        </div>
+                        <div class="mb-2">
+                            <label>Total VAT</label>
+                            <input class="form-control form-control-sm text-end" readonly>
+                        </div>
+                        <div>
+                            <label>Net Amount</label>
+                            <input class="form-control form-control-sm text-end fw-bold" readonly>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-sm">Save</button>
+                <button class="btn btn-outline-danger btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            let salesData = [];
+            let selectedSaleIndex = null;
+            loadWarehouses();
+            loadCustomers();
+            toggleTables();
+            setupEventHandlers();
+            loadSalesData();
+            loadItem();
+            loadTax();
+            populateAndSelectCostCenter();
+            function setupEventHandlers() {
+                $('#chkAllData').change(function () {
+                    const isChecked = $(this).is(':checked');
+                    $('#startDate, #endDate').prop('disabled', isChecked);
+                });
+
+                $('#filterBtn').click(function () {
+                    loadSalesData();
+                });
+
+                $('#type').change(function () {
+                    loadSalesData();
+                });
+
+                $('#method').change(function () {
+                    toggleTables();
+                    loadSalesData();
+                });
+
+                // Click row in summary table to load detail items
+                $('#table1 tbody').on('click', 'tr', function () {
+                    $('#table1 tbody tr').removeClass('selected');
+                    $(this).addClass('selected');
+
+                    selectedSaleIndex = $(this).data('index');
+                    if (selectedSaleIndex !== undefined && salesData.length > selectedSaleIndex) {
+                        loadSaleItems(salesData[selectedSaleIndex].items);
+                    }
+                });
+
+
+                  $.ajax({
+                     url: '@Url.Action("GetAccruedSalaries", "HR")',
+                     type: 'GET',
+                     success: function (data) {
+
+                         // List of dropdowns with their matching code textbox
+                         const dropdowns = [
+                             { ddl: '#accountName' },
+                         ];
+
+                         dropdowns.forEach(set => {
+                             let $ddl = $(set.ddl);
+
+
+                             $ddl.empty().append('<option value="">-- Select --</option>');
+
+                             $.each(data, function (i, item) {
+                                 $ddl.append(
+                                     $('<option>', {
+                                         value: item.id,
+                                         text: item.code + ' - ' + item.name,
+                                         'data-code': item.code
+                                     })
+                                 );
+                             });
+
+
+
+                             // On change, update the code textbox
+                             $ddl.on('change', function () {
+                                 let selected = $(this).find(':selected');
+                                 let code = selected.data('code');
+
+
+                                 $(set.codeBox).val(code || "");
+                             });
+                         });
+                     },
+                     error: function (xhr, status, error) {
+                         console.error("❌ Error loading accounts:", status, error);
+                     }
+                 });
+            }
+
+            function toggleTables() {
+                const method = $('#method').val();
+                if (method === 'Default') {
+                    $('#defaultTables').show();
+                    $('#itemWiseTable').hide();
+                } else if (method === 'Item Wise') {
+                    $('#defaultTables').hide();
+                    $('#itemWiseTable').show();
+                } else {
+                    // Default fallback
+                    $('#defaultTables').show();
+                    $('#itemWiseTable').hide();
+                }
+            }
+
+            function loadCustomers() {
+            $.ajax({
+                url: '@Url.Action("GetCustomers", "Customer")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const customerDdl = $("#customerName");
+                        const typeDdl = $("#type");
+
+                        customerDdl.empty().append('<option value="">-- Select Customer --</option>');
+                        typeDdl.empty().append('<option value="">-- Select Customer --</option>');
+
+                        res.data.forEach(c => {
+                            const option = `<option value="${c.id}">${c.name}</option>`;
+                            customerDdl.append(option);
+                            typeDdl.append(option);
+                        });
+                    } else {
+                        toastr.error('Failed to load customers.');
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading customers.');
+                }
+            });
+        }
+
+
+            function loadSalesData() {
+                const customerId = $('#type').val();
+                const allDataChecked = $('#chkAllData').is(':checked');
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+                const method = $('#method').val() || '';
+
+                let params = {};
+                if (!allDataChecked) {
+                    if (startDate) params.dateFrom = startDate;
+                    if (endDate) params.dateTo = endDate;
+                }
+                if (customerId) {
+                    params.customerId = customerId;
+                }
+                if (method) {
+                    params.method = method;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetSalesReport", "Customer")',
+                    method: 'GET',
+                    data: params,
+                    success: function (res) {
+                        if (res.status) {
+                            salesData = res.data || [];
+                            if (method === 'Default') {
+                                renderSummaryTable();
+                                clearSaleItemsTable();
+                                selectedSaleIndex = null;
+                            } else if (method === 'Item Wise') {
+                                renderItemWiseTable();
+                            }
+                        } else {
+                            toastr.error('Failed to load sales data.');
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading sales data.');
+                    }
+                });
+            }
+
+            function renderSummaryTable() {
+                const tbody = $('#table1 tbody');
+                tbody.empty();
+
+                salesData.forEach((sale, index) => {
+                    const row = $('<tr>').data('index', index);
+                    row.append($('<td>').text(sale.sn || index + 1));
+                    row.append($('<td>').text(formatDate(sale.date)));
+                    row.append($('<td>').text(sale.invoiceNo));
+                    row.append($('<td>').text(sale.customerName));
+                    row.append($('<td>').text(sale.paymentMethod));
+                    row.append($('<td>').text(parseFloat(sale.total).toFixed(4)));
+                    row.append($('<td>').text(parseFloat(sale.vat).toFixed(4)));
+                    row.append($('<td>').text(parseFloat(sale.net).toFixed(4)));
+                    row.append($('<td>').text(sale.jvNo));
+                    row.append($('<td>').html('<button class="btn btn-sm btn-primary">View</button>'));
+                    tbody.append(row);
+                });
+            }
+
+            function clearSaleItemsTable() {
+                $('#table2 tbody').empty();
+            }
+
+            function loadSaleItems(items) {
+                const tbody = $('#table2 tbody');
+                tbody.empty();
+
+                if (!items || items.length === 0) {
+                    tbody.append('<tr><td colspan="5" class="text-center">No items available</td></tr>');
+                    return;
+                }
+
+                items.forEach(item => {
+                    const row = $('<tr>');
+                    row.append($('<td>').text(item.itemName));
+                    row.append($('<td>').text(parseFloat(item.qty).toFixed(4)));
+                    row.append($('<td>').text(parseFloat(item.price).toFixed(4)));
+                    row.append($('<td>').text(parseFloat(item.itemVat).toFixed(4)));
+                    row.append($('<td>').text(parseFloat(item.itemTotal).toFixed(4)));
+                    tbody.append(row);
+                });
+            }
+
+            function renderItemWiseTable() {
+            const tbody = $('#itemWiseTableData tbody');
+            tbody.empty();
+
+            if (salesData.length === 0) {
+                tbody.append('<tr><td colspan="15" class="text-center">No data available</td></tr>');
+                return;
+            }
+
+            let rowIndex = 1;
+
+            salesData.forEach(sale => {
+                if (sale.items && sale.items.length > 0) {
+                    sale.items.forEach(item => {
+                        const tr = $('<tr>');
+                        tr.append($('<td>').text(rowIndex++)); // S.No for each item row
+                        tr.append($('<td>').text(formatDate(sale.date)));
+                        tr.append($('<td>').text(sale.invoiceNo));
+                        tr.append($('<td>').text(sale.customerName));
+                        tr.append($('<td>').text(sale.paymentMethod));
+                        tr.append($('<td>').text(parseFloat(sale.total).toFixed(4)));
+                        tr.append($('<td>').text(parseFloat(sale.vat).toFixed(4)));
+                        tr.append($('<td>').text(parseFloat(sale.net).toFixed(4)));
+                        tr.append($('<td>').text(sale.jvNo));
+
+                        // Item-specific columns
+                        tr.append($('<td>').text(item.itemName));
+                        tr.append($('<td>').text(parseFloat(item.qty).toFixed(4)));
+                        tr.append($('<td>').text(parseFloat(item.price).toFixed(4)));
+                        tr.append($('<td>').text(parseFloat(item.itemVat).toFixed(4)));
+                        tr.append($('<td>').text(parseFloat(item.itemTotal).toFixed(4)));
+
+                        tr.append($('<td>').html('<button class="btn btn-sm btn-primary">View</button>'));
+
+                        tbody.append(tr);
+                    });
+                } else {
+                    // If no items, still show sale info with empty item columns
+                    const tr = $('<tr>');
+                    tr.append($('<td>').text(rowIndex++));
+                    tr.append($('<td>').text(formatDate(sale.date)));
+                    tr.append($('<td>').text(sale.invoiceNo));
+                    tr.append($('<td>').text(sale.customerName));
+                    tr.append($('<td>').text(sale.paymentMethod));
+                    tr.append($('<td>').text(parseFloat(sale.total).toFixed(4)));
+                    tr.append($('<td>').text(parseFloat(sale.vat).toFixed(4)));
+                    tr.append($('<td>').text(parseFloat(sale.net).toFixed(4)));
+                    tr.append($('<td>').text(sale.jvNo));
+
+                    // Empty item columns
+                    tr.append($('<td>').text(''));
+                    tr.append($('<td>').text(''));
+                    tr.append($('<td>').text(''));
+                    tr.append($('<td>').text(''));
+                    tr.append($('<td>').text(''));
+
+                    tr.append($('<td>').html('<button class="btn btn-sm btn-primary">View</button>'));
+
+                    tbody.append(tr);
+                }
+            });
+        }
+
+
+            function formatDate(dateStr) {
+                if (!dateStr) return '';
+                const date = new Date(dateStr);
+                if (isNaN(date)) return dateStr;
+                return date.toLocaleDateString();
+            }
+        });
+
+
+            function loadWarehouses(selector = "#warehouseDropdown") {
+            $.ajax({
+              url: '@Url.Action("GetWarehouses", "Inventory")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const dropdowns = $(selector);
+                        dropdowns.empty().append('<option value="">Select Warehouse</option>');
+                        res.data.forEach(w => {
+                            dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
+                        });
+                    } else {
+                        alert(res.message);
+                    }
+                },
+                error: function (err) {
+                    console.error("Error fetching warehouses:", err);
+                }
+            });
+        }
+
+
+            function loadItem(selector = ".itemNameSelect") {
+            $.ajax({
+                url: '@Url.Action("GetItems", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        itemsList = res.data; // store items
+
+                        const dropdowns = $(selector);
+                        dropdowns.empty().append('<option value="">Select Item</option>');
+
+                        res.data.forEach(item => {
+                            dropdowns.append(
+                                `<option value="${item.id}">${item.itemName}</option>`
+                            );
+                        });
+                    }
+                },
+                error: function (err) {
+                    console.error("Error fetching Item:", err);
+                }
+            });
+        }
+
+
+            function loadTax(selector = ".tax") {
+            $.ajax({
+                url: '@Url.Action("GetTaxes", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const dropdowns = $(selector);
+                        dropdowns.empty().append('<option value="">-- Select Tax --</option>');
+
+                        res.data.forEach(item => {
+                            dropdowns.append(
+                                `<option value="${item.id}">${item.name}</option>`
+                            );
+                        });
+                    }
+                },
+                error: function (err) {
+                    console.error("Error fetching taxes:", err);
+                }
+            });
+        }
+
+         function populateAndSelectCostCenter() {
+             $.ajax({
+                 url: '@Url.Action("GetCostCenters", "Lists")',
+                 type: 'GET',
+                 success: function (res) {
+                     const data = Array.isArray(res) ? res : (res.data || []);
+                     if (!data.length) return;
+
+                     const allSelects = $('.costCenterSelect');
+
+                     allSelects.each(function () {
+                         const $select = $(this);
+                         const selectedId = $select.data('selected-id');
+
+                         $select.empty().append('<option value="">-- Select --</option>');
+
+                         $.each(data, function (i, item) {
+                             const isSelected = String(item.id) === String(selectedId);
+                             const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                             $select.append(option);
+                         });
+                     });
+                 }
+             });
+         }
+
+    </script>
+}

@@ -2775,6 +2775,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 // Base query
                 var query = @"
             SELECT id,
+            code as Code,
                   name as ItemName,
                    barcode AS Barcode,
                    type AS Type,
@@ -2834,6 +2835,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     items.Add(new
                     {
                         id = reader.GetInt32("id"),
+                        code = reader.GetString("code"),
                         itemName = reader.GetString("ItemName"),
                         barcode = reader.IsDBNull("Barcode") ? null : reader.GetString("Barcode"),
                         type = reader.GetString("Type"),

@@ -769,7 +769,129 @@ namespace YamyProject.Controllers
 
         #endregion
 
+        #region Sales Center
 
+       public IActionResult SalesCenter()
+        {
+            return View();
+        }
+
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetSalesReport(DateTime? dateFrom, DateTime? dateTo, int? customerId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Basic query that includes sales and sales items joined
+                string query = @"
+SELECT
+    ROW_NUMBER() OVER (ORDER BY s.date) AS SN,
+    s.date AS Date,
+    s.invoice_id AS InvoiceNo,
+    CONCAT(c.code, ' - ', c.name) AS CustomerName,
+    s.payment_method AS PaymentMethod,
+    s.total AS Total,
+    s.vat AS Vat,
+    s.net AS Net,
+    CONCAT('000', MAX(t.transaction_id)) AS JvNo,
+    CONCAT(i.code, ' - ', i.name) AS ItemName,
+    sd.qty AS Qty,
+    sd.price AS Price,
+    sd.vat AS ItemVat,
+    sd.total AS ItemTotal
+FROM tbl_sales s
+INNER JOIN tbl_customer c ON s.customer_id = c.id
+INNER JOIN tbl_transaction t ON s.id = t.transaction_id
+INNER JOIN tbl_sales_details sd ON s.id = sd.sales_id
+INNER JOIN tbl_items i ON sd.item_id = i.id
+WHERE s.state = 0
+";
+
+                // Add filters
+                var parameters = new List<MySqlParameter>();
+
+                if (dateFrom.HasValue)
+                {
+                    query += " AND s.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+                if (dateTo.HasValue)
+                {
+                    query += " AND s.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+                if (customerId.HasValue)
+                {
+                    query += " AND s.customer_id = @customerId ";
+                    parameters.Add(new MySqlParameter("@customerId", customerId.Value));
+                }
+
+                query += " GROUP BY s.id, s.date, s.invoice_id, c.code, c.name, s.payment_method, s.total, s.vat, s.net, t.transaction_id, i.code, i.name, sd.qty, sd.price, sd.vat, sd.total";
+
+                var sales = new List<SaleDto>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    SaleDto currentSale = null;
+                    int? lastSaleId = null;
+
+                    while (await reader.ReadAsync())
+                    {
+                        var saleId = reader.GetInt32("SN"); // Using SN as key, if you want sales.id, adjust accordingly
+
+                        if (lastSaleId != saleId)
+                        {
+                            currentSale = new SaleDto
+                            {
+                                SN = saleId,
+                                Date = reader.GetDateTime("Date"),
+                                InvoiceNo = reader.GetString("InvoiceNo"),
+                                CustomerName = reader.GetString("CustomerName"),
+                                PaymentMethod = reader.GetString("PaymentMethod"),
+                                Total = reader.GetDecimal("Total"),
+                                Vat = reader.GetDecimal("Vat"),
+                                Net = reader.GetDecimal("Net"),
+                                JvNo = reader.GetString("JvNo")
+                            };
+                            sales.Add(currentSale);
+                            lastSaleId = saleId;
+                        }
+
+                        currentSale.Items.Add(new SaleItemDto
+                        {
+                            ItemName = reader.GetString("ItemName"),
+                            Qty = Convert.ToDecimal(reader["Qty"]),
+                            Price = Convert.ToDecimal(reader["Price"]),
+                            ItemVat = Convert.ToDecimal(reader["ItemVat"]),
+                            ItemTotal = Convert.ToDecimal(reader["ItemTotal"])
+                        });
+
+                    }
+                }
+
+                return Ok(new { status = true, data = sales });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
 
 
 

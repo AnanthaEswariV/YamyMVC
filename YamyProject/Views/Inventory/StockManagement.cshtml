@@ -371,23 +371,24 @@
         }
 
 
-          function loadItem(selector = ".itemNameSelect") {
+                let itemsList = [];
+
+        function loadItem(selector = ".itemNameSelect") {
             $.ajax({
-                url: '@Url.Action("GetItems", "List")',
+                url: '@Url.Action("GetItems", "Lists")',
                 type: 'GET',
                 success: function (res) {
-                    console.log(res);
                     if (res.status) {
-                        // Ensure you only target dropdowns within the table
+                        itemsList = res.data; // store items
+
                         const dropdowns = $(selector);
                         dropdowns.empty().append('<option value="">Select Item</option>');
 
-                        // Populate dropdowns for each row
                         res.data.forEach(item => {
-                            dropdowns.append(`<option value="${item.id}">${item.name}</option>`);
+                            dropdowns.append(
+                                `<option value="${item.id}">${item.itemName}</option>`
+                            );
                         });
-                    } else {
-                        alert(res.message);
                     }
                 },
                 error: function (err) {
@@ -395,6 +396,56 @@
                 }
             });
         }
+
+
+        $(document).on("change input", ".itemNameSelect, #stockManagementTable tr td:eq(6) input", function () {
+            const row = $(this).closest("tr");
+            updateRow(row);
+        });
+
+
+        function updateRow(row) {
+            const itemId = row.find(".itemNameSelect").val();
+
+            if (!itemId) {
+                row.find("input").val("");
+                return;
+            }
+
+            const item = itemsList.find(x => x.id == itemId);
+            if (!item) return;
+
+            // Get values
+            let sysQty = parseFloat(item.on_hand) || 0;
+            let price  = parseFloat(item.cost_price) || 0;
+            let newQty = parseFloat(row.find("td:eq(6) input").val());
+
+            // If new qty empty → default to sys qty
+            if (isNaN(newQty)) newQty = sysQty;
+
+            // Calculations
+            const qtyDiff = sysQty - newQty;
+            const amount  = qtyDiff * price;
+
+            // Fill fields
+            row.find("td:eq(1) input").val(item.code);              // Item Code
+            row.find("td:eq(3) input").val(sysQty.toFixed(2));     // SYS QTY
+            row.find("td:eq(4) input").val(price.toFixed(2));      // Price
+            row.find("td:eq(5) input").val(item.total_value);      // SYS Amount
+            row.find("td:eq(6) input").val(newQty.toFixed(2));     // New QTY
+            row.find("td:eq(7) input").val(qtyDiff.toFixed(2));    // QTY DIF
+
+            // Amount (- / +)
+            if (qtyDiff > 0) {
+                row.find("td:eq(8) input").val(amount.toFixed(2)); // Amount(-)
+                row.find("td:eq(9) input").val("0.00");
+            } else {
+                row.find("td:eq(8) input").val("0.00");
+                row.find("td:eq(9) input").val(Math.abs(amount).toFixed(2)); // Amount(+)
+            }
+        }
+
+
 
 
     </script>
