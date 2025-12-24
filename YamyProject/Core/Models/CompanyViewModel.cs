@@ -1108,6 +1108,55 @@ namespace YamyProject.Core.Models
         public decimal ItemTotal { get; set; }
     }
 
+    public class SalesInvoiceRequest
+    {
+        public int Id { get; set; }  // 0 = New, >0 = Update
+        public DateTime InvoiceDate { get; set; }
+        public int CustomerId { get; set; }
+        public string InvoiceCode { get; set; } = string.Empty;
+        public int WarehouseId { get; set; }
+        public string? PoNo { get; set; }
+        public string? BillTo { get; set; }
+        public string? City { get; set; }
+        public string? SalesMan { get; set; }
+        public DateTime ShipDate { get; set; }
+        public string? ShipVia { get; set; }
+        public string? ShipTo { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty;
+        public int AccountCashId { get; set; }
+        public int PaymentCreditAccountId { get; set; }
+        public string? PaymentTerms { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public decimal TotalBeforeVat { get; set; }
+        public decimal Vat { get; set; }
+        public decimal NetTotal { get; set; }
+        public int SalesRevenueAccountId { get; set; }  // e.g., level4SalesInvoice
+        public int VatAccountId { get; set; }           // e.g., level4VatId
+        public decimal InventoryCost { get; set; }      // total cost of items
+        public int CogsAccountId { get; set; }
+
+
+
+        // Ensure Items is never null
+        public List<SalesItemRequest> Items { get; set; } = new List<SalesItemRequest>();
+    }
+
+    public class SalesItemRequest
+    {
+        public int ItemId { get; set; }
+        public decimal Qty { get; set; }
+        public decimal Price { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal Discount { get; set; }
+        public decimal Vat { get; set; }
+        public decimal VatP { get; set; }
+        public decimal Total { get; set; }
+        public int? CostCenterId { get; set; }
+
+        public string Type { get; set; }
+        public string Method { get; set; }
+    }
+
 
 
 }

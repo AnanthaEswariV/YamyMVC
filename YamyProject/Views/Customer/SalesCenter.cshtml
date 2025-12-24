@@ -17,6 +17,11 @@
     #table1 tbody tr.selected {
         background-color: #c7e5b4;
     }
+
+    .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
 </style>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
@@ -141,7 +146,8 @@
 <div class="modal fade" id="salesModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-
+            <form id="salescenterform" class="needs-validation" novalidate>
+                <input type="hidden" id="customerId" value="0">
             <!-- Header -->
             <div class="modal-header bg-primary text-white py-2">
                 <h6 class="modal-title fw-bold mx-auto">Sales Invoice</h6>
@@ -155,22 +161,22 @@
                 <div class="row g-2">
                     <div class="col-md-2">
                         <label class="form-label">Customer</label>
-                        <select class="form-select form-select-sm" id="customerName">
+                        <select class="form-select form-select-sm" id="customerName" required>
                             <option value="">-- Select Customer --</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Date</label>
-                        <input type="date" class="form-control form-control-sm">
+                        <input type="date" class="form-control form-control-sm" id="date">
                     </div>
 
                     <div class="col-md-2">
                         <label class="form-label">Invoice</label>
-                        <input class="form-control form-control-sm">
+                            <input class="form-control form-control-sm" id="invoiceCode" readonly>
                     </div>
                      <div class="col-md-2">
                         <label class="form-label">P.O No</label>
-                        <input class="form-control form-control-sm">
+                            <input class="form-control form-control-sm" id="poNo">
                     </div>
                      <div class="col-md-2">
                         <label class="form-label">Performa Invoice No</label>
@@ -186,7 +192,7 @@
                 <div class="row g-2 mt-2">
                     <div class="col-md-4">
                         <label class="form-label">Bill To</label>
-                        <input class="form-control form-control-sm">
+                            <input class="form-control form-control-sm" id="billTo">
                     </div>
 
                     <div class="col-md-2">
@@ -214,23 +220,25 @@
                         <select class="form-select" id="warehouseDropdown"><option value="">Select Warehouse</option></select>
                     </div>
 
-                    <div class="col-md-2">
-                        <label class="form-label">Payment Terms</label>
-                        <select class="form-select form-select-sm" id="paymentTerms">
-                            <option value="30" selected>30</option>
-                            <option value="60">60</option>
-                            <option value="90">90</option>
-                            <option value="120">120</option>
-                            <option value="150">150</option>
-                            <option value="180">180</option>
-                            <option value="210">210</option>
-                            <option value="240">240</option>
-                            <option value="270">270</option>
-                            <option value="300">300</option>
-                            <option value="330">330</option>    
-                            <option value="360">360</option>
-                        </select>
-                    </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Payment Terms</label>
+                            <input type="hidden" id="paymentTermsValue">
+                            <select class="form-select form-select-sm" id="paymentTerms" disabled>
+                                <option value="30">30</option>
+                                <option value="60">60</option>
+                                <option value="90">90</option>
+                                <option value="120">120</option>
+                                <option value="150">150</option>
+                                <option value="180">180</option>
+                                <option value="210">210</option>
+                                <option value="240">240</option>
+                                <option value="270">270</option>
+                                <option value="300">300</option>
+                                <option value="330">330</option>
+                                <option value="360">360</option>
+                            </select>
+                        </div>
+
                 </div>
 
                 <!-- Row 3 -->
@@ -283,7 +291,7 @@
                         <thead class="table-light text-center">
                             <tr>
                                 <th>S.No</th>
-                                <th>Item</th>
+                                <th>Code</th>
                                 <th>Item Name</th>
                                 <th>QTY</th>
                                 <th>Price</th>
@@ -297,16 +305,16 @@
                         <tbody>
                             <tr>
                                 <td>1</td>
-                                <td><input type="text" class="form-control form-control-sm"></td>
-                                <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                                <td><input class="form-control form-control-sm"></td>
+                                <td><input type="text" class="form-control form-control-sm" required></td>
+                                <td><select class="form-select form-select-sm itemNameSelect" required></select></td>
+                                 <td><input type="number" class="form-control form-control-sm qty" required></td>
                                 <td><input class="form-control form-control-sm"></td>
                                 <td><input class="form-control form-control-sm"></td>
                                 <td class="text-center">0</td>
                                 <td>
                                     <select class="form-select form-select-sm tax"></select>
                                 </td>
-                                <td class="text-center">0</td>
+                                    <td class="text-center" required>0</td>
                                 <td>
                                     <select class="form-select form-select-sm costCenterSelect"></select>
                                 </td>
@@ -325,27 +333,26 @@
                     <div class="col-md-4">
                         <div class="mb-2">
                             <label>Total Before VAT</label>
-                            <input class="form-control form-control-sm text-end" readonly>
+                                <input class="form-control form-control-sm text-end" id="totalBeforeVat" readonly>
                         </div>
                         <div class="mb-2">
                             <label>Total VAT</label>
-                            <input class="form-control form-control-sm text-end" readonly>
+                                <input class="form-control form-control-sm text-end" id="totalVat" readonly>
                         </div>
                         <div>
                             <label>Net Amount</label>
-                            <input class="form-control form-control-sm text-end fw-bold" readonly>
+                                <input class="form-control form-control-sm text-end fw-bold" id="netAmount" readonly>
                         </div>
                     </div>
                 </div>
-
             </div>
 
-            <!-- Footer -->
-            <div class="modal-footer">
-                <button class="btn btn-primary btn-sm">Save</button>
-                <button class="btn btn-outline-danger btn-sm" data-bs-dismiss="modal">Close</button>
-            </div>
-
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -360,6 +367,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
         $(document).ready(function () {
@@ -549,8 +558,14 @@
                     row.append($('<td>').text(parseFloat(sale.vat).toFixed(4)));
                     row.append($('<td>').text(parseFloat(sale.net).toFixed(4)));
                     row.append($('<td>').text(sale.jvNo));
-                    row.append($('<td>').html('<button class="btn btn-sm btn-primary">View</button>'));
-                    tbody.append(row);
+                    const invoiceData = $('<button>', {
+            class: 'btn btn-sm btn-primary editInvoiceBtn',
+            html: '<i class="fas fa-pen"></i>',
+            'data-invoice': JSON.stringify(sale) // store JSON directly
+        });
+
+        row.append($('<td>').append(invoiceData));
+        tbody.append(row);
                 });
             }
 
@@ -648,8 +663,205 @@
                 if (isNaN(date)) return dateStr;
                 return date.toLocaleDateString();
             }
+
+
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
+            const todayDate = getTodayDate();
+
+            // Fill all date fields
+            const dateFields = [
+                'date',
+                'duedate',
+                'shipDate'
+            ];
+
+            dateFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value) {
+                    field.value = todayDate;
+                }
+            });
         });
 
+
+            $('#paymentTerms').prop('disabled', true);
+            setDueDate(); 
+
+            function setDueDate() {
+                const invoiceType = $('#invoiceType').val();
+                let days = 0;
+
+                if (invoiceType === 'Credit') {
+                    $('#paymentTerms').prop('disabled', false);
+                    days = parseInt($('#paymentTerms').val()) || 0; // get selected payment term
+                } else {
+                    $('#paymentTerms').prop('disabled', true);
+                    days = 0; // Cash: due today
+                }
+
+                const today = new Date();
+                const dueDate = new Date();
+                dueDate.setDate(today.getDate() + days);
+
+                const yyyy = dueDate.getFullYear();
+                const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(dueDate.getDate()).padStart(2, '0');
+
+                $('#duedate').val(`${yyyy}-${mm}-${dd}`);
+            }
+
+            $('#invoiceType').on('change', setDueDate);
+
+            $('#paymentTerms').on('change', setDueDate);
+
+                    $(document).on("click", ".editInvoiceBtn", function () {
+            const invoice = $(this).data("invoice"); // Get invoice JSON
+            console.log(invoice);
+            if (!invoice) return;
+
+            // Header Fields
+            $("#customerName").val(invoice.sn || 0);
+            $("#date").val(invoice.invoiceDate ? invoice.invoiceDate.split('T')[0] : '');
+            $("#invoiceCode").val(invoice.invoiceNo || '');
+            $("#poNo").val(invoice.poNo || '');
+            $("#billTo").val(invoice.billTo || '');
+            $("#emirates").val(invoice.city || '');
+            $("#salesMan").val(invoice.salesMan || '');
+            $("#shipDate").val(invoice.shipDate ? invoice.shipDate.split('T')[0] : '');
+            $("#viaType").val(invoice.shipVia || '');
+            $("#ship").val(invoice.shipTo || '');
+            $("#invoiceType").val(invoice.paymentMethod || '');
+            $("#accountName").val(invoice.accountCashId || '');
+            $("#paymentTermsValue").val(invoice.paymentTerms || '');
+            $("#duedate").val(invoice.paymentDate ? invoice.paymentDate.split('T')[0] : '');
+            $("#totalBeforeVat").val(invoice.totalBeforeVat || 0);
+            $("#totalVat").val(invoice.vat || 0);
+            $("#netAmount").val(invoice.netTotal || 0);
+            $("#warehouseDropdown").val(invoice.warehouseId || '');
+
+            // Clear existing rows
+            $("#salesModal tbody").empty();
+
+            // Add invoice items
+            (invoice.items || []).forEach((item, idx) => {
+                const row = `<tr>
+                    <td>${idx + 1}</td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.code || ''}"></td>
+                    <td><select class="form-select form-select-sm itemNameSelect">
+                        <option value="${item.itemId}" selected>${item.itemName || ''}</option>
+                    </select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                    <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
+                    <td><input class="form-control form-control-sm" value="${item.discount || 0}"></td>
+                    <td class="text-center">${item.net || 0}</td>
+                    <td><select class="form-select form-select-sm tax">
+                        <option value="${item.vat || 0}" selected>${item.vat || 0}</option>
+                    </select></td>
+                    <td class="text-center">${item.total || 0}</td>
+                    <td>
+                        <select class="form-select form-select-sm costCenterSelect">
+                            <option value="${item.costCenterId || 0}" selected>${item.costCenterName || ''}</option>
+                        </select>
+                    </td>
+                </tr>`;
+                $("#salesModal tbody").append(row);
+            });
+
+            // Save invoice ID for submit
+            $("#salescenterform").data("invoiceId", invoice.id || 0);
+
+            // Update modal title
+            $("#salesModal .modal-title").text("Edit Invoice");
+
+            // Show modal
+            $("#salesModal").modal("show");
+        });
+
+
+
+            $('#salescenterform').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+        $('#paymentTermsValue').val($('#paymentTerms').val());
+            // Collect invoice header data
+            const invoiceData = {
+                Id: 0, // 0 = New, or set existing Id for edit
+                InvoiceDate: $('#date').val(),
+                CustomerId: parseInt($('#customerName').val()) || 0,
+                InvoiceCode: $('#invoiceCode').val().trim(),
+                PoNo: $('#poNo').val().trim(),
+                BillTo: $('#billTo').val().trim(),
+                City: $('#emirates').val(),
+                SalesMan: $('#salesMan').val().trim(),
+                ShipDate: $('#shipDate').val(),
+                ShipVia: $('#viaType').val(),
+                ShipTo: $('#ship').val().trim(),
+                PaymentMethod: $('#invoiceType').val(),
+                AccountCashId: parseInt($('#accountName').val()) || 0,
+                PaymentTerms: $('#paymentTermsValue').val(),
+                PaymentDate: $('#duedate').val(),
+                TotalBeforeVat: parseFloat($('#totalBeforeVat').val()) || 0,
+                Vat: parseFloat($('#totalVat').val()) || 0,
+                NetTotal: parseFloat($('#netAmount').val()) || 0,
+                WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
+                Items: []
+            };
+
+            // Collect table items
+            $('#salesModal tbody tr').each(function () {
+                const row = $(this);
+                const item = {
+                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                    Qty: parseFloat(row.find('td:nth-child(4) input').val()) || 0,
+                    Price: parseFloat(row.find('td:nth-child(5) input').val()) || 0,
+                    Discount: parseFloat(row.find('td:nth-child(6) input').val()) || 0,
+                    Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
+                    Vat: parseFloat(row.find('.tax').val()) || 0,
+                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
+                };
+                invoiceData.Items.push(item);
+            });
+
+            console.log(JSON.stringify(invoiceData)); // Debug log
+
+            // AJAX POST to API
+            $.ajax({
+                 url: '@Url.Action("SaveInvoice", "Customer")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(invoiceData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Invoice saved successfully');
+                        $('#salesModal').modal('hide');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    console.error("❌ AJAX ERROR", xhr);
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+
+        });
 
             function loadWarehouses(selector = "#warehouseDropdown") {
             $.ajax({
@@ -671,7 +883,8 @@
                 }
             });
         }
-
+            
+            let itemsList = [];
 
             function loadItem(selector = ".itemNameSelect") {
             $.ajax({
@@ -680,7 +893,7 @@
                 success: function (res) {
                     if (res.status) {
                         itemsList = res.data; // store items
-
+                        console.log(res);
                         const dropdowns = $(selector);
                         dropdowns.empty().append('<option value="">Select Item</option>');
 
@@ -698,18 +911,22 @@
         }
 
 
-            function loadTax(selector = ".tax") {
+          function loadTax(selector = ".tax") {
             $.ajax({
                 url: '@Url.Action("GetTaxes", "Lists")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
+
                         const dropdowns = $(selector);
                         dropdowns.empty().append('<option value="">-- Select Tax --</option>');
 
                         res.data.forEach(item => {
+                            const text = `${item.name}-${item.value}%`;
                             dropdowns.append(
-                                `<option value="${item.id}">${item.name}</option>`
+                                `<option value="${item.id}" data-value="${item.value}">
+                                    ${text}
+                                </option>`
                             );
                         });
                     }
@@ -720,6 +937,7 @@
             });
         }
 
+
          function populateAndSelectCostCenter() {
              $.ajax({
                  url: '@Url.Action("GetCostCenters", "Lists")',
@@ -727,7 +945,7 @@
                  success: function (res) {
                      const data = Array.isArray(res) ? res : (res.data || []);
                      if (!data.length) return;
-
+                   
                      const allSelects = $('.costCenterSelect');
 
                      allSelects.each(function () {
@@ -745,6 +963,108 @@
                  }
              });
          }
+
+
+        $(document).on("change", ".itemNameSelect", function () {
+            const selectedId = $(this).val();
+            const row = $(this).closest("tr"); // get the row of this select
+
+            if (selectedId) {
+                // Find the item in the list
+                const selectedItem = itemsList.find(i => i.id == selectedId);
+
+                if (selectedItem) {
+                    // Set the "Item" input (first input in the row)
+                    row.find("td:nth-child(2) input").val(selectedItem.code || ""); // assuming item.code exists
+
+                    // Set the "Price" input (5th column)
+                    row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
+                }
+            } else {
+                // Clear fields if no selection
+                row.find("td:nth-child(2) input").val("");
+                row.find("td:nth-child(5) input").val(0);
+            }
+        });
+
+
+          function calculateRow(row) {
+            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0;
+            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0;
+            const discount = parseFloat(row.find("td:nth-child(6) input").val()) || 0;
+
+            const net = qty * price - discount;
+            row.find("td:nth-child(7)").text(net.toFixed(2));
+
+            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0;
+            const taxAmount = net * (taxPercent / 100);
+            const amount = net + taxAmount;
+
+            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`);
+            row.find("td:nth-child(9)").text(amount.toFixed(2));
+
+            // ✅ NEW
+            calculateInvoiceTotals();
+        }
+
+
+        $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
+            const row = $(this).closest("tr");
+
+            // Optional: Call API to check stock when qty changes
+            if ($(this).closest("td").index() === 3) { // Qty column
+                const itemId = row.find(".itemNameSelect").val();
+                const qty = parseFloat($(this).val()) || 0;
+                if (itemId) {
+                    $.ajax({
+                        url: '@Url.Action("CheckItemValidity", "Customer")',
+                        type: 'GET',
+                        data: { itemId: itemId, salesQty: qty },
+                        success: function (res) {
+                            if (!res.status) {
+                                alert(res.message);
+                                row.find("td:nth-child(4) input").val(0);
+                            }
+                            calculateRow(row);
+                        },
+                        error: function(err) { console.error(err); }
+                    });
+                } else {
+                    calculateRow(row);
+                }
+            } else {
+                calculateRow(row);
+            }
+        });
+
+        // Trigger calculation when tax or qty changes
+        $(document).on("change", ".tax, .qty", function() {
+            const row = $(this).closest("tr");
+            calculateRow(row);
+        });
+
+         function calculateInvoiceTotals() {
+            let totalBeforeVat = 0;
+            let totalVat = 0;
+
+            $('#salesModal tbody tr').each(function () {
+                const row = $(this);
+
+                const net = parseFloat(row.find("td:nth-child(7)").text()) || 0;
+                const amount = parseFloat(row.find("td:nth-child(9)").text()) || 0;
+
+                totalBeforeVat += net;
+                totalVat += (amount - net);
+            });
+
+            const netAmount = totalBeforeVat + totalVat;
+
+            $('#totalBeforeVat').val(totalBeforeVat.toFixed(2));
+            $('#totalVat').val(totalVat.toFixed(2));
+            $('#netAmount').val(netAmount.toFixed(2));
+        }
+
+
 
     </script>
 }
