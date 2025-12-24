@@ -1087,25 +1087,48 @@ namespace YamyProject.Core.Models
     public class SaleDto
     {
         public int SN { get; set; }
+        public int Id { get; set; }
         public DateTime Date { get; set; }
         public string InvoiceNo { get; set; }
+        public int CustomerId { get; set; }
         public string CustomerName { get; set; }
         public string PaymentMethod { get; set; }
         public decimal Total { get; set; }
         public decimal Vat { get; set; }
         public decimal Net { get; set; }
         public string JvNo { get; set; }
+        public int Warehouse_Id { get; set; }
+        public string PO_Num { get; set; }
+        public string Bill_To { get; set; }
+        public string City { get; set; }
+        public string Sales_Man { get; set; }
+        public DateTime Ship_Date { get; set; }
+        public string Ship_Via { get; set; }
+        public string Ship_To { get; set; }
+        public int Account_Cash_Id { get; set; }
+        public string Payment_Terms { get; set; }
+        public DateTime Payment_Date { get; set; }
+        public decimal Pay { get; set; }
+        
+
 
         public List<SaleItemDto> Items { get; set; } = new();
     }
 
     public class SaleItemDto
     {
+        public int ItemId { get; set; }
         public string ItemName { get; set; }
+        public string ItemCode { get; set; }
         public decimal Qty { get; set; }
         public decimal Price { get; set; }
         public decimal ItemVat { get; set; }
         public decimal ItemTotal { get; set; }
+        public decimal Discount { get; set; }
+        public int Sales_Id { get; set; }
+        public decimal Cost_Price { get; set; }
+        public decimal VatP { get; set; }
+        public int Cost_Center_Id { get; set; }
     }
 
     public class SalesInvoiceRequest

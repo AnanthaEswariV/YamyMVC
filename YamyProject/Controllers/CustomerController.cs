@@ -781,40 +781,76 @@ namespace YamyProject.Controllers
         {
             try
             {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Basic query that includes sales and sales items joined
+                // 🔹 BASE QUERY (NO GROUP BY – IMPORTANT)
                 string query = @"
 SELECT
-    ROW_NUMBER() OVER (ORDER BY s.date) AS SN,
+    s.id AS Id,
     s.date AS Date,
     s.invoice_id AS InvoiceNo,
+
+    c.id AS CustomerId,
     CONCAT(c.code, ' - ', c.name) AS CustomerName,
+
     s.payment_method AS PaymentMethod,
     s.total AS Total,
     s.vat AS Vat,
     s.net AS Net,
-    CONCAT('000', MAX(t.transaction_id)) AS JvNo,
-    CONCAT(i.code, ' - ', i.name) AS ItemName,
+
+    CONCAT(
+        '000',
+        (
+            SELECT MAX(t2.transaction_id)
+            FROM tbl_transaction t2
+            WHERE t2.transaction_id = s.id
+        )
+    ) AS JvNo,
+
+    i.id AS ItemId,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+
+    sd.sales_id AS Sales_Id,
     sd.qty AS Qty,
     sd.price AS Price,
+    sd.discount AS Discount,
     sd.vat AS ItemVat,
-    sd.total AS ItemTotal
+    sd.vatp AS VatP,
+    sd.total AS ItemTotal,
+    sd.cost_price AS Cost_Price,
+    sd.cost_center_id AS Cost_Center_Id,
+    sd.project_id AS Project_Id,
+
+    s.warehouse_id AS Warehouse_Id,
+    s.po_num AS PO_Num,
+    s.bill_to AS Bill_To,
+    s.city AS City,
+    s.sales_man AS Sales_Man,
+    s.ship_date AS Ship_Date,
+    s.ship_via AS Ship_Via,
+    s.ship_to AS Ship_To,
+    s.account_cash_id AS Account_Cash_Id,
+    s.payment_terms AS Payment_Terms,
+    s.payment_date AS Payment_Date,
+    s.pay AS Pay
+
 FROM tbl_sales s
 INNER JOIN tbl_customer c ON s.customer_id = c.id
-INNER JOIN tbl_transaction t ON s.id = t.transaction_id
-INNER JOIN tbl_sales_details sd ON s.id = sd.sales_id
-INNER JOIN tbl_items i ON sd.item_id = i.id
+LEFT JOIN tbl_sales_details sd ON s.id = sd.sales_id
+LEFT JOIN tbl_items i ON sd.item_id = i.id
 WHERE s.state = 0
 ";
 
-                // Add filters
+                // 🔹 FILTERS
                 var parameters = new List<MySqlParameter>();
 
                 if (dateFrom.HasValue)
@@ -822,61 +858,88 @@ WHERE s.state = 0
                     query += " AND s.date >= @dateFrom ";
                     parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
                 }
+
                 if (dateTo.HasValue)
                 {
                     query += " AND s.date <= @dateTo ";
                     parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
                 }
+
                 if (customerId.HasValue)
                 {
                     query += " AND s.customer_id = @customerId ";
                     parameters.Add(new MySqlParameter("@customerId", customerId.Value));
                 }
 
-                query += " GROUP BY s.id, s.date, s.invoice_id, c.code, c.name, s.payment_method, s.total, s.vat, s.net, t.transaction_id, i.code, i.name, sd.qty, sd.price, sd.vat, sd.total";
+                query += " ORDER BY s.date DESC, s.id ";
 
                 var sales = new List<SaleDto>();
 
-                await using (var cmd = new MySqlCommand(query, conn))
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                SaleDto currentSale = null;
+                int lastSaleId = -1;
+
+                while (await reader.ReadAsync())
                 {
-                    cmd.Parameters.AddRange(parameters.ToArray());
+                    int saleId = reader.GetInt32("Id");
 
-                    await using var reader = await cmd.ExecuteReaderAsync();
-
-                    SaleDto currentSale = null;
-                    int? lastSaleId = null;
-
-                    while (await reader.ReadAsync())
+                    // 🔹 NEW SALE HEADER
+                    if (saleId != lastSaleId)
                     {
-                        var saleId = reader.GetInt32("SN"); // Using SN as key, if you want sales.id, adjust accordingly
-
-                        if (lastSaleId != saleId)
+                        currentSale = new SaleDto
                         {
-                            currentSale = new SaleDto
-                            {
-                                SN = saleId,
-                                Date = reader.GetDateTime("Date"),
-                                InvoiceNo = reader.GetString("InvoiceNo"),
-                                CustomerName = reader.GetString("CustomerName"),
-                                PaymentMethod = reader.GetString("PaymentMethod"),
-                                Total = reader.GetDecimal("Total"),
-                                Vat = reader.GetDecimal("Vat"),
-                                Net = reader.GetDecimal("Net"),
-                                JvNo = reader.GetString("JvNo")
-                            };
-                            sales.Add(currentSale);
-                            lastSaleId = saleId;
-                        }
+                            Id = saleId,
+                            Date = reader.GetDateTime("Date"),
+                            InvoiceNo = reader.GetString("InvoiceNo"),
+                            CustomerId = reader.GetInt32("CustomerId"),
+                            CustomerName = reader.GetString("CustomerName"),
+                            PaymentMethod = reader.GetString("PaymentMethod"),
+                            Total = reader.GetDecimal("Total"),
+                            Vat = reader.GetDecimal("Vat"),
+                            Net = reader.GetDecimal("Net"),
+                            JvNo = reader.GetString("JvNo"),
 
+                            Warehouse_Id = reader.GetInt32("Warehouse_Id"),
+                            PO_Num = reader.GetString("PO_Num"),
+                            Bill_To = reader.GetString("Bill_To"),
+                            City = reader.GetString("City"),
+                            Sales_Man = reader.GetString("Sales_Man"),
+                            Ship_Date = reader.GetDateTime("Ship_Date"),
+                            Ship_Via = reader.GetString("Ship_Via"),
+                            Ship_To = reader.GetString("Ship_To"),
+                            Account_Cash_Id = reader.GetInt32("Account_Cash_Id"),
+                            Payment_Terms = reader.GetString("Payment_Terms"),
+                            Payment_Date = reader.GetDateTime("Payment_Date"),
+                            Pay = reader.GetDecimal("Pay"),
+                            Items = new List<SaleItemDto>()
+                        };
+
+                        sales.Add(currentSale);
+                        lastSaleId = saleId;
+                    }
+
+                    // 🔹 ADD ITEM (if exists)
+                    if (reader["ItemId"] != DBNull.Value)
+                    {
                         currentSale.Items.Add(new SaleItemDto
                         {
-                            ItemName = reader.GetString("ItemName"),
+                            ItemId = Convert.ToInt32(reader["ItemId"]),
+                            ItemCode = reader["ItemCode"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
                             Qty = Convert.ToDecimal(reader["Qty"]),
                             Price = Convert.ToDecimal(reader["Price"]),
+                            Discount = Convert.ToDecimal(reader["Discount"]),
                             ItemVat = Convert.ToDecimal(reader["ItemVat"]),
-                            ItemTotal = Convert.ToDecimal(reader["ItemTotal"])
+                            VatP = Convert.ToDecimal(reader["VatP"]),
+                            ItemTotal = Convert.ToDecimal(reader["ItemTotal"]),
+                            Cost_Price = Convert.ToDecimal(reader["Cost_Price"]),
+                            Cost_Center_Id = Convert.ToInt32(reader["Cost_Center_Id"]),
+                            Sales_Id = Convert.ToInt32(reader["Sales_Id"])
                         });
-
                     }
                 }
 
@@ -986,7 +1049,7 @@ WHERE a.assembly_id = @assemblyId;
         }
 
 
-        #endregion
+       
 
         [HttpPost]
         public async Task<IActionResult> SaveInvoice([FromBody] SalesInvoiceRequest model)
@@ -1228,26 +1291,32 @@ WHERE a.assembly_id = @assemblyId;
 
         private async Task CommonDeleteTransactionsAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
         {
-            var deleteSalesDetails = "DELETE FROM tbl_sales_details WHERE sales_id=@id";
-            using (var cmd = new MySqlCommand(deleteSalesDetails, conn, tx))
+            try
             {
-                cmd.Parameters.AddWithValue("@id", invoiceId);
-                await cmd.ExecuteNonQueryAsync();
-            }
+                var deleteSalesDetails = "DELETE FROM tbl_sales_details WHERE sales_id=@id";
+                using (var cmd = new MySqlCommand(deleteSalesDetails, conn, tx))
+                {
+                    cmd.Parameters.AddWithValue("@id", invoiceId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
 
-            var deleteItemTrans = @"
+                var deleteItemTrans = @"
         DELETE FROM tbl_item_transaction WHERE reference=@invId AND type='Sales Invoice';
         DELETE FROM tbl_item_card_details WHERE trans_type='Sales Invoice' AND trans_no=@invId;
         DELETE FROM tbl_cost_center_transaction WHERE ref_id=@invId AND type='Sales';
-        DELETE FROM tbl_transaction WHERE ref_id=@invId AND trans_type='SALES';
+        DELETE FROM tbl_transaction WHERE transaction_id=@invId AND type='SALES';
     ";
-            using (var cmd = new MySqlCommand(deleteItemTrans, conn, tx))
+                using (var cmd = new MySqlCommand(deleteItemTrans, conn, tx))
+                {
+                    cmd.Parameters.AddWithValue("@invId", invoiceId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch(Exception ex)
             {
-                cmd.Parameters.AddWithValue("@invId", invoiceId);
-                await cmd.ExecuteNonQueryAsync();
+                throw ex;
             }
         }
-
 
 
         private async Task InsertSalesItemAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId, List<SalesItemRequest> items)
@@ -1469,6 +1538,9 @@ WHERE a.assembly_id = @assemblyId;
 
             await cmd.ExecuteNonQueryAsync();
         }
-     
+
+
+        #endregion
+
     }
 }
