@@ -110,7 +110,7 @@
         TempData["ok"] = "Saved successfully.";
         return RedirectToAction(nameof(Master)/*, new { primary = vm.ActivePrimary, sub = vm.ActiveSub }*/);
         }
-
+       
         //[ValidateAntiForgeryToken]
         //[HttpPost]
         //public async Task<IActionResult> MasterEmployee()

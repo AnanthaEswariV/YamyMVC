@@ -1508,8 +1508,8 @@ WHERE a.assembly_id = @assemblyId;
             decimal credit,
             long transactionId,
             long humId,
-            string tType,
             string type,
+            string tType,
             string description,
             int createdBy,
             string voucherNo)

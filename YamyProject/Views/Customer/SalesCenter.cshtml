@@ -524,7 +524,6 @@
                     method: 'GET',
                     data: params,
                     success: function (res) {
-                        console.log(res);
                         if (res.status) {
                             salesData = res.data || [];
                             if (method === 'Default') {
@@ -723,9 +722,8 @@
 
             $('#paymentTerms').on('change', setDueDate);
 
-                  $(document).on("click", ".editInvoiceBtn", function () {
+             $(document).on("click", ".editInvoiceBtn", function () {
             const invoice = $(this).data("invoice"); // Get invoice JSON
-            console.log(invoice);
             if (!invoice) return;
 
             // Header Fields
@@ -806,8 +804,6 @@
             // Show modal
             $("#salesModal").modal("show");
         });
-
-
 
 
             $('#salescenterform').on('submit', function (e) {
@@ -908,16 +904,17 @@
                 }
             });
         }
-            
-            let itemsList = [];
 
-                   function loadItem(selector = ".itemNameSelect") {
+                  let itemsList = []; // Declare the global items list
+
+        function loadItem(selector = ".itemNameSelect") {
             return new Promise((resolve, reject) => {
                 $.ajax({
                     url: '@Url.Action("GetItems", "Lists")',
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
+                            itemsList = res.data; // Store the items in the global itemsList
                             const dropdowns = $(selector);
                             dropdowns.empty().append('<option value="">Select Item</option>');
                             res.data.forEach(item => {
@@ -925,7 +922,7 @@
                                     `<option value="${item.id}">${item.itemName}</option>`
                                 );
                             });
-                            resolve();
+                            resolve(); // Resolve the promise once the items are loaded
                         } else {
                             reject("Failed to load items.");
                         }
@@ -938,7 +935,8 @@
             });
         }
 
-        function loadTax(selector = ".tax") {
+
+           function loadTax(selector = ".tax") {
             return new Promise((resolve, reject) => {
                 $.ajax({
                     url: '@Url.Action("GetTaxes", "Lists")',
@@ -994,48 +992,55 @@
              });
          }
 
-
         $(document).on("change", ".itemNameSelect", function () {
-            const selectedId = $(this).val();
-            const row = $(this).closest("tr"); // get the row of this select
+            const selectedId = parseInt($(this).val(), 10); 
+            console.log("Selected ID: ", selectedId); 
+
+            const row = $(this).closest("tr"); 
 
             if (selectedId) {
-                // Find the item in the list
-                const selectedItem = itemsList.find(i => i.id == selectedId);
+                // Find the item in the itemsList
+                const selectedItem = itemsList.find(item => item.id === selectedId);
+                console.log("Selected Item: ", selectedItem); 
 
                 if (selectedItem) {
-                    // Set the "Item" input (first input in the row)
-                    row.find("td:nth-child(2) input").val(selectedItem.code || ""); // assuming item.code exists
+                    row.find("td:nth-child(2) input").val(selectedItem.code || "");
 
-                    // Set the "Price" input (5th column)
                     row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
+
+                    calculateRow(row);
+                } else {
+                    console.log("Item not found in itemsList.");
                 }
             } else {
-                // Clear fields if no selection
                 row.find("td:nth-child(2) input").val("");
                 row.find("td:nth-child(5) input").val(0);
+
+                calculateRow(row);
             }
         });
 
 
-          function calculateRow(row) {
-            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0;
-            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0;
-            const discount = parseFloat(row.find("td:nth-child(6) input").val()) || 0;
+        function calculateRow(row) {
+            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0; // Quantity
+            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0; // Price
+            const discount = parseFloat(row.find("td:nth-child(6) input").val()) || 0; // Discount
 
+            // Net = Quantity * Price - Discount
             const net = qty * price - discount;
-            row.find("td:nth-child(7)").text(net.toFixed(2));
+            row.find("td:nth-child(7)").text(net.toFixed(2)); // Set the "Net" field
 
-            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0;
-            const taxAmount = net * (taxPercent / 100);
-            const amount = net + taxAmount;
+            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0; // Tax percentage
+            const taxAmount = net * (taxPercent / 100); // Calculate tax
+            const amount = net + taxAmount; // Total amount including tax
 
-            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`);
-            row.find("td:nth-child(9)").text(amount.toFixed(2));
+            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`); // Set tax title
+            row.find("td:nth-child(9)").text(amount.toFixed(2)); // Set the "Amount" field
 
-            // ✅ NEW
+            // Update the invoice totals (optional)
             calculateInvoiceTotals();
         }
+
 
 
         $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {

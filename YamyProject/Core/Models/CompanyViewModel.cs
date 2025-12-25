@@ -947,11 +947,11 @@ namespace YamyProject.Core.Models
 
     public class UserRequest
     {
-        public int Id { get; set; } // 0 for new users
+        public int Id { get; set; } 
         public string Username { get; set; }
-        public string Password { get; set; } // for new users
-        public string ConfirmPassword { get; set; } // for new users
-        public int? EmployeeId { get; set; } // optional, -1 if not selected
+        public string Password { get; set; }
+        public string ConfirmPassword { get; set; } 
+        public int? EmployeeId { get; set; } 
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public int RoleId { get; set; }
@@ -1153,9 +1153,9 @@ namespace YamyProject.Core.Models
         public decimal TotalBeforeVat { get; set; }
         public decimal Vat { get; set; }
         public decimal NetTotal { get; set; }
-        public int SalesRevenueAccountId { get; set; }  // e.g., level4SalesInvoice
-        public int VatAccountId { get; set; }           // e.g., level4VatId
-        public decimal InventoryCost { get; set; }      // total cost of items
+        public int SalesRevenueAccountId { get; set; } 
+        public int VatAccountId { get; set; }        
+        public decimal InventoryCost { get; set; }   
         public int CogsAccountId { get; set; }
 
 

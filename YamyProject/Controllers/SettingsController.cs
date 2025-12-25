@@ -11,6 +11,10 @@
             _config = config;
             _connection = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
         }
+
+
+        #region Change Password
+
         [HttpGet("ChangePassword")]
         public IActionResult ChangePassword()
         {
@@ -131,6 +135,17 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        #endregion
+
+        #region Default Account Configuration
+
+        public IActionResult MasterSettings()
+        {
+            return View();
+        }
+
+        #endregion
 
 
     }
