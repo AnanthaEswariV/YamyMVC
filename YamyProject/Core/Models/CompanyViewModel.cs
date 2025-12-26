@@ -1180,6 +1180,11 @@ namespace YamyProject.Core.Models
         public string Method { get; set; }
     }
 
+    public class DefaultAccountSettingDto
+    {
+        public string Category { get; set; }
+        public int AccountId { get; set; }
+    }
 
 
 }

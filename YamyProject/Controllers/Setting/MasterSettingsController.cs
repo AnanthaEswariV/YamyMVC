@@ -1,7 +1,7 @@
 ﻿namespace YamyProject.Controllers.Setting
  {
     public class MasterSettingsController(YamyDbContext context, IListServices listServices, IAttendanceService attendanceService) : Controller
-        {
+    {
         private readonly YamyDbContext _context=context;
         private readonly IListServices _listServices = listServices;
         private readonly IAttendanceService _attendanceService = attendanceService;
@@ -44,9 +44,9 @@
 
   
 
-    [ValidateAntiForgeryToken]
-    [HttpPost]
-    public async Task<IActionResult> Master(/*SettingsMasterVm vm, */string section, string? primary = "default", string? sub = "common")
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> Master(/*SettingsMasterVm vm, */string section, string? primary = "default", string? sub = "common")
         {
 
             var Accounts = await _listServices.GetAccountsAsync();
@@ -277,6 +277,10 @@
             // For AJAX this redirect is not used; just return 200 OK
             return Ok(new { success = true });
             }
-        //
-        }
+
+
+      
+
+
     }
+}

@@ -1,6 +1,5 @@
 ﻿namespace YamyProject.Controllers
 {
-    [Route("Settings")]
     public class SettingsController : Controller
     {
         private readonly IConfiguration _config;
@@ -15,14 +14,13 @@
 
         #region Change Password
 
-        [HttpGet("ChangePassword")]
         public IActionResult ChangePassword()
         {
             return View();
         }
 
-        [HttpPost("ChangePassword")]
-        public async Task<IActionResult> ChangePasswords([FromBody] ChangePasswordRequest model)
+        [HttpPost]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest model)
         {
             try
             {
@@ -144,6 +142,113 @@
         {
             return View();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetConfigDefaults()
+        {
+            try
+            {
+                var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStr.ConnectionString);
+                await conn.OpenAsync();
+
+                var cmd = new MySqlCommand("SELECT category, account_id FROM tbl_coa_config", conn);
+
+                var dict = new Dictionary<string, int>();
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    dict[reader.GetString("category")] = reader.GetInt32("account_id");
+                }
+
+                return Ok(dict);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAccounts(string category)
+        {
+            try
+            {
+                var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStr.ConnectionString);
+                await conn.OpenAsync();
+
+                var cmd = new MySqlCommand(
+                    "SELECT id, CONCAT(code,' - ',name) AS name FROM tbl_coa_level_4 WHERE name LIKE @pattern ORDER BY code", conn);
+                cmd.Parameters.AddWithValue("@pattern", $"%{category}%");
+
+                var list = new List<object>();
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        name = reader.GetString("name")
+                    });
+                }
+
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveDefaultAccounts([FromBody] List<DefaultAccountSettingDto> settings)
+        {
+            if (settings == null || !settings.Any())
+                return BadRequest(new { status = false, message = "No settings received" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                foreach (var item in settings)
+                {
+                    if (item.AccountId <= 0) continue;
+
+                    string query = @"
+                INSERT INTO tbl_coa_config (category, account_id)
+                VALUES (@category, @account_id)
+                ON DUPLICATE KEY UPDATE account_id = @account_id;";
+
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@category", item.Category);
+                    cmd.Parameters.AddWithValue("@account_id", item.AccountId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "Default account settings saved successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
 
         #endregion
 

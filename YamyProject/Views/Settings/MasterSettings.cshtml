@@ -1,6 +1,331 @@
-﻿
-@{
-    ViewData["Title"] = "MasterSettings";
+﻿@{
+    ViewData["Title"] = "Setting - Master";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
+<!-- PAGE TITLE -->
+<div style="background:#0b3a6e; color:white; padding:10px 20px; font-size:small;">
+    Settings - Master
+</div>
+
+<div style="padding:20px;">
+
+    <!-- STEP 1 : MAIN BUTTONS -->
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <button class="btn btn-dark btn-sm" onclick="showSubButtons()">Default Account Config</button>
+        <button class="btn btn-dark btn-sm">Employee Default Setting</button>
+        <button class="btn btn-dark btn-sm">User Config</button>
+        <button class="btn btn-dark btn-sm">General Settings</button>
+    </div>
+
+    <!-- STEP 2 : SUB BUTTONS -->
+    <div id="subButtons" style="display:none; margin-bottom:20px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="showSection('commonSection')">Common</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="showSection('vendorSection')">Vendor - Purchase</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="showSection('inventorySection')">Inventory</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="showSection('customerSection')">Customer - Sales</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="showSection('employeeSection')">Employee</button>
+            <button class="btn btn-outline-primary btn-sm" onclick="showSection('bankSection')">Bank & Other</button>
+        </div>
+    </div>
+
+    <!-- STEP 3 : COMMON DROPDOWNS -->
+    <div id="commonSection" style="display:none; background:#fff; padding:20px;">
+
+        <div class="row">
+
+            <!-- LEFT COLUMN -->
+            <div class="col-md-6">
+                <label>PDC Receivable</label>
+                <select id="PDCReceivable" class="form-select mb-3"></select>
+
+                <label>PDC Receivable Return</label>
+                <select id="PDCReceivableReturn" class="form-select mb-3"></select>
+
+                <label>PDC Receivable Hold</label>
+                <select id="PDCReceivableHold" class="form-select mb-3"></select>
+
+                <label>PDC Payable</label>
+                <select id="PDCPayable" class="form-select mb-3"></select>
+
+                <label>PDC Payable Return</label>
+                <select id="PDCPayableReturn" class="form-select mb-3"></select>
+
+                <label>PDC Payable Hold</label>
+                <select id="PDCPayableHold" class="form-select mb-3"></select>
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="col-md-6">
+                <label>Default Account For Cash</label>
+                <select id="DefaultAccountCash" class="form-select mb-3"></select>
+
+                <label>Opening Balance</label>
+                <select id="OpeningBalance" class="form-select mb-3"></select>
+
+                <label>Opening Balance Equity</label>
+                <select id="OpeningBalanceEquity" class="form-select mb-3"></select>
+
+                <label>Prepaid Expense Debit Account</label>
+                <select id="PrepaidExpenseDebit" class="form-select mb-3"></select>
+
+                <label>Prepaid Expense Credit Account</label>
+                <select id="PrepaidExpenseCredit" class="form-select mb-3"></select>
+
+                <label>Fixed Asset Credit Account</label>
+                <select id="FixedAssetCredit" class="form-select mb-3"></select>
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="col-md-6">
+                <label>Fixed Asset Debit Account</label>
+                <select id="FixedAssetDebit" class="form-select mb-3"></select>
+            </div>
+
+        </div>
+
+        <!-- SAVE BUTTON -->
+        <div style="text-align:right; margin-top:20px;">
+            <button class="btn btn-primary px-4">Save</button>
+        </div>
+    </div>
+
+
+    <div id="vendorSection" style="display:none; background:#fff; padding:20px;">
+        <div class="row">
+            <div class="col-md-6">
+                <label>Vendor</label>
+                <select id="Vendor" class="form-select mb-3"></select>
+
+                <label>VAT Input</label>
+                <select id="VATInput" class="form-select mb-3"></select>
+
+                <label>Purchase Payment Cash Method</label>
+                <select id="PurchasePaymentCashMethod" class="form-select mb-3"></select>
+            </div>
+            <div class="col-md-6">
+                <label>Purchase Invoice</label>
+                <select id="PurchaseInvoice" class="form-select mb-3"></select>
+
+                <label>PurchaseReturn Invoice</label>
+                <select id="PurchaseReturnInvoice" class="form-select mb-3"></select>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="inventorySection" style="display:none; background:#fff; padding:20px;">
+        <div class="row">
+            <div class="col-md-6">
+                <label>Inventory</label>
+                <select id="Inventory" class="form-select mb-3"></select>
+
+                <label>Item_COGS</label>
+                <select id="ItemCOGS" class="form-select mb-3"></select>
+            </div>
+            <div class="col-md-6">
+                <label>Inventory Damage Account</label>
+                <select id="InventoryDamage" class="form-select mb-3"></select>
+
+                <label>Stock Settlement</label>
+                <select id="StockSettlement" class="form-select mb-3"></select>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="customerSection" style="display:none; background:#fff; padding:20px;">
+        <div class="row">
+            <div class="col-md-6">
+                <label>Customer</label>
+                <select id="Customer" class="form-select mb-3"></select>
+
+                <label>Invoice Payment Cash Method</label>
+                <select id="InvoicePaymentCashMethod" class="form-select mb-3"></select>
+
+                <label>VAT Output</label>
+                <select id="VATOutput" class="form-select mb-3"></select>
+            </div>
+            <div class="col-md-6">
+                <label>Sales Invoice</label>
+                <select id="SalesInvoice" class="form-select mb-3"></select>
+
+                <label>SalesReturn Invoice</label>
+                <select id="SalesReturnInvoice" class="form-select mb-3"></select>
+            </div>
+        </div>
+    </div>
+
+    <div id="employeeSection" style="display:none; background:#fff; padding:20px;">
+        <div class="row">
+            <div class="col-md-6">
+                <label>Accrued Salaries</label>
+                <select id="AccruedSalaries" class="form-select mb-3"></select>
+
+                <label>Salaries</label>
+                <select id="Salaries" class="form-select mb-3"></select>
+
+                <label>Accrual Leave Salary</label>
+                <select id="AccrualLeaveSalary" class="form-select mb-3"></select>
+
+                <label>Employee Receivable</label>
+                <select id="EmployeeReceivable" class="form-select mb-3"></select>
+
+                <label>Gratuity</label>
+                <select id="Gratuity" class="form-select mb-3"></select>
+            </div>
+            <div class="col-md-6">
+                <label>End Of Service Debit Account</label>
+                <select id="EndOfServiceDebit" class="form-select mb-3"></select>
+
+                <label>End Of Service Credit Account</label>
+                <select id="EndOfServiceCredit" class="form-select mb-3"></select>
+
+                <label>Leave Salary Debit</label>
+                <select id="LeaveSalaryDebit" class="form-select mb-3"></select>
+
+                <label>Leave Salary Credit</label>
+                <select id="LeaveSalaryCredit" class="form-select mb-3"></select>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="bankSection" style="display:none; background:#fff; padding:20px;">
+        <label>Default Account For Bank</label>
+        <select id="DefaultAccountBank" class="form-select mb-3"></select>
+    </div>
+
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    let configDefaults = {};
+
+    $(document).ready(function () {
+        // Load saved config defaults ONCE
+        $.ajax({
+            url: '@Url.Action("GetConfigDefaults", "Settings")',
+            type: 'GET',
+            success: function(res) {
+                configDefaults = res || {};
+                // By default show common
+                showSection('commonSection');
+            }
+        });
+    });
+
+    function showSubButtons() {
+        $("#subButtons").show();
+        hideAllSections();
+    }
+
+    function showSection(sectionId) {
+        hideAllSections();
+        $("#" + sectionId).show();
+
+        // Load dropdowns for only that section
+        if (sectionId === 'commonSection') loadCommon();
+        if (sectionId === 'vendorSection') loadVendor();
+        if (sectionId === 'inventorySection') loadInventory();
+        if (sectionId === 'customerSection') loadCustomer();
+        if (sectionId === 'employeeSection') loadEmployee();
+        if (sectionId === 'bankSection') loadBank();
+    }
+
+    function hideAllSections() {
+        [
+            'commonSection',
+            'vendorSection',
+            'inventorySection',
+            'customerSection',
+            'employeeSection',
+            'bankSection'
+        ].forEach(id => $("#" + id).hide());
+    }
+
+    function loadDropdown(dropdownId, category) {
+        $.ajax({
+            url: '@Url.Action("GetAccounts", "Settings")',
+            type: 'GET',
+            data: { category: category },
+            success: function(list) {
+                const $ddl = $('#' + dropdownId);
+                $ddl.empty().append('<option value="">-- Select --</option>');
+                list.forEach(item => {
+                    const selected = configDefaults[category] == item.id;
+                    $ddl.append(
+                        $('<option>', {
+                            value: item.id,
+                            text: item.name,
+                            selected: selected
+                        })
+                    );
+                });
+            }
+        });
+    }
+
+    function loadCommon() {
+        loadDropdown("PDCReceivable", "PDC Receivable");
+        loadDropdown("PDCReceivableReturn", "PDC Receivable Return");
+        loadDropdown("PDCReceivableHold", "PDC Receivable Hold");
+        loadDropdown("PDCPayable", "PDC Payable");
+        loadDropdown("PDCPayableReturn", "PDC Payable Return");
+        loadDropdown("PDCPayableHold", "PDC Payable Hold");
+
+        loadDropdown("DefaultAccountCash", "Default Account For Cash");
+        loadDropdown("OpeningBalance", "Opening Balance");
+        loadDropdown("OpeningBalanceEquity", "Opening Balance Equity");
+        loadDropdown("PrepaidExpenseDebit", "Prepaid Expense Debit Account");
+        loadDropdown("PrepaidExpenseCredit", "Prepaid Expense Credit Account");
+        loadDropdown("FixedAssetDebit", "Fixed Asset Debit Account");
+        loadDropdown("FixedAssetCredit", "Fixed Asset Credit Account");
+    }
+
+    function loadVendor() {
+        loadDropdown("Vendor","Vendor");
+        loadDropdown("VATInput","Vat Input");
+        loadDropdown("PurchasePaymentCashMethod","Purchase Payment Cash Method");
+        loadDropdown("PurchaseInvoice","Purchase");
+        loadDropdown("PurchaseReturnInvoice","PurchaseReturn");
+    }
+
+    function loadInventory() {
+        loadDropdown("Inventory","Inventory");
+        loadDropdown("ItemCOGS","COGS");
+        loadDropdown("InventoryDamage","Item Damage");
+        loadDropdown("StockSettlement","Stock Settlement");
+    }
+
+    function loadCustomer() {
+        loadDropdown("Customer","Customer");
+        loadDropdown("InvoicePaymentCashMethod","Invoice Payment Cash Method");
+        loadDropdown("VATOutput","Vat Output");
+        loadDropdown("SalesInvoice","Sales");
+        loadDropdown("SalesReturnInvoice","SalesReturn");
+    }
+
+    function loadEmployee() {
+        loadDropdown("AccruedSalaries","Accrued Salaries");
+        loadDropdown("Salaries","Salaries");
+        loadDropdown("AccrualLeaveSalary","Acroal Leave Salary");
+        loadDropdown("EmployeeReceivable","Employee Receivable");
+        loadDropdown("Gratuity","Gratuit");
+        loadDropdown("EndOfServiceDebit","End of Service Debit");
+        loadDropdown("EndOfServiceCredit","End of Service Credit");
+        loadDropdown("LeaveSalaryDebit","Leave Salary Debit");
+        loadDropdown("LeaveSalaryCredit","Leave Salary Credit");
+    }
+
+    function loadBank() {
+        loadDropdown("DefaultAccountBank","Default Account For Bank");
+    }
+</script>
+
+
+
 

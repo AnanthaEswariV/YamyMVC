@@ -199,9 +199,7 @@
             <!-- ===== COMMON ===== -->
             @if (IsSub("common"))
                 {
-                <form asp-controller="MasterSettings"
-                      asp-action="Master"
-                      method="post"
+                <form id="defaultAccountForm"
                       class="card settings-card shadow-sm">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="section" value="default-common" />
@@ -317,7 +315,9 @@
                     </div>
 
                     <div class="card-footer settings-save-footer d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary px-4">Save</button>
+                        <button type="button" id="btnSaveDefaults" class="btn btn-primary px-4">
+                            Save
+                        </button>
                     </div>
                 </form>
                 }
@@ -605,4 +605,59 @@
 
     @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+       $('#btnSaveDefaults').on('click', function () {
+
+    const settings = [];
+
+    $('select[data-category]').each(function () {
+        const category = $(this).data('category');
+        const accountId = parseInt($(this).val());
+
+        // Log each category and accountId to check
+        console.log('Category:', category, 'AccountId:', accountId);
+
+        if (accountId && accountId > 0) {
+            settings.push({
+                category: category,
+                accountId: accountId
+            });
+        }
+    });
+
+    // Log settings array before checking the length
+    console.log('Settings array:', settings);
+
+    if (settings.length === 0) {
+        toastr.warning('No default accounts selected');
+        console.log('No default accounts selected');
+        return;
+    }
+
+    $.ajax({
+        url: '@Url.Action("SaveDefaultAccounts", "Settings")',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(settings),
+        success: function (res) {
+            if (res.status) {
+                toastr.success(res.message);
+            } else {
+                toastr.error(res.message || 'Save failed');
+            }
+        },
+        error: function (xhr) {
+            toastr.error(xhr.responseJSON?.message || xhr.statusText);
+        }
+    });
+});
+
+    </script>
+
+
+
+
+
     }
