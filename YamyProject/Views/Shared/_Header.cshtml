@@ -6,10 +6,8 @@
             <li class="dropdown">
                 File
                 <ul class="submenu">
-                    <li><a href="/Account/CompanyList">Company List</a></li>
-                    <li @* class="dropdown has-submenu" *@>
-                        <a href="javascript:void(0);"
-                           onclick="openCompanyProfileModal()">Company Profile</a>
+                    <li><a href="@Url.Action("CompanyList", "Account")">Company List</a></li>
+                    <li><a href="@Url.Action("CompanyProfile", "Account")">Company Center</a></li>
                 </ul>
             </li>
             <li class="dropdown" data-main="Accountant">

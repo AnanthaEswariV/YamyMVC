@@ -5439,6 +5439,15 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
         #endregion
 
+        #region Company Profile
+
+        public IActionResult CompanyProfile()
+        {
+            return View();
+        }
+
+        #endregion
+
         #region GJ Voucher
 
         public IActionResult GJVoucher()
