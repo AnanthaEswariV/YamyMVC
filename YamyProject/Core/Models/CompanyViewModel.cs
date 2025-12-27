@@ -1187,4 +1187,98 @@ namespace YamyProject.Core.Models
     }
 
 
+    public class CompanyRequest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Address { get; set; }
+        public string Description { get; set; }
+        public string Phone1 { get; set; }
+        public string Phone2 { get; set; }
+        public string Gmail { get; set; }
+        public string MobileNumber { get; set; }
+        public string Website { get; set; }
+        public string TrnNo { get; set; }
+        public int CountryId { get; set; }
+        public byte[] LogoComp { get; set; }
+        public byte[] StampComp { get; set; }
+        public bool IsDefault { get; set; }
+    }
+    public class VatConfigRequest
+    {
+        public string RegistrationNo { get; set; }
+        public string CorporateTaxNo { get; set; }
+        public DateTime TRNIssueDate { get; set; }
+        public DateTime QuarterOneStartDate { get; set; }
+        public DateTime QuarterOneEndDate { get; set; }
+        public DateTime QuarterOneDueDate { get; set; }
+        public DateTime QuarterTwoStartDate { get; set; }
+        public DateTime QuarterTwoEndDate { get; set; }
+        public DateTime QuarterTwoDueDate { get; set; }
+        public DateTime QuarterThreeStartDate { get; set; }
+        public DateTime QuarterThreeEndDate { get; set; }
+        public DateTime QuarterThreeDueDate { get; set; }
+        public DateTime QuarterFourStartDate { get; set; }
+        public DateTime QuarterFourEndDate { get; set; }
+        public DateTime QuarterFourDueDate { get; set; }
+        public DateTime CorporateTaxStartDate { get; set; }
+        public DateTime CorporateTaxEndDate { get; set; }
+        public DateTime CorporateTaxDueDate { get; set; }
+    }
+    public class CompanyMasterResponse
+    {
+        public CompanyDto Company { get; set; }
+        public VatConfigDto VatConfig { get; set; }
+        public CorporateTaxDto CorporateTax { get; set; }
+    }
+    public class CompanyDto
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Phone1 { get; set; }
+        public string Phone2 { get; set; }
+        public string Gmail { get; set; }
+        public string MobileNumber { get; set; }
+        public string Website { get; set; }
+        public string TrnNo { get; set; }
+        public string Address { get; set; }
+        public int CountryId { get; set; }
+        public bool IsDefault { get; set; }
+        public byte[] Logo { get; set; }
+        public byte[] Stamp { get; set; }
+    }
+    public class VatConfigDto
+    {
+        public string RegistrationNo { get; set; }
+        public DateTime TRNIssueDate { get; set; }
+
+        public DateTime QuarterOneStartDate { get; set; }
+        public DateTime QuarterOneEndDate { get; set; }
+        public DateTime QuarterOneDueDate { get; set; }
+
+        public DateTime QuarterTwoStartDate { get; set; }
+        public DateTime QuarterTwoEndDate { get; set; }
+        public DateTime QuarterTwoDueDate { get; set; }
+
+        public DateTime QuarterThreeStartDate { get; set; }
+        public DateTime QuarterThreeEndDate { get; set; }
+        public DateTime QuarterThreeDueDate { get; set; }
+
+        public DateTime QuarterFourStartDate { get; set; }
+        public DateTime QuarterFourEndDate { get; set; }
+        public DateTime QuarterFourDueDate { get; set; }
+    }
+
+    public class CorporateTaxDto
+    {
+        public string CorporateTaxNo { get; set; }
+        public DateTime TrnIssueDate { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public DateTime DueDate { get; set; }
+    }
+
+
+
+
 }

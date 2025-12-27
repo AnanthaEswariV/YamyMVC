@@ -44,7 +44,7 @@
                                             <label class="form-label">Company Name</label>
                                             <div class="input-group">
                                                 <span class="input-group-text"><i class="bi bi-building"></i></span>
-                                                <input type="text" class="form-control">
+                                                <input type="text" class="form-control" id="companyName">
                                             </div>
                                         </div>
 
@@ -52,7 +52,7 @@
                                             <label class="form-label">Address 1</label>
                                             <div class="input-group">
                                                 <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
-                                                <input type="text" class="form-control">
+                                                <input type="text" class="form-control" id="address">
                                             </div>
                                         </div>
 
@@ -61,14 +61,14 @@
                                                 <label class="form-label">Phone 1</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                                                    <input type="text" class="form-control">
+                                                    <input type="text" class="form-control" id="phone1">
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label">Phone 2</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                                                    <input type="text" class="form-control">
+                                                    <input type="text" class="form-control" id="phone2">
                                                 </div>
                                             </div>
                                         </div>
@@ -78,14 +78,14 @@
                                                 <label class="form-label">Mobile</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="bi bi-phone"></i></span>
-                                                    <input type="text" class="form-control">
+                                                    <input type="text" class="form-control" id="mobile">
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label">Gmail</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                                    <input type="email" class="form-control">
+                                                    <input type="email" class="form-control" id="gmail">
                                                 </div>
                                             </div>
                                         </div>
@@ -94,7 +94,7 @@
                                             <label class="form-label">Website</label>
                                             <div class="input-group">
                                                 <span class="input-group-text"><i class="bi bi-globe"></i></span>
-                                                <input type="text" class="form-control">
+                                                <input type="text" class="form-control" id="website">
                                             </div>
                                         </div>
 
@@ -102,7 +102,7 @@
                                             <label class="form-label">TRN No</label>
                                             <div class="input-group">
                                                 <span class="input-group-text"><i class="bi bi-file-text"></i></span>
-                                                <input type="text" class="form-control">
+                                                <input type="text" class="form-control" id="trnNo">
                                             </div>
                                         </div>
 
@@ -110,14 +110,14 @@
                                             <label class="form-label">Country</label>
                                             <div class="input-group">
                                                 <span class="input-group-text"><i class="bi bi-flag"></i></span>
-                                                <select class="form-control">
-                                                    <option>Albania</option>
+                                                <select class="form-control" id="countryId">
+                                                    <option value="">-- Select Country --</option>
                                                 </select>
                                             </div>
                                         </div>
 
                                         <div class="form-check mb-3">
-                                            <input class="form-check-input" type="checkbox">
+                                            <input class="form-check-input" type="checkbox" id="isDefaultCompany">
                                             <label class="form-check-label">
                                                 Make This Company Main Account
                                             </label>
@@ -128,7 +128,7 @@
                                 <!-- RIGHT UPLOAD -->
                                 <div class="col-md-4 text-center">
                                     <div class="mb-4">
-                                        <img src="https://via.placeholder.com/160x120" class="img-thumbnail mb-2">
+                                        <img id="logoPreview" class="img-thumbnail mb-2 ">
                                         <div>
                                             <button class="btn btn-primary btn-sm">
                                                 <i class="bi bi-upload"></i> Browse
@@ -138,7 +138,7 @@
                                     </div>
 
                                     <div>
-                                        <img src="https://via.placeholder.com/160x120" class="img-thumbnail mb-2">
+                                        <img id="stampPreview" class="img-thumbnail mb-2">
                                         <div>
                                             <button class="btn btn-primary btn-sm">
                                                 <i class="bi bi-upload"></i> Browse
@@ -165,7 +165,7 @@
                                             <span class="input-group-text">
                                                 <i class="bi bi-file-earmark-text"></i>
                                             </span>
-                                            <input type="text" class="form-control">
+                                            <input type="text" class="form-control" id="vatRegistrationNo">
                                         </div>
                                     </div>
 
@@ -175,7 +175,7 @@
                                             <span class="input-group-text">
                                                 <i class="bi bi-calendar"></i>
                                             </span>
-                                            <input type="date" class="form-control">
+                                            <input type="date" class="form-control" id="vatTrnIssueDate">
                                         </div>
                                     </div>
                                 </div>
@@ -194,33 +194,33 @@
                                 <!-- Q1 -->
                                 <div class="row mb-2">
                                     <div class="col-md-3">Quarter No. 1</div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q1Start" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q1End" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q1Due" class="form-control"></div>
                                 </div>
 
                                 <!-- Q2 -->
                                 <div class="row mb-2">
                                     <div class="col-md-3">Quarter No. 2</div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q2Start" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q2End" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q2Due" class="form-control"></div>
                                 </div>
 
                                 <!-- Q3 -->
                                 <div class="row mb-2">
                                     <div class="col-md-3">Quarter No. 3</div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q3Start" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q3End" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q3Due" class="form-control"></div>
                                 </div>
 
                                 <!-- Q4 -->
                                 <div class="row mb-4">
                                     <div class="col-md-3">Quarter No. 4</div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q4Start" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q4End" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="q4Due" class="form-control"></div>
                                 </div>
 
                                 <hr>
@@ -231,7 +231,7 @@
                                         <label class="form-label">Corporate TAX No</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-bank"></i></span>
-                                            <input type="text" class="form-control">
+                                            <input type="text" class="form-control" id="corporateTaxNo">
                                         </div>
                                     </div>
 
@@ -239,7 +239,7 @@
                                         <label class="form-label">TRN Issue Date</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
-                                            <input type="date" class="form-control">
+                                            <input type="date" class="form-control" id="corpTrnIssueDate">
                                         </div>
                                     </div>
                                 </div>
@@ -256,9 +256,9 @@
 
                                 <div class="row mb-3">
                                     <div class="col-md-3">Yearly</div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
-                                    <div class="col-md-3"><input type="date" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="corpStart" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="corpEnd" class="form-control"></div>
+                                    <div class="col-md-3"><input type="date" id="corpDue" class="form-control"></div>
                                 </div>
 
                             </div>
@@ -283,3 +283,120 @@
         </div>
     </div>
 </div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+
+     $(document).ready(function () {
+        loadCompanyProfile();
+        loadCountries();
+    });
+
+         function loadCompanyProfile() {
+        $.ajax({
+            url: '@Url.Action("GetMasterCompany", "Account")',
+            type: "GET",
+            success: function (res) {
+                if (!res.status || !res.data) {
+                    toastr.error(res.message || "Failed to load company data");
+                    return;
+                }
+
+                let c = res.data.company;
+                let v = res.data.vatConfig;
+                let ct = res.data.corporateTax; // ✅ IMPORTANT
+
+                /* ================= COMPANY ================= */
+                if (c) {
+                    $("#companyName").val(c.name);
+                    $("#address").val(c.address);
+                    $("#phone1").val(c.phone1);
+                    $("#phone2").val(c.phone2);
+                    $("#mobile").val(c.mobileNumber);
+                    $("#gmail").val(c.gmail);
+                    $("#website").val(c.website);
+                    $("#trnNo").val(c.trnNo);
+                    $("#countryId").val(c.countryId);
+                    $("#isDefaultCompany").prop("checked", c.isDefault);
+
+                    if (c.logo) {
+                        $("#logoPreview").attr("src", "data:image/png;base64," + c.logo);
+                    }
+
+                    if (c.stamp) {
+                        $("#stampPreview").attr("src", "data:image/png;base64," + c.stamp);
+                    }
+                }
+
+                /* ================= VAT ================= */
+                if (v) {
+                    $("#vatRegistrationNo").val(v.registrationNo);
+                    $("#vatTrnIssueDate").val(v.trnIssueDate?.substring(0, 10));
+
+                    $("#q1Start").val(v.quarterOneStartDate?.substring(0, 10));
+                    $("#q1End").val(v.quarterOneEndDate?.substring(0, 10));
+                    $("#q1Due").val(v.quarterOneDueDate?.substring(0, 10));
+
+                    $("#q2Start").val(v.quarterTwoStartDate?.substring(0, 10));
+                    $("#q2End").val(v.quarterTwoEndDate?.substring(0, 10));
+                    $("#q2Due").val(v.quarterTwoDueDate?.substring(0, 10));
+
+                    $("#q3Start").val(v.quarterThreeStartDate?.substring(0, 10));
+                    $("#q3End").val(v.quarterThreeEndDate?.substring(0, 10));
+                    $("#q3Due").val(v.quarterThreeDueDate?.substring(0, 10));
+
+                    $("#q4Start").val(v.quarterFourStartDate?.substring(0, 10));
+                    $("#q4End").val(v.quarterFourEndDate?.substring(0, 10));
+                    $("#q4Due").val(v.quarterFourDueDate?.substring(0, 10));
+                }
+
+                /* ================= CORPORATE TAX ================= */
+                if (ct) {
+                    $("#corporateTaxNo").val(ct.corporateTaxNo);
+                    $("#corpTrnIssueDate").val(ct.trnIssueDate?.substring(0, 10));
+                    $("#corpStart").val(ct.startDate?.substring(0, 10));
+                    $("#corpEnd").val(ct.endDate?.substring(0, 10));
+                    $("#corpDue").val(ct.dueDate?.substring(0, 10));
+                }
+            },
+            error: function (xhr, status, error) {
+                toastr.error("Error loading company profile");
+                console.error(error);
+            }
+        });
+    }
+
+
+
+     function loadCountries(selectedCountryId) {
+        let $country = $("#countryId");
+        $country.empty();
+        $country.append(`<option value="">-- Select Country --</option>`); // default option
+
+        $.ajax({
+            url: '@Url.Action("GetCountry", "Reports")', // returns all countries
+            type: 'GET',
+            success: function (res) {
+                if (res.data && res.data.length > 0) {
+                    res.data.forEach(function (c) {
+                        // Append each country and select if it matches selectedCountryId
+                        $country.append(`<option value="${c.id}" ${c.id == selectedCountryId ? "selected" : ""}>${c.name}</option>`);
+                    });
+                } else {
+                    $country.append(`<option value="">-- No Countries Available --</option>`);
+                }
+            },
+            error: function () {
+                console.error("Failed to load countries.");
+                $country.append(`<option value="">-- Error Loading Countries --</option>`);
+            }
+        });
+    }
+
+
+
+
+
+</script>
+

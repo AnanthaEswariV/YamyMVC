@@ -5446,6 +5446,306 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
             return View();
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveCompany([FromBody] CompanyRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validation
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter company name" });
+
+            if (string.IsNullOrWhiteSpace(model.Description))
+                return BadRequest(new { status = false, message = "Please enter description" });
+
+            if (string.IsNullOrWhiteSpace(model.Phone1))
+                return BadRequest(new { status = false, message = "Please enter phone number" });
+
+            if (model.CountryId <= 0)
+                return BadRequest(new { status = false, message = "Please select a country" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔎 Default company rule check if selected
+                if (model.IsDefault)
+                {
+                    var checkQuery = "SELECT COUNT(*) FROM tbl_company WHERE default_company = 1";
+                    using var checkCmd = new MySqlCommand(checkQuery, conn);
+                    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (exists > 0)
+                        return BadRequest(new { status = false, message = "Only one default company is allowed" });
+                }
+
+                if (model.Id == 0) // ➝ INSERT
+                {
+                    var insertQuery = @"
+            INSERT INTO tbl_company
+            (name, address, descriptions, phone1, phone2, gmail, mobile_number, website, trn_no, country_id, logoComp, stampComp, default_company)
+            VALUES
+            (@name, @address, @descriptions, @phone1, @phone2, @gmail, @mobile_number, @website, @trn_no, @countryId, @logoComp, @stampComp, @default_company)";
+
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    insertCmd.Parameters.AddWithValue("@address", model.Address?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@descriptions", model.Description?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@phone1", model.Phone1?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@phone2", model.Phone2?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@gmail", model.Gmail?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@mobile_number", model.MobileNumber?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
+                    insertCmd.Parameters.AddWithValue("@countryId", model.CountryId);
+                    insertCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
+                    insertCmd.Parameters.AddWithValue("@logoComp", model.LogoComp); // Pass image bytes
+                    insertCmd.Parameters.AddWithValue("@stampComp", model.StampComp); // Pass image bytes
+
+                    await insertCmd.ExecuteNonQueryAsync();
+                    return Ok(new { status = true, message = "Company added successfully" });
+                }
+                else // ➝ UPDATE
+                {
+                    var updateQuery = @"
+            UPDATE tbl_company
+            SET name = @name, address = @address, descriptions = @descriptions, phone1 = @phone1, phone2 = @phone2, gmail = @gmail,
+                mobile_number = @mobile_number, website = @website, trn_no = @trn_no, country_id = @countryId, logoComp = @logoComp,
+                stampComp = @stampComp, default_company = @default_company
+            WHERE id = @id";
+
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    updateCmd.Parameters.AddWithValue("@address", model.Address?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@descriptions", model.Description?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@phone1", model.Phone1?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@phone2", model.Phone2?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@gmail", model.Gmail?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@mobile_number", model.MobileNumber?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@countryId", model.CountryId);
+                    updateCmd.Parameters.AddWithValue("@logoComp", model.LogoComp); // Pass image bytes
+                    updateCmd.Parameters.AddWithValue("@stampComp", model.StampComp); // Pass image bytes
+                    updateCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Company not found" });
+
+                    return Ok(new { status = true, message = "Company updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveVatConfig([FromBody] VatConfigRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validation
+            if (string.IsNullOrWhiteSpace(model.RegistrationNo))
+                return BadRequest(new { status = false, message = "Please enter TAX Registration No" });
+
+            if (string.IsNullOrWhiteSpace(model.CorporateTaxNo))
+                return BadRequest(new { status = false, message = "Please enter Corporate Tax No" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔎 Insert VAT Configuration
+                var vatInsertQuery = @"
+            INSERT INTO `tbl_vat_configration` (
+                `registration_no`, `TRNIssue_date`, `quarter_one_start_date`, `quarter_one_end_date`, 
+                `quarter_one_due_date`, `quarter_two_start_date`, `quarter_two_end_date`, `quarter_two_due_date`, 
+                `quarter_three_start_date`, `quarter_three_end_date`, `quarter_three_due_date`, 
+                `quarter_four_start_date`, `quarter_four_end_date`, `quarter_four_due_date`
+            ) 
+            VALUES (
+                @registration_no, @TRNIssue_date, @quarter_one_start_date, @quarter_one_end_date, 
+                @quarter_one_due_date, @quarter_two_start_date, @quarter_two_end_date, @quarter_two_due_date, 
+                @quarter_three_start_date, @quarter_three_end_date, @quarter_three_due_date, 
+                @quarter_four_start_date, @quarter_four_end_date, @quarter_four_due_date
+            );";
+
+                using var vatCmd = new MySqlCommand(vatInsertQuery, conn);
+                vatCmd.Parameters.AddWithValue("@registration_no", model.RegistrationNo.Trim());
+                vatCmd.Parameters.AddWithValue("@TRNIssue_date", model.TRNIssueDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_one_start_date", model.QuarterOneStartDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_one_end_date", model.QuarterOneEndDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_one_due_date", model.QuarterOneDueDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_two_start_date", model.QuarterTwoStartDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_two_end_date", model.QuarterTwoEndDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_two_due_date", model.QuarterTwoDueDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_three_start_date", model.QuarterThreeStartDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_three_end_date", model.QuarterThreeEndDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_three_due_date", model.QuarterThreeDueDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_four_start_date", model.QuarterFourStartDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_four_end_date", model.QuarterFourEndDate.Date);
+                vatCmd.Parameters.AddWithValue("@quarter_four_due_date", model.QuarterFourDueDate.Date);
+
+                await vatCmd.ExecuteNonQueryAsync();
+
+                // 🔎 Insert Corporate Tax Configuration
+                var corporateTaxInsertQuery = @"
+            INSERT INTO `tbl_corporate_tax_configration` (
+                `corporateTax_no`, `trn_issue_date`, `corporatetax_start_date`, `corporatetax_end_date`, `corporatetax_due_date`
+            ) 
+            VALUES (
+                @corporateTax_no, @trn_issue_date, @corporatetax_start_date, 
+                @corporatetax_end_date, @corporatetax_due_date
+            );";
+
+                using var corporateTaxCmd = new MySqlCommand(corporateTaxInsertQuery, conn);
+                corporateTaxCmd.Parameters.AddWithValue("corporateTax_no", model.CorporateTaxNo.Trim());
+                corporateTaxCmd.Parameters.AddWithValue("trn_issue_date", model.TRNIssueDate.Date);
+                corporateTaxCmd.Parameters.AddWithValue("corporatetax_start_date", model.CorporateTaxStartDate.Date);
+                corporateTaxCmd.Parameters.AddWithValue("corporatetax_end_date", model.CorporateTaxEndDate.Date);
+                corporateTaxCmd.Parameters.AddWithValue("corporatetax_due_date", model.CorporateTaxDueDate.Date);
+
+                await corporateTaxCmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "VAT and Corporate Tax data saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMasterCompany()
+        {
+            try
+            {
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var response = new CompanyMasterResponse();
+
+                /* ================= COMPANY ================= */
+                using (var cmd = new MySqlCommand("SELECT * FROM tbl_company LIMIT 1", conn))
+                using (var r = await cmd.ExecuteReaderAsync())
+                {
+                    if (await r.ReadAsync())
+                    {
+                        response.Company = new CompanyDto
+                        {
+                            Name = r["name"]?.ToString(),
+                            Description = r["descriptions"]?.ToString(),
+                            Phone1 = r["phone1"]?.ToString(),
+                            Phone2 = r["phone2"]?.ToString(),
+                            Gmail = r["gmail"]?.ToString(),
+                            MobileNumber = r["mobile_number"]?.ToString(),
+                            Website = r["website"]?.ToString(),
+                            TrnNo = r["trn_no"]?.ToString(),
+                            Address = r["address"]?.ToString(),
+                            CountryId = r["country_id"] != DBNull.Value ? Convert.ToInt32(r["country_id"]) : 0,
+                            Logo = r["logoComp"] != DBNull.Value ? (byte[])r["logoComp"] : null,
+                            Stamp = r["stampComp"] != DBNull.Value ? (byte[])r["stampComp"] : null
+                        };
+                    }
+                }
+
+                /* ================= DEFAULT COMPANY ================= */
+                using (var cmd = new MySqlCommand(
+                    "SELECT default_company FROM yamycompany.tbl_company WHERE database_name=@db", conn))
+                {
+                    cmd.Parameters.AddWithValue("@db", dbName);
+                    var result = await cmd.ExecuteScalarAsync();
+                    response.Company.IsDefault = result != null && Convert.ToInt32(result) == 1;
+                }
+
+                /* ================= VAT ================= */
+                using (var cmd = new MySqlCommand(
+                    "SELECT * FROM tbl_vat_configration ORDER BY id DESC LIMIT 1", conn))
+                using (var r = await cmd.ExecuteReaderAsync())
+                {
+                    if (await r.ReadAsync())
+                    {
+                        response.VatConfig = new VatConfigDto
+                        {
+                            RegistrationNo = r["registration_no"].ToString(),
+                            TRNIssueDate = Convert.ToDateTime(r["TRNIssue_date"]),
+                            QuarterOneStartDate = Convert.ToDateTime(r["quarter_one_start_date"]),
+                            QuarterOneEndDate = Convert.ToDateTime(r["quarter_one_end_date"]),
+                            QuarterOneDueDate = Convert.ToDateTime(r["quarter_one_due_date"]),
+                            QuarterTwoStartDate = Convert.ToDateTime(r["quarter_two_start_date"]),
+                            QuarterTwoEndDate = Convert.ToDateTime(r["quarter_two_end_date"]),
+                            QuarterTwoDueDate = Convert.ToDateTime(r["quarter_two_due_date"]),
+                            QuarterThreeStartDate = Convert.ToDateTime(r["quarter_three_start_date"]),
+                            QuarterThreeEndDate = Convert.ToDateTime(r["quarter_three_end_date"]),
+                            QuarterThreeDueDate = Convert.ToDateTime(r["quarter_three_due_date"]),
+                            QuarterFourStartDate = Convert.ToDateTime(r["quarter_four_start_date"]),
+                            QuarterFourEndDate = Convert.ToDateTime(r["quarter_four_end_date"]),
+                            QuarterFourDueDate = Convert.ToDateTime(r["quarter_four_due_date"])
+                        };
+                    }
+                }
+
+                /* ================= CORPORATE TAX ================= */
+                using (var cmd = new MySqlCommand(
+                    "SELECT * FROM tbl_corporate_tax_configration ORDER BY id DESC LIMIT 1", conn))
+                using (var r = await cmd.ExecuteReaderAsync())
+                {
+                    if (await r.ReadAsync())
+                    {
+                        response.CorporateTax = new CorporateTaxDto
+                        {
+                            CorporateTaxNo = r["corporateTax_no"].ToString(),
+                            TrnIssueDate = Convert.ToDateTime(r["trn_issue_date"]),
+                            StartDate = Convert.ToDateTime(r["corporatetax_start_date"]),
+                            EndDate = Convert.ToDateTime(r["corporatetax_end_date"]),
+                            DueDate = Convert.ToDateTime(r["corporatetax_due_date"])
+                        };
+                    }
+                }
+
+                return Ok(new { status = true, data = response });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region GJ Voucher
