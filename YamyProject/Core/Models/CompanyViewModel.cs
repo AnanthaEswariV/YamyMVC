@@ -1206,8 +1206,8 @@ namespace YamyProject.Core.Models
     }
     public class VatConfigRequest
     {
+        public int Id { get; set; }  // VAT config ID
         public string RegistrationNo { get; set; }
-        public string CorporateTaxNo { get; set; }
         public DateTime TRNIssueDate { get; set; }
         public DateTime QuarterOneStartDate { get; set; }
         public DateTime QuarterOneEndDate { get; set; }
@@ -1221,10 +1221,15 @@ namespace YamyProject.Core.Models
         public DateTime QuarterFourStartDate { get; set; }
         public DateTime QuarterFourEndDate { get; set; }
         public DateTime QuarterFourDueDate { get; set; }
+
+        public int CorporateTaxId { get; set; }   // Corporate Tax config ID
+        public string CorporateTaxNo { get; set; }
+        public DateTime TRNIssueDateCorp { get; set; }   // TRN issue date for corporate tax
         public DateTime CorporateTaxStartDate { get; set; }
         public DateTime CorporateTaxEndDate { get; set; }
         public DateTime CorporateTaxDueDate { get; set; }
     }
+
     public class CompanyMasterResponse
     {
         public CompanyDto Company { get; set; }
@@ -1233,6 +1238,7 @@ namespace YamyProject.Core.Models
     }
     public class CompanyDto
     {
+        public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string Phone1 { get; set; }
@@ -1249,6 +1255,7 @@ namespace YamyProject.Core.Models
     }
     public class VatConfigDto
     {
+        public int Id { get; set; }
         public string RegistrationNo { get; set; }
         public DateTime TRNIssueDate { get; set; }
 

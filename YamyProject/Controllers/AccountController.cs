@@ -5473,29 +5473,29 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    //Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
                 // 🔎 Default company rule check if selected
-                if (model.IsDefault)
-                {
-                    var checkQuery = "SELECT COUNT(*) FROM tbl_company WHERE default_company = 1";
-                    using var checkCmd = new MySqlCommand(checkQuery, conn);
-                    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
-                    if (exists > 0)
-                        return BadRequest(new { status = false, message = "Only one default company is allowed" });
-                }
+                //if (model.IsDefault)
+                //{
+                //    var checkQuery = "SELECT COUNT(*) FROM tbl_company WHERE default_company = 1";
+                //    using var checkCmd = new MySqlCommand(checkQuery, conn);
+                //    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                //    if (exists > 0)
+                //        return BadRequest(new { status = false, message = "Only one default company is allowed" });
+                //}
 
                 if (model.Id == 0) // ➝ INSERT
                 {
                     var insertQuery = @"
             INSERT INTO tbl_company
-            (name, address, descriptions, phone1, phone2, gmail, mobile_number, website, trn_no, country_id, logoComp, stampComp, default_company)
+            (name, address, descriptions, phone1, phone2, gmail, mobile_number, website, trn_no, code, logoComp, stampComp, default_company)
             VALUES
-            (@name, @address, @descriptions, @phone1, @phone2, @gmail, @mobile_number, @website, @trn_no, @countryId, @logoComp, @stampComp, @default_company)";
+            (@name, @address, @descriptions, @phone1, @phone2, @gmail, @mobile_number, @website, @trn_no, @code, @logoComp, @stampComp, @default_company)";
 
                     using var insertCmd = new MySqlCommand(insertQuery, conn);
                     insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
@@ -5507,7 +5507,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     insertCmd.Parameters.AddWithValue("@mobile_number", model.MobileNumber?.Trim() ?? "");
                     insertCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
                     insertCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
-                    insertCmd.Parameters.AddWithValue("@countryId", model.CountryId);
+                    insertCmd.Parameters.AddWithValue("@code", model.CountryId);
                     insertCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
                     insertCmd.Parameters.AddWithValue("@logoComp", model.LogoComp); // Pass image bytes
                     insertCmd.Parameters.AddWithValue("@stampComp", model.StampComp); // Pass image bytes
@@ -5520,7 +5520,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     var updateQuery = @"
             UPDATE tbl_company
             SET name = @name, address = @address, descriptions = @descriptions, phone1 = @phone1, phone2 = @phone2, gmail = @gmail,
-                mobile_number = @mobile_number, website = @website, trn_no = @trn_no, country_id = @countryId, logoComp = @logoComp,
+                mobile_number = @mobile_number, website = @website, trn_no = @trn_no, code = @code, logoComp = @logoComp,
                 stampComp = @stampComp, default_company = @default_company
             WHERE id = @id";
 
@@ -5534,7 +5534,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     updateCmd.Parameters.AddWithValue("@mobile_number", model.MobileNumber?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
-                    updateCmd.Parameters.AddWithValue("@countryId", model.CountryId);
+                    updateCmd.Parameters.AddWithValue("@code", model.CountryId);
                     updateCmd.Parameters.AddWithValue("@logoComp", model.LogoComp); // Pass image bytes
                     updateCmd.Parameters.AddWithValue("@stampComp", model.StampComp); // Pass image bytes
                     updateCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
@@ -5559,7 +5559,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
             if (model == null)
                 return BadRequest(new { status = false, message = "Invalid request" });
 
-            // 🔹 Validation
+            // Validation
             if (string.IsNullOrWhiteSpace(model.RegistrationNo))
                 return BadRequest(new { status = false, message = "Please enter TAX Registration No" });
 
@@ -5580,59 +5580,113 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔎 Insert VAT Configuration
-                var vatInsertQuery = @"
-            INSERT INTO `tbl_vat_configration` (
-                `registration_no`, `TRNIssue_date`, `quarter_one_start_date`, `quarter_one_end_date`, 
-                `quarter_one_due_date`, `quarter_two_start_date`, `quarter_two_end_date`, `quarter_two_due_date`, 
-                `quarter_three_start_date`, `quarter_three_end_date`, `quarter_three_due_date`, 
-                `quarter_four_start_date`, `quarter_four_end_date`, `quarter_four_due_date`
-            ) 
-            VALUES (
-                @registration_no, @TRNIssue_date, @quarter_one_start_date, @quarter_one_end_date, 
-                @quarter_one_due_date, @quarter_two_start_date, @quarter_two_end_date, @quarter_two_due_date, 
-                @quarter_three_start_date, @quarter_three_end_date, @quarter_three_due_date, 
-                @quarter_four_start_date, @quarter_four_end_date, @quarter_four_due_date
-            );";
+                // -------------------
+                // VAT Configuration
+                // -------------------
+                if (model.Id > 0) // Update
+                {
+                    var vatUpdateQuery = @"
+UPDATE `tbl_vat_configration` 
+SET `registration_no`=@registration_no, `TRNIssue_date`=@TRNIssue_date,
+    `quarter_one_start_date`=@quarter_one_start_date, `quarter_one_end_date`=@quarter_one_end_date, `quarter_one_due_date`=@quarter_one_due_date,
+    `quarter_two_start_date`=@quarter_two_start_date, `quarter_two_end_date`=@quarter_two_end_date, `quarter_two_due_date`=@quarter_two_due_date,
+    `quarter_three_start_date`=@quarter_three_start_date, `quarter_three_end_date`=@quarter_three_end_date, `quarter_three_due_date`=@quarter_three_due_date,
+    `quarter_four_start_date`=@quarter_four_start_date, `quarter_four_end_date`=@quarter_four_end_date, `quarter_four_due_date`=@quarter_four_due_date
+WHERE `id`=@id;";
 
-                using var vatCmd = new MySqlCommand(vatInsertQuery, conn);
-                vatCmd.Parameters.AddWithValue("@registration_no", model.RegistrationNo.Trim());
-                vatCmd.Parameters.AddWithValue("@TRNIssue_date", model.TRNIssueDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_one_start_date", model.QuarterOneStartDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_one_end_date", model.QuarterOneEndDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_one_due_date", model.QuarterOneDueDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_two_start_date", model.QuarterTwoStartDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_two_end_date", model.QuarterTwoEndDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_two_due_date", model.QuarterTwoDueDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_three_start_date", model.QuarterThreeStartDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_three_end_date", model.QuarterThreeEndDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_three_due_date", model.QuarterThreeDueDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_four_start_date", model.QuarterFourStartDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_four_end_date", model.QuarterFourEndDate.Date);
-                vatCmd.Parameters.AddWithValue("@quarter_four_due_date", model.QuarterFourDueDate.Date);
+                    using var vatCmd = new MySqlCommand(vatUpdateQuery, conn);
+                    vatCmd.Parameters.AddWithValue("@id", model.Id);
+                    vatCmd.Parameters.AddWithValue("@registration_no", model.RegistrationNo.Trim());
+                    vatCmd.Parameters.AddWithValue("@TRNIssue_date", model.TRNIssueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_one_start_date", model.QuarterOneStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_one_end_date", model.QuarterOneEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_one_due_date", model.QuarterOneDueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_two_start_date", model.QuarterTwoStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_two_end_date", model.QuarterTwoEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_two_due_date", model.QuarterTwoDueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_three_start_date", model.QuarterThreeStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_three_end_date", model.QuarterThreeEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_three_due_date", model.QuarterThreeDueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_four_start_date", model.QuarterFourStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_four_end_date", model.QuarterFourEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_four_due_date", model.QuarterFourDueDate.Date);
 
-                await vatCmd.ExecuteNonQueryAsync();
+                    await vatCmd.ExecuteNonQueryAsync();
+                }
+                else // Insert
+                {
+                    var vatInsertQuery = @"
+INSERT INTO `tbl_vat_configration` 
+(`registration_no`,`TRNIssue_date`,`quarter_one_start_date`,`quarter_one_end_date`,`quarter_one_due_date`,
+ `quarter_two_start_date`,`quarter_two_end_date`,`quarter_two_due_date`,
+ `quarter_three_start_date`,`quarter_three_end_date`,`quarter_three_due_date`,
+ `quarter_four_start_date`,`quarter_four_end_date`,`quarter_four_due_date`)
+VALUES 
+(@registration_no,@TRNIssue_date,@quarter_one_start_date,@quarter_one_end_date,@quarter_one_due_date,
+ @quarter_two_start_date,@quarter_two_end_date,@quarter_two_due_date,
+ @quarter_three_start_date,@quarter_three_end_date,@quarter_three_due_date,
+ @quarter_four_start_date,@quarter_four_end_date,@quarter_four_due_date);";
 
-                // 🔎 Insert Corporate Tax Configuration
-                var corporateTaxInsertQuery = @"
-            INSERT INTO `tbl_corporate_tax_configration` (
-                `corporateTax_no`, `trn_issue_date`, `corporatetax_start_date`, `corporatetax_end_date`, `corporatetax_due_date`
-            ) 
-            VALUES (
-                @corporateTax_no, @trn_issue_date, @corporatetax_start_date, 
-                @corporatetax_end_date, @corporatetax_due_date
-            );";
+                    using var vatCmd = new MySqlCommand(vatInsertQuery, conn);
+                    vatCmd.Parameters.AddWithValue("@registration_no", model.RegistrationNo.Trim());
+                    vatCmd.Parameters.AddWithValue("@TRNIssue_date", model.TRNIssueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_one_start_date", model.QuarterOneStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_one_end_date", model.QuarterOneEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_one_due_date", model.QuarterOneDueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_two_start_date", model.QuarterTwoStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_two_end_date", model.QuarterTwoEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_two_due_date", model.QuarterTwoDueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_three_start_date", model.QuarterThreeStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_three_end_date", model.QuarterThreeEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_three_due_date", model.QuarterThreeDueDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_four_start_date", model.QuarterFourStartDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_four_end_date", model.QuarterFourEndDate.Date);
+                    vatCmd.Parameters.AddWithValue("@quarter_four_due_date", model.QuarterFourDueDate.Date);
 
-                using var corporateTaxCmd = new MySqlCommand(corporateTaxInsertQuery, conn);
-                corporateTaxCmd.Parameters.AddWithValue("corporateTax_no", model.CorporateTaxNo.Trim());
-                corporateTaxCmd.Parameters.AddWithValue("trn_issue_date", model.TRNIssueDate.Date);
-                corporateTaxCmd.Parameters.AddWithValue("corporatetax_start_date", model.CorporateTaxStartDate.Date);
-                corporateTaxCmd.Parameters.AddWithValue("corporatetax_end_date", model.CorporateTaxEndDate.Date);
-                corporateTaxCmd.Parameters.AddWithValue("corporatetax_due_date", model.CorporateTaxDueDate.Date);
+                    await vatCmd.ExecuteNonQueryAsync();
+                }
 
-                await corporateTaxCmd.ExecuteNonQueryAsync();
+                // -------------------
+                // Corporate Tax Configuration
+                // -------------------
+                if (model.CorporateTaxId > 0) // Update
+                {
+                    var corporateUpdateQuery = @"
+UPDATE `tbl_corporate_tax_configration`
+SET `corporateTax_no`=@corporateTax_no, `trn_issue_date`=@trn_issue_date,
+    `corporatetax_start_date`=@corporatetax_start_date, `corporatetax_end_date`=@corporatetax_end_date,
+    `corporatetax_due_date`=@corporatetax_due_date
+WHERE `id`=@id;";
 
-                return Ok(new { status = true, message = "VAT and Corporate Tax data saved successfully" });
+                    using var corporateCmd = new MySqlCommand(corporateUpdateQuery, conn);
+                    corporateCmd.Parameters.AddWithValue("@id", model.CorporateTaxId);
+                    corporateCmd.Parameters.AddWithValue("@corporateTax_no", model.CorporateTaxNo.Trim());
+                    corporateCmd.Parameters.AddWithValue("@trn_issue_date", model.TRNIssueDateCorp.Date);
+                    corporateCmd.Parameters.AddWithValue("@corporatetax_start_date", model.CorporateTaxStartDate.Date);
+                    corporateCmd.Parameters.AddWithValue("@corporatetax_end_date", model.CorporateTaxEndDate.Date);
+                    corporateCmd.Parameters.AddWithValue("@corporatetax_due_date", model.CorporateTaxDueDate.Date);
+
+                    await corporateCmd.ExecuteNonQueryAsync();
+                }
+                else // Insert
+                {
+                    var corporateInsertQuery = @"
+INSERT INTO `tbl_corporate_tax_configration` 
+(`corporateTax_no`,`trn_issue_date`,`corporatetax_start_date`,`corporatetax_end_date`,`corporatetax_due_date`)
+VALUES 
+(@corporateTax_no,@trn_issue_date,@corporatetax_start_date,@corporatetax_end_date,@corporatetax_due_date);";
+
+                    using var corporateCmd = new MySqlCommand(corporateInsertQuery, conn);
+                    corporateCmd.Parameters.AddWithValue("@corporateTax_no", model.CorporateTaxNo.Trim());
+                    corporateCmd.Parameters.AddWithValue("@trn_issue_date", model.TRNIssueDateCorp.Date);
+                    corporateCmd.Parameters.AddWithValue("@corporatetax_start_date", model.CorporateTaxStartDate.Date);
+                    corporateCmd.Parameters.AddWithValue("@corporatetax_end_date", model.CorporateTaxEndDate.Date);
+                    corporateCmd.Parameters.AddWithValue("@corporatetax_due_date", model.CorporateTaxDueDate.Date);
+
+                    await corporateCmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "VAT and Corporate Tax saved successfully" });
             }
             catch (Exception ex)
             {
@@ -5668,6 +5722,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     {
                         response.Company = new CompanyDto
                         {
+                            Id = r.GetInt32("id"),
                             Name = r["name"]?.ToString(),
                             Description = r["descriptions"]?.ToString(),
                             Phone1 = r["phone1"]?.ToString(),
@@ -5702,6 +5757,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     {
                         response.VatConfig = new VatConfigDto
                         {
+
+                            Id = r.GetInt32("id"),
                             RegistrationNo = r["registration_no"].ToString(),
                             TRNIssueDate = Convert.ToDateTime(r["TRNIssue_date"]),
                             QuarterOneStartDate = Convert.ToDateTime(r["quarter_one_start_date"]),
@@ -5735,6 +5792,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                             EndDate = Convert.ToDateTime(r["corporatetax_end_date"]),
                             DueDate = Convert.ToDateTime(r["corporatetax_due_date"])
                         };
+
                     }
                 }
 
