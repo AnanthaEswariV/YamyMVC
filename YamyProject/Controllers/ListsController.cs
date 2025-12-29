@@ -857,7 +857,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetCOA()
         {
@@ -1179,8 +1178,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
-
 
         [HttpDelete]
         public async Task<IActionResult> DeleteCoaLevel4(int id)

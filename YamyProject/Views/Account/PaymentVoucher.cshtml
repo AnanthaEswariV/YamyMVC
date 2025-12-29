@@ -1,0 +1,570 @@
+﻿@{
+    ViewData["Title"] = "PaymentVoucher";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+    .dt-buttons .btn-primary:hover {
+        background-color: #3b51a0 !important;
+        color: #fff !important;
+    }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+     <div class="card-header position-relative text-center">
+        <strong>Payment Voucher Center</strong>
+
+        <button class="btn btn-primary btn-sm position-absolute end-0 top-50 translate-middle-y me-3"
+                id="btnAddStock" data-bs-toggle="modal"
+                data-bs-target="#paymentVoucherModal">
+            <i class="fas fa-plus me-1"></i> New PV
+        </button>
+    </div
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Reported By -->
+            <div style="min-width: 250px;">
+                <select class="form-select" id="type">
+                    <option value="">-- Select Type --</option>
+                    <option value="Vendor" selected>Vendor</option>
+                    <option value="Employee">Employee</option>
+                    <option value="General">General</option>
+                </select>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+            <div style="min-width: 200px;">
+    <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="enableDateFilter">
+        <label class="form-check-label fw-bold">
+            Enable Date Filter
+        </label>
+    </div>
+</div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table2">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Date</th>
+                    <th>Payment Code</th>
+                    <th>JV No</th>
+                    <th>Amount</th>
+                    <th>Debit Account</th>
+                    <th>Credit Account</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+<div class="modal fade" id="paymentVoucherModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Payment Voucher</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+
+                <!-- Header Info -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" id="date">
+                    </div>
+
+                    <div class="col-md-3">
+    <label class="form-label">Payment Type</label>
+    <div class="d-flex align-items-center gap-2">
+    <select class="form-select" id="paymentTypeSelect">
+        <option value="">-- Select --</option>
+        <option value="Vendor">Vendor</option>
+        <option value="Employee">Employee</option>
+        <option value="General">General</option>
+    </select>
+
+        <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" id="subContractor">
+            <label class="form-check-label" for="subContractor">
+                Subcontractors
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="col-md-3">
+    <label class="form-label">Payment Method</label>
+    <select class="form-select" id="paymentMethodSelect">
+        <option>Cheque</option>
+        <option>Cash</option>
+        <option>Transfer</option>
+    </select>
+</div>
+
+                </div>
+
+                <!-- Pay To - Debit -->
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="fw-bold mb-3">Pay To - Debit</h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Account Code</label>
+                            <input class="form-control" id="accountCodeInput" disabled>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Account Name</label>
+                            <select class="form-select" id="accountNameSelect">
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cost Center</label>
+    <select class="form-select costCenterSelect" data-selected-id="2">
+    </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Vendor Code</label>
+                            <input class="form-control" id="vendorCodeInput">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Vendor Name</label>
+                            <select class="form-select" id="vendorNameSelect">
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Note</label>
+                            <textarea class="form-control" rows="2" id="employeeNoteTextarea"></textarea>
+                        </div>
+
+
+                        <th class="amount-column">Amount</th>
+<td class="amount-column">2310.00</td>
+                    </div>
+                </div>
+
+                <!-- Pay From - Credit -->
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="fw-bold mb-3">Pay From - Credit</h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Account Code</label>
+                            <input class="form-control" id="creditAccountCodeInput" disabled>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Account Name</label>
+                            <select class="form-select" id="creditAccountNameSelect">
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                             <label class="form-label">Cost Center</label>
+    <select class="form-select costCenterSelect" data-selected-id="5">
+    </select>
+                        </div>
+
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cheque Name</label>
+                            <input class="form-control">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cheque</label>
+                            <select class="form-select">
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Cheque Date</label>
+                            <input type="date" class="form-control" id="chequeDate">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Book No</label>
+                            <input class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Date</th>
+                                <th>Inv No</th>
+                                <th>Amount</th>
+                                <th>Pay</th>
+                                <th>Payment</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>12/18/2025</td>
+                                <td>Vendor Opening Balance</td>
+                                <td>2310.000</td>
+                                <td><input type="checkbox"></td>
+                                <td>0</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button class="btn btn-success">Save</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+        <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script>
+      $(document).ready(function () {
+
+    // Initial load → ALL DATA
+    loadPaymentVoucher();
+
+    // Enable / Disable date inputs
+    $('#enableDateFilter').change(function () {
+        const enabled = $(this).is(':checked');
+        $('#startDate, #endDate').prop('disabled', !enabled);
+
+        if (!enabled) {
+            $('#startDate, #endDate').val('');
+            loadPaymentVoucher(); // reload ALL data
+        }
+    });
+
+    // Filter button click
+    $('#filterBtn').click(function () {
+        loadPaymentVoucher();
+    });
+
+    // Type change → reload data
+    $('#type').change(function () {
+        loadPaymentVoucher();
+    });
+
+    function loadPaymentVoucher() {
+
+        const type = $('#type').val();
+        const useDateFilter = $('#enableDateFilter').is(':checked');
+        const startDate = $('#startDate').val();
+        const endDate = $('#endDate').val();
+
+        // Validate only if date filter is enabled
+        if (useDateFilter && (!startDate || !endDate)) {
+            toastr.warning('Please select both Start and End dates.');
+            return;
+        }
+
+        $.ajax({
+            url: '@Url.Action("GetPaymentVoucherReport", "Account")',
+            type: 'GET',
+            data: {
+                type: type,
+                startDate: useDateFilter ? startDate : null,
+                endDate: useDateFilter ? endDate : null,
+                includeAllDates: !useDateFilter
+            },
+            beforeSend: function () {
+                $('#table2 tbody').html(`
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <div class="spinner-border text-primary me-2"></div>Loading...
+                        </td>
+
+                    </tr>
+                `);
+            },
+            success: function (res) {
+
+                if (!res.status) {
+                    toastr.error(res.message || 'Failed to load data');
+                    return;
+                }
+
+                if ($.fn.DataTable.isDataTable('#table2')) {
+                    $('#table2').DataTable().clear().destroy();
+                }
+
+                const tbody = $('#table2 tbody');
+                tbody.empty();
+
+                if (res.data && res.data.length > 0) {
+
+                    $.each(res.data, function (i, row) {
+                        tbody.append(`
+                            <tr data-id="${row.id}">
+                                <td>${i + 1}</td>
+                                <td>${row.Date ?? ''}</td>
+                                <td>${row["Payment Code"] ?? ''}</td>
+                                <td>${row["JV NO"] ?? ''}</td>
+                                <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
+                                <td>${row["Debit Account"] ?? ''}</td>
+                                <td>${row["Credit Account"] ?? ''}</td>
+                                 <td>
+                                            <button class="btn btn-sm btn-primary editCustomerBtn"
+                                                data-customer='${row.id}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger deleteCustomerBtn"
+                                                data-id='${row.id}'>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                  </td>
+                            </tr>
+                        `);
+                    });
+
+                    $('#table2').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            {
+                                extend: 'excelHtml5',
+                                className: 'btn btn-primary btn-sm'
+                            },
+                            {
+                                extend: 'pdfHtml5',
+                                className: 'btn btn-primary btn-sm',
+                                orientation: 'landscape',
+                                pageSize: 'A4'
+                            }
+                        ],
+                        pageLength: 15
+                    });
+
+                } else {
+                    tbody.append(`<tr><td colspan="8" class="text-center">No records found</td></tr>`);
+                }
+            },
+            error: function () {
+                toastr.error('Server error while loading data');
+            }
+        });
+    }
+
+         // Function to get today's date in YYYY-MM-DD format
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Set today's date when modal is opened
+        document.getElementById('paymentVoucherModal').addEventListener('shown.bs.modal', function () {
+            const todayDate = getTodayDate();
+
+            // Fill all date fields
+            const dateFields = [
+                'date',
+                'chequeDate'
+            ];
+
+            dateFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value) {
+                    field.value = todayDate;
+                }
+            });
+        });
+
+
+    // Load Pay To - Debit accounts based on Payment Type
+    $('#paymentTypeSelect').change(function() {
+        const paymentType = $(this).val();
+
+        if (!paymentType) return;
+
+        $.ajax({
+            url: '@Url.Action("GetPaymentTypeDetails", "Account")',
+            type: 'GET',
+            data: { paymentType: paymentType },
+            success: function(res) {
+                if (!res.status) {
+                    alert(res.message || 'Failed to fetch data');
+                    return;
+                }
+
+                const data = res.data;
+
+                // Enable/disable amount input
+                $('#amountInput').prop('disabled', !data.AmountEnabled);
+
+                // Populate Pay To - Debit
+                loadAccounts('#accountNameSelect', '#accountCodeInput', data.DebitAccountId, data.DebitAccountCode);
+            },
+            error: function() {
+                alert('Error loading payment type details');
+            }
+        });
+    });
+
+    // Load Pay From - Credit accounts based on Payment Method
+    $('#paymentMethodSelect').change(function() {
+        const paymentMethod = $(this).val();
+
+        if (!paymentMethod) return;
+
+        $.ajax({
+            url: '@Url.Action("GetPaymentMethodDetails", "Account")',
+            type: 'GET',
+            data: { paymentMethod: paymentMethod, paymentType: $('#paymentTypeSelect').val() },
+            success: function(res) {
+                if (!res.status) {
+                    alert(res.message || 'Failed to fetch data');
+                    return;
+                }
+
+                const data = res.data;
+
+                // Populate Pay From - Credit
+                loadAccounts('#creditAccountNameSelect', '#creditAccountCodeInput', data.CreditAccountId, data.CreditAccountCode);
+            },
+            error: function() {
+                alert('Error loading payment method details');
+            }
+        });
+    });
+
+    // Generic function to populate accounts dropdown + code input
+    function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
+        $.ajax({
+            url: '@Url.Action("GetAccruedSalaries", "HR")',
+            type: 'GET',
+            success: function(accounts) {
+                const $ddl = $(selectId);
+                const $codeBox = $(codeInputId);
+
+                $ddl.empty().append('<option value="">-- Select --</option>');
+
+                accounts.forEach(item => {
+                    const isSelected = item.id === defaultAccountId;
+                    $ddl.append(
+                        $('<option>', {
+                            value: item.id,
+                            text: item.code + ' - ' + item.name,
+                            'data-code': item.code,
+                            selected: isSelected
+                        })
+                    );
+                });
+
+                $codeBox.val(defaultAccountCode || '');
+
+                $ddl.off('change').on('change', function() {
+                    const selected = $(this).find(':selected');
+                    $codeBox.val(selected.data('code') || '');
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error("❌ Error loading accounts:", status, error);
+            }
+        });
+    }
+
+
+    populateAndSelectCostCenter();
+
+});
+
+
+function populateAndSelectCostCenter() {
+    $.ajax({
+        url: '@Url.Action("GetCostCenters", "Lists")',
+        type: 'GET',
+        success: function (res) {
+            const data = Array.isArray(res) ? res : (res.data || []);
+            if (!data.length) return;
+
+            // Use class selector for all cost center dropdowns
+            $('.costCenterSelect').each(function () {
+                const $select = $(this);
+                const selectedId = $select.data('selected-id');
+
+                $select.empty().append('<option value="">-- Select --</option>');
+
+                $.each(data, function (i, item) {
+                    const isSelected = String(item.id) === String(selectedId);
+                    const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                    $select.append(option);
+                });
+            });
+        },
+        error: function (xhr, status, error) {
+            console.error("❌ Error loading cost centers:", status, error);
+        }
+    });
+}
+
+
+
+
+
+
+    </script>
+}

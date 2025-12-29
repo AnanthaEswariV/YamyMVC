@@ -5467,6 +5467,22 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
             try
             {
+
+
+                  byte[] ImagebyteArray = null;
+        byte[] ImagebyteArrayStamp = null;
+
+        // Convert the Logo Image (Base64 string to byte array)
+        if (!string.IsNullOrWhiteSpace(model.LogoComp))
+        {
+            ImagebyteArray = Convert.FromBase64String(model.LogoComp); // Convert from base64 string to byte[]
+        }
+
+        // Convert the Stamp Image (Base64 string to byte array)
+        if (!string.IsNullOrWhiteSpace(model.StampComp))
+        {
+            ImagebyteArrayStamp = Convert.FromBase64String(model.StampComp); // Convert from base64 string to byte[]
+        }
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
@@ -5489,6 +5505,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 //        return BadRequest(new { status = false, message = "Only one default company is allowed" });
                 //}
 
+
+
                 if (model.Id == 0) // ➝ INSERT
                 {
                     var insertQuery = @"
@@ -5509,8 +5527,9 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     insertCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
                     insertCmd.Parameters.AddWithValue("@code", model.CountryId);
                     insertCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
-                    insertCmd.Parameters.AddWithValue("@logoComp", model.LogoComp); // Pass image bytes
-                    insertCmd.Parameters.AddWithValue("@stampComp", model.StampComp); // Pass image bytes
+                    insertCmd.Parameters.AddWithValue("@logoComp", ImagebyteArray ?? (object)DBNull.Value);
+                    insertCmd.Parameters.AddWithValue("@stampComp", ImagebyteArrayStamp ?? (object)DBNull.Value);
+
 
                     await insertCmd.ExecuteNonQueryAsync();
                     return Ok(new { status = true, message = "Company added successfully" });
@@ -5535,8 +5554,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     updateCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@code", model.CountryId);
-                    updateCmd.Parameters.AddWithValue("@logoComp", model.LogoComp); // Pass image bytes
-                    updateCmd.Parameters.AddWithValue("@stampComp", model.StampComp); // Pass image bytes
+                    updateCmd.Parameters.AddWithValue("@logoComp", ImagebyteArray ?? (object)DBNull.Value);
+                    updateCmd.Parameters.AddWithValue("@stampComp", ImagebyteArrayStamp ?? (object)DBNull.Value);
                     updateCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
                     updateCmd.Parameters.AddWithValue("@id", model.Id);
 
@@ -5568,6 +5587,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
             try
             {
+
+
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
@@ -5733,8 +5754,9 @@ VALUES
                             TrnNo = r["trn_no"]?.ToString(),
                             Address = r["address"]?.ToString(),
                             CountryId = r["country_id"] != DBNull.Value ? Convert.ToInt32(r["country_id"]) : 0,
-                            Logo = r["logoComp"] != DBNull.Value ? (byte[])r["logoComp"] : null,
-                            Stamp = r["stampComp"] != DBNull.Value ? (byte[])r["stampComp"] : null
+                            Logo = r["logoComp"] != DBNull.Value && r["logoComp"] != null ? Convert.ToBase64String((byte[])r["logoComp"]) : null,
+                            Stamp = r["stampComp"] != DBNull.Value && r["stampComp"] != null ? Convert.ToBase64String((byte[])r["stampComp"]) : null
+
                         };
                     }
                 }
@@ -5795,7 +5817,7 @@ VALUES
 
                     }
                 }
-
+        
                 return Ok(new { status = true, data = response });
             }
             catch (Exception ex)
@@ -5803,6 +5825,329 @@ VALUES
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        #endregion
+
+        #region Payment Voucher
+
+        public IActionResult PaymentVoucher()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentVoucherReport(string type, DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Determine date filter based on whether we include all dates
+                string dateFilter = includeAllDates
+                    ? ""
+                    : " AND tp.date >= @startDate AND tp.date <= @endDate";
+
+                // SQL query to fetch payment vouchers with type and date filter
+                string query = $@"
+        SELECT 
+            tp.id, 
+            tp.date AS `Date`,
+            tp.code AS `Payment Code`,
+            (SELECT CONCAT('000', MAX(tbl_transaction.transaction_id)) 
+                FROM tbl_transaction 
+                WHERE tbl_transaction.transaction_id = tp.id) AS `JV NO`, 
+            tp.amount AS Amount,
+            CONCAT(tc.code, ' - ', tc.name) AS `Debit Account`, 
+            CONCAT(tc1.code, ' - ', tc1.name) AS `Credit Account`
+        FROM tbl_payment_voucher tp
+        INNER JOIN tbl_coa_level_4 tc ON tp.debit_account_id = tc.id
+        INNER JOIN tbl_coa_level_4 tc1 ON tp.credit_account_id = tc1.id
+        WHERE tp.type = @type
+        {dateFilter}";
+
+                // Execute the query asynchronously
+                var result = new List<Dictionary<string, object>>();
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@type", type);
+
+                    // Add the date parameters if they are provided
+                    if (startDate.HasValue && endDate.HasValue)
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Value.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Value.Date);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        result.Add(row);
+                    }
+                }
+
+                // Return the results in JSON format
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                // Handle errors and return the error message
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentTypeDetails(string paymentType)
+        {
+            try
+            {
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Response object using anonymous type or dictionary-like structure
+                var response = new
+                {
+                    ShowCustomerPanel = false,
+                    ShowEmployeeList = false,
+                    AmountEnabled = false,
+                    Vendors = new List<object>(),
+                    Employees = new List<object>(),
+                    DebitAccountCode = string.Empty,
+                    DebitAccountId = 0
+                };
+
+                // We need a mutable object, so use a dictionary or dynamic object instead
+                var result = new
+                {
+                    ShowCustomerPanel = false,
+                    ShowEmployeeList = false,
+                    AmountEnabled = false,
+                    Vendors = new List<object>(),
+                    Employees = new List<object>(),
+                    DebitAccountCode = "",
+                    DebitAccountId = 0
+                };
+
+                // To mutate, let's use a dictionary:
+                var resDict = new Dictionary<string, object>
+                {
+                    ["ShowCustomerPanel"] = false,
+                    ["ShowEmployeeList"] = false,
+                    ["AmountEnabled"] = false,
+                    ["Vendors"] = new List<object>(),
+                    ["Employees"] = new List<object>(),
+                    ["DebitAccountCode"] = "",
+                    ["DebitAccountId"] = 0
+                };
+
+                if (string.Equals(paymentType, "Vendor", StringComparison.OrdinalIgnoreCase))
+                {
+                    resDict["ShowCustomerPanel"] = true;
+                    resDict["ShowEmployeeList"] = false;
+                    resDict["AmountEnabled"] = false;
+
+                    // Get vendors
+                    var vendors = new List<object>();
+                    using (var cmd = new MySqlCommand("SELECT id, name FROM tbl_vendor ORDER BY name", conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            vendors.Add(new
+                            {
+                                Id = reader.GetInt32("id"),
+                                Name = reader["name"].ToString() ?? ""
+                            });
+                        }
+                    }
+                    resDict["Vendors"] = vendors;
+
+                    // Get debit account info for Vendor category
+                    using (var cmd = new MySqlCommand("SELECT id, code FROM tbl_coa_level_4 WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@cat", "Vendor");
+                        using var reader = await cmd.ExecuteReaderAsync();
+                        if (await reader.ReadAsync())
+                        {
+                            resDict["DebitAccountCode"] = reader["code"].ToString() ?? "";
+                            resDict["DebitAccountId"] = reader.GetInt32("id");
+                        }
+                    }
+                }
+                else if (string.Equals(paymentType, "Employee", StringComparison.OrdinalIgnoreCase))
+                {
+                    resDict["ShowCustomerPanel"] = false;
+                    resDict["ShowEmployeeList"] = true;
+                    resDict["AmountEnabled"] = false;
+
+                    var employees = new List<object>();
+                    using (var cmd = new MySqlCommand("SELECT id, name FROM tbl_employee ORDER BY name", conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            employees.Add(new
+                            {
+                                Id = reader.GetInt32("id"),
+                                Name = reader["name"].ToString() ?? ""
+                            });
+                        }
+                    }
+                    resDict["Employees"] = employees;
+
+                    // Get debit account info for Accrued Salaries category
+                    using (var cmd = new MySqlCommand("SELECT id, code FROM tbl_coa_level_4 WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
+                        using var reader = await cmd.ExecuteReaderAsync();
+                        if (await reader.ReadAsync())
+                        {
+                            resDict["DebitAccountCode"] = reader["code"].ToString() ?? "";
+                            resDict["DebitAccountId"] = reader.GetInt32("id");
+                        }
+                    }
+                }
+                else if (string.Equals(paymentType, "General", StringComparison.OrdinalIgnoreCase))
+                {
+                    resDict["ShowCustomerPanel"] = false;
+                    resDict["ShowEmployeeList"] = false;
+                    resDict["AmountEnabled"] = true;
+                }
+
+                return Ok(new { status = true, data = resDict });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentMethodDetails(string paymentMethod, string paymentType)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(paymentMethod) ||
+                    !(paymentMethod == "Cash" || paymentMethod == "Cheque" || paymentMethod == "Transfer"))
+                {
+                    return BadRequest(new { status = false, message = "Invalid payment method" });
+                }
+
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var result = new Dictionary<string, object>
+                {
+                    ["ShowBankPanel"] = false,
+                    ["ShowTransferPanel"] = false
+                };
+
+                string query = string.Empty;
+
+                if (paymentMethod == "Cash")
+                {
+                    // Hide both panels
+                    result["ShowBankPanel"] = false;
+                    result["ShowTransferPanel"] = false;
+
+                    // Get default cash account
+                    query = @"SELECT id, code FROM tbl_coa_level_4 
+                      WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@cat", "Default Account For Cash");
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CreditAccountCode"] = reader["code"].ToString();
+                        result["CreditAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                    }
+                }
+                else if (paymentMethod == "Cheque")
+                {
+                    result["ShowBankPanel"] = true;
+                    result["ShowTransferPanel"] = false;
+                }
+                else if (paymentMethod == "Transfer")
+                {
+                    result["ShowBankPanel"] = false;
+                    result["ShowTransferPanel"] = true;
+
+                    // Get default bank account
+                    query = @"SELECT id, code FROM tbl_coa_level_4 
+                      WHERE main_id = (SELECT id FROM tbl_coa_level_3 WHERE NAME = 'Banks') LIMIT 1";
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CreditAccountCode"] = reader["code"].ToString();
+                        result["CreditAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                    }
+                }
+
+                // Auto-fill check name based on payment type
+                if (paymentType == "Vendor")
+                {
+                    query = "SELECT name FROM tbl_vendor ORDER BY name LIMIT 1";
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CheckName"] = reader["name"].ToString();
+                    }
+                }
+                else if (paymentType == "Employee")
+                {
+                    query = "SELECT name FROM tbl_employee ORDER BY name LIMIT 1";
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CheckName"] = reader["name"].ToString();
+                    }
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

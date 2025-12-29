@@ -1200,8 +1200,8 @@ namespace YamyProject.Core.Models
         public string Website { get; set; }
         public string TrnNo { get; set; }
         public int CountryId { get; set; }
-        public byte[] LogoComp { get; set; }
-        public byte[] StampComp { get; set; }
+        public string LogoComp { get; set; }
+        public string StampComp { get; set; }
         public bool IsDefault { get; set; }
     }
     public class VatConfigRequest
@@ -1250,8 +1250,8 @@ namespace YamyProject.Core.Models
         public string Address { get; set; }
         public int CountryId { get; set; }
         public bool IsDefault { get; set; }
-        public byte[] Logo { get; set; }
-        public byte[] Stamp { get; set; }
+        public string Logo { get; set; }
+        public string Stamp { get; set; }
     }
     public class VatConfigDto
     {

@@ -127,25 +127,30 @@
 
                                 <!-- RIGHT UPLOAD -->
                                 <div class="col-md-4 text-center">
+                                    <!-- Logo Upload -->
                                     <div class="mb-4">
                                         <img id="logoPreview" class="img-thumbnail mb-2 ">
                                         <div>
-                                            <button class="btn btn-primary btn-sm">
+                                            <button class="btn btn-primary btn-sm" type="button" id="btnUploadLogo">
                                                 <i class="bi bi-upload"></i> Browse
                                             </button>
+                                            <input type="file" id="logoInput" accept="image/*" style="display:none">
                                         </div>
                                         <small class="text-muted d-block mt-1">Logo</small>
                                     </div>
 
+                                    <!-- Stamp Upload -->
                                     <div>
                                         <img id="stampPreview" class="img-thumbnail mb-2">
                                         <div>
-                                            <button class="btn btn-primary btn-sm">
+                                            <button class="btn btn-primary btn-sm" type="button" id="btnUploadStamp">
                                                 <i class="bi bi-upload"></i> Browse
                                             </button>
+                                            <input type="file" id="stampInput" accept="image/*" style="display:none">
                                         </div>
                                         <small class="text-muted d-block mt-1">Stamp</small>
                                     </div>
+
                                 </div>
 
                             </div>
@@ -289,10 +294,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <script>
 
+      let companyId = 0;
+       let vatConfigId = 0;
+
      $(document).ready(function () {
         loadCompanyProfile();
         loadCountries();
-
 
     // Bind Save button
     $("#btnSaveAll").click(function(e) {
@@ -302,113 +309,43 @@
 
         loadCompanyProfile();
 
+
+
+            $("#btnUploadLogo").click(function() {
+        $("#logoInput").click();
     });
 
-     function loadCompanyProfile() {
-        $.ajax({
-            url: '@Url.Action("GetMasterCompany", "Account")',
-            type: "GET",
-            success: function (res) {
-                console.log(res);
-                if (!res.status || !res.data) {
-                    toastr.error(res.message || "Failed to load company data");
-                    return;
-                }
-                console.log(res.status);
-                console.log(res.data);
-                
-                let c = res.data.company;
-                let v = res.data.vatConfig;
-                let ct = res.data.corporateTax; // ✅ IMPORTANT
+    $("#btnUploadStamp").click(function() {
+        $("#stampInput").click();
+    });
 
-                /* ================= COMPANY ================= */
-                if (c) {
-                    $("#companyName").val(c.name);
-                    $("#address").val(c.address);
-                    $("#phone1").val(c.phone1);
-                    $("#phone2").val(c.phone2);
-                    $("#mobile").val(c.mobileNumber);
-                    $("#gmail").val(c.gmail);
-                    $("#website").val(c.website);
-                    $("#trnNo").val(c.trnNo);
-                    $("#countryId").val(c.countryId);
-                    $("#isDefaultCompany").prop("checked", c.isDefault);
 
-                    if (c.logo) {
-                        $("#logoPreview").attr("src", "data:image/png;base64," + c.logo);
-                    }
+    });
 
-                    if (c.stamp) {
-                        $("#stampPreview").attr("src", "data:image/png;base64," + c.stamp);
-                    }
-                }
 
-                /* ================= VAT ================= */
-                if (v) {
-                    $("#vatRegistrationNo").val(v.registrationNo);
-                    $("#vatTrnIssueDate").val(v.trnIssueDate?.substring(0, 10));
+          // Handle logo upload
+    $("#logoInput").change(function() {
+        previewImage(this, "#logoPreview");
+    });
 
-                    $("#q1Start").val(v.quarterOneStartDate?.substring(0, 10));
-                    $("#q1End").val(v.quarterOneEndDate?.substring(0, 10));
-                    $("#q1Due").val(v.quarterOneDueDate?.substring(0, 10));
+    // Handle stamp upload
+    $("#stampInput").change(function() {
+        previewImage(this, "#stampPreview");
+    });
 
-                    $("#q2Start").val(v.quarterTwoStartDate?.substring(0, 10));
-                    $("#q2End").val(v.quarterTwoEndDate?.substring(0, 10));
-                    $("#q2Due").val(v.quarterTwoDueDate?.substring(0, 10));
-
-                    $("#q3Start").val(v.quarterThreeStartDate?.substring(0, 10));
-                    $("#q3End").val(v.quarterThreeEndDate?.substring(0, 10));
-                    $("#q3Due").val(v.quarterThreeDueDate?.substring(0, 10));
-
-                    $("#q4Start").val(v.quarterFourStartDate?.substring(0, 10));
-                    $("#q4End").val(v.quarterFourEndDate?.substring(0, 10));
-                    $("#q4Due").val(v.quarterFourDueDate?.substring(0, 10));
-                }
-
-             if (ct) {
-        $("#corporateTaxNo").val(ct.corporateTaxNo);
-        $("#corpTrnIssueDate").val(ct.trnIssueDate?.substring(0, 10));
-        $("#corpStart").val(ct.startDate?.substring(0, 10));
-        $("#corpEnd").val(ct.endDate?.substring(0, 10));
-        $("#corpDue").val(ct.dueDate?.substring(0, 10));
+    // Preview image dynamically
+    function previewImage(input, previewId) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $(previewId).attr("src", e.target.result);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
     }
 
-            },
-            error: function (xhr, status, error) {
-                toastr.error("Error loading company profile");
-                console.error(error);
-            }
-        });
-    }
-
-     function loadCountries(selectedCountryId) {
-        let $country = $("#countryId");
-        $country.empty();
-        $country.append(`<option value="">-- Select Country --</option>`); // default option
-
-        $.ajax({
-            url: '@Url.Action("GetCountry", "Reports")', // returns all countries
-            type: 'GET',
-            success: function (res) {
-                if (res.data && res.data.length > 0) {
-                    res.data.forEach(function (c) {
-                        // Append each country and select if it matches selectedCountryId
-                        $country.append(`<option value="${c.id}" ${c.id == selectedCountryId ? "selected" : ""}>${c.name}</option>`);
-                    });
-                } else {
-                    $country.append(`<option value="">-- No Countries Available --</option>`);
-                }
-            },
-            error: function () {
-                console.error("Failed to load countries.");
-                $country.append(`<option value="">-- Error Loading Countries --</option>`);
-            }
-        });
-    }
-
-       let companyId = 0; 
-       let vatConfigId = 0;
-    // Load existing company + VAT data
+  
+        // Load existing company + VAT data
     function loadCompanyProfile() {
         $.ajax({
             url: '@Url.Action("GetMasterCompany", "Account")',
@@ -433,8 +370,18 @@
                 $("#countryId").val(c.countryId);
                 $("#isDefaultCompany").prop("checked", c.isDefault);
 
-                if (c.logo) $("#logoPreview").attr("src", "data:image/png;base64," + c.logo);
-                if (c.stamp) $("#stampPreview").attr("src", "data:image/png;base64," + c.stamp);
+
+                console.log("Logo Data: ", c.logo);
+        console.log("Stamp Data: ", c.stamp);
+
+                   if (c.logo) {
+        $("#logoPreview").attr("src", "data:image/png;base64," + c.logo);
+    }
+
+    if (c.stamp) {
+        $("#stampPreview").attr("src", "data:image/png;base64," + c.stamp);
+    }
+
 
                 // VAT fields
                 if (v) {
@@ -479,11 +426,46 @@
         });
     }
 
-    // Save Company + VAT sequentially
-    function saveCompanyProfile() {
-        // Gather Company data
+
+
+     function loadCountries(selectedCountryId) {
+        let $country = $("#countryId");
+        $country.empty();
+        $country.append(`<option value="">-- Select Country --</option>`); // default option
+
+        $.ajax({
+            url: '@Url.Action("GetCountry", "Reports")', // returns all countries
+            type: 'GET',
+            success: function (res) {
+                if (res.data && res.data.length > 0) {
+                    res.data.forEach(function (c) {
+                        // Append each country and select if it matches selectedCountryId
+                        $country.append(`<option value="${c.id}" ${c.id == selectedCountryId ? "selected" : ""}>${c.name}</option>`);
+                    });
+                } else {
+                    $country.append(`<option value="">-- No Countries Available --</option>`);
+                }
+            },
+            error: function () {
+                console.error("Failed to load countries.");
+                $country.append(`<option value="">-- Error Loading Countries --</option>`);
+            }
+        });
+    }
+
+     
+
+
+        async function saveCompanyProfile() {
+
+        const logoFile = $("#logoInput")[0].files[0];
+        const stampFile = $("#stampInput")[0].files[0];
+
+        const logoBase64 = await getBase64(logoFile);
+        const stampBase64 = await getBase64(stampFile);
+
         let companyData = {
-            Id: companyId,
+            Id: companyId, // 0 = insert, >0 = update
             Name: $("#companyName").val().trim(),
             Address: $("#address").val().trim(),
             Description: $("#address").val().trim(),
@@ -495,8 +477,8 @@
             TrnNo: $("#trnNo").val().trim(),
             CountryId: parseInt($("#countryId").val()) || 0,
             IsDefault: $("#isDefaultCompany").prop("checked"),
-            LogoComp: null, // handle separately if needed
-            StampComp: null
+            LogoComp: logoBase64,   // Base64 image
+            StampComp: stampBase64
         };
 
         // Company validation
@@ -505,68 +487,98 @@
         if (!companyData.Phone1) { toastr.error("Please enter phone number"); return; }
         if (companyData.CountryId <= 0) { toastr.error("Please select a country"); return; }
 
-        // Save Company first
-        $.ajax({
-            url: '@Url.Action("SaveCompany", "Account")',
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify(companyData),
-            success: function(res) {
-                if (!res.status) { toastr.error(res.message); return; }
-                toastr.success(res.message);
-
-
-                // Gather VAT data
-                let vatData = {
-                    Id: vatConfigId,
-                    RegistrationNo: $("#vatRegistrationNo").val().trim(),
-                    TRNIssueDate: $("#vatTrnIssueDate").val(),
-                    QuarterOneStartDate: $("#q1Start").val(),
-                    QuarterOneEndDate: $("#q1End").val(),
-                    QuarterOneDueDate: $("#q1Due").val(),
-                    QuarterTwoStartDate: $("#q2Start").val(),
-                    QuarterTwoEndDate: $("#q2End").val(),
-                    QuarterTwoDueDate: $("#q2Due").val(),
-                    QuarterThreeStartDate: $("#q3Start").val(),
-                    QuarterThreeEndDate: $("#q3End").val(),
-                    QuarterThreeDueDate: $("#q3Due").val(),
-                    QuarterFourStartDate: $("#q4Start").val(),
-                    QuarterFourEndDate: $("#q4End").val(),
-                    QuarterFourDueDate: $("#q4Due").val(),
-                    CorporateTaxNo: $("#corporateTaxNo").val().trim(),
-                    CorporateTaxStartDate: $("#corpStart").val(),
-                    CorporateTaxEndDate: $("#corpEnd").val(),
-                    CorporateTaxDueDate: $("#corpDue").val(),
-                    TRNIssueDateCorp: $("#corpTrnIssueDate").val()
-                };
-    
-                // VAT validation
-                if (!vatData.RegistrationNo) { toastr.error("Please enter TAX Registration No"); return; }
-                if (!vatData.CorporateTaxNo) { toastr.error("Please enter Corporate Tax No"); return; }
-
-                // Save VAT
-                $.ajax({
-                    url: '@Url.Action("SaveVatConfig", "Account")',
-                    type: "POST",
-                    contentType: "application/json",
-                    data: JSON.stringify(vatData),
-                    success: function(res2) {
-                        if (!res2.status) { toastr.error(res2.message); return; }
-                        toastr.success(res2.message || "VAT and Corporate Tax saved successfully");
-                        setTimeout(() => location.reload(), 1500);
-                    },
-                    error: function(err) {
-                        console.error("VAT save error", err);
-                        toastr.error("Error saving VAT/Corporate Tax");
-                    }
-                });
-            },
-            error: function(err) {
-                console.error("Company save error", err);
-                toastr.error("Error saving company data");
+        try {
+            // Save Company (insert/update)
+            const res = await $.ajax({
+                url: '@Url.Action("SaveCompany", "Account")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(companyData)
+            });
+            
+            if (!res.status) {
+                toastr.error(res.message || "Error saving company");
+                return;
             }
+
+                if (res.data && res.data.id) {
+        companyId = res.data.id;
+    } else if (!companyId) {
+        toastr.error("Failed to get Company ID after save");
+        return;
+    }
+
+
+            toastr.success(res.message || "Company saved successfully");
+
+           
+
+            // Prepare VAT data
+            const vatData = {
+                Id: vatConfigId,
+                 CompanyId: companyId,
+                RegistrationNo: $("#vatRegistrationNo").val().trim(),
+                TRNIssueDate: $("#vatTrnIssueDate").val(),
+                QuarterOneStartDate: $("#q1Start").val(),
+                QuarterOneEndDate: $("#q1End").val(),
+                QuarterOneDueDate: $("#q1Due").val(),
+                QuarterTwoStartDate: $("#q2Start").val(),
+                QuarterTwoEndDate: $("#q2End").val(),
+                QuarterTwoDueDate: $("#q2Due").val(),
+                QuarterThreeStartDate: $("#q3Start").val(),
+                QuarterThreeEndDate: $("#q3End").val(),
+                QuarterThreeDueDate: $("#q3Due").val(),
+                QuarterFourStartDate: $("#q4Start").val(),
+                QuarterFourEndDate: $("#q4End").val(),
+                QuarterFourDueDate: $("#q4Due").val(),
+                CorporateTaxNo: $("#corporateTaxNo").val().trim(),
+                CorporateTaxStartDate: $("#corpStart").val(),
+                CorporateTaxEndDate: $("#corpEnd").val(),
+                CorporateTaxDueDate: $("#corpDue").val(),
+                TRNIssueDateCorp: $("#corpTrnIssueDate").val()
+            };
+
+            // VAT validation
+            if (!vatData.RegistrationNo) { toastr.error("Please enter TAX Registration No"); return; }
+            if (!vatData.CorporateTaxNo) { toastr.error("Please enter Corporate Tax No"); return; }
+
+            // Save VAT
+            const resVat = await $.ajax({
+                url: '@Url.Action("SaveVatConfig", "Account")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(vatData)
+            });
+
+            if (!resVat.status) {
+                toastr.error(resVat.message || "Error saving VAT/Corporate Tax");
+                return;
+            }
+
+            toastr.success(resVat.message || "VAT and Corporate Tax saved successfully");
+
+            // Reload page or update UI
+            setTimeout(() => location.reload(), 1000);
+
+        } catch (err) {
+            console.error("Error saving company or VAT", err);
+            toastr.error("An unexpected error occurred");
+        }
+    }
+
+        function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            if (!file) return resolve(null);
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = error => reject(error);
         });
     }
+
 
 
 
