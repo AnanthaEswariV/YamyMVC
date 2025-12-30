@@ -5906,8 +5906,6 @@ VALUES
             }
         }
 
-
-
         [HttpGet]
         public async Task<IActionResult> GetPaymentTypeDetails(string paymentType)
         {
@@ -6044,8 +6042,6 @@ VALUES
             }
         }
 
-
-        [HttpGet]
         [HttpGet]
         public async Task<IActionResult> GetPaymentMethodDetails(string paymentMethod, string paymentType)
         {
@@ -6148,6 +6144,195 @@ VALUES
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetVendors(string type)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                id,
+                code,
+                name
+            FROM tbl_vendor
+            WHERE type = @type;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@type", type);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var vendors = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    vendors.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        code = reader["code"].ToString(),
+                        name = reader["name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = vendors });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentTypeDetailss(string paymentType, bool subContractor = false)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(paymentType) ||
+                    !(paymentType == "Vendor" || paymentType == "Employee" || paymentType == "General"))
+                {
+                    return BadRequest(new { status = false, message = "Invalid payment type" });
+                }
+
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var result = new Dictionary<string, object>
+                {
+                    ["ShowInvoiceGrid"] = false,
+                    ["ShowEmployeeList"] = false,
+                    ["EnableAmount"] = false,
+                    ["DebitAccountId"] = 0,
+                    ["DebitAccountCode"] = ""
+                };
+
+                if (paymentType == "Vendor")
+                {
+                    result["ShowInvoiceGrid"] = true;
+                    result["ShowEmployeeList"] = false;
+                    result["EnableAmount"] = false;
+
+                    // Load debit account
+                    string query = @"SELECT id, code 
+                     FROM tbl_coa_level_4 
+                     WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+                    using (var cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@cat", "Vendor");
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                                result["DebitAccountCode"] = reader["code"].ToString();
+                            }
+                        } // reader closed here
+                    }
+
+                    // Load vendors/subcontractors list (separate query after closing first reader)
+                    string vendorType = subContractor ? "Subcontractor" : "Vendor";
+                    query = "SELECT id, code, name FROM tbl_vendor WHERE type=@vendorType";
+                    using (var cmd2 = new MySqlCommand(query, conn))
+                    {
+                        cmd2.Parameters.AddWithValue("@vendorType", vendorType);
+                        using (var reader2 = await cmd2.ExecuteReaderAsync())
+                        {
+                            var vendors = new List<object>();
+                            while (await reader2.ReadAsync())
+                            {
+                                vendors.Add(new
+                                {
+                                    Id = reader2.GetInt32("id"),
+                                    Code = reader2["code"].ToString(),
+                                    Name = reader2["name"].ToString()
+                                });
+                            }
+                            result["Vendors"] = vendors;
+                        }
+                    }
+                }
+
+                else if (paymentType == "Employee")
+                {
+                    result["ShowInvoiceGrid"] = true;
+                    result["ShowEmployeeList"] = true;
+                    result["EnableAmount"] = false;
+
+                    // Load accrued salaries account
+                    string query = @"SELECT id, code 
+                             FROM tbl_coa_level_4 
+                             WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                        result["DebitAccountCode"] = reader["code"].ToString();
+                    }
+
+                    // Load employee list
+                    query = "SELECT id, code, name FROM tbl_employee ORDER BY name";
+                    using var cmd2 = new MySqlCommand(query, conn);
+                    using var reader2 = await cmd2.ExecuteReaderAsync();
+
+                    var employees = new List<object>();
+                    while (await reader2.ReadAsync())
+                    {
+                        employees.Add(new
+                        {
+                            Id = reader2.GetInt32("id"),
+                            Code = reader2["code"].ToString(),
+                            Name = reader2["name"].ToString()
+                        });
+                    }
+
+                    result["Employees"] = employees;
+                }
+                else if (paymentType == "General")
+                {
+                    result["ShowInvoiceGrid"] = false;
+                    result["ShowEmployeeList"] = false;
+                    result["EnableAmount"] = true;
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+        #endregion
+
+        #region Receipt Voucher
+
+        public IActionResult ReceiptVoucher()
+        {
+            return View();
+        }
 
         #endregion
 

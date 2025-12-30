@@ -47,9 +47,10 @@
                         <a href="">Voucher</a>
                         <ul class="submenu">
                             @* <li><a asp-controller="ReceiveVoucher" asp-action="Index">Payment Voucher</a></li> *@
-                            @* <li><a asp-controller="GeneralJournalVouchers" asp-action="Index">General Journal Voucher</a></li> *@
+                            @* <li><a asp-controller="GeneralJournalVouchers" asp-action="Index">General Journal Voucher</a></li> 
+                                 <li><a asp-controller="ReceiptVouchers" asp-action="Index">Receipt Voucher</a></li> *@
                             <li><a href="@Url.Action("PaymentVoucher", "Account")">Payment Voucher</a></li>
-                            <li><a asp-controller="ReceiptVouchers" asp-action="Index">Receipt Voucher</a></li>
+                            <li><a href="@Url.Action("ReceiptVoucher", "Account")">Receipt Voucher</a></li>
                             <li><a asp-controller="AdvancePayments" asp-action="Index">Advance Payment</a></li>
                             <li><a href="@Url.Action("GJVoucher", "Account")">General Journal Voucher</a></li>
                         </ul>

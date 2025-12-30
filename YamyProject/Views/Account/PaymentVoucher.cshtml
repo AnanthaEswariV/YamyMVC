@@ -107,25 +107,25 @@
                     </div>
 
                     <div class="col-md-3">
-    <label class="form-label">Payment Type</label>
-    <div class="d-flex align-items-center gap-2">
-    <select class="form-select" id="paymentTypeSelect">
-        <option value="">-- Select --</option>
-        <option value="Vendor">Vendor</option>
-        <option value="Employee">Employee</option>
-        <option value="General">General</option>
-    </select>
+                      <label class="form-label">Payment Type</label>
+                      <div class="d-flex align-items-center gap-2">
+                      <select class="form-select" id="paymentTypeSelect">
+                          <option value="">-- Select --</option>
+                          <option value="Vendor">Vendor</option>
+                          <option value="Employee">Employee</option>
+                          <option value="General">General</option>
+                      </select>
 
-        <div class="form-check mt-4">
-            <input class="form-check-input" type="checkbox" id="subContractor">
-            <label class="form-check-label" for="subContractor">
-                Subcontractors
-            </label>
-        </div>
-    </div>
-</div>
+                     <div class="form-check mt-4">
+                         <input class="form-check-input" type="checkbox" id="subContractor">
+                         <label class="form-check-label" for="subContractor">
+                             Subcontractors
+                         </label>
+                        </div>
+                      </div>
+                    </div>
 
-<div class="col-md-3">
+                    <div class="col-md-3">
     <label class="form-label">Payment Method</label>
     <select class="form-select" id="paymentMethodSelect">
         <option>Cheque</option>
@@ -154,8 +154,8 @@
 
                         <div class="col-md-3">
                             <label class="form-label">Cost Center</label>
-    <select class="form-select costCenterSelect" data-selected-id="2">
-    </select>
+                            <select class="form-select costCenterSelect" data-selected-id="2">
+                            </select>
                         </div>
 
                         <div class="col-md-3">
@@ -169,21 +169,27 @@
                             </select>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label">Note</label>
-                            <textarea class="form-control" rows="2" id="employeeNoteTextarea"></textarea>
-                        </div>
+                      <div class="col-md-3" id="amountInputDiv" style="display: none;">
+                          <label class="form-label">Amount</label>
+                          <input type="text" class="form-control" id="amountInput">
+                      </div>
+
+                    <div class="col-md-6" id="employeeNoteDiv" style="display:none;">
+    <label class="form-label">Select Employees</label>
+
+    <div id="employeeList"
+         class="border rounded p-2"
+         style="max-height:200px; overflow-y:auto;">
+    </div>
+</div>
 
 
-                        <th class="amount-column">Amount</th>
-<td class="amount-column">2310.00</td>
                     </div>
                 </div>
 
                 <!-- Pay From - Credit -->
                 <div class="border rounded p-3 mb-3">
                     <h6 class="fw-bold mb-3">Pay From - Credit</h6>
-
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Account Code</label>
@@ -201,30 +207,66 @@
     <select class="form-select costCenterSelect" data-selected-id="5">
     </select>
                         </div>
-
-
-                        <div class="col-md-3">
-                            <label class="form-label">Cheque Name</label>
-                            <input class="form-control">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Cheque</label>
-                            <select class="form-select">
-                            </select>
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Cheque Date</label>
-                            <input type="date" class="form-control" id="chequeDate">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Book No</label>
-                            <input class="form-control">
-                        </div>
                     </div>
                 </div>
+
+                  <div class="border rounded p-3 mb-3">
+                <div class="row g-3" id="chequeFields">
+                
+                    <div class="col-md-3">
+        <label class="form-label">Bank Name</label>
+        <select class="form-select" id="bankNameSelect"></select>
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Cheque Name</label>
+        <input class="form-control" id="chequeName">
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Cheque</label>
+        <select class="form-select" id="chequeSelect"></select>
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Cheque Date</label>
+        <input type="date" class="form-control" id="chequeDate">
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Bank Account Name</label>
+        <select class="form-select" id="bankAccountSelect"></select>
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Book No</label>
+        <select class="form-select" id="bookNoSelect"></select>
+    </div>
+                
+                </div>
+                </div>
+
+                  <div class="border rounded p-3 mb-3">
+                <div class="row g-3 d-none" id="transferFields">
+                
+                    <div class="col-md-3">
+        <label class="form-label">Transfer Date</label>
+        <input type="date" class="form-control" id="transferDate">
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Transfer Name</label>
+        <input class="form-control" id="transferName">
+    </div>
+                
+                    <div class="col-md-3">
+        <label class="form-label">Transfer Ref</label>
+        <input class="form-control" id="transferRef">
+    </div>
+                
+                </div>
+                </div>
+
 
                 <!-- Invoice Table -->
                 <div class="table-responsive">
@@ -241,15 +283,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>1</td>
-                                <td>12/18/2025</td>
-                                <td>Vendor Opening Balance</td>
-                                <td>2310.000</td>
-                                <td><input type="checkbox"></td>
-                                <td>0</td>
-                                <td></td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -283,26 +316,22 @@
     <script>
       $(document).ready(function () {
 
-    // Initial load → ALL DATA
     loadPaymentVoucher();
 
-    // Enable / Disable date inputs
     $('#enableDateFilter').change(function () {
         const enabled = $(this).is(':checked');
         $('#startDate, #endDate').prop('disabled', !enabled);
 
         if (!enabled) {
             $('#startDate, #endDate').val('');
-            loadPaymentVoucher(); // reload ALL data
+            loadPaymentVoucher(); 
         }
     });
 
-    // Filter button click
     $('#filterBtn').click(function () {
         loadPaymentVoucher();
     });
 
-    // Type change → reload data
     $('#type').change(function () {
         loadPaymentVoucher();
     });
@@ -406,8 +435,7 @@
         });
     }
 
-         // Function to get today's date in YYYY-MM-DD format
-        function getTodayDate() {
+    function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -415,8 +443,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Set today's date when modal is opened
-        document.getElementById('paymentVoucherModal').addEventListener('shown.bs.modal', function () {
+    document.getElementById('paymentVoucherModal').addEventListener('shown.bs.modal', function () {
             const todayDate = getTodayDate();
 
             // Fill all date fields
@@ -433,8 +460,6 @@
             });
         });
 
-
-    // Load Pay To - Debit accounts based on Payment Type
     $('#paymentTypeSelect').change(function() {
         const paymentType = $(this).val();
 
@@ -464,7 +489,55 @@
         });
     });
 
-    // Load Pay From - Credit accounts based on Payment Method
+
+
+   $('#paymentTypeSelect').change(function() {
+    const paymentType = $(this).val();
+
+    // Hide all dynamic fields first
+    $('#amountInputDiv').hide();
+    $('#employeeNoteDiv').hide();
+    $('#vendorCodeInput').closest('.col-md-3').hide(); // Hide Vendor Code input and label
+    $('#vendorNameSelect').closest('.col-md-6').hide(); // Hide Vendor Name select and label
+
+    // Reset the account name select and account code input
+    $('#accountNameSelect').empty().append('<option value="">-- Select --</option>');
+    $('#accountCodeInput').val('');
+
+    // Handle different payment types
+    if (paymentType === 'Vendor') {
+        // For Vendor: Show Vendor fields (Account Code, Account Name, Vendor Code, Vendor Name)
+        loadAccounts('#accountNameSelect', '#accountCodeInput', null, null);
+        // Show Vendor Code and Name related fields
+        $('#vendorCodeInput').closest('.col-md-3').show();  // Show Vendor Code
+        $('#vendorNameSelect').closest('.col-md-6').show(); // Show Vendor Name
+        $('#employeeNoteDiv').hide(); // Hide the note textarea
+        $('#amountInputDiv').hide(); // Hide the amount input
+    } 
+    else if (paymentType === 'Employee') {
+        // For Employee: Show Note textarea
+        $('#employeeNoteDiv').show();
+        $('#amountInputDiv').hide(); // Hide amount input
+        $('#vendorCodeInput').closest('.col-md-3').hide(); // Hide Vendor Code input
+        $('#vendorNameSelect').closest('.col-md-6').hide(); // Hide Vendor Name select
+    } 
+    else if (paymentType === 'General') {
+        // For General: Show Amount input
+        $('#amountInputDiv').show();
+        $('#employeeNoteDiv').hide(); // Hide note textarea
+        $('#vendorCodeInput').closest('.col-md-3').hide(); // Hide Vendor Code input
+        $('#vendorNameSelect').closest('.col-md-6').hide(); // Hide Vendor Name select
+    }
+    
+    if (!paymentType) {
+        // Reset everything if no payment type is selected
+        $('#accountNameSelect').prop('disabled', false);
+        $('#vendorCodeInput').closest('.col-md-3').hide(); // Hide Vendor Code input and label
+        $('#vendorNameSelect').closest('.col-md-6').hide(); // Hide Vendor Name select and label
+    }
+});
+
+
     $('#paymentMethodSelect').change(function() {
         const paymentMethod = $(this).val();
 
@@ -491,7 +564,34 @@
         });
     });
 
-    // Generic function to populate accounts dropdown + code input
+
+    $('#paymentMethodSelect').on('change', function () {
+
+    const method = $(this).val();
+
+    // Hide all method-based sections first
+    $('#chequeFields').addClass('d-none');
+    $('#transferFields').addClass('d-none');
+
+    if (method === 'Cheque') {
+        $('#chequeFields').removeClass('d-none');
+    }
+
+    if (method === 'Transfer') {
+        $('#transferFields').removeClass('d-none');
+    }
+
+    // Cash → nothing extra shown
+});
+
+
+
+$('#subContractor').on('change', function() {
+    if ($('#paymentTypeSelect').val() === 'Subcontractor') {
+        loadVendors();
+    }
+});
+
     function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
         $.ajax({
             url: '@Url.Action("GetAccruedSalaries", "HR")',
@@ -527,13 +627,14 @@
         });
     }
 
-
     populateAndSelectCostCenter();
+
+    loadEmployees();
+    loadVendors();
 
 });
 
-
-function populateAndSelectCostCenter() {
+    function populateAndSelectCostCenter() {
     $.ajax({
         url: '@Url.Action("GetCostCenters", "Lists")',
         type: 'GET',
@@ -561,6 +662,74 @@ function populateAndSelectCostCenter() {
     });
 }
 
+    function loadEmployees() {
+    $.ajax({
+        url: '@Url.Action("GetEmployees", "HR")',
+        type: 'GET',
+        success: function (res) {
+            console.log(res);
+
+            const $list = $('#employeeList'); 
+            $list.empty();
+
+            if (!res.status || !res.data || res.data.length === 0) {
+                $list.append('<div class="text-muted">No employees found</div>');
+                return;
+            }
+
+            res.data.forEach(emp => {
+                const checkbox = `
+                    <div class="form-check">
+                        <input class="form-check-input employee-checkbox"
+                               type="checkbox"
+                               value="${emp.id}"
+                               id="emp_${emp.id}">
+                        <label class="form-check-label" for="emp_${emp.id}">
+                            ${emp.code} - ${emp.name}
+                        </label>
+                    </div>
+                `;
+                $list.append(checkbox);
+            });
+        },
+        error: function () {
+            alert('Failed to load employees');
+        }
+    });
+}
+
+    function loadVendors() {
+    // Determine type to load
+    let type = 'Vendor';
+    if ($('#subContractor').is(':checked')) {
+        type = 'Subcontractor';
+    }
+
+    $.ajax({
+        url: '@Url.Action("GetVendors", "Account")',
+        type: 'GET',
+        data: { type: type },
+        success: function(res) {
+            if (!res.status) return;
+
+            const $vendorSelect = $('#vendorNameSelect');
+            const $vendorCode = $('#vendorCodeInput');
+
+            // Clear previous options
+            $vendorSelect.empty().append('<option value="">-- Select --</option>');
+            $vendorCode.val('');
+
+            // Fill new data
+            res.data.forEach(v => {
+                $vendorSelect.append(
+                    `<option value="${v.id}" data-code="${v.code}">
+                        ${v.code} - ${v.name}
+                    </option>`
+                );
+            });
+        }
+    });
+}
 
 
 

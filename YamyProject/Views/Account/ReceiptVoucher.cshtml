@@ -1,0 +1,115 @@
+﻿
+@{
+    ViewData["Title"] = "ReceiptVoucher";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+    /* Highlight selected row */
+    #table1 tbody tr.selected {
+        background-color: #c7e5b4;
+    }
+
+    .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong class="mx-auto">Receipt Voucher Center</strong>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#salesModal">
+            <i class="bi bi-plus-circle"></i> New Receipt
+        </button>
+    </div>
+    <div class="card-body" style="font-size:small">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <div style="min-width: 150px;">
+                <select class="form-select" id="method">
+                    <option value="Customer" selected>Customer</option>
+                    <option value="General">General</option>
+                </select>
+            </div>
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+
+        </div>
+
+        <!-- Default method: Two tables -->
+        <div id="defaultTables" style="height: 80vh; display: flex; flex-direction: column;">
+            <div class="card-body flex-grow-1" style="overflow-y: auto;">
+                <table class="table table-striped" id="table1">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Receipt Code</th>
+                            <th>Customer Name</th>
+                            <th>JV No</th>
+                            <th>Amount</th>
+                            <th>Debit Account</th>
+                            <th>Credit Account</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card-footer p-0" style="height: 150px; overflow-y: auto;">
+                <table class="table table-striped" id="table2">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Date</th>
+                            <th>Payment Id</th>
+                            <th>INV Id</th>
+                            <th>Hum Id</th>
+                            <th>INV Code</th>
+                            <th>Total</th>
+                            <th>Payment</th>
+                            <th>Description</th>
+                            <th>Cost Center Id</th>
+                            <th>Project Id</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
