@@ -218,7 +218,7 @@
         <select class="form-select" id="bankNameSelect"></select>
     </div>
                 
-                    <div class="col-md-3">
+        @*             <div class="col-md-3">
         <label class="form-label">Cheque Name</label>
         <input class="form-control" id="chequeName">
     </div>
@@ -227,7 +227,21 @@
         <label class="form-label">Cheque</label>
         <select class="form-select" id="chequeSelect"></select>
     </div>
-                
+            *@     
+
+
+    <div class="col-md-3">
+    <label class="form-label">Cheque Book Name</label>
+    <input type="text" class="form-control" id="chequeBookSelect" placeholder="Cheque Book Name">
+</div>
+
+<div class="col-md-3">
+    <label class="form-label">Cheque No</label>
+    <select class="form-select" id="chequeNoSelect">
+        <option value="">-- Select Cheque No --</option>
+    </select>
+</div>
+
                     <div class="col-md-3">
         <label class="form-label">Cheque Date</label>
         <input type="date" class="form-control" id="chequeDate">
@@ -314,7 +328,7 @@
         <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
-      $(document).ready(function () {
+    $(document).ready(function () {
 
     loadPaymentVoucher();
 
@@ -449,7 +463,8 @@
             // Fill all date fields
             const dateFields = [
                 'date',
-                'chequeDate'
+                'chequeDate',
+                'transferDate'
             ];
 
             dateFields.forEach(fieldId => {
@@ -490,8 +505,7 @@
     });
 
 
-
-   $('#paymentTypeSelect').change(function() {
+    $('#paymentTypeSelect').change(function() {
     const paymentType = $(this).val();
 
     // Hide all dynamic fields first
@@ -537,7 +551,6 @@
     }
 });
 
-
     $('#paymentMethodSelect').change(function() {
         const paymentMethod = $(this).val();
 
@@ -564,7 +577,6 @@
         });
     });
 
-
     $('#paymentMethodSelect').on('change', function () {
 
     const method = $(this).val();
@@ -584,9 +596,7 @@
     // Cash → nothing extra shown
 });
 
-
-
-$('#subContractor').on('change', function() {
+    $('#subContractor').on('change', function() {
     if ($('#paymentTypeSelect').val() === 'Subcontractor') {
         loadVendors();
     }
@@ -631,6 +641,8 @@ $('#subContractor').on('change', function() {
 
     loadEmployees();
     loadVendors();
+    loadBanks();
+    loadChequeBooks();
 
 });
 
@@ -667,7 +679,7 @@ $('#subContractor').on('change', function() {
         url: '@Url.Action("GetEmployees", "HR")',
         type: 'GET',
         success: function (res) {
-            console.log(res);
+        
 
             const $list = $('#employeeList'); 
             $list.empty();
@@ -731,9 +743,93 @@ $('#subContractor').on('change', function() {
     });
 }
 
+    function loadBanks() {
+    $.ajax({
+         url: '@Url.Action("GetBankss", "Account")',
+        type: 'GET',
+        success: function (res) {
+            const $bankSelect = $('#bankNameSelect');
+            $bankSelect.empty();
+            $bankSelect.append('<option value="">-- Select Bank --</option>');
 
+            if (!res || !res.status || !res.data || res.data.length === 0) {
+                $bankSelect.append('<option value="">No banks found</option>');
+                return;
+            }
 
+            res.data.forEach(bank => {
+                $bankSelect.append(`
+                    <option value="${bank.id}">${bank.bankName}</option>
+                `);
+            });
+        },
+        error: function () {
+            alert('Failed to load banks');
+        }
+    });
+}
 
+    $('#vendorNameSelect').on('change', function () {
+    var selectedText = $(this).find('option:selected').text().trim();
+
+    $('#chequeBookSelect')
+        .val(selectedText)
+        .css('text-align', 'left');
+});
+    
+    let chequeBooksData = [];
+    
+    function loadChequeBooks() {
+    $.ajax({
+        url: '@Url.Action("GetChequeBooks", "Account")',
+        type: 'GET',
+        success: function (res) {
+            chequeBooksData = res.data || [];
+            console.log(res);
+        },
+        error: function () {
+            alert('Failed to load cheque books');
+        }
+    });
+}
+    
+    $('#bankNameSelect').on('change', function () {
+    const selectedBankId = parseInt($(this).val());
+
+    const $chequeNoSelect = $('#chequeNoSelect');
+    const $bankAccountSelect = $('#bankAccountSelect');
+    const $bookNoSelect = $('#bookNoSelect');
+
+    // Reset dropdowns
+    $chequeNoSelect.empty().append('<option value="">-- Select Cheque No --</option>').prop('disabled', true);
+    $bookNoSelect.empty().append('<option value="">-- Select Book No --</option>').prop('disabled', true);
+    $bankAccountSelect.empty().append('<option value="">-- Select Bank Account --</option>').prop('disabled', true);
+
+    if (!selectedBankId) return;
+
+    // Use bank_card_id instead of bank_id
+    const bankChequeBooks = chequeBooksData.filter(cb => cb.bank_card_id === selectedBankId);
+
+    if (bankChequeBooks.length === 0) return;
+
+    const book = bankChequeBooks[0];
+
+    // Populate cheque numbers
+    for (let i = parseInt(book.startFrom); i <= parseInt(book.endIn); i++) {
+        $chequeNoSelect.append(`<option value="${i}">${i}</option>`);
+    }
+
+    // Populate book no
+    $bookNoSelect.append(`<option value="${book.chqBookNo}">${book.chqBookNo}</option>`);
+
+    // Populate bank account
+    $bankAccountSelect.append(`<option value="${book.bank_card_id}">${book.acName}</option>`);
+
+    // Enable
+    $chequeNoSelect.prop('disabled', false);
+    $bookNoSelect.prop('disabled', false);
+    $bankAccountSelect.prop('disabled', false);
+});
 
     </script>
 }

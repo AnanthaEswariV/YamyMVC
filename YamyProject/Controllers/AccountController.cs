@@ -6191,6 +6191,55 @@ VALUES
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetBankss()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, code, name, abb_name, ent_id, route_num, country_id
+                         FROM tbl_bank
+                         ORDER BY id DESC";
+
+                var data = new List<object>();
+                using (var cmd = new MySqlCommand(query, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    int sn = 1;
+                    while (await reader.ReadAsync())
+                    {
+                        data.Add(new
+                        {
+                            sn = sn++,
+                            id = reader["id"],
+                            code = reader["code"],
+                            bankName = reader["name"],
+                            abbName = reader["abb_name"],
+                            entId = reader["ent_id"],
+                            routeNo = reader["route_num"],
+                            countryId = reader["country_id"]
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetPaymentTypeDetailss(string paymentType, bool subContractor = false)
