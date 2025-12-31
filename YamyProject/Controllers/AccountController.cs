@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity.Data;
+using YamyProject.Core.Models.DTOs;
 
 namespace YamyProject.Controllers
 {
@@ -5835,8 +5836,99 @@ VALUES
             return View();
         }
 
+        //[HttpGet]
+        //public async Task<IActionResult> GetPaymentVoucherReport(string type, DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        //{
+        //    try
+        //    {
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+
+        //        await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        // Determine date filter based on whether we include all dates
+        //        string dateFilter = includeAllDates
+        //            ? ""
+        //            : " AND tp.date >= @startDate AND tp.date <= @endDate";
+
+        //        // SQL query to fetch payment vouchers with type and date filter
+        //        string query = $@"
+        //SELECT 
+        //    tp.id, 
+        //    tp.date AS `Date`,
+        //    tp.code AS `Payment Code`,
+        //    tp.type AS `Type`,
+        //    tp.method AS `Method`,
+        //    tp.amount AS `Amount`,
+        //    tp.debit_cost_center_id AS `DebitCostCenterID`,
+        //    tp.description AS `Description`,
+        //    tp.credit_cost_center_id AS `CreditCostCenterID`,
+        //    tp.bank_id AS `BankId`,
+        //    tp.bank_account_id AS `BankAccountId`,
+        //    tp.check_name AS `CheckName`,
+        //    tp.check_no AS `CheckNo`,
+        //    tp.check_date AS `CheckDate`,
+        //    tp.check_no AS `CheckNo`,
+        //    tp.trans_date AS `TransDate`,
+        //    tp.trans_name AS `TransName`,
+        //    tp.trans_ref AS `TransRef`,
+        //    tp.project_id AS `ProjectId`,
+        //    (SELECT CONCAT('000', MAX(tbl_transaction.transaction_id)) 
+        //        FROM tbl_transaction 
+        //        WHERE tbl_transaction.transaction_id = tp.id) AS `JV NO`, 
+        //    tp.amount AS Amount,
+        //    CONCAT(tc.code, ' - ', tc.name) AS `Debit Account`, 
+        //    CONCAT(tc1.code, ' - ', tc1.name) AS `Credit Account`
+        //FROM tbl_payment_voucher tp
+        //INNER JOIN tbl_coa_level_4 tc ON tp.debit_account_id = tc.id
+        //INNER JOIN tbl_coa_level_4 tc1 ON tp.credit_account_id = tc1.id
+        //WHERE tp.type = @type
+        //{dateFilter}";
+
+        //        // Execute the query asynchronously
+        //        var result = new List<Dictionary<string, object>>();
+        //        await using (var cmd = new MySqlCommand(query, conn))
+        //        {
+        //            cmd.Parameters.AddWithValue("@type", type);
+
+        //            // Add the date parameters if they are provided
+        //            if (startDate.HasValue && endDate.HasValue)
+        //            {
+        //                cmd.Parameters.AddWithValue("@startDate", startDate.Value.Date);
+        //                cmd.Parameters.AddWithValue("@endDate", endDate.Value.Date);
+        //            }
+
+        //            await using var reader = await cmd.ExecuteReaderAsync();
+        //            while (await reader.ReadAsync())
+        //            {
+        //                var row = new Dictionary<string, object>();
+        //                for (int i = 0; i < reader.FieldCount; i++)
+        //                {
+        //                    row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+        //                }
+        //                result.Add(row);
+        //            }
+        //        }
+
+        //        // Return the results in JSON format
+        //        return Ok(new { status = true, data = result });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Handle errors and return the error message
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
         [HttpGet]
-        public async Task<IActionResult> GetPaymentVoucherReport(string type, DateTime? startDate = null, DateTime? endDate = null, bool includeAllDates = false)
+        public async Task<IActionResult> GetPaymentVoucherReport(
+       string type,
+       DateTime? startDate = null,
+       DateTime? endDate = null,
+       bool includeAllDates = false)
         {
             try
             {
@@ -5848,36 +5940,43 @@ VALUES
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Determine date filter based on whether we include all dates
-                string dateFilter = includeAllDates
-                    ? ""
-                    : " AND tp.date >= @startDate AND tp.date <= @endDate";
+                // Date filter logic
+                string dateFilter = includeAllDates ? "" : " AND tp.date >= @startDate AND tp.date <= @endDate";
 
-                // SQL query to fetch payment vouchers with type and date filter
-                string query = $@"
-        SELECT 
-            tp.id, 
-            tp.date AS `Date`,
-            tp.code AS `Payment Code`,
-            (SELECT CONCAT('000', MAX(tbl_transaction.transaction_id)) 
-                FROM tbl_transaction 
-                WHERE tbl_transaction.transaction_id = tp.id) AS `JV NO`, 
-            tp.amount AS Amount,
-            CONCAT(tc.code, ' - ', tc.name) AS `Debit Account`, 
-            CONCAT(tc1.code, ' - ', tc1.name) AS `Credit Account`
-        FROM tbl_payment_voucher tp
-        INNER JOIN tbl_coa_level_4 tc ON tp.debit_account_id = tc.id
-        INNER JOIN tbl_coa_level_4 tc1 ON tp.credit_account_id = tc1.id
-        WHERE tp.type = @type
-        {dateFilter}";
+                // Fetch main voucher info
+                string voucherQuery = $@"
+SELECT 
+    tp.id, 
+    tp.date AS `Date`,
+    tp.code AS `Payment Code`,
+    tp.type AS `Type`,
+    tp.method AS `Method`,
+    tp.amount AS `Amount`,
+    tp.debit_account_id AS `DebitAccountId`,
+    tp.debit_cost_center_id AS `DebitCostCenterID`,
+    tp.credit_account_id AS `CreditAccountId`,
+    tp.credit_cost_center_id AS `CreditCostCenterID`,
+    tp.bank_id AS `BankId`,
+    tp.bank_account_id AS `BankAccountId`,
+    tp.check_name AS `CheckName`,
+    tp.check_no AS `CheckNo`,
+    tp.check_date AS `CheckDate`,
+    tp.trans_date AS `TransDate`,
+    tp.trans_name AS `TransName`,
+    tp.trans_ref AS `TransRef`,
+    tp.project_id AS `ProjectId`,
+    CONCAT(tc.code, ' - ', tc.name) AS `Debit Account`, 
+    CONCAT(tc1.code, ' - ', tc1.name) AS `Credit Account`
+FROM tbl_payment_voucher tp
+INNER JOIN tbl_coa_level_4 tc ON tp.debit_account_id = tc.id
+INNER JOIN tbl_coa_level_4 tc1 ON tp.credit_account_id = tc1.id
+WHERE tp.type = @type
+{dateFilter}";
 
-                // Execute the query asynchronously
-                var result = new List<Dictionary<string, object>>();
-                await using (var cmd = new MySqlCommand(query, conn))
+                var vouchers = new List<Dictionary<string, object>>();
+                await using (var cmd = new MySqlCommand(voucherQuery, conn))
                 {
                     cmd.Parameters.AddWithValue("@type", type);
-
-                    // Add the date parameters if they are provided
                     if (startDate.HasValue && endDate.HasValue)
                     {
                         cmd.Parameters.AddWithValue("@startDate", startDate.Value.Date);
@@ -5892,19 +5991,96 @@ VALUES
                         {
                             row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
                         }
-                        result.Add(row);
+                        vouchers.Add(row);
                     }
                 }
 
-                // Return the results in JSON format
-                return Ok(new { status = true, data = result });
+                // Fetch invoice details for each voucher
+                foreach (var voucher in vouchers)
+                {
+                    int voucherId = Convert.ToInt32(voucher["id"]);
+                    string invQuery = @"
+SELECT 
+    id AS InvId,
+    payment_id AS PaymentId,
+    hum_id AS HumId,
+    inv_id AS InvRefId,
+    inv_code AS InvCode,
+    date AS InvDate,
+    total AS Total,
+    payment AS Pay,
+    description AS Description,
+    voucher_type AS VoucherType
+FROM tbl_payment_voucher_details
+WHERE payment_id = @paymentId";
+
+                    var invoiceDetails = new List<Dictionary<string, object>>();
+                    await using (var invCmd = new MySqlCommand(invQuery, conn))
+                    {
+                        invCmd.Parameters.AddWithValue("@paymentId", voucherId);
+                        await using var invReader = await invCmd.ExecuteReaderAsync();
+                        while (await invReader.ReadAsync())
+                        {
+                            var invRow = new Dictionary<string, object>();
+                            for (int i = 0; i < invReader.FieldCount; i++)
+                            {
+                                invRow[invReader.GetName(i)] = invReader.IsDBNull(i) ? null : invReader.GetValue(i);
+                            }
+                            invoiceDetails.Add(invRow);
+                        }
+                    }
+
+                    voucher["InvoiceDetails"] = invoiceDetails;
+                }
+
+                // Fetch Vendors and Cost Centers data
+                string vendorQuery = "SELECT CONCAT(CODE, ' - ', NAME) AS name, id FROM tbl_vendor";
+                var vendors = new List<Dictionary<string, object>>();
+                await using (var vendorCmd = new MySqlCommand(vendorQuery, conn))
+                {
+                    await using var vendorReader = await vendorCmd.ExecuteReaderAsync();
+                    while (await vendorReader.ReadAsync())
+                    {
+                        var vendor = new Dictionary<string, object>
+                {
+                    { "id", vendorReader["id"] },
+                    { "name", vendorReader["name"] }
+                };
+                        vendors.Add(vendor);
+                    }
+                }
+
+                string costCenterQuery = "SELECT CONCAT(CODE, ' - ', NAME) AS name, id FROM tbl_cost_center";
+                var costCenters = new List<Dictionary<string, object>>();
+                await using (var costCenterCmd = new MySqlCommand(costCenterQuery, conn))
+                {
+                    await using var costCenterReader = await costCenterCmd.ExecuteReaderAsync();
+                    while (await costCenterReader.ReadAsync())
+                    {
+                        var costCenter = new Dictionary<string, object>
+                {
+                    { "id", costCenterReader["id"] },
+                    { "name", costCenterReader["name"] }
+                };
+                        costCenters.Add(costCenter);
+                    }
+                }
+
+                // Return the response with vouchers, vendors, and cost centers data
+                return Ok(new
+                {
+                    status = true,
+                    data = vouchers,
+                    vendors = vendors,
+                    costCenters = costCenters
+                });
             }
             catch (Exception ex)
             {
-                // Handle errors and return the error message
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         [HttpGet]
         public async Task<IActionResult> GetPaymentTypeDetails(string paymentType)
@@ -6372,7 +6548,411 @@ VALUES
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetVendorsWithInvoices(string paymentType = "", bool isSubcontractor = false, int? vendorId = null)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 1️⃣ Get vendor info
+                string vendorQuery = @"SELECT id, code, name, balance, date FROM tbl_vendor
+                               WHERE (@type = '' OR type = @type)
+                               AND (@vendorId IS NULL OR id = @vendorId)";
+                var vendors = new List<object>();
+                using (var cmd = new MySqlCommand(vendorQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@type", isSubcontractor ? "Subcontractor" : paymentType);
+                    cmd.Parameters.AddWithValue("@vendorId", vendorId.HasValue ? vendorId.Value : (object)DBNull.Value);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        vendors.Add(new
+                        {
+                            id = reader["id"],
+                            code = reader["code"],
+                            name = reader["name"],
+                            balance = reader["balance"],
+                            date = reader["date"]
+                        });
+                    }
+                }
+
+                // 2️⃣ For each vendor, get invoices and paid amounts
+                var result = new List<object>();
+                foreach (dynamic vendor in vendors)
+                {
+                    int vId = Convert.ToInt32(vendor.id);
+                    decimal balance = Convert.ToDecimal(vendor.balance ?? 0);
+                    DateTime obDate = vendor.date != null ? Convert.ToDateTime(vendor.date) : DateTime.Now;
+
+                    // Get total paid from opening balance
+                    decimal totalPaid = 0;
+                    string paidQuery = @"SELECT SUM(payment) as amount
+                                 FROM tbl_payment_voucher_details 
+                                 WHERE inv_code = 'Vendor Opening Balance' AND hum_id = @id";
+                    using (var cmd = new MySqlCommand(paidQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", vId);
+                        var val = await cmd.ExecuteScalarAsync();
+                        totalPaid = val != DBNull.Value ? Convert.ToDecimal(val) : 0;
+                    }
+
+                    decimal pendingOB = balance - totalPaid;
+
+                    // Get invoices
+                    var invoices = new List<object>();
+                    if (pendingOB != 0)
+                    {
+                        invoices.Add(new
+                        {
+                            sn = 1,
+                            invoiceId = "Vendor Opening Balance",
+                            date = obDate.ToString("yyyy-MM-dd"),
+                            amount = pendingOB
+                        });
+                    }
+
+                    string invoiceQuery = @"SELECT tbl_purchase.id, tbl_purchase.invoice_id, tbl_purchase.date, tbl_purchase.change
+                                    FROM tbl_purchase
+                                    WHERE tbl_purchase.state = 0 
+                                    AND tbl_purchase.change <> 0
+                                    AND tbl_purchase.vendor_id = @id
+                                    ORDER BY tbl_purchase.date";
+                    using (var cmd = new MySqlCommand(invoiceQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", vId);
+                        using var reader = await cmd.ExecuteReaderAsync();
+                        int snCounter = invoices.Count;
+                        while (await reader.ReadAsync())
+                        {
+                            invoices.Add(new
+                            {
+                                sn = ++snCounter,
+                                invoiceId = reader["invoice_id"],
+                                date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
+                                amount = reader["change"]
+                            });
+                        }
+                    }
+
+                    result.Add(new
+                    {
+                        vendor.id,
+                        vendor.code,
+                        vendor.name,
+                        invoices
+                    });
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+    
+        [HttpPost]
+        public async Task<IActionResult> SavePaymentVoucher([FromBody] PaymentVoucherRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (string.IsNullOrWhiteSpace(model.PaymentType))
+                return BadRequest(new { status = false, message = "Please choose payment type." });
+
+            if (model.Amount <= 0 && (model.InvoiceDetails == null || !model.InvoiceDetails.Any()))
+                return BadRequest(new { status = false, message = "Enter amount or invoice details." });
+
+            if (model.DebitAccountId <= 0)
+                return BadRequest(new { status = false, message = "Please choose debit account." });
+
+            if (model.CreditAccountId <= 0)
+                return BadRequest(new { status = false, message = "Please choose credit account." });
+
+            if (model.Method == "Cheque" && (!model.BankId.HasValue || !model.BankAccountId.HasValue || !model.BookNo.HasValue))
+                return BadRequest(new { status = false, message = "Please enter bank information first." });
+
+            if (model.Method == "Transfer" && (string.IsNullOrWhiteSpace(model.TransName) || string.IsNullOrWhiteSpace(model.TransRef)))
+                return BadRequest(new { status = false, message = "Please enter transfer information first." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in" });
+
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            using var transaction = await conn.BeginTransactionAsync();
+
+            try
+            {
+                string code;
+                int id = model.Id;
+
+                if (id == 0) // INSERT
+                {
+                    code = await GenerateNextPaymentCode(conn, transaction);
+
+                    var insertQuery = @"INSERT INTO tbl_payment_voucher
+                (date, code, type, method, amount, debit_account_id, debit_cost_center_id, description, credit_account_id,
+                 credit_cost_center_id, bank_id, bank_account_id, book_no, check_name, check_no, check_date,
+                 trans_date, trans_name, trans_ref, created_by, created_date, state)
+                 VALUES
+                 (@date, @code, @type, @method, @amount, @debit_account_id, @debit_cost_center_id, @description,
+                  @credit_account_id, @credit_cost_center_id, @bank_id, @bank_account_id, @book_no, @check_name,
+                  @check_no, @check_date, @trans_date, @trans_name, @trans_ref, @created_by, @created_date, 0);
+                 SELECT LAST_INSERT_ID();";
+
+                    using var cmd = new MySqlCommand(insertQuery, conn, transaction);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@type", model.PaymentType);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@debit_cost_center_id", model.DebitCostCenterId);
+                    cmd.Parameters.AddWithValue("@description", model.Description);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@credit_cost_center_id", model.CreditCostCenterId);
+                    cmd.Parameters.AddWithValue("@bank_id", model.Method == "Cheque" ? model.BankId : 0);
+                    cmd.Parameters.AddWithValue("@bank_account_id", model.Method == "Cheque" ? model.BankAccountId : 0);
+                    cmd.Parameters.AddWithValue("@book_no", model.BookNo ?? 0);
+                    cmd.Parameters.AddWithValue("@check_name", model.CheckName);
+                    cmd.Parameters.AddWithValue("@check_no", model.CheckNo);
+                    cmd.Parameters.AddWithValue("@check_date", model.Method == "Cheque" ? model.CheckDate : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_date", model.Method == "Transfer" ? model.TransDate : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_name", model.TransName);
+                    cmd.Parameters.AddWithValue("@trans_ref", model.TransRef);
+                    cmd.Parameters.AddWithValue("@created_by", userId);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+
+                    id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else // UPDATE
+                {
+                    // Get code
+                    using (var cmdCode = new MySqlCommand("SELECT code FROM tbl_payment_voucher WHERE id=@id", conn, transaction))
+                    {
+                        cmdCode.Parameters.AddWithValue("@id", id);
+                        code = (await cmdCode.ExecuteScalarAsync())?.ToString() ?? "PV-0000";
+                    }
+
+                    // Update voucher
+                    var updateQuery = @"UPDATE tbl_payment_voucher SET date=@date, code=@code, type=@type, method=@method, amount=@amount,
+                                debit_account_id=@debit_account_id, debit_cost_center_id=@debit_cost_center_id, description=@description,
+                                credit_account_id=@credit_account_id, credit_cost_center_id=@credit_cost_center_id, bank_id=@bank_id,
+                                bank_account_id=@bank_account_id, book_no=@book_no, check_name=@check_name, check_no=@check_no,
+                                check_date=@check_date, trans_date=@trans_date, trans_name=@trans_name, trans_ref=@trans_ref,
+                                modified_by=@modified_by, modified_date=@modified_date WHERE id=@id";
+
+                    using var cmd = new MySqlCommand(updateQuery, conn, transaction);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@type", model.PaymentType);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@debit_cost_center_id", model.DebitCostCenterId);
+                    cmd.Parameters.AddWithValue("@description", model.Description);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@credit_cost_center_id", model.CreditCostCenterId);
+                    cmd.Parameters.AddWithValue("@bank_id", model.Method == "Cheque" ? model.BankId : 0);
+                    cmd.Parameters.AddWithValue("@bank_account_id", model.Method == "Cheque" ? model.BankAccountId : 0);
+                    cmd.Parameters.AddWithValue("@book_no", model.BookNo ?? 0);
+                    cmd.Parameters.AddWithValue("@check_name", model.CheckName);
+                    cmd.Parameters.AddWithValue("@check_no", model.CheckNo);
+                    cmd.Parameters.AddWithValue("@check_date", model.Method == "Cheque" ? model.CheckDate : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_date", model.Method == "Transfer" ? model.TransDate : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_name", model.TransName);
+                    cmd.Parameters.AddWithValue("@trans_ref", model.TransRef);
+                    cmd.Parameters.AddWithValue("@modified_by", userId);
+                    cmd.Parameters.AddWithValue("@modified_date", DateTime.Now);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    // Delete old details
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_payment_voucher_details WHERE payment_id=@id", conn, transaction))
+                    {
+                        delCmd.Parameters.AddWithValue("@id", id);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Delete old transactions
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND type='PAYMENT'", conn, transaction))
+                    {
+                        delCmd.Parameters.AddWithValue("@id", id);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Delete old cost center transactions
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='Payment'", conn, transaction))
+                    {
+                        delCmd.Parameters.AddWithValue("@id", id);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // Insert Invoice Details & Journal Entries
+                foreach (var inv in model.InvoiceDetails)
+                {
+                    if (inv.Pay <= 0) continue;
+
+                    using var cmd = new MySqlCommand(@"INSERT INTO tbl_payment_voucher_details
+                (date, payment_id, hum_id, inv_id, inv_code, total, payment, description, voucher_type)
+                VALUES (@date,@payment_id,@hum_id,@inv_id,@inv_code,@total,@payment,@description,@voucher_type)", conn, transaction);
+
+                    cmd.Parameters.AddWithValue("@date", inv.InvDate);
+                    cmd.Parameters.AddWithValue("@payment_id", id);
+                    cmd.Parameters.AddWithValue("@hum_id", inv.HumId == 0 ? 0 : inv.HumId);
+                    cmd.Parameters.AddWithValue("@inv_id", inv.InvId);
+                    cmd.Parameters.AddWithValue("@inv_code", inv.InvCode);
+                    cmd.Parameters.AddWithValue("@total", inv.Total);
+                    cmd.Parameters.AddWithValue("@payment", inv.Pay);
+                    cmd.Parameters.AddWithValue("@description", inv.Description);
+                    cmd.Parameters.AddWithValue("@voucher_type", inv.VoucherType);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    await InsertJournalEntry(conn, transaction, model, inv, id, code, userId);
+                }
+
+                // Insert Cost Center Transactions
+                using var cmdDebit = new MySqlCommand(@"INSERT INTO tbl_cost_center_transaction 
+            (type,date,ref_id,debit,credit,description,cost_center_id) 
+            VALUES (@type,@date,@ref,@debit,@credit,@description,@cost_center_id)", conn, transaction);
+
+                cmdDebit.Parameters.AddWithValue("@type", "Payment");
+                cmdDebit.Parameters.AddWithValue("@date", model.Date);
+                cmdDebit.Parameters.AddWithValue("@ref", id);
+                cmdDebit.Parameters.AddWithValue("@debit", model.Amount);
+                cmdDebit.Parameters.AddWithValue("@credit", 0);
+                cmdDebit.Parameters.AddWithValue("@description", "Payment Debit Entry");
+                cmdDebit.Parameters.AddWithValue("@cost_center_id", model.DebitCostCenterId);
+                await cmdDebit.ExecuteNonQueryAsync();
+
+                using var cmdCredit = new MySqlCommand(@"INSERT INTO tbl_cost_center_transaction 
+            (type,date,ref_id,debit,credit,description,cost_center_id) 
+            VALUES (@type,@date,@ref,@debit,@credit,@description,@cost_center_id)", conn, transaction);
+
+                cmdCredit.Parameters.AddWithValue("@type", "Payment");
+                cmdCredit.Parameters.AddWithValue("@date", model.Date);
+                cmdCredit.Parameters.AddWithValue("@ref", id);
+                cmdCredit.Parameters.AddWithValue("@debit", 0);
+                cmdCredit.Parameters.AddWithValue("@credit", model.Amount);
+                cmdCredit.Parameters.AddWithValue("@description", "Payment Credit Entry");
+                cmdCredit.Parameters.AddWithValue("@cost_center_id", model.CreditCostCenterId);
+                await cmdCredit.ExecuteNonQueryAsync();
+
+                await transaction.CommitAsync();
+
+                return Ok(new { status = true, message = id == 0 ? "Payment voucher added successfully" : "Payment voucher updated successfully", id, code });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
+
+        private async Task<string> GenerateNextPaymentCode(MySqlConnection conn, MySqlTransaction transaction)
+        {
+            int lastCode = 0;
+            var cmd = new MySqlCommand("SELECT MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)) FROM tbl_payment_voucher", conn, transaction);
+            var result = await cmd.ExecuteScalarAsync();
+            if (result != DBNull.Value && result != null)
+                lastCode = Convert.ToInt32(result);
+            return "PV-" + (lastCode + 1).ToString("D4");
+        }
+
+        private async Task InsertJournalEntry(MySqlConnection conn, MySqlTransaction transaction, PaymentVoucherRequest model, InvoiceDetail inv, int paymentId, string code, int userId)
+        {
+            string tType = model.PaymentType switch
+            {
+                "Vendor" => inv.VoucherType == "Subcontractor" ? "Subcontractor Payment" : "Vendor Payment",
+                "Employee" => inv.VoucherType == "Employee Loan Payment" ? "Employee Loan Payment" : "Employee Salary Payment",
+                "General" => inv.VoucherType == "Petty Cash Request" ? "Employee Petty Cash Payment" : "General Payment",
+                _ => "Payment"
+            };
+
+            int humId = model.PaymentType switch
+            {
+                "Vendor" => 0,
+                "Employee" => inv.HumId,
+                _ => 0
+            };
+
+            // --- Debit Entry ---
+            using (var cmdDebit = new MySqlCommand(
+                @"INSERT INTO tbl_transaction 
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+          VALUES
+            (@date,@account_id,@debit,@credit,@transaction_id,@hum_id,@t_type,@type,@description,@created_by,@created_date,0,@voucher_no)",
+                conn, transaction))
+            {
+                cmdDebit.Parameters.AddWithValue("@date", model.Date);
+                cmdDebit.Parameters.AddWithValue("@account_id", model.DebitAccountId);
+                cmdDebit.Parameters.AddWithValue("@debit", inv.Pay);
+                cmdDebit.Parameters.AddWithValue("@credit", 0);
+                cmdDebit.Parameters.AddWithValue("@transaction_id", paymentId);
+                cmdDebit.Parameters.AddWithValue("@hum_id", humId);
+                cmdDebit.Parameters.AddWithValue("@t_type", tType);
+                cmdDebit.Parameters.AddWithValue("@type", "PAYMENT");
+                cmdDebit.Parameters.AddWithValue("@description", $"Payment Voucher NO. {code}");
+                cmdDebit.Parameters.AddWithValue("@created_by", userId);
+                cmdDebit.Parameters.AddWithValue("@created_date", DateTime.Now);
+                cmdDebit.Parameters.AddWithValue("@voucher_no", code);
+
+                await cmdDebit.ExecuteNonQueryAsync();
+            }
+
+            // --- Credit Entry ---
+            using (var cmdCredit = new MySqlCommand(
+                @"INSERT INTO tbl_transaction 
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+          VALUES
+            (@date,@account_id,@debit,@credit,@transaction_id,@hum_id,@t_type,@type,@description,@created_by,@created_date,0,@voucher_no)",
+                conn, transaction))
+            {
+                cmdCredit.Parameters.AddWithValue("@date", model.Date);
+                cmdCredit.Parameters.AddWithValue("@account_id", model.CreditAccountId);
+                cmdCredit.Parameters.AddWithValue("@debit", 0);
+                cmdCredit.Parameters.AddWithValue("@credit", inv.Pay);
+                cmdCredit.Parameters.AddWithValue("@transaction_id", paymentId);
+                cmdCredit.Parameters.AddWithValue("@hum_id", "0");
+                cmdCredit.Parameters.AddWithValue("@t_type", tType);
+                cmdCredit.Parameters.AddWithValue("@type", "PAYMENT");
+                cmdCredit.Parameters.AddWithValue("@description", $"Payment Voucher NO. {code}");
+                cmdCredit.Parameters.AddWithValue("@created_by", userId);
+                cmdCredit.Parameters.AddWithValue("@created_date", DateTime.Now);
+                cmdCredit.Parameters.AddWithValue("@voucher_no", code);
+
+                await cmdCredit.ExecuteNonQueryAsync();
+            }
+        }
 
         #endregion
 

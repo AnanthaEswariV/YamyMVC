@@ -1285,6 +1285,43 @@ namespace YamyProject.Core.Models
         public DateTime DueDate { get; set; }
     }
 
+    public class PaymentVoucherRequest
+    {
+        public int Id { get; set; } = 0; // 0 = insert, >0 = update
+        public string PaymentType { get; set; } = ""; // Employee, Vendor, General
+        public string Method { get; set; } = ""; // Cheque / Transfer / Cash
+        public int DebitAccountId { get; set; }
+        public int CreditAccountId { get; set; }
+        public decimal Amount { get; set; }
+        public string Description { get; set; } = "";
+        public int DebitCostCenterId { get; set; }
+        public int CreditCostCenterId { get; set; }
+        public int? BankId { get; set; }
+        public int? BankAccountId { get; set; }
+        public int? BookNo { get; set; }
+        public string CheckName { get; set; } = "";
+        public string CheckNo { get; set; } = "";
+        public DateTime? CheckDate { get; set; }
+        public DateTime? TransDate { get; set; }
+        public string TransName { get; set; } = "";
+        public string TransRef { get; set; } = "";
+        public DateTime Date { get; set; } = DateTime.Now;
+
+        public List<InvoiceDetail> InvoiceDetails { get; set; } = new();
+        public bool PrintVoucher { get; set; } = false;
+    }
+
+    public class InvoiceDetail
+    {
+        public int InvId { get; set; }
+        public string InvCode { get; set; } = "";
+        public decimal Total { get; set; }
+        public decimal Pay { get; set; }
+        public string Description { get; set; } = "";
+        public string VoucherType { get; set; } = "";
+        public int HumId { get; set; } 
+        public DateTime InvDate { get; set; }
+    }
 
 
 
