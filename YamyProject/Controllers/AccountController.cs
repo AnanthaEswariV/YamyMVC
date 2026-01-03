@@ -6457,10 +6457,11 @@ WHERE payment_id = @paymentId";
                     result["ShowEmployeeList"] = false;
                     result["EnableAmount"] = false;
 
-                    // Load debit account
+                    // ✅ Load debit account - CLOSE READER PROPERLY
                     string query = @"SELECT id, code 
                      FROM tbl_coa_level_4 
                      WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+
                     using (var cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@cat", "Vendor");
@@ -6471,12 +6472,13 @@ WHERE payment_id = @paymentId";
                                 result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
                                 result["DebitAccountCode"] = reader["code"].ToString();
                             }
-                        } // reader closed here
-                    }
+                        } // ✅ Reader closed here
+                    } // ✅ Command disposed here
 
-                    // Load vendors/subcontractors list (separate query after closing first reader)
+                    // ✅ Load vendors/subcontractors - NEW COMMAND AFTER READER CLOSED
                     string vendorType = subContractor ? "Subcontractor" : "Vendor";
                     query = "SELECT id, code, name FROM tbl_vendor WHERE type=@vendorType";
+
                     using (var cmd2 = new MySqlCommand(query, conn))
                     {
                         cmd2.Parameters.AddWithValue("@vendorType", vendorType);
@@ -6493,46 +6495,53 @@ WHERE payment_id = @paymentId";
                                 });
                             }
                             result["Vendors"] = vendors;
-                        }
-                    }
+                        } // ✅ Reader closed
+                    } // ✅ Command disposed
                 }
-
                 else if (paymentType == "Employee")
                 {
                     result["ShowInvoiceGrid"] = true;
                     result["ShowEmployeeList"] = true;
                     result["EnableAmount"] = false;
 
-                    // Load accrued salaries account
+                    // ✅ Load accrued salaries account - CLOSE READER PROPERLY
                     string query = @"SELECT id, code 
-                             FROM tbl_coa_level_4 
-                             WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
-                    using var cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
-                    using var reader = await cmd.ExecuteReaderAsync();
-                    if (await reader.ReadAsync())
-                    {
-                        result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
-                        result["DebitAccountCode"] = reader["code"].ToString();
-                    }
+                     FROM tbl_coa_level_4 
+                     WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
 
-                    // Load employee list
-                    query = "SELECT id, code, name FROM tbl_employee ORDER BY name";
-                    using var cmd2 = new MySqlCommand(query, conn);
-                    using var reader2 = await cmd2.ExecuteReaderAsync();
-
-                    var employees = new List<object>();
-                    while (await reader2.ReadAsync())
+                    using (var cmd = new MySqlCommand(query, conn))
                     {
-                        employees.Add(new
+                        cmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            Id = reader2.GetInt32("id"),
-                            Code = reader2["code"].ToString(),
-                            Name = reader2["name"].ToString()
-                        });
-                    }
+                            if (await reader.ReadAsync())
+                            {
+                                result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                                result["DebitAccountCode"] = reader["code"].ToString();
+                            }
+                        } // ✅ Reader closed here
+                    } // ✅ Command disposed here
 
-                    result["Employees"] = employees;
+                    // ✅ Load employee list - NEW COMMAND AFTER READER CLOSED
+                    query = "SELECT id, code, name FROM tbl_employee ORDER BY name";
+
+                    using (var cmd2 = new MySqlCommand(query, conn))
+                    {
+                        using (var reader2 = await cmd2.ExecuteReaderAsync())
+                        {
+                            var employees = new List<object>();
+                            while (await reader2.ReadAsync())
+                            {
+                                employees.Add(new
+                                {
+                                    Id = reader2.GetInt32("id"),
+                                    Code = reader2["code"].ToString(),
+                                    Name = reader2["name"].ToString()
+                                });
+                            }
+                            result["Employees"] = employees;
+                        } // ✅ Reader closed
+                    } // ✅ Command disposed
                 }
                 else if (paymentType == "General")
                 {
