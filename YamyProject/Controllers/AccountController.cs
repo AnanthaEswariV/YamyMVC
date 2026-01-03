@@ -5958,6 +5958,7 @@ SELECT
     tp.credit_cost_center_id AS `CreditCostCenterID`,
     tp.bank_id AS `BankId`,
     tp.bank_account_id AS `BankAccountId`,
+    tp.book_no AS `BookNo`,
     tp.check_name AS `CheckName`,
     tp.check_no AS `CheckNo`,
     tp.check_date AS `CheckDate`,
@@ -6664,7 +6665,7 @@ WHERE payment_id = @paymentId";
             }
         }
 
-    
+
         [HttpPost]
         public async Task<IActionResult> SavePaymentVoucher([FromBody] PaymentVoucherRequest model)
         {
@@ -6674,8 +6675,11 @@ WHERE payment_id = @paymentId";
             if (string.IsNullOrWhiteSpace(model.PaymentType))
                 return BadRequest(new { status = false, message = "Please choose payment type." });
 
-            if (model.Amount <= 0 && (model.InvoiceDetails == null || !model.InvoiceDetails.Any()))
+            if ((model.Amount == 0M || model.Amount < 0))
+            {
                 return BadRequest(new { status = false, message = "Enter amount or invoice details." });
+            }
+
 
             if (model.DebitAccountId <= 0)
                 return BadRequest(new { status = false, message = "Please choose debit account." });
@@ -6824,7 +6828,7 @@ WHERE payment_id = @paymentId";
 
                     cmd.Parameters.AddWithValue("@date", inv.InvDate);
                     cmd.Parameters.AddWithValue("@payment_id", id);
-                    cmd.Parameters.AddWithValue("@hum_id", inv.HumId == 0 ? 0 : inv.HumId);
+                    cmd.Parameters.AddWithValue("@hum_id", inv.VendorId == 0 ? 0 : inv.VendorId);
                     cmd.Parameters.AddWithValue("@inv_id", inv.InvId);
                     cmd.Parameters.AddWithValue("@inv_code", inv.InvCode);
                     cmd.Parameters.AddWithValue("@total", inv.Total);
@@ -6875,9 +6879,6 @@ WHERE payment_id = @paymentId";
             }
         }
 
-
-
-
         private async Task<string> GenerateNextPaymentCode(MySqlConnection conn, MySqlTransaction transaction)
         {
             int lastCode = 0;
@@ -6901,9 +6902,10 @@ WHERE payment_id = @paymentId";
             int humId = model.PaymentType switch
             {
                 "Vendor" => 0,
-                "Employee" => inv.HumId,
+                "Employee" => inv.VendorId ?? 0,
                 _ => 0
             };
+
 
             // --- Debit Entry ---
             using (var cmdDebit = new MySqlCommand(
@@ -6918,7 +6920,7 @@ WHERE payment_id = @paymentId";
                 cmdDebit.Parameters.AddWithValue("@debit", inv.Pay);
                 cmdDebit.Parameters.AddWithValue("@credit", 0);
                 cmdDebit.Parameters.AddWithValue("@transaction_id", paymentId);
-                cmdDebit.Parameters.AddWithValue("@hum_id", humId);
+                cmdDebit.Parameters.AddWithValue("@hum_id", inv.VendorId);
                 cmdDebit.Parameters.AddWithValue("@t_type", tType);
                 cmdDebit.Parameters.AddWithValue("@type", "PAYMENT");
                 cmdDebit.Parameters.AddWithValue("@description", $"Payment Voucher NO. {code}");
@@ -6942,7 +6944,7 @@ WHERE payment_id = @paymentId";
                 cmdCredit.Parameters.AddWithValue("@debit", 0);
                 cmdCredit.Parameters.AddWithValue("@credit", inv.Pay);
                 cmdCredit.Parameters.AddWithValue("@transaction_id", paymentId);
-                cmdCredit.Parameters.AddWithValue("@hum_id", "0");
+                cmdCredit.Parameters.AddWithValue("@hum_id", inv.VendorId);
                 cmdCredit.Parameters.AddWithValue("@t_type", tType);
                 cmdCredit.Parameters.AddWithValue("@type", "PAYMENT");
                 cmdCredit.Parameters.AddWithValue("@description", $"Payment Voucher NO. {code}");

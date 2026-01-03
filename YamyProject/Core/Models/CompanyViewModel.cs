@@ -1307,6 +1307,7 @@ namespace YamyProject.Core.Models
         public string TransRef { get; set; } = "";
         public DateTime Date { get; set; } = DateTime.Now;
 
+
         public List<InvoiceDetail> InvoiceDetails { get; set; } = new();
         public bool PrintVoucher { get; set; } = false;
     }
@@ -1319,9 +1320,10 @@ namespace YamyProject.Core.Models
         public decimal Pay { get; set; }
         public string Description { get; set; } = "";
         public string VoucherType { get; set; } = "";
-        public int HumId { get; set; } 
-        public DateTime InvDate { get; set; }
+        public int? VendorId { get; set; }  // make nullable
+        public DateTime? InvDate { get; set; } // make nullable
     }
+
 
 
 
