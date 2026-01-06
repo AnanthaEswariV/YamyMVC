@@ -6974,6 +6974,397 @@ WHERE payment_id = @paymentId";
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetReceiptVoucherReport(
+           string type,
+           DateTime? startDate = null,
+           DateTime? endDate = null,
+           bool includeAllDates = false)
+        {
+            try
+            {
+                if (!includeAllDates && (!startDate.HasValue || !endDate.HasValue))
+                {
+                    return BadRequest(new
+                    {
+                        status = false,
+                        message = "Start date and end date are required."
+                    });
+                }
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string dateFilter = includeAllDates
+                    ? ""
+                    : " AND tp.date BETWEEN @startDate AND @endDate";
+                string query = $@"
+SELECT DISTINCT
+    tp.id,
+    tp.date,
+    tp.code AS receiptCode,
+    CONCAT('000', t.transaction_id) AS jvNo,
+    tp.amount,
+    CONCAT(tc.code,' - ',tc.name) AS debitAccount,
+    CONCAT(tc1.code,' - ',tc1.name) AS creditAccount
+FROM tbl_receipt_voucher tp
+INNER JOIN tbl_coa_level_4 tc 
+    ON tp.debit_account_id = tc.id
+INNER JOIN tbl_coa_level_4 tc1 
+    ON tp.credit_account_id = tc1.id
+LEFT JOIN tbl_transaction t
+    ON t.transaction_id = tp.id 
+   AND t.t_type = 'RECEIPT'
+WHERE tp.type = @type
+{dateFilter}
+ORDER BY tp.date DESC";
+
+
+                var data = new List<object>();
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@type", type);
+
+                if (!includeAllDates)
+                {
+                    cmd.Parameters.AddWithValue("@startDate", startDate.Value.Date);
+                    cmd.Parameters.AddWithValue("@endDate", endDate.Value.Date.AddDays(1).AddSeconds(-1));
+                }
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        date = reader.GetDateTime("date"),
+                        receiptCode = reader.GetString("receiptCode"),
+                        jvNo = reader.IsDBNull("jvNo") ? null : reader.GetString("jvNo"),
+                        amount = reader.GetDecimal("amount"),
+                        debitAccount = reader.GetString("debitAccount"),
+                        creditAccount = reader.GetString("creditAccount")
+                    });
+                }
+
+
+                return Ok(new
+                {
+                    status = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetReceiptVoucherDetails(int receiptVoucherId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+                    SELECT
+                        id,
+                        date,
+                        payment_id,
+                        inv_id,
+                        hum_id,
+                        inv_code,
+                        total,
+                        payment,
+                        description,
+                        cost_center_id,
+                        project_id
+                    FROM tbl_receipt_voucher_details
+                    WHERE payment_id = @receiptVoucherId
+                    ORDER BY id";
+                    
+                var data = new List<object>();
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@receiptVoucherId", receiptVoucherId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        date = reader.GetDateTime("date"),
+
+                        paymentId = reader.IsDBNull("payment_id")
+                            ? (int?)null
+                            : reader.GetInt32("payment_id"),
+
+                        invoiceId = reader.IsDBNull("inv_id")
+                            ? (int?)null
+                            : reader.GetInt32("inv_id"),
+
+                        humanId = reader.IsDBNull("hum_id")
+                            ? (int?)null
+                            : reader.GetInt32("hum_id"),
+
+                        invoiceCode = reader.IsDBNull("inv_code")
+                            ? null
+                            : reader.GetString("inv_code"),
+
+                        total = reader.GetDecimal("total"),
+                        payment = reader.GetDecimal("payment"),
+
+                        description = reader.IsDBNull("description")
+                            ? null
+                            : reader.GetString("description"),
+
+                        costCenterId = reader.IsDBNull("cost_center_id")
+                            ? (int?)null
+                            : reader.GetInt32("cost_center_id"),
+
+                        projectId = reader.IsDBNull("project_id")
+                            ? (int?)null
+                            : reader.GetInt32("project_id")
+                    });
+                }
+
+
+                return Ok(new
+                {
+                    status = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentTypeDetailsReceipt(string paymentType)
+        {
+            try
+            {
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Define default response for the API
+                var resDict = new Dictionary<string, object>
+                {
+                    ["ShowCustomerPanel"] = false,
+                    ["AmountEnabled"] = false,
+                    ["DebitAccountCode"] = "",
+                    ["DebitAccountId"] = 0
+                };
+
+                // Check the payment type
+                if (string.Equals(paymentType, "Customer", StringComparison.OrdinalIgnoreCase))
+                {
+                    resDict["ShowCustomerPanel"] = true;  // Show Customer Panel
+                    resDict["AmountEnabled"] = false;     // Disable Amount Input
+
+                    // Get customers list
+                    var customers = new List<object>();
+                    using (var cmd = new MySqlCommand("SELECT id, code, name FROM tbl_customer ORDER BY name", conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            customers.Add(new
+                            {
+                                Id = reader.GetInt32("id"),
+                                Code = reader["code"].ToString() ?? "",
+                                Name = reader["name"].ToString() ?? ""
+                            });
+                        }
+                    }
+                    resDict["Customers"] = customers;
+
+                    // Get debit account info for Customer category
+                    using (var cmd = new MySqlCommand("SELECT id, code FROM tbl_coa_level_4 WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@cat", "Customer");
+                        using var reader = await cmd.ExecuteReaderAsync();
+                        if (await reader.ReadAsync())
+                        {
+                            resDict["DebitAccountCode"] = reader["code"].ToString() ?? "";
+                            resDict["DebitAccountId"] = reader.GetInt32("id");
+                        }
+                    }
+                }
+                else if (string.Equals(paymentType, "General", StringComparison.OrdinalIgnoreCase))
+                {
+                    resDict["ShowCustomerPanel"] = false;  // Hide Customer Panel
+                    resDict["AmountEnabled"] = true;       // Enable Amount Input
+                }
+
+                return Ok(new { status = true, data = resDict });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentMethodDetailsReceipt(string paymentMethod, string paymentType, int? customerId = null)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(paymentMethod) ||
+                    !(paymentMethod == "Cash" || paymentMethod == "Cheque" || paymentMethod == "Transfer"))
+                {
+                    return BadRequest(new { status = false, message = "Invalid payment method" });
+                }
+
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Define default result object
+                var result = new Dictionary<string, object>
+                {
+                    ["ShowBankPanel"] = false,
+                    ["ShowTransferPanel"] = false,
+                    ["CheckName"] = string.Empty,
+                    ["CreditAccountCode"] = string.Empty,
+                    ["CreditAccountId"] = 0
+                };
+
+                // Determine visibility of panels and fetch required data
+                string query = string.Empty;
+
+                if (paymentMethod == "Cash")
+                {
+                    // Hide both panels for Cash
+                    result["ShowBankPanel"] = false;
+                    result["ShowTransferPanel"] = false;
+
+                    // Get default cash account for Cash payment method
+                    query = @"SELECT id, code FROM tbl_coa_level_4 
+                      WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@cat", "Default Account For Cash");
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CreditAccountCode"] = reader["code"].ToString();
+                        result["CreditAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                    }
+                }
+                else if (paymentMethod == "Cheque")
+                {
+                    // Show Bank Panel for Cheque
+                    result["ShowBankPanel"] = true;
+                    result["ShowTransferPanel"] = false;
+
+                    // Get default cheque account for Cheque payment method
+                    query = @"SELECT id, code FROM tbl_coa_level_4 
+                      WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@cat", "PDC Receivable");
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CreditAccountCode"] = reader["code"].ToString();
+                        result["CreditAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                    }
+                }
+                else if (paymentMethod == "Transfer")
+                {
+                    // Show Transfer Panel for Transfer
+                    result["ShowBankPanel"] = false;
+                    result["ShowTransferPanel"] = true;
+
+                    // Get default bank account for Transfer payment method
+                    query = @"SELECT id, code FROM tbl_coa_level_4 
+                      WHERE main_id = (SELECT id FROM tbl_coa_level_3 WHERE NAME = 'Banks') LIMIT 1";
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CreditAccountCode"] = reader["code"].ToString();
+                        result["CreditAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                    }
+                }
+
+                // Auto-fill Check Name based on payment type (Customer or Vendor)
+                if (paymentType == "Customer" && customerId.HasValue)
+                {
+                    query = "SELECT name FROM tbl_customer WHERE id = @id";
+                    using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@id", customerId.Value);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CheckName"] = reader["name"].ToString();
+                    }
+                }
+                else if (paymentType == "Vendor")
+                {
+                    // Get Vendor name if payment type is Vendor
+                    query = "SELECT name FROM tbl_vendor ORDER BY name LIMIT 1";
+                    using var cmd = new MySqlCommand(query, conn);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        result["CheckName"] = reader["name"].ToString();
+                    }
+                }
+
+                // Return the result data
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region GJ Voucher

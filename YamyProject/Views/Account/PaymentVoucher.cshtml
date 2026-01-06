@@ -1300,6 +1300,7 @@ $(document).on("click", ".editPaymentVoucherBtn", function () {
                 if (!res.status || !res.data) return;
                 
                 const $employeeList = $('#employeeList');
+
                 $employeeList.empty();
                 
                 const selectedEmployeeIds = (voucher.employees || []).map(e => e.id);

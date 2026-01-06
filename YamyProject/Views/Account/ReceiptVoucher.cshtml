@@ -79,7 +79,6 @@
                         <tr>
                             <th>Date</th>
                             <th>Receipt Code</th>
-                            <th>Customer Name</th>
                             <th>JV No</th>
                             <th>Amount</th>
                             <th>Debit Account</th>
@@ -113,3 +112,848 @@
         </div>
     </div>
 </div>
+
+
+<div class="modal fade" id="salesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Receipt Voucher</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="paymentVoucherForm" novalidate>
+                <!-- Modal Body -->
+                <div class="modal-body">
+                    <input type="hidden" id="voucherId">
+                    <!-- Header Info -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" id="date">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Type</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <select class="form-select" id="paymentTypeSelect">
+                                    <option value="">-- Select --</option>
+                                    <option value="Customer">Customer</option>
+                                    <option value="General">General</option>
+                                </select>
+
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Method</label>
+                            <select class="form-select" id="paymentMethodSelect">
+                                <option>Cheque</option>
+                                <option>Cash</option>
+                                <option>Transfer</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <!-- Pay To - Debit -->
+                    <div class="border rounded p-3 mb-3">
+                        <h6 class="fw-bold mb-3">Received From - Credit</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Account Code</label>
+                                <input class="form-control" id="accountCodeInput" disabled>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Account Name</label>
+                                <select class="form-select" id="accountNameSelect">
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Cost Center</label>
+                                <select class="form-select costCenterSelect">
+                                </select>
+                            </div>
+
+                            @*     <div class="col-md-3">
+                            <label class="form-label">Vendor Code</label>
+                            <input class="form-control" id="vendorCodeInput">
+                        </div> *@
+
+                            <div class="col-md-6">
+                                <label class="form-label">Customer Name</label>
+                                <select class="form-select" id="vendorNameSelect">
+                                </select>
+                            </div>
+
+                            <div class="col-md-3" id="amountInputDiv" style="display: none;">
+                                <label class="form-label">Amount</label>
+                                <input type="text" class="form-control" id="amountInput">
+                            </div>
+
+                            <div class="col-md-6" id="employeeNoteDiv" style="display:none;">
+                                <label class="form-label">Select Employees</label>
+
+                                <div id="employeeList"
+                                     class="border rounded p-2"
+                                     style="max-height:200px; overflow-y:auto;">
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+
+                    <!-- Pay From - Credit -->
+                    <div class="border rounded p-3 mb-3">
+                        <h6 class="fw-bold mb-3">Received To - Debit</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Account Code</label>
+                                <input class="form-control" id="creditAccountCodeInput" disabled>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Account Name</label>
+                                <select class="form-select" id="creditAccountNameSelect">
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Cost Center</label>
+                                <select class="form-select creditCostCenterSelect">
+                                </select>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="row g-3" id="chequeFields">
+
+                            <div class="col-md-3">
+                                <label class="form-label">Bank Name</label>
+                                <select class="form-select" id="bankNameSelect"></select>
+                            </div>
+
+
+
+
+                            <div class="col-md-3">
+                                <label class="form-label">Cheque Book Name</label>
+                                <input type="text" class="form-control" id="chequeBookSelect" placeholder="Cheque Book Name">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Cheque No</label>
+                                <select class="form-select" id="chequeNoSelect">
+                                    <option value="">-- Select Cheque No --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Cheque Date</label>
+                                <input type="date" class="form-control" id="chequeDate">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Bank Account Name</label>
+                                <select class="form-select" id="bankAccountSelect"></select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Book No</label>
+                                <select class="form-select" id="bookNoSelect"></select>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="row g-3 d-none" id="transferFields">
+
+                            <div class="col-md-3">
+                                <label class="form-label">Transfer Date</label>
+                                <input type="date" class="form-control" id="transferDate">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Transfer Name</label>
+                                <input class="form-control" id="transferName">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Transfer Ref</label>
+                                <input class="form-control" id="transferRef">
+                            </div>
+
+                        </div>
+                    </div>
+
+
+                    <!-- Invoice Table -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>SN</th>
+                                    <th>Date</th>
+                                    <th>Inv No</th>
+                                    <th>Amount</th>
+                                    <th>Pay</th>
+                                    <th>Payment</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script>
+
+        $(document).ready(function () {
+
+            loadReceiptVoucherReport();
+            loadBanks();
+            loadAccountsForPageLoad();
+            loadChequeBooks();
+            populateAndSelectCostCenter();
+            loadVendors();
+            // Enable / disable date fields
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+            });
+
+            // Filter button
+            $('#filterBtn').click(function () {
+                loadReceiptVoucherReport();
+            });
+
+            // Method change (Customer / General)
+            $('#method').change(function () {
+                loadReceiptVoucherReport();
+            });
+
+            function loadReceiptVoucherReport() {
+
+                const type = $('#method').val(); // Customer / General
+                const includeAllDates = $('#chkAllData').is(':checked');
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+
+                if (!includeAllDates && (!startDate || !endDate)) {
+                    toastr.warning('Please select both start and end dates.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetReceiptVoucherReport", "Account")',
+                    type: 'GET',
+                    data: {
+                        type: type,
+                        startDate: startDate || null,
+                        endDate: endDate || null,
+                        includeAllDates: includeAllDates
+                    },
+                    beforeSend: function () {
+                        $('#table1 tbody').html(`
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <div class="spinner-border text-primary me-2"></div> Loading...
+                                </td>
+                            </tr>
+                        `);
+                    },
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to load receipt vouchers');
+                            return;
+                        }
+
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().clear().destroy();
+                        }
+
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+
+                                  $.each(res.data, function (i, row) {
+
+            const tr = `
+                <tr data-id="${row.id}">
+                   <td>${row.date ? new Date(row.date).toISOString().split('T')[0] : ''}</td>
+                    <td>${row.receiptCode ?? ''}</td>
+                    <td>${row.jvNo ?? ''}</td>
+                    <td class="text-end">${(row.amount ?? 0).toLocaleString()}</td>
+                    <td>${row.debitAccount ?? ''}</td>
+                    <td>${row.creditAccount ?? ''}</td>
+                   <td>
+                                    <button class="btn btn-sm btn-primary editPaymentVoucherBtn"
+                                        data-customer='${JSON.stringify(row)}'>
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+
+                                    <button class="btn btn-sm btn-danger deleteCustomerBtn"
+                                        data-id='${row.id}'>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                </tr>
+            `;
+
+            tbody.append(tr);
+        });
+
+
+                            $('#table1').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm',
+                                        orientation: 'landscape',
+                                        pageSize: 'A4'
+                                    }
+                                ],
+                                order: [[0, 'desc']],
+                                pageLength: 15
+                            });
+
+                        } else {
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        No records found
+                                    </td>
+                                </tr>
+                            `);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading receipt voucher report');
+                    }
+                });
+            }
+
+             $('#table1 tbody').on('click', 'tr', function () {
+
+            const receiptVoucherId = $(this).data('id');
+            if (!receiptVoucherId) return;
+
+            loadReceiptVoucherDetails(receiptVoucherId);
+
+            // highlight selected row
+            $('#table1 tbody tr').removeClass('table-active');
+            $(this).addClass('table-active');
+        });
+
+             function loadReceiptVoucherDetails(receiptVoucherId) {
+
+            $.ajax({
+                url: '@Url.Action("GetReceiptVoucherDetails", "Account")',
+                type: 'GET',
+                data: { receiptVoucherId },
+                beforeSend: function () {
+                    $('#table2 tbody').html(`
+                        <tr>
+                            <td colspan="11" class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary"></div>
+                                Loading details...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load details');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#table2')) {
+                        $('#table2').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table2 tbody');
+                    tbody.empty();
+
+                    if (!res.data || res.data.length === 0) {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="11" class="text-center text-muted">
+                                    No details found
+                                </td>
+                            </tr>
+                        `);
+                        return;
+                    }
+
+                    $.each(res.data, function (i, row) {
+
+                        tbody.append(`
+                            <tr>
+                                <td>${row.id}</td>
+                                <td>${row.date ? new Date(row.date).toISOString().split('T')[0] : ''}</td>
+                                <td>${row.paymentId ?? ''}</td>
+                                <td>${row.invoiceId ?? ''}</td>
+                                <td>${row.humanId ?? ''}</td>
+                                <td>${row.invoiceCode ?? ''}</td>
+                                <td class="text-end">${(row.total ?? 0).toLocaleString()}</td>
+                                <td class="text-end">${(row.payment ?? 0).toLocaleString()}</td>
+                                <td>${row.description ?? ''}</td>
+                                <td>${row.costCenterId ?? ''}</td>
+                                <td>${row.projectId ?? ''}</td>
+                            </tr>
+                        `);
+                    });
+
+                    $('#table2').DataTable({
+                        paging: false,
+                        searching: false,
+                        info: false,
+                        order: [[0, 'asc']]
+                    });
+                },
+                error: function () {
+                    toastr.error('Error loading receipt voucher details');
+                }
+            });
+        }
+
+
+             $('#paymentTypeSelect').change(function() {
+            const paymentType = $(this).val();
+            const isSubContractor = $('#subContractor').is(':checked');
+
+            // Hide all dynamic fields first
+            $('#amountInputDiv').hide();
+            $('#employeeNoteDiv').hide();
+            $('#vendorNameSelect').closest('.col-md-6').hide();
+
+            // Reset the account name select and account code input
+            $('#accountNameSelect').empty().append('<option value="">-- Select --</option>');
+            $('#accountCodeInput').val('');
+            $('#vendorNameSelect').empty().append('<option value="">-- Select --</option>');
+
+            // Clear invoice table
+            $('#paymentVoucherModal table tbody').empty();
+
+            if (!paymentType) {
+                return;
+            }
+
+            // Call API to get payment type details
+            $.ajax({
+                url: '@Url.Action("GetPaymentTypeDetailsReceipt", "Account")',
+                type: 'GET',
+                data: {
+                    paymentType: paymentType,
+                    subContractor: isSubContractor
+                },
+                success: function(res) {
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to fetch payment type details');
+                        return;
+                    }
+
+                    const data = res.data;
+
+                    // Set Debit Account (Pay To) - Load all accounts first
+                    $.ajax({
+                        url: '@Url.Action("GetAccruedSalaries", "HR")',
+                        type: 'GET',
+                        success: function(accounts) {
+                            const $debitSelect = $('#accountNameSelect');
+                            $debitSelect.empty().append('<option value="">-- Select --</option>');
+
+                            accounts.forEach(item => {
+                                $debitSelect.append(
+                                    `<option value="${item.id}" data-code="${item.code}">${item.code} - ${item.name}</option>`
+                                );
+                            });
+
+                            // Set the default debit account from API
+                            if (data.DebitAccountId) {
+                                $debitSelect.val(data.DebitAccountId);
+                                $('#accountCodeInput').val(data.DebitAccountCode || '');
+                            }
+                        }
+                    });
+
+                    // Handle different payment types
+                    if (paymentType === 'Customer') {
+                        // Show customer dropdown
+                        $('#vendorNameSelect').closest('.col-md-6').show();
+
+                        if (data.Customers && data.Customers.length > 0) {
+                            console.log(data);
+                            const $vendorSelect = $('#vendorNameSelect');
+                            $vendorSelect.empty().append('<option value="">-- Select Customer --</option>');
+
+                            data.Customers.forEach(v => {
+                                $vendorSelect.append(
+                                    `<option value="${v.id}" data-code="${v.code}">${v.code} - ${v.name}</option>`
+                                );
+                            });
+                        }
+
+                        $('#amountInputDiv').hide();
+                    }
+                    else if (paymentType === 'General') {
+                        // Show amount input
+                        $('#amountInputDiv').show();
+                        $('#vendorNameSelect').closest('.col-md-6').hide();
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error('Error loading payment type details');
+                }
+            });
+        });
+
+              $('#paymentMethodSelect').on('change', function () {
+
+            const method = $(this).val();
+
+            // Hide all method-based sections first
+            $('#chequeFields').addClass('d-none');
+            $('#transferFields').addClass('d-none');
+
+            if (method === 'Cheque') {
+                $('#chequeFields').removeClass('d-none');
+            }
+
+            if (method === 'Transfer') {
+                $('#transferFields').removeClass('d-none');
+            }
+
+            // Cash → nothing extra shown
+        });
+
+                $('#paymentMethodSelect').change(function() {
+            const paymentMethod = $(this).val();
+
+            if (!paymentMethod) return;
+
+            $.ajax({
+                url: '@Url.Action("GetPaymentMethodDetailsReceipt", "Account")',
+                type: 'GET',
+                data: { paymentMethod: paymentMethod, paymentType: $('#paymentTypeSelect').val() },
+                success: function(res) {
+                    if (!res.status) {
+                        alert(res.message || 'Failed to fetch data');
+                        return;
+                    }
+
+                    const data = res.data;
+
+                    // Populate Pay From - Credit
+                    loadAccounts('#creditAccountNameSelect', '#creditAccountCodeInput', data.CreditAccountId, data.CreditAccountCode);
+                },
+                error: function() {
+                    alert('Error loading payment method details');
+                }
+            });
+        });
+
+
+
+        });
+
+
+             function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
+                    const $ddl = $(selectId);
+                    const $codeBox = $(codeInputId);
+
+                    $ddl.empty().append('<option value="">-- Select --</option>');
+
+                    accounts.forEach(item => {
+                        const isSelected = item.id === defaultAccountId;
+                        $ddl.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code,
+                                selected: isSelected
+                            })
+                        );
+                    });
+
+                    $codeBox.val(defaultAccountCode || '');
+
+                    $ddl.off('change').on('change', function() {
+                        const selected = $(this).find(':selected');
+                        $codeBox.val(selected.data('code') || '');
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                }
+            });
+        }
+
+            let chequeBooksData = [];
+
+            function loadChequeBooks() {
+            $.ajax({
+                url: '@Url.Action("GetChequeBooks", "Account")',
+                type: 'GET',
+                success: function (res) {
+                    chequeBooksData = res.data || [];
+                },
+                error: function () {
+                    alert('Failed to load cheque books');
+                }
+            });
+        }
+
+            $('#bankNameSelect').on('change', function () {
+            const selectedBankId = parseInt($(this).val());
+
+            const $chequeNoSelect = $('#chequeNoSelect');
+            const $bankAccountSelect = $('#bankAccountSelect');
+            const $bookNoSelect = $('#bookNoSelect');
+
+            // Reset dropdowns
+            $chequeNoSelect.empty().append('<option value="">-- Select Cheque No --</option>').prop('disabled', true);
+            $bookNoSelect.empty().append('<option value="">-- Select Book No --</option>').prop('disabled', true);
+            $bankAccountSelect.empty().append('<option value="">-- Select Bank Account --</option>').prop('disabled', true);
+
+            if (!selectedBankId) return;
+
+            // Use bank_card_id instead of bank_id
+            const bankChequeBooks = chequeBooksData.filter(cb => cb.bank_card_id === selectedBankId);
+
+            if (bankChequeBooks.length === 0) return;
+
+            const book = bankChequeBooks[0];
+
+            // Populate cheque numbers
+            for (let i = parseInt(book.startFrom); i <= parseInt(book.endIn); i++) {
+                $chequeNoSelect.append(`<option value="${i}">${i}</option>`);
+            }
+
+            // Populate book no
+            $bookNoSelect.append(`<option value="${book.chqBookNo}">${book.chqBookNo}</option>`);
+
+            // Populate bank account
+            $bankAccountSelect.append(`<option value="${book.bank_card_id}">${book.acName}</option>`);
+
+            // Enable
+            $chequeNoSelect.prop('disabled', false);
+            $bookNoSelect.prop('disabled', false);
+            $bankAccountSelect.prop('disabled', false);
+        });
+
+            function loadAccountsForPageLoad() {
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function (accounts) {
+                    // Handle Debit Account (accountNameSelect, accountCodeInput)
+                    const $debitAccountSelect = $("#accountNameSelect");
+                    const $debitAccountCodeInput = $("#accountCodeInput");
+                    const currentDebitAccountId = parseInt($debitAccountSelect.val()) || 0;
+
+                    $debitAccountSelect.empty().append('<option value="">-- Select --</option>');
+
+                    accounts.forEach(item => {
+                        const isSelected = item.id === currentDebitAccountId;
+                        $debitAccountSelect.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code,
+                                selected: isSelected
+                            })
+                        );
+                    });
+
+                    // Set the code input based on the selected account
+                    const selectedDebit = $debitAccountSelect.find('option:selected');
+                    $debitAccountCodeInput.val(selectedDebit.data('code') || '');
+
+                    // Update the code input when the selection changes
+                    $debitAccountSelect.off('change').on('change', function () {
+                        const selectedOption = $(this).find(':selected');
+                        $debitAccountCodeInput.val(selectedOption.data('code') || '');
+                    });
+
+                    // Handle Credit Account (creditAccountNameSelect, creditAccountCodeInput)
+                    const $creditAccountSelect = $("#creditAccountNameSelect");
+                    const $creditAccountCodeInput = $("#creditAccountCodeInput");
+                    const currentCreditAccountId = parseInt($creditAccountSelect.val()) || 0;
+
+                    $creditAccountSelect.empty().append('<option value="">-- Select --</option>');
+
+                    accounts.forEach(item => {
+                        const isSelected = item.id === currentCreditAccountId;
+                        $creditAccountSelect.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code,
+                                selected: isSelected
+                            })
+                        );
+                    });
+
+                    // Set the code input based on the selected account
+                    const selectedCredit = $creditAccountSelect.find('option:selected');
+                    $creditAccountCodeInput.val(selectedCredit.data('code') || '');
+
+                    // Update the code input when the selection changes
+                    $creditAccountSelect.off('change').on('change', function () {
+                        const selectedOption = $(this).find(':selected');
+                        $creditAccountCodeInput.val(selectedOption.data('code') || '');
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                }
+            });
+        }
+
+            function loadBanks() {
+            $.ajax({
+                 url: '@Url.Action("GetBankss", "Account")',
+                type: 'GET',
+                success: function (res) {
+                    const $bankSelect = $('#bankNameSelect');
+                    $bankSelect.empty();
+                    $bankSelect.append('<option value="">-- Select Bank --</option>');
+
+                    if (!res || !res.status || !res.data || res.data.length === 0) {
+                        $bankSelect.append('<option value="">No banks found</option>');
+                        return;
+                    }
+
+                    res.data.forEach(bank => {
+                        $bankSelect.append(`
+                            <option value="${bank.id}">${bank.bankName}</option>
+                        `);
+                    });
+                },
+                error: function () {
+                    alert('Failed to load banks');
+                }
+            });
+        }
+
+            function populateAndSelectCostCenter() {
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    if (!data.length) return;
+
+                    function fillSelect($select) {
+                        const selectedId = String($select.data("selected-id") || "");
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        data.forEach(item => {
+                            $select.append(
+                                `<option value="${item.id}">${item.code} - ${item.name}</option>`
+                            );
+                        });
+
+                        if (selectedId) {
+                            $select.val(selectedId);
+                        }
+                    }
+
+                    $(".costCenterSelect").each(function () {
+                        fillSelect($(this));
+                    });
+
+                    $(".creditCostCenterSelect").each(function () {
+                        fillSelect($(this));
+                    });
+                }
+            });
+        }
+
+                function loadVendors() {
+            // Determine type based on subcontractor checkbox
+            let type = $('#subContractor').is(':checked') ? 'Subcontractor' : 'Vendor';
+
+            $.ajax({
+                url: '@Url.Action("GetCustomers", "Customer")',
+                type: 'GET',
+                data: { type: type },
+                success: function (res) {
+                    if (!res.status || !res.data) return;
+
+                    const $vendorSelect = $('#vendorNameSelect');
+                    if (!$vendorSelect.length) return;
+
+                    // Get the selected vendor id (stored via .data)
+                    const selectedVendorId = String($vendorSelect.data('selected-id') || "");
+
+                    // Clear existing options and add default
+                    $vendorSelect.empty().append('<option value="">-- Select --</option>');
+
+                    // Append new vendor options
+                    res.data.forEach(v => {
+                        $vendorSelect.append(
+                            `<option value="${v.id}" data-code="${v.code}">${v.code} - ${v.name}</option>`
+                        );
+                    });
+
+                    // Select previously stored vendor
+                    if (selectedVendorId) {
+                        $vendorSelect.val(selectedVendorId).trigger('change');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error loading vendors:", error);
+                }
+            });
+        }
+   </script>
+   }
