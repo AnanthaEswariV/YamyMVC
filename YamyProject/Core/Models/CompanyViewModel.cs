@@ -1324,6 +1324,17 @@ namespace YamyProject.Core.Models
         public DateTime? InvDate { get; set; } // make nullable
     }
 
+    public class CustomerInvoiceDto
+    {
+        public int SN { get; set; }
+        public int CustomerId { get; set; }
+        public int? InvoiceId { get; set; }
+        public string Date { get; set; }
+        public string InvoiceNo { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+    }
 
 
 

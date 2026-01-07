@@ -895,8 +895,6 @@ $(document).on('blur', '.pay-input', function() {
     }
 });
 
-// Also add this when invoices are loaded to set initial values
-// Update the loadVendorInvoices function to include this logic
 async function loadVendorInvoices() {
     // ✅ CHECK IF WE'RE IN EDIT MODE - DON'T RELOAD INVOICES
     if ($("#paymentVoucherModal").data("editing")) {

@@ -297,7 +297,7 @@
 
                     <!-- Invoice Table -->
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm">
+                        <table class="table table-bordered table-sm" id="paymentInvoiceTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>SN</th>
@@ -488,6 +488,32 @@
             $(this).addClass('table-active');
         });
 
+                function getTodayDate() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+        document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
+                const todayDate = getTodayDate();
+
+                // Fill all date fields
+                const dateFields = [
+                    'date',
+                    'chequeDate',
+                    'transferDate'
+                ];
+
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
+            });
+
              function loadReceiptVoucherDetails(receiptVoucherId) {
 
             $.ajax({
@@ -626,7 +652,6 @@
                         $('#vendorNameSelect').closest('.col-md-6').show();
 
                         if (data.Customers && data.Customers.length > 0) {
-                            console.log(data);
                             const $vendorSelect = $('#vendorNameSelect');
                             $vendorSelect.empty().append('<option value="">-- Select Customer --</option>');
 
@@ -651,7 +676,7 @@
             });
         });
 
-              $('#paymentMethodSelect').on('change', function () {
+             $('#paymentMethodSelect').on('change', function () {
 
             const method = $(this).val();
 
@@ -670,7 +695,7 @@
             // Cash → nothing extra shown
         });
 
-                $('#paymentMethodSelect').change(function() {
+             $('#paymentMethodSelect').change(function() {
             const paymentMethod = $(this).val();
 
             if (!paymentMethod) return;
@@ -696,12 +721,137 @@
             });
         });
 
+                // Auto-copy Pay value to Payment field when Pay input changes
+        $(document).on('input change', '.pay-input', function() {
+            const payValue = $(this).val();
+            const $row = $(this).closest('tr');
+            const $paymentInput = $row.find('.payment-input');
+
+            // Get current payment value
+            const currentPaymentValue = $paymentInput.val().trim();
+
+            // Auto-fill Payment if it's empty, 0, or matches the previous Pay value
+            if (currentPaymentValue === '' ||
+                currentPaymentValue === '0' ||
+                parseFloat(currentPaymentValue) === 0) {
+                $paymentInput.val(payValue);
+            }
+        });
+
+        // Also handle when user focuses on Pay field and it has a value
+        $(document).on('focus', '.pay-input', function() {
+            const $this = $(this);
+            // Store the current value
+            $this.data('previous-value', $this.val());
+        });
+
+        // When Pay input loses focus, check if Payment should be updated
+        $(document).on('blur', '.pay-input', function() {
+            const $this = $(this);
+            const newValue = $this.val();
+            const previousValue = $this.data('previous-value');
+            const $row = $this.closest('tr');
+            const $paymentInput = $row.find('.payment-input');
+            const paymentValue = $paymentInput.val().trim();
+
+            // If Payment equals the previous Pay value or is 0, update it
+            if (paymentValue === previousValue ||
+                paymentValue === '0' ||
+                paymentValue === '' ||
+                parseFloat(paymentValue) === 0) {
+                $paymentInput.val(newValue);
+            }
+        });
+
+
+
+                  async function loadCustomerInvoices() {
+
+            // ✅ EDIT MODE CHECK (optional)
+            if ($("#salesModal").data("editing")) {
+                console.log("Edit mode active - skipping invoice reload");
+                return;
+            }
+
+            const customerId = $('#vendorNameSelect').val();
+            const tbody = $('#paymentInvoiceTable tbody');
+
+            if (!customerId) {
+                tbody.empty();
+                return;
+            }
+
+            const url = '@Url.Action("LoadCustomerInvoices", "Account")'
+                      + `?customerId=${customerId}`;
+
+            try {
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (!result.status) {
+                    toastr.error(result.message || 'Failed to load invoices');
+                    return;
+                }
+
+                tbody.empty();
+
+                if (!result.data || result.data.length === 0) {
+                    tbody.append(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">
+                                No invoices found
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+
+                let rowIndex = 1;
+
+                result.data.forEach(inv => {
+                    tbody.append(`
+                        <tr data-inv-date="${inv.date}" data-inv-id="${inv.invId ?? ''}">
+                            <td>${rowIndex++}</td>
+                            <td>${inv.date || ''}</td>
+                            <td>${inv.invoiceNo || ''}</td>
+                            <td class="text-end">
+                                ${Math.abs(inv.amount || 0).toLocaleString()}
+                            </td>
+                              <td>
+                <input type="number"
+                       class="form-control form-control-sm pay-input"
+                       value="0"
+                       step="0.01">
+            </td>
+            <td>
+                <input type="text"
+                       class="form-control form-control-sm payment-input"
+                       value="0">
+            </td>
+            <td>
+                <input type="text"
+                       class="form-control form-control-sm description-input"
+                       placeholder="Description">
+            </td>
+                        </tr>
+                    `);
+                });
+
+            } catch (err) {
+                console.error(err);
+                toastr.error('Error loading invoices');
+            }
+        }
+
+        // Trigger when customer changes
+        $('#vendorNameSelect').on('change', loadCustomerInvoices);
+
 
 
         });
 
 
-             function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
+            function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
@@ -918,8 +1068,8 @@
             });
         }
 
-                function loadVendors() {
-            // Determine type based on subcontractor checkbox
+            function loadVendors() {
+
             let type = $('#subContractor').is(':checked') ? 'Subcontractor' : 'Vendor';
 
             $.ajax({

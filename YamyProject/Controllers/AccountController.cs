@@ -7364,6 +7364,117 @@ ORDER BY tp.date DESC";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        [HttpGet]
+        public async Task<IActionResult> LoadCustomerInvoices(int customerId)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                decimal customerTotalBalance = 0;
+                decimal customerTotalOB = 0;
+                int counter = 0;
+
+                var data = new List<object>();
+
+                // 1️⃣ Opening Balance
+                using (var cmd = new MySqlCommand(
+                    @"SELECT balance AS amount FROM tbl_customer WHERE id = @id", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", customerId);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync() && reader["amount"] != DBNull.Value)
+                        customerTotalOB = Convert.ToDecimal(reader["amount"]);
+                }
+
+                // 2️⃣ Customer OB Payments
+                using (var cmd = new MySqlCommand(
+                    @"SELECT c.id, c.date,
+              (SELECT SUM(t.payment)
+               FROM tbl_receipt_voucher_details t
+               WHERE t.inv_code ='C-OB' AND t.hum_id = c.id) AS amount
+              FROM tbl_customer c WHERE c.id = @id;", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", customerId);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        if (reader["amount"] != DBNull.Value)
+                            customerTotalBalance = Convert.ToDecimal(reader["amount"]);
+
+                        if (customerTotalOB != customerTotalBalance)
+                        {
+                            data.Add(new
+                            {
+                                sn = ++counter,
+                                customerId,
+                                invId = (int?)null,
+                                date = Convert.ToDateTime(reader["date"]).ToShortDateString(),
+                                invoiceNo = "C-OB",
+                                amount = customerTotalOB - customerTotalBalance,
+                                debit = 0,
+                                credit = 0
+                            });
+                        }
+                    }
+                }
+
+                // 3️⃣ Sales Invoices
+                using (var cmd = new MySqlCommand(
+                    @"SELECT ROW_NUMBER() OVER (ORDER BY tbl_sales.date) AS sn,
+                     tbl_sales.date AS date,
+                     tbl_sales.id,
+                     tbl_sales.invoice_id AS invNo,
+                     tbl_sales.change
+              FROM tbl_sales
+              INNER JOIN tbl_customer ON tbl_sales.customer_id = tbl_customer.id
+              WHERE tbl_sales.state = 0
+                AND tbl_sales.change <> 0
+                AND tbl_customer.id = @id
+              GROUP BY tbl_sales.id, tbl_sales.date;", conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", customerId);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        data.Add(new
+                        {
+                            sn = Convert.ToInt32(reader["sn"]) + counter,
+                            customerId,
+                            invId = Convert.ToInt32(reader["id"]),
+                            date = Convert.ToDateTime(reader["date"]).ToShortDateString(),
+                            invoiceNo = reader["invNo"].ToString(),
+                            amount = Convert.ToDecimal(reader["change"]),
+                            debit = 0,
+                            credit = 0
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
 
         #endregion
 
