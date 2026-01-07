@@ -1335,7 +1335,51 @@ namespace YamyProject.Core.Models
         public decimal Debit { get; set; }
         public decimal Credit { get; set; }
     }
+    public class ReceiptVoucherRequest
+    {
+        public int Id { get; set; }
+        public DateTime? Date { get; set; }
 
+        public string PaymentType { get; set; }
+        public string Method { get; set; }
 
+        public int CreditAccountId { get; set; }
+        public int CreditCostCenterId { get; set; }
+
+        public int DebitAccountId { get; set; }
+        public int DebitCostCenterId { get; set; }
+
+        public int? CustomerId { get; set; }
+        public decimal Amount { get; set; }
+
+        // Cheque
+        public int? BankId { get; set; }
+        public int? BankAccountId { get; set; }
+        public int? BookNo { get; set; }
+        public string BankCode { get; set; }
+        public string CheckName { get; set; }
+        public string CheckNo { get; set; }
+        public DateTime? CheckDate { get; set; }
+
+        // Transfer
+        public DateTime? TransDate { get; set; }
+        public string TransName { get; set; }
+        public string TransRef { get; set; }
+
+        public List<InvoiceDetails> InvoiceDetails { get; set; } = new();
+    }
+
+ 
+
+    public class InvoiceDetails
+    {
+        public int InvId { get; set; }
+        public int HumId { get; set; }
+        public string InvCode { get; set; }
+        public DateTime? InvDate { get; set; }   // ✅ FIXED
+        public decimal Total { get; set; }
+        public decimal Pay { get; set; }
+        public string Description { get; set; }
+    }
 
 }

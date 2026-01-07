@@ -488,7 +488,7 @@
             $(this).addClass('table-active');
         });
 
-                function getTodayDate() {
+        function getTodayDate() {
                 const today = new Date();
                 const year = today.getFullYear();
                 const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -514,7 +514,7 @@
                 });
             });
 
-             function loadReceiptVoucherDetails(receiptVoucherId) {
+        function loadReceiptVoucherDetails(receiptVoucherId) {
 
             $.ajax({
                 url: '@Url.Action("GetReceiptVoucherDetails", "Account")',
@@ -587,7 +587,7 @@
         }
 
 
-             $('#paymentTypeSelect').change(function() {
+         $('#paymentTypeSelect').change(function() {
             const paymentType = $(this).val();
             const isSubContractor = $('#subContractor').is(':checked');
 
@@ -676,7 +676,7 @@
             });
         });
 
-             $('#paymentMethodSelect').on('change', function () {
+         $('#paymentMethodSelect').on('change', function () {
 
             const method = $(this).val();
 
@@ -695,7 +695,7 @@
             // Cash → nothing extra shown
         });
 
-             $('#paymentMethodSelect').change(function() {
+         $('#paymentMethodSelect').change(function() {
             const paymentMethod = $(this).val();
 
             if (!paymentMethod) return;
@@ -763,9 +763,7 @@
             }
         });
 
-
-
-                  async function loadCustomerInvoices() {
+        async function loadCustomerInvoices() {
 
             // ✅ EDIT MODE CHECK (optional)
             if ($("#salesModal").data("editing")) {
@@ -851,7 +849,7 @@
         });
 
 
-            function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
+           function loadAccounts(selectId, codeInputId, defaultAccountId, defaultAccountCode) {
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
@@ -886,9 +884,9 @@
             });
         }
 
-            let chequeBooksData = [];
+           let chequeBooksData = [];
 
-            function loadChequeBooks() {
+           function loadChequeBooks() {
             $.ajax({
                 url: '@Url.Action("GetChequeBooks", "Account")',
                 type: 'GET',
@@ -901,7 +899,7 @@
             });
         }
 
-            $('#bankNameSelect').on('change', function () {
+           $('#bankNameSelect').on('change', function () {
             const selectedBankId = parseInt($(this).val());
 
             const $chequeNoSelect = $('#chequeNoSelect');
@@ -939,7 +937,7 @@
             $bankAccountSelect.prop('disabled', false);
         });
 
-            function loadAccountsForPageLoad() {
+           function loadAccountsForPageLoad() {
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
@@ -1008,7 +1006,7 @@
             });
         }
 
-            function loadBanks() {
+           function loadBanks() {
             $.ajax({
                  url: '@Url.Action("GetBankss", "Account")',
                 type: 'GET',
@@ -1034,7 +1032,7 @@
             });
         }
 
-            function populateAndSelectCostCenter() {
+           function populateAndSelectCostCenter() {
             $.ajax({
                 url: '@Url.Action("GetCostCenters", "Lists")',
                 type: 'GET',
@@ -1068,11 +1066,11 @@
             });
         }
 
-            function loadVendors() {
+           function loadVendors() {
 
-            let type = $('#subContractor').is(':checked') ? 'Subcontractor' : 'Vendor';
+           let type = $('#subContractor').is(':checked') ? 'Subcontractor' : 'Vendor';
 
-            $.ajax({
+           $.ajax({
                 url: '@Url.Action("GetCustomers", "Customer")',
                 type: 'GET',
                 data: { type: type },
@@ -1105,5 +1103,531 @@
                 }
             });
         }
+
+
+
+          $(document).ready(function () {
+
+     
+        $(document).on("click", ".editReceiptVoucherBtn", function () {
+            const voucher = $(this).data("customer");
+            if (!voucher) return;
+            console.log('Edit receipt voucher:', voucher);
+
+            /* =========================
+               RESET MODAL
+            ========================== */
+            const modal = $("#salesModal");
+            modal.find("form")[0].reset();
+            modal.find("select").val("");
+            modal.find("tbody").empty();
+
+            /* =========================
+               SET A FLAG TO PREVENT AUTO-LOADING
+            ========================== */
+            modal.data("editing", true);
+
+            /* =========================
+               HEADER
+            ========================== */
+            $("#voucherId").val(voucher.id || 0);
+            $("#date").val(voucher.Date?.split("T")[0] || "");
+
+            // Set payment type WITHOUT triggering change event
+            $("#paymentTypeSelect").val(voucher.Type || "");
+
+            // Set payment method WITHOUT triggering change event
+            $("#paymentMethodSelect").val(voucher.Method || "");
+
+            /* =========================
+               MANUALLY SHOW/HIDE FIELDS BASED ON TYPE
+            ========================== */
+            $('#amountInputDiv').hide();
+            $('#employeeNoteDiv').hide();
+            $('#vendorNameSelect').closest('.col-md-6').hide();
+
+            if (voucher.Type === 'Customer') {
+                $('#vendorNameSelect').closest('.col-md-6').show();
+            } else if (voucher.Type === 'Employee') {
+                $('#employeeNoteDiv').show();
+            } else if (voucher.Type === 'General') {
+                $('#amountInputDiv').show();
+                $("#amountInput").val(voucher.Amount || 0);
+            }
+
+            /* =========================
+               LOAD ACCOUNTS
+            ========================== */
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
+                    // Populate Credit Account (Received From)
+                    const $creditSelect = $("#accountNameSelect");
+                    $creditSelect.empty().append('<option value="">-- Select --</option>');
+
+                    accounts.forEach(item => {
+                        $creditSelect.append(
+                            `<option value="${item.id}" data-code="${item.code}">${item.code} - ${item.name}</option>`
+                        );
+                    });
+
+                    $creditSelect.val(voucher.CreditAccountId || "");
+                    $("#accountCodeInput").val(voucher["Credit Account"] || "");
+
+                    // Populate Debit Account (Received To)
+                    const $debitSelect = $("#creditAccountNameSelect");
+                    $debitSelect.empty().append('<option value="">-- Select --</option>');
+
+                    accounts.forEach(item => {
+                        $debitSelect.append(
+                            `<option value="${item.id}" data-code="${item.code}">${item.code} - ${item.name}</option>`
+                        );
+                    });
+
+                    $debitSelect.val(voucher.DebitAccountId || "");
+                    $("#creditAccountCodeInput").val(voucher["Debit Account"] || "");
+                }
+            });
+
+            /* =========================
+               LOAD COST CENTERS
+            ========================== */
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function(res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    if (!data.length) return;
+
+                    // Populate Credit Cost Center
+                    const $creditCC = $(".costCenterSelect");
+                    $creditCC.empty().append('<option value="">-- Select --</option>');
+                    data.forEach(item => {
+                        $creditCC.append(
+                            `<option value="${item.id}">${item.code} - ${item.name}</option>`
+                        );
+                    });
+                    $creditCC.val(voucher.CreditCostCenterID || "");
+
+                    // Populate Debit Cost Center
+                    const $debitCC = $(".creditCostCenterSelect");
+                    $debitCC.empty().append('<option value="">-- Select --</option>');
+                    data.forEach(item => {
+                        $debitCC.append(
+                            `<option value="${item.id}">${item.code} - ${item.name}</option>`
+                        );
+                    });
+                    $debitCC.val(voucher.DebitCostCenterID || "");
+                }
+            });
+
+            /* =========================
+               LOAD TYPE-SPECIFIC DATA
+            ========================== */
+            if (voucher.Type === 'Customer') {
+                $.ajax({
+                    url: '@Url.Action("GetCustomers", "Account")',
+                    type: 'GET',
+                    success: function(res) {
+                        console.log('Customers response:', res);
+
+                        if (!res.status || !res.data) {
+                            console.error('No customers data in response');
+                            return;
+                        }
+
+                        const $customerSelect = $('#vendorNameSelect');
+                        $customerSelect.empty().append('<option value="">-- Select --</option>');
+
+                        res.data.forEach(c => {
+                            $customerSelect.append(
+                                `<option value="${c.id}" data-code="${c.code}">${c.code} - ${c.name}</option>`
+                            );
+                        });
+
+                        console.log('Customers loaded:', res.data.length);
+
+                        // Set customer from first invoice
+                        const customerId = voucher.InvoiceDetails?.[0]?.HumId || "";
+                        console.log('Setting customer ID:', customerId);
+
+                        if (customerId) {
+                            $customerSelect.val(customerId);
+
+                            // Update cheque book name
+                            const selectedText = $customerSelect.find('option:selected').text().trim();
+                            $('#chequeBookSelect').val(selectedText);
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading customers:', xhr);
+                    }
+                });
+            }
+            else if (voucher.Type === 'Employee') {
+                // Load employees
+                $.ajax({
+                    url: '@Url.Action("GetEmployees", "HR")',
+                    type: 'GET',
+                    success: function(res) {
+                        if (!res.status || !res.data) return;
+
+                        const $employeeList = $('#employeeList');
+                        $employeeList.empty();
+
+                        const selectedEmployeeIds = (voucher.employees || []).map(e => e.id);
+
+                        res.data.forEach(emp => {
+                            const isChecked = selectedEmployeeIds.includes(emp.id);
+                            $employeeList.append(`
+                                <div class="form-check">
+                                    <input class="form-check-input employee-checkbox"
+                                           type="checkbox"
+                                           data-employee-id="${emp.id}"
+                                           id="emp_${emp.id}"
+                                           ${isChecked ? 'checked' : ''}>
+                                    <label class="form-check-label" for="emp_${emp.id}">
+                                        ${emp.code} - ${emp.name}
+                                    </label>
+                                </div>
+                            `);
+                        });
+                    }
+                });
+            }
+
+            /* =========================
+               PAYMENT METHOD FIELDS
+            ========================== */
+            $("#chequeFields").removeClass("d-none");
+            $("#transferFields").addClass("d-none");
+
+            if (voucher.Method === "Cheque") {
+                $("#chequeFields").removeClass("d-none");
+
+                // Load banks
+                $.ajax({
+                    url: '@Url.Action("GetBankss", "Account")',
+                    type: 'GET',
+                    success: function(res) {
+                        if (!res.status || !res.data) return;
+
+                        const $bankSelect = $('#bankNameSelect');
+                        $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
+
+                        res.data.forEach(bank => {
+                            $bankSelect.append(
+                                `<option value="${bank.id}">${bank.bankName}</option>`
+                            );
+                        });
+
+                        // Set bank values
+                        $bankSelect.val(voucher.BankId || "");
+                        $("#chequeBookSelect").val(voucher.CheckName || "");
+                        $("#chequeNoSelect").val(voucher.CheckNo || "");
+                        $("#chequeDate").val(voucher.CheckDate?.split("T")[0] || "");
+                        $("#bankAccountSelect").val(voucher.BankAccountId || "");
+                        $("#bookNoSelect").val(voucher.BookNo || "");
+                    }
+                });
+            }
+            else if (voucher.Method === "Cash") {
+                $("#chequeFields").addClass("d-none");
+            }
+
+            if (voucher.Method === "Transfer") {
+                $("#chequeFields").addClass("d-none");
+                $("#transferFields").removeClass("d-none");
+                $("#transferDate").val(voucher.TransDate?.split("T")[0] || "");
+                $("#transferName").val(voucher.TransName || "");
+                $("#transferRef").val(voucher.TransRef || "");
+            }
+
+            /* =========================
+               POPULATE INVOICE TABLE
+            ========================== */
+            const tbody = $("#salesModal table tbody");
+            tbody.empty();
+
+            if (voucher.InvoiceDetails && voucher.InvoiceDetails.length > 0) {
+                voucher.InvoiceDetails.forEach((inv, index) => {
+                    const payValue = inv.Pay != null ? inv.Pay : inv.Total;
+                    const paymentValue = inv.Payment != null ? inv.Payment : payValue;
+
+                    tbody.append(`
+                        <tr data-inv-date="${inv.InvDate || ''}" data-inv-id="${inv.InvId || ''}" data-hum-id="${inv.HumId || ''}">
+                            <td>${index + 1}</td>
+                            <td>${inv.InvDate?.split("T")[0] || ""}</td>
+                            <td data-id="${inv.InvId || ''}">${inv.InvCode || ""}</td>
+                            <td class="text-end">${(inv.Total ?? 0).toLocaleString()}</td>
+                            <td>
+                                <input type="number"
+                                       class="form-control form-control-sm pay-input"
+                                       value="${payValue}"
+                                       step="0.01">
+                            </td>
+                            <td>
+                                <input type="text"
+                                       class="form-control form-control-sm payment-input"
+                                       value="${paymentValue}">
+                            </td>
+                            <td>
+                                <input type="text"
+                                       class="form-control form-control-sm description-input"
+                                       value="${inv.Description || ''}"
+                                       placeholder="Description">
+                            </td>
+                        </tr>
+                    `);
+                });
+            }
+
+            /* =========================
+               REMOVE EDITING FLAG
+            ========================== */
+            setTimeout(() => {
+                modal.removeData("editing");
+            }, 500);
+
+            /* =========================
+               SHOW MODAL
+            ========================== */
+            modal.find(".modal-title").text("Edit Receipt Voucher");
+            modal.modal("show");
+        });
+
+        $("#paymentVoucherForm").on("submit", function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add("was-validated");
+                return;
+            }
+
+            // Calculate amount from table or input
+            let tableAmount = 0;
+            const firstRow = $("#salesModal table tbody tr").first();
+            if (firstRow.length) {
+                tableAmount = Number(firstRow.find("td").eq(4).find("input").val()) || 0;
+            }
+            const amount = Number($("#amountInput").val()) || tableAmount || 0;
+            const paymentMethod = $("#paymentMethodSelect").val();
+            const paymentType = $("#paymentTypeSelect").val();
+
+            const voucherData = {
+                Id: Number($("#voucherId").val()) || 0,
+                Date: $("#date").val(),
+                PaymentType: paymentType,
+                Method: paymentMethod,
+
+                // Credit (Received From)
+                CreditAccountId: Number($("#accountNameSelect").val()) || 0,
+                CreditCostCenterId: Number($(".costCenterSelect").val()) || 0,
+
+                // Debit (Received To)
+                DebitAccountId: Number($("#creditAccountNameSelect").val()) || 0,
+                DebitCostCenterId: Number($(".creditCostCenterSelect").val()) || 0,
+
+                CustomerId: paymentType === "Customer" ? Number($("#vendorNameSelect").val()) : null,
+
+                Amount: amount,
+
+                // Cheque fields
+                BankId: null,
+                BankAccountId: null,
+                BookNo: null,
+                BankCode: "",
+                CheckName: "",
+                CheckNo: "",
+                CheckDate: null,
+
+                // Transfer fields
+                TransDate: null,
+                TransName: "",
+                TransRef: "",
+
+                Employees: [],
+                InvoiceDetails: []
+            };
+            console.log(voucherData);
+            /* =======================
+               PAYMENT METHOD FIELDS
+            ======================== */
+            if (paymentMethod === "Cheque") {
+                voucherData.BankId = Number($("#bankNameSelect").val()) || null;
+                voucherData.BankAccountId = Number($("#bankAccountSelect").val()) || null;
+                voucherData.BookNo = Number($("#bookNoSelect").val()) || null;
+                voucherData.BankCode = $("#bankNameSelect option:selected").text() || "";
+                voucherData.CheckName = $("#chequeBookSelect").val();
+                voucherData.CheckNo = $("#chequeNoSelect").val();
+                voucherData.CheckDate = $("#chequeDate").val();
+            }
+
+            if (paymentMethod === "Transfer") {
+                voucherData.TransDate = $("#transferDate").val();
+                voucherData.TransName = $("#transferName").val();
+                voucherData.TransRef = $("#transferRef").val();
+            }
+
+            /* =======================
+               EMPLOYEES
+            ======================== */
+            $("#employeeList input[type=checkbox]:checked").each(function () {
+                voucherData.Employees.push({
+                    EmployeeId: Number($(this).data("employee-id"))
+                });
+            });
+
+            /* =======================
+               INVOICE DETAILS
+            ======================== */
+            $("#salesModal table tbody tr").each(function () {
+                const $row = $(this);
+                const tds = $row.find("td");
+
+                voucherData.InvoiceDetails.push({
+                    InvId: Number(tds.eq(2).data("id")) || 0,
+                    HumId: Number($row.data("hum-id")) || 0,
+                    InvCode: tds.eq(2).text().trim(),
+                    InvDate: $row.data("inv-date")?.split("T")[0] || null,
+                    Total: Number(tds.eq(3).text().replace(/,/g, '')) || 0,
+                    Pay: Number(tds.eq(4).find("input").val()) || 0,
+                    Payment: tds.eq(5).find("input").val().trim() || "",
+                    Description: tds.eq(6).find("input").val().trim() || ""
+                });
+            });
+
+            /* =======================
+               AJAX SAVE
+            ======================== */
+            $.ajax({
+                url: '@Url.Action("SaveReceiptVoucher", "Account")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(voucherData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(
+                            voucherData.Id
+                                ? "Receipt voucher updated successfully"
+                                : "Receipt voucher saved successfully"
+                        );
+                        $("#salesModal").modal("hide");
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+        /* =========================
+           PAYMENT METHOD CHANGE
+        ========================== */
+        $("#paymentMethodSelect").on("change", function() {
+            const method = $(this).val();
+
+            $("#chequeFields").addClass("d-none");
+            $("#transferFields").addClass("d-none");
+
+            if (method === "Cheque") {
+                $("#chequeFields").removeClass("d-none");
+            } else if (method === "Transfer") {
+                $("#transferFields").removeClass("d-none");
+            }
+        });
+
+        /* =========================
+           PAYMENT TYPE CHANGE
+        ========================== */
+        $("#paymentTypeSelect").on("change", function() {
+            const type = $(this).val();
+
+            $('#amountInputDiv').hide();
+            $('#employeeNoteDiv').hide();
+            $('#vendorNameSelect').closest('.col-md-6').hide();
+
+            if (type === 'Customer') {
+                $('#vendorNameSelect').closest('.col-md-6').show();
+
+                // Load customers
+                $.ajax({
+                    url: '@Url.Action("GetCustomers", "Account")',
+                    type: 'GET',
+                    success: function(res) {
+                        if (!res.status || !res.data) return;
+
+                        const $select = $('#vendorNameSelect');
+                        $select.empty().append('<option value="">-- Select --</option>');
+
+                        res.data.forEach(c => {
+                            $select.append(
+                                `<option value="${c.id}" data-code="${c.code}">${c.code} - ${c.name}</option>`
+                            );
+                        });
+                    }
+                });
+            } else if (type === 'Employee') {
+                $('#employeeNoteDiv').show();
+
+                // Load employees
+                $.ajax({
+                    url: '@Url.Action("GetEmployees", "HR")',
+                    type: 'GET',
+                    success: function(res) {
+                        if (!res.status || !res.data) return;
+
+                        const $list = $('#employeeList');
+                        $list.empty();
+
+                        res.data.forEach(emp => {
+                            $list.append(`
+                                <div class="form-check">
+                                    <input class="form-check-input employee-checkbox"
+                                           type="checkbox"
+                                           data-employee-id="${emp.id}"
+                                           id="emp_${emp.id}">
+                                    <label class="form-check-label" for="emp_${emp.id}">
+                                        ${emp.code} - ${emp.name}
+                                    </label>
+                                </div>
+                            `);
+                        });
+                    }
+                });
+            } else if (type === 'General') {
+                $('#amountInputDiv').show();
+            }
+        });
+
+        /* =========================
+           ACCOUNT NAME CHANGE - UPDATE CODE
+        ========================== */
+        $("#accountNameSelect").on("change", function() {
+            const code = $(this).find("option:selected").data("code") || "";
+            $("#accountCodeInput").val(code);
+        });
+
+        $("#creditAccountNameSelect").on("change", function() {
+            const code = $(this).find("option:selected").data("code") || "";
+            $("#creditAccountCodeInput").val(code);
+        });
+
+        /* =========================
+           CUSTOMER/VENDOR CHANGE - UPDATE CHEQUE BOOK
+        ========================== */
+        $("#vendorNameSelect").on("change", function() {
+            const selectedText = $(this).find('option:selected').text().trim();
+            $('#chequeBookSelect').val(selectedText);
+        });
+
+
+               });
+
    </script>
    }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using Humanizer;
+using Microsoft.AspNetCore.Identity.Data;
 using YamyProject.Core.Models.DTOs;
 
 namespace YamyProject.Controllers
@@ -7070,7 +7071,6 @@ ORDER BY tp.date DESC";
             }
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetReceiptVoucherDetails(int receiptVoucherId)
         {
@@ -7475,6 +7475,479 @@ ORDER BY tp.date DESC";
         }
 
 
+        [HttpPost]
+        public async Task<IActionResult> SaveReceiptVoucher([FromBody] ReceiptVoucherRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // Validation - Check Required Data
+            if (model.Method == "Cheque" && string.IsNullOrWhiteSpace(model.CheckNo))
+                return BadRequest(new { status = false, message = "Please enter check no." });
+
+            if (model.Method == "Transfer" && string.IsNullOrWhiteSpace(model.TransName))
+                return BadRequest(new { status = false, message = "Please enter transfer name." });
+
+            if (model.Method == "Transfer" && string.IsNullOrWhiteSpace(model.TransRef))
+                return BadRequest(new { status = false, message = "Please enter transfer reference." });
+
+            if (string.IsNullOrWhiteSpace(model.PaymentType))
+                return BadRequest(new { status = false, message = "Please choose payment type." });
+
+            if (model.Amount <= 0)
+                return BadRequest(new { status = false, message = "Please enter payment amount." });
+
+            if (model.DebitAccountId <= 0)
+                return BadRequest(new { status = false, message = "Please choose debit account name." });
+
+            if (model.CreditAccountId <= 0)
+                return BadRequest(new { status = false, message = "Please choose credit account name." });
+
+            if ((model.Amount == 0M) && (model.InvoiceDetails == null || !model.InvoiceDetails.Any()))
+                return BadRequest(new { status = false, message = "Enter amount." });
+
+            if (model.Method == "Cheque" && (!model.BankId.HasValue || model.BankId <= 0))
+                return BadRequest(new { status = false, message = "Please add company bank account." });
+
+            if (model.Method == "Transfer" && (string.IsNullOrWhiteSpace(model.TransName) || string.IsNullOrWhiteSpace(model.TransRef)))
+                return BadRequest(new { status = false, message = "Please enter transfer information first." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            using var transaction = await conn.BeginTransactionAsync();
+
+            try
+            {
+                string code;
+                int id = model.Id;
+
+                if (id == 0) // INSERT
+                {
+                    code = await GenerateNextReceiptCode(conn, transaction);
+
+                    var insertQuery = @"INSERT INTO tbl_receipt_voucher
+                (date, code, type, method, amount, debit_account_id, debit_cost_center_id, 
+                 credit_account_id, credit_cost_center_id, description,
+                 bank_id, bank_account_id, book_no, check_name, check_no, check_date,
+                 trans_date, trans_name, trans_ref, created_by, created_date, state)
+                VALUES
+                (@date, @code, @type, @method, @amount, @debit_account_id, @debit_cost_center_id,
+                 @credit_account_id, @credit_cost_center_id, @description,
+                 @bank_id, @bank_account, @book_no, @check_name, @check_no, @check_date,
+                 @trans_date, @trans_name, @trans_ref, @created_by, @created_date, 0);
+                SELECT LAST_INSERT_ID();";
+
+                    using var cmd = new MySqlCommand(insertQuery, conn, transaction);
+                    cmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@type", model.PaymentType);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId > 0 ? (object)model.CreditAccountId : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@credit_cost_center_id", model.CreditCostCenterId > 0 ? (object)model.CreditCostCenterId : DBNull.Value);
+                    foreach (var inv in model.InvoiceDetails)
+                    {
+                        cmd.Parameters.AddWithValue("@description", inv.Description ?? string.Empty);
+                    }
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId > 0 ? (object)model.DebitAccountId : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@debit_cost_center_id", model.DebitCostCenterId > 0 ? (object)model.DebitCostCenterId : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@bank_id", model.Method == "Cheque" && model.BankId.HasValue ? (object)model.BankId.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@bank_account", "0");
+                    cmd.Parameters.AddWithValue("@book_no", "0");
+                    cmd.Parameters.AddWithValue("@check_name", !string.IsNullOrWhiteSpace(model.CheckName) ? (object)model.CheckName : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@check_no", !string.IsNullOrWhiteSpace(model.CheckNo) ? (object)model.CheckNo : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@check_date", model.Method == "Cheque" && model.CheckDate.HasValue ? (object)model.CheckDate.Value.Date : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_date", model.Method == "Transfer" && model.TransDate.HasValue ? (object)model.TransDate.Value.Date : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_name", !string.IsNullOrWhiteSpace(model.TransName) ? (object)model.TransName : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_ref", !string.IsNullOrWhiteSpace(model.TransRef) ? (object)model.TransRef : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@created_by", userId);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+
+                    id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                    // Insert Check Details if method is Cheque
+                    if (model.Method == "Cheque")
+                    {
+                        int chequeId = await GetChequeBookIdByCompanyOrFirst(conn, transaction);
+
+                        var checkInsertQuery = @"INSERT INTO tbl_check_details
+                    (date, check_id, check_no, check_date, check_type, pvc_no, check_name, amount, state)
+                    VALUES
+                    (@date, @check_id, @check_no, @check_date, @check_type, @pvc_no, @check_name, @amount, @state);
+                    SELECT LAST_INSERT_ID();";
+
+                        using var checkCmd = new MySqlCommand(checkInsertQuery, conn, transaction);
+
+
+                        checkCmd.Parameters.AddWithValue("@check_id", chequeId);
+                        checkCmd.Parameters.AddWithValue("@check_no", model.CheckNo);
+                        checkCmd.Parameters.AddWithValue("@check_date", model.CheckDate?.Date);
+                        checkCmd.Parameters.AddWithValue("@check_type", "Receipt");
+                        checkCmd.Parameters.AddWithValue("@pvc_no", id);
+                        checkCmd.Parameters.AddWithValue("@check_name", model.CheckName);
+                        checkCmd.Parameters.AddWithValue("@amount", model.Amount);
+                        checkCmd.Parameters.AddWithValue("@state", "New");
+
+                        await checkCmd.ExecuteScalarAsync();
+                    }
+                }
+                else // UPDATE
+                {
+                    // Get existing code
+                    using (var cmdCode = new MySqlCommand("SELECT code FROM tbl_receipt_voucher WHERE id=@id", conn, transaction))
+                    {
+                        cmdCode.Parameters.AddWithValue("@id", id);
+                        code = (await cmdCode.ExecuteScalarAsync())?.ToString() ?? "RV-0000";
+                    }
+
+                    // Update voucher
+                    var updateQuery = @"UPDATE tbl_receipt_voucher SET
+                date=@date, code=@code, type=@type, method=@method, amount=@amount,
+                debit_account_id=@debit_account_id, debit_cost_center_id=@debit_cost_center_id,
+                description=@description, credit_account_id=@credit_account_id, credit_cost_center_id=@credit_cost_center_id,
+                bank_account_id=@bank_account, book_no=@book_no, bank_id=@bank_id, bank_code=@bank_code,
+                check_name=@check_name, check_no=@check_no, check_date=@check_date,
+                trans_date=@trans_date, trans_name=@trans_name, trans_ref=@trans_ref,
+                modified_by=@modified_by, modified_date=@modified_date
+                WHERE id=@id";
+
+                    using var cmd = new MySqlCommand(updateQuery, conn, transaction);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@type", model.PaymentType);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId > 0 ? (object)model.CreditAccountId : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@credit_cost_center_id", model.CreditCostCenterId > 0 ? (object)model.CreditCostCenterId : DBNull.Value);
+                    foreach (var inv in model.InvoiceDetails)
+                    {
+                        cmd.Parameters.AddWithValue("@description", inv.Description ?? string.Empty);
+                    }
+                    cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId > 0 ? (object)model.DebitAccountId : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@debit_cost_center_id", model.DebitCostCenterId > 0 ? (object)model.DebitCostCenterId : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@bank_id", model.Method == "Cheque" && model.BankId.HasValue ? (object)model.BankId.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@bank_account", "0");
+                    cmd.Parameters.AddWithValue("@book_no", "0");
+                    cmd.Parameters.AddWithValue("@bank_code", model.BankCode ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@check_name", !string.IsNullOrWhiteSpace(model.CheckName) ? (object)model.CheckName : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@check_no", !string.IsNullOrWhiteSpace(model.CheckNo) ? (object)model.CheckNo : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@check_date", model.Method == "Cheque" && model.CheckDate.HasValue ? (object)model.CheckDate.Value.Date : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_date", model.Method == "Transfer" && model.TransDate.HasValue ? (object)model.TransDate.Value.Date : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_name", !string.IsNullOrWhiteSpace(model.TransName) ? (object)model.TransName : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@trans_ref", !string.IsNullOrWhiteSpace(model.TransRef) ? (object)model.TransRef : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@modified_by", userId);
+                    cmd.Parameters.AddWithValue("@modified_date", DateTime.Now.Date);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    // Delete old details
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_receipt_voucher_details WHERE payment_id=@id", conn, transaction))
+                    {
+                        delCmd.Parameters.AddWithValue("@id", id);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Delete old transactions
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='RECEIPT'", conn, transaction))
+                    {
+                        delCmd.Parameters.AddWithValue("@id", id);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Update Check Details if method is Cheque
+                    if (model.Method == "Cheque")
+                    {
+                        int chequeId = await GetChequeBookIdByCompanyOrFirst(conn, transaction);
+
+                        // Check if check detail exists
+                        int checkDetailId = 0;
+                        using (var checkSelectCmd = new MySqlCommand(@"SELECT id FROM tbl_check_details 
+                    WHERE pvc_no = @pvc_no AND check_type = @check_type AND check_id = @check_id", conn, transaction))
+                        {
+                            checkSelectCmd.Parameters.AddWithValue("@pvc_no", id);
+                            checkSelectCmd.Parameters.AddWithValue("@check_type", "Receipt");
+                            checkSelectCmd.Parameters.AddWithValue("@check_id", chequeId);
+                            var result = await checkSelectCmd.ExecuteScalarAsync();
+                            if (result != null && result != DBNull.Value)
+                                checkDetailId = Convert.ToInt32(result);
+                        }
+
+                        if (checkDetailId > 0)
+                        {
+                            // Update existing check detail
+                            var checkUpdateQuery = @"UPDATE tbl_check_details
+                        SET check_no = @check_no, 
+                            check_date = @check_date, 
+                            check_name = @check_name, 
+                            amount = @amount
+                        WHERE pvc_no = @pvc_no AND check_type = @check_type AND check_id = @check_id AND id = @id";
+
+                            using var checkCmd = new MySqlCommand(checkUpdateQuery, conn, transaction);
+                            checkCmd.Parameters.AddWithValue("@check_no", model.CheckNo);
+                            checkCmd.Parameters.AddWithValue("@check_date", model.CheckDate?.Date);
+                            checkCmd.Parameters.AddWithValue("@check_name", model.CheckName);
+                            checkCmd.Parameters.AddWithValue("@amount", model.Amount);
+                            checkCmd.Parameters.AddWithValue("@pvc_no", id);
+                            checkCmd.Parameters.AddWithValue("@check_type", "Receipt");
+                            checkCmd.Parameters.AddWithValue("@check_id", chequeId);
+                            checkCmd.Parameters.AddWithValue("@id", checkDetailId);
+
+                            await checkCmd.ExecuteNonQueryAsync();
+                        }
+                        else
+                        {
+                            // Insert new check detail
+                            var checkInsertQuery = @"INSERT INTO tbl_check_details
+                        (date, check_id, check_no, check_date, check_type, pvc_no, check_name, amount, state)
+                        VALUES
+                        (@date, @check_id, @check_no, @check_date, @check_type, @pvc_no, @check_name, @amount, @state);
+                        SELECT LAST_INSERT_ID();";
+
+                            using var checkCmd = new MySqlCommand(checkInsertQuery, conn, transaction);
+                            checkCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+                            checkCmd.Parameters.AddWithValue("@check_id", chequeId);
+                            checkCmd.Parameters.AddWithValue("@check_no", model.CheckNo);
+                            checkCmd.Parameters.AddWithValue("@check_date", model.CheckDate?.Date);
+                            checkCmd.Parameters.AddWithValue("@check_type", "Receipt");
+                            checkCmd.Parameters.AddWithValue("@pvc_no", id);
+                            checkCmd.Parameters.AddWithValue("@check_name", model.CheckName);
+                            checkCmd.Parameters.AddWithValue("@amount", model.Amount);
+                            checkCmd.Parameters.AddWithValue("@state", "New");
+
+                            await checkCmd.ExecuteScalarAsync();
+                        }
+                    }
+
+                    // Delete old cost center transactions
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='Receipt'", conn, transaction))
+                    {
+                        delCmd.Parameters.AddWithValue("@id", id);
+                        await delCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // Insert Invoice Details & Update Sales
+                if (model.InvoiceDetails != null && model.InvoiceDetails.Any())
+                {
+                    foreach (var inv in model.InvoiceDetails)
+                    {
+                        if (inv.Pay <= 0) continue;
+
+                        var invId = inv.InvId > 0 ? inv.InvId.ToString() : "0";
+                        var humId = inv.HumId > 0 ? inv.HumId.ToString() : string.Empty;
+                        var total = inv.Total.ToString();
+                        var payment = inv.Pay.ToString();
+                        var description = inv.Description ?? string.Empty;
+                        string voucherType = "Customer";
+
+                        // Insert receipt voucher detail
+                        using var detailCmd = new MySqlCommand(@"INSERT INTO tbl_receipt_voucher_details
+                    (date, payment_id, hum_id, inv_id, inv_code, total, payment, description)
+                    VALUES (@date, @payment_id, @hum_id, @inv_id, @inv_code, @total, @payment, @description)", conn, transaction);
+
+                        detailCmd.Parameters.AddWithValue("@payment_id", id);
+                        detailCmd.Parameters.AddWithValue( "@date", inv.InvDate ?? (object)DBNull.Value);
+                        detailCmd.Parameters.AddWithValue("@hum_id", humId);
+                        detailCmd.Parameters.AddWithValue("@inv_code", inv.InvCode ?? string.Empty);
+                        detailCmd.Parameters.AddWithValue("@total", total);
+                        detailCmd.Parameters.AddWithValue("@inv_id", int.Parse(invId));
+                        detailCmd.Parameters.AddWithValue("@payment", payment);
+                        detailCmd.Parameters.AddWithValue("@description", description);
+
+                        await detailCmd.ExecuteNonQueryAsync();
+
+                        // Update sales invoice if valid invoice ID
+                        if (!string.IsNullOrEmpty(invId) && int.Parse(invId) > 0)
+                        {
+                            int currentInvId = int.Parse(invId);
+
+                            // Get net amount
+                            decimal net = 0;
+                            using (var netCmd = new MySqlCommand("SELECT net FROM tbl_sales WHERE id = @id", conn, transaction))
+                            {
+                                netCmd.Parameters.AddWithValue("@id", currentInvId);
+                                var netResult = await netCmd.ExecuteScalarAsync();
+                                if (netResult != null && netResult != DBNull.Value)
+                                    net = Convert.ToDecimal(netResult);
+                            }
+
+                            // Get total paid
+                            decimal totalPaid = 0;
+                            using (var paidCmd = new MySqlCommand("SELECT SUM(payment) FROM tbl_receipt_voucher_details WHERE inv_id = @id", conn, transaction))
+                            {
+                                paidCmd.Parameters.AddWithValue("@id", currentInvId);
+                                var paidResult = await paidCmd.ExecuteScalarAsync();
+                                if (paidResult != null && paidResult != DBNull.Value)
+                                    totalPaid = Convert.ToDecimal(paidResult);
+                            }
+
+                            decimal remaining = net - totalPaid;
+
+                            // Update sales
+                            using var updateSalesCmd = new MySqlCommand(
+                                "UPDATE tbl_sales SET pay = @pay, `change` = @change WHERE id = @id", conn, transaction);
+                            updateSalesCmd.Parameters.AddWithValue("@pay", totalPaid);
+                            updateSalesCmd.Parameters.AddWithValue("@change", remaining);
+                            updateSalesCmd.Parameters.AddWithValue("@id", currentInvId);
+
+                            await updateSalesCmd.ExecuteNonQueryAsync();
+                        }
+
+                        // Insert journal entries
+                        await InsertReceiptJournalEntry(conn, transaction, model, payment, description, id, code, userId);
+                    }
+                }
+
+                // Insert Cost Center Transactions
+                using var cmdDebit = new MySqlCommand(@"INSERT INTO tbl_cost_center_transaction 
+            (type, date, ref_id, debit, credit, description, cost_center_id) 
+            VALUES (@type, @date, @ref, @debit, @credit, @description, @cost_center_id)", conn, transaction);
+
+                cmdDebit.Parameters.AddWithValue("@type", "Receipt");
+                cmdDebit.Parameters.AddWithValue("@date", model.Date);
+                cmdDebit.Parameters.AddWithValue("@ref", id);
+                cmdDebit.Parameters.AddWithValue("@debit", model.Amount);
+                cmdDebit.Parameters.AddWithValue("@credit", 0);
+                cmdDebit.Parameters.AddWithValue("@description", "Receipt Debit Entry");
+                cmdDebit.Parameters.AddWithValue("@cost_center_id", model.DebitCostCenterId);
+                await cmdDebit.ExecuteNonQueryAsync();
+
+                using var cmdCredit = new MySqlCommand(@"INSERT INTO tbl_cost_center_transaction 
+            (type, date, ref_id, debit, credit, description, cost_center_id) 
+            VALUES (@type, @date, @ref, @debit, @credit, @description, @cost_center_id)", conn, transaction);
+
+                cmdCredit.Parameters.AddWithValue("@type", "Receipt");
+                cmdCredit.Parameters.AddWithValue("@date", model.Date);
+                cmdCredit.Parameters.AddWithValue("@ref", id);
+                cmdCredit.Parameters.AddWithValue("@debit", 0);
+                cmdCredit.Parameters.AddWithValue("@credit", model.Amount);
+                cmdCredit.Parameters.AddWithValue("@description", "Receipt Credit Entry");
+                cmdCredit.Parameters.AddWithValue("@cost_center_id", model.CreditCostCenterId);
+                await cmdCredit.ExecuteNonQueryAsync();
+
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    message = model.Id == 0 ? "The Receipt Voucher Saved" : "The Receipt Voucher Updated",
+                    id,
+                    code
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // Helper Methods
+        private async Task<string> GenerateNextReceiptCode(MySqlConnection conn, MySqlTransaction transaction)
+        {
+            string newCode = "RV-0001";
+
+            using var cmd = new MySqlCommand(
+                "SELECT MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)) AS lastCode FROM tbl_receipt_voucher",
+                conn, transaction);
+
+            var result = await cmd.ExecuteScalarAsync();
+            if (result != null && result != DBNull.Value)
+            {
+                int code = int.Parse(result.ToString()) + 1;
+                newCode = "RV-" + code.ToString("D4");
+            }
+
+            return newCode;
+        }
+
+        private async Task<int> GetChequeBookIdByCompanyOrFirst(MySqlConnection conn, MySqlTransaction transaction)
+        {
+            string query = @"
+        (
+            SELECT c.id
+            FROM tbl_cheque c
+            JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
+            WHERE bc.account_name LIKE CONCAT('%', (SELECT name FROM tbl_company LIMIT 1), '%')
+            ORDER BY c.id ASC
+        )
+        UNION
+        (
+            SELECT c.id
+            FROM tbl_cheque c
+            JOIN tbl_bank_card bc ON c.bank_card_id = bc.id
+            ORDER BY c.id ASC
+        )
+        LIMIT 1;";
+
+            using var cmd = new MySqlCommand(query, conn, transaction);
+            var result = await cmd.ExecuteScalarAsync();
+
+            if (result != null && int.TryParse(result.ToString(), out int chequeBookId))
+            {
+                return chequeBookId;
+            }
+            return -1;
+        }
+
+        private async Task InsertReceiptJournalEntry(MySqlConnection conn, MySqlTransaction transaction,
+            ReceiptVoucherRequest model, string amount, string description, int id, string code, int userId)
+        {
+            // Debit Entry
+            using var debitCmd = new MySqlCommand(@"INSERT INTO tbl_transaction 
+        (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
+        VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no)",
+                conn, transaction);
+
+            debitCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+            debitCmd.Parameters.AddWithValue("@accountId", model.DebitAccountId);
+            debitCmd.Parameters.AddWithValue("@debit", amount);
+            debitCmd.Parameters.AddWithValue("@credit", "0");
+            debitCmd.Parameters.AddWithValue("@transactionId", id);
+            debitCmd.Parameters.AddWithValue("@hum_id", "0");
+            debitCmd.Parameters.AddWithValue("@tType", "RECEIPT");
+            debitCmd.Parameters.AddWithValue("@type", model.PaymentType + " Receipt");
+            debitCmd.Parameters.AddWithValue("@description", "Receipt Voucher NO. " + code);
+            debitCmd.Parameters.AddWithValue("@createdBy", userId);
+            debitCmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+            debitCmd.Parameters.AddWithValue("@voucher_no", code);
+
+            await debitCmd.ExecuteNonQueryAsync();
+
+            // Credit Entry
+            using var creditCmd = new MySqlCommand(@"INSERT INTO tbl_transaction 
+        (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no) 
+        VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0, @voucher_no)",
+                conn, transaction);
+
+            creditCmd.Parameters.AddWithValue("@date", model.Date ?? (object)DBNull.Value);
+            creditCmd.Parameters.AddWithValue("@accountId", model.CreditAccountId);
+            creditCmd.Parameters.AddWithValue("@debit", "0");
+            creditCmd.Parameters.AddWithValue("@credit", amount);
+            creditCmd.Parameters.AddWithValue("@transactionId", id);
+            creditCmd.Parameters.AddWithValue("@hum_id", model.PaymentType == "Customer" && model.CustomerId.HasValue ? model.CustomerId.Value.ToString() : "0");
+            creditCmd.Parameters.AddWithValue("@tType", "RECEIPT");
+            creditCmd.Parameters.AddWithValue("@type", model.PaymentType + " Receipt");
+            creditCmd.Parameters.AddWithValue("@description", "Receipt Voucher NO. " + code);
+            creditCmd.Parameters.AddWithValue("@createdBy", userId);
+            creditCmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+            creditCmd.Parameters.AddWithValue("@voucher_no", code);
+
+            await creditCmd.ExecuteNonQueryAsync();
+        }
+
+
 
         #endregion
 
@@ -7484,6 +7957,11 @@ ORDER BY tp.date DESC";
         {
             return View();
         }
+
+
+
+  
+
 
         #endregion
 
