@@ -8024,16 +8024,130 @@ WHERE payment_id = @receiptId";
 
         #endregion
 
+
+        #region Advance Payment
+
+        public IActionResult AdvancePayment()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentTypeDetailsAdvancePayment(string paymentType)
+        {
+            try
+            {
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string tableName;
+                string coaCategory;
+
+                switch (paymentType)
+                {
+                    case "Vendor":
+                        tableName = "tbl_vendor";
+                        coaCategory = "Vendor";
+                        break;
+
+                    case "Customer":
+                        tableName = "tbl_customer";
+                        coaCategory = "Customer";
+                        break;
+
+                    case "Employee":
+                        tableName = "tbl_employee";
+                        coaCategory = "Accrued Salaries";
+                        break;
+
+                    default:
+                        return BadRequest(new { status = false, message = "Invalid payment type" });
+                }
+
+                // -----------------------------
+                // Get Partner List
+                // -----------------------------
+                var partners = new List<object>();
+
+                var partnerSql = $"SELECT id, code, name FROM {tableName} WHERE state = 0";
+
+                using (var cmd = new MySqlCommand(partnerSql, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        partners.Add(new
+                        {
+                            Id = reader.GetInt32("id"),
+                            Code = reader.GetInt32("code"),
+                            Name = reader["name"].ToString() ?? ""
+                        });
+                    }
+                }
+
+                // -----------------------------
+                // Get Debit Account Info
+                // -----------------------------
+                int debitAccountId = 0;
+                string debitAccountCode = "";
+
+                using (var cmd = new MySqlCommand(
+                    @"SELECT id, code 
+              FROM tbl_coa_level_4 
+              WHERE id = (
+                  SELECT account_id 
+                  FROM tbl_coa_config 
+                  WHERE category = @cat 
+                  LIMIT 1
+              )", conn))
+                {
+                    cmd.Parameters.AddWithValue("@cat", coaCategory);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        debitAccountId = reader.GetInt32("id");
+                        debitAccountCode = reader["code"].ToString() ?? "";
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = new
+                    {
+                        Partners = partners,
+                        DebitAccountId = debitAccountId,
+                        DebitAccountCode = debitAccountCode
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
         #region GJ Voucher
 
         public IActionResult GJVoucher()
         {
             return View();
         }
-
-
-
-  
 
 
         #endregion

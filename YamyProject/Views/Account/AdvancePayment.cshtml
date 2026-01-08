@@ -1,0 +1,514 @@
+﻿
+@{
+    ViewData["Title"] = "AdvancePayment";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+    /* Highlight selected row */
+    #table1 tbody tr.selected {
+        background-color: #c7e5b4;
+    }
+
+    .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong class="mx-auto">Advance Payment Voucher</strong>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentVoucherModal">
+            <i class="bi bi-plus-circle"></i> New AP
+        </button>
+    </div>
+    <div class="card-body" style="font-size:small">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <div style="min-width: 150px;">
+                <select class="form-select" id="method">
+                    <option value="Vendor" selected>Vendor</option>
+                    <option value="Customer">Customer</option>
+                    <option value="Employee">Employee</option>
+                </select>
+            </div>
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+
+        </div>
+
+        <!-- Default method: Two tables -->
+        <div id="defaultTables" style="height: 80vh; display: flex; flex-direction: column;">
+            <div class="card-body flex-grow-1" style="overflow-y: auto;">
+                <table class="table table-striped" id="table1">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Payment Code</th>
+                            <th>JV No</th>
+                            <th>Amount</th>
+                            <th>Debit Account</th>
+                            <th>Credit Account</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card-footer p-0" style="height: 150px; overflow-y: auto;">
+                <table class="table table-striped" id="table2">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Amount</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="modal fade" id="paymentVoucherModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">New - Advance Payment Voucher</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="paymentVoucherForm" novalidate>
+                <!-- Modal Body -->
+                <div class="modal-body">
+                    <input type="hidden" id="voucherId">
+
+                    <!-- Basic Data Section -->
+                    <div class="mb-3">
+                        <h6 class="fw-bold">Basic Data</h6>
+                    </div>
+
+                    <!-- Header Info -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" id="date" value="08/01/2026">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Amount</label>
+                            <input type="text" class="form-control" id="totalAmount" value="0.000" readonly>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Type</label>
+                            <select class="form-select" id="paymentTypeSelect">
+                                <option value="">-- Select --</option>
+                                <option value="Vendor">Vendor</option>
+                                <option value="Customer">Customer</option>
+                                <option value="Employee">Employee</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Payment Method</label>
+                            <select class="form-select" id="paymentMethodSelect">
+                                <option value="Cheque">Cheque</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Transfer">Transfer</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Pay To - Debit -->
+                    <div class="border rounded p-3 mb-3">
+                        <h6 class="fw-bold mb-3">Pay To - Debit</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Account Name</label>
+                                <select class="form-select" id="accountNameSelect">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Account Code</label>
+                                <input class="form-control" id="accountCodeInput" readonly>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Cost Center</label>
+                                <select class="form-select costCenterSelect">
+                                </select>
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label">Note</label>
+                                <textarea class="form-control" id="noteField" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pay From - Credit -->
+                    <div class="border rounded p-3 mb-3">
+                        <h6 class="fw-bold mb-3">Pay From - Credit</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Account Name</label>
+                                <select class="form-select" id="creditAccountNameSelect">
+                                    <option value="">-- Select --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Account Code</label>
+                                <input class="form-control" id="creditAccountCodeInput" readonly>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Cost Center</label>
+                                <select class="form-select creditCostCenterSelect">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invoice/Transaction Table -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm" id="transactionTable">
+                            <thead class="table-light">
+                                <tr id="tableHeaderRow">
+                                    <!-- Headers will be dynamically populated -->
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTableBody">
+                                <!-- Rows will be dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Add Row Button -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-success" id="addRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="saveAndCloseBtn">Save & Close</button>
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script>
+                     $(document).ready(function() {
+            let rowCounter = 0;
+
+            // Table configurations for different payment methods
+            const tableConfigs = {
+                'Cheque': {
+                    headers: ['#', 'Name', 'Bank Name', 'Cheque Name', 'Cheque No', 'Cheque Date', 'Bank Account Name', 'Book NO', 'Description', 'Amount', 'DEL'],
+                    fields: ['number', 'name', 'bankName', 'chequeName', 'chequeNo', 'chequeDate', 'bankAccountName', 'bookNo', 'description', 'amount', 'delete']
+                },
+                'Cash': {
+                    headers: ['#', 'Name', 'Description', 'Amount', 'DEL'],
+                    fields: ['number', 'name', 'description', 'amount', 'delete']
+                },
+                'Transfer': {
+                    headers: ['#', 'Name', 'Trans Date', 'Trans/Name', 'Trans/REF', 'Description', 'Amount', 'DEL'],
+                    fields: ['number', 'name', 'transDate', 'transName', 'transRef', 'description', 'amount', 'delete']
+                }
+            };
+
+            // Function to render table header
+            function renderTableHeader(method) {
+                const config = tableConfigs[method];
+                const $headerRow = $('#tableHeaderRow');
+                $headerRow.empty();
+
+                config.headers.forEach((header, index) => {
+                    let width = '';
+                    if (header === '#') width = 'width: 50px;';
+                    else if (header === 'DEL') width = 'width: 60px;';
+                    else if (header === 'Amount') width = 'width: 100px;';
+
+                    $headerRow.append(`<th style="${width}">${header}</th>`);
+                });
+            }
+
+            // Function to create input field based on type
+            function createInputField(fieldType, rowId) {
+                const baseClass = 'form-control form-control-sm';
+
+                switch(fieldType) {
+                    case 'number':
+                        return `<span class="row-number">${rowId}</span>`;
+
+                    case 'name':
+                        return `<input type="text" class="name-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'bankName':
+                        return `<select class="bank-select ${baseClass}" data-row="${rowId}">
+                            <option value="">-- Select --</option>
+                        </select>`;
+
+                    case 'chequeName':
+                        return `<input type="text" class="cheque-name-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'chequeNo':
+                        return `<select class="cheque-no-select ${baseClass}" data-row="${rowId}">
+                            <option value="">-- Select --</option>
+                        </select>`;
+
+                    case 'chequeDate':
+                        return `<input type="date" class="cheque-date-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'bankAccountName':
+                        return `<select class="bank-account-select ${baseClass}" data-row="${rowId}">
+                            <option value="">-- Select --</option>
+                        </select>`;
+
+                    case 'bookNo':
+                        return `<select class="book-no-select ${baseClass}" data-row="${rowId}">
+                            <option value="">-- Select --</option>
+                        </select>`;
+
+                    case 'transDate':
+                        return `<input type="date" class="trans-date-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'transName':
+                        return `<input type="text" class="trans-name-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'transRef':
+                        return `<input type="text" class="trans-ref-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'description':
+                        return `<input type="text" class="description-input ${baseClass}" data-row="${rowId}">`;
+
+                    case 'amount':
+                        return `<input type="number" step="0.01" class="amount-input ${baseClass}" data-row="${rowId}" value="0">`;
+
+                    case 'delete':
+                        return `<button type="button" class="btn btn-sm btn-danger delete-row" data-row="${rowId}">×</button>`;
+
+                    default:
+                        return `<input type="text" class="${baseClass}" data-row="${rowId}">`;
+                }
+            }
+
+            // Function to add a new row
+            function addNewRow() {
+                rowCounter++;
+                const method = $('#paymentMethodSelect').val();
+                const config = tableConfigs[method];
+                const $tbody = $('#transactionTableBody');
+
+                let rowHtml = '<tr data-row-id="' + rowCounter + '">';
+
+                config.fields.forEach(fieldType => {
+                    rowHtml += '<td>' + createInputField(fieldType, rowCounter) + '</td>';
+                });
+
+                rowHtml += '</tr>';
+
+                $tbody.append(rowHtml);
+            }
+
+            // Function to render table body
+            function renderTableBody(method) {
+                $('#transactionTableBody').empty();
+                rowCounter = 0;
+                addNewRow(); // Add initial row
+            }
+
+  
+
+            // Payment Method Change Handler
+            $('#paymentMethodSelect').on('change', function() {
+                const method = $(this).val();
+                renderTableHeader(method);
+                renderTableBody(method);
+            });
+
+            // Add Row Button
+            $('#addRowBtn').on('click', function() {
+                addNewRow();
+            });
+
+            // Delete Row Handler (Event Delegation)
+            $('#transactionTableBody').on('click', '.delete-row', function() {
+                const rowId = $(this).data('row');
+                $('tr[data-row-id="' + rowId + '"]').remove();
+
+                // Renumber rows
+                $('.row-number').each(function(index) {
+                    $(this).text(index + 1);
+                });
+            });
+
+          
+            // Payment Type Change Handler
+            $('#paymentTypeSelect').on('change', function() {
+                const paymentType = $(this).val();
+
+                // Clear and reset
+                $('#accountNameSelect').empty().append('<option value="">-- Select --</option>');
+                $('#accountCodeInput').val('');
+                $('#creditAccountNameSelect').empty().append('<option value="">-- Select --</option>');
+                $('#creditAccountCodeInput').val('');
+
+                if (!paymentType) {
+                    return;
+                }
+
+                // Call API to get payment type details
+                $.ajax({
+                    url: '@Url.Action("GetPaymentTypeDetailss", "Account")',
+                    type: 'GET',
+                    data: {
+                        paymentType: paymentType,
+                        subContractor: false
+                    },
+                    success: function(res) {
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to fetch payment type details');
+                            return;
+                        }
+
+                        const data = res.data;
+
+                        // Load accounts for Pay To section
+                        $.ajax({
+                            url: '@Url.Action("GetAccruedSalaries", "HR")',
+                            type: 'GET',
+                            success: function(accounts) {
+                                const $debitSelect = $('#accountNameSelect');
+                                $debitSelect.empty().append('<option value="">-- Select --</option>');
+
+                                accounts.forEach(item => {
+                                    $debitSelect.append(
+                                        `<option value="${item.id}" data-code="${item.code}">${item.code} - ${item.name}</option>`
+                                    );
+                                });
+
+                                if (data.DebitAccountId) {
+                                    $debitSelect.val(data.DebitAccountId);
+                                    $('#accountCodeInput').val(data.DebitAccountCode || '');
+                                }
+                            }
+                        });
+
+                        // Load credit accounts
+                        $.ajax({
+                            url: '@Url.Action("GetAccruedSalaries", "HR")',
+                            type: 'GET',
+                            success: function(accounts) {
+                                const $creditSelect = $('#creditAccountNameSelect');
+                                $creditSelect.empty().append('<option value="">-- Select --</option>');
+
+                                accounts.forEach(item => {
+                                    $creditSelect.append(
+                                        `<option value="${item.id}" data-code="${item.code}">${item.code} - ${item.name}</option>`
+                                    );
+                                });
+
+                                if (data.CreditAccountId) {
+                                    $creditSelect.val(data.CreditAccountId);
+                                    $('#creditAccountCodeInput').val(data.CreditAccountCode || '');
+                                }
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        toastr.error('Error loading payment type details');
+                        console.error(xhr);
+                    }
+                });
+            });
+
+   
+
+            // Initialize with default payment method
+            $('#paymentMethodSelect').trigger('change');
+
+            // Modal show event - reset form
+            $('#paymentVoucherModal').on('show.bs.modal', function() {
+                // Reset form
+                $('#paymentVoucherForm')[0].reset();
+                $('#voucherId').val('');
+                $('#totalAmount').val('0.000');
+
+                // Set today's date
+                const today = new Date().toISOString().split('T')[0];
+                $('#date').val(today);
+
+                // Reset and render table
+                $('#paymentMethodSelect').trigger('change');
+            });
+
+        });
+
+    </script>
+}
