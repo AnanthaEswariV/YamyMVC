@@ -799,35 +799,41 @@
 
                 let rowIndex = 1;
 
-                result.data.forEach(inv => {
-                    tbody.append(`
-                        <tr data-inv-date="${inv.date}" data-inv-id="${inv.invId ?? ''}">
-                            <td>${rowIndex++}</td>
-                            <td>${inv.date || ''}</td>
-                            <td>${inv.invoiceNo || ''}</td>
-                                   <td class="text-end">
-            ${(inv.amount || 0).toLocaleString()}
-        </td>
+                       result.data.forEach(inv => {
+            // Format the amount
+            const amount = inv.amount || 0;
 
-                              <td>
-                <input type="number"
-                       class="form-control form-control-sm pay-input"
-                       value="0"
-                       step="0.01">
-            </td>
-            <td>
-                <input type="text"
-                       class="form-control form-control-sm payment-input"
-                       value="0">
-            </td>
-            <td>
-                <input type="text"
-                       class="form-control form-control-sm description-input"
-                       placeholder="Description">
-            </td>
-                        </tr>
-                    `);
-                });
+            // Check if negative
+            const isNegative = amount < 0;
+
+            tbody.append(`
+                <tr data-inv-date="${inv.date}" data-inv-id="${inv.invId ?? ''}">
+                    <td>${rowIndex++}</td>
+                    <td>${inv.date || ''}</td>
+                    <td>${inv.invoiceNo || ''}</td>
+                    <td class="text-end">${amount.toLocaleString()}</td>
+                    <td>
+                        <input type="number"
+                               class="form-control form-control-sm pay-input"
+                               value="${isNegative ? amount : 0}"
+                               step="0.01"
+                               ${isNegative ? "disabled" : ""}>
+                    </td>
+                    <td>
+                        <input type="text"
+                               class="form-control form-control-sm payment-input"
+                               value="${isNegative ? amount : 0}"
+                               ${isNegative ? "disabled" : ""}>
+                    </td>
+                    <td>
+                        <input type="text"
+                               class="form-control form-control-sm description-input"
+                               placeholder="Description">
+                    </td>
+                </tr>
+            `);
+        });
+
 
             } catch (err) {
                 console.error(err);
@@ -1291,121 +1297,80 @@
         });
 
 
-
-          $("#paymentVoucherForm").on("submit", function (e) {
+                $("#paymentVoucherForm").on("submit", function (e) {
             e.preventDefault();
 
-            const amountFromTable =
-                Number($("#paymentInvoiceTable tbody tr:first .pay-input").val()) || 0;
+            // Amount from input or first row
+            const amountFromTable = Number($("#paymentInvoiceTable tbody tr:first .pay-input").val()) || 0;
+            const amount = Number($("#amountInput").val()) || amountFromTable || 0;
 
-            const amount =
-                Number($("#amountInput").val()) || amountFromTable || 0;
-
+            // Build voucherData matching C# model exactly
             const voucherData = {
                 Id: Number($("#voucherId").val()) || 0,
                 Date: $("#date").val() || null,
+                PaymentType: $("#paymentTypeSelect").val() || "",
+                Method: $("#paymentMethodSelect").val() || "",
 
-                PaymentType: $("#paymentTypeSelect").val(),
-                Method: $("#paymentMethodSelect").val(),
+                // Debit = Received To
+                DebitAccountId: Number($("#creditAccountNameSelect").val()) || 0,
+                DebitCostCenterId: Number($(".creditCostCenterSelect").val()) || 0,
 
-                      DebitAccountId: Number($("#accountNameSelect").val()) || 0,
-        DebitCostCenterId: Number($(".costCenterSelect").val()) || 0,
+                // Credit = Received From
+                CreditAccountId: Number($("#accountNameSelect").val()) || 0,
+                CreditCostCenterId: Number($(".costCenterSelect").val()) || 0,
 
-        CreditAccountId: Number($("#creditAccountNameSelect").val()) || 0,
-        CreditCostCenterId: Number($(".creditCostCenterSelect").val()) || 0,
-
-
-                CustomerId:
-                    $("#paymentTypeSelect").val() === "Customer"
-                        ? Number($("#vendorNameSelect").val()) || null
-                        : null,
-
+                CustomerId: $("#paymentTypeSelect").val() === "Customer" ? Number($("#vendorNameSelect").val()) || null : null,
                 Amount: amount,
 
                 // Cheque
-                BankId: null,
-                BankAccountId: null,
-                BookNo: null,
-                BankCode: "",
-                CheckName: "",
-                CheckNo: "",
-                CheckDate: null,
+                BankId: Number($("#bankNameSelect").val()) || null,
+                BankAccountId: Number($("#bankAccountSelect").val()) || null,
+                BookNo: Number($("#bookNoSelect").val()) || null,
+                BankCode: $("#bankNameSelect option:selected").text() || "",
+                CheckName: $("#chequeBookSelect").val() || "",
+                CheckNo: $("#chequeNoSelect").val() || "",
+                CheckDate: $("#chequeDate").val() || null,
 
                 // Transfer
-                TransDate: null,
-                TransName: "",
-                TransRef: "",
+                TransDate: $("#transferDate").val() || null,
+                TransName: $("#transferName").val() || "",
+                TransRef: $("#transferRef").val() || "",
 
+                // InvoiceDetails array
                 InvoiceDetails: []
             };
 
-            /* Cheque */
-            if (voucherData.Method === "Cheque") {
-                voucherData.BankId = Number($("#bankNameSelect").val()) || null;
-                voucherData.BankAccountId = Number($("#bankAccountSelect").val()) || null;
-                voucherData.BookNo = Number($("#bookNoSelect").val()) || null;
-                voucherData.BankCode = $("#bankNameSelect option:selected").text();
-                voucherData.CheckName = $("#chequeBookSelect").val();
-                voucherData.CheckNo = $("#chequeNoSelect").val();
-                voucherData.CheckDate = $("#chequeDate").val() || null;
-            }
-
-            /* Transfer */
-            if (voucherData.Method === "Transfer") {
-                voucherData.TransDate = $("#transferDate").val() || null;
-                voucherData.TransName = $("#transferName").val();
-                voucherData.TransRef = $("#transferRef").val();
-            }
-
-                    /* Invoice Details */
-        $("#paymentInvoiceTable tbody tr").each(function () {
+             $("#paymentInvoiceTable tbody tr").each(function () {
             const $row = $(this);
 
-            // Get date from 2nd column
             const invDateText = $row.find("td:eq(1)").text().trim();
-            const invDate = invDateText ? new Date(invDateText).toISOString() : new Date().toISOString();
+            const invDate = invDateText ? new Date(invDateText).toISOString().split("T")[0] : null;
+
+            // Read amount from table column
+            const totalAmount = Number($row.find("td:eq(3)").text().replace(/,/g, "")) || 0;
+
+            // Determine Pay value:
+            // If input is disabled (negative), use totalAmount automatically
+            // Otherwise, use the value typed in the input
+            const payInput = $row.find(".pay-input");
+            const payValue = payInput.is(":disabled") ? totalAmount : Number(payInput.val()) || 0;
+
+            const paymentInput = $row.find(".payment-input");
+            const paymentValue = paymentInput.is(":disabled") ? totalAmount : Number(paymentInput.val()) || 0;
 
             voucherData.InvoiceDetails.push({
                 InvId: Number($row.data("inv-id")) || 0,
                 HumId: Number($row.data("hum-id")) || 0,
-                InvCode: $row.find("td:eq(2)").text().trim(),
+                InvCode: $row.find("td:eq(2)").text().trim() || "",
                 InvDate: invDate,
-                Total: Number($row.find("td:eq(3)").text().replace(/,/g, "")) || 0,
-                Pay: Number($row.find(".pay-input").val()) || 0,
+                Total: totalAmount,
+                Pay: payValue,
                 Description: $row.find(".description-input").val() || ""
             });
         });
 
 
-            // /* Invoice Details */
-            // $("#paymentInvoiceTable tbody tr").each(function () {
-            //     const $row = $(this);
-
-            //     voucherData.InvoiceDetails.push({
-            //         InvId: Number($row.find("td:eq(2)").data("id")) || 0,
-            //         HumId: Number($row.data("hum-id")) || 0,
-            //         InvCode: $row.find("td:eq(2)").text().trim(),
-            //         InvDate: $row.data("inv-date")  ? new Date($row.data("inv-date")).toISOString().split("T")[0] : null,
-            //         Total: Number($row.find("td:eq(3)").text().replace(/,/g, "")) || 0,
-            //         Pay: Number($row.find(".pay-input").val()) || 0,
-            //         Description: $row.find(".description-input").val() || ""
-            //     });
-            // });
-
-
-        //             $("#paymentInvoiceTable tbody tr").each(function () {
-        //     const $row = $(this);
-        //     voucherData.InvoiceDetails.push({
-        //         InvId: Number($row.data("inv-id")) || 0,
-        //         HumId: Number($row.data("hum-id")) || 0,
-        //         InvCode: $row.find("td:eq(2)").text().trim(),
-        //         InvDate: $row.find("td:eq(1)").text().trim() || null, // use the date cell
-        //         Total: Number($row.find("td:eq(3)").text().replace(/,/g, "")) || 0,
-        //         Pay: Number($row.find(".pay-input").val()) || 0,
-        //         Description: $row.find(".description-input").val() || ""
-        //     });
-        // });
-
+            console.log("Final voucher data:", voucherData);
 
             $.ajax({
                 url: '@Url.Action("SaveReceiptVoucher", "Account")',
