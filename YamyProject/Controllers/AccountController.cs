@@ -6977,22 +6977,13 @@ WHERE payment_id = @paymentId";
 
         [HttpGet]
         public async Task<IActionResult> GetReceiptVoucherReport(
-           string type,
-           DateTime? startDate = null,
-           DateTime? endDate = null,
-           bool includeAllDates = false)
+            string type,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            bool includeAllDates = false)
         {
             try
             {
-                if (!includeAllDates && (!startDate.HasValue || !endDate.HasValue))
-                {
-                    return BadRequest(new
-                    {
-                        status = false,
-                        message = "Start date and end date are required."
-                    });
-                }
-
                 var connStrBuilder = new MySqlConnectionStringBuilder(
                     _config.GetConnectionString("DefaultConnection"))
                 {
@@ -7006,20 +6997,37 @@ WHERE payment_id = @paymentId";
                 string dateFilter = includeAllDates
                     ? ""
                     : " AND tp.date BETWEEN @startDate AND @endDate";
-                string query = $@"
+
+                // Fetch main receipt vouchers
+                string voucherQuery = $@"
 SELECT DISTINCT
     tp.id,
     tp.date,
     tp.code AS receiptCode,
-    CONCAT('000', t.transaction_id) AS jvNo,
+    tp.type,
+    tp.method,
     tp.amount,
+    tp.description,
+    tp.debit_account_id,
+    tp.credit_account_id,
+    tp.debit_cost_center_id,
+    tp.credit_cost_center_id,
+    tp.bank_id,
+    tp.bank_account_id,
+    tp.bank_code,
+    tp.book_no,
+    tp.check_name,
+    tp.check_no,
+    tp.check_date,
+    tp.trans_date,
+    tp.trans_name,
+    tp.trans_ref,
+    CONCAT('000', t.transaction_id) AS jvNo,
     CONCAT(tc.code,' - ',tc.name) AS debitAccount,
     CONCAT(tc1.code,' - ',tc1.name) AS creditAccount
 FROM tbl_receipt_voucher tp
-INNER JOIN tbl_coa_level_4 tc 
-    ON tp.debit_account_id = tc.id
-INNER JOIN tbl_coa_level_4 tc1 
-    ON tp.credit_account_id = tc1.id
+INNER JOIN tbl_coa_level_4 tc ON tp.debit_account_id = tc.id
+INNER JOIN tbl_coa_level_4 tc1 ON tp.credit_account_id = tc1.id
 LEFT JOIN tbl_transaction t
     ON t.transaction_id = tp.id 
    AND t.t_type = 'RECEIPT'
@@ -7027,47 +7035,113 @@ WHERE tp.type = @type
 {dateFilter}
 ORDER BY tp.date DESC";
 
+                var vouchers = new List<Dictionary<string, object>>();
 
-                var data = new List<object>();
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@type", type);
-
-                if (!includeAllDates)
+                await using (var cmd = new MySqlCommand(voucherQuery, conn))
                 {
-                    cmd.Parameters.AddWithValue("@startDate", startDate.Value.Date);
-                    cmd.Parameters.AddWithValue("@endDate", endDate.Value.Date.AddDays(1).AddSeconds(-1));
-                }
+                    cmd.Parameters.AddWithValue("@type", type);
 
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    data.Add(new
+                    if (!includeAllDates && startDate.HasValue && endDate.HasValue)
                     {
-                        id = reader.GetInt32("id"),
-                        date = reader.GetDateTime("date"),
-                        receiptCode = reader.GetString("receiptCode"),
-                        jvNo = reader.IsDBNull("jvNo") ? null : reader.GetString("jvNo"),
-                        amount = reader.GetDecimal("amount"),
-                        debitAccount = reader.GetString("debitAccount"),
-                        creditAccount = reader.GetString("creditAccount")
-                    });
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Value.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Value.Date.AddDays(1).AddSeconds(-1));
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        vouchers.Add(row);
+                    }
                 }
 
+                // Fetch invoice details for each receipt voucher
+                foreach (var voucher in vouchers)
+                {
+                    int voucherId = Convert.ToInt32(voucher["id"]);
+
+                    string invQuery = @"
+SELECT 
+    id AS InvId,
+    payment_id AS ReceiptId,
+    hum_id AS HumId,
+    inv_id AS InvRefId,
+    inv_code AS InvCode,
+    date AS InvDate,
+    total AS Total,
+    payment AS Pay,
+    description AS Description,
+    cost_center_id AS CostCenterId
+FROM tbl_receipt_voucher_details
+WHERE payment_id = @receiptId";
+
+                    var invoiceDetails = new List<Dictionary<string, object>>();
+
+                    await using (var invCmd = new MySqlCommand(invQuery, conn))
+                    {
+                        invCmd.Parameters.AddWithValue("@receiptId", voucherId);
+
+                        await using var invReader = await invCmd.ExecuteReaderAsync();
+                        while (await invReader.ReadAsync())
+                        {
+                            var invRow = new Dictionary<string, object>();
+                            for (int i = 0; i < invReader.FieldCount; i++)
+                            {
+                                invRow[invReader.GetName(i)] = invReader.IsDBNull(i) ? null : invReader.GetValue(i);
+                            }
+                            invoiceDetails.Add(invRow);
+                        }
+                    }
+
+                    voucher["InvoiceDetails"] = invoiceDetails;
+                }
+
+                // Optional: fetch vendors (customers) and cost centers for dropdowns
+                string vendorQuery = "SELECT CONCAT(code, ' - ', name) AS name, id FROM tbl_customer";
+                var vendors = new List<Dictionary<string, object>>();
+                await using (var vendorCmd = new MySqlCommand(vendorQuery, conn))
+                {
+                    await using var vendorReader = await vendorCmd.ExecuteReaderAsync();
+                    while (await vendorReader.ReadAsync())
+                    {
+                        vendors.Add(new Dictionary<string, object>
+                {
+                    { "id", vendorReader["id"] },
+                    { "name", vendorReader["name"] }
+                });
+                    }
+                }
+
+                string costCenterQuery = "SELECT CONCAT(code, ' - ', name) AS name, id FROM tbl_cost_center";
+                var costCenters = new List<Dictionary<string, object>>();
+                await using (var ccCmd = new MySqlCommand(costCenterQuery, conn))
+                {
+                    await using var ccReader = await ccCmd.ExecuteReaderAsync();
+                    while (await ccReader.ReadAsync())
+                    {
+                        costCenters.Add(new Dictionary<string, object>
+                {
+                    { "id", ccReader["id"] },
+                    { "name", ccReader["name"] }
+                });
+                    }
+                }
 
                 return Ok(new
                 {
                     status = true,
-                    data
+                    data = vouchers,
+                    vendors,
+                    costCenters
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    status = false,
-                    message = ex.Message
-                });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
@@ -7474,7 +7548,6 @@ ORDER BY tp.date DESC";
             }
         }
 
-
         [HttpPost]
         public async Task<IActionResult> SaveReceiptVoucher([FromBody] ReceiptVoucherRequest model)
         {
@@ -7757,8 +7830,8 @@ ORDER BY tp.date DESC";
                     VALUES (@date, @payment_id, @hum_id, @inv_id, @inv_code, @total, @payment, @description)", conn, transaction);
 
                         detailCmd.Parameters.AddWithValue("@payment_id", id);
-                        detailCmd.Parameters.AddWithValue( "@date", inv.InvDate ?? (object)DBNull.Value);
-                        detailCmd.Parameters.AddWithValue("@hum_id", humId);
+                        detailCmd.Parameters.AddWithValue( "@date", inv.InvDate);
+                        detailCmd.Parameters.AddWithValue("@hum_id", model.CustomerId);
                         detailCmd.Parameters.AddWithValue("@inv_code", inv.InvCode ?? string.Empty);
                         detailCmd.Parameters.AddWithValue("@total", total);
                         detailCmd.Parameters.AddWithValue("@inv_id", int.Parse(invId));

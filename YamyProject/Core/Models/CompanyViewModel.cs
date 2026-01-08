@@ -1369,14 +1369,12 @@ namespace YamyProject.Core.Models
         public List<InvoiceDetails> InvoiceDetails { get; set; } = new();
     }
 
- 
-
     public class InvoiceDetails
     {
         public int InvId { get; set; }
         public int HumId { get; set; }
         public string InvCode { get; set; }
-        public DateTime? InvDate { get; set; }   // ✅ FIXED
+        public DateTime? InvDate { get; set; }
         public decimal Total { get; set; }
         public decimal Pay { get; set; }
         public string Description { get; set; }
