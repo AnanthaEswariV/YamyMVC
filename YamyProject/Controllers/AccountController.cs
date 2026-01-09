@@ -8266,6 +8266,125 @@ WHERE pd.payment_id = @paymentId";
         }
 
 
+        [HttpGet]
+        public async Task<IActionResult> GetAdvancePaymentMethodDetails(string method)
+        {
+            try
+            {
+                var dbName = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(dbName))
+                    return Unauthorized(new { status = false, message = "Session expired" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = dbName
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                bool showBankColumns = false;
+                bool showTransferColumns = false;
+                string coaCategory = "";
+                bool loadBanks = false;
+                switch (method)
+                {
+                    case "Cash":
+                        showBankColumns = false;
+                        showTransferColumns = false;
+                        coaCategory = "Default Account For Cash";
+                        break;
+
+                    case "Cheque":
+                        showBankColumns = true;
+                        showTransferColumns = false;
+                        coaCategory = "PDC Payable";
+                        loadBanks = true;
+                        break;
+
+                    case "Transfer":
+                        showBankColumns = false;
+                        showTransferColumns = true;
+                        break;
+
+                    default:
+                        return BadRequest(new { status = false, message = "Invalid method" });
+                }
+
+                // -----------------------------
+                // CREDIT ACCOUNT (Cash / Check)
+                // -----------------------------
+                int creditAccountId = 0;
+                string creditAccountCode = "";
+
+                if (!string.IsNullOrEmpty(coaCategory))
+                {
+                    using var cmd = new MySqlCommand(@"
+                SELECT id, code
+                FROM tbl_coa_level_4
+                WHERE id = (
+                    SELECT account_id
+                    FROM tbl_coa_config
+                    WHERE category = @cat
+                    LIMIT 1
+                )", conn);
+
+                    cmd.Parameters.AddWithValue("@cat", coaCategory);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        creditAccountId = reader.GetInt32("id");
+                        creditAccountCode = reader["code"].ToString() ?? "";
+                    }
+                }
+
+                // -----------------------------
+                // BANK LIST (ONLY FOR CHECK)
+                // -----------------------------
+                var banks = new List<object>();
+
+                if (loadBanks)
+                {
+                    using var bankCmd = new MySqlCommand(
+                        "SELECT id, name FROM tbl_bank WHERE state = 0", conn);
+
+                    using var bankReader = await bankCmd.ExecuteReaderAsync();
+                    while (await bankReader.ReadAsync())
+                    {
+                        banks.Add(new
+                        {
+                            Id = bankReader.GetInt32("id"),
+                            Name = bankReader["name"].ToString() ?? ""
+                        });
+                    }
+                }
+
+                // -----------------------------
+                // RESPONSE
+                // -----------------------------
+                return Ok(new
+                {
+                    status = true,
+                    data = new
+                    {
+                        ShowBankColumns = showBankColumns,
+                        ShowTransferColumns = showTransferColumns,
+                        CreditAccountId = creditAccountId,
+                        CreditAccountCode = creditAccountCode,
+                        Banks = banks
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+
         #endregion
 
         #region GJ Voucher
@@ -8280,3 +8399,4 @@ WHERE pd.payment_id = @paymentId";
 
     }
 }
+ 

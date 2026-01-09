@@ -25,7 +25,7 @@
         max-height: calc(100vh - 200px);
         overflow-y: auto;
     }
-</style
+</style>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
@@ -108,7 +108,6 @@
 </div>
 
 
-
 <div class="modal fade" id="paymentVoucherModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -132,12 +131,12 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Date</label>
-                            <input type="date" class="form-control" id="date" value="08/01/2026">
+                            <input type="date" class="form-control" id="date">
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Amount</label>
-                            <input type="text" class="form-control" id="totalAmount" value="0.000" readonly>
+                            <input type="number" class="form-control" id="totalAmount">
                         </div>
 
                         <div class="col-md-3">
@@ -249,7 +248,6 @@
 </div>
 
 
-
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -264,162 +262,272 @@
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
-                    
-        
-        
-        
+
         $(document).ready(function() {
 
-
             loadPaymentVoucher();
-
-
+            populateAndSelectCostCenter();
             let rowCounter = 0;
 
-            // Table configurations for different payment methods
+            // Global cache for banks
+            window.cachedBanks = [];
+
+            /* ================= TABLE CONFIG ================= */
+
             const tableConfigs = {
-                'Cheque': {
+                Cheque: {
                     headers: ['#', 'Name', 'Bank Name', 'Cheque Name', 'Cheque No', 'Cheque Date', 'Bank Account Name', 'Book NO', 'Description', 'Amount', 'DEL'],
-                    fields: ['number', 'name', 'bankName', 'chequeName', 'chequeNo', 'chequeDate', 'bankAccountName', 'bookNo', 'description', 'amount', 'delete']
+                    fields: ['number', 'id', 'name', 'bankName', 'chequeName', 'chequeNo', 'chequeDate', 'bankAccountName', 'bookNo', 'description', 'amount', 'delete']
                 },
-                'Cash': {
+                Cash: {
                     headers: ['#', 'Name', 'Description', 'Amount', 'DEL'],
-                    fields: ['number', 'name', 'description', 'amount', 'delete']
+                    fields: ['number', 'id', 'name', 'description', 'amount', 'delete']
                 },
-                'Transfer': {
+                Transfer: {
                     headers: ['#', 'Name', 'Trans Date', 'Trans/Name', 'Trans/REF', 'Description', 'Amount', 'DEL'],
-                    fields: ['number', 'name', 'transDate', 'transName', 'transRef', 'description', 'amount', 'delete']
+                    fields: ['number', 'id', 'name', 'transDate', 'transName', 'transRef', 'description', 'amount', 'delete']
                 }
             };
 
-            // Function to render table header
+            /* ================= HEADER ================= */
+
             function renderTableHeader(method) {
                 const config = tableConfigs[method];
-                const $headerRow = $('#tableHeaderRow');
-                $headerRow.empty();
+                const $headerRow = $('#tableHeaderRow').empty();
 
-                config.headers.forEach((header, index) => {
+                config.headers.forEach(header => {
                     let width = '';
-                    if (header === '#') width = 'width: 50px;';
-                    else if (header === 'DEL') width = 'width: 60px;';
-                    else if (header === 'Amount') width = 'width: 100px;';
+                    if (header === '#') width = 'width:50px';
+                    if (header === 'DEL') width = 'width:60px';
+                    if (header === 'Amount') width = 'width:100px';
 
                     $headerRow.append(`<th style="${width}">${header}</th>`);
                 });
             }
 
-            // Function to create input field based on type
-            function createInputField(fieldType, rowId) {
-                const baseClass = 'form-control form-control-sm';
+            /* ================= INPUT FACTORY ================= */
 
-                switch(fieldType) {
+            function createInputField(field, rowNo) {
+                const cls = 'form-control form-control-sm';
+
+                switch (field) {
                     case 'number':
-                        return `<span class="row-number">${rowId}</span>`;
+                        return `<span class="row-number">${rowNo}</span>`;
+
+                    case 'id':
+                        return `<input type="hidden" class="row-id" value="">`;
 
                     case 'name':
-                        return `<input type="text" class="name-input ${baseClass}" data-row="${rowId}">`;
+                       return `<select class="${cls} name-input">
+                        <option value="">-- Select --</option>
+                    </select>`;
 
                     case 'bankName':
-                        return `<select class="bank-select ${baseClass}" data-row="${rowId}">
-                            <option value="">-- Select --</option>
-                        </select>`;
+                        return `<select class="${cls} bank-select"><option value="">-- Select Bank --</option></select>`;
 
                     case 'chequeName':
-                        return `<input type="text" class="cheque-name-input ${baseClass}" data-row="${rowId}">`;
+                        return `<input class="${cls} cheque-name-input">`;
 
                     case 'chequeNo':
-                        return `<select class="cheque-no-select ${baseClass}" data-row="${rowId}">
-                            <option value="">-- Select --</option>
-                        </select>`;
+                        return `<select class="${cls} cheque-no-select"><option value="">-- Select --</option></select>`;
 
                     case 'chequeDate':
-                        return `<input type="date" class="cheque-date-input ${baseClass}" data-row="${rowId}">`;
+                        return `<input type="date" class="${cls} cheque-date-input">`;
 
                     case 'bankAccountName':
-                        return `<select class="bank-account-select ${baseClass}" data-row="${rowId}">
-                            <option value="">-- Select --</option>
-                        </select>`;
+                        return `<select class="${cls} bank-account-select"><option value="">-- Select --</option></select>`;
 
                     case 'bookNo':
-                        return `<select class="book-no-select ${baseClass}" data-row="${rowId}">
-                            <option value="">-- Select --</option>
-                        </select>`;
+                        return `<select class="${cls} book-no-select"><option value="">-- Select --</option></select>`;
 
                     case 'transDate':
-                        return `<input type="date" class="trans-date-input ${baseClass}" data-row="${rowId}">`;
+                        return `<input type="date" class="${cls} trans-date-input">`;
 
                     case 'transName':
-                        return `<input type="text" class="trans-name-input ${baseClass}" data-row="${rowId}">`;
+                        return `<input class="${cls} trans-name-input">`;
 
                     case 'transRef':
-                        return `<input type="text" class="trans-ref-input ${baseClass}" data-row="${rowId}">`;
+                        return `<input class="${cls} trans-ref-input">`;
 
                     case 'description':
-                        return `<input type="text" class="description-input ${baseClass}" data-row="${rowId}">`;
+                        return `<input class="${cls} description-input">`;
 
                     case 'amount':
-                        return `<input type="number" step="0.01" class="amount-input ${baseClass}" data-row="${rowId}" value="0">`;
+                        return `<input type="number" step="0.01" value="0" class="${cls} amount-input">`;
 
                     case 'delete':
-                        return `<button type="button" class="btn btn-sm btn-danger delete-row" data-row="${rowId}">×</button>`;
-
-                    default:
-                        return `<input type="text" class="${baseClass}" data-row="${rowId}">`;
+                        return `<button type="button" class="btn btn-sm btn-danger delete-row">×</button>`;
                 }
             }
 
-            // Function to add a new row
-            function addNewRow() {
-                rowCounter++;
-                const method = $('#paymentMethodSelect').val();
-                const config = tableConfigs[method];
-                const $tbody = $('#transactionTableBody');
+            /* ================= ADD ROW ================= */
 
-                let rowHtml = '<tr data-row-id="' + rowCounter + '">';
+                    /* ================= ADD ROW ================= */
+        function addNewRow(record = null) {
+            rowCounter++;
+            const method = $('#paymentMethodSelect').val();
+            const config = tableConfigs[method];
+            const $tbody = $('#transactionTableBody');
 
-                config.fields.forEach(fieldType => {
-                    rowHtml += '<td>' + createInputField(fieldType, rowCounter) + '</td>';
-                });
+            let html = `<tr>`;
+             config.fields.forEach(f => {
+            // Skip creating a <td> for the 'id' field
+            if (f === 'id') return;
 
-                rowHtml += '</tr>';
+            // If it's the 'number' field, append the hidden ID field inside the SAME <td>
+            if (f === 'number') {
+                html += `<td>
+                            ${createInputField('number', rowCounter)}
+                            ${createInputField('id')}
+                         </td>`;
+            } else {
+                html += `<td>${createInputField(f, rowCounter)}</td>`;
+            }
+        });
 
-                $tbody.append(rowHtml);
+        html += `</tr>`;
+        const $row = $(html);
+        $tbody.append($row);
+
+            // ✅ Match the class 'name-input' (singular)
+            const paymentType = $('#paymentTypeSelect').val();
+            if (paymentType) {
+                loadNamesForRow($row, paymentType);
             }
 
-            // Function to render table body
-            function renderTableBody(method) {
+            if (method === 'Cheque') {
+                loadBanksForRow($row);
+            }
+
+            if (record) {
+                $row.find('.row-id').val(record.id || '');
+                $row.find('.name-input').val(record.nameId || ''); // Fixed selector
+                $row.find('.description-input').val(record.description || '');
+                $row.find('.amount-input').val(record.amount || 0);
+
+                // If Cheque specific fields exist in record, add them here:
+                if(method === 'Cheque') {
+                     $row.find('.bank-select').val(record.bankId || '');
+                     $row.find('.cheque-no-select').val(record.chequeNo || '');
+                }
+            }
+        }
+
+            /* ================= RENDER BODY ================= */
+
+            function renderTableBody() {
                 $('#transactionTableBody').empty();
                 rowCounter = 0;
-                addNewRow(); // Add initial row
+                addNewRow();
             }
 
-  
+            /* ================= EVENTS ================= */
 
-            // Payment Method Change Handler
-            $('#paymentMethodSelect').on('change', function() {
-                const method = $(this).val();
-                renderTableHeader(method);
-                renderTableBody(method);
+            $('#paymentMethodSelect').on('change', function () {
+                renderTableHeader(this.value);
+                renderTableBody();
             });
 
-            // Add Row Button
-            $('#addRowBtn').on('click', function() {
+            $('#addRowBtn').on('click', function () {
                 addNewRow();
             });
 
-            // Delete Row Handler (Event Delegation)
-            $('#transactionTableBody').on('click', '.delete-row', function() {
-                const rowId = $(this).data('row');
-                $('tr[data-row-id="' + rowId + '"]').remove();
+            /* ================= DELETE ================= */
 
-                // Renumber rows
-                $('.row-number').each(function(index) {
-                    $(this).text(index + 1);
-                });
+            $('#transactionTableBody').on('click', '.delete-row', function () {
+                const $row = $(this).closest('tr');
+                const id = $row.find('.row-id').val();
+
+                if (id) {
+                    $row.hide().addClass('deleted');
+                } else {
+                    $row.remove();
+                }
+
+                $('.row-number').each((i, el) => $(el).text(i + 1));
             });
 
-          
-            // Payment Type Change Handler
+            /* ================= COLLECT DATA ================= */
+
+            function collectRows() {
+                const rows = [];
+
+                $('#transactionTableBody tr:not(.deleted)').each(function () {
+                    const r = $(this);
+
+                    rows.push({
+                        id: r.find('.row-id').val(),
+                        name: r.find('.name-inputs').val(),
+                        description: r.find('.description-input').val(),
+                        amount: parseFloat(r.find('.amount-input').val()) || 0
+                    });
+                });
+
+                return rows;
+            }
+
+            /* ================= LOAD NAMES FOR SPECIFIC ROW ================= */
+
+            function loadNamesForRow($row, paymentType) {
+                let url = '';
+
+                switch (paymentType) {
+                    case 'Customer':
+                        url = '@Url.Action("GetCustomers", "Customer")';
+                        break;
+                    case 'Vendor':
+                        url = '@Url.Action("GetVendor", "Vendor")';
+                        break;
+                    case 'Employee':
+                        url = '@Url.Action("GetEmployees", "HR")';
+                        break;
+                    default:
+                        return;
+                }
+
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    success: function (res) {
+                        if (!res.status || !Array.isArray(res.data)) {
+                            toastr.error('Invalid name data');
+                            return;
+                        }
+
+                      const $nameSelect = $row.find('.name-input');
+            $nameSelect.empty().append('<option value="">-- Select --</option>');
+
+                        res.data.forEach(item => {
+                            $nameSelect.append(
+                                `<option value="${item.id}">${item.name}</option>`
+                            );
+                        });
+                    },
+                    error: function () {
+                        toastr.error('Failed to load names');
+                    }
+                });
+            }
+
+            /* ================= LOAD BANKS FOR SPECIFIC ROW ================= */
+
+            function loadBanksForRow($row) {
+                if (!window.cachedBanks || window.cachedBanks.length === 0) {
+                    return;
+                }
+
+                const $bankSelect = $row.find('.bank-select');
+                if ($bankSelect.length) {
+                    $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
+
+                    window.cachedBanks.forEach(bank => {
+                        $bankSelect.append(`<option value="${bank.id}">${bank.name}</option>`);
+                    });
+                }
+            }
+
+            /* ================= PAYMENT TYPE CHANGE ================= */
+
             $('#paymentTypeSelect').on('change', function() {
                 const paymentType = $(this).val();
 
@@ -433,9 +541,14 @@
                     return;
                 }
 
+                // ✅ Update ALL existing name dropdowns in the table
+                $('#transactionTableBody tr').each(function() {
+                    loadNamesForRow($(this), paymentType);
+                });
+
                 // Call API to get payment type details
                 $.ajax({
-                    url: '@Url.Action("GetPaymentTypeDetailss", "Account")',
+                    url: '@Url.Action("GetPaymentTypeDetailsAdvancePayment", "Account")',
                     type: 'GET',
                     data: {
                         paymentType: paymentType,
@@ -463,30 +576,9 @@
                                     );
                                 });
 
-                                if (data.DebitAccountId) {
-                                    $debitSelect.val(data.DebitAccountId);
-                                    $('#accountCodeInput').val(data.DebitAccountCode || '');
-                                }
-                            }
-                        });
-
-                        // Load credit accounts
-                        $.ajax({
-                            url: '@Url.Action("GetAccruedSalaries", "HR")',
-                            type: 'GET',
-                            success: function(accounts) {
-                                const $creditSelect = $('#creditAccountNameSelect');
-                                $creditSelect.empty().append('<option value="">-- Select --</option>');
-
-                                accounts.forEach(item => {
-                                    $creditSelect.append(
-                                        `<option value="${item.id}" data-code="${item.code}">${item.code} - ${item.name}</option>`
-                                    );
-                                });
-
-                                if (data.CreditAccountId) {
-                                    $creditSelect.val(data.CreditAccountId);
-                                    $('#creditAccountCodeInput').val(data.CreditAccountCode || '');
+                                if (data.debitAccountId) {
+                                    $debitSelect.val(data.debitAccountId);
+                                    $('#accountCodeInput').val(data.debitAccountCode || '');
                                 }
                             }
                         });
@@ -498,12 +590,92 @@
                 });
             });
 
-   
+            /* ================= PAYMENT METHOD CHANGE ================= */
 
-            // Initialize with default payment method
-            $('#paymentMethodSelect').trigger('change');
+            $('#paymentMethodSelect').on('change', function () {
+                const method = $(this).val();
 
-            // Modal show event - reset form
+                // Reset credit section
+                const $creditSelect = $('#creditAccountNameSelect');
+                $creditSelect.empty().append('<option value="">-- Select --</option>');
+                $('#creditAccountCodeInput').val('');
+
+                // Hide optional columns
+                $('.bank-col').addClass('d-none');
+                $('.transfer-col').addClass('d-none');
+
+                if (!method) return;
+
+                $.ajax({
+                    url: '@Url.Action("GetAdvancePaymentMethodDetails", "Account")',
+                    type: 'GET',
+                    data: { method: method },
+                    success: function (res) {
+
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to load payment method details');
+                            return;
+                        }
+
+                        const data = res.data;
+
+                        /* SHOW / HIDE COLUMNS */
+                        if (data.ShowBankColumns) {
+                            $('.bank-col').removeClass('d-none');
+                        }
+
+                        if (data.ShowTransferColumns) {
+                            $('.transfer-col').removeClass('d-none');
+                        }
+
+                        /* LOAD CREDIT ACCOUNTS */
+                        $.ajax({
+                            url: '@Url.Action("GetAccruedSalaries", "HR")',
+                            type: 'GET',
+                            success: function (accounts) {
+                                $creditSelect.empty().append('<option value="">-- Select --</option>');
+
+                                accounts.forEach(item => {
+                                    const option = `
+                                        <option value="${item.id}" data-code="${item.code}">
+                                            ${item.code} - ${item.name}
+                                        </option>`;
+                                    $creditSelect.append(option);
+                                });
+
+                                if (data.creditAccountId) {
+                                    $creditSelect.val(data.creditAccountId);
+                                    $('#creditAccountCodeInput').val(data.creditAccountCode || '');
+                                }
+                            },
+                            error: function () {
+                                toastr.error('Failed to load credit accounts');
+                            }
+                        });
+
+                        /* ✅ CACHE BANKS (Cheque) */
+                        if (data.Banks && data.Banks.length > 0) {
+                            // Store banks globally
+                            window.cachedBanks = data.Banks;
+
+                            // Load banks into all existing rows
+                            $('#transactionTableBody tr').each(function() {
+                                loadBanksForRow($(this));
+                            });
+                        } else {
+                            // Clear cache if no banks
+                            window.cachedBanks = [];
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error('Error loading payment method details');
+                        console.error(xhr);
+                    }
+                });
+            });
+
+            /* ================= MODAL INIT ================= */
+
             $('#paymentVoucherModal').on('show.bs.modal', function() {
                 // Reset form
                 $('#paymentVoucherForm')[0].reset();
@@ -514,11 +686,16 @@
                 const today = new Date().toISOString().split('T')[0];
                 $('#date').val(today);
 
+                // Clear cached banks
+                window.cachedBanks = [];
+
                 // Reset and render table
                 $('#paymentMethodSelect').trigger('change');
             });
 
-             function getTodayDate() {
+            /* ================= OTHER FUNCTIONS ================= */
+
+            function getTodayDate() {
                 const today = new Date();
                 const year = today.getFullYear();
                 const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -526,15 +703,10 @@
                 return `${year}-${month}-${day}`;
             }
 
-             document.getElementById('paymentVoucherModal').addEventListener('shown.bs.modal', function () {
+            document.getElementById('paymentVoucherModal').addEventListener('shown.bs.modal', function () {
                 const todayDate = getTodayDate();
 
-                // Fill all date fields
-                const dateFields = [
-                    'date',
-                    'chequeDate',
-                    'transferDate'
-                ];
+                const dateFields = ['date', 'chequeDate', 'transferDate'];
 
                 dateFields.forEach(fieldId => {
                     const field = document.getElementById(fieldId);
@@ -544,160 +716,187 @@
                 });
             });
 
-                    $('#chkAllData').change(function () {
-            const enabled = !$(this).is(':checked');
-            $('#startDate, #endDate').prop('disabled', !enabled);
+            $('#chkAllData').change(function () {
+                const enabled = !$(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', !enabled);
 
-            if (!enabled) {
-                $('#startDate, #endDate').val('');
+                if (!enabled) {
+                    $('#startDate, #endDate').val('');
+                    loadPaymentVoucher();
+                }
+            });
+
+            $('#filterBtn').click(function () {
                 loadPaymentVoucher();
-            }
-        });
+            });
 
-                $('#filterBtn').click(function () {
-            loadPaymentVoucher();
-        });
+            $('#method').change(function () {
+                loadPaymentVoucher();
+            });
 
-        $('#method').change(function () {
-            loadPaymentVoucher();
-        });
+            function loadPaymentVoucher() {
+                const type = $('#method').val();
+                const includeAllDates = $('#chkAllData').is(':checked');
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
 
-                      function loadPaymentVoucher() {
+                if (!includeAllDates && (!startDate || !endDate)) {
+                    toastr.warning('Please select both Start and End dates.');
+                    return;
+                }
 
-            const type = $('#method').val();
-            const includeAllDates = $('#chkAllData').is(':checked');
-            const startDate = $('#startDate').val();
-            const endDate = $('#endDate').val();
-
-            if (!includeAllDates && (!startDate || !endDate)) {
-                toastr.warning('Please select both Start and End dates.');
-                return;
-            }
-
-            $.ajax({
-                url: '@Url.Action("GetAdvancePaymentVoucherReport", "Account")',
-                type: 'GET',
-                data: {
-                    type: type,
-                    dateFrom: includeAllDates ? null : startDate,
-                    dateTo: includeAllDates ? null : endDate,
-                    includeAllDates: includeAllDates
-                },
-                beforeSend: function () {
-                    $('#table1 tbody').html(`
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <div class="spinner-border text-primary"></div>
-                            </td>
-                        </tr>
-                    `);
-                    $('#table2 tbody').empty();
-                },
-                success: function (res) {
-
-                    if (!res.status) {
-                        toastr.error(res.message || 'Failed to load data');
-                        return;
-                    }
-
-                    // Destroy safely
-                    if ($.fn.DataTable.isDataTable('#table1')) {
-                        $('#table1').DataTable().clear().destroy();
-                    }
-
-                    const tbody = $('#table1 tbody');
-                    tbody.empty();
-
-                    if (res.data.length === 0) {
-                        tbody.append(`<tr><td colspan="7" class="text-center">No records found</td></tr>`);
-                        return;
-                    }
-
-                    $.each(res.data, function (i, row) {
-                        tbody.append(`
-                            <tr data-index="${i}">
-                                <td>${row.Date ?? ''}</td>
-                                <td>${row["Payment Code"] ?? ''}</td>
-                                <td>${row["JV NO"] ?? ''}</td>
-                                <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
-                                <td>${row["Debit Account"] ?? ''}</td>
-                                <td>${row["Credit Account"] ?? ''}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary viewDetailsBtn">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
+                $.ajax({
+                    url: '@Url.Action("GetAdvancePaymentVoucherReport", "Account")',
+                    type: 'GET',
+                    data: {
+                        type: type,
+                        dateFrom: includeAllDates ? null : startDate,
+                        dateTo: includeAllDates ? null : endDate,
+                        includeAllDates: includeAllDates
+                    },
+                    beforeSend: function () {
+                        $('#table1 tbody').html(`
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border text-primary"></div>
                                 </td>
                             </tr>
                         `);
-                    });
+                        $('#table2 tbody').empty();
+                    },
+                    success: function (res) {
+                        if (!res.status) {
+                            toastr.error(res.message || 'Failed to load data');
+                            return;
+                        }
 
-                    // ✅ SINGLE DataTable initialization
-                    const table = $('#table1').DataTable({
-                        dom: 'Bfrtip',
-                        buttons: [
-                            {
-                                extend: 'excelHtml5',
-                                title: 'Advance Payment Voucher',
-                                className: 'btn btn-primary btn-sm'
-                            },
-                            {
-                                extend: 'pdfHtml5',
-                                title: 'Advance Payment Voucher',
-                                orientation: 'landscape',
-                                pageSize: 'A4',
-                                 className: 'btn btn-primary btn-sm',
-                            }
-                        ],
-                        pageLength: 15,
-                        ordering: true
-                    });
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().clear().destroy();
+                        }
 
-                    // Auto-load first row details
-                    loadDetails(res.data[0]);
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
 
-                    // Row click → load details
-                    $('#table1 tbody').on('click', 'tr', function () {
-                        $('#table1 tbody tr').removeClass('table-active');
-                        $(this).addClass('table-active');
+                        if (res.data.length === 0) {
+                            tbody.append(`<tr><td colspan="7" class="text-center">No records found</td></tr>`);
+                            return;
+                        }
 
-                        const index = $(this).data('index');
-                        loadDetails(res.data[index]);
-                    });
-                },
-                error: function () {
-                    toastr.error('Server error while loading data');
-                }
-            });
-        }
+                        $.each(res.data, function (i, row) {
+                            tbody.append(`
+                                <tr data-index="${i}">
+                                    <td>${row.Date ?? ''}</td>
+                                    <td>${row["Payment Code"] ?? ''}</td>
+                                    <td>${row["JV NO"] ?? ''}</td>
+                                    <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
+                                    <td>${row["Debit Account"] ?? ''}</td>
+                                    <td>${row["Credit Account"] ?? ''}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary viewDetailsBtn">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
 
+                        const table = $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    title: 'Advance Payment Voucher',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    title: 'Advance Payment Voucher',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4',
+                                    className: 'btn btn-primary btn-sm',
+                                }
+                            ],
+                            pageLength: 15,
+                            ordering: true
+                        });
 
+                        loadDetails(res.data[0]);
 
+                        $('#table1 tbody').on('click', 'tr', function () {
+                            $('#table1 tbody tr').removeClass('table-active');
+                            $(this).addClass('table-active');
 
-                function loadDetails(voucher) {
-
-            const tbody = $('#table2 tbody');
-            tbody.empty();
-
-            if (!voucher.Details || voucher.Details.length === 0) {
-                tbody.append(`<tr><td colspan="3" class="text-center">No details found</td></tr>`);
-                return;
+                            const index = $(this).data('index');
+                            loadDetails(res.data[index]);
+                        });
+                    },
+                    error: function () {
+                        toastr.error('Server error while loading data');
+                    }
+                });
             }
 
-            $.each(voucher.Details, function (i, d) {
-                tbody.append(`
-                    <tr>
-                        <td>${d.EmployeeName ?? ''}</td>
-                        <td>${(d.Amount ?? 0).toLocaleString()}</td>
-                        <td>${d.Description ?? ''}</td>
-                    </tr>
-                `);
-            });
-        }
+            function loadDetails(voucher) {
+                const tbody = $('#table2 tbody');
+                tbody.empty();
 
+                if (!voucher.Details || voucher.Details.length === 0) {
+                    tbody.append(`<tr><td colspan="3" class="text-center">No details found</td></tr>`);
+                    return;
+                }
 
+                $.each(voucher.Details, function (i, d) {
+                    tbody.append(`
+                        <tr>
+                            <td>${d.EmployeeName ?? ''}</td>
+                            <td>${(d.Amount ?? 0).toLocaleString()}</td>
+                            <td>${d.Description ?? ''}</td>
+                        </tr>
+                    `);
+                });
+            }
 
+            function populateAndSelectCostCenter() {
+                $.ajax({
+                    url: '@Url.Action("GetCostCenters", "Lists")',
+                    type: 'GET',
+                    success: function (res) {
+                        const data = Array.isArray(res) ? res : (res.data || []);
+                        if (!data.length) return;
+
+                        function fillSelect($select) {
+                            const selectedId = String($select.data("selected-id") || "");
+                            $select.empty().append('<option value="">-- Select --</option>');
+
+                            data.forEach(item => {
+                                $select.append(
+                                    `<option value="${item.id}">${item.code} - ${item.name}</option>`
+                                );
+                            });
+
+                            if (selectedId) {
+                                $select.val(selectedId);
+                            }
+                        }
+
+                        $(".costCenterSelect").each(function () {
+                            fillSelect($(this));
+                        });
+
+                        $(".creditCostCenterSelect").each(function () {
+                            fillSelect($(this));
+                        });
+                    }
+                });
+            }
+
+            // Initialize payment method
+            $('#paymentMethodSelect').trigger('change');
 
         });
+
+
+
 
     </script>
 }
