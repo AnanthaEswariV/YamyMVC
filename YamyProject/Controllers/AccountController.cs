@@ -8031,6 +8031,132 @@ WHERE payment_id = @receiptId";
         {
             return View();
         }
+        [HttpGet]
+        public async Task<IActionResult> GetAdvancePaymentVoucherReport(
+    string type,
+    DateTime? dateFrom = null,
+    DateTime? dateTo = null,
+    bool includeAllDates = true)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Date condition
+                string dateCondition = includeAllDates
+                    ? ""
+                    : " AND tp.date >= @dateFrom AND tp.date <= @dateTo ";
+
+                // =========================
+                // MAIN VOUCHER QUERY
+                // =========================
+                string voucherQuery = $@"
+SELECT 
+    tp.id,
+    tp.date AS `Date`,
+    tp.pv_code AS `Payment Code`,
+    (
+        SELECT CONCAT('000', MAX(t.transaction_id))
+        FROM tbl_transaction t
+        WHERE t.transaction_id = tp.id
+    ) AS `JV NO`,
+    tp.amount AS `Amount`,
+    CONCAT(tc.code, ' - ', tc.name) AS `Debit Account`,
+    CONCAT(tc1.code, ' - ', tc1.name) AS `Credit Account`
+FROM tbl_advance_payment_voucher tp
+INNER JOIN tbl_coa_level_4 tc ON tp.debit_account_id = tc.id
+INNER JOIN tbl_coa_level_4 tc1 ON tp.credit_account_id = tc1.id
+WHERE tp.type = @type
+{dateCondition}";
+
+                var vouchers = new List<Dictionary<string, object>>();
+
+                await using (var cmd = new MySqlCommand(voucherQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@type", type);
+
+                    if (!includeAllDates && dateFrom.HasValue && dateTo.HasValue)
+                    {
+                        cmd.Parameters.AddWithValue("@dateFrom", dateFrom.Value.Date);
+                        cmd.Parameters.AddWithValue("@dateTo", dateTo.Value.Date);
+                    }
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        vouchers.Add(row);
+                    }
+                }
+
+                // =========================
+                // DETAILS PER VOUCHER
+                // =========================
+                foreach (var voucher in vouchers)
+                {
+                    int voucherId = Convert.ToInt32(voucher["id"]);
+
+                    string detailsQuery = @"
+SELECT 
+    e.name AS `EmployeeName`,
+    pd.amount AS `Amount`,
+    pd.description AS `Description`
+FROM tbl_advance_payment_voucher_details pd
+INNER JOIN tbl_employee e ON pd.name = e.id
+WHERE pd.payment_id = @paymentId";
+
+                    var details = new List<Dictionary<string, object>>();
+
+                    await using (var detailCmd = new MySqlCommand(detailsQuery, conn))
+                    {
+                        detailCmd.Parameters.AddWithValue("@paymentId", voucherId);
+
+                        await using var detailReader = await detailCmd.ExecuteReaderAsync();
+                        while (await detailReader.ReadAsync())
+                        {
+                            var dRow = new Dictionary<string, object>();
+                            for (int i = 0; i < detailReader.FieldCount; i++)
+                            {
+                                dRow[detailReader.GetName(i)] =
+                                    detailReader.IsDBNull(i) ? null : detailReader.GetValue(i);
+                            }
+                            details.Add(dRow);
+                        }
+                    }
+
+                    voucher["Details"] = details;
+                }
+
+                // =========================
+                // RESPONSE
+                // =========================
+                return Ok(new
+                {
+                    status = true,
+                    data = vouchers
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
 
 
         [HttpGet]
