@@ -267,6 +267,7 @@
 
             loadPaymentVoucher();
             populateAndSelectCostCenter();
+            loadChequeBooks();
             let rowCounter = 0;
 
             // Global cache for banks
@@ -464,19 +465,6 @@
             $row.find('.cheque-name-input')
                 .val($selected.data('abb') || '');
 
-            // Bank Account
-            $row.find('.bank-account-select')
-                .empty()
-                .append(`<option value="${$selected.data('account')}">
-                            ${$selected.data('account')}
-                         </option>`);
-
-            // Book No
-            $row.find('.book-no-select')
-                .empty()
-                .append(`<option value="${$selected.data('book')}">
-                            ${$selected.data('book')}
-                         </option>`);
 
             // Cheque Date (if empty)
             const today = getTodayDate();
@@ -774,10 +762,66 @@
                 );
             });
         }
+                let chequeBooksData = []; // global cache
+
+        // Load all cheque books on page load
+        function loadChequeBooks() {
+            $.ajax({
+                url: '@Url.Action("GetChequeBooks", "Account")',
+                type: 'GET',
+                success: function (res) {
+                    console.log(res);
+                    if (!res.status || !Array.isArray(res.data)) return;
+                    chequeBooksData = res.data;
+                },
+                error: function () {
+                    toastr.error('Failed to load cheque books');
+                }
+            });
+        }
+
+                   $('#transactionTableBody').on('change', '.bank-select', function () {
+            const $row = $(this).closest('tr'); // current row
+            const selectedBankId = parseInt($(this).val());
+
+            const $chequeNoSelect = $row.find('.cheque-no-select');
+            const $bankAccountSelect = $row.find('.bank-account-select');
+            const $bookNoSelect = $row.find('.book-no-select');
+
+            // Reset dropdowns
+            $chequeNoSelect.empty().append('<option value="">-- Select Cheque No --</option>');
+            $bookNoSelect.empty().append('<option value="">-- Select Book No --</option>');
+            $bankAccountSelect.empty().append('<option value="">-- Select Bank Account --</option>');
+
+            if (!selectedBankId) return;
+
+            // Filter chequeBooksData for this bank
+            const bankCheques = chequeBooksData.filter(cb => cb.bank_card_id === selectedBankId);
+
+            // Populate cheque numbers
+            bankCheques.forEach(cb => {
+                const start = parseInt(cb.startFrom);
+                const end = parseInt(cb.endIn);
+                for (let i = start; i <= end; i++) {
+                    $chequeNoSelect.append(`<option value="${i}">${i}</option>`);
+                }
+            });
+
+            // Populate book numbers
+            const uniqueBooks = [...new Set(bankCheques.map(cb => cb.chqBookNo))];
+            uniqueBooks.forEach(bn => {
+                $bookNoSelect.append(`<option value="${bn}">${bn}</option>`);
+            });
+
+            // Populate bank account select using acName from chequeBooksData
+            const uniqueAccounts = [...new Set(bankCheques.map(cb => cb.acName))];
+            uniqueAccounts.forEach(acc => {
+                $bankAccountSelect.append(`<option value="${acc}">${acc}</option>`);
+            });
+        });
 
 
 
-            /* ================= MODAL INIT ================= */
 
             $('#paymentVoucherModal').on('show.bs.modal', function() {
                 // Reset form

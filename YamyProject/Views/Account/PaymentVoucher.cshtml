@@ -1335,7 +1335,7 @@ $(document).on("click", ".editPaymentVoucherBtn", function () {
             type: 'GET',
             success: function(res) {
                 if (!res.status || !res.data) return;
-                
+                console.log(res);
                 const $bankSelect = $('#bankNameSelect');
                 $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
                 
