@@ -8024,7 +8024,6 @@ WHERE payment_id = @receiptId";
 
         #endregion
 
-
         #region Advance Payment
 
         public IActionResult AdvancePayment()

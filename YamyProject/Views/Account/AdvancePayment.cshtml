@@ -368,6 +368,7 @@
             const method = $('#paymentMethodSelect').val();
             const config = tableConfigs[method];
             const $tbody = $('#transactionTableBody');
+            const today = getTodayDate();
 
             let html = `<tr>`;
              config.fields.forEach(f => {
@@ -389,6 +390,9 @@
         const $row = $(html);
         $tbody.append($row);
 
+            if (!record) {
+            $row.find('.cheque-date-input, .trans-date-input').val(today);
+        }
             // ✅ Match the class 'name-input' (singular)
             const paymentType = $('#paymentTypeSelect').val();
             if (paymentType) {
@@ -706,7 +710,7 @@
             document.getElementById('paymentVoucherModal').addEventListener('shown.bs.modal', function () {
                 const todayDate = getTodayDate();
 
-                const dateFields = ['date', 'chequeDate', 'transferDate'];
+                const dateFields = ['date', '.cheque-date-input', '.trans-date-input'];
 
                 dateFields.forEach(fieldId => {
                     const field = document.getElementById(fieldId);
@@ -714,6 +718,12 @@
                         field.value = todayDate;
                     }
                 });
+
+                    $('#transactionTableBody').find('.cheque-date-input, .trans-date-input').each(function() {
+            if (!$(this).val()) {
+                $(this).val(todayDate);
+            }
+        }); 
             });
 
             $('#chkAllData').change(function () {
