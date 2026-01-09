@@ -322,8 +322,10 @@
                         <option value="">-- Select --</option>
                     </select>`;
 
-                    case 'bankName':
-                        return `<select class="${cls} bank-select"><option value="">-- Select Bank --</option></select>`;
+                       case 'bankName':
+        return `<select class="form-control form-control-sm bank-select">
+                    <option value="">-- Select Bank --</option>
+                </select>`;
 
                     case 'chequeName':
                         return `<input class="${cls} cheque-name-input">`;
@@ -451,6 +453,40 @@
                 $('.row-number').each((i, el) => $(el).text(i + 1));
             });
 
+                    $('#transactionTableBody').on('change', '.bank-select', function () {
+
+            const $row = $(this).closest('tr');
+            const $selected = $(this).find(':selected');
+
+            if (!$selected.val()) return;
+
+            // Cheque Name
+            $row.find('.cheque-name-input')
+                .val($selected.data('abb') || '');
+
+            // Bank Account
+            $row.find('.bank-account-select')
+                .empty()
+                .append(`<option value="${$selected.data('account')}">
+                            ${$selected.data('account')}
+                         </option>`);
+
+            // Book No
+            $row.find('.book-no-select')
+                .empty()
+                .append(`<option value="${$selected.data('book')}">
+                            ${$selected.data('book')}
+                         </option>`);
+
+            // Cheque Date (if empty)
+            const today = getTodayDate();
+            const $date = $row.find('.cheque-date-input');
+            if (!$date.val()) {
+                $date.val(today);
+            }
+        });
+
+
             /* ================= COLLECT DATA ================= */
 
             function collectRows() {
@@ -513,22 +549,26 @@
                 });
             }
 
-            /* ================= LOAD BANKS FOR SPECIFIC ROW ================= */
+        function loadBanksForRow($row) {
+            if (!window.cachedBanks || window.cachedBanks.length === 0) return;
 
-            function loadBanksForRow($row) {
-                if (!window.cachedBanks || window.cachedBanks.length === 0) {
-                    return;
-                }
+            const $bankSelect = $row.find('.bank-select');
+            if (!$bankSelect.length) return;
 
-                const $bankSelect = $row.find('.bank-select');
-                if ($bankSelect.length) {
-                    $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
+            $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
 
-                    window.cachedBanks.forEach(bank => {
-                        $bankSelect.append(`<option value="${bank.id}">${bank.name}</option>`);
-                    });
-                }
-            }
+            window.cachedBanks.forEach(bank => {
+                $bankSelect.append(`
+                    <option value="${bank.id}"
+                        data-abb="${bank.abbName}"
+                        data-account="${bank.code}"
+                        data-book="${bank.routeNo}">
+                        ${bank.bankName}
+                    </option>
+                `);
+            });
+        }
+
 
             /* ================= PAYMENT TYPE CHANGE ================= */
 
@@ -677,6 +717,65 @@
                     }
                 });
             });
+
+              $('#paymentMethodSelect').on('change', function () {
+            const method = $(this).val();
+
+            // Reset credit section
+            $('#creditAccountNameSelect').empty().append('<option value="">-- Select --</option>');
+            $('#creditAccountCodeInput').val('');
+
+            // Clear previous banks
+            window.cachedBanks = [];
+
+            renderTableHeader(method);
+            renderTableBody();
+
+            if (method !== 'Cheque') {
+                return;
+            }
+
+            // ✅ CALL GetBankss ONLY FOR CHEQUE
+            $.ajax({
+                url: '@Url.Action("GetBankss", "Account")',
+                type: 'GET',
+                success: function (res) {
+                    console.log(res);
+                    if (!res.status || !Array.isArray(res.data)) {
+                        toastr.error('Failed to load banks');
+                        return;
+                    }
+
+                    // ✅ Cache banks globally
+                    window.cachedBanks = res.data;
+
+                    // ✅ Load banks into existing rows
+                    $('#transactionTableBody tr').each(function () {
+            loadBanksForRow($(this));
+        });
+                },
+                error: function () {
+                    toastr.error('Error loading banks');
+                }
+            });
+        });
+
+                function loadBanksForRow($row) {
+            if (!window.cachedBanks || window.cachedBanks.length === 0) return;
+
+            const $bankSelect = $row.find('.bank-select');
+            if (!$bankSelect.length) return;
+
+            $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
+
+            window.cachedBanks.forEach(bank => {
+                $bankSelect.append(
+                    `<option value="${bank.id}">${bank.bankName}</option>`
+                );
+            });
+        }
+
+
 
             /* ================= MODAL INIT ================= */
 
