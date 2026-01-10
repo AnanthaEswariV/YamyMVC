@@ -4,3 +4,447 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+
+    /* Highlight selected row */
+    #table1 tbody tr.selected {
+        background-color: #c7e5b4;
+    }
+
+    .modal-dialog-scrollable .modal-body {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong class="mx-auto">Journal Voucher Center</strong>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#journalVoucherModal">
+            <i class="bi bi-plus-circle"></i> New Journal Voucher
+        </button>
+    </div>
+    <div class="card-body" style="font-size:small">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 150px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+
+        </div>
+
+        <!-- Default method: Two tables -->
+        <div id="defaultTables" style="height: 80vh; display: flex; flex-direction: column;">
+            <div class="card-body flex-grow-1" style="overflow-y: auto;">
+                <table class="table table-striped" id="table1">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Journal Code</th>
+                            <th>JV No</th>
+                            <th>Debit Account</th>
+                            <th>Credit Account</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="card-footer p-0" style="height: 150px; overflow-y: auto;">
+                <table class="table table-striped" id="table2">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Name</th>
+                            <th>Debit Amount</th>
+                            <th>Credit Amount</th>
+                            <th>Partner</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="journalVoucherModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="mb-0">New Journal Voucher</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+
+                <!-- Date -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Date</label>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="table-responsive border rounded">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th style="width:50px;">S.No</th>
+                                <th style="width:120px;">AC Code</th>
+                                <th>Account Name</th>
+                                <th style="width:140px;">Debit</th>
+                                <th style="width:140px;">Credit</th>
+                                <th>Description</th>
+                                <th style="width:140px;">Partner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journalTbody">
+                            <tr>
+                                <td class="text-center sno">1</td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm accountCodeInput" readonly>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm accountNameSelect">
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </td>
+                                <td><input class="form-control form-control-sm text-end debitInput"></td>
+                                <td><input class="form-control form-control-sm text-end creditInput"></td>
+                                <td><input class="form-control form-control-sm"></td>
+                                <td>
+                                    <select class="form-select form-select-sm">
+                                        <option></option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+
+                    </table>
+                </div>
+
+               
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+
+                <!-- Left side: Dr / Cr Amount -->
+                <div class="d-flex gap-3">
+                    <div class="border rounded px-3 py-2 bg-light" style="min-width:180px;">
+                        Dr Amount
+                    </div>
+                    <div class="border rounded px-3 py-2 bg-light" style="min-width:180px;">
+                        Cr Amount
+                    </div>
+                </div>
+
+                <!-- Right side: Buttons -->
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        Save
+                    </button>
+                </div>
+
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script>
+            $(document).ready(function () {
+
+                  let accountList = [];
+                  loadAccounts();
+                  loadJournalVoucherReport();
+        function loadAccounts() {
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function (accounts) {
+                    accountList = accounts;
+                    populateAccountSelect($('.accountNameSelect'));
+                }
+            });
+        }
+
+        function populateAccountSelect($selects) {
+            $selects.each(function () {
+                const $select = $(this);
+                $select.empty().append('<option value="">-- Select --</option>');
+
+                accountList.forEach(item => {
+                    $select.append(
+                        `<option value="${item.id}" data-code="${item.code}">
+                            ${item.code} - ${item.name}
+                        </option>`
+                    );
+                });
+            });
+        }
+
+        $(document).on('change', '.accountNameSelect', function () {
+
+            const $row = $(this).closest('tr');
+
+            // Fill AC Code
+            const code = $(this).find(':selected').data('code') || '';
+            $row.find('.accountCodeInput').val(code);
+
+            // If this is the last row and account selected → add new row
+            const isLastRow = $row.is(':last-child');
+            const hasValue = $(this).val() !== '';
+
+            if (isLastRow && hasValue) {
+                addNewRow();
+            }
+        });
+
+        function addNewRow() {
+
+            const rowCount = $('#journalTbody tr').length + 1;
+
+            const newRow = `
+                <tr>
+                    <td class="text-center sno">${rowCount}</td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm accountCodeInput" readonly>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm accountNameSelect">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </td>
+                    <td><input class="form-control form-control-sm text-end debitInput"></td>
+                    <td><input class="form-control form-control-sm text-end creditInput"></td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td>
+                        <select class="form-select form-select-sm">
+                            <option></option>
+                        </select>
+                    </td>
+                </tr>
+            `;
+
+            $('#journalTbody').append(newRow);
+
+            // Populate account dropdown in the new row
+            populateAccountSelect($('#journalTbody tr:last .accountNameSelect'));
+        }
+
+                function loadJournalVoucherReport() {
+
+            const includeAllDates = $('#chkAllData').is(':checked');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            if (!includeAllDates && (!startDate || !endDate)) {
+                toastr.warning('Please select both start and end dates.');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetJournalVoucherReport", "Account")',
+                type: 'GET',
+                data: {
+                    dateFrom: startDate || null,
+                    dateTo: endDate || null,
+                    includeAllDates: includeAllDates
+                },
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div> Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load journal vouchers');
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+
+                        $.each(res.data, function (i, row) {
+
+                            const tr = `
+                                <tr data-details='${JSON.stringify(row.Details || [])}'>
+                                    <td>${row.Date ? new Date(row.Date).toISOString().split('T')[0] : ''}</td>
+                                    <td>${row["Journal Code"] ?? ''}</td>
+                                    <td>${row["JV NO"] ?? ''}</td>
+                                    <td>
+                                        ${(row["Debit Amount"] ?? 0).toLocaleString()}
+                                    </td>
+                                    <td>
+                                        ${(row["Credit Amount"] ?? 0).toLocaleString()}
+                                    </td>
+                                    <td>
+                                      <button class="btn btn-sm btn-primary editReceiptVoucherBtn"
+                    data-customer='${JSON.stringify(row)}'>
+                    <i class="fas fa-pen"></i>
+                </button>
+                                    </td>
+                                </tr>
+                            `;
+
+                            tbody.append(tr);
+                        });
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'desc']],
+                            pageLength: 15
+                        });
+
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    No records found
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading journal voucher report');
+                }
+            });
+        }
+
+
+                $(document).on('click', '#table1 tbody tr', function () {
+
+            $('#table1 tbody tr').removeClass('selected');
+            $(this).addClass('selected');
+
+            const details = $(this).data('details') || [];
+            const tbody = $('#table2 tbody');
+
+            tbody.empty();
+
+            if (details.length === 0) {
+                tbody.append(`
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">
+                            No details found
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+
+            details.forEach(d => {
+                tbody.append(`
+                    <tr>
+                        <td>${d.Date ? new Date(d.Date).toISOString().split('T')[0] : ''}</td>
+                        <td>${d["Account Name"] ?? ''}</td>
+                        <td>${(d["Debit Amount"] ?? 0).toLocaleString()}</td>
+                        <td>${(d["Credit Amount"] ?? 0).toLocaleString()}</td>
+                        <td>${d.Partner ?? ''}</td>
+                        <td>${d.Description ?? ''}</td>
+                    </tr>
+                `);
+            });
+        });
+
+
+                $('#filterBtn').on('click', function () {
+            loadJournalVoucherReport();
+        });
+
+        $('#chkAllData').on('change', function () {
+            const disabled = $(this).is(':checked');
+            $('#startDate, #endDate').prop('disabled', disabled);
+        });
+
+
+          });
+
+    </script>
+}
