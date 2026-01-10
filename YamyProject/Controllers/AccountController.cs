@@ -8063,6 +8063,14 @@ SELECT
     tp.id,
     tp.date AS `Date`,
     tp.pv_code AS `Payment Code`,
+     tp.type AS `Type`,
+     tp.method AS `Method`,
+     tp.description AS `Description`,
+     tp.debit_cost_center_id AS `Debit_Cost_Center_Id`,
+     tp.credit_cost_center_id AS `Credit_Cost_Center_Id`,
+     tp.debit_account_id AS `Debit_Account_Id`,
+     tp.credit_account_id AS `Credit_Account_Id`,
+     tp.project_id AS `Project_Id`,
     (
         SELECT CONCAT('000', MAX(t.transaction_id))
         FROM tbl_transaction t
@@ -8108,13 +8116,42 @@ WHERE tp.type = @type
                 {
                     int voucherId = Convert.ToInt32(voucher["id"]);
 
+                    //                    string detailsQuery = @"
+                    //SELECT 
+                    //    e.name AS `EmployeeName`,
+                    //    pd.amount AS `Amount`,
+                    //    pd.bank_name AS `Bank_Name`,
+                    //    pd.check_name AS `Check_Name`,
+                    //    pd.check_no AS `Check_No`,
+                    //    pd.check_date AS `Check_Date`,
+                    //    pd.bank_account_name AS `Bank_Account_Name`,
+                    //    pd.book_no AS `Book_No`,
+                    //    pd.trans_date AS `Trans_Date`,
+                    //    pd.trans_name AS `Trans_Name`,
+                    //    pd.trans_ref AS `Trans_Ref`,
+                    //    pd.project_id AS `Project_Id`,
+                    //    pd.name AS `Emp_ID`,
+                    //    pd.description AS `Description`
+                    //FROM tbl_advance_payment_voucher_details pd
+                    //INNER JOIN tbl_employee e ON pd.name = e.id
+                    //WHERE pd.payment_id = @paymentId";
+
                     string detailsQuery = @"
 SELECT 
-    e.name AS `EmployeeName`,
     pd.amount AS `Amount`,
+    pd.bank_name AS `Bank_Name`,
+    pd.check_name AS `Check_Name`,
+    pd.check_no AS `Check_No`,
+    pd.check_date AS `Check_Date`,
+    pd.bank_account_name AS `Bank_Account_Name`,
+    pd.book_no AS `Book_No`,
+    pd.trans_date AS `Trans_Date`,
+    pd.trans_name AS `Trans_Name`,
+    pd.trans_ref AS `Trans_Ref`,
+    pd.project_id AS `Project_Id`,
+    pd.name AS `Emp_ID`,
     pd.description AS `Description`
 FROM tbl_advance_payment_voucher_details pd
-INNER JOIN tbl_employee e ON pd.name = e.id
 WHERE pd.payment_id = @paymentId";
 
                     var details = new List<Dictionary<string, object>>();
