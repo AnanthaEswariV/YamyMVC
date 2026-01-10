@@ -475,8 +475,7 @@
             });
         });
 
-   // Updated Payment Type Change Handler with API call
-$('#paymentTypeSelect').change(function() {
+    $('#paymentTypeSelect').change(function() {
     const paymentType = $(this).val();
     const isSubContractor = $('#subContractor').is(':checked');
 
@@ -596,8 +595,7 @@ $('#paymentTypeSelect').change(function() {
     });
 });
 
-// Handle subcontractor checkbox change - Reload vendors when checked/unchecked
-$('#subContractor').on('change', function() {
+    $('#subContractor').on('change', function() {
     const paymentType = $('#paymentTypeSelect').val();
     
     // Only reload if Vendor payment type is selected
@@ -607,8 +605,7 @@ $('#subContractor').on('change', function() {
     }
 });
 
-// Updated loadVendors function (for edit mode)
-function loadVendors() {
+    function loadVendors() {
     // Determine type based on subcontractor checkbox
     let type = $('#subContractor').is(':checked') ? 'Subcontractor' : 'Vendor';
 
@@ -647,113 +644,7 @@ function loadVendors() {
 }
 
 
-// $('#paymentTypeSelect').change(function() {
-//     const paymentType = $(this).val();
-//     const isSubContractor = $('#subContractor').is(':checked');
-
-//     // Hide all dynamic fields first
-//     $('#amountInputDiv').hide();
-//     $('#employeeNoteDiv').hide();
-//     $('#vendorNameSelect').closest('.col-md-6').hide();
-
-//     // Reset selects
-//     $('#accountNameSelect').empty().append('<option value="">-- Select --</option>');
-//     $('#accountCodeInput').val('');
-//     $('#vendorNameSelect').empty().append('<option value="">-- Select --</option>');
-    
-//     // Clear invoice table
-//     $('#paymentVoucherModal table tbody').empty();
-
-//     if (!paymentType) {
-//         return;
-//     }
-
-//     // Call API to get payment type details
-//     $.ajax({
-//         url: '@Url.Action("GetPaymentTypeDetailss", "Account")',
-//         type: 'GET',
-//         data: { 
-//             paymentType: paymentType,
-//             subContractor: isSubContractor 
-//         },
-//         success: function(res) {
-//             if (!res.status) {
-//                 toastr.error(res.message || 'Failed to fetch payment type details');
-//                 return;
-//             }
-
-//             const data = res.data;
-
-//             // Set Debit Account (Pay To)
-//             if (data.DebitAccountId) {
-//                 $('#accountNameSelect').val(data.DebitAccountId).trigger('change');
-//                 $('#accountCodeInput').val(data.DebitAccountCode || '');
-//             }
-
-//             // Handle different payment types
-//             if (paymentType === 'Vendor') {
-//                 // Show vendor dropdown
-//                 $('#vendorNameSelect').closest('.col-md-6').show();
-                
-//                 // Populate vendors
-//                 if (data.Vendors && data.Vendors.length > 0) {
-//                     const $vendorSelect = $('#vendorNameSelect');
-//                     $vendorSelect.empty().append('<option value="">-- Select Vendor --</option>');
-                    
-//                     data.Vendors.forEach(v => {
-//                         $vendorSelect.append(
-//                             `<option value="${v.id}" data-code="${v.code}">${v.code} - ${v.name}</option>`
-//                         );
-//                     });
-//                 }
-                
-//                 $('#employeeNoteDiv').hide();
-//                 $('#amountInputDiv').hide();
-//             } 
-//             else if (paymentType === 'Employee') {
-//                 // Show employee list
-//                 $('#employeeNoteDiv').show();
-                
-//                 // Populate employees
-//                 if (data.Employees && data.Employees.length > 0) {
-//                     const $employeeList = $('#employeeList');
-//                     $employeeList.empty();
-                    
-//                     data.Employees.forEach(emp => {
-//                         $employeeList.append(`
-//                             <div class="form-check">
-//                                 <input class="form-check-input employee-checkbox"
-//                                        type="checkbox"
-//                                        data-employee-id="${emp.Id}"
-//                                        id="emp_${emp.Id}">
-//                                 <label class="form-check-label" for="emp_${emp.Id}">
-//                                     ${emp.Code} - ${emp.Name}
-//                                 </label>
-//                             </div>
-//                         `);
-//                     });
-//                 }
-                
-//                 $('#amountInputDiv').hide();
-//                 $('#vendorNameSelect').closest('.col-md-6').hide();
-//             } 
-//             else if (paymentType === 'General') {
-//                 // Show amount input
-//                 $('#amountInputDiv').show();
-//                 $('#employeeNoteDiv').hide();
-//                 $('#vendorNameSelect').closest('.col-md-6').hide();
-//             }
-//         },
-//         error: function(xhr) {
-//             toastr.error('Error loading payment type details');
-//             console.error(xhr);
-//         }
-//     });
-// });
-
-// Handle subcontractor checkbox change
-
-$('#subContractor').on('change', function() {
+    $('#subContractor').on('change', function() {
     // Trigger payment type change to reload vendors
     $('#paymentTypeSelect').trigger('change');
 });
@@ -852,16 +743,13 @@ $('#subContractor').on('change', function() {
     loadBanks();
     loadChequeBooks();
 
-// Auto-copy Pay value to Payment field when Pay input changes
-$(document).on('input change', '.pay-input', function() {
+    $(document).on('input change', '.pay-input', function() {
     const payValue = $(this).val();
     const $row = $(this).closest('tr');
     const $paymentInput = $row.find('.payment-input');
     
-    // Get current payment value
     const currentPaymentValue = $paymentInput.val().trim();
     
-    // Auto-fill Payment if it's empty, 0, or matches the previous Pay value
     if (currentPaymentValue === '' || 
         currentPaymentValue === '0' || 
         parseFloat(currentPaymentValue) === 0) {
@@ -869,15 +757,12 @@ $(document).on('input change', '.pay-input', function() {
     }
 });
 
-// Also handle when user focuses on Pay field and it has a value
-$(document).on('focus', '.pay-input', function() {
+    $(document).on('focus', '.pay-input', function() {
     const $this = $(this);
-    // Store the current value
     $this.data('previous-value', $this.val());
 });
 
-// When Pay input loses focus, check if Payment should be updated
-$(document).on('blur', '.pay-input', function() {
+    $(document).on('blur', '.pay-input', function() {
     const $this = $(this);
     const newValue = $this.val();
     const previousValue = $this.data('previous-value');
@@ -894,7 +779,7 @@ $(document).on('blur', '.pay-input', function() {
     }
 });
 
-async function loadVendorInvoices() {
+    async function loadVendorInvoices() {
     // ✅ CHECK IF WE'RE IN EDIT MODE - DON'T RELOAD INVOICES
     if ($("#paymentVoucherModal").data("editing")) {
         console.log("Edit mode active - skipping invoice reload");
@@ -981,12 +866,9 @@ async function loadVendorInvoices() {
     }
 }
 
-// Trigger invoice loading when vendor is selected
-$('#paymentTypeSelect, #subContractor, #vendorNameSelect').on('change', loadVendorInvoices);
-// ✅ FIND AND REPLACE in your payment type change handler:
-// Change the Vendor section property names from lowercase to uppercase
-
-$('#paymentTypeSelect').change(function() {
+    $('#paymentTypeSelect, #subContractor, #vendorNameSelect').on('change', loadVendorInvoices);
+    
+    $('#paymentTypeSelect').change(function() {
     const paymentType = $(this).val();
     const isSubContractor = $('#subContractor').is(':checked');
 
@@ -1119,8 +1001,7 @@ $('#paymentTypeSelect').change(function() {
 });
 
 
-// ✅ FIND AND REPLACE your edit handler - Fix subcontractor checkbox issue:
-$(document).on("click", ".editPaymentVoucherBtn", function () {
+    $(document).on("click", ".editPaymentVoucherBtn", function () {
     const voucher = $(this).data("customer");
     if (!voucher) return;
     console.log('Edit voucher:', voucher); // Debug

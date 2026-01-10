@@ -1380,4 +1380,41 @@ namespace YamyProject.Core.Models
         public string Description { get; set; }
     }
 
+    public class AdvancePaymentVoucherRequest
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public string PaymentType { get; set; }   // Vendor / Employee / Customer
+        public string Method { get; set; }        // Cash / Check / Transfer
+        public decimal Amount { get; set; }
+
+        public int DebitAccountId { get; set; }
+        public int CreditAccountId { get; set; }
+        public int DebitCostCenterId { get; set; }
+        public int CreditCostCenterId { get; set; }
+
+        public string Description { get; set; }
+
+        public List<AdvancePaymentDetailRequest> Details { get; set; }
+    }
+
+    public class AdvancePaymentDetailRequest
+    {
+        public string PartnerId { get; set; }
+        public string BankName { get; set; }
+        public string CheckName { get; set; }
+        public string CheckNo { get; set; }
+        public DateTime? CheckDate { get; set; }
+        public string BankAccountName { get; set; }
+        public int? BookNo { get; set; }
+
+        public DateTime? TransDate { get; set; }
+        public string TransName { get; set; }
+        public string TransRef { get; set; }
+
+        public string Description { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+
 }

@@ -273,8 +273,6 @@
             // Global cache for banks
             window.cachedBanks = [];
 
-            /* ================= TABLE CONFIG ================= */
-
             const tableConfigs = {
                 Cheque: {
                     headers: ['#', 'Name', 'Bank Name', 'Cheque Name', 'Cheque No', 'Cheque Date', 'Bank Account Name', 'Book NO', 'Description', 'Amount', 'DEL'],
@@ -290,7 +288,6 @@
                 }
             };
 
-            /* ================= HEADER ================= */
 
             function renderTableHeader(method) {
                 const config = tableConfigs[method];
@@ -306,7 +303,6 @@
                 });
             }
 
-            /* ================= INPUT FACTORY ================= */
 
             function createInputField(field, rowNo) {
                 const cls = 'form-control form-control-sm';
@@ -363,10 +359,8 @@
                 }
             }
 
-            /* ================= ADD ROW ================= */
 
-                    /* ================= ADD ROW ================= */
-        function addNewRow(record = null) {
+            function addNewRow(record = null) {
             rowCounter++;
             const method = $('#paymentMethodSelect').val();
             const config = tableConfigs[method];
@@ -420,7 +414,6 @@
             }
         }
 
-            /* ================= RENDER BODY ================= */
 
             function renderTableBody() {
                 $('#transactionTableBody').empty();
@@ -428,7 +421,6 @@
                 addNewRow();
             }
 
-            /* ================= EVENTS ================= */
 
             $('#paymentMethodSelect').on('change', function () {
                 renderTableHeader(this.value);
@@ -439,7 +431,6 @@
                 addNewRow();
             });
 
-            /* ================= DELETE ================= */
 
             $('#transactionTableBody').on('click', '.delete-row', function () {
                 const $row = $(this).closest('tr');
@@ -454,7 +445,7 @@
                 $('.row-number').each((i, el) => $(el).text(i + 1));
             });
 
-                    $('#transactionTableBody').on('change', '.bank-select', function () {
+            $('#transactionTableBody').on('change', '.bank-select', function () {
 
             const $row = $(this).closest('tr');
             const $selected = $(this).find(':selected');
@@ -474,9 +465,6 @@
             }
         });
 
-
-            /* ================= COLLECT DATA ================= */
-
             function collectRows() {
                 const rows = [];
 
@@ -493,8 +481,6 @@
 
                 return rows;
             }
-
-            /* ================= LOAD NAMES FOR SPECIFIC ROW ================= */
 
             function loadNamesForRow($row, paymentType) {
                 let url = '';
@@ -537,7 +523,7 @@
                 });
             }
 
-        function loadBanksForRow($row) {
+             function loadBanksForRow($row) {
             if (!window.cachedBanks || window.cachedBanks.length === 0) return;
 
             const $bankSelect = $row.find('.bank-select');
@@ -556,9 +542,6 @@
                 `);
             });
         }
-
-
-            /* ================= PAYMENT TYPE CHANGE ================= */
 
             $('#paymentTypeSelect').on('change', function() {
                 const paymentType = $(this).val();
@@ -622,7 +605,6 @@
                 });
             });
 
-            /* ================= PAYMENT METHOD CHANGE ================= */
 
             $('#paymentMethodSelect').on('change', function () {
                 const method = $(this).val();
@@ -728,7 +710,6 @@
                 url: '@Url.Action("GetBankss", "Account")',
                 type: 'GET',
                 success: function (res) {
-                    console.log(res);
                     if (!res.status || !Array.isArray(res.data)) {
                         toastr.error('Failed to load banks');
                         return;
@@ -764,8 +745,7 @@
         }
                 let chequeBooksData = []; // global cache
 
-        // Load all cheque books on page load
-        function loadChequeBooks() {
+            function loadChequeBooks() {
             $.ajax({
                 url: '@Url.Action("GetChequeBooks", "Account")',
                 type: 'GET',
@@ -780,7 +760,7 @@
             });
         }
 
-                   $('#transactionTableBody').on('change', '.bank-select', function () {
+             $('#transactionTableBody').on('change', '.bank-select', function () {
             const $row = $(this).closest('tr'); // current row
             const selectedBankId = parseInt($(this).val());
 
@@ -819,8 +799,6 @@
                 $bankAccountSelect.append(`<option value="${acc}">${acc}</option>`);
             });
         });
-
-
 
 
             $('#paymentVoucherModal').on('show.bs.modal', function() {
@@ -1045,6 +1023,74 @@
 
             // Initialize payment method
             $('#paymentMethodSelect').trigger('change');
+
+
+
+
+        $(document).on('click','.editPaymentVoucherBtn',function(){
+            const v=$(this).data('voucher');
+
+            $('#voucherId').val(v.id);
+            $('#date').val(v.date.split('T')[0]);
+            $('#paymentTypeSelect').val(v.type);
+            $('#paymentMethodSelect').val(v.method);
+            $('#totalAmount').val(v.amount);
+
+            renderTableHeader(v.method);
+            $('#transactionTableBody').empty();
+            rowCounter=0;
+
+            v.details.forEach(d=>addRow(d));
+            $('#paymentVoucherModal').modal('show');
+        });
+
+
+        $('#paymentVoucherForm').submit(function(e){
+            e.preventDefault();
+
+            const details=[];
+            $('#transactionTableBody tr:not(.deleted)').each(function(){
+                const r=$(this);
+                details.push({
+                    PartnerId: r.find('.name-input').val(),
+                    BankName: r.find('.bank-select option:selected').text(),
+                    CheckNo: r.find('.cheque-no').val(),
+                    CheckDate: r.find('.cheque-date').val(),
+                    TransDate: r.find('.trans-date').val(),
+                    TransName: r.find('.trans-name').val(),
+                    TransRef: r.find('.trans-ref').val(),
+                    Description: r.find('.description').val(),
+                    Amount: Number(r.find('.amount').val())
+                });
+            });
+
+            const payload={
+                Id: Number($('#voucherId').val())||0,
+                Date: $('#date').val(),
+                PaymentType: $('#paymentTypeSelect').val(),
+                Method: $('#paymentMethodSelect').val(),
+                Amount: Number($('#totalAmount').val()),
+                DebitAccountId: $('#accountNameSelect').val(),
+                DebitCostCenterId: $('.costCenterSelect').val(),
+                CreditAccountId: $('#creditAccountNameSelect').val(),
+                CreditCostCenterId: $('.creditCostCenterSelect').val(),
+                Description: $('#noteField').val(),
+                Details: details
+            };
+
+            $.ajax({
+                url:'@Url.Action("SaveAdvancePaymentVoucher", "Account")',
+                type:'POST',
+                contentType:'application/json',
+                data:JSON.stringify(payload),
+                success:res=>{
+                    toastr.success(payload.Id?'Updated successfully':'Saved successfully');
+                    location.reload();
+                },
+                error:x=>toastr.error(x.responseText)
+            });
+        });
+
 
         });
 

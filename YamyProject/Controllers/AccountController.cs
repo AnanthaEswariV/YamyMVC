@@ -8382,7 +8382,264 @@ WHERE pd.payment_id = @paymentId";
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveAdvancePaymentVoucher([FromBody] AdvancePaymentVoucherRequest model)
+        {
+            if (model == null)
+                return BadRequest("Invalid request");
 
+            if (string.IsNullOrWhiteSpace(model.PaymentType))
+                return BadRequest("Please choose payment type");
+
+            if (model.Amount <= 0)
+                return BadRequest("Enter valid amount");
+
+            if (model.DebitAccountId <= 0 || model.CreditAccountId <= 0)
+                return BadRequest("Select debit and credit account");
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized();
+
+            using var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
+            await conn.OpenAsync();
+
+            using var trx = await conn.BeginTransactionAsync();
+
+            try
+            {
+                int id = model.Id;
+                string code;
+
+                if (id == 0)
+                {
+                    code = await GenerateNextCode(conn, trx);
+
+                    string sql = @"INSERT INTO tbl_advance_payment_voucher
+                (date,pv_code,type,method,amount,debit_account_id,debit_cost_center_id,
+                 description,credit_account_id,credit_cost_center_id,created_by,created_date,state)
+                VALUES
+                (@date,@code,@type,@method,@amount,@debit_acc,@debit_cc,
+                 @desc,@credit_acc,@credit_cc,@user,@dt,0);
+                SELECT LAST_INSERT_ID();";
+
+                    using var cmd = new MySqlCommand(sql, conn, trx);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@type", model.PaymentType);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@debit_acc", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@debit_cc", model.DebitCostCenterId);
+                    cmd.Parameters.AddWithValue("@desc", model.Description);
+                    cmd.Parameters.AddWithValue("@credit_acc", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@credit_cc", model.CreditCostCenterId);
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@dt", DateTime.Now);
+
+                    id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    code = await GetCode(id, conn, trx);
+
+                    string sql = @"UPDATE tbl_advance_payment_voucher SET
+                date=@date,type=@type,method=@method,amount=@amount,
+                debit_account_id=@debit_acc,debit_cost_center_id=@debit_cc,
+                description=@desc,credit_account_id=@credit_acc,
+                credit_cost_center_id=@credit_cc,
+                modified_by=@user,modified_date=@dt
+                WHERE id=@id";
+
+                    using var cmd = new MySqlCommand(sql, conn, trx);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@type", model.PaymentType);
+                    cmd.Parameters.AddWithValue("@method", model.Method);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@debit_acc", model.DebitAccountId);
+                    cmd.Parameters.AddWithValue("@debit_cc", model.DebitCostCenterId);
+                    cmd.Parameters.AddWithValue("@desc", model.Description);
+                    cmd.Parameters.AddWithValue("@credit_acc", model.CreditAccountId);
+                    cmd.Parameters.AddWithValue("@credit_cc", model.CreditCostCenterId);
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@dt", DateTime.Now);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    await Execute(conn, trx, "DELETE FROM tbl_advance_payment_voucher_details WHERE payment_id=@id", id);
+                    await Execute(conn, trx, "DELETE FROM tbl_transaction WHERE transaction_id=@id AND type='Advance PAYMENT'", id);
+                    await Execute(conn, trx, "DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='AdvancePayment'", id);
+                }
+
+                foreach (var d in model.Details)
+                {
+                    string detailSql = @"INSERT INTO tbl_advance_payment_voucher_details
+                (payment_id,name,bank_name,check_name,check_no,check_date,
+                 bank_account_name,book_no,trans_date,trans_name,trans_ref,description,amount)
+                VALUES
+                (@pid,@name,@bank,@cname,@cno,@cdate,
+                 @bankacc,@book,@tdate,@tname,@tref,@desc,@amt)";
+
+                    using var cmd = new MySqlCommand(detailSql, conn, trx);
+                    cmd.Parameters.AddWithValue("@pid", id);
+                    cmd.Parameters.AddWithValue("@name", d.PartnerId);
+                    cmd.Parameters.AddWithValue("@bank", model.Method == "Check" ? d.BankName : null);
+                    cmd.Parameters.AddWithValue("@cname", d.CheckName);
+                    cmd.Parameters.AddWithValue("@cno", d.CheckNo);
+                    cmd.Parameters.AddWithValue("@cdate", d.CheckDate);
+                    cmd.Parameters.AddWithValue("@bankacc", d.BankAccountName);
+                    cmd.Parameters.AddWithValue("@book", d.BookNo);
+                    cmd.Parameters.AddWithValue("@tdate", d.TransDate);
+                    cmd.Parameters.AddWithValue("@tname", d.TransName);
+                    cmd.Parameters.AddWithValue("@tref", d.TransRef);
+                    cmd.Parameters.AddWithValue("@desc", d.Description);
+                    cmd.Parameters.AddWithValue("@amt", d.Amount);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    await InsertJournal(conn, trx, model, d, id, code, userId);
+                }
+
+                await InsertCostCenter(conn, trx, id, model, true);
+                await InsertCostCenter(conn, trx, id, model, false);
+
+                await trx.CommitAsync();
+
+                return Ok(new { status = true, id, code });
+            }
+            catch (Exception ex)
+            {
+                await trx.RollbackAsync();
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        private async Task<string> GenerateNextCode(MySqlConnection conn, MySqlTransaction trx)
+        {
+            try
+            {
+                using var cmd = new MySqlCommand(
+              "SELECT MAX(CAST(SUBSTRING(pv_code,4) AS UNSIGNED)) FROM tbl_advance_payment_voucher", conn, trx);
+
+                var res = await cmd.ExecuteScalarAsync();
+                int next = (res == DBNull.Value ? 0 : Convert.ToInt32(res)) + 1;
+                return $"AP-{next:D4}";
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error generating code: " + ex.Message);
+            }   
+        }
+
+        private async Task<string> GetCode(int id, MySqlConnection conn, MySqlTransaction trx)
+        {
+            try
+            {
+                using var cmd = new MySqlCommand(
+               "SELECT pv_code FROM tbl_advance_payment_voucher WHERE id=@id", conn, trx);
+                cmd.Parameters.AddWithValue("@id", id);
+                return (await cmd.ExecuteScalarAsync())?.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error retrieving code: " + ex.Message);
+            }
+
+        }
+
+        private async Task Execute(MySqlConnection conn, MySqlTransaction trx, string sql, int id)
+        {
+            try
+            {
+                using var cmd = new MySqlCommand(sql, conn, trx);
+                cmd.Parameters.AddWithValue("@id", id);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error executing query: " + ex.Message);
+            }       
+        }
+
+        private async Task InsertJournal(MySqlConnection conn, MySqlTransaction trx,
+            AdvancePaymentVoucherRequest m, AdvancePaymentDetailRequest d,
+            int id, string code, int user)
+        {
+            try
+            {
+                string tType = $"{m.PaymentType} Advance Payment";
+
+                await ExecuteJournal(conn, trx, m.Date, m.DebitAccountId, d.Amount, 0, id, d.PartnerId, tType, code, user);
+                await ExecuteJournal(conn, trx, m.Date, m.CreditAccountId, 0, d.Amount, id, "0", tType, code, user);
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("Error inserting journal entries: " + ex.Message);
+            }   
+        }
+
+        private async Task ExecuteJournal(MySqlConnection conn, MySqlTransaction trx,
+            DateTime date, int acc, decimal debit, decimal credit,
+            int id, string hum, string tType, string code, int user)
+        {
+            try
+            {
+                string sql = @"INSERT INTO tbl_transaction
+        (date,account_id,debit,credit,transaction_id,hum_id,t_type,type,
+         description,created_by,created_date,state,voucher_no)
+        VALUES
+        (@date,@acc,@debit,@credit,@tid,@hum,@ttype,'Advance PAYMENT',
+         @desc,@user,@dt,0,@code)";
+
+                using var cmd = new MySqlCommand(sql, conn, trx);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@acc", acc);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@tid", id);
+                cmd.Parameters.AddWithValue("@hum", hum);
+                cmd.Parameters.AddWithValue("@ttype", tType);
+                cmd.Parameters.AddWithValue("@desc", $"ADVANCE Payment Voucher NO. {code}");
+                cmd.Parameters.AddWithValue("@user", user);
+                cmd.Parameters.AddWithValue("@dt", DateTime.Now);
+                cmd.Parameters.AddWithValue("@code", code);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("Error inserting journal entry: " + ex.Message);
+            }
+
+        }
+
+        private async Task InsertCostCenter(MySqlConnection conn, MySqlTransaction trx,
+            int id, AdvancePaymentVoucherRequest m, bool debit)
+        {
+            try
+            {
+                string sql = @"INSERT INTO tbl_cost_center_transaction
+        (type,date,ref_id,debit,credit,description,cost_center_id)
+        VALUES
+        ('AdvancePayment',@date,@ref,@debit,@credit,@desc,@cc)";
+
+                using var cmd = new MySqlCommand(sql, conn, trx);
+                cmd.Parameters.AddWithValue("@date", m.Date);
+                cmd.Parameters.AddWithValue("@ref", id);
+                cmd.Parameters.AddWithValue("@debit", debit ? m.Amount : 0);
+                cmd.Parameters.AddWithValue("@credit", debit ? 0 : m.Amount);
+                cmd.Parameters.AddWithValue("@desc", debit ? "Advance Payment Debit Entry" : "Advance Payment Credit Entry");
+                cmd.Parameters.AddWithValue("@cc", debit ? m.DebitCostCenterId : m.CreditCostCenterId);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("Error inserting cost center transaction: " + ex.Message);
+            }
+
+        }
 
         #endregion
 
@@ -8395,6 +8652,8 @@ WHERE pd.payment_id = @paymentId";
 
 
         #endregion
+
+
 
     }
 }
