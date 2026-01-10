@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "AdvancePayment";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -11,12 +10,12 @@
         border: none !important;
     }
 
-    .dt-buttons .btn-primary:hover {
-        background-color: #3b51a0 !important;
-        color: #fff !important;
-    }
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
 
-     /* Highlight selected row */
+    /* Highlight selected row */
     #table1 tbody tr.selected {
         background-color: #c7e5b4;
     }
@@ -543,6 +542,8 @@
             });
         }
 
+
+
             $('#paymentTypeSelect').on('change', function() {
                 const paymentType = $(this).val();
 
@@ -844,7 +845,7 @@
             if (!$(this).val()) {
                 $(this).val(todayDate);
             }
-        }); 
+        });
             });
 
             $('#chkAllData').change(function () {
@@ -913,23 +914,26 @@
                             return;
                         }
 
-                        $.each(res.data, function (i, row) {
-                            tbody.append(`
-                                <tr data-index="${i}">
-                                    <td>${row.Date ?? ''}</td>
-                                    <td>${row["Payment Code"] ?? ''}</td>
-                                    <td>${row["JV NO"] ?? ''}</td>
-                                    <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
-                                    <td>${row["Debit Account"] ?? ''}</td>
-                                    <td>${row["Credit Account"] ?? ''}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-primary viewDetailsBtn">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `);
-                        });
+                               $.each(res.data, function(i, row) {
+            const rowJson = encodeURIComponent(JSON.stringify(row)); // safely encode
+            tbody.append(`
+                <tr data-index="${i}">
+                    <td>${row.Date ?? ''}</td>
+                    <td>${row["Payment Code"] ?? ''}</td>
+                    <td>${row["JV NO"] ?? ''}</td>
+                    <td class="text-end">${(row.Amount ?? 0).toLocaleString()}</td>
+                    <td>${row["Debit Account"] ?? ''}</td>
+                    <td>${row["Credit Account"] ?? ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary editPaymentVoucherBtn"
+                            data-voucher='${rowJson}'>
+                            <i class="fas fa-pen"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+
 
                         const table = $('#table1').DataTable({
                             dom: 'Bfrtip',
@@ -1027,69 +1031,111 @@
 
 
 
-        $(document).on('click','.editPaymentVoucherBtn',function(){
-            const v=$(this).data('voucher');
+             $(document).on('click', '.editPaymentVoucherBtn', function() {
+            const voucherData = $(this).attr('data-voucher');       // get attribute
+            const v = JSON.parse(decodeURIComponent(voucherData));  // parse safely
 
-            $('#voucherId').val(v.id);
-            $('#date').val(v.date.split('T')[0]);
-            $('#paymentTypeSelect').val(v.type);
-            $('#paymentMethodSelect').val(v.method);
-            $('#totalAmount').val(v.amount);
+            $('#voucherId').val(v.Id || 0);
+            $('#date').val(v.Date ? v.Date.split('T')[0] : '');
+            $('#paymentTypeSelect').val(v.PaymentType || '');
+            $('#paymentMethodSelect').val(v.Method || '');
+            $('#totalAmount').val(v.Amount || 0);
 
-            renderTableHeader(v.method);
+            renderTableHeader(v.Method);
             $('#transactionTableBody').empty();
-            rowCounter=0;
+            rowCounter = 0;
 
-            v.details.forEach(d=>addRow(d));
+            if (Array.isArray(v.Details)) {
+                v.Details.forEach(d => addRow(d));
+            }
+
             $('#paymentVoucherModal').modal('show');
         });
 
 
-        $('#paymentVoucherForm').submit(function(e){
+        $('#paymentVoucherForm').submit(function (e) {
             e.preventDefault();
 
-            const details=[];
-            $('#transactionTableBody tr:not(.deleted)').each(function(){
-                const r=$(this);
+            const details = [];
+
+            $('#transactionTableBody tr:not(.deleted)').each(function () {
+                const r = $(this);
+
+                const amountVal = parseFloat(r.find('.amount-input').val());
+
+                // skip empty rows
+                if (isNaN(amountVal) || amountVal <= 0) return;
+
                 details.push({
                     PartnerId: r.find('.name-input').val(),
-                    BankName: r.find('.bank-select option:selected').text(),
-                    CheckNo: r.find('.cheque-no').val(),
-                    CheckDate: r.find('.cheque-date').val(),
-                    TransDate: r.find('.trans-date').val(),
-                    TransName: r.find('.trans-name').val(),
-                    TransRef: r.find('.trans-ref').val(),
-                    Description: r.find('.description').val(),
-                    Amount: Number(r.find('.amount').val())
+
+                    BankName: r.find('.bank-select option:selected').text() || null,
+
+                    CheckName: r.find('.cheque-name-input').val() || null,
+                    CheckNo: r.find('.cheque-no-select').val() || null,
+                    CheckDate: r.find('.cheque-date-input').val() || null,
+
+                    BankAccountName: r.find('.bank-account-select').val() || null,
+                    BookNo: r.find('.book-no-select').val()
+                        ? parseInt(r.find('.book-no-select').val())
+                        : null,
+
+                    TransDate: r.find('.trans-date-input').val() || null,
+                    TransName: r.find('.trans-name-input').val() || null,
+                    TransRef: r.find('.trans-ref-input').val() || null,
+
+                    Description: r.find('.description-input').val() || '',
+                    Amount: amountVal
                 });
             });
 
-            const payload={
-                Id: Number($('#voucherId').val())||0,
-                Date: $('#date').val(),
+            if (details.length === 0) {
+                toastr.warning('Please enter at least one detail row');
+                return;
+            }
+
+            const dateVal = $('#date').val();
+            if (!dateVal) {
+                toastr.warning('Please select date');
+                return;
+            }
+
+            const payload = {
+                Id: Number($('#voucherId').val()) || 0,
+                Date: new Date(dateVal).toISOString(),
                 PaymentType: $('#paymentTypeSelect').val(),
-                Method: $('#paymentMethodSelect').val(),
+                Method: $('#paymentMethodSelect').val() === 'Cheque'
+                    ? 'Check'
+                    : $('#paymentMethodSelect').val(),
                 Amount: Number($('#totalAmount').val()),
-                DebitAccountId: $('#accountNameSelect').val(),
-                DebitCostCenterId: $('.costCenterSelect').val(),
-                CreditAccountId: $('#creditAccountNameSelect').val(),
-                CreditCostCenterId: $('.creditCostCenterSelect').val(),
-                Description: $('#noteField').val(),
+                DebitAccountId: Number($('#accountNameSelect').val()),
+                DebitCostCenterId: Number($('.costCenterSelect').val()),
+                CreditAccountId: Number($('#creditAccountNameSelect').val()),
+                CreditCostCenterId: Number($('.creditCostCenterSelect').val()),
+                Description: $('#noteField').val() || '',
                 Details: details
             };
 
+
             $.ajax({
-                url:'@Url.Action("SaveAdvancePaymentVoucher", "Account")',
-                type:'POST',
-                contentType:'application/json',
-                data:JSON.stringify(payload),
-                success:res=>{
-                    toastr.success(payload.Id?'Updated successfully':'Saved successfully');
-                    location.reload();
+                url: '/Account/SaveAdvancePaymentVoucher',
+                type: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                headers: { 'Accept': 'application/json' },
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    toastr.success(payload.Id ? 'Updated successfully' : 'Saved successfully');
+                    setTimeout(() => location.reload(), 800);
                 },
-                error:x=>toastr.error(x.responseText)
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    toastr.error(xhr.responseText || 'Save failed');
+                }
             });
         });
+
+
 
 
         });

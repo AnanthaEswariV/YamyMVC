@@ -1384,8 +1384,8 @@ namespace YamyProject.Core.Models
     {
         public int Id { get; set; }
         public DateTime Date { get; set; }
-        public string PaymentType { get; set; }   // Vendor / Employee / Customer
-        public string Method { get; set; }        // Cash / Check / Transfer
+        public string PaymentType { get; set; }
+        public string Method { get; set; }
         public decimal Amount { get; set; }
 
         public int DebitAccountId { get; set; }
@@ -1394,7 +1394,6 @@ namespace YamyProject.Core.Models
         public int CreditCostCenterId { get; set; }
 
         public string Description { get; set; }
-
         public List<AdvancePaymentDetailRequest> Details { get; set; }
     }
 
@@ -1407,14 +1406,14 @@ namespace YamyProject.Core.Models
         public DateTime? CheckDate { get; set; }
         public string BankAccountName { get; set; }
         public int? BookNo { get; set; }
-
         public DateTime? TransDate { get; set; }
         public string TransName { get; set; }
         public string TransRef { get; set; }
-
         public string Description { get; set; }
         public decimal Amount { get; set; }
     }
+
+
 
 
 }

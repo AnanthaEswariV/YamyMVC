@@ -1,5 +1,6 @@
 ﻿using Humanizer;
 using Microsoft.AspNetCore.Identity.Data;
+using System.Linq;
 using YamyProject.Core.Models.DTOs;
 
 namespace YamyProject.Controllers
@@ -8401,10 +8402,18 @@ WHERE pd.payment_id = @paymentId";
             if (userId <= 0)
                 return Unauthorized();
 
-            using var conn = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
+            var connStrBuilder = new MySqlConnectionStringBuilder(
+                  _config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ??
+                             _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
             await conn.OpenAsync();
 
             using var trx = await conn.BeginTransactionAsync();
+            decimal totalAmount = model.Details?.Sum(d => d.Amount) ?? 0;
 
             try
             {
@@ -8413,6 +8422,7 @@ WHERE pd.payment_id = @paymentId";
 
                 if (id == 0)
                 {
+
                     code = await GenerateNextCode(conn, trx);
 
                     string sql = @"INSERT INTO tbl_advance_payment_voucher
@@ -8428,7 +8438,7 @@ WHERE pd.payment_id = @paymentId";
                     cmd.Parameters.AddWithValue("@code", code);
                     cmd.Parameters.AddWithValue("@type", model.PaymentType);
                     cmd.Parameters.AddWithValue("@method", model.Method);
-                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@amount", totalAmount);
                     cmd.Parameters.AddWithValue("@debit_acc", model.DebitAccountId);
                     cmd.Parameters.AddWithValue("@debit_cc", model.DebitCostCenterId);
                     cmd.Parameters.AddWithValue("@desc", model.Description);
@@ -8456,7 +8466,7 @@ WHERE pd.payment_id = @paymentId";
                     cmd.Parameters.AddWithValue("@date", model.Date);
                     cmd.Parameters.AddWithValue("@type", model.PaymentType);
                     cmd.Parameters.AddWithValue("@method", model.Method);
-                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@amount", totalAmount);
                     cmd.Parameters.AddWithValue("@debit_acc", model.DebitAccountId);
                     cmd.Parameters.AddWithValue("@debit_cc", model.DebitCostCenterId);
                     cmd.Parameters.AddWithValue("@desc", model.Description);
