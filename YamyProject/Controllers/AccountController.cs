@@ -3067,7 +3067,7 @@ namespace YamyProject.Controllers
 
                 await insertCmd.ExecuteNonQueryAsync();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw ex;
             }
@@ -4846,7 +4846,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                                 firstName = reader["first_name"],
                                 lastName = reader["last_name"],
                                 active = Convert.ToInt32(reader["active"]) == 0 ? "Active" : "Inactive",
-                               // email = reader["email"]
+                                // email = reader["email"]
                             });
                         }
                     }
@@ -5472,20 +5472,20 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
             {
 
 
-                  byte[] ImagebyteArray = null;
-        byte[] ImagebyteArrayStamp = null;
+                byte[] ImagebyteArray = null;
+                byte[] ImagebyteArrayStamp = null;
 
-        // Convert the Logo Image (Base64 string to byte array)
-        if (!string.IsNullOrWhiteSpace(model.LogoComp))
-        {
-            ImagebyteArray = Convert.FromBase64String(model.LogoComp); // Convert from base64 string to byte[]
-        }
+                // Convert the Logo Image (Base64 string to byte array)
+                if (!string.IsNullOrWhiteSpace(model.LogoComp))
+                {
+                    ImagebyteArray = Convert.FromBase64String(model.LogoComp); // Convert from base64 string to byte[]
+                }
 
-        // Convert the Stamp Image (Base64 string to byte array)
-        if (!string.IsNullOrWhiteSpace(model.StampComp))
-        {
-            ImagebyteArrayStamp = Convert.FromBase64String(model.StampComp); // Convert from base64 string to byte[]
-        }
+                // Convert the Stamp Image (Base64 string to byte array)
+                if (!string.IsNullOrWhiteSpace(model.StampComp))
+                {
+                    ImagebyteArrayStamp = Convert.FromBase64String(model.StampComp); // Convert from base64 string to byte[]
+                }
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
@@ -5820,7 +5820,7 @@ VALUES
 
                     }
                 }
-        
+
                 return Ok(new { status = true, data = response });
             }
             catch (Exception ex)
@@ -7177,7 +7177,7 @@ WHERE payment_id = @receiptId";
                     FROM tbl_receipt_voucher_details
                     WHERE payment_id = @receiptVoucherId
                     ORDER BY id";
-                    
+
                 var data = new List<object>();
 
                 await using var cmd = new MySqlCommand(query, conn);
@@ -7831,7 +7831,7 @@ WHERE payment_id = @receiptId";
                     VALUES (@date, @payment_id, @hum_id, @inv_id, @inv_code, @total, @payment, @description)", conn, transaction);
 
                         detailCmd.Parameters.AddWithValue("@payment_id", id);
-                        detailCmd.Parameters.AddWithValue( "@date", inv.InvDate);
+                        detailCmd.Parameters.AddWithValue("@date", inv.InvDate);
                         detailCmd.Parameters.AddWithValue("@hum_id", model.CustomerId);
                         detailCmd.Parameters.AddWithValue("@inv_code", inv.InvCode ?? string.Empty);
                         detailCmd.Parameters.AddWithValue("@total", total);
@@ -8576,7 +8576,7 @@ WHERE pd.payment_id = @paymentId";
             catch (Exception ex)
             {
                 throw new Exception("Error generating code: " + ex.Message);
-            }   
+            }
         }
 
         private async Task<string> GetCode(int id, MySqlConnection conn, MySqlTransaction trx)
@@ -8606,7 +8606,7 @@ WHERE pd.payment_id = @paymentId";
             catch (Exception ex)
             {
                 throw new Exception("Error executing query: " + ex.Message);
-            }       
+            }
         }
 
         private async Task InsertJournal(MySqlConnection conn, MySqlTransaction trx,
@@ -8620,10 +8620,10 @@ WHERE pd.payment_id = @paymentId";
                 await ExecuteJournal(conn, trx, m.Date, m.DebitAccountId, d.Amount, 0, id, d.PartnerId, tType, code, user);
                 await ExecuteJournal(conn, trx, m.Date, m.CreditAccountId, 0, d.Amount, id, "0", tType, code, user);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new Exception("Error inserting journal entries: " + ex.Message);
-            }   
+            }
         }
 
         private async Task ExecuteJournal(MySqlConnection conn, MySqlTransaction trx,
@@ -8654,7 +8654,7 @@ WHERE pd.payment_id = @paymentId";
 
                 await cmd.ExecuteNonQueryAsync();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new Exception("Error inserting journal entry: " + ex.Message);
             }
@@ -8681,7 +8681,7 @@ WHERE pd.payment_id = @paymentId";
 
                 await cmd.ExecuteNonQueryAsync();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new Exception("Error inserting cost center transaction: " + ex.Message);
             }
@@ -8690,7 +8690,7 @@ WHERE pd.payment_id = @paymentId";
 
         #endregion
 
-        #region GJ Voucher
+        #region General Journal Voucher 
 
         public IActionResult GJVoucher()
         {
@@ -8765,7 +8765,7 @@ WHERE jv.state = 0
                     }
                 }
 
-           
+
                 foreach (var voucher in vouchers)
                 {
                     int voucherId = Convert.ToInt32(voucher["id"]);
@@ -8823,10 +8823,254 @@ WHERE jd.inv_id = @voucherId";
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SaveJournalVoucher([FromBody] JournalVoucherRequests model)
+        {
+            if (model == null)
+                return BadRequest("Invalid request");
+
+            if (model.DebitTotal <= 0 || model.CreditTotal <= 0)
+                return BadRequest("Debit and Credit must be greater than zero");
+
+            if (model.DebitTotal != model.CreditTotal)
+                return BadRequest("Debit Total and Credit Total are not equal");
+
+            if (model.Details == null || !model.Details.Any())
+                return BadRequest("Journal voucher details are required");
+
+            if (model.Details.Any(d => d.AccountId <= 0))
+                return BadRequest("Account cannot be empty");
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized();
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(
+                _config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ??
+                           _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            using var trx = await conn.BeginTransactionAsync();
+
+            try
+            {
+                int id = model.Id;
+                string code;
+
+
+                if (id == 0)
+                {
+                    code = await GenerateNextJVCode(conn, trx);
+
+                    string sql = @"INSERT INTO tbl_journal_voucher
+                           (date,code,debit,credit,created_by,created_date,state)
+                           VALUES
+                           (@date,@code,@debit,@credit,@user,@dt,0);
+                           SELECT LAST_INSERT_ID();";
+
+                    using var cmd = new MySqlCommand(sql, conn, trx);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@code", code);
+                    cmd.Parameters.AddWithValue("@debit", model.DebitTotal);
+                    cmd.Parameters.AddWithValue("@credit", model.CreditTotal);
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@dt", DateTime.Now);
+
+                    id = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    code = await GetJVCode(id, conn, trx);
+
+                    string sql = @"UPDATE tbl_journal_voucher SET
+                           date=@date,debit=@debit,credit=@credit,
+                           modified_by=@user,modified_date=@dt
+                           WHERE id=@id";
+
+                    using var cmd = new MySqlCommand(sql, conn, trx);
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@debit", model.DebitTotal);
+                    cmd.Parameters.AddWithValue("@credit", model.CreditTotal);
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@dt", DateTime.Now);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    await Executes(conn, trx, "DELETE FROM tbl_journal_voucher_details WHERE inv_id=@id", id);
+                    await Executes(conn, trx, "DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='JOURNAL'", id);
+                }
+
+
+
+                foreach (var d in model.Details)
+                {
+                    string detailSql = @"INSERT INTO tbl_journal_voucher_details
+                                 (date,debit,credit,inv_id,description,account_id,partner)
+                                 VALUES
+                                 (@date,@debit,@credit,@inv,@desc,@acc,@partner)";
+
+                    using var cmd = new MySqlCommand(detailSql, conn, trx);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@debit", d.Debit);
+                    cmd.Parameters.AddWithValue("@credit", d.Credit);
+                    cmd.Parameters.AddWithValue("@inv", id);
+                    cmd.Parameters.AddWithValue("@desc", d.Description ?? "");
+                    cmd.Parameters.AddWithValue("@acc", d.AccountId);
+                    cmd.Parameters.AddWithValue("@partner", d.Partner ?? "");
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    string trxSql = @"INSERT INTO tbl_transaction
+                              (date,account_id,debit,credit,transaction_id,
+                               hum_id,t_type,type,description,created_by,created_date,state,voucher_no)
+                              VALUES
+                              (@date,@acc,@debit,@credit,@tid,
+                               0,'JOURNAL','JOURNAL VOUCHER',@desc,@user,@dt,0,@code)";
+
+                    using var trxCmd = new MySqlCommand(trxSql, conn, trx);
+                    trxCmd.Parameters.AddWithValue("@date", model.Date);
+                    trxCmd.Parameters.AddWithValue("@acc", d.AccountId);
+                    trxCmd.Parameters.AddWithValue("@debit", d.Debit);
+                    trxCmd.Parameters.AddWithValue("@credit", d.Credit);
+                    trxCmd.Parameters.AddWithValue("@tid", id);
+                    trxCmd.Parameters.AddWithValue("@desc", $"Journal Voucher NO. {code}");
+                    trxCmd.Parameters.AddWithValue("@user", userId);
+                    trxCmd.Parameters.AddWithValue("@dt", DateTime.Now);
+                    trxCmd.Parameters.AddWithValue("@code", code);
+
+                    await trxCmd.ExecuteNonQueryAsync();
+                }
+
+
+                await trx.CommitAsync();
+
+                return Ok(new { status = true, id, code });
+            }
+            catch (Exception ex)
+            {
+                await trx.RollbackAsync();
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+
+        private async Task<string> GenerateNextJVCode(MySqlConnection conn, MySqlTransaction trx)
+        {
+            string sql = @"SELECT MAX(CAST(SUBSTRING(code,4) AS UNSIGNED)) FROM tbl_journal_voucher";
+            using var cmd = new MySqlCommand(sql, conn, trx);
+            var result = await cmd.ExecuteScalarAsync();
+
+            int next = result == DBNull.Value ? 1 : Convert.ToInt32(result) + 1;
+            return "JV-" + next.ToString("D4");
+        }
+
+        private async Task<string> GetJVCode(int id, MySqlConnection conn, MySqlTransaction trx)
+        {
+            using var cmd = new MySqlCommand("SELECT code FROM tbl_journal_voucher WHERE id=@id", conn, trx);
+            cmd.Parameters.AddWithValue("@id", id);
+            return Convert.ToString(await cmd.ExecuteScalarAsync());
+        }
+
+        private async Task Executes(MySqlConnection conn, MySqlTransaction trx, string sql, int id)
+        {
+            using var cmd = new MySqlCommand(sql, conn, trx);
+            cmd.Parameters.AddWithValue("@id", id);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPartnerNameList(string accountName = null)
+        {
+            try
+            {
+                accountName = string.IsNullOrWhiteSpace(accountName)
+                    ? null
+                    : accountName
+                        .Replace("\n", "")
+                        .Replace("\r", "")
+                        .Trim();
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query;
+
+                if (accountName == null)
+                {
+                    query = @"SELECT id, CONCAT(code,' - ',name) AS name FROM tbl_employee
+                      UNION ALL
+                      SELECT id, CONCAT(code,' - ',name) AS name FROM tbl_vendor
+                      UNION ALL
+                      SELECT id, CONCAT(code,' - ',name) AS name FROM tbl_customer";
+                }
+                else
+                {
+                    query = @"SELECT id, CONCAT(code,' - ',name) AS name 
+                      FROM tbl_vendor 
+                      WHERE account_id = (
+                          SELECT id FROM tbl_coa_level_4 
+                          WHERE TRIM(name) = @accountName
+                      )
+
+                      UNION ALL
+
+                      SELECT id, CONCAT(code,' - ',name) AS name 
+                      FROM tbl_customer 
+                      WHERE account_id = (
+                          SELECT id FROM tbl_coa_level_4 
+                          WHERE TRIM(name) = @accountName
+                      )
+
+                      UNION ALL
+
+                      SELECT id, CONCAT(code,' - ',name) AS name 
+                      FROM tbl_employee 
+                      WHERE account_id = (
+                          SELECT id FROM tbl_coa_level_4 
+                          WHERE TRIM(name) = @accountName
+                      )";
+                }
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                if (accountName != null)
+                    cmd.Parameters.AddWithValue("@accountName", accountName);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Name = reader.GetString("name")
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
         #endregion
-
-
 
     }
 }
- 

@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "GJVoucher";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -106,95 +105,83 @@
 <div class="modal fade" id="journalVoucherModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
-
             <!-- Header -->
             <div class="modal-header bg-primary text-white py-2">
-                <h6 class="mb-0">New Journal Voucher</h6>
+                <h6 class="mb-0 modal-title">New Journal Voucher</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
             <!-- Body -->
             <div class="modal-body">
-
-                <!-- Date -->
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Date</label>
-                    <div class="col-md-3">
-                        <input type="date" class="form-control">
+                <form id="journalVoucherForm">
+                    <!-- Date -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date</label>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="date" required>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Table -->
-                <div class="table-responsive border rounded">
-                    <table class="table table-bordered align-middle mb-0">
-                        <thead class="table-light text-center">
-                            <tr>
-                                <th style="width:50px;">S.No</th>
-                                <th style="width:120px;">AC Code</th>
-                                <th>Account Name</th>
-                                <th style="width:140px;">Debit</th>
-                                <th style="width:140px;">Credit</th>
-                                <th>Description</th>
-                                <th style="width:140px;">Partner</th>
-                            </tr>
-                        </thead>
-                        <tbody id="journalTbody">
-                            <tr>
-                                <td class="text-center sno">1</td>
-                                <td>
-                                    <input type="text" class="form-control form-control-sm accountCodeInput" readonly>
-                                </td>
-                                <td>
-                                    <select class="form-select form-select-sm accountNameSelect">
-                                        <option value="">-- Select --</option>
-                                    </select>
-                                </td>
-                                <td><input class="form-control form-control-sm text-end debitInput"></td>
-                                <td><input class="form-control form-control-sm text-end creditInput"></td>
-                                <td><input class="form-control form-control-sm"></td>
-                                <td>
-                                    <select class="form-select form-select-sm">
-                                        <option></option>
-                                    </select>
-                                </td>
-                            </tr>
-                        </tbody>
+                    <!-- Table -->
+                    <div class="table-responsive border rounded">
+                        <table class="table table-bordered align-middle mb-0">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th style="width:50px;">S.No</th>
+                                    <th style="width:120px;">AC Code</th>
+                                    <th>Account Name</th>
+                                    <th style="width:140px;">Debit</th>
+                                    <th style="width:140px;">Credit</th>
+                                    <th>Description</th>
+                                    <th style="width:140px;">Partner</th>
+                                </tr>
+                            </thead>
+                            <tbody id="journalTbody">
+                                <tr>
+                                    <td class="text-center sno">1</td>
+                                    <td><input type="text" class="form-control form-control-sm accountCodeInput" readonly></td>
+                                    <td>
+                                        <select class="form-select form-select-sm accountNameSelect">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </td>
+                                    <td><input class="form-control form-control-sm text-end debitInput"></td>
+                                    <td><input class="form-control form-control-sm text-end creditInput"></td>
+                                    <td><input class="form-control form-control-sm descriptionInput"></td>
+                                    <td>
+                                        <select class="form-select form-select-sm partnerSelect">
+                                            <option value="">-- Select --</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-                    </table>
-                </div>
+                    <!-- Totals -->
+                    <div class="d-flex gap-3 mt-3">
+                        <div class="border rounded px-3 py-2 bg-light" style="min-width:180px;">
+                            Dr Amount: <span id="drTotal">0.00</span>
+                        </div>
+                        <div class="border rounded px-3 py-2 bg-light" style="min-width:180px;">
+                            Cr Amount: <span id="crTotal">0.00</span>
+                        </div>
+                    </div>
 
-               
+                    <!-- Footer -->
+                    <div class="modal-footer d-flex justify-content-between align-items-center mt-3">
+                        <div></div>
+                        <div>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-success">Save</button>
+                        </div>
+                    </div>
+                </form>
             </div>
-
-            <!-- Footer -->
-            <div class="modal-footer d-flex justify-content-between align-items-center">
-
-                <!-- Left side: Dr / Cr Amount -->
-                <div class="d-flex gap-3">
-                    <div class="border rounded px-3 py-2 bg-light" style="min-width:180px;">
-                        Dr Amount
-                    </div>
-                    <div class="border rounded px-3 py-2 bg-light" style="min-width:180px;">
-                        Cr Amount
-                    </div>
-                </div>
-
-                <!-- Right side: Buttons -->
-                <div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        Save
-                    </button>
-                </div>
-
-            </div>
-
-
         </div>
     </div>
 </div>
+
 
 
 
@@ -212,61 +199,385 @@
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
-            $(document).ready(function () {
+       $(document).ready(function () {
 
-                  let accountList = [];
-                  loadAccounts();
-                  loadJournalVoucherReport();
-        function loadAccounts() {
-            $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
-                type: 'GET',
-                success: function (accounts) {
-                    accountList = accounts;
-                    populateAccountSelect($('.accountNameSelect'));
-                }
-            });
-        }
+           let accountList = [];
+           loadAccounts();
+           loadJournalVoucherReport();
+            function loadAccounts() {
+             $.ajax({
+                 url: '@Url.Action("GetAccruedSalaries", "HR")',
+                 type: 'GET',
+                 success: function (accounts) {
+                     accountList = accounts;
+                     populateAccountSelect($('.accountNameSelect'));
+                 }
+             });
+         }
 
-        function populateAccountSelect($selects) {
-            $selects.each(function () {
-                const $select = $(this);
-                $select.empty().append('<option value="">-- Select --</option>');
+            function populateAccountSelect($selects) {
+             $selects.each(function () {
+                 const $select = $(this);
+                 $select.empty().append('<option value="">-- Select --</option>');
 
-                accountList.forEach(item => {
-                    $select.append(
-                        `<option value="${item.id}" data-code="${item.code}">
-                            ${item.code} - ${item.name}
-                        </option>`
-                    );
-                });
-            });
-        }
+                 accountList.forEach(item => {
+                     $select.append(
+                         `<option value="${item.id}" data-code="${item.code}">
+                             ${item.code} - ${item.name}
+                         </option>`
+                     );
+                 });
+             });
+         }
 
-        $(document).on('change', '.accountNameSelect', function () {
+            $(document).on('change', '.accountNameSelect', function () {
+
+             const $row = $(this).closest('tr');
+
+             // Fill AC Code
+             const code = $(this).find(':selected').data('code') || '';
+             $row.find('.accountCodeInput').val(code);
+
+             // If this is the last row and account selected → add new row
+             const isLastRow = $row.is(':last-child');
+             const hasValue = $(this).val() !== '';
+
+             if (isLastRow && hasValue) {
+                 addNewRow();
+             }
+         });
+
+            function addNewRow() {
+
+             const rowCount = $('#journalTbody tr').length + 1;
+
+             const newRow = `
+                 <tr>
+                     <td class="text-center sno">${rowCount}</td>
+                     <td>
+                         <input type="text" class="form-control form-control-sm accountCodeInput" readonly>
+                     </td>
+                     <td>
+                         <select class="form-select form-select-sm accountNameSelect">
+                             <option value="">-- Select --</option>
+                         </select>
+                     </td>
+                     <td><input class="form-control form-control-sm text-end debitInput"></td>
+                     <td><input class="form-control form-control-sm text-end creditInput"></td>
+                     <td><input class="form-control form-control-sm"></td>
+                     <td>
+                         <select class="form-select form-select-sm">
+                             <option></option>
+                         </select>
+                     </td>
+                 </tr>
+             `;
+
+             $('#journalTbody').append(newRow);
+
+             // Populate account dropdown in the new row
+             populateAccountSelect($('#journalTbody tr:last .accountNameSelect'));
+         }
+
+
+
+            function loadJournalVoucherReport() {
+
+             const includeAllDates = $('#chkAllData').is(':checked');
+             const startDate = $('#startDate').val();
+             const endDate = $('#endDate').val();
+
+             if (!includeAllDates && (!startDate || !endDate)) {
+                 toastr.warning('Please select both start and end dates.');
+                 return;
+             }
+
+             $.ajax({
+                 url: '@Url.Action("GetJournalVoucherReport", "Account")',
+                 type: 'GET',
+                 data: {
+                     dateFrom: startDate || null,
+                     dateTo: endDate || null,
+                     includeAllDates: includeAllDates
+                 },
+                 beforeSend: function () {
+                     $('#table1 tbody').html(`
+                         <tr>
+                             <td colspan="7" class="text-center text-muted py-4">
+                                 <div class="spinner-border text-primary me-2"></div> Loading...
+                             </td>
+                         </tr>
+                     `);
+                 },
+                 success: function (res) {
+                     console.log(res);  
+                     if (!res.status) {
+                         toastr.error(res.message || 'Failed to load journal vouchers');
+                         return;
+                     }
+
+                     if ($.fn.DataTable.isDataTable('#table1')) {
+                         $('#table1').DataTable().clear().destroy();
+                     }
+
+                     const tbody = $('#table1 tbody');
+                     tbody.empty();
+
+                     if (res.data && res.data.length > 0) {
+
+                         $.each(res.data, function (i, row) {
+                             const tr = `
+                                 <tr data-details='${JSON.stringify(row.Details || [])}'>
+                                     <td>${row.Date ? new Date(row.Date).toISOString().split('T')[0] : ''}</td>
+                                     <td>${row["Journal Code"] ?? ''}</td>
+                                     <td>${row["JV NO"] ?? ''}</td>
+                                     <td>
+                                         ${(row["Debit Amount"] ?? 0).toLocaleString()}
+                                     </td>
+                                     <td>
+                                         ${(row["Credit Amount"] ?? 0).toLocaleString()}
+                                     </td>
+                                     <td>
+                                        <button class="btn btn-sm btn-primary editReceiptVoucherBtn"
+                     data-customer='${JSON.stringify(row)}'>
+                     <i class="fas fa-pen"></i>
+                 </button>
+                                     </td>
+                                 </tr>
+                             `;
+
+                             tbody.append(tr);
+                         });
+
+                         $('#table1').DataTable({
+                             dom: 'Bfrtip',
+                             buttons: [
+                                 {
+                                     extend: 'excelHtml5',
+                                     text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                     className: 'btn btn-primary btn-sm'
+                                 },
+                                 {
+                                     extend: 'pdfHtml5',
+                                     text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                     className: 'btn btn-primary btn-sm',
+                                     orientation: 'landscape',
+                                     pageSize: 'A4'
+                                 }
+                             ],
+                             order: [[0, 'desc']],
+                             pageLength: 15
+                         });
+
+                     } else {
+                         tbody.append(`
+                             <tr>
+                                 <td colspan="7" class="text-center text-muted py-4">
+                                     No records found
+                                 </td>
+                             </tr>
+                         `);
+                     }
+                 },
+                 error: function () {
+                     toastr.error('Error loading journal voucher report');
+                 }
+             });
+         }
+
+            $(document).on('click', '#table1 tbody tr', function () {
+
+             $('#table1 tbody tr').removeClass('selected');
+             $(this).addClass('selected');
+
+             const details = $(this).data('details') || [];
+             const tbody = $('#table2 tbody');
+
+             tbody.empty();
+
+             if (details.length === 0) {
+                 tbody.append(`
+                     <tr>
+                         <td colspan="6" class="text-center text-muted py-3">
+                             No details found
+                         </td>
+                     </tr>
+                 `);
+                 return;
+             }
+
+             details.forEach(d => {
+                 tbody.append(`
+                     <tr>
+                         <td>${d.Date ? new Date(d.Date).toISOString().split('T')[0] : ''}</td>
+                         <td>${d["Account Name"] ?? ''}</td>
+                         <td>${(d["Debit Amount"] ?? 0).toLocaleString()}</td>
+                         <td>${(d["Credit Amount"] ?? 0).toLocaleString()}</td>
+                         <td>${d.Partner ?? ''}</td>
+                         <td>${d.Description ?? ''}</td>
+                     </tr>
+                 `);
+             });
+         });
+
+
+             $('#filterBtn').on('click', function () {
+            loadJournalVoucherReport();
+        });
+
+            $('#chkAllData').on('change', function () {
+             const disabled = $(this).is(':checked');
+             $('#startDate, #endDate').prop('disabled', disabled);
+         });
+
+
+                 $('#journalVoucherModal').on('shown.bs.modal', function () {
+            const today = new Date().toISOString().split('T')[0];
+            $('#date').val(today);
+        });
+
+
+                $(document).on('change', '.accountNameSelect', function () {
 
             const $row = $(this).closest('tr');
 
-            // Fill AC Code
-            const code = $(this).find(':selected').data('code') || '';
-            $row.find('.accountCodeInput').val(code);
+            // Extract only account name (remove CODE -)
+            const accountName = $(this)
+                .find('option:selected')
+                .text()
+                .split(' - ')
+                .slice(1)
+                .join(' - ');
 
-            // If this is the last row and account selected → add new row
-            const isLastRow = $row.is(':last-child');
-            const hasValue = $(this).val() !== '';
+            const $partnerSelect = $row.find('.partnerSelect');
 
-            if (isLastRow && hasValue) {
-                addNewRow();
-            }
+            $partnerSelect.empty().append('<option value="">-- Select --</option>');
+
+            if (!accountName) return;
+
+            $.ajax({
+                url: '@Url.Action("GetPartnerNameList", "Account")',
+                type: 'GET',
+                data: { accountName: accountName },
+                success: function (res) {
+                    if (!res.status || !res.data) return;
+
+                    res.data.forEach(p => {
+                        $partnerSelect.append(
+                            `<option value="${p.id}">${p.name}</option>`
+                        );
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error loading partners:", error);
+                }
+            });
         });
 
-        function addNewRow() {
+                    function calculateTotals() {
+            let dr = 0, cr = 0;
+            $(".debitInput").each(function () { dr += Number($(this).val()) || 0; });
+            $(".creditInput").each(function () { cr += Number($(this).val()) || 0; });
+            $("#drTotal").text(dr.toFixed(2));
+            $("#crTotal").text(cr.toFixed(2));
+        }
 
-            const rowCount = $('#journalTbody tr').length + 1;
+        $(document).on("input", ".debitInput,.creditInput", calculateTotals);
 
-            const newRow = `
-                <tr>
-                    <td class="text-center sno">${rowCount}</td>
+
+               $("#journalVoucherForm").on("submit", function (e) {
+            e.preventDefault();
+
+            const details = [];
+            let debitTotal = 0, creditTotal = 0;
+
+            let invalidRow = false; // Flag for invalid debit/credit input
+
+            $("#journalTbody tr").each(function () {
+                const $row = $(this);
+                const accountId = Number($row.find(".accountNameSelect").val()) || 0;
+                const debit = Number($row.find(".debitInput").val()) || 0;
+                const credit = Number($row.find(".creditInput").val()) || 0;
+
+                const descriptionInput = $row.find(".descriptionInput");
+                const description = descriptionInput.length ? descriptionInput.val().trim() : "";
+
+                const partnerInput = $row.find(".partnerSelect option:selected");
+                const partner = partnerInput.length ? partnerInput.text().trim() : "";
+
+                // ✅ NEW VALIDATION: Cannot have both debit & credit in the same row
+                if (debit > 0 && credit > 0) {
+                    invalidRow = true;
+                    return false; // Break out of the each() loop
+                }
+
+                if (accountId > 0 && (debit > 0 || credit > 0)) {
+                    details.push({ AccountId: accountId, Debit: debit, Credit: credit, Description: description, Partner: partner });
+                    debitTotal += debit;
+                    creditTotal += credit;
+                }
+            });
+
+            if (invalidRow) {
+                toastr.error("You cannot enter a value in both Debit and Credit columns.");
+                return;
+            }
+
+            if (!details.length) {
+                toastr.error("Journal voucher details are required.");
+                return;
+            }
+
+            if (debitTotal !== creditTotal) {
+                toastr.error("Debit Total and Credit Total must be equal.");
+                return;
+            }
+
+            const payload = {
+                Id: $("#journalVoucherModal").data("voucherId") || 0,
+                Date: $("#date").val(),
+                DebitTotal: debitTotal,
+                CreditTotal: creditTotal,
+                Details: details
+            };
+
+            $.ajax({
+                url: '/Account/SaveJournalVoucher',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success("Journal Voucher saved successfully");
+                        $("#journalVoucherModal").modal("hide");
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        toastr.error(res.message || "Save failed");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+                $(document).on("click", ".editReceiptVoucherBtn", function () {
+            const voucher = $(this).data("customer");
+            if (!voucher) return;
+
+            const modal = $("#journalVoucherModal");
+            modal.find("form")[0].reset();
+            $("#journalTbody").empty();
+            modal.data("voucherId", voucher.id || 0);
+
+            $("#date").val(voucher.Date ? new Date(voucher.Date).toISOString().split("T")[0] : "");
+
+            const tbody = $("#journalTbody");
+            const details = voucher.Details || [];
+
+            details.forEach((d, index) => {
+                const row = `<tr>
+                    <td class="text-center sno">${index + 1}</td>
                     <td>
                         <input type="text" class="form-control form-control-sm accountCodeInput" readonly>
                     </td>
@@ -275,176 +586,70 @@
                             <option value="">-- Select --</option>
                         </select>
                     </td>
-                    <td><input class="form-control form-control-sm text-end debitInput"></td>
-                    <td><input class="form-control form-control-sm text-end creditInput"></td>
-                    <td><input class="form-control form-control-sm"></td>
                     <td>
-                        <select class="form-select form-select-sm">
-                            <option></option>
+                        <input type="number" class="form-control form-control-sm text-end debitInput" value="${d["Debit Amount"] || 0}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-end creditInput" value="${d["Credit Amount"] || 0}">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm descriptionInput" value="${d.Description || ""}">
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm partnerSelect">
+                            <option value="">-- Select --</option>
                         </select>
                     </td>
-                </tr>
-            `;
+                </tr>`;
+                tbody.append(row);
+            });
 
-            $('#journalTbody').append(newRow);
+            // Populate account dropdowns with accountList (already loaded)
+            populateAccountSelect($(".accountNameSelect"));
 
-            // Populate account dropdown in the new row
-            populateAccountSelect($('#journalTbody tr:last .accountNameSelect'));
-        }
+            // Now set the selected values and account codes
+            details.forEach((d, index) => {
+                const $row = tbody.find(`tr:eq(${index})`);
+                const accountName = d["Account Name"] || "";
 
-                function loadJournalVoucherReport() {
+                // Find matching account in accountList and select it
+                const matchingAccount = accountList.find(acc =>
+                    `${acc.code} - ${acc.name}` === accountName || acc.name === accountName
+                );
 
-            const includeAllDates = $('#chkAllData').is(':checked');
-            const startDate = $('#startDate').val();
-            const endDate = $('#endDate').val();
+                if (matchingAccount) {
+                    $row.find(".accountNameSelect").val(matchingAccount.id);
+                    $row.find(".accountCodeInput").val(matchingAccount.code);
 
-            if (!includeAllDates && (!startDate || !endDate)) {
-                toastr.warning('Please select both start and end dates.');
-                return;
-            }
+                    // Load partners for this account
+                    $.ajax({
+                        url: '@Url.Action("GetPartnerNameList", "Account")',
+                        type: 'GET',
+                        data: { accountName: matchingAccount.name },
+                        success: function (res) {
+                            if (!res.status || !res.data) return;
 
-            $.ajax({
-                url: '@Url.Action("GetJournalVoucherReport", "Account")',
-                type: 'GET',
-                data: {
-                    dateFrom: startDate || null,
-                    dateTo: endDate || null,
-                    includeAllDates: includeAllDates
-                },
-                beforeSend: function () {
-                    $('#table1 tbody').html(`
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
-                                <div class="spinner-border text-primary me-2"></div> Loading...
-                            </td>
-                        </tr>
-                    `);
-                },
-                success: function (res) {
+                            const $partnerSelect = $row.find('.partnerSelect');
+                            $partnerSelect.empty().append('<option value="">-- Select --</option>');
 
-                    if (!res.status) {
-                        toastr.error(res.message || 'Failed to load journal vouchers');
-                        return;
-                    }
-
-                    if ($.fn.DataTable.isDataTable('#table1')) {
-                        $('#table1').DataTable().clear().destroy();
-                    }
-
-                    const tbody = $('#table1 tbody');
-                    tbody.empty();
-
-                    if (res.data && res.data.length > 0) {
-
-                        $.each(res.data, function (i, row) {
-
-                            const tr = `
-                                <tr data-details='${JSON.stringify(row.Details || [])}'>
-                                    <td>${row.Date ? new Date(row.Date).toISOString().split('T')[0] : ''}</td>
-                                    <td>${row["Journal Code"] ?? ''}</td>
-                                    <td>${row["JV NO"] ?? ''}</td>
-                                    <td>
-                                        ${(row["Debit Amount"] ?? 0).toLocaleString()}
-                                    </td>
-                                    <td>
-                                        ${(row["Credit Amount"] ?? 0).toLocaleString()}
-                                    </td>
-                                    <td>
-                                      <button class="btn btn-sm btn-primary editReceiptVoucherBtn"
-                    data-customer='${JSON.stringify(row)}'>
-                    <i class="fas fa-pen"></i>
-                </button>
-                                    </td>
-                                </tr>
-                            `;
-
-                            tbody.append(tr);
-                        });
-
-                        $('#table1').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm'
-                                },
-                                {
-                                    extend: 'pdfHtml5',
-                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                    className: 'btn btn-primary btn-sm',
-                                    orientation: 'landscape',
-                                    pageSize: 'A4'
-                                }
-                            ],
-                            order: [[0, 'desc']],
-                            pageLength: 15
-                        });
-
-                    } else {
-                        tbody.append(`
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
-                                    No records found
-                                </td>
-                            </tr>
-                        `);
-                    }
-                },
-                error: function () {
-                    toastr.error('Error loading journal voucher report');
+                            res.data.forEach(p => {
+                                const isSelected = p.name === d.Partner;
+                                $partnerSelect.append(
+                                    `<option value="${p.id}" ${isSelected ? 'selected' : ''}>${p.name}</option>`
+                                );
+                            });
+                        }
+                    });
                 }
             });
-        }
 
+            // Recalculate totals
+            calculateTotals();
 
-                $(document).on('click', '#table1 tbody tr', function () {
-
-            $('#table1 tbody tr').removeClass('selected');
-            $(this).addClass('selected');
-
-            const details = $(this).data('details') || [];
-            const tbody = $('#table2 tbody');
-
-            tbody.empty();
-
-            if (details.length === 0) {
-                tbody.append(`
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-3">
-                            No details found
-                        </td>
-                    </tr>
-                `);
-                return;
-            }
-
-            details.forEach(d => {
-                tbody.append(`
-                    <tr>
-                        <td>${d.Date ? new Date(d.Date).toISOString().split('T')[0] : ''}</td>
-                        <td>${d["Account Name"] ?? ''}</td>
-                        <td>${(d["Debit Amount"] ?? 0).toLocaleString()}</td>
-                        <td>${(d["Credit Amount"] ?? 0).toLocaleString()}</td>
-                        <td>${d.Partner ?? ''}</td>
-                        <td>${d.Description ?? ''}</td>
-                    </tr>
-                `);
-            });
+            modal.modal("show");
         });
 
-
-                $('#filterBtn').on('click', function () {
-            loadJournalVoucherReport();
         });
-
-        $('#chkAllData').on('change', function () {
-            const disabled = $(this).is(':checked');
-            $('#startDate, #endDate').prop('disabled', disabled);
-        });
-
-
-          });
 
     </script>
 }

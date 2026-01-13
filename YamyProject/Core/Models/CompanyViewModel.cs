@@ -1413,6 +1413,23 @@ namespace YamyProject.Core.Models
         public decimal Amount { get; set; }
     }
 
+    public class JournalVoucherRequests
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public decimal DebitTotal { get; set; }
+        public decimal CreditTotal { get; set; }
+        public List<JournalVoucherDetailRequest> Details { get; set; }
+    }
+
+    public class JournalVoucherDetailRequest
+    {
+        public int AccountId { get; set; }
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+        public string Description { get; set; }
+        public string Partner { get; set; }
+    }
 
 
 
