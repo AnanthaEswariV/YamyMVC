@@ -2400,5 +2400,387 @@ WHERE invoice_id LIKE 'SO-%';";
 
         #endregion
 
+        #region Sales Performa Center
+
+        public IActionResult SalesPerforma()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetSalesProformas(
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    int? customerId,
+    string paymentMethod,
+    string selectionMethod = "Default")
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = selectionMethod == "Default" ? GetDefaultQueryss() : GetDetailedQueryss();
+                var parameters = new List<MySqlParameter>();
+
+                // Filters
+                if (dateFrom.HasValue)
+                {
+                    query += " AND sp.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+
+                if (dateTo.HasValue)
+                {
+                    query += " AND sp.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                if (customerId.HasValue)
+                {
+                    query += " AND sp.customer_id = @customerId ";
+                    parameters.Add(new MySqlParameter("@customerId", customerId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    query += " AND sp.payment_method = @payment ";
+                    parameters.Add(new MySqlParameter("@payment", paymentMethod));
+                }
+
+                query += " ORDER BY sp.date DESC, sp.id;";
+
+                var proformas = new List<SalesQuotationDto>();
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                SalesQuotationDto currentProforma = null;
+                int lastId = -1;
+
+                while (await reader.ReadAsync())
+                {
+                    int proformaId = reader.GetInt32("Id");
+
+                    // New proforma
+                    if (proformaId != lastId)
+                    {
+                        currentProforma = new SalesQuotationDto
+                        {
+                            Id = proformaId,
+                            Date = reader.GetDateTime("Date"),
+                            InvoiceCode = reader["InvoiceNo"]?.ToString(),
+                            CustomerId = reader.GetInt32("CustomerId"),
+                            CustomerName = reader["CustomerName"]?.ToString(),
+                            PaymentMethod = reader["PaymentMethod"]?.ToString(),
+                            Total = reader.GetDecimal("Total"),
+                            Vat = reader.GetDecimal("Vat"),
+                            Net = reader.GetDecimal("Net"),
+                            TranferStatus = reader["TranferStatus"] != DBNull.Value ? Convert.ToInt32(reader["TranferStatus"]) : 0,
+                            WarehouseId = reader.GetInt32("Warehouse_Id"),
+                            PONumber = reader["PO_Num"]?.ToString(),
+                            BillTo = reader["Bill_To"]?.ToString(),
+                            City = reader["City"]?.ToString(),
+                            SalesMan = reader["Sales_Man"]?.ToString(),
+                            ShipDate = reader.GetDateTime("Ship_Date"),
+                            ShipVia = reader["Ship_Via"]?.ToString(),
+                            ShipTo = reader["Ship_To"]?.ToString(),
+                            AccountCashId = reader.GetInt32("Account_Cash_Id"),
+                            PaymentTerms = reader["Payment_Terms"]?.ToString(),
+                            PaymentDate = reader.GetDateTime("Payment_Date"),
+                            Description = reader["Description"]?.ToString(),
+                            Items = new List<SalesQuotationItemDto>()
+                        };
+                        proformas.Add(currentProforma);
+                        lastId = proformaId;
+                    }
+
+                    // Add item if exists
+                    if (reader["ItemId"] != DBNull.Value)
+                    {
+                        currentProforma.Items.Add(new SalesQuotationItemDto
+                        {
+                            ItemId = Convert.ToInt32(reader["ItemId"]),
+                            ItemCode = reader["ItemCode"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
+                            Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                            Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
+                            Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
+                            CostCenterId = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : 0
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = proformas });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private string GetDefaultQueryss()
+        {
+            return @"
+SELECT 
+    sp.id AS Id,
+    sp.date AS Date,
+    sp.invoice_id AS InvoiceNo,
+    c.id AS CustomerId,
+    CONCAT(c.code,' - ',c.name) AS CustomerName,
+    sp.payment_method AS PaymentMethod,
+    sp.total AS Total,
+    sp.vat AS Vat,
+    sp.net AS Net,
+    sp.tranfer_status AS TranferStatus,
+    sd.id AS ItemId,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+    sd.qty AS Qty,
+    sd.price AS Price,
+    sd.vat AS ItemVat,
+    sp.warehouse_id AS Warehouse_Id,
+    sp.po_num AS PO_Num,
+    sp.bill_to AS Bill_To,
+    sp.city  AS City,
+    sp.sales_man AS Sales_Man,
+    sp.ship_date AS Ship_Date,
+    sp.ship_via AS Ship_Via,
+    sp.ship_to AS Ship_To,
+    sp.account_cash_id AS Account_Cash_Id,  
+    sp.payment_terms AS Payment_Terms,
+    sp.payment_date AS Payment_Date,
+    sp.description AS Description,
+    sp.pay AS Pay,
+    sd.cost_center_id AS Cost_Center_Id,
+    sd.total AS ItemTotal
+FROM tbl_sales_proforma sp
+INNER JOIN tbl_customer c ON sp.customer_id = c.id
+LEFT JOIN tbl_sales_proforma_details sd ON sp.id = sd.sales_id
+LEFT JOIN tbl_items i ON sd.item_id = i.id
+WHERE sp.state = 0";
+        }
+
+        private string GetDetailedQueryss()
+        {
+            return @"
+SELECT 
+    sp.id AS Id,
+    sp.date AS Date,
+    sp.invoice_id AS InvoiceNo,
+    c.id AS CustomerId,
+    CONCAT(c.code,' - ',c.name) AS CustomerName,
+    sp.payment_method AS PaymentMethod,
+    sp.total AS Total,
+    sp.vat AS Vat,
+    sp.net AS Net,
+    sp.tranfer_status AS TranferStatus,
+    sd.id AS ItemId,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+    sd.qty AS Qty,
+    sd.price AS Price,
+    sd.vat AS ItemVat,
+    sp.warehouse_id AS Warehouse_Id,
+    sp.po_num AS PO_Num,
+    sp.bill_to AS Bill_To,
+    sp.city  AS City,
+    sp.sales_man AS Sales_Man,
+    sp.ship_date AS Ship_Date,
+    sp.ship_via AS Ship_Via,
+    sp.ship_to AS Ship_To,
+    sp.account_cash_id AS Account_Cash_Id,  
+    sp.payment_terms AS Payment_Terms,
+    sp.payment_date AS Payment_Date,
+    sp.description AS Description,
+    sp.pay AS Pay,
+    sd.cost_center_id AS Cost_Center_Id,
+    sd.total AS ItemTotal
+FROM tbl_sales_proforma sp
+INNER JOIN tbl_customer c ON sp.customer_id = c.id
+INNER JOIN tbl_sales_proforma_details sd ON sp.id = sd.sales_id
+INNER JOIN tbl_items i ON sd.item_id = i.id
+WHERE sp.state = 0";
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveProformaInvoice([FromBody] QuotationRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validations
+            if (model.CustomerId <= 0)
+                return Json(new { status = false, message = "Customer must be selected." });
+
+            if (model.AccountCashId <= 0)
+                return Json(new { status = false, message = "Account cash must be selected." });
+
+            if (model.Items == null || !model.Items.Any())
+                return Json(new { status = false, message = "Insert at least one item." });
+
+            for (int i = 0; i < model.Items.Count; i++)
+            {
+                var item = model.Items[i];
+                if (item.Total <= 0)
+                    return Json(new { status = false, message = $"Total Item in Row {i + 1} can't be 0 or null." });
+            }
+
+            if (model.NetTotal <= 0)
+                return Json(new { status = false, message = "Total must be greater than zero." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in." });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            try
+            {
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                int proformaId = model.Id;
+
+                if (proformaId == 0) // 🔹 Insert new
+                {
+                    model.InvoiceCode = await GenerateNextProformaCode(conn);
+
+                    var insertQuery = @"
+INSERT INTO tbl_sales_proforma
+(date, customer_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
+ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
+total, vat, net, pay, `change`, created_by, created_date, state, description)
+VALUES
+(@date, @customer_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man,
+@ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
+@total, @vat, @net, @pay, @change, @created_by, @created_date, 0, @description);
+SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@customer_id", model.CustomerId);
+                    cmd.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
+                    cmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                    cmd.Parameters.AddWithValue("@po_num", model.PONumber ?? "");
+                    cmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                    cmd.Parameters.AddWithValue("@city", model.City ?? "");
+                    cmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                    cmd.Parameters.AddWithValue("@ship_date", model.ShipDate);
+                    cmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                    cmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                    cmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod ?? "");
+                    cmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                    cmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                    cmd.Parameters.AddWithValue("@payment_date", model.PaymentDate);
+                    cmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                    cmd.Parameters.AddWithValue("@vat", model.Vat);
+                    cmd.Parameters.AddWithValue("@net", model.NetTotal);
+                    cmd.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
+                    cmd.Parameters.AddWithValue("@change", model.PaymentMethod != "Cash" ? model.NetTotal : 0);
+                    cmd.Parameters.AddWithValue("@created_by", userId);
+                    cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                    proformaId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else // 🔹 Update existing
+                {
+                    var updateQuery = @"
+UPDATE tbl_sales_proforma SET
+date=@date, customer_id=@customer_id, invoice_id=@invoice_id, warehouse_id=@warehouse_id, po_num=@po_num, bill_to=@bill_to, city=@city, sales_man=@sales_man,
+ship_date=@ship_date, ship_via=@ship_via, ship_to=@ship_to, payment_method=@payment_method, account_cash_id=@account_cash_id,
+payment_terms=@payment_terms, payment_date=@payment_date, total=@total, vat=@vat, net=@net,
+pay=@pay, `change`=@change, modified_by=@modified_by, modified_date=@modified_date, description=@description
+WHERE id=@id;";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@id", proformaId);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@customer_id", model.CustomerId);
+                    cmd.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
+                    cmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                    cmd.Parameters.AddWithValue("@po_num", model.PONumber ?? "");
+                    cmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                    cmd.Parameters.AddWithValue("@city", model.City ?? "");
+                    cmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                    cmd.Parameters.AddWithValue("@ship_date", model.ShipDate);
+                    cmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                    cmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                    cmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod ?? "");
+                    cmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                    cmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                    cmd.Parameters.AddWithValue("@payment_date", model.PaymentDate);
+                    cmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                    cmd.Parameters.AddWithValue("@vat", model.Vat);
+                    cmd.Parameters.AddWithValue("@net", model.NetTotal);
+                    cmd.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
+                    cmd.Parameters.AddWithValue("@change", model.PaymentMethod != "Cash" ? model.NetTotal : 0);
+                    cmd.Parameters.AddWithValue("@modified_by", userId);
+                    cmd.Parameters.AddWithValue("@modified_date", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    // Delete previous items
+                    await using var deleteCmd = new MySqlCommand("DELETE FROM tbl_sales_proforma_details WHERE sales_id=@id", conn);
+                    deleteCmd.Parameters.AddWithValue("@id", proformaId);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
+                // 🔹 Insert items
+                foreach (var item in model.Items)
+                {
+                    var insertItemQuery = @"
+INSERT INTO tbl_sales_proforma_details
+(sales_id, item_id, qty, cost_price, price, vatp, vat, total, cost_center_id)
+VALUES
+(@sales_id, @item_id, @qty, @cost_price, @price, @vatp, @vat, @total, @cost_center_id);";
+
+                    await using var itemCmd = new MySqlCommand(insertItemQuery, conn);
+                    itemCmd.Parameters.AddWithValue("@sales_id", proformaId);
+                    itemCmd.Parameters.AddWithValue("@item_id", item.ItemId);
+                    itemCmd.Parameters.AddWithValue("@qty", item.Quantity);
+                    itemCmd.Parameters.AddWithValue("@cost_price", item.CostPrice);
+                    itemCmd.Parameters.AddWithValue("@price", item.Price);
+                    itemCmd.Parameters.AddWithValue("@vatp", item.VatPercentage);
+                    itemCmd.Parameters.AddWithValue("@vat", item.Vat);
+                    itemCmd.Parameters.AddWithValue("@total", item.Total);
+                    itemCmd.Parameters.AddWithValue("@cost_center_id", item.CostCenterId);
+                    await itemCmd.ExecuteNonQueryAsync();
+                }
+
+                return Json(new { status = true, message = proformaId == model.Id ? "Proforma Invoice updated successfully" : "Proforma Invoice saved successfully", id = proformaId });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // 🔹 Helper to generate next invoice code
+        private async Task<string> GenerateNextProformaCode(MySqlConnection conn)
+        {
+            const string prefix = "SP-";
+            var query = @"SELECT IFNULL(MAX(CAST(SUBSTRING(invoice_id, 4) AS UNSIGNED)), 0) FROM tbl_sales_proforma WHERE invoice_id LIKE 'SP-%';";
+            await using var cmd = new MySqlCommand(query, conn);
+            var lastNumber = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            return $"{prefix}{(lastNumber + 1):D4}";
+        }
+
+
+        #endregion
+
     }
 }
