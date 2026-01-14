@@ -409,48 +409,62 @@
                 });
 
 
-                  $.ajax({
-                     url: '@Url.Action("GetAccruedSalaries", "HR")',
-                     type: 'GET',
-                     success: function (data) {
 
-                         // List of dropdowns with their matching code textbox
-                         const dropdowns = [
-                             { ddl: '#accountName' },
-                         ];
+                  // Call this on modal open and on invoice type change
+        function loadAccountName(invoiceType) {
+            // First: fetch all accounts
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
+                    const $ddl = $("#accountName");
+                    $ddl.empty().append('<option value="">-- Select --</option>');
 
-                         dropdowns.forEach(set => {
-                             let $ddl = $(set.ddl);
+                    // Append all accounts
+                    $.each(accounts, function(i, item) {
+                        $ddl.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code
+                            })
+                        );
+                    });
 
+                    // Now: fetch the selected account ID based on invoice type
+                    $.ajax({
+                        url: '/Customer/GetPaymentMethodInfo',
+                        type: 'GET',
+                        data: { method: invoiceType },
+                        success: function(res) {
+                            if (res.status) {
+                                $ddl.val(res.accountId);
+                                $("#paymentTerms").prop('disabled', !res.paymentTermsEnabled);
+                                $("#paymentTermsValue").val(res.paymentTermsEnabled ? $("#paymentTerms").val() : "");
+                            } else {
+                                console.error("❌ Failed to get account ID for invoice type");
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("❌ Error fetching selected account ID:", error);
+                        }
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Error loading accounts:", error);
+                }
+            });
+        }
 
-                             $ddl.empty().append('<option value="">-- Select --</option>');
+        // Bind invoiceType change
+        $("#invoiceType").on("change", function() {
+            const type = $(this).val();
+            loadAccountName(type);
+        });
 
-                             $.each(data, function (i, item) {
-                                 $ddl.append(
-                                     $('<option>', {
-                                         value: item.id,
-                                         text: item.code + ' - ' + item.name,
-                                         'data-code': item.code
-                                     })
-                                 );
-                             });
+        // Optionally call once when modal opens to load default type
+        loadAccountName($("#invoiceType").val());
 
-
-
-                             // On change, update the code textbox
-                             $ddl.on('change', function () {
-                                 let selected = $(this).find(':selected');
-                                 let code = selected.data('code');
-
-
-                                 $(set.codeBox).val(code || "");
-                             });
-                         });
-                     },
-                     error: function (xhr, status, error) {
-                         console.error("❌ Error loading accounts:", status, error);
-                     }
-                 });
             }
 
             function toggleTables() {
