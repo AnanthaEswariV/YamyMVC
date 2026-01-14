@@ -909,8 +909,7 @@
             }
         }
 
-
-
+        
         [HttpGet]
         public async Task<IActionResult> GetStockSettlementItems(int settlementId)
         {
@@ -961,6 +960,91 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItemByCodeOrName(int warehouseId, string type, string inputText)
+        {
+            if (string.IsNullOrWhiteSpace(inputText))
+                return BadRequest(new { status = false, message = "Input text cannot be empty." });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = string.Empty;
+
+                if (type == "code")
+                {
+                    query = @"
+                SELECT i.id, i.method, i.type, i.code, i.name, i.cost_price,
+                    (SELECT IFNULL(SUM(qty_in - qty_out), 0) 
+                     FROM tbl_item_transaction 
+                     WHERE item_id = i.id AND warehouse_id = @wId) AS qty
+                FROM tbl_items i
+                LEFT JOIN tbl_items_warehouse w ON w.item_id = i.id
+                WHERE i.id = @inputText";
+                }
+                else if (type == "name")
+                {
+                    query = @"
+                SELECT i.id, i.method, i.type, i.code, i.name, i.cost_price,
+                    (SELECT IFNULL(SUM(qty_in - qty_out), 0) 
+                     FROM tbl_item_transaction 
+                     WHERE item_id = i.id AND warehouse_id = @wId) AS qty
+                FROM tbl_items i
+                LEFT JOIN tbl_items_warehouse w ON w.item_id = i.id
+                WHERE i.id = @inputText";
+                }
+                else
+                {
+                    return BadRequest(new { status = false, message = "Type must be 'code' or 'name'." });
+                }
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@wId", warehouseId);
+                cmd.Parameters.AddWithValue("@inputText", inputText.Trim());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var item = new
+                    {
+                        itemId = reader.GetInt32("id"),
+                        code = reader.GetString("code"),
+                        name = reader.GetString("name"),
+                        qty = reader.GetDecimal("qty"),
+                        costPrice = reader.GetDecimal("cost_price"),
+                        total = reader.GetDecimal("cost_price") * reader.GetDecimal("qty"),
+                        newQty = reader.GetDecimal("qty"),
+                        qtyDif = 0,
+                        minusAmount = 0,
+                        plusAmount = 0,
+                        method = reader["method"],
+                        type = reader["type"]
+                    };
+
+                    return Ok(new { status = true, data = item });
+                }
+                else
+                {
+                    // Item not found
+                    return NotFound(new { status = false, message = "Item not found." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

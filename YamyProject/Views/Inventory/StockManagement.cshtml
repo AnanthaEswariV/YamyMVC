@@ -113,7 +113,7 @@
 
                     <div class="col-md-4">
                         <label class="form-label fw-semibold text-muted">Warehouse</label>
-                        <select class="form-select" id="warehouseDropdown"><option value="">Select Warehouse</option></select>
+                        <select class="form-select" id="warehouseDropdown"></select>
                     </div>
 
 
@@ -246,7 +246,6 @@
                         `);
                     },
                     success: function (res) {
-                        console.log(res);
                         if (!res.status) {
                             toastr.error(res.message || 'Failed to load stock data');
                             return;
@@ -398,52 +397,57 @@
         }
 
 
-        $(document).on("change input", ".itemNameSelect, #stockManagementTable tr td:eq(6) input", function () {
-            const row = $(this).closest("tr");
-            updateRow(row);
+
+             $('#stockManagementTable').on('change', '.itemNameSelect', function () {
+            var row = $(this).closest('tr');
+            var itemName = $(this).val();
+            var warehouseId = $('#warehouseDropdown').val();
+
+            if (!itemName || !warehouseId) return;
+
+            // Call API
+            $.ajax({
+                url: '@Url.Action("GetItemByCodeOrName", "Inventory")',
+                type: 'GET',
+                data: {
+                    type: 'name',       
+                    inputText: itemName,
+                    warehouseId: warehouseId
+                },
+                success: function (res) {
+                    if (res.status) {
+                        var item = res.data;
+                        console.log(res);
+                        row.find('td:eq(3) input').val(item.qty); 
+                        row.find('td:eq(4) input').val(item.costPrice.toFixed(2));
+                        row.find('td:eq(5) input').val(item.total.toFixed(2)); // SYS Amount
+                        row.find('td:eq(6) input').val(item.newQty.toFixed(2)); // New QTY
+                        row.find('td:eq(7) input').val(item.qtyDif); // QTY DIF
+                        row.find('td:eq(8) input').val(item.minusAmount); // Amount(-)
+                        row.find('td:eq(9) input').val(item.plusAmount);  // Amount(+)
+
+                        // Optionally, store itemId in a hidden input for later saving
+                        if (!row.find('.itemId').length) {
+                            row.append('<input type="hidden" class="itemId" value="' + item.itemId + '"/>');
+                        } else {
+                            row.find('.itemId').val(item.itemId);
+                        }
+                    } else {
+                        alert(res.message);
+                        // Clear fields if item not found
+                        row.find('td input').val('');
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    alert('Error fetching item data.');
+                }
+            });
         });
 
 
-        function updateRow(row) {
-            const itemId = row.find(".itemNameSelect").val();
 
-            if (!itemId) {
-                row.find("input").val("");
-                return;
-            }
 
-            const item = itemsList.find(x => x.id == itemId);
-            if (!item) return;
-
-            // Get values
-            let sysQty = parseFloat(item.on_hand) || 0;
-            let price  = parseFloat(item.cost_price) || 0;
-            let newQty = parseFloat(row.find("td:eq(6) input").val());
-
-            // If new qty empty → default to sys qty
-            if (isNaN(newQty)) newQty = sysQty;
-
-            // Calculations
-            const qtyDiff = sysQty - newQty;
-            const amount  = qtyDiff * price;
-
-            // Fill fields
-            row.find("td:eq(1) input").val(item.code);              // Item Code
-            row.find("td:eq(3) input").val(sysQty.toFixed(2));     // SYS QTY
-            row.find("td:eq(4) input").val(price.toFixed(2));      // Price
-            row.find("td:eq(5) input").val(item.total_value);      // SYS Amount
-            row.find("td:eq(6) input").val(newQty.toFixed(2));     // New QTY
-            row.find("td:eq(7) input").val(qtyDiff.toFixed(2));    // QTY DIF
-
-            // Amount (- / +)
-            if (qtyDiff > 0) {
-                row.find("td:eq(8) input").val(amount.toFixed(2)); // Amount(-)
-                row.find("td:eq(9) input").val("0.00");
-            } else {
-                row.find("td:eq(8) input").val("0.00");
-                row.find("td:eq(9) input").val(Math.abs(amount).toFixed(2)); // Amount(+)
-            }
-        }
 
 
 

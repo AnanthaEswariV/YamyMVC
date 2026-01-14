@@ -279,10 +279,6 @@
                         </select>
                     </div>
 
-
-
-
-
                 </div>
 
                 <!-- Table -->
@@ -499,7 +495,6 @@
             });
         }
 
-
             function loadSalesData() {
                 const customerId = $('#type').val();
                 const allDataChecked = $('#chkAllData').is(':checked');
@@ -656,7 +651,6 @@
             });
         }
 
-
             function formatDate(dateStr) {
                 if (!dateStr) return '';
                 const date = new Date(dateStr);
@@ -664,8 +658,7 @@
                 return date.toLocaleDateString();
             }
 
-
-        function getTodayDate() {
+            function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -673,7 +666,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
+            document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
             const todayDate = getTodayDate();
 
             // Fill all date fields
@@ -690,7 +683,6 @@
                 }
             });
         });
-
 
             $('#paymentTerms').prop('disabled', true);
             setDueDate(); 
@@ -805,7 +797,6 @@
             $("#salesModal").modal("show");
         });
 
-
             $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
 
@@ -881,10 +872,9 @@
             });
         });
 
-
         });
 
-            function loadWarehouses(selector = "#warehouseDropdown") {
+        function loadWarehouses(selector = "#warehouseDropdown") {
             $.ajax({
               url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
@@ -905,7 +895,7 @@
             });
         }
 
-                  let itemsList = []; // Declare the global items list
+         let itemsList = []; // Declare the global items list
 
         function loadItem(selector = ".itemNameSelect") {
             return new Promise((resolve, reject) => {
@@ -935,8 +925,7 @@
             });
         }
 
-
-           function loadTax(selector = ".tax") {
+        function loadTax(selector = ".tax") {
             return new Promise((resolve, reject) => {
                 $.ajax({
                     url: '@Url.Action("GetTaxes", "Lists")',
@@ -963,8 +952,6 @@
                 });
             });
         }
-
-
 
          function populateAndSelectCostCenter() {
              $.ajax({
@@ -1020,7 +1007,6 @@
             }
         });
 
-
         function calculateRow(row) {
             const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0; // Quantity
             const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0; // Price
@@ -1040,8 +1026,6 @@
             // Update the invoice totals (optional)
             calculateInvoiceTotals();
         }
-
-
 
         $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
             const row = $(this).closest("tr");
