@@ -1548,22 +1548,43 @@ namespace YamyProject.Core.Models
         public int Id { get; set; }
         public DateTime Date { get; set; }
         public string InvoiceNo { get; set; }
+        public int VendorId { get; set; }
         public string VendorName { get; set; }
         public string PaymentMethod { get; set; }
         public decimal Total { get; set; }
         public decimal Vat { get; set; }
         public decimal Net { get; set; }
-        public List<PurchaseItemDto> Items { get; set; }
+        public int? WarehouseId { get; set; }
+        public string PO_Num { get; set; }
+        public string BillTo { get; set; }
+        public string PurchaseType { get; set; }
+        public int? FixedAssetCategoryId { get; set; }
+        public string City { get; set; }
+        public DateTime? Ship_Date { get; set; }
+        public string Ship_Via { get; set; }
+        public string Ship_To { get; set; }
+        public int? Account_Cash_Id { get; set; }
+        public string Payment_Terms { get; set; }
+        public DateTime? Payment_Date { get; set; }
+        public string Description { get; set; }
+        public decimal Pay { get; set; }
+        public string SalesMan { get; set; }
+        public List<PurchaseItemDto> Items { get; set; } = new();
     }
+
 
     public class PurchaseItemDto
     {
-        public string ItemName { get; set; }
-        public decimal Qty { get; set; }
-        public decimal CostPrice { get; set; }   
-        public decimal Vat { get; set; }
-        public decimal Total { get; set; }
+        public int ItemId { get; set; }               
+        public string ItemCode { get; set; }          
+        public string ItemName { get; set; }          
+        public decimal Qty { get; set; }              
+        public decimal CostPrice { get; set; }        
+        public decimal Vat { get; set; }              
+        public decimal Total { get; set; }            
+        public int? Cost_Center_Id { get; set; }      
     }
+
 
     public class PurchaseInvoiceRequest
     {

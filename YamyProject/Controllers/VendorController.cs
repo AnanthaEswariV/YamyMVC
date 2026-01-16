@@ -707,11 +707,27 @@ namespace YamyProject.Controllers
                             Id = purchaseId,
                             Date = reader.GetDateTime("Date"),
                             InvoiceNo = reader["InvoiceNo"]?.ToString(),
+                            VendorId = reader["VendorId"] != DBNull.Value ? Convert.ToInt32(reader["VendorId"]) : 0,
                             VendorName = reader["VendorName"]?.ToString(),
                             PaymentMethod = reader["PaymentMethod"]?.ToString(),
                             Total = reader.GetDecimal("Total"),
                             Vat = reader.GetDecimal("Vat"),
-                            Net = reader.GetDecimal("Net"),
+                            Net = reader["Net"] != DBNull.Value ? reader.GetDecimal("Net") : 0,
+                            WarehouseId = reader["Warehouse_Id"] != DBNull.Value ? reader.GetInt32("Warehouse_Id") : (int?)null,
+                            PO_Num = reader["PO_Num"]?.ToString(),
+                            BillTo = reader["Bill_To"]?.ToString(),
+                            PurchaseType = reader["PurchaseType"]?.ToString(),
+                            FixedAssetCategoryId = reader["FixedAssetCategoryId"] != DBNull.Value ? reader.GetInt32("FixedAssetCategoryId") : (int?)null,
+                            City = reader["City"]?.ToString(),
+                            Ship_Date = reader["Ship_Date"] != DBNull.Value ? reader.GetDateTime("Ship_Date") : (DateTime?)null,
+                            Ship_Via = reader["Ship_Via"]?.ToString(),
+                            Ship_To = reader["Ship_To"]?.ToString(),
+                            Account_Cash_Id = reader["Account_Cash_Id"] != DBNull.Value ? reader.GetInt32("Account_Cash_Id") : (int?)null,
+                            Payment_Terms = reader["Payment_Terms"]?.ToString(),
+                            Payment_Date = reader["Payment_Date"] != DBNull.Value ? reader.GetDateTime("Payment_Date") : (DateTime?)null,
+                            Description = reader["Description"]?.ToString(),
+                            SalesMan = reader["Sales_Man"]?.ToString(),
+                            Pay = reader["Pay"] != DBNull.Value ? reader.GetDecimal("Pay") : 0,
                             Items = new List<PurchaseItemDto>()
                         };
 
@@ -720,27 +736,18 @@ namespace YamyProject.Controllers
                     }
 
                     // Item (only in Detailed mode)
-                    if (selectionMethod != "Default" && reader["ItemName"] != DBNull.Value)
+                    if (reader["ItemId"] != DBNull.Value)
                     {
                         currentPurchase.Items.Add(new PurchaseItemDto
                         {
+                            ItemId = reader["ItemId"] != DBNull.Value ? Convert.ToInt32(reader["ItemId"]) : 0,
+                            ItemCode = reader["ItemCode"]?.ToString(),
                             ItemName = reader["ItemName"]?.ToString(),
-
-                            Qty = reader["Qty"] != DBNull.Value
-                                ? Convert.ToDecimal(reader["Qty"])
-                                : 0,
-
-                            CostPrice = reader["CostPrice"] != DBNull.Value
-                                ? Convert.ToDecimal(reader["CostPrice"])
-                                : 0,
-
-                            Vat = reader["ItemVat"] != DBNull.Value
-                                ? Convert.ToDecimal(reader["ItemVat"])
-                                : 0,
-
-                            Total = reader["ItemTotal"] != DBNull.Value
-                                ? Convert.ToDecimal(reader["ItemTotal"])
-                                : 0
+                            Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                            CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                            Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
+                            Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
                         });
                     }
 
@@ -763,45 +770,88 @@ namespace YamyProject.Controllers
         private string GetPurchaseDefaultQuery()
         {
             return @"
-        SELECT
-            p.id AS Id,
-            p.date AS Date,
-            p.invoice_id AS InvoiceNo,
-            CONCAT(v.code,' - ',v.name) AS VendorName,
-            p.payment_method AS PaymentMethod,
-            p.total AS Total,
-            p.vat AS Vat,
-            p.net AS Net
-        FROM tbl_purchase p
-        INNER JOIN tbl_vendor v ON p.vendor_id = v.id
-        INNER JOIN tbl_transaction t ON p.id = t.transaction_id
-        WHERE p.state = 0
+      SELECT 
+    p.id AS Id,
+    p.date AS Date,
+    p.invoice_id AS InvoiceNo,
+    v.id AS VendorId,
+    CONCAT(v.code,' - ',v.name) AS VendorName,
+    p.payment_method AS PaymentMethod,
+    p.total AS Total,
+    p.vat AS Vat,
+    p.net AS Net,
+    pd.id AS ItemId,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+    pd.qty AS Qty,
+    pd.cost_price AS CostPrice,
+    pd.vat AS ItemVat,
+    pd.total AS ItemTotal,
+    p.warehouse_id AS Warehouse_Id,
+    p.po_num AS PO_Num,
+    p.bill_to AS Bill_To,
+    p.sales_man AS Sales_Man,
+    p.purchase_type AS PurchaseType,
+    p.fixed_asset_category_id As FixedAssetCategoryId,
+    p.city AS City,
+    p.ship_date AS Ship_Date,
+    p.ship_via AS Ship_Via,
+    p.ship_to AS Ship_To,
+    p.account_cash_id AS Account_Cash_Id,
+    p.payment_terms AS Payment_Terms,
+    p.payment_date AS Payment_Date,
+    p.description AS Description,
+    p.pay AS Pay,
+    i.id AS ItemId,
+    pd.cost_center_id AS Cost_Center_Id
+FROM tbl_purchase p
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+LEFT JOIN tbl_purchase_details pd ON p.id = pd.purchase_id
+LEFT JOIN tbl_items i ON pd.item_id = i.id
+WHERE p.state = 0;
     ";
         }
 
         private string GetPurchaseDetailedQuery()
         {
             return @"
-        SELECT
-            p.id AS Id,
-            p.date AS Date,
-            p.invoice_id AS InvoiceNo,
-            CONCAT(v.code,' - ',v.name) AS VendorName,
-            p.payment_method AS PaymentMethod,
-            p.total AS Total,
-            p.vat AS Vat,
-            p.net AS Net,
-            CONCAT(i.code,' - ',i.name) AS ItemName,
-            d.qty AS Qty,
-            d.cost_price AS CostPrice,
-            d.vat AS ItemVat,
-            d.total AS ItemTotal
-        FROM tbl_purchase p
-        INNER JOIN tbl_purchase_details d ON p.id = d.purchase_id
-        INNER JOIN tbl_items i ON d.item_id = i.id
-        INNER JOIN tbl_vendor v ON p.vendor_id = v.id
-        INNER JOIN tbl_transaction t ON p.id = t.transaction_id
-        WHERE p.state = 0
+      SELECT
+    p.id AS Id,
+    p.date AS Date,
+    p.invoice_id AS InvoiceNo,
+    CONCAT(v.code,' - ',v.name) AS VendorName,
+    p.payment_method AS PaymentMethod,
+    p.total AS Total,
+    p.vat AS Vat,
+    p.net AS Net,
+    CONCAT(i.code,' - ',i.name) AS ItemName,
+    d.qty AS Qty,
+    d.cost_price AS CostPrice,
+    d.vat AS ItemVat,
+    d.total AS ItemTotal,
+    p.warehouse_id AS Warehouse_Id,
+    p.po_num AS PO_Num,
+    p.bill_to AS Bill_To,
+    p.purchase_type AS PurchaseType,
+    p.fixed_asset_category_id As FixedAssetCategoryId,
+    p.city AS City,
+  p.sales_man AS Sales_Man,
+    p.ship_date AS Ship_Date,
+    p.ship_via AS Ship_Via,
+    p.ship_to AS Ship_To,
+    p.account_cash_id AS Account_Cash_Id,
+    p.payment_terms AS Payment_Terms,
+    p.payment_date AS Payment_Date,
+    p.description AS Description,
+    p.pay AS Pay,
+    i.id As ItemId,
+    d.cost_center_id AS Cost_Center_Id
+FROM tbl_purchase p
+INNER JOIN tbl_purchase_details d ON p.id = d.purchase_id
+INNER JOIN tbl_items i ON d.item_id = i.id
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+WHERE p.state = 0;
+
     ";
         }
 
@@ -1556,18 +1606,148 @@ WHERE id=@id;";
         }
 
         private async Task UpdateOrAddFixedAssets(MySqlConnection conn, MySqlTransaction transaction,
-            int purchaseId, int fixedAssetCategoryId)
+            int purchaseId, int categoryId)
         {
-          
-            var query = @"INSERT INTO tbl_fixed_assets (purchase_id, category_id) 
-                         VALUES (@purchaseId, @categoryId)
-                         ON DUPLICATE KEY UPDATE category_id = @categoryId;";
+            if (conn == null) throw new ArgumentNullException(nameof(conn));
+            if (transaction == null) throw new ArgumentNullException(nameof(transaction));
 
-            await using var cmd = new MySqlCommand(query, conn, transaction);
-            cmd.Parameters.AddWithValue("@purchaseId", purchaseId);
-            cmd.Parameters.AddWithValue("@categoryId", fixedAssetCategoryId);
-            await cmd.ExecuteNonQueryAsync();
+            // 1️⃣ Load purchase
+            var purchaseQuery = @"
+        SELECT p.net AS PurchasePrice,
+               v.name AS SupplierName,
+               p.invoice_id AS VoucherNo,
+               p.date AS PurchaseDate
+        FROM tbl_purchase p
+        INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+        WHERE p.id = @purchaseId";
+
+            decimal purchasePrice;
+            string supplierName;
+            string voucherNo;
+            DateTime purchaseDate;
+
+            await using (var cmd = new MySqlCommand(purchaseQuery, conn, transaction))
+            {
+                cmd.Parameters.AddWithValue("@purchaseId", purchaseId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync()) throw new Exception("Purchase not found");
+
+                purchasePrice = reader.GetDecimal("PurchasePrice");
+                supplierName = reader.GetString("SupplierName");
+                voucherNo = reader.GetString("VoucherNo");
+                purchaseDate = reader.GetDateTime("PurchaseDate");
+            }
+
+            // 2️⃣ Check if fixed asset already exists
+            int oldAssetId = 0;
+            var checkQuery = @"
+        SELECT id FROM tbl_fixed_assets
+        WHERE purchase_date = @date AND supplier = @supplier AND invoice_number = @voucherNo";
+
+            await using (var cmd = new MySqlCommand(checkQuery, conn, transaction))
+            {
+                cmd.Parameters.AddWithValue("@date", purchaseDate);
+                cmd.Parameters.AddWithValue("@supplier", supplierName);
+                cmd.Parameters.AddWithValue("@voucherNo", voucherNo);
+
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null) oldAssetId = Convert.ToInt32(result);
+            }
+
+            // 3️⃣ Load category info
+            string assetName;
+            int assetsAccount = 0, depreciationAccount = 0, expenseAccount = 0;
+
+            var categoryQuery = @"SELECT * FROM tbl_fixed_assets_category WHERE id=@id";
+            await using (var cmd = new MySqlCommand(categoryQuery, conn, transaction))
+            {
+                cmd.Parameters.AddWithValue("@id", categoryId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync()) throw new Exception("Invalid category");
+
+                assetName = reader["category_name"].ToString();
+                if (reader["assets_account_id"] != DBNull.Value) assetsAccount = Convert.ToInt32(reader["assets_account_id"]);
+                if (reader["depreciation_account_id"] != DBNull.Value) depreciationAccount = Convert.ToInt32(reader["depreciation_account_id"]);
+                if (reader["expence_account_id"] != DBNull.Value) expenseAccount = Convert.ToInt32(reader["expence_account_id"]);
+            }
+
+            // 4️⃣ Update or Insert
+            if (oldAssetId > 0)
+            {
+                // UPDATE
+                var updateQuery = @"
+            UPDATE tbl_fixed_assets
+            SET date=@date,
+                category_id=@categoryId,
+                supplier=@supplier,
+                status='Draft',
+                invoice_number=@invoice,
+                purchase_date=@purchaseDate,
+                end_date=@endDate,
+                depreciation_life=0,
+                purchase_price=@purchasePrice,
+                debit_account_id=@debit,
+                credit_account_id=@credit,
+                expence_account_id=@expense,
+                modified_by=@user,
+                modified_date=@now
+            WHERE id=@id";
+
+                await using var cmd = new MySqlCommand(updateQuery, conn, transaction);
+                cmd.Parameters.AddWithValue("@id", oldAssetId);
+                cmd.Parameters.AddWithValue("@date", purchaseDate);
+                cmd.Parameters.AddWithValue("@categoryId", categoryId);
+                cmd.Parameters.AddWithValue("@supplier", supplierName);
+                cmd.Parameters.AddWithValue("@invoice", voucherNo);
+                cmd.Parameters.AddWithValue("@purchaseDate", purchaseDate);
+                cmd.Parameters.AddWithValue("@endDate", purchaseDate);
+                cmd.Parameters.AddWithValue("@purchasePrice", purchasePrice);
+                cmd.Parameters.AddWithValue("@debit", assetsAccount);
+                cmd.Parameters.AddWithValue("@credit", depreciationAccount);
+                cmd.Parameters.AddWithValue("@expense", expenseAccount);
+                cmd.Parameters.AddWithValue("@user", HttpContext.Session.GetInt32("UserId") ?? 0);
+                cmd.Parameters.AddWithValue("@now", DateTime.Now);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
+            else
+            {
+                int code = 1;
+                var codeQuery = "SELECT IFNULL(MAX(CAST(code AS UNSIGNED)),0)+1 FROM tbl_fixed_assets";
+                await using var codeCmd = new MySqlCommand(codeQuery, conn, transaction);
+                var codeResult = await codeCmd.ExecuteScalarAsync();
+                code = Convert.ToInt32(codeResult);
+
+                var insertQuery = @"
+            INSERT INTO tbl_fixed_assets
+            (date, code, name, brand, category_id, model, supplier, status,
+             invoice_number, purchase_date, end_date, depreciation_life, purchase_price,
+             debit_account_id, credit_account_id, expence_account_id, created_by, created_date, state)
+            VALUES
+            (@date, @code, @name, '', @categoryId, '', @supplier, 'Draft',
+             @invoice, @purchaseDate, @endDate, 0, @purchasePrice,
+             @debit, @credit, @expense, @user, @now, 0)";
+
+                await using var cmd = new MySqlCommand(insertQuery, conn, transaction);
+                cmd.Parameters.AddWithValue("@date", purchaseDate);
+                cmd.Parameters.AddWithValue("@code", code.ToString("D5"));
+                cmd.Parameters.AddWithValue("@name", assetName);
+                cmd.Parameters.AddWithValue("@categoryId", categoryId);
+                cmd.Parameters.AddWithValue("@supplier", supplierName);
+                cmd.Parameters.AddWithValue("@invoice", voucherNo);
+                cmd.Parameters.AddWithValue("@purchaseDate", purchaseDate);
+                cmd.Parameters.AddWithValue("@endDate", purchaseDate);
+                cmd.Parameters.AddWithValue("@purchasePrice", purchasePrice);
+                cmd.Parameters.AddWithValue("@debit", assetsAccount);
+                cmd.Parameters.AddWithValue("@credit", depreciationAccount);
+                cmd.Parameters.AddWithValue("@expense", expenseAccount);
+                cmd.Parameters.AddWithValue("@user", HttpContext.Session.GetInt32("UserId") ?? 0);
+                cmd.Parameters.AddWithValue("@now", DateTime.Now);
+
+                await cmd.ExecuteNonQueryAsync();
+            }
         }
+
 
         private async Task<string> GenerateNextPurchaseCode(MySqlConnection conn, MySqlTransaction transaction)
         {
