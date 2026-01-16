@@ -1435,18 +1435,13 @@ namespace YamyProject.Core.Models
         public int Id { get; set; }
         public DateTime Date { get; set; }
         public string InvoiceCode { get; set; }
-
         public int CustomerId { get; set; }
         public string CustomerName { get; set; }
-
         public string PaymentMethod { get; set; }
-
         public decimal Total { get; set; }
         public decimal Vat { get; set; }
         public decimal Net { get; set; }
-
         public int TranferStatus { get; set; }
-
         public int WarehouseId { get; set; }
         public string PONumber { get; set; }
         public string BillTo { get; set; }
@@ -1467,7 +1462,6 @@ namespace YamyProject.Core.Models
         public int ItemId { get; set; }
         public string ItemCode { get; set; }
         public string ItemName { get; set; }
-
         public decimal Qty { get; set; }
         public decimal Price { get; set; }
         public decimal Vat { get; set; }
@@ -1478,8 +1472,6 @@ namespace YamyProject.Core.Models
     public class QuotationRequest
     {
         public int Id { get; set; } 
-
-        // Quotation header fields
         public DateTime Date { get; set; } 
         public int CustomerId { get; set; } 
         public string InvoiceCode { get; set; } 
@@ -1499,8 +1491,6 @@ namespace YamyProject.Core.Models
         public decimal Vat { get; set; } 
         public decimal NetTotal { get; set; } 
         public string Description { get; set; }
-
-        // List of quotation items
         public List<QuotationItemRequest> Items { get; set; } = new List<QuotationItemRequest>();
     }
 
@@ -1553,5 +1543,75 @@ namespace YamyProject.Core.Models
         public int CostCenterId { get; set; }
     }
 
+    public class PurchaseDto
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public string InvoiceNo { get; set; }
+        public string VendorName { get; set; }
+        public string PaymentMethod { get; set; }
+        public decimal Total { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Net { get; set; }
+        public List<PurchaseItemDto> Items { get; set; }
+    }
+
+    public class PurchaseItemDto
+    {
+        public string ItemName { get; set; }
+        public decimal Qty { get; set; }
+        public decimal CostPrice { get; set; }   
+        public decimal Vat { get; set; }
+        public decimal Total { get; set; }
+    }
+
+    public class PurchaseInvoiceRequest
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public int VendorId { get; set; }
+        public string InvoiceCode { get; set; }
+        public int WarehouseId { get; set; }
+        public string PONumber { get; set; }
+        public string BillTo { get; set; }
+        public string City { get; set; }
+        public string SalesMan { get; set; }
+        public DateTime ShipDate { get; set; }
+        public string ShipVia { get; set; }
+        public string ShipTo { get; set; }
+        public string PaymentMethod { get; set; }
+        public int AccountCashId { get; set; }
+        public string PaymentTerms { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public decimal TotalBefore { get; set; }
+        public decimal Vat { get; set; }
+        public decimal NetTotal { get; set; }
+        public string PurchaseType { get; set; }
+        public int FixedAssetCategoryId { get; set; }
+        public string Description { get; set; }
+        public List<PurchaseItemRequest> Items { get; set; }
+    }
+
+    public class PurchaseItemRequest
+    {
+        public int ItemId { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal Price { get; set; }
+        public decimal Discount { get; set; }
+        public decimal VatPercentage { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Total { get; set; }
+        public int CostCenterId { get; set; }
+        public string Type { get; set; }
+    }
+
+    public class DefaultAccountIds
+    {
+        public int PaymentCreditMethodId { get; set; }
+        public int VatId { get; set; }
+        public int PurchaseInvoiceId { get; set; }
+        public int InventoryId { get; set; }
+    }
 
 }
