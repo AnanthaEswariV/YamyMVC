@@ -606,7 +606,6 @@ namespace YamyProject.Controllers
 
         #endregion
 
-
         #region Purchase Center
 
         public IActionResult PurchaseCenter()
@@ -824,10 +823,12 @@ WHERE p.state = 0;
     p.total AS Total,
     p.vat AS Vat,
     p.net AS Net,
+    v.id AS VendorId,
     CONCAT(i.code,' - ',i.name) AS ItemName,
     d.qty AS Qty,
     d.cost_price AS CostPrice,
     d.vat AS ItemVat,
+      i.code AS ItemCode,
     d.total AS ItemTotal,
     p.warehouse_id AS Warehouse_Id,
     p.po_num AS PO_Num,
