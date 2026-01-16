@@ -1,9 +1,8 @@
 ﻿
 @{
-    ViewData["Title"] = "SalesPerforma";
+    ViewData["Title"] = "SalesReturn";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-
 
 <style>
     .dt-buttons .btn-primary {
@@ -32,7 +31,7 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong class="mx-auto">Sales Performa Center</strong>
+        <strong class="mx-auto">Sales Return</strong>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#salesModal">
             <i class="bi bi-plus-circle"></i> New
         </button>
@@ -70,7 +69,6 @@
             <div style="min-width: 150px;">
                 <select class="form-select" id="method">
                     <option value="Default" selected>Default</option>
-                    <option value="Item Wise">Item Wise</option>
                 </select>
             </div>
 
@@ -104,45 +102,6 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <div class="card-footer p-0" style="height: 150px; overflow-y: auto;">
-                <table class="table table-striped" id="table2">
-                    <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>QTY</th>
-                            <th>Price</th>
-                            <th>Item VAT</th>
-                            <th>Item Total</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Item Wise method: Single combined table -->
-        <div id="itemWiseTable" style="display:none; height: 80vh; overflow-y: auto;">
-            <table class="table table-striped" id="itemWiseTableData">
-                <thead>
-                    <tr>
-                        <th>S.No</th>
-                        <th>Date</th>
-                        <th>INV No</th>
-                        <th>Customer Name</th>
-                        <th>Payment Method</th>
-                        <th>Total</th>
-                        <th>VAT</th>
-                        <th>Net</th>
-                        <th>Item Name</th>
-                        <th>QTY</th>
-                        <th>Price</th>
-                        <th>Item VAT</th>
-                        <th>Item Total</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
         </div>
 
     </div>
@@ -349,6 +308,7 @@
     </div>
 </div>
 
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -383,18 +343,12 @@
             $("#filterBtn").click(loadSalesQuotation);
             $("#type").change(loadSalesQuotation);
             $("#paymentMethod").change(loadSalesQuotation);
-            $("#method").change(function () {
-                if (this.value === "Default") {
-                    $("#defaultTables").show();
-                    $("#itemWiseTable").hide();
-                } else {
-                    $("#defaultTables").hide();
-                    $("#itemWiseTable").show();
-                }
-                loadSalesQuotation();
-            });
+                    $("#method").change(function () {
+            $("#defaultTables").show();
+        });
 
-           function getTodayDate() {
+
+             function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -402,27 +356,30 @@
             return `${year}-${month}-${day}`;
         }
 
+
             document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
-            const todayDate = getTodayDate();
+             const todayDate = getTodayDate();
 
-            const dateFields = [
-                'date',
-                'duedate',
-                'shipDate'
-            ];
+             // Fill all date fields
+             const dateFields = [
+                 'date',
+                 'duedate',
+                 'shipDate'
+             ];
 
-            dateFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    field.value = todayDate;
-                }
-            });
-        });
+             dateFields.forEach(fieldId => {
+                 const field = document.getElementById(fieldId);
+                 if (field && !field.value) {
+                     field.value = todayDate;
+                 }
+             });
+         });
 
-            $('#paymentTerms').prop('disabled', true);
-            setDueDate();
 
-            function setDueDate() {
+             $('#paymentTerms').prop('disabled', true);
+             setDueDate();
+
+             function setDueDate() {
                 const invoiceType = $('#invoiceType').val();
                 let days = 0;
 
@@ -445,12 +402,12 @@
                 $('#duedate').val(`${yyyy}-${mm}-${dd}`);
             }
 
-            $('#invoiceType').on('change', setDueDate);
+             $('#invoiceType').on('change', setDueDate);
 
-            $('#paymentTerms').on('change', setDueDate);
 
-            function loadAccountName(invoiceType) {
-            // First: fetch all accounts
+             $('#paymentTerms').on('change', setDueDate);
+
+             function loadAccountName(invoiceType) {
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
@@ -494,27 +451,14 @@
             });
         }
 
-            $("#invoiceType").on("change", function() {
-            const type = $(this).val();
-            loadAccountName(type);
-        });
+             $("#invoiceType").on("change", function() {
+                 const type = $(this).val();
+                 loadAccountName(type);
+             });
 
-            loadAccountName($("#invoiceType").val());
+             loadAccountName($("#invoiceType").val());
 
-            $('#salesModal').on('hidden.bs.modal', function () {
-            // Clear header inputs
-            $(this).find('input, select, textarea').val('');
-
-            // Clear table rows
-            $(this).find('tbody').empty();
-
-            // Reset invoiceId data
-            $("#salescenterform").removeData("invoiceId");
-
-            // Optional: reset modal title
-            $(this).find('.modal-title').text('New Invoice');
-        });
-
+        
         });
 
         function loadWarehouses(selector = "#warehouseDropdown") {
@@ -622,43 +566,62 @@
              });
          }
 
-        function loadSalesQuotation() {
-            const customerId = $("#type").val() || null;
-            const paymentMethod = $("#paymentMethod").val() || null;
-            const selectionMethod = $("#method").val() || "Default";
-            const dateFrom = $("#startDate").val() || null;
-            const dateTo = $("#endDate").val() || null;
+       function loadSalesQuotation() {
+            // 1. Get values correctly
+            let customerId = $("#type").val();
+            let paymentMethod = $("#paymentMethod").val();
+
+            // 2. Handle Date logic
+            let dateFrom = null;
+            let dateTo = null;
+            if ($("#chkDate").is(":checked")) {
+                dateFrom = $("#startDate").val();
+                dateTo = $("#endDate").val();
+            }
+
+            // Debugging: Check your console to see if these values are correct
+            console.log("Filters:", { customerId, paymentMethod, dateFrom, dateTo });
 
             $.ajax({
-                url: '@Url.Action("GetSalesProformas", "Customer")',
+                url: '@Url.Action("GetSalesReturnReport", "Customer")',
                 type: 'GET',
-                data: { customerId, paymentMethod, selectionMethod, dateFrom, dateTo },
+                // Don't parse int here; let the backend binder handle it
+                data: {
+                    customerId: customerId || null,
+                    paymentMethod: paymentMethod,
+                    dateFrom: dateFrom,
+                    dateTo: dateTo
+                },
                 success: function (res) {
-                    if (!res.status) {
-                        toastr.error('Failed to load sales data.');
-                        return;
-                    }
-                    console.log(res);
-                    if (selectionMethod === "Default") {
+                    if (res.status) {
                         populateDefaultTables(res.data);
                     } else {
-                        populateItemWiseTable(res.data);
+                        toastr.error(res.message || 'Failed to load data.');
                     }
                 },
-                error: function () {
-                    toastr.error('Error loading sales data.');
+                error: function (err) {
+                    console.error(err);
+                    toastr.error('Error loading sales return data.');
                 }
             });
         }
 
         function populateDefaultTables(data) {
-            const table1Body = $("#table1 tbody").empty();
-            const table2Body = $("#table2 tbody").empty();
+            const tableBody = $("#table1 tbody");
+            tableBody.empty();
+
+            if (!data || data.length === 0) {
+                tableBody.append(`
+                    <tr>
+                        <td colspan="10" class="text-center">No records found</td>
+                    </tr>
+                `);
+                return;
+            }
 
             data.forEach((sale, index) => {
-
-                const row = $(`
-                    <tr data-index="${index}">
+                const row = `
+                    <tr>
                         <td>${index + 1}</td>
                         <td>${formatDate(sale.date)}</td>
                         <td>${sale.invoiceCode}</td>
@@ -667,95 +630,26 @@
                         <td>${sale.total.toFixed(2)}</td>
                         <td>${sale.vat.toFixed(2)}</td>
                         <td>${sale.net.toFixed(2)}</td>
-                        <td></td>
+                        <td>${sale.jvNo ?? ""}</td>
                         <td>
-                            <button class="btn btn-sm btn-primary editSalesQuotationBtn">
+                            <button class="btn btn-sm btn-primary editSalesReturnBtn"
+                                data-id="${sale.id}">
                                 <i class="fas fa-pen"></i>
                             </button>
                         </td>
                     </tr>
-                `);
+                `;
+                tableBody.append(row);
+            });
 
-                // Show item details on row click
-                row.on("click", function (e) {
-                    // Prevent row click if edit button is clicked
-                    if ($(e.target).closest(".editSalesQuotationBtn").length) return;
-
-                    table2Body.empty();
-
-                    if (!sale.items || sale.items.length === 0) {
-                        table2Body.append(`
-                            <tr>
-                                <td colspan="5" class="text-center">No Items</td>
-                            </tr>
-                        `);
-                        return;
-                    }
-
-                    sale.items.forEach(item => {
-                        table2Body.append(`
-                            <tr>
-                                <td>${item.itemName}</td>
-                                <td>${item.qty}</td>
-                                <td>${item.price.toFixed(2)}</td>
-                                <td>${item.vat.toFixed(2)}</td>
-                                <td>${item.total.toFixed(2)}</td>
-                            </tr>
-                        `);
-                    });
-                });
-
-                // 👉 EDIT BUTTON CLICK
-                row.find(".editSalesQuotationBtn").on("click", function (e) {
-                    e.stopPropagation(); // Prevent row click
-                    openSalesModal(sale); // Call your modal function
-                });
-
-                table1Body.append(row);
+            // ✅ Edit button click (delegated)
+            $(".editSalesReturnBtn").off("click").on("click", function () {
+                const id = $(this).data("id");
+                const sale = data.find(x => x.id === id);
+                openSalesModal(sale);
             });
         }
 
-        function populateItemWiseTable(data) {
-            const tableBody = $("#itemWiseTableData tbody").empty();
-            let sn = 1;
-
-            data.forEach(sale => {
-                if (!sale.items || sale.items.length === 0) return;
-
-                sale.items.forEach(item => {
-                    const row = $(`
-                        <tr>
-                            <td>${sn++}</td>
-                            <td>${formatDate(sale.date)}</td>
-                            <td>${sale.invoiceCode}</td>
-                            <td>${sale.customerName}</td>
-                            <td>${sale.paymentMethod}</td>
-                            <td>${sale.total.toFixed(2)}</td>
-                            <td>${sale.vat.toFixed(2)}</td>
-                            <td>${sale.net.toFixed(2)}</td>
-                            <td>${item.itemName}</td>
-                            <td>${item.qty}</td>
-                            <td>${item.price.toFixed(2)}</td>
-                            <td>${item.vat.toFixed(2)}</td>
-                            <td>${item.total.toFixed(2)}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary editSalesQuotationBtn">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `);
-
-                    // Edit button click
-                    row.find(".editSalesQuotationBtn").on("click", function (e) {
-                        e.stopPropagation();
-                        openSalesModal(sale);
-                    });
-
-                    tableBody.append(row);
-                });
-            });
-        }
 
         function formatDate(dateStr) {
             const date = new Date(dateStr);
@@ -874,7 +768,7 @@
             calculateRow(row);
         });
 
-         function calculateInvoiceTotals() {
+        function calculateInvoiceTotals() {
             let totalBeforeVat = 0;
             let totalVat = 0;
 
@@ -895,7 +789,7 @@
             $('#netAmount').val(netAmount.toFixed(2));
         }
 
-          function openSalesModal(invoice) {
+               function openSalesModal(invoice) {
             console.log(invoice);
 
             // 🔹 Header
@@ -918,52 +812,46 @@
             $("#netAmount").val(invoice.net || 0);
             $("#warehouseDropdown").val(invoice.warehouseId || '');
 
-            // 🔹 Clear rows
-            $("#salesModal tbody").empty();
+                  $("#salesModal table tbody").empty(); // clear previous rows
 
-            // 🔹 Add rows first (with empty dropdowns)
-            (invoice.items || []).forEach((item, idx) => {
-                const row = $(`
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
-                        <td class="text-center">${item.vat || 0}</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">${item.total || 0}</td>
-                        <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
-                    </tr>
-                `);
-                $("#salesModal tbody").append(row);
-            });
+        (invoice.items || []).forEach((item, idx) => {
+            $("#salesModal table tbody").append(`
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                    <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
+                    <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
+                    <td class="text-center">${item.vat || 0}</td>
+                    <td><select class="form-select form-select-sm tax"></select></td>
+                    <td class="text-center">${item.total || 0}</td>
+                    <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                </tr>
+            `);
+        });
 
-            // 🔹 Now load dropdowns and set selected values
+
+            // Load dropdown values and set selected
             Promise.all([loadItem(), loadTax()]).then(() => {
-                // Set selected item for each row
-                $("#salesModal tbody tr").each(function(idx) {
+                $("#salesModal .table tbody tr").each(function(idx) {
                     const item = invoice.items[idx];
                     if (item) {
                         $(this).find('.itemNameSelect').val(item.itemId || '');
                         $(this).find('.tax').val(item.taxId || '');
                     }
                 });
-
-                // Load cost centers
                 populateAndSelectCostCenter();
             });
 
-            // 🔹 Save invoice ID
             $("#salescenterform").data("invoiceId", invoice.id || 0);
 
-            // 🔹 UI
             $("#salesModal .modal-title").text("Edit Invoice");
             $("#salesModal").modal("show");
         }
 
-         $('#salescenterform').on('submit', function (e) {
+
+        $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
             const form = this;
             if (!form.checkValidity()) {
@@ -1023,7 +911,7 @@
 
 
             $.ajax({
-                 url: '@Url.Action("SaveProformaInvoice", "Customer")',
+                  url: '@Url.Action("SaveSalesReturnInvoice", "Customer")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(invoiceData),

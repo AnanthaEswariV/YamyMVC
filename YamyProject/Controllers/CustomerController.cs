@@ -12,7 +12,6 @@ namespace YamyProject.Controllers
             _config = config;
         }
 
-
         #region Customer CRUD Operation
 
 
@@ -2610,7 +2609,6 @@ INNER JOIN tbl_items i ON sd.item_id = i.id
 WHERE sp.state = 0";
         }
 
-
         [HttpPost]
         public async Task<IActionResult> SaveProformaInvoice([FromBody] QuotationRequest model)
         {
@@ -2777,6 +2775,511 @@ VALUES
             await using var cmd = new MySqlCommand(query, conn);
             var lastNumber = Convert.ToInt32(await cmd.ExecuteScalarAsync());
             return $"{prefix}{(lastNumber + 1):D4}";
+        }
+
+
+        #endregion
+
+        #region Sales Return
+
+        public IActionResult SalesReturn()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetSalesReturnReport(
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    int? customerId,
+    string paymentMethod = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Base query
+                string query = @"
+SELECT
+    sr.id AS Id,
+    sr.date AS Date,
+    sr.invoice_id AS InvoiceNo,
+    c.id AS CustomerId,
+    CONCAT(c.code, '-', c.name) AS CustomerName,
+    sr.payment_method AS PaymentMethod,
+    sr.total AS Total,
+    sr.warehouse_id AS Warehouse_Id,
+    sr.po_num AS PO_Num,
+    sr.bill_to AS Bill_To,
+    sr.city AS City,
+    sr.sales_man AS Sales_Man,
+    sr.ship_date AS Ship_Date,
+    sr.ship_via AS Ship_Via,
+    sr.ship_to AS Ship_To,
+    sr.account_cash_id AS Account_Cash_Id,  
+    sr.payment_terms AS Payment_Terms,
+    sr.payment_date AS Payment_Date,
+    sr.description AS Description,
+    sr.pay AS Pay,
+    sr.vat AS Vat,
+    sr.net AS Net,
+    CONCAT('000', MAX(t.transaction_id)) AS JvNo,
+    sd.id AS ItemId,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+    sd.qty AS Qty,
+    sd.price AS Price,
+    sd.vat AS ItemVat,
+    sd.total AS ItemTotal,
+    sd.cost_center_id AS Cost_Center_Id
+FROM tbl_sales_return sr
+INNER JOIN tbl_transaction t 
+    ON sr.id = t.transaction_id
+INNER JOIN tbl_customer c 
+    ON sr.customer_id = c.id
+LEFT JOIN tbl_sales_return_details sd 
+    ON sr.id = sd.sales_id
+LEFT JOIN tbl_items i 
+    ON sd.item_id = i.id
+WHERE sr.state = 0
+GROUP BY 
+    sr.id,
+    sr.date,
+    sr.invoice_id,
+    c.id,
+    c.code,
+    c.name,
+    sr.payment_method,
+    sr.total,
+    sr.warehouse_id,
+    sr.po_num,
+    sr.bill_to,
+    sr.city,
+    sr.sales_man,
+    sr.ship_date,
+    sr.ship_via,
+    sr.ship_to,
+    sr.account_cash_id,
+    sr.payment_terms,
+    sr.payment_date,
+    sr.description,
+    sr.pay,
+    sr.vat,
+    sr.net,
+    sd.id,
+    i.code,
+    i.name,
+    sd.qty,
+    sd.price,
+    sd.vat,
+    sd.total,
+    sd.cost_center_id
+ORDER BY sr.date DESC, sr.id;
+
+";
+
+                var parameters = new List<MySqlParameter>();
+
+                // 🔹 Filters
+                if (dateFrom.HasValue)
+                {
+                    query += " AND sr.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+
+                if (dateTo.HasValue)
+                {
+                    query += " AND sr.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                if (customerId.HasValue)
+                {
+                    query += " AND sr.customer_id = @customerId ";
+                    parameters.Add(new MySqlParameter("@customerId", customerId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    query += " AND sr.payment_method = @paymentMethod ";
+                    parameters.Add(new MySqlParameter("@paymentMethod", paymentMethod));
+                }
+
+                query += @"
+GROUP BY sr.id, sr.date, sr.invoice_id, c.code, c.name, sr.payment_method, sr.total, sr.vat, sr.net
+ORDER BY sr.date DESC, sr.id;
+";
+
+                var salesReturns = new List<SalesQuotationDto>();
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                SalesQuotationDto currentOrder = null;
+                int lastOrderId = -1;
+                while (await reader.ReadAsync())
+                {
+                    int orderId = reader.GetInt32("Id");
+
+                    if (orderId != lastOrderId)
+                    {
+                        currentOrder = new SalesQuotationDto
+                        {
+                            Id = orderId,
+                            Date = reader.GetDateTime("Date"),
+                            InvoiceCode = reader["InvoiceNo"]?.ToString(),
+                            CustomerId = reader.GetInt32("CustomerId"),
+                            CustomerName = reader["CustomerName"]?.ToString(),
+                            PaymentMethod = reader["PaymentMethod"]?.ToString(),
+                            Total = reader.GetDecimal("Total"),
+                            Vat = reader.GetDecimal("Vat"),
+                            Net = reader.GetDecimal("Net"),
+                            WarehouseId = reader.GetInt32("Warehouse_Id"),
+                            PONumber = reader["PO_Num"]?.ToString(),
+                            BillTo = reader["Bill_To"]?.ToString(),
+                            City = reader["City"]?.ToString(),
+                            SalesMan = reader["Sales_Man"]?.ToString(),
+                            ShipDate = reader.GetDateTime("Ship_Date"),
+                            ShipVia = reader["Ship_Via"]?.ToString(),
+                            ShipTo = reader["Ship_To"]?.ToString(),
+                            AccountCashId = reader.GetInt32("Account_Cash_Id"),
+                            PaymentTerms = reader["Payment_Terms"]?.ToString(),
+                            PaymentDate = reader.GetDateTime("Payment_Date"),
+                            Description = reader["Description"]?.ToString(),
+                            Items = new List<SalesQuotationItemDto>()
+                        };
+                        salesReturns.Add(currentOrder);
+                        lastOrderId = orderId;
+                    }
+
+                    if (reader["ItemId"] != DBNull.Value)
+                    {
+                        currentOrder.Items.Add(new SalesQuotationItemDto
+                        {
+                            ItemId = Convert.ToInt32(reader["ItemId"]),
+                            ItemCode = reader["ItemCode"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
+                            Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                            Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
+                            Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
+                            CostCenterId = reader["Cost_Center_Id"] != DBNull.Value
+                                ? Convert.ToInt32(reader["Cost_Center_Id"])
+                                : 0
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = salesReturns });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveSalesReturnInvoice([FromBody] SalesReturnRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            // ===== VALIDATIONS =====
+            if (model.CustomerId <= 0)
+                return Json(new { status = false, message = "Customer must be selected." });
+
+            if (model.AccountCashId <= 0)
+                return Json(new { status = false, message = "Account Cash Name must be selected." });
+
+            if (model.Items == null || !model.Items.Any())
+                return Json(new { status = false, message = "Insert items first." });
+
+            for (int i = 0; i < model.Items.Count; i++)
+            {
+                if (model.Items[i].Total <= 0)
+                    return Json(new { status = false, message = $"Total Item In Row {i + 1} Can't Be 0 or Null" });
+            }
+
+            if (model.NetTotal <= 0)
+                return Json(new { status = false, message = "Total must be bigger than zero." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in." });
+
+            var csb = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+            };
+
+            await using var conn = new MySqlConnection(csb.ConnectionString);
+            await conn.OpenAsync();
+            await using var tx = await conn.BeginTransactionAsync();
+
+            try
+            {
+                int salesReturnId = model.Id;
+
+                // ===== INSERT =====
+                if (salesReturnId == 0)
+                {
+                    model.InvoiceCode = await GenerateNextSalesReturnCode(conn, tx);
+
+                    var sql = @"
+INSERT INTO tbl_sales_return
+(date, customer_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
+ ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
+ total, vat, net, pay, `change`, created_by, created_date, state, description)
+VALUES
+(@date,@customer,@invoice,@warehouse,@po,@bill,@city,@salesman,
+ @shipdate,@shipvia,@shipto,@paymethod,@account,@terms,@paydate,
+ @total,@vat,@net,@pay,@change,@user,@created,0,@desc);
+SELECT LAST_INSERT_ID();";
+
+                    var cmd = new MySqlCommand(sql, conn, (MySqlTransaction)tx);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@customer", model.CustomerId);
+                    cmd.Parameters.AddWithValue("@invoice", model.InvoiceCode);
+                    cmd.Parameters.AddWithValue("@warehouse", model.WarehouseId);
+                    cmd.Parameters.AddWithValue("@po", model.PONumber ?? "");
+                    cmd.Parameters.AddWithValue("@bill", model.BillTo ?? "");
+                    cmd.Parameters.AddWithValue("@city", model.City ?? "");
+                    cmd.Parameters.AddWithValue("@salesman", model.SalesMan ?? "");
+                    cmd.Parameters.AddWithValue("@shipdate", model.ShipDate);
+                    cmd.Parameters.AddWithValue("@shipvia", model.ShipVia ?? "");
+                    cmd.Parameters.AddWithValue("@shipto", model.ShipTo ?? "");
+                    cmd.Parameters.AddWithValue("@paymethod", model.PaymentMethod);
+                    cmd.Parameters.AddWithValue("@account", model.AccountCashId);
+                    cmd.Parameters.AddWithValue("@terms", model.PaymentTerms ?? "");
+                    cmd.Parameters.AddWithValue("@paydate", model.PaymentDate);
+                    cmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                    cmd.Parameters.AddWithValue("@vat", model.Vat);
+                    cmd.Parameters.AddWithValue("@net", model.NetTotal);
+                    cmd.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
+                    cmd.Parameters.AddWithValue("@change", model.PaymentMethod != "Cash" ? model.NetTotal : 0);
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@created", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@desc", model.Description ?? "");
+
+                    salesReturnId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    await ReturnItemsToInventory(conn, tx, salesReturnId);
+                    await DeleteSalesReturnTransactions(conn, tx, salesReturnId);
+                }
+                // ===== ITEMS + COST CENTER =====
+                foreach (var item in model.Items)
+                {
+                    await InsertSalesReturnItem(conn, tx, salesReturnId, item, model);
+
+                    await InsertCostCenterTransaction(
+                        conn,
+                        tx,
+                        model.Date,
+                        item.Total,          // debit (item total)
+                        0m,                  // credit
+                        salesReturnId,       // reference id
+                        "Sales Return",      // type
+                        "",                  // description (if needed)
+                        item.CostCenterId
+                    );
+                }
+
+                // ===== ACCOUNTING (once per invoice) =====
+                await InsertAccountingEntries(conn, tx, salesReturnId, model, userId);
+
+                await tx.CommitAsync();
+
+                return Json(new
+                {
+                    status = true,
+                    message = "Sales Return Invoice Saved",
+                    id = salesReturnId
+                }); 
+            }
+
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+        private async Task InsertSalesReturnItem(MySqlConnection conn, MySqlTransaction tx,
+            int salesId, SalesReturnItemRequest item, SalesReturnRequest model)
+        {
+            var sql = @"
+INSERT INTO tbl_sales_return_details
+(sales_id,item_id,qty,cost_price,price,vatp,vat,total,cost_center_id)
+VALUES
+(@sales,@item,@qty,@cost,@price,@vatp,@vat,@total,@cc);";
+
+            var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@sales", salesId);
+            cmd.Parameters.AddWithValue("@item", item.ItemId);
+            cmd.Parameters.AddWithValue("@qty", item.Quantity);
+            cmd.Parameters.AddWithValue("@cost", item.CostPrice);
+            cmd.Parameters.AddWithValue("@price", item.Price);
+            cmd.Parameters.AddWithValue("@vatp", item.VatPercentage);
+            cmd.Parameters.AddWithValue("@vat", item.Vat);
+            cmd.Parameters.AddWithValue("@total", item.Total);
+            cmd.Parameters.AddWithValue("@cc", item.CostCenterId);
+            await cmd.ExecuteNonQueryAsync();
+
+            await InsertItemTransaction(conn, tx, salesId, item, model);
+        }
+        private async Task InsertItemTransaction(MySqlConnection conn, MySqlTransaction tx,
+            int salesId, SalesReturnItemRequest item, SalesReturnRequest model)
+        {
+            var sql = @"
+INSERT INTO tbl_item_transaction
+(date,type,reference,item_id,cost_price,qty_in,sales_price,qty_out,qty_inc,description,warehouse_id)
+VALUES
+(@date,'Sales Return Invoice',@ref,@item,@cost,@qty,@price,0,@qty,@desc,@wh);";
+
+            var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", model.Date);
+            cmd.Parameters.AddWithValue("@ref", salesId);
+            cmd.Parameters.AddWithValue("@item", item.ItemId);
+            cmd.Parameters.AddWithValue("@cost", item.CostPrice);
+            cmd.Parameters.AddWithValue("@qty", item.Quantity);
+            cmd.Parameters.AddWithValue("@price", item.Price);
+            cmd.Parameters.AddWithValue("@desc", "Sales Return Invoice No. " + model.InvoiceCode);
+            cmd.Parameters.AddWithValue("@wh", model.WarehouseId);
+            await cmd.ExecuteNonQueryAsync();
+
+            await UpdateOnHandItem(conn, tx, item.ItemId);
+        }
+        private async Task UpdateOnHandItem(MySqlConnection conn, MySqlTransaction tx, int itemId)
+        {
+            var sql = @"UPDATE tbl_items SET on_hand =
+               (SELECT SUM(qty_in - qty_out) FROM tbl_item_transaction WHERE item_id=@id)
+               WHERE id=@id";
+            var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@id", itemId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        private async Task InsertAccountingEntries(MySqlConnection conn, MySqlTransaction tx,
+            int salesId, SalesReturnRequest model, int userId)
+        {
+            var sql = @"
+INSERT INTO tbl_transaction
+(date,account_id,debit,credit,transaction_id,t_type,type,description,created_by,created_date,state,voucher_no)
+VALUES
+(@date,@acc,0,@credit,@id,'SALES RETURN','SalesReturn Invoice',@desc,@user,@created,0,@voucher);";
+
+            var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@date", model.Date);
+            cmd.Parameters.AddWithValue("@acc", model.AccountCashId);
+            cmd.Parameters.AddWithValue("@credit", model.NetTotal);
+            cmd.Parameters.AddWithValue("@id", salesId);
+            cmd.Parameters.AddWithValue("@desc", "Sales Return Invoice NO. " + model.InvoiceCode);
+            cmd.Parameters.AddWithValue("@user", userId);
+            cmd.Parameters.AddWithValue("@created", DateTime.Now);
+            cmd.Parameters.AddWithValue("@voucher", model.InvoiceCode);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        private async Task ReturnItemsToInventory(MySqlConnection conn, MySqlTransaction tx, int id)
+        {
+            var items = new List<(int itemId, decimal qty)>();
+
+            // Read all return item quantities FIRST
+            await using (var cmd = new MySqlCommand("SELECT item_id, qty FROM tbl_sales_return_details WHERE sales_id = @id", conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add((
+                        reader.GetInt32("item_id"),
+                        reader.GetDecimal("qty")
+                    ));
+                }
+            } // <<< reader is now closed
+
+            // Now update inventory for each
+            foreach (var (itemId, qty) in items)
+            {
+                await using var upd = new MySqlCommand(
+                    "UPDATE tbl_items SET on_hand = on_hand + @qty WHERE id = @item", conn, tx);
+                upd.Parameters.AddWithValue("@qty", qty);
+                upd.Parameters.AddWithValue("@item", itemId);
+                await upd.ExecuteNonQueryAsync();
+            }
+
+            // Finally delete the details
+            await using var del = new MySqlCommand(
+                "DELETE FROM tbl_sales_return_details WHERE sales_id = @id", conn, tx);
+            del.Parameters.AddWithValue("@id", id);
+            await del.ExecuteNonQueryAsync();
+        }
+
+        private async Task DeleteSalesReturnTransactions(MySqlConnection conn, MySqlTransaction tx, int id)
+        {
+            await new MySqlCommand(
+                "DELETE FROM tbl_item_transaction WHERE reference=@id AND type='Sales Return Invoice'",
+                conn, tx)
+            { Parameters = { new("@id", id) } }.ExecuteNonQueryAsync();
+
+            await new MySqlCommand(
+                "DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='SALES RETURN'",
+                conn, tx)
+            { Parameters = { new("@id", id) } }.ExecuteNonQueryAsync();
+        }
+        private async Task<string> GenerateNextSalesReturnCode(MySqlConnection conn, MySqlTransaction tx)
+        {
+            var cmd = new MySqlCommand(
+                "SELECT MAX(CAST(SUBSTRING(invoice_id,5) AS UNSIGNED)) FROM tbl_sales_return",
+                conn, tx);
+
+            var result = await cmd.ExecuteScalarAsync();
+            int next = result == DBNull.Value ? 1 : Convert.ToInt32(result) + 1;
+            return "SRI-" + next.ToString("D5");
+        }
+
+        private async Task InsertCostCenterTransaction(
+    MySqlConnection conn,
+    MySqlTransaction tx,
+    DateTime date,
+    decimal debit,
+    decimal credit,
+    int refId,
+    string type,
+    string description,
+    int costCenterId)
+        {
+            if (costCenterId <= 0)
+                return; 
+
+            var sql = @"
+INSERT INTO tbl_cost_center_transaction
+(type, date, ref_id, debit, credit, description, cost_center_id)
+VALUES
+(@type, @date, @ref, @debit, @credit, @desc, @cc);";
+
+            await using var cmd = new MySqlCommand(sql, conn, tx);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@ref", refId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@desc", description ?? "");
+            cmd.Parameters.AddWithValue("@cc", costCenterId);
+
+            await cmd.ExecuteNonQueryAsync();
         }
 
 

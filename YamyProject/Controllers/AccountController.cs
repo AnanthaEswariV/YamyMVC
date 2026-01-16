@@ -5065,7 +5065,6 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
             }
         }
 
-
         // 2. GET MENU STRUCTURE
         [HttpGet]
         public async Task<IActionResult> GetMenus()
@@ -5355,7 +5354,6 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         // 7. CHECK USER PERMISSION (Helper for other controllers)
         [HttpGet]
