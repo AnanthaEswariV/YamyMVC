@@ -1,8 +1,10 @@
 ﻿
 @{
-    ViewData["Title"] = "PurchaseCenter";
+    ViewData["Title"] = "PurchaseOrder";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+
+
 
 <style>
     .dt-buttons .btn-primary {
@@ -25,14 +27,14 @@
         overflow-y: auto;
     }
 </style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
 
-
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong class="mx-auto">Purchase Center</strong>
+        <strong class="mx-auto">Purchase Order</strong>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#salesModal">
             <i class="bi bi-plus-circle"></i> New
         </button>
@@ -192,7 +194,7 @@
 
                     <!-- Row 2 -->
                     <div class="row g-2 mt-2">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">Invoice Type</label>
                             <select class="form-select form-select-sm" id="invoiceType">
                                 <option value="Cash" selected>Cash</option>
@@ -200,23 +202,12 @@
                             </select>
                         </div>
 
-                        <div class="col-md-2">
-                            <label class="form-label">Purchase Type</label>
-                            <select class="form-select form-select-sm" id="purchaseType">
-                                <option value="Inventory" selected>Inventory</option>
-                                <option value="Fixed Assets">Fixed Assets</option>
-                                <option value="Expenses">Expenses</option>
+                        <div class="col-md-3">
+                            <label class="form-label">Project</label>
+                            <select class="form-select form-select-sm" id="project">
+                                <option value="">-- Select Project --</option>
                             </select>
                         </div>
-
-                        <div class="col-md-2" id="fixedAssetCategoryWrapper" style="display:none;">
-                            <label class="form-label">Fixed Asset Category</label>
-                            <select class="form-select form-select-sm" id="fixedAssetCategory">
-                                <option value="">-- Select Category --</option>
-                                <!-- Fixed asset categories here -->
-                            </select>
-                        </div>
-
 
                         <div class="col-md-2">
                             <label class="form-label">Emirates</label>
@@ -368,6 +359,7 @@
 </div>
 
 
+
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -404,32 +396,16 @@
                     $("#itemWiseTable").show();
                 }
                 loadSalesQuotation();
-                
+
             });
 
             loadSalesQuotation();
             loadVendors();
-            loadFixedAssetsCategory();
             loadItem();
             loadTax();
             loadWarehouses();
             populateAndSelectCostCenter();
-
-            function toggleFixedAssetCategory() {
-            const type = $("#purchaseType").val();
-
-            if (type === "Fixed Assets") {
-                $("#fixedAssetCategoryWrapper").show();
-            } else {
-                $("#fixedAssetCategoryWrapper").hide();
-                $("#fixedAssetCategory").val(""); // reset selection
-            }
-        }
-
-            $("#purchaseType").on("change", toggleFixedAssetCategory);
-
-            toggleFixedAssetCategory();
-
+            loadProjects();
 
              function getTodayDate() {
             const today = new Date();
@@ -465,7 +441,7 @@
 
                 if (invoiceType === 'Credit') {
                     $('#paymentTerms').prop('disabled', false);
-                    days = parseInt($('#paymentTerms').val()) || 0; // get selected payment term
+                    days = parseInt($('#paymentTerms').val()) || 0; 
                 } else {
                     $('#paymentTerms').prop('disabled', true);
                     days = 0; // Cash: due today
@@ -563,7 +539,7 @@
             const dateTo = $("#chkDate").is(":checked") ? $("#endDate").val() : null;
 
             $.ajax({
-                url: '@Url.Action("GetPurchases", "Vendor")',
+                url: '@Url.Action("GetPurchasesOrder", "Vendor")',
                 type: 'GET',
                 data: {
                     customerId,
@@ -590,7 +566,7 @@
                 }
             });
         }
-        
+
         function populateDefaultTables(data) {
 
             const table1Body = $("#table1 tbody").empty();
@@ -631,7 +607,7 @@
             table2Body.empty();
 
             $.ajax({
-                url: '@Url.Action("GetPurchaseItems", "Vendor")',
+                url: '@Url.Action("GetPurchaseOrderItems", "Vendor")',
                 type: 'GET',
                 data: { purchaseId: sale.id },
                 success: function (res) {
@@ -673,7 +649,7 @@
                 table1Body.append(row);
             });
         }
-        
+
         function populateItemWiseTable(data) {
 
             const tableBody = $("#itemWiseTableData tbody").empty();
@@ -726,7 +702,7 @@
                 });
             });
         }
-        
+
         function formatDate(dateString) {
             if (!dateString) return "";
 
@@ -739,7 +715,7 @@
 
             return `${day}-${month}-${year}`;
         }
-        
+
         function loadVendors() {
             $.ajax({
                 url: '@Url.Action("GetVendorAndSub", "Vendor")',
@@ -767,18 +743,18 @@
             });
         }
 
-        function loadFixedAssetsCategory() {
+        function loadProjects() {
             $.ajax({
-                url: '@Url.Action("GetFixedAssetsCategory", "Lists")',
+                url: '@Url.Action("GetProjects", "Construction")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
-                        const customerDdl = $("#fixedAssetCategory");
+                        const customerDdl = $("#project");
 
-                        customerDdl.empty().append('<option value="">-- Select Category --</option>');
+                        customerDdl.empty().append('<option value="">-- Select Project --</option>');
 
                         res.data.forEach(c => {
-                            const option = `<option value="${c.id}">${c.category_name}</option>`;
+                            const option = `<option value="${c.id}">${c.name}</option>`;
                             customerDdl.append(option);
                         });
                     } else {
@@ -975,7 +951,7 @@
             calculateRow(row);
         });
 
-         function calculateInvoiceTotals() {
+        function calculateInvoiceTotals() {
             let totalBeforeVat = 0;
             let totalVat = 0;
 
@@ -996,72 +972,75 @@
             $('#netAmount').val(netAmount.toFixed(2));
         }
 
-
-         $('#purchaseInvoiceForm').on('submit', function (e) {
+        $('#purchaseInvoiceForm').on('submit', function (e) {
             e.preventDefault();
             const form = this;
+
+            // Form validation
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
             }
 
+            // Save payment terms hidden value
             $('#paymentTermsValue').val($('#paymentTerms').val());
 
-                 const invoiceData = {
-            Id: $("#purchaseInvoiceForm").data("purchaseInvoiceId") || 0,
-            Date: $('#date').val(),
-            VendorId: parseInt($('#customerName').val()) || 0,
-            ProjectId: parseInt($('#project').val()) || 0,
-            InvoiceCode: $('#invoiceCode').val().trim(),
-            PONumber: $('#poNo').val().trim(),
-            BillTo: $('#billTo').val().trim(),
-            City: $('#emirates').val(),
-            SalesMan: $('#salesMan').val().trim(),
-            ShipDate: $('#shipDate').val(),
-            ShipVia: $('#viaType').val(),
-            ShipTo: $('#ship').val().trim(),
-            PaymentMethod: $('#invoiceType').val(),
-            AccountCashId: parseInt($('#accountName').val()) || 0,
-            PaymentTerms: $('#paymentTermsValue').val(),
-            PaymentDate: $('#duedate').val(),
-            TotalBefore: parseFloat($('#totalBeforeVat').val()) || 0,
-            Vat: parseFloat($('#totalVat').val()) || 0,
-            NetTotal: parseFloat($('#netAmount').val()) || 0,
-            PurchaseType: $('#purchaseType').val(),
-            FixedAssetCategoryId: parseInt($('#fixedAssetCategory').val()) || 0,
-            Description: $('textarea').val().trim(),
-            WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
-            Items: []
-        };
-
-            $('#salesModal tbody tr').each(function () {
-            const row = $(this);
-
-            const qty = parseFloat(row.find('.qty').val()) || 0;
-            const price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
-            const discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
-            const vatPercentage = parseFloat(row.find('.tax').val()) || 0;
-
-            const taxableAmount = (qty * price) - discount;
-            const calculatedVat = taxableAmount * (vatPercentage / 100);
-
-            const item = {
-                ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-                Quantity: qty,
-                CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
-                Price: price,
-                VatPercentage: vatPercentage,
-                Vat: calculatedVat,
-                Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
-                CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+            // Build invoice object
+            const invoiceData = {
+                Id: $("#purchaseInvoiceForm").data("purchaseInvoiceId") || 0,
+                Date: $('#date').val(),
+                VendorId: parseInt($('#customerName').val()) || 0,
+                InvoiceCode: $('#invoiceCode').val().trim(),
+                PONumber: $('#poNo').val().trim(),
+                BillTo: $('#billTo').val().trim(),
+                City: $('#emirates').val(),
+                SalesMan: $('#salesMan').val().trim(),
+                ShipDate: $('#shipDate').val(),
+                ShipVia: $('#viaType').val(),
+                ShipTo: $('#ship').val().trim(),
+                PaymentMethod: $('#invoiceType').val(),
+                AccountCashId: parseInt($('#accountName').val()) || 0,
+                PaymentTerms: $('#paymentTermsValue').val(),
+                PaymentDate: $('#duedate').val(),
+                TotalBefore: parseFloat($('#totalBeforeVat').val()) || 0,
+                Vat: parseFloat($('#totalVat').val()) || 0,
+                NetTotal: parseFloat($('#netAmount').val()) || 0,
+                PurchaseType: $('#purchaseType').val(),
+                FixedAssetCategoryId: parseInt($('#fixedAssetCategory').val()) || 0,
+                Description: $('textarea').val().trim(),
+                WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
+                Items: []
             };
 
-            invoiceData.Items.push(item);
-        });
+            // Collect all table rows
+            $('#salesModal tbody tr').each(function () {
+                const row = $(this);
+                const qty = parseFloat(row.find('.qty').val()) || 0;
+                const price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
+                const discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
+                const vatPercentage = parseFloat(row.find('.tax').val()) || 0;
 
+                const taxableAmount = (qty * price) - discount;
+                const calculatedVat = taxableAmount * (vatPercentage / 100);
 
+                const item = {
+                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                    Quantity: qty,
+                    CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
+                    Price: price,
+                    Discount: discount,
+                    VatPercentage: vatPercentage,
+                    Vat: calculatedVat,
+                    Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
+                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
+                };
+
+                invoiceData.Items.push(item);
+            });
+
+            // Send AJAX request to API
             $.ajax({
-                 url: '@Url.Action("SavePurchaseInvoice", "Vendor")',
+                url: '@Url.Action("SavePurchaseOrder", "Vendor")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(invoiceData),
@@ -1081,10 +1060,8 @@
             });
         });
 
-        
 
-
-         function openSalesModal(invoice) {
+            function openSalesModal(invoice) {
             console.log(invoice);
 
             // 🔹 Header
@@ -1106,15 +1083,7 @@
             $("#totalVat").val(invoice.vat || 0);
             $("#netAmount").val(invoice.net || 0);
             $("#warehouseDropdown").val(invoice.warehouseId || '');
-            $('#purchaseType').val(invoice.purchaseType || 'Inventory');
-            $('#fixedAssetCategory').val(invoice.fixedAssetCategoryId || '');
-
-
-                 if (invoice.purchaseType === 'Fixed Assets') {
-            $('#fixedAssetCategoryWrapper').show();
-        } else {
-            $('#fixedAssetCategoryWrapper').hide();
-        }
+            $("#project").val(invoice.projectId || '');
 
         if (invoice.paymentMethod === 'Credit') {
             $('#paymentTerms').prop('disabled', false);
@@ -1166,5 +1135,6 @@
             $("#salesModal").modal("show");
         }
 
+
     </script>
-    }
+}

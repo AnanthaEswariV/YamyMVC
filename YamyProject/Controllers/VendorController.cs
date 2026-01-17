@@ -779,7 +779,7 @@ namespace YamyProject.Controllers
     p.total AS Total,
     p.vat AS Vat,
     p.net AS Net,
-    pd.id AS ItemId,
+    pd.item_id AS ItemId,
     i.code AS ItemCode,
     i.name AS ItemName,
     pd.qty AS Qty,
@@ -1278,8 +1278,6 @@ WHERE id=@id;";
             }
         }
 
-        // 🔹 Helper Methods
-
         private async Task<bool> AreDefaultAccountsSet(List<string> accountCategories)
         {
             var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
@@ -1760,6 +1758,507 @@ WHERE id=@id;";
             var lastNumber = Convert.ToInt32(await cmd.ExecuteScalarAsync());
             return $"{prefix}{(lastNumber + 1):D4}";
         }
+
+        #endregion
+
+        #region Purchase Order Center
+
+        public IActionResult PurchaseOrder()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchasesOrder(
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    int? customerId,
+    string paymentMethod,
+    string selectionMethod = "Default",
+    int page = 1,
+    int pageSize = 20)
+        {
+            try
+            {
+                var cs = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(cs.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>();
+
+                string baseQuery = selectionMethod == "Default"
+                    ? GetPurchaseDefaultQuerys()
+                    : GetPurchaseDetailedQuerys();
+
+                // Filters
+                if (customerId.HasValue)
+                {
+                    baseQuery += " AND p.vendor_id = @vendorId ";
+                    parameters.Add(new MySqlParameter("@vendorId", customerId));
+                }
+
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    baseQuery += " AND p.payment_method = @payment ";
+                    parameters.Add(new MySqlParameter("@payment", paymentMethod));
+                }
+
+                if (dateFrom.HasValue)
+                {
+                    baseQuery += " AND p.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+
+                if (dateTo.HasValue)
+                {
+                    baseQuery += " AND p.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                //// Grouping (matches WinForms)
+                //baseQuery += selectionMethod == "Default"
+                //    ? @" GROUP BY p.id "
+                //    : @" GROUP BY p.id, i.id, d.qty, d.cost_price, d.vat, d.total ";
+
+                //// Pagination
+                //int offset = (page - 1) * pageSize;
+                //baseQuery += " ORDER BY p.date DESC LIMIT @limit OFFSET @offset ";
+
+                //parameters.Add(new MySqlParameter("@limit", pageSize));
+                //parameters.Add(new MySqlParameter("@offset", offset));
+
+                var cmd = new MySqlCommand(baseQuery, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                var purchases = new List<PurchaseDto>();
+                PurchaseDto current = null;
+                int lastId = -1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    int id = reader.GetInt32("Id");
+
+                    if (id != lastId)
+                    {
+                        current = new PurchaseDto
+                        {
+                            Id = id,
+                            Date = reader.GetDateTime("Date"),
+                            InvoiceNo = reader["InvoiceNo"]?.ToString(),
+                            VendorName = reader["VendorName"]?.ToString(),
+                            PaymentMethod = reader["PaymentMethod"]?.ToString(),
+                            Total = reader.GetDecimal("Total"),
+                            Vat = reader.GetDecimal("Vat"),
+                            Net = reader["Net"] != DBNull.Value ? reader.GetDecimal("Net") : 0,
+                            WarehouseId = reader["Warehouse_Id"] != DBNull.Value ? reader.GetInt32("Warehouse_Id") : (int?)null,
+                            PO_Num = reader["PO_Num"]?.ToString(),
+                            BillTo = reader["Bill_To"]?.ToString(),
+                            City = reader["City"]?.ToString(),
+                            Ship_Date = reader["Ship_Date"] != DBNull.Value ? reader.GetDateTime("Ship_Date") : (DateTime?)null,
+                            Ship_Via = reader["Ship_Via"]?.ToString(),
+                            Ship_To = reader["Ship_To"]?.ToString(),
+                            Account_Cash_Id = reader["Account_Cash_Id"] != DBNull.Value ? reader.GetInt32("Account_Cash_Id") : (int?)null,
+                            Payment_Terms = reader["Payment_Terms"]?.ToString(),
+                            Payment_Date = reader["Payment_Date"] != DBNull.Value ? reader.GetDateTime("Payment_Date") : (DateTime?)null,
+                            Description = reader["Description"]?.ToString(),
+                            SalesMan = reader["Sales_Man"]?.ToString(),
+                            ProjectId = reader["ProjectId"] != DBNull.Value ? reader.GetInt32("ProjectId") : (int?)null,
+                            Pay = reader["Pay"] != DBNull.Value ? reader.GetDecimal("Pay") : 0,
+                            VendorId = reader["VendorId"] != DBNull.Value ? Convert.ToInt32(reader["VendorId"]) : 0,
+                            Items = new List<PurchaseItemDto>()
+                        };
+
+                        purchases.Add(current);
+                        lastId = id;
+                    }
+
+                    if (reader["ItemId"] != DBNull.Value)
+                    {
+                        current.Items.Add(new PurchaseItemDto
+                        {
+                            ItemId = reader["ItemId"] != DBNull.Value ? Convert.ToInt32(reader["ItemId"]) : 0,
+                            ItemCode = reader["ItemCode"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
+                            Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                            CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                            Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
+                            Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    page,
+                    pageSize,
+                    data = purchases
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private string GetPurchaseDefaultQuerys()
+        {
+            return @"
+SELECT
+    p.id AS Id,
+    p.date AS Date,
+    p.invoice_id AS InvoiceNo,
+    CONCAT(v.code,' - ',v.name) AS VendorName,
+    p.payment_method AS PaymentMethod,
+    p.total AS Total,
+    p.vat AS Vat,
+    p.net AS Net,
+    p.purchase_id AS PurchaseNo,
+    p.tranfer_status AS TransferStatus,
+     pd.item_id AS ItemId,
+    i.code AS ItemCode,
+    i.name AS ItemName,
+    pd.qty AS Qty,
+    pd.cost_price AS CostPrice,
+    pd.vat AS ItemVat,
+    pd.total AS ItemTotal,
+    p.warehouse_id AS Warehouse_Id,
+    p.po_num AS PO_Num,
+    p.bill_to AS Bill_To,
+    p.sales_man AS Sales_Man,
+    p.city AS City,
+    p.project_id AS ProjectId,
+    p.ship_date AS Ship_Date,
+    p.ship_via AS Ship_Via,
+    p.vendor_id As VendorId,
+    p.ship_to AS Ship_To,
+    p.account_cash_id AS Account_Cash_Id,
+    p.payment_terms AS Payment_Terms,
+    p.payment_date AS Payment_Date,
+    p.description AS Description,
+    p.pay AS Pay,
+    i.id AS ItemId,
+    pd.cost_center_id AS Cost_Center_Id
+FROM tbl_purchase_order p
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+LEFT JOIN tbl_purchase_order_details pd ON p.id = pd.purchase_id
+LEFT JOIN tbl_items i ON pd.item_id = i.id
+WHERE p.state = 0
+";
+        }
+
+        private string GetPurchaseDetailedQuerys()
+        {
+            return @"
+      SELECT
+    p.id AS Id,
+    p.date AS Date,
+    p.invoice_id AS InvoiceNo,
+    CONCAT(v.code,' - ',v.name) AS VendorName,
+    p.payment_method AS PaymentMethod,
+    p.total AS Total,
+    p.vat AS Vat,
+    p.net AS Net,
+    v.id AS VendorId,
+    CONCAT(i.code,' - ',i.name) AS ItemName,
+    d.qty AS Qty,
+    d.cost_price AS CostPrice,
+    d.vat AS ItemVat,
+      i.code AS ItemCode,
+    d.total AS ItemTotal,
+    p.warehouse_id AS Warehouse_Id,
+    p.po_num AS PO_Num,
+    p.bill_to AS Bill_To,
+    p.city AS City,
+    p.vendor_id As VendorId,
+    p.project_id AS ProjectId,
+  p.sales_man AS Sales_Man,
+    p.ship_date AS Ship_Date,
+    p.ship_via AS Ship_Via,
+    p.ship_to AS Ship_To,
+    p.account_cash_id AS Account_Cash_Id,
+    p.payment_terms AS Payment_Terms,
+    p.payment_date AS Payment_Date,
+    p.description AS Description,
+    p.pay AS Pay,
+    i.id As ItemId,
+    d.cost_center_id AS Cost_Center_Id
+FROM tbl_purchase_order p
+INNER JOIN tbl_purchase_order_details d ON p.id = d.purchase_id
+INNER JOIN tbl_items i ON d.item_id = i.id
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+WHERE p.state = 0
+";
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseOrderItems(int purchaseId)
+        {
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Query purchase items
+                var query = @"
+            SELECT
+                CONCAT(i.code,' - ',i.name) AS ItemName,
+                d.qty AS Qty,
+                d.cost_price AS CostPrice,
+                d.vat AS Vat,
+                d.total AS Total
+            FROM tbl_purchase_order_details d
+            INNER JOIN tbl_items i ON d.item_id = i.id
+            WHERE d.purchase_id = @id;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", purchaseId);
+
+                var items = new List<PurchaseItemDto>();
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new PurchaseItemDto
+                    {
+                        ItemName = reader["ItemName"]?.ToString(),
+                        Qty = reader["Qty"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Qty"]),
+                        CostPrice = reader["CostPrice"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["CostPrice"]),
+                        Vat = reader["Vat"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Vat"]),
+                        Total = reader["Total"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["Total"])
+                    });
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SavePurchaseOrder([FromBody] PurchaseOrderRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            // ===== VALIDATION =====
+            if (model.VendorId <= 0)
+                return Json(new { status = false, message = "Vendor must be selected" });
+
+            if (model.AccountCashId <= 0)
+                return Json(new { status = false, message = "Account Cash must be selected" });
+
+            if (model.Items == null || !model.Items.Any())
+                return Json(new { status = false, message = "Insert at least one item" });
+
+            for (int i = 0; i < model.Items.Count; i++)
+            {
+                var item = model.Items[i];
+                if (item.Total <= 0)
+                    return Json(new { status = false, message = $"Total Item in Row {i + 1} can't be 0 or null." });
+            }
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(
+                _config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ??
+                           _config.GetConnectionString("DefaultDatabase")
+            };
+
+            try
+            {
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                await using var tx = await conn.BeginTransactionAsync();
+
+                long purchaseId = model.Id;
+                string invoiceId = model.InvoiceCode;
+
+                // ================= INSERT =================
+                if (model.Id == 0)
+                {
+                    if (string.IsNullOrEmpty(invoiceId))
+                        invoiceId = await GenerateNextPurchaseCodeAsync(conn, tx);
+                    var insertSql = @"
+INSERT INTO tbl_purchase_order
+(date, vendor_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
+ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms,
+payment_date, total, vat, net, pay, `change`, created_by, created_date,
+state, project_id, description)
+VALUES
+(@date, @vendor_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man,
+@ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms,
+@payment_date, @total, @vat, @net, @pay, @change, @created_by, @created_date,
+0, @project_id, @description);
+SELECT LAST_INSERT_ID();";
+
+                    await using var insertCmd = new MySqlCommand(insertSql, conn, (MySqlTransaction)tx);
+                    insertCmd.Parameters.AddWithValue("@date", model.Date);
+                    insertCmd.Parameters.AddWithValue("@vendor_id", model.VendorId);
+                    insertCmd.Parameters.AddWithValue("@invoice_id", invoiceId);
+                    insertCmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                    insertCmd.Parameters.AddWithValue("@po_num", model.PONumber ?? "");
+                    insertCmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                    insertCmd.Parameters.AddWithValue("@city", model.City ?? "");
+                    insertCmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                    insertCmd.Parameters.AddWithValue("@ship_date", model.ShipDate);
+                    insertCmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                    insertCmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                    insertCmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod ?? "");
+                    insertCmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                    insertCmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                    insertCmd.Parameters.AddWithValue("@payment_date", model.PaymentDate);
+                    insertCmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                    insertCmd.Parameters.AddWithValue("@vat", model.Vat);
+                    insertCmd.Parameters.AddWithValue("@net", model.NetTotal);
+                    insertCmd.Parameters.AddWithValue("@pay", model.Pay);
+                    insertCmd.Parameters.AddWithValue("@change", model.Change);
+                    insertCmd.Parameters.AddWithValue("@created_by", userId);
+                    insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+                    insertCmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+                    insertCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                    purchaseId = Convert.ToInt64(await insertCmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    // ================= UPDATE =================
+                    var updateSql = @"
+UPDATE tbl_purchase_order SET
+date=@date, vendor_id=@vendor_id,  warehouse_id=@warehouse_id,
+po_num=@po_num, bill_to=@bill_to, city=@city, sales_man=@sales_man,
+ship_date=@ship_date, ship_via=@ship_via, ship_to=@ship_to,
+payment_method=@payment_method, account_cash_id=@account_cash_id,
+payment_terms=@payment_terms, payment_date=@payment_date,
+total=@total, vat=@vat, net=@net, pay=@pay, `change`=@change,
+project_id=@project_id, description=@description
+WHERE id=@id;";
+
+                    await using var updateCmd = new MySqlCommand(updateSql, conn, (MySqlTransaction)tx);
+                    updateCmd.Parameters.AddWithValue("@date", model.Date);
+                    updateCmd.Parameters.AddWithValue("@vendor_id", model.VendorId);
+                    updateCmd.Parameters.AddWithValue("@invoice_id", invoiceId);
+                    updateCmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                    updateCmd.Parameters.AddWithValue("@po_num", model.PONumber ?? "");
+                    updateCmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                    updateCmd.Parameters.AddWithValue("@city", model.City ?? "");
+                    updateCmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                    updateCmd.Parameters.AddWithValue("@ship_date", model.ShipDate);
+                    updateCmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                    updateCmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                    updateCmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod ?? "");
+                    updateCmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                    updateCmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                    updateCmd.Parameters.AddWithValue("@payment_date", model.PaymentDate);
+                    updateCmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                    updateCmd.Parameters.AddWithValue("@vat", model.Vat);
+                    updateCmd.Parameters.AddWithValue("@net", model.NetTotal);
+                    updateCmd.Parameters.AddWithValue("@pay", model.Pay);
+                    updateCmd.Parameters.AddWithValue("@change", model.Change);
+                    updateCmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+                    updateCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    updateCmd.Parameters.AddWithValue("@id", purchaseId);
+
+                    await updateCmd.ExecuteNonQueryAsync();
+
+                    // Delete old items
+                    await using var delCmd = new MySqlCommand(
+                        "DELETE FROM tbl_purchase_order_details WHERE purchase_id=@id",
+                        conn, (MySqlTransaction)tx);
+                    delCmd.Parameters.AddWithValue("@id", purchaseId);
+                    await delCmd.ExecuteNonQueryAsync();
+                }
+
+                // ================= INSERT ITEMS =================
+                if (model.Items != null && model.Items.Any())
+                {
+                    var valueList = new List<string>();
+                    var parameters = new List<MySqlParameter>();
+                    int paramIndex = 0;
+
+                    foreach (var item in model.Items)
+                    {
+                        valueList.Add($"(@purchase_id, @item_id{paramIndex}, @qty{paramIndex}, @cost_price{paramIndex}, @price{paramIndex}, @discount{paramIndex}, @vatp{paramIndex}, @vat{paramIndex}, @total{paramIndex})");
+                        parameters.Add(new MySqlParameter($"@item_id{paramIndex}", item.ItemId));
+                        parameters.Add(new MySqlParameter($"@qty{paramIndex}", item.Quantity));
+                        parameters.Add(new MySqlParameter($"@cost_price{paramIndex}", item.CostPrice));
+                        parameters.Add(new MySqlParameter($"@price{paramIndex}", item.Price));
+                        parameters.Add(new MySqlParameter($"@discount{paramIndex}", item.Discount));
+                        parameters.Add(new MySqlParameter($"@vatp{paramIndex}", item.VatPercentage));
+                        parameters.Add(new MySqlParameter($"@vat{paramIndex}", item.Vat));
+                        parameters.Add(new MySqlParameter($"@total{paramIndex}", item.Total));
+                        paramIndex++;
+                    }
+
+                    var itemsSql = $@"
+INSERT INTO tbl_purchase_order_details
+(purchase_id, item_id, qty, cost_price, price, discount, vatp, vat, total)
+VALUES {string.Join(", ", valueList)};";
+
+                    await using var itemsCmd = new MySqlCommand(itemsSql, conn, (MySqlTransaction)tx);
+                    itemsCmd.Parameters.AddWithValue("@purchase_id", purchaseId);
+                    foreach (var p in parameters)
+                        itemsCmd.Parameters.Add(p);
+
+                    await itemsCmd.ExecuteNonQueryAsync();
+                }
+
+                await tx.CommitAsync();
+
+                // Return the generated invoice ID as well
+                return Json(new { status = true, message = model.Id == 0 ? "Purchase Order added" : "Purchase Order updated", id = purchaseId, invoiceId = invoiceId });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextPurchaseCodeAsync(MySqlConnection conn, MySqlTransaction tx)
+        {
+            string newCode = "PO-0001";
+
+            var sql = "SELECT MAX(CAST(SUBSTRING(invoice_id, 4) AS UNSIGNED)) AS lastCode FROM tbl_purchase_order;";
+
+            // Attach the transaction!
+            await using var cmd = new MySqlCommand(sql, conn, tx);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync() && reader["lastCode"] != DBNull.Value)
+            {
+                int code = int.Parse(reader["lastCode"].ToString()) + 1;
+                newCode = "PO-" + code.ToString("D4");
+            }
+
+            await reader.CloseAsync();
+            return newCode;
+        }
+
+
 
         #endregion
 

@@ -1,5 +1,6 @@
 ﻿
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace YamyProject.Core.Models
 {
@@ -1569,9 +1570,9 @@ namespace YamyProject.Core.Models
         public string Description { get; set; }
         public decimal Pay { get; set; }
         public string SalesMan { get; set; }
+        public int? ProjectId { get; set; }
         public List<PurchaseItemDto> Items { get; set; } = new();
     }
-
 
     public class PurchaseItemDto
     {
@@ -1633,6 +1634,48 @@ namespace YamyProject.Core.Models
         public int VatId { get; set; }
         public int PurchaseInvoiceId { get; set; }
         public int InventoryId { get; set; }
+    }
+    public class PurchaseOrderRequest
+    {
+        public int Id { get; set; } = 0; 
+        public DateTime Date { get; set; }
+        public int VendorId { get; set; }
+        public string InvoiceCode { get; set; }
+        public int WarehouseId { get; set; }
+        public string PONumber { get; set; }
+        public string BillTo { get; set; }
+        public string City { get; set; }
+        public string SalesMan { get; set; }
+        public DateTime ShipDate { get; set; }
+        public string ShipVia { get; set; }
+        public string ShipTo { get; set; }
+        public string PaymentMethod { get; set; }
+        public int AccountCashId { get; set; }
+        public string PaymentTerms { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public decimal TotalBefore { get; set; }
+        public decimal Vat { get; set; }
+        public decimal NetTotal { get; set; }
+        public decimal Pay { get; set; }
+        public decimal Change { get; set; }
+        public string Description { get; set; }
+        public int ProjectId { get; set; }
+        public List<PurchaseOrderItemRequest> Items { get; set; }
+        public bool Print { get; set; }
+    }
+
+    public class PurchaseOrderItemRequest
+    {
+        public int ItemId { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal Price { get; set; }
+        public decimal Discount { get; set; }
+        public decimal VatPercentage { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Total { get; set; }
+        public int CostCenterId { get; set; }
+        public string Type { get; set; }
     }
 
 }
