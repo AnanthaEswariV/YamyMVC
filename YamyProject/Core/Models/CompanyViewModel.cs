@@ -1677,5 +1677,85 @@ namespace YamyProject.Core.Models
         public int CostCenterId { get; set; }
         public string Type { get; set; }
     }
+    public class PurchaseReturnRequest
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public int VendorId { get; set; }
+        public string InvoiceCode { get; set; }
+        public int WarehouseId { get; set; }
+        public string PONumber { get; set; }
+        public string BillTo { get; set; }
+        public string City { get; set; }
+        public string SalesMan { get; set; }
+        public DateTime ShipDate { get; set; }
+        public string ShipVia { get; set; }
+        public string ShipTo { get; set; }
+        public string PaymentMethod { get; set; }
+        public int AccountCashId { get; set; }
+        public string PaymentTerms { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public decimal TotalBefore { get; set; }
+        public decimal Vat { get; set; }
+        public decimal NetTotal { get; set; }
+        public string Description { get; set; }
+        public List<PurchaseReturnItemRequest> Items { get; set; }
+    }
+
+    public class PurchaseReturnItemRequest
+    {
+        public int ItemId { get; set; }
+        public decimal Qty { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal Price { get; set; }
+        public decimal VatPercentage { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Total { get; set; }
+        public int CostCenterId { get; set; }
+    }
+    public class PurchaseReturnDto
+    {
+        public int SN { get; set; }
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public string JVNo { get; set; }
+        public string InvoiceNo { get; set; }
+        public string VendorName { get; set; }
+        public string PaymentMethod { get; set; }
+        public decimal Total { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Net { get; set; }
+
+        public int? Warehouse_Id { get; set; }
+        public string PO_Num { get; set; }
+        public string Bill_To { get; set; }
+        public string Sales_Man { get; set; }
+        public string City { get; set; }
+        public int? ProjectId { get; set; }
+        public DateTime? Ship_Date { get; set; }
+        public string Ship_Via { get; set; }
+        public int VendorId { get; set; }
+        public string Ship_To { get; set; }
+        public int? Account_Cash_Id { get; set; }
+        public string Payment_Terms { get; set; }
+        public DateTime? Payment_Date { get; set; }
+        public string Description { get; set; }
+        public decimal Pay { get; set; }
+
+        public List<PurchaseReturnItemDto> Items { get; set; }
+    }
+
+    public class PurchaseReturnItemDto
+    {
+        public int ItemId { get; set; }
+        public string ItemCode { get; set; }
+        public string ItemName { get; set; }
+        public decimal Qty { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Total { get; set; }
+        public int? Cost_Center_Id { get; set; }
+    }
+
 
 }

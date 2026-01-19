@@ -2262,6 +2262,784 @@ VALUES {string.Join(", ", valueList)};";
 
         #endregion
 
+        #region Purchase Return
+
+        public IActionResult PurchaseReturn()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseReturns(
+    int? vendorId = null,
+    string paymentMethod = null,
+    DateTime? dateFrom = null,
+    DateTime? dateTo = null
+    )   
+        {
+            try
+            {
+                // Validate user session
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ---------------- MAIN QUERY ----------------
+                string query = @"
+WITH Dedup AS (
+    SELECT
+        ROW_NUMBER() OVER (
+            PARTITION BY
+                pr.id,
+                prd.item_id,
+                prd.qty,
+                prd.cost_price,
+                prd.vat,
+                prd.total,
+                prd.cost_center_id
+            ORDER BY pr.date
+        ) AS rn,
+
+        DENSE_RANK() OVER (ORDER BY pr.date) AS SN,
+
+        -- 🔹 HEADER FIELDS
+        pr.id AS Id,
+        pr.date AS Date,
+        pr.invoice_id AS InvoiceNo,
+        CONCAT(v.code, ' - ', v.name) AS VendorName,
+        pr.payment_method AS PaymentMethod,
+        pr.total AS Total,
+        pr.vat AS Vat,
+        pr.net AS Net,
+        pr.warehouse_id AS Warehouse_Id,
+        pr.po_num AS PO_Num,
+        pr.bill_to AS Bill_To,
+        pr.sales_man AS Sales_Man,
+        pr.city AS City,
+        pr.project_id AS ProjectId,
+        pr.ship_date AS Ship_Date,
+        pr.ship_via AS Ship_Via,
+        pr.vendor_id AS VendorId,
+        pr.ship_to AS Ship_To,
+        pr.account_cash_id AS Account_Cash_Id,
+        pr.payment_terms AS Payment_Terms,
+        pr.payment_date AS Payment_Date,
+        pr.description AS Description,
+        pr.pay AS Pay,
+
+        -- 🔹 JV
+        CONCAT('000', t.transaction_id) AS JVNo,
+
+        -- 🔹 ITEM FIELDS
+        prd.item_id AS ItemId,
+        i.code AS ItemCode,
+        i.name AS ItemName,
+        prd.qty AS Qty,
+     prd.price AS Price,
+        prd.cost_price AS CostPrice,
+        prd.vat AS ItemVat,
+        prd.total AS ItemTotal,
+        prd.cost_center_id AS Cost_Center_Id
+
+    FROM tbl_purchase_return pr
+    INNER JOIN tbl_vendor v ON pr.vendor_id = v.id
+    LEFT JOIN tbl_transaction t ON pr.id = t.transaction_id
+    LEFT JOIN tbl_purchase_return_details prd ON pr.id = prd.purchase_id
+    LEFT JOIN tbl_items i ON prd.item_id = i.id
+    WHERE pr.state = 0
+)
+
+SELECT
+    SN,
+    Id,
+    Date,
+    InvoiceNo,
+    VendorName,
+    PaymentMethod,
+    Total,
+    Vat,
+    Net,
+    Warehouse_Id,
+    PO_Num,
+    Bill_To,
+    Sales_Man,
+    City,
+    ProjectId,
+    Ship_Date,
+    Ship_Via,
+    VendorId,
+    Ship_To,
+    Account_Cash_Id,
+    Payment_Terms,
+    Payment_Date,
+    Description,
+    Pay,
+    JVNo,
+    ItemId,
+    ItemCode,
+    ItemName,
+    Qty,
+    Price,
+    CostPrice,
+    ItemVat,
+    ItemTotal,
+    Cost_Center_Id
+FROM Dedup
+WHERE rn = 1
+ORDER BY Date;
+
+";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Vendor filter
+                if (vendorId.HasValue)
+                {
+                    query += " AND pr.vendor_id = @vendorId";
+                    parameters.Add(new MySqlParameter("@vendorId", vendorId.Value));
+                }
+
+                // Payment method filter
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    query += " AND pr.payment_method = @payment";
+                    parameters.Add(new MySqlParameter("@payment", paymentMethod));
+                }
+
+                // Date filter
+                if (dateFrom.HasValue && dateTo.HasValue)
+                {
+                    query += " AND pr.date >= @dateFrom AND pr.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                query += @"
+GROUP BY 
+    pr.id, pr.date, pr.invoice_id,
+    v.code, v.name,
+    pr.payment_method,
+    pr.total, pr.vat, pr.net
+ORDER BY pr.date
+";
+
+                var result = new List<object>();
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                var returns = new List<PurchaseReturnDto>();
+                PurchaseReturnDto current = null;
+                int lastId = -1;
+
+                while (await reader.ReadAsync())
+                {
+                    int id = reader.GetInt32("Id");
+
+                    if (id != lastId)
+                    {
+                        current = new PurchaseReturnDto
+                        {
+                            SN = reader.GetInt32("SN"),
+                            Id = id,
+                            Date = reader.GetDateTime("Date"),
+                            JVNo = reader["JVNo"]?.ToString(),
+                            InvoiceNo = reader["InvoiceNo"]?.ToString(),
+                            VendorName = reader["VendorName"]?.ToString(),
+                            PaymentMethod = reader["PaymentMethod"]?.ToString(),
+
+                            Total = Convert.ToDecimal(reader["Total"]),
+                            Vat = Convert.ToDecimal(reader["Vat"]),
+                            Net = Convert.ToDecimal(reader["Net"]),
+
+                            Warehouse_Id = reader["Warehouse_Id"] != DBNull.Value ? Convert.ToInt32(reader["Warehouse_Id"]) : (int?)null,
+                            PO_Num = reader["PO_Num"]?.ToString(),
+                            Bill_To = reader["Bill_To"]?.ToString(),
+                            Sales_Man = reader["Sales_Man"]?.ToString(),
+                            City = reader["City"]?.ToString(),
+                            ProjectId = reader["ProjectId"] != DBNull.Value ? Convert.ToInt32(reader["ProjectId"]) : (int?)null,
+                            Ship_Date = reader["Ship_Date"] != DBNull.Value ? Convert.ToDateTime(reader["Ship_Date"]) : (DateTime?)null,
+                            Ship_Via = reader["Ship_Via"]?.ToString(),
+                            VendorId = Convert.ToInt32(reader["VendorId"]),
+                            Ship_To = reader["Ship_To"]?.ToString(),
+                            Account_Cash_Id = reader["Account_Cash_Id"] != DBNull.Value ? Convert.ToInt32(reader["Account_Cash_Id"]) : (int?)null,
+                            Payment_Terms = reader["Payment_Terms"]?.ToString(),
+                            Payment_Date = reader["Payment_Date"] != DBNull.Value ? Convert.ToDateTime(reader["Payment_Date"]) : (DateTime?)null,
+                            Description = reader["Description"]?.ToString(),
+                            Pay = reader["Pay"] != DBNull.Value ? Convert.ToDecimal(reader["Pay"]) : 0,
+
+                            Items = new List<PurchaseReturnItemDto>()
+                        };
+
+                        returns.Add(current);
+                        lastId = id;
+                    }
+
+                    // 🔹 ADD ITEM
+                    if (reader["ItemId"] != DBNull.Value)
+                    {
+                        current.Items.Add(new PurchaseReturnItemDto
+                        {
+                            ItemId = Convert.ToInt32(reader["ItemId"]),
+                            ItemCode = reader["ItemCode"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
+                            Qty = Convert.ToDecimal(reader["Qty"]),
+                            CostPrice = Convert.ToDecimal(reader["Price"]),
+                            Vat = Convert.ToDecimal(reader["ItemVat"]),
+                            Total = Convert.ToDecimal(reader["ItemTotal"]),
+                            Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value
+                                                ? Convert.ToInt32(reader["Cost_Center_Id"])
+                                                : (int?)null
+                        });
+                    }
+                }
+
+
+                return Ok(new
+                {
+                    status = true,
+                    data = returns
+
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        #endregion
+
+
+        [HttpPost]
+        public async Task<IActionResult> SavePurchaseReturn([FromBody] PurchaseReturnRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            if (model.Items == null || !model.Items.Any())
+                return Json(new { status = false, message = "Insert Items First." });
+
+            if (!await AreDefaultAccountsSet(new List<string> { "Vendor", "Vat Output", "Inventory" }))
+                return Json(new { status = false, message = "Default accounts for invoice are not properly configured. Please check your settings." });
+
+            // Validate items
+            for (int i = 0; i < model.Items.Count; i++)
+            {
+                var item = model.Items[i];
+                if (item.Total <= 0)
+                    return Json(new { status = false, message = $"Total Item In Row {i + 1} Can't Be 0 or Null" });
+            }
+
+            if (model.VendorId <= 0)
+                return Json(new { status = false, message = "Vendor Must be Selected." });
+
+            if (model.AccountCashId <= 0)
+                return Json(new { status = false, message = "Account Cash Name Must be Selected." });
+
+            if (model.NetTotal <= 0)
+                return Json(new { status = false, message = "Total Must Be Bigger Than Zero" });
+
+            // Get account IDs from configuration
+            var accountIds = await GetDefaultAccountIdss();
+            if (accountIds.PaymentCreditMethodId <= 0 || accountIds.VatId <= 0 || accountIds.PurchaseReturnId <= 0)
+                return Json(new { status = false, message = "Default accounts for invoice are not properly configured. Please check your settings." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in." });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            try
+            {
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                await using var transaction = await conn.BeginTransactionAsync();
+
+                try
+                {
+                    int purchaseReturnId = model.Id;
+                    decimal paidAmount = model.PaymentMethod == "Cash" ? model.NetTotal : 0;
+                    decimal changeAmount = model.PaymentMethod != "Cash" ? model.NetTotal : 0;
+
+                    if (purchaseReturnId == 0) 
+                    {
+                        model.InvoiceCode = await GenerateNextPurchaseReturnCode(conn, transaction);
+
+                        var insertQuery = @"
+INSERT INTO tbl_purchase_return
+(date, vendor_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
+ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
+total, vat, net, pay, `change`, created_by, created_date, state, description)
+VALUES
+(@date, @vendor_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man,
+@ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
+@total, @vat, @net, @pay, @change, @created_by, @created_date, 0, @description);
+SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertQuery, conn, transaction);
+                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                        cmd.Parameters.AddWithValue("@vendor_id", model.VendorId);
+                        cmd.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
+                        cmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                        cmd.Parameters.AddWithValue("@po_num", model.PONumber ?? "");
+                        cmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                        cmd.Parameters.AddWithValue("@city", model.City ?? "");
+                        cmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                        cmd.Parameters.AddWithValue("@ship_date", model.ShipDate.Date);
+                        cmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                        cmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                        cmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
+                        cmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                        cmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                        cmd.Parameters.AddWithValue("@payment_date", model.PaymentDate.Date);
+                        cmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                        cmd.Parameters.AddWithValue("@vat", model.Vat);
+                        cmd.Parameters.AddWithValue("@net", model.NetTotal);
+                        cmd.Parameters.AddWithValue("@pay", paidAmount);
+                        cmd.Parameters.AddWithValue("@change", changeAmount);
+                        cmd.Parameters.AddWithValue("@created_by", userId);
+                        cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                        cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                        purchaseReturnId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                        // Insert purchase return items
+                        await InsertPurchaseReturnItems(conn, transaction, purchaseReturnId, model.Items,
+                            model.Date, model.InvoiceCode, model.WarehouseId);
+
+                        // Insert journal transactions
+                        await AddJournalTransaction(conn, transaction, purchaseReturnId, model, userId, accountIds);
+
+                    }
+                    else // 🔹 UPDATE EXISTING PURCHASE RETURN
+                    {
+                        var updateQuery = @"
+UPDATE tbl_purchase_return SET
+modified_by=@modified_by, modified_date=@modified_date, date=@date, sales_man=@sales_man,
+vendor_id=@vendor_id, invoice_id=@invoice_id, warehouse_id=@warehouse_id,
+po_num=@po_num, bill_to=@bill_to, ship_date=@ship_date,
+ship_via=@ship_via, ship_to=@ship_to, payment_method=@payment_method, account_cash_id=@account_cash_id,
+payment_terms=@payment_terms, payment_date=@payment_date, total=@total,
+vat=@vat, net=@net, pay=@pay, `change`=@change, city=@city, description=@description
+WHERE id=@id;";
+
+                        await using var cmd = new MySqlCommand(updateQuery, conn, transaction);
+                        cmd.Parameters.AddWithValue("@id", purchaseReturnId);
+                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                        cmd.Parameters.AddWithValue("@vendor_id", model.VendorId);
+                        cmd.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
+                        cmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                        cmd.Parameters.AddWithValue("@po_num", model.PONumber ?? "");
+                        cmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                        cmd.Parameters.AddWithValue("@city", model.City ?? "");
+                        cmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                        cmd.Parameters.AddWithValue("@ship_date", model.ShipDate.Date);
+                        cmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                        cmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                        cmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
+                        cmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                        cmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                        cmd.Parameters.AddWithValue("@payment_date", model.PaymentDate.Date);
+                        cmd.Parameters.AddWithValue("@total", model.TotalBefore);
+                        cmd.Parameters.AddWithValue("@vat", model.Vat);
+                        cmd.Parameters.AddWithValue("@net", model.NetTotal);
+                        cmd.Parameters.AddWithValue("@pay", paidAmount);
+                        cmd.Parameters.AddWithValue("@change", changeAmount);
+                        cmd.Parameters.AddWithValue("@modified_by", userId);
+                        cmd.Parameters.AddWithValue("@modified_date", DateTime.Now.Date);
+                        cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                        await cmd.ExecuteNonQueryAsync();
+
+                        // Return items to inventory
+                        await ReturnItemsToInventorys(conn, transaction, purchaseReturnId);
+
+                        // Delete previous item transactions and card details
+                        await using var deleteCmd = new MySqlCommand(@"
+                            DELETE FROM tbl_item_transaction WHERE reference = @invId AND type = 'Purchase Return Invoice';
+                            DELETE FROM tbl_item_card_details WHERE trans_type = 'Purchase Return Invoice' AND trans_no = @invId;",
+                            conn, transaction);
+                        deleteCmd.Parameters.AddWithValue("@invId", purchaseReturnId);
+                        await deleteCmd.ExecuteNonQueryAsync();
+
+                        // Delete cost center and journal transactions
+                        await DeleteCostCenterTransactionEntry(conn, transaction, purchaseReturnId.ToString(), "Purchase Return");
+                        await DeleteTransactionEntry(conn, transaction, purchaseReturnId, "PURCHASE RETURN");
+
+                        // Re-insert items and transactions
+                        await InsertPurchaseReturnItems(conn, transaction, purchaseReturnId, model.Items,
+                            model.Date, model.InvoiceCode, model.WarehouseId);
+                        await AddJournalTransaction(conn, transaction, purchaseReturnId, model, userId, accountIds);
+                    }
+
+                    await transaction.CommitAsync();
+
+                    return Json(new
+                    {
+                        status = true,
+                        message = model.Id == 0 ? "Purchase Return saved successfully" : "Purchase Return updated successfully",
+                        id = purchaseReturnId,
+                        invoiceCode = model.InvoiceCode
+                    });
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        private async Task<string> GenerateNextPurchaseReturnCode(MySqlConnection conn, MySqlTransaction transaction)
+        {
+            string newCode = "PR-0001";
+
+            await using var cmd = new MySqlCommand(
+                "SELECT MAX(CAST(SUBSTRING(invoice_id, 4) AS UNSIGNED)) AS lastCode FROM tbl_purchase_return",
+                conn, transaction);
+
+            var result = await cmd.ExecuteScalarAsync();
+            if (result != null && result != DBNull.Value)
+            {
+                int code = Convert.ToInt32(result) + 1;
+                newCode = "PR-" + code.ToString("D4");
+            }
+
+            return newCode;
+        }
+
+        private async Task InsertPurchaseReturnItems(MySqlConnection conn, MySqlTransaction transaction,
+            int purchaseReturnId, List<PurchaseReturnItemRequest> items, DateTime date, string invoiceCode, int warehouseId)
+        {
+            var valueList = new List<string>();
+            var parameters = new List<MySqlParameter>();
+            int paramIndex = 0;
+
+            foreach (var item in items)
+            {
+                if (item.ItemId <= 0)
+                    continue;
+
+                valueList.Add($"(@purchase_id, @item_id{paramIndex}, @qty{paramIndex}, @cost_price{paramIndex}, " +
+                    $"@price{paramIndex}, @vatp{paramIndex}, @vat{paramIndex}, @total{paramIndex}, @costCenter{paramIndex})");
+
+                parameters.Add(new MySqlParameter($"item_id{paramIndex}", item.ItemId));
+                parameters.Add(new MySqlParameter($"qty{paramIndex}", item.Qty));
+                parameters.Add(new MySqlParameter($"cost_price{paramIndex}", item.CostPrice));
+                parameters.Add(new MySqlParameter($"price{paramIndex}", item.Price));
+                parameters.Add(new MySqlParameter($"vatp{paramIndex}", item.VatPercentage));
+                parameters.Add(new MySqlParameter($"vat{paramIndex}", item.Vat));
+                parameters.Add(new MySqlParameter($"total{paramIndex}", item.Total));
+                parameters.Add(new MySqlParameter($"costCenter{paramIndex}", item.CostCenterId));
+                paramIndex++;
+            }
+
+            if (valueList.Count == 0)
+                return;
+
+            string sql = $@"
+INSERT INTO tbl_purchase_return_details 
+(purchase_id, item_id, qty, cost_price, price, vatp, vat, total, cost_center_id)
+VALUES {string.Join(", ", valueList)}";
+
+            await using var cmd = new MySqlCommand(sql, conn, transaction);
+            cmd.Parameters.AddWithValue("purchase_id", purchaseReturnId);
+            foreach (var param in parameters)
+            {
+                cmd.Parameters.Add(param);
+            }
+            await cmd.ExecuteNonQueryAsync();
+
+            // Process each item for inventory and cost center
+            foreach (var item in items)
+            {
+                if (item.ItemId <= 0)
+                    continue;
+
+                // Check if item is not a service
+                await using var typeCmd = new MySqlCommand(
+                    "SELECT type FROM tbl_items WHERE id = @id", conn, transaction);
+                typeCmd.Parameters.AddWithValue("@id", item.ItemId);
+                var itemType = await typeCmd.ExecuteScalarAsync();
+
+                if (itemType != null && itemType.ToString() != "Service")
+                {
+                    // Insert item transaction
+                    await InsertItemTransaction(conn, transaction, date, "Purchase Return Invoice",
+                        purchaseReturnId.ToString(), item.ItemId.ToString(), item.CostPrice.ToString(),
+                        "0", item.Price.ToString(), item.Qty.ToString(), "0",
+                        $"Purchase Return Invoice No. {invoiceCode}", warehouseId.ToString());
+                }
+
+                // Add cost center transaction
+                if (item.CostCenterId > 0)
+                {
+                    await InsertCostCenterTransaction(conn, transaction, date, "0", item.Total.ToString(),
+                        purchaseReturnId.ToString(), "Purchase Return", "", item.CostCenterId.ToString());
+                }
+            }
+        }
+
+        private async Task InsertItemTransaction(MySqlConnection conn, MySqlTransaction transaction,
+            DateTime date, string type, string reference, string itemId, string costPrice,
+            string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description, string warehouseId)
+        {
+            await using var cmd = new MySqlCommand(@"
+INSERT INTO tbl_item_transaction 
+(date, type, reference, item_id, cost_price, qty_in, sales_price, qty_out, qty_inc, description, warehouse_id)
+VALUES (@date, @type, @reference, @itemId, @costPrice, @qtyIn, @sales_price, @qtyOut, @qtyInc, @description, @warehouseId);",
+                conn, transaction);
+
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@reference", reference);
+            cmd.Parameters.AddWithValue("@itemId", itemId);
+            cmd.Parameters.AddWithValue("@costPrice", costPrice);
+            cmd.Parameters.AddWithValue("@sales_price", salesPrice);
+            cmd.Parameters.AddWithValue("@qtyIn", qtyIn);
+            cmd.Parameters.AddWithValue("@qtyOut", qtyOut);
+            cmd.Parameters.AddWithValue("@qtyInc", qtyInc);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@warehouseId", warehouseId);
+
+            await cmd.ExecuteNonQueryAsync();
+
+            // Update on hand quantity
+            await UpdateOnHandItem(conn, transaction, itemId);
+
+            // Add item card details
+            await AddItemCardDetails(conn, transaction, date, type, reference, itemId, costPrice,
+                qtyIn, salesPrice, qtyOut, qtyInc, description, warehouseId);
+        }
+
+        private async Task UpdateOnHandItem(MySqlConnection conn, MySqlTransaction transaction, string itemId)
+        {
+            await using var cmd = new MySqlCommand(@"
+UPDATE tbl_items 
+SET on_hand = (SELECT SUM(qty_in - qty_out) FROM tbl_item_transaction WHERE item_id = @itemId) 
+WHERE id = @itemId", conn, transaction);
+
+            cmd.Parameters.AddWithValue("@itemId", itemId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task AddItemCardDetails(MySqlConnection conn, MySqlTransaction transaction,
+            DateTime date, string type, string reference, string itemId, string costPrice,
+            string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description, string warehouseId)
+        {
+            string invoiceNo = "INV-" + reference;
+            string transNo = reference;
+            string transType = type;
+            decimal qtyBalance = 0, debit = 0, credit = 0, price = decimal.Parse(costPrice), balance = 0;
+            decimal fifoQty = 0, fifoCost = 0;
+            decimal _qtyIn = 0, _qtyOut = 0;
+
+            if (!string.IsNullOrEmpty(qtyIn) && decimal.Parse(qtyIn) > 0)
+            {
+                debit = decimal.Parse(qtyIn) * decimal.Parse(costPrice);
+                _qtyIn = decimal.Parse(qtyIn);
+            }
+
+            if (!string.IsNullOrEmpty(qtyOut) && decimal.Parse(qtyOut) > 0)
+            {
+                credit = decimal.Parse(qtyOut) * decimal.Parse(costPrice);
+                _qtyOut = decimal.Parse(qtyOut);
+            }
+
+            // Get current balances
+            await using var balanceCmd = new MySqlCommand(@"
+SELECT 
+    IFNULL(SUM(qty_in - qty_out), 0) as QtyBalance,
+    IFNULL(SUM(debit - credit), 0) as Balance
+FROM tbl_item_card_details 
+WHERE itemId = @itemId", conn, transaction);
+
+            balanceCmd.Parameters.AddWithValue("@itemId", itemId);
+
+            await using var reader = await balanceCmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                decimal _QtyBalance = Convert.ToDecimal(reader["QtyBalance"]);
+                decimal _Balance = Convert.ToDecimal(reader["Balance"]);
+                qtyBalance = _QtyBalance + (_qtyIn - _qtyOut);
+                balance = _Balance + (debit - credit);
+            }
+            await reader.CloseAsync();
+
+            // Insert card details
+            await using var insertCmd = new MySqlCommand(@"
+INSERT INTO tbl_item_card_details (
+    itemId, date, wharehouse_id, inv_no, trans_no, trans_type, description,
+    price, qty_in, qty_out, qty_balance, debit, credit, balance, fifo_qty, fifo_cost
+) VALUES (
+    @itemId, @date, @wharehouse_id, @inv_no, @trans_no, @trans_type, @description,
+    @price, @qty_in, @qty_out, @qty_balance, @debit, @credit, @balance, @fifo_qty, @fifo_cost
+);", conn, transaction);
+
+            insertCmd.Parameters.AddWithValue("@itemId", itemId);
+            insertCmd.Parameters.AddWithValue("@date", date);
+            insertCmd.Parameters.AddWithValue("@wharehouse_id", warehouseId);
+            insertCmd.Parameters.AddWithValue("@inv_no", invoiceNo);
+            insertCmd.Parameters.AddWithValue("@trans_no", transNo);
+            insertCmd.Parameters.AddWithValue("@trans_type", transType);
+            insertCmd.Parameters.AddWithValue("@description", description);
+            insertCmd.Parameters.AddWithValue("@price", price);
+            insertCmd.Parameters.AddWithValue("@qty_in", qtyIn);
+            insertCmd.Parameters.AddWithValue("@qty_out", qtyOut);
+            insertCmd.Parameters.AddWithValue("@qty_balance", qtyBalance);
+            insertCmd.Parameters.AddWithValue("@debit", debit);
+            insertCmd.Parameters.AddWithValue("@credit", credit);
+            insertCmd.Parameters.AddWithValue("@balance", balance);
+            insertCmd.Parameters.AddWithValue("@fifo_qty", fifoQty);
+            insertCmd.Parameters.AddWithValue("@fifo_cost", fifoCost);
+
+            await insertCmd.ExecuteNonQueryAsync();
+        }
+
+
+        private async Task AddJournalTransaction(MySqlConnection conn, MySqlTransaction transaction,
+            int purchaseReturnId, PurchaseReturnRequest model, int userId, (int PaymentCreditMethodId, int VatId, int PurchaseReturnId) accountIds)
+        {
+            // Main transaction entry (Cash/Credit account)
+            await AddTransactionEntry(conn, transaction, model.Date,
+                model.PaymentMethod == "Credit" ? accountIds.PaymentCreditMethodId.ToString() : model.AccountCashId.ToString(),
+                "0", model.NetTotal.ToString(), purchaseReturnId.ToString(), model.VendorId.ToString(),
+                "Purchase Return Invoice", "PURCHASE RETURN",
+                $"Purchase Return Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+
+            // VAT transaction entry
+            if (model.Vat > 0)
+            {
+                await AddTransactionEntry(conn, transaction, model.Date,
+                    accountIds.VatId.ToString(), model.Vat.ToString(), "0",
+                    purchaseReturnId.ToString(), "0", "Purchase Return Invoice", "PURCHASE RETURN",
+                    $"Vat Input For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+            }
+
+            // Purchase Return transaction entry
+            await AddTransactionEntry(conn, transaction, model.Date,
+                accountIds.PurchaseReturnId.ToString(), model.TotalBefore.ToString(), "0",
+                purchaseReturnId.ToString(), "0", "Purchase Return Invoice", "PURCHASE RETURN",
+                $"Purchase Return For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+        }
+
+
+        private async Task ReturnItemsToInventorys(MySqlConnection conn, MySqlTransaction transaction, int purchaseReturnId)
+        {
+            await using var cmd = new MySqlCommand(@"
+SELECT tbl_purchase_return_details.*, tbl_items.method, tbl_items.type 
+FROM tbl_purchase_return_details
+INNER JOIN tbl_items ON tbl_purchase_return_details.item_id = tbl_items.id 
+WHERE purchase_id = @id", conn, transaction);
+
+            cmd.Parameters.AddWithValue("@id", purchaseReturnId);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            var itemsToProcess = new List<(string itemId, string qty, string type, string detailId)>();
+
+            while (await reader.ReadAsync())
+            {
+                itemsToProcess.Add((
+                    reader["item_id"].ToString(),
+                    reader["qty"].ToString(),
+                    reader["type"].ToString(),
+                    reader["id"].ToString()
+                ));
+            }
+            await reader.CloseAsync();
+
+            foreach (var item in itemsToProcess)
+            {
+                if (item.type != "Service")
+                {
+                    // Update on_hand
+                    await using var updateCmd = new MySqlCommand(
+                        "UPDATE tbl_items SET on_hand = on_hand + @qty WHERE id = @id",
+                        conn, transaction);
+                    updateCmd.Parameters.AddWithValue("@id", item.itemId);
+                    updateCmd.Parameters.AddWithValue("@qty", item.qty);
+                    await updateCmd.ExecuteNonQueryAsync();
+                }
+
+                // Delete purchase return detail
+                await using var deleteDetailCmd = new MySqlCommand(
+                    "DELETE FROM tbl_purchase_return_details WHERE id = @id",
+                    conn, transaction);
+                deleteDetailCmd.Parameters.AddWithValue("@id", item.detailId);
+                await deleteDetailCmd.ExecuteNonQueryAsync();
+            }
+        }
+
+       
+
+        private async Task<(int PaymentCreditMethodId, int VatId, int PurchaseReturnId)> GetDefaultAccountIdss()
+        {
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            int paymentCreditMethodId = 0, vatId = 0, purchaseReturnId = 0;
+
+            // Get Payment Credit Method ID (Vendor)
+            await using (var cmd = new MySqlCommand(
+                "SELECT account_id FROM tbl_coa_config WHERE category = 'Vendor' LIMIT 1", conn))
+            {
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    paymentCreditMethodId = Convert.ToInt32(result);
+            }
+
+            // Get VAT Output ID
+            await using (var cmd = new MySqlCommand(
+                "SELECT account_id FROM tbl_coa_config WHERE category = 'Vat Output' LIMIT 1", conn))
+            {
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    vatId = Convert.ToInt32(result);
+            }
+
+            // Get Purchase Return ID (Inventory)
+            await using (var cmd = new MySqlCommand(
+                "SELECT account_id FROM tbl_coa_config WHERE category = 'Inventory' LIMIT 1", conn))
+            {
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    purchaseReturnId = Convert.ToInt32(result);
+            }
+
+            return (paymentCreditMethodId, vatId, purchaseReturnId);
+        }
+
+
 
     }
 }
