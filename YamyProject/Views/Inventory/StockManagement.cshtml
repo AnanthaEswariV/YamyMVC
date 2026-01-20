@@ -16,6 +16,7 @@
             color: #fff !important;
         }
 </style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
@@ -86,7 +87,6 @@
     </div>
 </div>
 
-<!-- Stock Settlement Modal -->
 <div class="modal fade" id="stockSettlementModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -199,18 +199,16 @@
             loadStockSettlements();
             loadWarehouses();
             loadItem();
-            // Enable / Disable Date fields
+
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
             });
 
-            // Filter button
             $('#filterBtn').click(function () {
                 loadStockSettlements();
             });
 
-            // Type change (Default / Item Wise)
             $('#type').change(function () {
                 loadStockSettlements();
             });
@@ -320,7 +318,6 @@
                 return date.toLocaleDateString();
             }
 
-
              function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
@@ -328,8 +325,7 @@
             const day = String(today.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
-
-            // Set today's date when modal is opened
+        
             document.getElementById('stockSettlementModal').addEventListener('shown.bs.modal', function () {
             const todayDate = getTodayDate();
 
@@ -369,10 +365,9 @@
             });
         }
 
+          let itemsList = [];
 
-                let itemsList = [];
-
-        function loadItem(selector = ".itemNameSelect") {
+          function loadItem(selector = ".itemNameSelect") {
             $.ajax({
                 url: '@Url.Action("GetItems", "Lists")',
                 type: 'GET',
@@ -396,9 +391,7 @@
             });
         }
 
-
-
-             $('#stockManagementTable').on('change', '.itemNameSelect', function () {
+          $('#stockManagementTable').on('change', '.itemNameSelect', function () {
             var row = $(this).closest('tr');
             var itemName = $(this).val();
             var warehouseId = $('#warehouseDropdown').val();
@@ -444,12 +437,6 @@
                 }
             });
         });
-
-
-
-
-
-
 
 
     </script>

@@ -908,7 +908,6 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
         
         [HttpGet]
         public async Task<IActionResult> GetStockSettlementItems(int settlementId)

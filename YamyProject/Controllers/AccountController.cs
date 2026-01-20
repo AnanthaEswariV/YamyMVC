@@ -595,6 +595,23 @@ namespace YamyProject.Controllers
                             (38, 1, 'Salaries'),
                             (39, 31, 'Stock Settlement');
 
+                        CREATE TABLE IF NOT EXISTS `tbl_company` (
+                          `id` int NOT NULL AUTO_INCREMENT,
+                          `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `descriptions` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `phone1` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `phone2` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `gmail` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `mobile_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `website` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `address` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `trn_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '',
+                          `country_id` int NOT NULL DEFAULT(0),
+                          `logoComp` longblob,
+                          `stampComp` longblob,
+                          PRIMARY KEY (`id`) USING BTREE
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 
                         CREATE TABLE IF NOT EXISTS `tbl_corporate_tax_configration` (
                           `id` int NOT NULL AUTO_INCREMENT,
