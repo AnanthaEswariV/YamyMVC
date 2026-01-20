@@ -1756,6 +1756,63 @@ namespace YamyProject.Core.Models
         public decimal Total { get; set; }
         public int? Cost_Center_Id { get; set; }
     }
+    public class CreditNoteDto
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public string InvoiceNo { get; set; }
+        public string JvNo { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Vat { get; set; }
+        public decimal TotalAmount { get; set; }     
+        public string Description { get; set; }     
+        public int CreditAccount { get; set; }
+        public int DebitAccount { get; set; }
+
+        public List<CreditNoteItemDto> Items { get; set; } = new();
+    }
+
+    public class CreditNoteItemDto
+    {
+        public int InvoiceId { get; set; }
+        public string InvoiceNo { get; set; }        
+        public DateTime InvoiceDate { get; set; }
+        public string InvoiceType { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Total { get; set; }          
+        public decimal Remaining { get; set; }      
+        public decimal Vat { get; set; }
+    }
+
+    public class CreditNoteItemRequest
+    {
+        public int InvoiceId { get; set; }           
+        public string InvoiceNo { get; set; }        
+        public DateTime InvoiceDate { get; set; }    
+        public decimal Total { get; set; }           
+        public decimal Amount { get; set; }          
+        public decimal Vat { get; set; }             
+        public decimal Balance { get; set; }         
+        public decimal Remaining { get; set; }       
+        public bool Selected { get; set; }           
+    }
+    public class CreditNoteRequest
+    {
+        public int Id { get; set; }                   
+        public DateTime Date { get; set; }            
+        public string InvoiceCode { get; set; }       
+        public int CustomerId { get; set; }           
+        public string CustomerCode { get; set; }      
+        public int AccountCashId { get; set; }        
+        public int Level4CustomerId { get; set; }     
+        public int Level4VatId { get; set; }          
+        public int Level4SalesReturn { get; set; }    
+        public decimal Amount { get; set; }           
+        public decimal Vat { get; set; }              
+        public decimal TotalAmount { get; set; }      
+        public string Description { get; set; }       
+        public List<CreditNoteItemRequest> Items { get; set; } = new List<CreditNoteItemRequest>();
+    }
 
 
 }

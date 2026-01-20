@@ -343,19 +343,17 @@
             $("#filterBtn").click(loadSalesQuotation);
             $("#type").change(loadSalesQuotation);
             $("#paymentMethod").change(loadSalesQuotation);
-                    $("#method").change(function () {
+            $("#method").change(function () {
             $("#defaultTables").show();
         });
 
-
-             function getTodayDate() {
+            function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const day = String(today.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
-
 
             document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
              const todayDate = getTodayDate();
@@ -580,7 +578,6 @@
             }
 
             // Debugging: Check your console to see if these values are correct
-            console.log("Filters:", { customerId, paymentMethod, dateFrom, dateTo });
 
             $.ajax({
                 url: '@Url.Action("GetSalesReturnReport", "Customer")',
@@ -789,7 +786,7 @@
             $('#netAmount').val(netAmount.toFixed(2));
         }
 
-               function openSalesModal(invoice) {
+        function openSalesModal(invoice) {
             console.log(invoice);
 
             // 🔹 Header
@@ -849,7 +846,6 @@
             $("#salesModal .modal-title").text("Edit Invoice");
             $("#salesModal").modal("show");
         }
-
 
         $('#salescenterform').on('submit', function (e) {
             e.preventDefault();

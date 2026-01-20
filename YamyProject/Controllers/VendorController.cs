@@ -2525,8 +2525,6 @@ ORDER BY pr.date
             }
         }
 
-        #endregion
-
 
         [HttpPost]
         public async Task<IActionResult> SavePurchaseReturn([FromBody] PurchaseReturnRequest model)
@@ -2583,7 +2581,7 @@ ORDER BY pr.date
                     decimal paidAmount = model.PaymentMethod == "Cash" ? model.NetTotal : 0;
                     decimal changeAmount = model.PaymentMethod != "Cash" ? model.NetTotal : 0;
 
-                    if (purchaseReturnId == 0) 
+                    if (purchaseReturnId == 0)
                     {
                         model.InvoiceCode = await GenerateNextPurchaseReturnCode(conn, transaction);
 
@@ -2995,7 +2993,6 @@ WHERE purchase_id = @id", conn, transaction);
             }
         }
 
-       
 
         private async Task<(int PaymentCreditMethodId, int VatId, int PurchaseReturnId)> GetDefaultAccountIdss()
         {
@@ -3038,6 +3035,9 @@ WHERE purchase_id = @id", conn, transaction);
 
             return (paymentCreditMethodId, vatId, purchaseReturnId);
         }
+
+
+        #endregion
 
 
 
