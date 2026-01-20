@@ -3686,7 +3686,7 @@ WHERE id=@id;";
                     await deleteCmd.ExecuteNonQueryAsync();
 
                     // Delete old transaction entries
-                    await DeleteTransactionEntries(conn, creditNoteId, "Credit Note");
+                    await DeleteTransactionEntries(conn, creditNoteId, "Credit Note", invCode);
                 }
 
                 // Insert Credit Note Items
@@ -3708,7 +3708,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
                     itemCmd.Parameters.AddWithValue("@amount", item.Amount);
                     itemCmd.Parameters.AddWithValue("@balance", item.Balance);
                     itemCmd.Parameters.AddWithValue("@remaining", item.Remaining);
-
+                    
                     await itemCmd.ExecuteNonQueryAsync();
 
                     // Update invoice paid / change in tbl_sales
@@ -3760,14 +3760,21 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
 
             return newCode;
         }
-        public static async Task DeleteTransactionEntries(MySqlConnection conn, int refId, string type)
+        public static async Task DeleteTransactionEntries(MySqlConnection conn, int debitNoteId, string type, string invCode)
         {
-            var query = "DELETE FROM tbl_transaction WHERE  transaction_id=@id";
-            using var cmd = new MySqlCommand(query, conn);
-            //cmd.Parameters.AddWithValue("@tType", type);
-            cmd.Parameters.AddWithValue("@id", refId);
-            await cmd.ExecuteNonQueryAsync();
+            string transactionType = $"Debit Note {invCode}";
+
+            var query = "DELETE FROM tbl_transaction WHERE t_type = @tType AND transaction_id = @id";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", debitNoteId);
+            cmd.Parameters.AddWithValue("@tType", transactionType);
+
+            int rowsAffected = await cmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"{rowsAffected} transaction(s) deleted for {transactionType}");
         }
+
+
         public static async Task AddCreditNoteTransactions(MySqlConnection conn, int creditNoteId, CreditNoteRequest model, int userId, string invCode)
         {
             // 1️⃣ Customer Debit Entry

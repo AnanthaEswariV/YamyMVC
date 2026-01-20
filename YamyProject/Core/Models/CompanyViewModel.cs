@@ -1814,5 +1814,66 @@ namespace YamyProject.Core.Models
         public List<CreditNoteItemRequest> Items { get; set; } = new List<CreditNoteItemRequest>();
     }
 
+    public class DebitNoteDto
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public string InvoiceNo { get; set; }
+        public string JvNo { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Vat { get; set; }
+        public int CreditAccount { get; set; }
+        public int DebitAccount { get; set; }
+        public List<DebitNoteItemDto> Items { get; set; }
+    }
+
+    public class DebitNoteItemDto
+    {
+        public int InvoiceId { get; set; }
+        public string InvoiceNo { get; set; }
+        public DateTime InvoiceDate { get; set; }
+        public string InvoiceType { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Total { get; set; }
+        public decimal Remaining { get; set; }
+        public decimal Vat { get; set; }
+    }
+    public class DebitNoteRequest
+    {
+        public int Id { get; set; } = 0;                     
+        public DateTime Date { get; set; }                 
+        public int VendorId { get; set; }                 
+        public int AccountCashId { get; set; }             
+        public string InvoiceCode { get; set; } = string.Empty; 
+        public decimal Amount { get; set; } = 0;            
+        public decimal Vat { get; set; } = 0;               
+        public decimal TotalAmount { get; set; } = 0;       
+        public string Description { get; set; } = string.Empty;
+
+        // ✅ Level 4 Account IDs (for transactions)
+        public int Level4VendorId { get; set; } = 0;
+        public int Level4VatId { get; set; } = 0;
+        public int Level4PurchaseReturn { get; set; } = 0;
+        public int Level4COGS { get; set; } = 0;
+        public int Level4Inventory { get; set; } = 0;
+
+        // ✅ Debit Note Items
+        public List<DebitNoteItem> Items { get; set; } = new List<DebitNoteItem>();
+    }
+
+    public class DebitNoteItem
+    {
+        public int InvoiceId { get; set; } = 0;       
+        public string InvoiceNo { get; set; } = ""; 
+        public DateTime InvoiceDate { get; set; }    
+        public string InvoiceType { get; set; } = "PURCHASE"; 
+        public decimal Total { get; set; } = 0;     
+        public decimal Vat { get; set; } = 0;       
+        public decimal Amount { get; set; } = 0;     
+        public decimal Balance { get; set; } = 0;    
+        public decimal Remaining { get; set; } = 0; 
+        public bool Selected { get; set; } = true;   
+    }
+
 
 }

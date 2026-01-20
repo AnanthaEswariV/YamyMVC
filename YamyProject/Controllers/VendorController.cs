@@ -3039,6 +3039,552 @@ WHERE purchase_id = @id", conn, transaction);
 
         #endregion
 
+        #region Debit Note
+
+        public IActionResult DebitNote()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDebitNotes(
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    string selectionMethod = "Default")
+        {
+            try
+            {
+                // Build connection string
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query;
+                var parameters = new List<MySqlParameter>();
+
+                if (selectionMethod == "Default")
+                {
+                    query = @"
+SELECT 
+    c.id AS Id,
+    c.date AS Date,
+    c.invoice_id AS InvoiceNo,
+    CONCAT('000', jt.MaxTransactionId) AS JvNo,
+    c.amount AS Amount,
+    c.vat AS Vat,
+    c.total AS TotalAmount,
+    c.description AS Description,
+    c.credit_account AS CreditAccount,
+    c.debit_account AS DebitAccount,
+    d.invoice_id AS ItemInvoiceId,
+    d.inv_no AS ItemInvoiceNo,
+    d.invoice_date AS ItemInvoiceDate,
+    d.invoice_type AS ItemInvoiceType,
+    d.amount AS ItemAmount,
+    d.total AS ItemTotal,
+    d.remaining AS ItemRemaining,
+    d.vat AS ItemVat
+FROM tbl_debit_note c
+LEFT JOIN (
+    SELECT transaction_id, MAX(transaction_id) AS MaxTransactionId
+    FROM tbl_transaction
+    GROUP BY transaction_id
+) jt ON c.id = jt.transaction_id
+
+LEFT JOIN tbl_debit_note_details d ON c.id = d.ref_id
+INNER JOIN tbl_customer cs ON c.credit_account = cs.id
+
+";
+                }
+                else
+                {
+                    query = @"
+SELECT 
+    c.id AS Id,
+    c.date AS Date,
+    c.invoice_id AS InvoiceNo,
+    NULL AS JvNo,
+    c.amount AS Amount,
+    c.vat AS Vat,
+    c.credit_account AS CreditAccount,
+    c.debit_account AS DebitAccount,
+    ts.invoice_id AS ItemInvoiceId,
+    ts.inv_no AS ItemInvoiceNo,
+    ts.invoice_date AS ItemInvoiceDate,
+    ts.invoice_type AS ItemInvoiceType,
+    ts.amount AS ItemAmount,
+    ts.total AS ItemTotal,
+    ts.remaining AS ItemRemaining,
+    ts.vat AS ItemVat
+FROM tbl_debit_note c
+INNER JOIN tbl_debit_note_details ts ON c.id = ts.ref_id
+WHERE c.state = 0
+";
+                }
+
+                // Apply date filters
+                if (dateFrom.HasValue)
+                {
+                    query += " AND c.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+
+                if (dateTo.HasValue)
+                {
+                    query += " AND c.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                query += " ORDER BY c.date DESC, c.id DESC;";
+
+                var debitNotes = new List<DebitNoteDto>();
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                DebitNoteDto currentNote = null;
+                int lastId = -1;
+
+                while (await reader.ReadAsync())
+                {
+                    int id = reader.GetInt32("Id");
+
+                    if (id != lastId)
+                    {
+                        // New debit note
+                        currentNote = new DebitNoteDto
+                        {
+                            Id = id,
+                            Date = reader.GetDateTime("Date"),
+                            InvoiceNo = reader["InvoiceNo"]?.ToString(),
+                            JvNo = reader["JvNo"]?.ToString(),
+                            Amount = reader.GetDecimal("Amount"),
+                            Vat = reader.GetDecimal("Vat"),
+                            CreditAccount = reader.GetInt32("CreditAccount"),
+                            DebitAccount = reader.GetInt32("DebitAccount"),
+                            Items = new List<DebitNoteItemDto>()
+                        };
+
+                        debitNotes.Add(currentNote);
+                        lastId = id;
+                    }
+
+                    if (reader["ItemInvoiceId"] != DBNull.Value)
+                    {
+                        currentNote.Items.Add(new DebitNoteItemDto
+                        {
+                            InvoiceId = Convert.ToInt32(reader["ItemInvoiceId"]),
+                            InvoiceNo = reader["ItemInvoiceNo"]?.ToString(),
+                            InvoiceDate = Convert.ToDateTime(reader["ItemInvoiceDate"]),
+                            InvoiceType = reader["ItemInvoiceType"]?.ToString(),
+                            Amount = Convert.ToDecimal(reader["ItemAmount"]),
+                            Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
+                            Remaining = reader["ItemRemaining"] != DBNull.Value ? Convert.ToDecimal(reader["ItemRemaining"]) : 0,
+                            Vat = Convert.ToDecimal(reader["ItemVat"])
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = debitNotes });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetVendorInvoicess(int vendorId)
+        {
+            try
+            {
+                // Build MySQL connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Query to fetch vendor invoices with remaining balance > 0
+                string query = @"
+            SELECT 
+                s.id AS Id,
+                s.date AS Date,
+                s.invoice_id AS InvoiceNo,
+                s.total AS Total,
+                s.net AS TotalWithVAT,
+                s.vat AS Vat,
+                s.`change` AS Remaining
+            FROM tbl_purchase s
+            INNER JOIN tbl_transaction t 
+                ON t.transaction_id = s.id
+                AND t.`type` IN ('Vendor Opening Balance', 'Purchase Invoice')
+                AND t.hum_id = s.vendor_id
+            WHERE s.vendor_id = @vendorId
+            GROUP BY s.id, s.date, s.invoice_id, s.total, s.net, s.vat, s.`change`
+            HAVING Remaining > 0;
+        ";
+
+                var invoices = new List<object>();
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@vendorId", vendorId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                int count = 1;
+                while (await reader.ReadAsync())
+                {
+                    DateTime date = reader.GetDateTime("Date");
+
+                    invoices.Add(new
+                    {
+                        Sn = count,
+                        Date = date.ToString("yyyy-MM-dd"),          
+                        FormattedDate = date.ToString("dd/MM/yyyy"), 
+                        InvoiceNo = reader["InvoiceNo"]?.ToString(),
+                        Id = reader["Id"]?.ToString(),
+                        TotalWithVAT = reader["TotalWithVAT"] != DBNull.Value ? Convert.ToDecimal(reader["TotalWithVAT"]) : 0,
+                        Vat = reader["Vat"] != DBNull.Value ? Convert.ToDecimal(reader["Vat"]) : 0,
+                        Remaining = reader["Remaining"] != DBNull.Value ? Convert.ToDecimal(reader["Remaining"]) : 0,
+                        Selected = false
+                    });
+
+                    count++;
+                }
+
+                return Ok(new { status = true, data = invoices });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseInvoiceItems(int purchaseId)
+        {
+            try
+            {
+                // Build MySQL connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Query: Join purchase details with items
+                string query = @"
+            SELECT 
+                CONCAT(ti.code,' - ', ti.name) AS ItemName, 
+                ts.qty AS Qty, 
+                ts.cost_price AS Price, 
+                ts.vatp AS Vat, 
+                ts.total AS Total 
+            FROM tbl_purchase_details ts
+            INNER JOIN tbl_items ti ON ts.item_id = ti.id
+            WHERE ts.purchase_id = @purchaseId;
+        ";
+
+                var items = new List<object>();
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@purchaseId", purchaseId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                int count = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        Sn = count,
+                        ItemName = reader["ItemName"]?.ToString(),
+                        Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
+                        Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
+                        Vat = reader["Vat"] != DBNull.Value ? Convert.ToDecimal(reader["Vat"]) : 0,
+                        Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0
+                    });
+
+                    count++;
+                }
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveDebitNote([FromBody] DebitNoteRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            // 1️⃣ Required accounts check
+            var requiredAccounts = new List<string> { "Sales", "Vendor", "COGS", "Customer", "Vat Input", "Vat Output", "Inventory" };
+            if (!await AreDefaultAccountsSet(requiredAccounts))
+                return Json(new { status = false, message = "Default accounts for invoice are not properly configured. Please check your settings." });
+
+            // 2️⃣ Vendor selection validation
+            if (model.VendorId <= 0)
+                return Json(new { status = false, message = "Vendor must be selected." });
+
+            // 3️⃣ Account selection validation
+            if (model.AccountCashId <= 0)
+                return Json(new { status = false, message = "Debit account must be selected." });
+
+            // 4️⃣ Item validations
+            if (model.Items == null || !model.Items.Any())
+                return Json(new { status = false, message = "Insert at least one item." });
+
+            for (int i = 0; i < model.Items.Count; i++)
+            {
+                var item = model.Items[i];
+                if (item.Total <= 0)
+                    return Json(new { status = false, message = $"Total Item in Row {i + 1} can't be 0 or null." });
+            }
+
+            // 5️⃣ Total / Net validations
+            if (model.TotalAmount <= 0)
+                return Json(new { status = false, message = "Total must be greater than zero." });
+
+            // 6️⃣ Default Level Accounts check
+            //if (model.Level4VendorId == 0 || model.Level4VatId == 0 || model.Level4PurchaseReturn == 0 ||
+            //    model.Level4COGS == 0 || model.Level4Inventory == 0)
+            //    return Json(new { status = false, message = "Default accounts for invoice are not properly configured. Please check your settings." });
+
+            // 7️⃣ User validation
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Json(new { status = false, message = "User not logged in." });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            try
+            {
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                int debitNoteId = model.Id;
+                string invCode = model.InvoiceCode;
+
+                if (debitNoteId == 0) // Insert new Debit Note
+                {
+                    invCode = await GenerateNextDebitNoteCode(conn);
+
+                    var insertQuery = @"
+INSERT INTO tbl_debit_note
+(date, credit_account, debit_account, type, invoice_id, amount, vat, total, description, created_by, created_date, state)
+VALUES (@date, @creditAccount, @debitAccount, @type, @invoice_id, @amount, @vat, @total, @description, @createdBy, @createdDate, 0);
+SELECT LAST_INSERT_ID();";
+
+                    using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@creditAccount", model.VendorId);
+                    cmd.Parameters.AddWithValue("@debitAccount", model.AccountCashId);
+                    cmd.Parameters.AddWithValue("@type", "Vendor");
+                    cmd.Parameters.AddWithValue("@invoice_id", invCode);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@vat", model.Vat);
+                    cmd.Parameters.AddWithValue("@total", model.TotalAmount);
+                    cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    cmd.Parameters.AddWithValue("@createdBy", userId);
+                    cmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+
+                    debitNoteId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+                else // Update existing Debit Note
+                {
+                   
+                    var updateQuery = @"
+UPDATE tbl_debit_note SET 
+date=@date, credit_account=@creditAccount, debit_account=@debitAccount, invoice_id=@invoice_id,
+amount=@amount, vat=@vat, total=@total, description=@description,
+modified_by=@modifiedBy, modified_date=@modifiedDate
+WHERE id=@id;";
+
+                    using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@id", debitNoteId);
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@creditAccount", model.VendorId);
+                    cmd.Parameters.AddWithValue("@debitAccount", model.AccountCashId);
+                    cmd.Parameters.AddWithValue("@invoice_id", invCode);
+                    cmd.Parameters.AddWithValue("@amount", model.Amount);
+                    cmd.Parameters.AddWithValue("@vat", model.Vat);
+                    cmd.Parameters.AddWithValue("@total", model.TotalAmount);
+                    cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    cmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    // Delete old items first
+                    using var deleteCmd = new MySqlCommand("DELETE FROM tbl_debit_note_details WHERE ref_id=@id", conn);
+                    deleteCmd.Parameters.AddWithValue("@id", debitNoteId);
+                    await deleteCmd.ExecuteNonQueryAsync();
+
+                    // Delete old transaction entries
+                    await DeleteTransactionEntries(conn, debitNoteId, "Debit Note", invCode);
+                }
+
+                // Insert Debit Note Items
+                foreach (var item in model.Items)
+                {
+                    var insertItemQuery = @"
+INSERT INTO tbl_debit_note_details
+(ref_id, inv_no, invoice_id, invoice_date, invoice_type, total, vat, amount, balance, remaining)
+VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @balance, @remaining);";
+
+                    using var itemCmd = new MySqlCommand(insertItemQuery, conn);
+                    itemCmd.Parameters.AddWithValue("@refId", debitNoteId);
+                    itemCmd.Parameters.AddWithValue("@invNo", invCode);
+                    itemCmd.Parameters.AddWithValue("@invId", debitNoteId);
+                    itemCmd.Parameters.AddWithValue("@invDate", DateTime.Now);
+                    itemCmd.Parameters.AddWithValue("@invType", "PURCHASE");
+                    itemCmd.Parameters.AddWithValue("@total", item.Total);
+                    itemCmd.Parameters.AddWithValue("@vat", item.Vat);
+                    itemCmd.Parameters.AddWithValue("@amount", item.Amount);
+                    itemCmd.Parameters.AddWithValue("@balance", item.Balance);
+                    itemCmd.Parameters.AddWithValue("@remaining", item.Remaining);
+
+                    await itemCmd.ExecuteNonQueryAsync();
+
+                    // Update purchase paid / change in tbl_purchase
+                    var paidResult = await new MySqlCommand("SELECT SUM(`change`) FROM tbl_purchase WHERE id=@id", conn)
+                    {
+                        Parameters = { new MySqlParameter("@id", item.InvoiceId) }
+                    }.ExecuteScalarAsync();
+
+                    decimal totalPaid = paidResult != DBNull.Value ? Convert.ToDecimal(paidResult) : 0;
+
+                    var updatePurchaseCmd = new MySqlCommand(
+                        "UPDATE tbl_purchase SET pay=@pay, `change`=@change WHERE id=@id", conn);
+                    updatePurchaseCmd.Parameters.AddWithValue("@pay", totalPaid);
+                    updatePurchaseCmd.Parameters.AddWithValue("@change", item.Remaining);
+                    updatePurchaseCmd.Parameters.AddWithValue("@id", item.InvoiceId);
+                    await updatePurchaseCmd.ExecuteNonQueryAsync();
+
+                }
+
+                // Add transaction entries
+                await AddDebitNoteTransactions(conn, debitNoteId, model, userId, invCode);
+
+                // Audit log for main Debit Note
+         
+                return Json(new
+                {
+                    status = true,
+                    message = debitNoteId == model.Id ? "Debit Note updated successfully" : "Debit Note saved successfully",
+                    id = debitNoteId
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public static async Task<string> GenerateNextDebitNoteCode(MySqlConnection conn)
+        {
+            string newCode = "DN-0001";
+
+            var query = "SELECT MAX(CAST(SUBSTRING(invoice_id, 4) AS UNSIGNED)) AS lastCode FROM tbl_debit_note";
+            using var cmd = new MySqlCommand(query, conn);
+            var result = await cmd.ExecuteScalarAsync();
+
+            if (result != DBNull.Value && result != null)
+            {
+                int code = Convert.ToInt32(result) + 1;
+                newCode = "DN-" + code.ToString("D4");
+            }
+
+            return newCode;
+        }
+
+        public static async Task DeleteTransactionEntries(MySqlConnection conn, int debitNoteId,string type, string invCode)
+        {
+            string transactionType = $"Debit Note {invCode}";
+
+            var query = "DELETE FROM tbl_transaction WHERE t_type = @tType AND transaction_id = @id";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", debitNoteId);
+            cmd.Parameters.AddWithValue("@tType", transactionType);
+
+            int rowsAffected = await cmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"{rowsAffected} transaction(s) deleted for {transactionType}");
+        }
+
+
+        public static async Task AddDebitNoteTransactions(MySqlConnection conn, int debitNoteId, DebitNoteRequest model, int userId, string invCode)
+        {
+            // 1️⃣ Vendor Debit Entry
+            await AddTransactionEntry(conn, model.Date, model.AccountCashId, model.Amount.ToString(), "0",
+                debitNoteId.ToString(), model.VendorId.ToString(), $"Debit Note {invCode}", $"Debit Note {invCode}",
+                $"Debit Note NO. {invCode}", userId, DateTime.Now, invCode);
+
+            // 2️⃣ VAT Entry
+            if (model.Vat > 0)
+            {
+                await AddTransactionEntry(conn, model.Date, model.AccountCashId, model.Vat.ToString(), "0",
+                    debitNoteId.ToString(), "0", $"Debit Note {invCode}", $"Debit Note {invCode}",
+                    $"Vat Input For Invoice No. {invCode}", userId, DateTime.Now, invCode);
+            }
+
+            // 3️⃣ Purchase Return / Revenue Entry
+            await AddTransactionEntry(conn, model.Date, model.AccountCashId, model.Amount.ToString(), "0",
+                debitNoteId.ToString(), "0", $"Debit Note {invCode}", $"Debit Note {invCode}",
+                $"Revenue For Invoice No. {invCode}", userId, DateTime.Now, invCode);
+        }
+
+        public static async Task AddTransactionEntry(MySqlConnection conn, DateTime date, int AccountCashId, string debit, string credit,
+            string transactionId, string humId, string tType, string type, string description, int createdBy, DateTime createdDate, string voucherNo)
+        {
+            var query = @"
+INSERT INTO tbl_transaction
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
+VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @type, @description, @createdBy, @createdDate, 0, @voucherNo);";
+
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", AccountCashId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@humId", humId);
+            cmd.Parameters.AddWithValue("@tType", tType);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@createdBy", createdBy);
+            cmd.Parameters.AddWithValue("@createdDate", createdDate);
+            cmd.Parameters.AddWithValue("@voucherNo", voucherNo);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+
+        #endregion
+
 
 
     }
