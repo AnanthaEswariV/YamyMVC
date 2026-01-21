@@ -212,8 +212,11 @@
                     <li class="dropdown has-submenu">
                         <a href="">Customer & Receivable</a>
                         <ul class="submenu">
-                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerSummary">Customer Summary</a></li>
-                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>
+                            <li><a href="@Url.Action("CustomerSummary", "Reports")">Customer Summary</a></li>
+                            <li><a href="@Url.Action("CustomerAgingSummary", "Reports")">Customer Aging Summary</a></li>
+                            <li><a href="@Url.Action("CustomerBalanceSummary", "Reports")">Customer Balance Summary</a></li>
+                            @* <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerSummary">Customer Summary</a></li> 
+                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>*@
                             <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerBalanceSummary">Customer Balance Summary</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>
                         </ul>

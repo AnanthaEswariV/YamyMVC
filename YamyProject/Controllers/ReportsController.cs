@@ -4676,6 +4676,662 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
 
         #endregion
 
+        #region Customer Summary
+
+        public IActionResult CustomerSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerSummary(
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>();
+                string dateFilter = "";
+
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND t.date >= @dateFrom AND t.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date));
+                }
+
+                var query = $@"
+SELECT 
+    ROW_NUMBER() OVER(ORDER BY MIN(t.date)) AS SN,
+    v.id AS Id,
+    CONCAT(v.code, ' - ', v.name) AS Customer,
+    IFNULL(SUM(t.debit), 0) AS Debit,
+    IFNULL(SUM(t.credit), 0) AS Credit,
+    COALESCE(SUM(
+        CASE 
+            WHEN t.type = 'Customer Receipt' 
+                THEN -IF(t.debit = 0, t.credit, t.debit)
+            WHEN t.type = 'Sales Invoice Cash' 
+                THEN 0
+            WHEN t.type = 'Customer Opening Balance' AND t.credit > 0 
+                THEN -t.credit
+            WHEN t.type = 'Check Cancel (Customer)' 
+                THEN t.debit
+            WHEN t.type = 'PDC Receivable' 
+                THEN IF(t.debit = 0, t.credit, t.debit)
+            WHEN t.type = 'SalesReturn Invoice' 
+                THEN -IF(t.debit = 0, t.credit, t.debit)
+            WHEN t.type = 'Credit Note' 
+                THEN -IF(t.debit = 0, t.credit, t.debit)
+            WHEN t.type LIKE 'Customer%' 
+              OR t.type LIKE 'Sales%' 
+                THEN IF(t.debit = 0, t.credit, t.debit)
+            ELSE 0
+        END
+    ), 0) AS Balance
+FROM tbl_customer v
+INNER JOIN tbl_transaction t ON v.id = t.hum_id
+WHERE v.state = 0
+  AND t.type IN (
+        'Customer Receipt',
+        'Sales Invoice',
+        'Customer Opening Balance',
+        'Check Cancel (Customer)',
+        'SalesReturn Invoice',
+        'Credit Note',
+        'PDC Receivable'
+  )
+  {dateFilter}
+GROUP BY v.id, v.code, v.name
+ORDER BY SN;
+";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var result = new List<object>();
+                decimal totalBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal debit = Convert.ToDecimal(reader["Debit"]);
+                    decimal credit = Convert.ToDecimal(reader["Credit"]);
+                    decimal balance = Convert.ToDecimal(reader["Balance"]);
+
+                    result.Add(new
+                    {
+                        SN = reader["SN"],
+                        Id = reader["Id"],
+                        Customer = reader["Customer"]?.ToString(),
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
+                        Balance = balance.ToString("N2")
+                    });
+
+                    totalBalance += balance;
+                }
+
+                // TOTAL ROW
+                result.Add(new
+                {
+                    SN = "",
+                    Id = "",
+                    Customer = "TOTAL",
+                    Debit = "",
+                    Credit = "",
+                    Balance = totalBalance.ToString("N2")
+                });
+
+                return Ok(new
+                {
+                    status = true,
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        #endregion
+
+        #region CustomerAgingSummary
+
+        public IActionResult CustomerAgingSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerAgingSummary(
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>();
+                string dateFilter = "";
+
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND DATE(t.date) >= @dateFrom AND DATE(t.date) <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date));
+                }
+
+                var query = $@"
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY c.id) AS SN,
+    c.id AS Id,
+    CONCAT(c.code, ' ', c.name) AS Customer,
+
+    SUM(CASE 
+        WHEN DATEDIFF(CURDATE(), t.date) = 0 
+        THEN t.debit - t.credit ELSE 0 END) AS Current,
+
+    SUM(CASE 
+        WHEN DATEDIFF(CURDATE(), t.date) BETWEEN 1 AND 30 
+        THEN t.debit - t.credit ELSE 0 END) AS Days_1_30,
+
+    SUM(CASE 
+        WHEN DATEDIFF(CURDATE(), t.date) BETWEEN 31 AND 60 
+        THEN t.debit - t.credit ELSE 0 END) AS Days_31_60,
+
+    SUM(CASE 
+        WHEN DATEDIFF(CURDATE(), t.date) BETWEEN 61 AND 90 
+        THEN t.debit - t.credit ELSE 0 END) AS Days_61_90,
+
+    SUM(CASE 
+        WHEN DATEDIFF(CURDATE(), t.date) > 90 
+        THEN t.debit - t.credit ELSE 0 END) AS Days_91_Plus,
+
+    SUM(t.debit - t.credit) AS Total
+FROM tbl_customer c
+INNER JOIN tbl_transaction t ON t.hum_id = c.id
+WHERE 
+    t.state = 0
+    AND t.type IN (
+        'Customer Receipt',
+        'Sales Invoice',
+        'Check Cancel (Customer)',
+        'SalesReturn Invoice',
+        'Credit Note',
+        'PDC Receivable'
+    )
+    {dateFilter}
+GROUP BY c.id, c.code, c.name
+HAVING SUM(t.debit - t.credit) > 0
+ORDER BY c.id;
+";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var result = new List<object>();
+
+                decimal totalCurrent = 0,
+                        total1_30 = 0,
+                        total31_60 = 0,
+                        total61_90 = 0,
+                        total91Plus = 0,
+                        grandTotal = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal current = Convert.ToDecimal(reader["Current"]);
+                    decimal d1_30 = Convert.ToDecimal(reader["Days_1_30"]);
+                    decimal d31_60 = Convert.ToDecimal(reader["Days_31_60"]);
+                    decimal d61_90 = Convert.ToDecimal(reader["Days_61_90"]);
+                    decimal d91Plus = Convert.ToDecimal(reader["Days_91_Plus"]);
+                    decimal total = Convert.ToDecimal(reader["Total"]);
+
+                    result.Add(new
+                    {
+                        SN = reader["SN"],
+                        Id = reader["Id"],
+                        Customer = reader["Customer"],
+                        Current = current.ToString("N2"),
+                        Days_1_30 = d1_30.ToString("N2"),
+                        Days_31_60 = d31_60.ToString("N2"),
+                        Days_61_90 = d61_90.ToString("N2"),
+                        Days_91_Plus = d91Plus.ToString("N2"),
+                        Total = total.ToString("N2")
+                    });
+
+                    totalCurrent += current;
+                    total1_30 += d1_30;
+                    total31_60 += d31_60;
+                    total61_90 += d61_90;
+                    total91Plus += d91Plus;
+                    grandTotal += total;
+                }
+
+                // TOTAL ROW
+                result.Add(new
+                {
+                    SN = "",
+                    Id = "",
+                    Customer = "TOTAL",
+                    Current = totalCurrent.ToString("N2"),
+                    Days_1_30 = total1_30.ToString("N2"),
+                    Days_31_60 = total31_60.ToString("N2"),
+                    Days_61_90 = total61_90.ToString("N2"),
+                    Days_91_Plus = total91Plus.ToString("N2"),
+                    Total = grandTotal.ToString("N2")
+                });
+
+                return Ok(new
+                {
+                    status = true,
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        public IActionResult CustomerAgingDetails()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerAgingDetails(
+    int id,
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>
+        {
+            new MySqlParameter("@id", id)
+        };
+
+                string dateFilter = "";
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND t.date >= @dateFrom AND t.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                var query = $@"
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
+    t.type AS Type,
+    t.date AS Date,
+    t.transaction_id AS Id,
+    t.transaction_id,
+    t.voucher_no AS Voucher,
+    c.name AS Name,
+    '30 Days' AS Terms,
+    DATE_ADD(t.date, INTERVAL 30 DAY) AS DueDate,
+    DATEDIFF(CURDATE(), t.Date) AS Aging,	
+    t.debit - t.credit AS OpenBalance
+FROM tbl_transaction t
+JOIN tbl_customer c ON t.hum_id = c.id
+WHERE 
+    c.id = @id
+    AND t.state = 0
+    AND t.type IN (
+        'Customer Receipt',
+        'Sales Invoice',
+        'Check Cancel (Customer)',
+        'SalesReturn Invoice',
+        'Credit Note',
+        'PDC Receivable'
+    )
+    {dateFilter}
+ORDER BY t.date;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var result = new List<object>();
+                decimal totalBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    if (reader["Date"] == DBNull.Value) continue;
+
+                    decimal balance = Convert.ToDecimal(reader["OpenBalance"]);
+
+                    result.Add(new
+                    {
+                        SN = reader["SN"],
+                        Type = reader["Type"]?.ToString(),
+                        Date = Convert.ToDateTime(reader["Date"]).ToString("dd/MM/yyyy"),
+                        Id = reader["Id"]?.ToString(),
+                        TransactionId = reader["transaction_id"]?.ToString(),
+                        Voucher = reader["Voucher"]?.ToString(),
+                        Name = reader["Name"]?.ToString(),
+                        Terms = reader["Terms"]?.ToString(),
+                        DueDate = Convert.ToDateTime(reader["DueDate"]).ToString("dd/MM/yyyy"),
+                        Aging = reader["Aging"]?.ToString(),
+                        OpenBalance = balance.ToString("N2")
+                    });
+
+                    totalBalance += balance;
+                }
+
+                // Add total row
+                result.Add(new
+                {
+                    SN = "",
+                    Type = "",
+                    Date = "",
+                    Id = "",
+                    TransactionId = "",
+                    Voucher = "",
+                    Name = "TOTAL",
+                    Terms = "",
+                    DueDate = "",
+                    Aging = "",
+                    OpenBalance = totalBalance.ToString("N2")
+                });
+
+                return Ok(new
+                {
+                    status = true,
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        #endregion
+
+        #region CustomerBalanceSummary
+
+        public IActionResult CustomerBalanceSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerBalanceSummary(bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                // Build connection string dynamically based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                var query = @"
+            SELECT 
+                c.id AS Id,
+                CONCAT(c.code, ' - ', c.name) AS Name,
+                IFNULL(SUM(t.debit - t.credit), 0) AS Balance
+            FROM tbl_customer c
+            LEFT JOIN tbl_transaction t 
+                ON c.id = t.hum_id
+                AND t.state = 0
+                AND t.type IN (
+                    'Customer Receipt',
+                    'Sales Invoice',
+                    'Customer Opening Balance',
+                    'Check Cancel (Customer)',
+                    'SalesReturn Invoice',
+                    'Credit Note',
+                    'PDC Receivable'
+                )
+            WHERE 1=1
+        ";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Apply date filter if not showing all
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND t.date >= @dateFrom AND t.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                query += @"
+            GROUP BY c.id, c.name, c.code
+            ORDER BY Balance DESC;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var customerBalances = new List<object>();
+                decimal totalBalance = 0;
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                    customerBalances.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader["Id"],
+                        Customer = reader["Name"]?.ToString(),
+                        Balance = $"◀ {balance:N2}"
+                    });
+
+                    totalBalance += balance;
+                }
+
+                await reader.CloseAsync();
+
+                // Add TOTAL row
+                customerBalances.Add(new
+                {
+                    SN = "",
+                    Id = "",
+                    Customer = "TOTAL",
+                    Balance = totalBalance.ToString("N2")
+                });
+
+                await conn.CloseAsync();
+
+                return Ok(new { status = true, data = customerBalances });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult CustomerBalanceDetails()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerBalanceDetails(
+    int humId,
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                // Build connection string dynamically based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Parameters list
+                var parameters = new List<MySqlParameter>
+        {
+            new MySqlParameter("@hum_id", humId)
+        };
+
+                // Date filter
+                string dateFilter = "";
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND t.date >= @dateFrom AND t.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                string query = $@"
+            SELECT 
+                t.transaction_id,
+                t.type AS Type,
+                DATE_FORMAT(t.date, '%M %d %Y') AS Date,
+                t.voucher_no AS Num,
+                c.name AS Account,
+                (t.debit - t.credit) AS Amount,
+                SUM(
+                    CASE 
+                        WHEN t.type != 'Sales Invoice Cash' THEN (t.debit - t.credit)
+                        ELSE 0
+                    END
+                ) OVER (PARTITION BY t.hum_id ORDER BY t.date, t.id) AS Balance
+            FROM tbl_transaction t
+            INNER JOIN tbl_coa_level_4 c ON t.account_id = c.id
+            WHERE t.hum_id = @hum_id
+              AND t.type IN (
+                    'Customer Receipt',
+                    'Sales Invoice',
+                    'Sales Invoice Cash',
+                    'Customer Opening Balance',
+                    'Check Cancel (Customer)',
+                    'SalesReturn Invoice',
+                    'Credit Note',
+                    'PDC Receivable'
+              )
+              {dateFilter}
+            ORDER BY t.date, t.id;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var transactions = new List<object>();
+                decimal totalAmount = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0;
+                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                    transactions.Add(new
+                    {
+                        TransactionId = reader["transaction_id"]?.ToString(),
+                        Type = reader["Type"]?.ToString(),
+                        Date = reader["Date"]?.ToString(),
+                        Num = reader["Num"]?.ToString(),
+                        Account = reader["Account"]?.ToString(),
+                        Amount = amount.ToString("N2"),
+                        Balance = balance.ToString("N2") + " ◀"
+                    });
+
+                    totalAmount += amount;
+                }
+
+                await reader.CloseAsync();
+
+                // Add total row
+                transactions.Add(new
+                {
+                    TransactionId = "",
+                    Type = "",
+                    Date = "",
+                    Num = "",
+                    Account = "TOTAL",
+                    Amount = totalAmount.ToString("N2"),
+                    Balance = ""
+                });
+
+                await conn.CloseAsync();
+
+                return Ok(new { status = true, data = transactions });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
 
     }
 

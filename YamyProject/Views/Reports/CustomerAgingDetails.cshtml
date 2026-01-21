@@ -1,0 +1,72 @@
+﻿
+@{
+    ViewData["Title"] = "CustomerAgingDetails";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Customer Aging Details</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>ID</th>
+                    <th>31 - 60</th>
+                    <th>61 - 90</th>
+                    <th>> 90</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
