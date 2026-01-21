@@ -4473,6 +4473,209 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
 
         #endregion
 
+        #region Income Expense Statement
+
+        public IActionResult IncomeExpenseStatement()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetIncomeStatement(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                // Build connection string dynamically based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var result = new List<object>();
+
+                decimal totalRevenue = 0;
+                decimal totalCOGS = 0;
+                decimal grossProfit = 0;
+                decimal totalExpenses = 0;
+                decimal netIncome = 0;
+
+                // -------------------------------
+                // 1. Ordinary Income/Expense
+                // -------------------------------
+                result.Add(new { Level = 1, Name = "Ordinary Income/Expense", Amount = "" });
+
+                // -------------------------------
+                // 2. Income Section
+                // -------------------------------
+                result.Add(new { Level = 2, Name = "Income", Amount = "" });
+
+                var incomeQuery = @"
+            SELECT CONCAT(l3.code,' ',l3.name) AS name,
+                   SUM(t.credit - t.debit) AS balance
+            FROM tbl_transaction t
+            JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+            JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+            JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+            JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            WHERE l1.category_code = 'INCOME'
+              AND t.state = 0
+              AND t.date BETWEEN @from AND @to
+            GROUP BY l3.code, l3.name;
+        ";
+
+                await using (var cmd = new MySqlCommand(incomeQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@from", startDate.Date);
+                    cmd.Parameters.AddWithValue("@to", endDate.Date);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal balance = reader["balance"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["balance"])
+                            : 0;
+
+                        totalRevenue += balance;
+
+                        result.Add(new
+                        {
+                            Level = 3,
+                            Name = "    " + reader["name"],
+                            Amount = balance.ToString("N2")
+                        });
+                    }
+                }
+
+                result.Add(new { Level = 2, Name = "Total Income", Amount = totalRevenue.ToString("N2") });
+
+                // -------------------------------
+                // 3. Cost of Goods Sold
+                // -------------------------------
+                result.Add(new { Level = 2, Name = "Cost of Goods Sold", Amount = "" });
+
+                var cogsQuery = @"
+            SELECT CONCAT(l3.code,' ',l3.name) AS name,
+                   SUM(t.debit - t.credit) AS balance
+            FROM tbl_transaction t
+            JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+            JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+            JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+            JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            WHERE l1.category_code = 'COST'
+              AND t.state = 0
+              AND t.date BETWEEN @from AND @to
+            GROUP BY l3.code, l3.name;
+        ";
+
+                await using (var cmd = new MySqlCommand(cogsQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@from", startDate.Date);
+                    cmd.Parameters.AddWithValue("@to", endDate.Date);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal balance = reader["balance"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["balance"])
+                            : 0;
+
+                        totalCOGS += balance;
+
+                        result.Add(new
+                        {
+                            Level = 3,
+                            Name = "    " + reader["name"],
+                            Amount = balance.ToString("N2")
+                        });
+                    }
+                }
+
+                result.Add(new { Level = 2, Name = "Total COGS", Amount = totalCOGS.ToString("N2") });
+
+                // -------------------------------
+                // 4. Gross Profit
+                // -------------------------------
+                grossProfit = totalRevenue - totalCOGS;
+                result.Add(new { Level = 2, Name = "Gross Profit", Amount = grossProfit.ToString("N2") });
+
+                // -------------------------------
+                // 5. Expense Section
+                // -------------------------------
+                result.Add(new { Level = 2, Name = "Expense", Amount = "" });
+
+                var expenseQuery = @"
+            SELECT l4.name,
+                   SUM(t.debit - t.credit) AS balance
+            FROM tbl_transaction t
+            JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+            JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+            JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+            JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            WHERE l1.category_code = 'EXPENSE'
+              AND t.state = 0
+              AND t.date BETWEEN @from AND @to
+            GROUP BY l4.id, l4.name;
+        ";
+
+                await using (var cmd = new MySqlCommand(expenseQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@from", startDate.Date);
+                    cmd.Parameters.AddWithValue("@to", endDate.Date);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal balance = reader["balance"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["balance"])
+                            : 0;
+
+                        totalExpenses += balance;
+
+                        result.Add(new
+                        {
+                            Level = 3,
+                            Name = "    " + reader["name"],
+                            Amount = balance.ToString("N2")
+                        });
+                    }
+                }
+
+                result.Add(new { Level = 2, Name = "Total Expense", Amount = totalExpenses.ToString("N2") });
+
+                // -------------------------------
+                // 6. Net Income
+                // -------------------------------
+                netIncome = grossProfit - totalExpenses;
+
+                result.Add(new { Level = 1, Name = "Net Ordinary Income", Amount = netIncome.ToString("N2") });
+                result.Add(new { Level = 1, Name = "Net Income", Amount = netIncome.ToString("N2") });
+
+                await conn.CloseAsync();
+
+                return Ok(new
+                {
+                    status = true,
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        #endregion
+
 
     }
 
