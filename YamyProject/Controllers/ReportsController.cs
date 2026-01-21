@@ -3907,7 +3907,201 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
 
         #endregion
 
+        #region Income By Customer Summary
 
+        public IActionResult IncomeByCustomerSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerSalesSummary(bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                // Build connection string dynamically based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                var query = @"
+        SELECT 
+            h.id AS Id,
+            h.name AS Name,
+            SUM(t.debit - t.credit) AS Balance
+        FROM tbl_transaction t
+        INNER JOIN tbl_customer h ON t.hum_id = h.id
+        WHERE t.type IN ('Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Customer Receipt')
+        ";
+
+                var parameters = new List<MySqlParameter>();
+
+                // Apply date filter if not showing all
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND t.date >= @dateFrom AND t.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                query += @"
+        GROUP BY h.id, h.name
+        ORDER BY Balance DESC;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var customerBalances = new List<object>();
+                int sn = 1;
+                decimal totalBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                    customerBalances.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader["Id"],
+                        Customer = reader["Name"]?.ToString(),
+                        Balance = balance.ToString("N2")
+                    });
+
+                    totalBalance += balance;
+                }
+
+                await reader.CloseAsync();
+                await conn.CloseAsync();
+
+                // Add TOTAL row
+                customerBalances.Add(new
+                {
+                    SN = "",
+                    Id = "",
+                    Customer = "TOTAL",
+                    Balance = totalBalance.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = customerBalances });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult IncomeByCustomerDetails()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCustomerTransactionDetails(int id, bool showAll = true, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                if (id <= 0)
+                    return BadRequest(new { status = false, message = "Invalid Customer ID." });
+
+                // Build connection string dynamically based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query
+                var query = @"
+            SELECT
+                t.id,
+                t.transaction_id,
+                h.name AS Customer,
+                t.type AS Type,
+                t.date AS Date,
+                t.voucher_no AS Num,
+                t.description AS Memo,
+                acc.name AS Account,
+                t.debit AS Debit,
+                t.credit AS Credit
+            FROM tbl_transaction t
+            JOIN tbl_customer h ON t.hum_id = h.id
+            LEFT JOIN tbl_coa_level_4 acc ON t.account_id = acc.id
+            WHERE t.type IN ('Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Customer Receipt')
+                AND h.id = @CustomerID
+        ";
+
+                var parameters = new List<MySqlParameter>
+        {
+            new MySqlParameter("@CustomerID", id)
+        };
+
+                // Date filter
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    query += " AND t.date >= @dateFrom AND t.date <= @dateTo";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                query += " ORDER BY h.name, t.date, t.id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var transactions = new List<object>();
+                decimal runningBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0;
+                    decimal credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0;
+                    runningBalance += debit - credit;
+
+                    transactions.Add(new
+                    {
+                        Id = reader["id"],
+                        TransactionID = reader["transaction_id"],
+                        Customer = reader["Customer"]?.ToString(),
+                        Type = reader["Type"]?.ToString(),
+                        Date = reader["Date"] != DBNull.Value ? ((DateTime)reader["Date"]).ToString("dd/MM/yyyy") : "",
+                        Num = reader["Num"]?.ToString(),
+                        Memo = reader["Memo"]?.ToString(),
+                        Account = reader["Account"]?.ToString(),
+                        Debit = debit.ToString("N2"),
+                        Credit = credit.ToString("N2"),
+                        Balance = runningBalance.ToString("N2")
+                    });
+                }
+
+                await reader.CloseAsync();
+                await conn.CloseAsync();
+
+                return Ok(new { status = true, data = transactions });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
 
 
     }

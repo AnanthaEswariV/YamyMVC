@@ -261,8 +261,10 @@ namespace YamyProject.Controllers
                     insertCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
                     insertCmd.Parameters.AddWithValue("@created_by", userId);
                     insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
-                    insertCmd.Parameters.AddWithValue("@project_id", projectSite);
-                    insertCmd.Parameters.AddWithValue("@project_site", projectSite);
+                    insertCmd.Parameters.Add("@project_id", MySqlDbType.Int32).Value =
+                                    string.IsNullOrWhiteSpace(projectSite) ? 0 : int.Parse(projectSite);
+                    insertCmd.Parameters.AddWithValue("@project_site", projectSite ?? "");
+
 
                     int vendorId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
 
@@ -308,8 +310,11 @@ namespace YamyProject.Controllers
                     updateCmd.Parameters.AddWithValue("@facilty_name", model.FacilityName ?? "");
                     updateCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
                     updateCmd.Parameters.AddWithValue("@balance", balance);
-                    updateCmd.Parameters.AddWithValue("@project_id", projectSite);
-                    updateCmd.Parameters.AddWithValue("@project_site", projectSite);
+                    updateCmd.Parameters.Add("@project_id", MySqlDbType.Int32).Value =
+                                    string.IsNullOrWhiteSpace(projectSite) ? 0 : int.Parse(projectSite);
+                    updateCmd.Parameters.AddWithValue("@project_site", projectSite ?? "");
+                    //updateCmd.Parameters.AddWithValue("@project_id", projectSite);
+                    //updateCmd.Parameters.AddWithValue("@project_site", projectSite);
                     updateCmd.Parameters.AddWithValue("@id", model.Id);
 
                     await updateCmd.ExecuteNonQueryAsync();
@@ -2597,7 +2602,7 @@ VALUES
 SELECT LAST_INSERT_ID();";
 
                         await using var cmd = new MySqlCommand(insertQuery, conn, transaction);
-                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                        cmd.Parameters.AddWithValue("@date", model.Date);
                         cmd.Parameters.AddWithValue("@vendor_id", model.VendorId);
                         cmd.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
                         cmd.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
@@ -2605,13 +2610,13 @@ SELECT LAST_INSERT_ID();";
                         cmd.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
                         cmd.Parameters.AddWithValue("@city", model.City ?? "");
                         cmd.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
-                        cmd.Parameters.AddWithValue("@ship_date", model.ShipDate.Date);
+                        cmd.Parameters.AddWithValue("@ship_date", model.ShipDate );
                         cmd.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
                         cmd.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
                         cmd.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
                         cmd.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
                         cmd.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
-                        cmd.Parameters.AddWithValue("@payment_date", model.PaymentDate.Date);
+                        cmd.Parameters.AddWithValue("@payment_date", model.PaymentDate);
                         cmd.Parameters.AddWithValue("@total", model.TotalBefore);
                         cmd.Parameters.AddWithValue("@vat", model.Vat);
                         cmd.Parameters.AddWithValue("@net", model.NetTotal);

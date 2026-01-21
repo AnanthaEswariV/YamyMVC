@@ -197,7 +197,8 @@
                         <a href="">Company</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("AccountBalanceReport", "Reports")">Balance Sheet Standard</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>
+                            <li><a href="@Url.Action("IncomeByCustomerSummary", "Reports")">Income By Customer Summary</a></li>
+                       @*      <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li> *@
                             <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Expense From Vendor Summary</a></li>
                             <li><a href="@Url.Action("ProfitLoss", "Reports")">Profit & Loss</a></li>
                             <li><a asp-controller="IncomeSummary" asp-action="CashFlowStatement">Statement of Cash Flow</a></li>

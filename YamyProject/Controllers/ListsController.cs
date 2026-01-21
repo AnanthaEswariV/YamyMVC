@@ -3705,6 +3705,36 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 {
                     condition = " AND t.state = 0 AND t.type = 'Opening Balance' ";
                 }
+                else if (!string.IsNullOrEmpty(type))
+                {
+                    // For types that don’t require transactionId
+                    query = @"
+        SELECT 
+            t.transaction_id AS TransactionId,
+            t.type AS Type,
+            c.name AS ACName,
+            t.description AS Description,
+            t.debit AS Debit,
+            t.credit AS Credit,
+            t.date AS Date
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 c ON t.account_id = c.id
+        INNER JOIN tbl_customer h ON t.hum_id = h.id
+        WHERE t.type = @type
+        ORDER BY t.date, t.transaction_id
+    ";
+
+                    parameters.Add(new MySqlParameter("@type", type));
+                }
+                else if (transactionId.HasValue)
+                {
+                    query = @"
+        SELECT ...
+        WHERE t.transaction_id = @id
+    ";
+                    parameters.Add(new MySqlParameter("@id", transactionId.Value));
+                }
+
                 else
                 {
                     condition = " AND t.state = 0 AND t.type = @selType";

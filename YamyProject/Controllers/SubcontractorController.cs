@@ -446,8 +446,11 @@ namespace YamyProject.Controllers
                     insertCmd.Parameters.AddWithValue("@active", model.Active ? 0 : -1);
                     insertCmd.Parameters.AddWithValue("@created_by", userId);
                     insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
-                    insertCmd.Parameters.AddWithValue("@project_id", projectSite);
-                    insertCmd.Parameters.AddWithValue("@project_site", projectSite);
+                    //insertCmd.Parameters.AddWithValue("@project_id", projectSite);
+                    //insertCmd.Parameters.AddWithValue("@project_site", projectSite);
+                    insertCmd.Parameters.Add("@project_id", MySqlDbType.Int32).Value =
+                                    string.IsNullOrWhiteSpace(projectSite) ? 0 : int.Parse(projectSite);
+                    insertCmd.Parameters.AddWithValue("@project_site", projectSite ?? "");
 
                     int subContractId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
 
