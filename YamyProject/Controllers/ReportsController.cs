@@ -4299,6 +4299,180 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
 
         #endregion
 
+        #region Statement Of Cash Flow
+
+        public IActionResult StatementOfCashFlow()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetStatementOfCashFlow(DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                // Use default dates if null (Show All)
+                DateTime sDate = startDate ?? DateTime.MinValue;
+                DateTime eDate = endDate ?? DateTime.MaxValue;
+
+                var reportRows = new List<object>();
+                decimal totalAmount = 0, totalBalance = 0;
+
+                // Build connection string dynamically (from session or default)
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>
+        {
+            new MySqlParameter("@startDate", sDate),
+            new MySqlParameter("@endDate", eDate)
+        };
+
+                // --- OPERATING ACTIVITIES ---
+                string sqlOperating = @"
+            SELECT 'OPERATING ACTIVITIES' AS name, '' AS id, NULL AS balance, 'u' AS mode, 1 AS level
+            UNION
+            SELECT 'Net Income', '', (
+                WITH AccountBalances AS (
+                    SELECT 
+                        l1.category_code AS Category,
+                        SUM(t.credit - t.debit) AS Balance
+                    FROM tbl_transaction t
+                    JOIN tbl_coa_level_4 l4 ON t.account_id = l4.id
+                    JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+                    JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+                    JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+                    WHERE l1.category_code IN ('INCOME','COST','EXPENSE') 
+                        AND t.state=0 AND t.date >= @startDate AND t.date <= @endDate
+                    GROUP BY l1.category_code
+                )
+                SELECT
+                    COALESCE((SELECT Balance FROM AccountBalances WHERE Category='INCOME'),0)
+                    - COALESCE((SELECT Balance FROM AccountBalances WHERE Category='COST'),0)
+                    - COALESCE((SELECT Balance FROM AccountBalances WHERE Category='EXPENSE'),0)
+            ) AS balance, 'n' AS mode, 2 AS level
+            UNION
+            SELECT CONCAT('  ', l4.name), l4.id, SUM(t.debit - t.credit), 'n', 4
+            FROM tbl_coa_level_1 l1
+            JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
+            JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
+            JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
+            LEFT JOIN tbl_transaction t ON t.account_id=l4.id AND t.state=0 AND t.date >= @startDate AND t.date <= @endDate
+            WHERE l1.category_code='ASSET'
+            GROUP BY l4.id, l4.name;
+        ";
+
+                await using (var cmd = new MySqlCommand(sqlOperating, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal balance = reader["balance"] != DBNull.Value ? Convert.ToDecimal(reader["balance"]) : 0;
+                        reportRows.Add(new
+                        {
+                            Name = reader["name"].ToString(),
+                            Id = reader["id"].ToString(),
+                            Balance = balance,
+                            Mode = reader["mode"].ToString(),
+                            Level = Convert.ToInt32(reader["level"])
+                        });
+
+                        totalBalance += balance;
+                    }
+                }
+
+                // Add total Operating
+                reportRows.Add(new
+                {
+                    Name = "Net cash provided by Operating Activities",
+                    Id = "0",
+                    Balance = totalBalance,
+                    Mode = "n",
+                    Level = 2
+                });
+                totalAmount = totalBalance;
+                totalBalance = 0;
+
+                // --- INVESTING ACTIVITIES ---
+                string sqlInvesting = @"
+            SELECT 'INVESTING ACTIVITIES' AS name, '' AS id, NULL AS balance, 'u' AS mode, 1 AS level
+            UNION
+            SELECT CONCAT('  ', l4.name), l4.id, SUM(t.debit - t.credit), 'n', 4
+            FROM tbl_coa_level_1 l1
+            JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
+            JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
+            JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
+            LEFT JOIN tbl_transaction t ON t.account_id=l4.id AND t.state=0 AND t.date >= @startDate AND t.date <= @endDate
+            WHERE l1.name IN ('Fixed Assets','Investments')
+            GROUP BY l4.id, l4.name;
+        ";
+
+                await using (var cmd = new MySqlCommand(sqlInvesting, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        decimal balance = reader["balance"] != DBNull.Value ? Convert.ToDecimal(reader["balance"]) : 0;
+                        reportRows.Add(new
+                        {
+                            Name = reader["name"].ToString(),
+                            Id = reader["id"].ToString(),
+                            Balance = balance,
+                            Mode = reader["mode"].ToString(),
+                            Level = Convert.ToInt32(reader["level"])
+                        });
+
+                        totalBalance += balance;
+                    }
+                }
+
+                // Add total Investing
+                reportRows.Add(new
+                {
+                    Name = "Net cash provided by Investing Activities",
+                    Id = "0",
+                    Balance = totalBalance,
+                    Mode = "n",
+                    Level = 2
+                });
+
+                totalAmount += totalBalance;
+
+                // --- Final Totals ---
+                reportRows.Add(new
+                {
+                    Name = "Net cash increase for period",
+                    Id = "0",
+                    Balance = totalAmount,
+                    Mode = "n",
+                    Level = 2
+                });
+                reportRows.Add(new
+                {
+                    Name = "Cash at end of period",
+                    Id = "0",
+                    Balance = totalAmount,
+                    Mode = "n",
+                    Level = 1
+                });
+
+                return Ok(new { status = true, data = reportRows });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
 
     }
 

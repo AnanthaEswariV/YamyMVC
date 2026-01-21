@@ -1,0 +1,257 @@
+﻿@{
+    ViewData["Title"] = "StatementOfCashFlow";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+
+    .level-1 {
+        font-weight: bold;
+    }
+
+    .level-2 {
+        font-weight: 600;
+    }
+
+    .level-3 {
+        font-weight: normal;
+    }
+
+    .toggle-icon {
+        cursor: pointer;
+        user-select: none;
+        font-weight: bold;
+        color: black;
+        display: inline-block;
+        width: 18px;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Statement of Cash Flows</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1" style="width:100%;">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">S.No</th>
+                    <th>Account Name</th>
+                    <th class="text-end" style="width: 150px;">Amount</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Initialize start and end dates to today - 1 month for example
+            const today = new Date().toISOString().slice(0, 10);
+            $('#startDate').val(new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 10));
+            $('#endDate').val(today);
+
+            // Toggle date inputs enabled state based on checkbox
+            $('#chkAllData').on('change', function () {
+                const disabled = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', disabled);
+            });
+
+            // Filter button click handler
+            $('#filterBtn').on('click', loadCashFlowReport);
+
+            // Load report initially
+            loadCashFlowReport();
+
+                    $('#table1 tbody').on('click', 'tr', function () {
+            if ($(this).find('td').length < 2) return; // skip rows with less than 2 cells
+            const accountName = $(this).find('td:nth-child(2)').text().trim();
+            if (!accountName) {
+                toastr.warning('No Account Name found for this row.');
+                return;
+            }
+            const url = `/Lists/TransacationJournal?type=${encodeURIComponent(accountName)}`;
+            window.location.href = url;
+        });
+
+
+            // Expand/collapse toggling logic using event delegation
+            $('#table1').on('click', '.toggle-icon', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const $icon = $(this);
+                const $tr = $icon.closest('tr');
+                const rowId = $tr.attr('data-row-id');
+                const expanded = $icon.text() === '▼';
+
+                if (expanded) {
+                    // Collapse children
+                    $icon.text('►');
+                    collapseChildren(rowId);
+                } else {
+                    // Expand children
+                    $icon.text('▼');
+                    expandChildren(rowId);
+                }
+            });
+
+            // Recursive collapse children function
+            function collapseChildren(parentId) {
+                const children = $(`#table1 tbody tr[data-parent-row='${parentId}']`);
+                children.each(function () {
+                    const $row = $(this);
+                    const childId = $row.attr('data-row-id');
+                    $row.hide();
+                    // Reset icons on children that have children
+                    $row.find('.toggle-icon').text('►');
+                    collapseChildren(childId);
+                });
+            }
+
+            // Expand direct children only (deeper levels stay collapsed)
+            function expandChildren(parentId) {
+                $(`#table1 tbody tr[data-parent-row='${parentId}']`).show();
+            }
+
+            // Render rows recursively, assigning unique IDs and parent-child relationships
+            function renderRows(nodes, parentId = '', level = 1, serialNoObj = { val: 1 }) {
+                nodes.forEach(node => {
+                    const hasChildren = node.children && node.children.length > 0;
+                    const indent = '&nbsp;'.repeat((level - 1) * 4);
+                    const toggleIcon = hasChildren ? '<span class="toggle-icon">▶</span>' : '<span style="display:inline-block;width:18px;"></span>';
+
+
+                    // Unique row ID for parent-child tracking
+                    const rowId = `row_${serialNoObj.val}`;
+
+                    // Compose row HTML
+                    $('#table1 tbody').append(`
+                        <tr data-row-id="${rowId}" ${parentId ? `data-parent-row="${parentId}"` : ''}
+                            style="${level > 1 ? 'display:none;' : ''}">
+                            <td>${serialNoObj.val}</td>
+                            <td>${indent}${toggleIcon} ${node.name}</td>
+                            <td class="text-end">${node.balance != null ? parseFloat(node.balance).toFixed(4) : ''}</td>
+                        </tr>
+                    `);
+
+                    serialNoObj.val++;
+
+                    // Recursively render children
+                    if (hasChildren) {
+                        renderRows(node.children, rowId, level + 1, serialNoObj);
+                    }
+                });
+            }
+
+            function loadCashFlowReport() {
+                const showAll = $('#chkAllData').is(':checked');
+                const startDate = $('#startDate').val();
+                const endDate = $('#endDate').val();
+
+                if (!showAll && (!startDate || !endDate)) {
+                    toastr.warning("Please select both start and end dates.");
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetStatementOfCashFlow", "Reports")',
+                    type: 'GET',
+                    data: { showAll, startDate, endDate },
+                    beforeSend: function () {
+                        $('#table1 tbody').html(`<tr><td colspan="3" class="text-center py-4">
+                            <div class="spinner-border text-primary me-2"></div>Loading...</td></tr>`);
+                    },
+                    success: function (res) {
+                        const tbody = $('#table1 tbody');
+                        tbody.empty();
+
+                        if (!res.status || !res.data || res.data.length === 0) {
+                            tbody.html('<tr><td colspan="3" class="text-center py-4 text-muted">No records found</td></tr>');
+                            return;
+                        }
+
+                        // Render hierarchical rows recursively
+                        renderRows(res.data);
+
+                        // Initialize or reinitialize DataTable
+                        if ($.fn.DataTable.isDataTable('#table1')) {
+                            $('#table1').DataTable().destroy();
+                        }
+
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', text: 'Excel', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':visible' } },
+                                { extend: 'pdfHtml5', text: 'PDF', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':visible' }, orientation: 'landscape', pageSize: 'A4' }
+                            ],
+                            paging: true,
+                            pageLength: 25,
+                            ordering: false,
+                            info: false,
+                            searching: false,
+                            columnDefs: [
+                                { orderable: false, targets: [0,1,2] }
+                            ]
+                        });
+                    },
+                    error: function () {
+                        toastr.error('Error fetching Statement of Cash Flows.');
+                    }
+                });
+            }
+        });
+    </script>
+}
