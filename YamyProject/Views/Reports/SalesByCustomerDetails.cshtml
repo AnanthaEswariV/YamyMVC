@@ -1,6 +1,6 @@
 ﻿
 @{
-    ViewData["Title"] = "SalesByCustomerSummary";
+    ViewData["Title"] = "SalesByCustomerDetails";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -17,12 +17,11 @@
             color: #fff !important;
         }
 </style>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Sales By Customer Summary</strong>
+        <strong>Sales By Customer Details</strong>
     </div>
 
     <div class="card-body">
@@ -52,19 +51,26 @@
             </div>
         </div>
 
-        <!-- Table -->
         <table class="table table-striped" id="table1">
             <thead>
                 <tr>
-                    <th>S.No</th>
-                    <th>Name</th>
-                    <th>Net Sales</th>
+                    <th>Sale Id</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Invoice No</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Amount</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
+
     </div>
 </div>
+
 
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -81,10 +87,17 @@
     <script>
         $(document).ready(function () {
 
-            // Initial load
-            loadCustomerSalesSummary();
+            const customerId = new URLSearchParams(window.location.search).get('id');
 
-            // Checkbox toggle → enable/disable date fields
+            if (!customerId) {
+                toastr.error("Customer ID is missing!");
+                return;
+            }
+
+            // Initial load
+            loadCustomerSalesDetails();
+
+            // Checkbox toggle
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
@@ -93,53 +106,57 @@
                     $('#startDate, #endDate').val('');
                 }
 
-                loadCustomerSalesSummary();
+                loadCustomerSalesDetails();
             });
 
-            // Filter button click
+            // Filter click
             $('#filterBtn').click(function () {
-                loadCustomerSalesSummary();
+                loadCustomerSalesDetails();
             });
 
-            // Double-click row → open customer details
-            $('#table1 tbody').on('dblclick', 'tr', function () {
-                const id = $(this).data('id');
-                if (id) {
-                    window.location.href = `/Reports/SalesByItemsDetails?id=${id}`;
-                }
+            // Click row → open invoice journal (optional)
+            $('#table1 tbody').on('click', 'tr', function () {
+                const type = $(this).find('td:nth-child(3)').text().trim();
+                if (!type || type === 'TOTAL') return;
+
+                window.location.href =
+                    `/Lists/TransacationJournal?selectionMethod=${encodeURIComponent(type)}`;
             });
         });
 
-        function loadCustomerSalesSummary() {
+        function loadCustomerSalesDetails() {
+
+            const customerId = new URLSearchParams(window.location.search).get('id');
+            if (!customerId) return;
+
             const showAll = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetSalesByCustomer',
+                url: '@Url.Action("GetSalesDetailsByCustomer", "Reports")',
                 type: 'GET',
                 data: {
-                    showAll: showAll,
-                    startDate: startDate || null,
-                    endDate: endDate || null
+                    customerId: customerId,
+                    startDate: showAll ? null : startDate,
+                    endDate: showAll ? null : endDate
                 },
                 beforeSend: function () {
                     $('#table1 tbody').html(`
                         <tr>
-                            <td colspan="3" class="text-center text-muted py-4">
-                                <div class="spinner-border text-primary me-2"></div> Loading...
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
                             </td>
                         </tr>
                     `);
                 },
                 success: function (res) {
-
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load sales summary');
+                        toastr.error(res.message || 'Failed to load sales details');
                         return;
                     }
 
-                    // Destroy existing DataTable
+                    // Destroy DataTable
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
                     }
@@ -148,15 +165,22 @@
                     tbody.empty();
 
                     if (res.data && res.data.length > 0) {
+
                         $.each(res.data, function (i, row) {
 
                             const isTotal = row.customer === 'TOTAL';
 
                             const tr = `
-                                <tr data-id="${row.id || ''}" class="${isTotal ? 'fw-bold table-secondary' : ''}">
-                                    <td>${row.sn ?? ''}</td>
+                                <tr class="${isTotal ? 'fw-bold table-secondary' : ''}">
+                                    <td>${row.id ?? ''}</td>
                                     <td>${row.customer ?? ''}</td>
-                                    <td class="text-end">${row.netSales ?? '0.00'}</td>
+                                    <td>${row.type ?? ''}</td>
+                                    <td>${row.date ?? ''}</td>
+                                    <td>${row.num ?? ''}</td>
+                                    <td>${row.item ?? ''}</td>
+                                    <td class="text-end">${row.qty ?? ''}</td>
+                                    <td class="text-end">${row.price ?? ''}</td>
+                                    <td class="text-end">${row.amount ?? '0.00'}</td>
                                 </tr>
                             `;
                             tbody.append(tr);
@@ -169,26 +193,24 @@
                                 {
                                     extend: 'excelHtml5',
                                     text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm',
-                                    exportOptions: { columns: ':visible' }
+                                    className: 'btn btn-primary btn-sm'
                                 },
                                 {
                                     extend: 'pdfHtml5',
                                     text: '<i class="fas fa-file-pdf me-1"></i> PDF',
                                     className: 'btn btn-primary btn-sm',
-                                    exportOptions: { columns: ':visible' },
                                     orientation: 'landscape',
                                     pageSize: 'A4'
                                 }
                             ],
-                            order: [[0, 'asc']],
+                            order: [[3, 'asc'], [0, 'asc']], // Date → Sale Id
                             pageLength: 25
                         });
 
                     } else {
                         tbody.append(`
                             <tr>
-                                <td colspan="3" class="text-center text-muted py-4">
+                                <td colspan="9" class="text-center text-muted py-4">
                                     No records found
                                 </td>
                             </tr>
@@ -196,11 +218,10 @@
                     }
                 },
                 error: function () {
-                    toastr.error('Error fetching sales summary');
+                    toastr.error('Error fetching customer sales details');
                 }
             });
         }
     </script>
-
 
 }

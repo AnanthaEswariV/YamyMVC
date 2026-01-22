@@ -1,0 +1,210 @@
+﻿
+@{
+    ViewData["Title"] = "VendorBalanceDetail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Vendor Balance Details</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Num</th>
+            <th>Account</th>
+            <th>Amount</th>
+            <th>Balance</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            const vendorId = new URLSearchParams(window.location.search).get('id'); // Get Vendor ID from query string
+
+            if (!vendorId) {
+                toastr.error("Vendor ID is missing!");
+                return;
+            }
+
+            // Initial load
+            loadVendorTransactionDetails();
+
+            // Checkbox change → enable/disable date fields
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+                loadVendorTransactionDetails();
+            });
+
+            // Filter button click
+            $('#filterBtn').click(function () {
+                loadVendorTransactionDetails();
+            });
+
+        $('#table1 tbody').on('click', 'tr', function () {
+              // Get the type from the clicked row
+              const type = $(this).find('td:nth-child(1)').text().trim(); // assuming Type is in the 3rd column
+              if (!type) {
+                  toastr.warning('No type found for this row.');
+                  return;
+              }
+
+              // Encode and redirect
+              const url = `/Lists/TransacationJournal?selectionMethod=${encodeURIComponent(type)}`;
+              window.location.href = url;
+          });
+
+
+                        function loadVendorTransactionDetails() {
+            const showAll = $('#chkAllData').is(':checked');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            // Destroy previous DataTable
+            if ($.fn.DataTable.isDataTable('#table1')) {
+                $('#table1').DataTable().clear().destroy();
+            }
+
+            // Show temporary loading row
+            const tbody = $('#table1 tbody');
+            tbody.html(`
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <div class="spinner-border text-primary me-2"></div> Loading...
+                    </td>
+                </tr>
+            `);
+
+            $.ajax({
+                url: '/Reports/GetVendorBalanceDetails',
+                type: 'GET',
+                data: {
+                    id: vendorId,
+                    showAll: showAll,
+                    startDate: startDate || null,
+                    endDate: endDate || null
+                },
+                success: function (res) {
+                    tbody.empty(); // clear loading row
+                    console.log(res);
+                    if (!res.status || !Array.isArray(res.data) || res.data.length === 0) {
+                        tbody.append(`<tr><td colspan="6" class="text-center text-muted py-4">No records found</td></tr>`);
+                        return;
+                    }
+
+                    let totalAmount = 0;
+                    let lastBalance = 0;
+
+                    // Build rows
+                       res.data.forEach(row => {
+            const debit = parseFloat(row.debit) || 0;
+            const credit = parseFloat(row.credit) || 0;
+            const balance = parseFloat(row.balance) || 0;
+            const amount = debit - credit;
+
+            totalAmount += amount;
+            lastBalance = balance;
+
+            tbody.append(`
+                <tr>
+                    <td>${row.type ?? ''}</td>
+                    <td>${row.date ?? ''}</td>
+                    <td>${row.Num ?? ''}</td>
+                    <td>${row.account ?? ''}</td>
+                    <td>${amount.toFixed(2)}</td>
+                    <td>${balance.toFixed(2)}</td>
+                </tr>
+            `);
+        });
+
+                    // Initialize DataTable only after rows exist
+                    $('#table1').DataTable({
+                        dom: 'Bfrtip',
+                        buttons: [
+                            { extend: 'excelHtml5', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':visible' } },
+                            { extend: 'pdfHtml5', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':visible' }, orientation: 'landscape', pageSize: 'A4' }
+                        ],
+                        order: [[1, 'asc'], [0, 'asc']],
+                        pageLength: 25
+                    });
+                },
+                error: function () {
+                    tbody.empty();
+                    tbody.append(`<tr><td colspan="6" class="text-center text-danger py-4">Error fetching data</td></tr>`);
+                    toastr.error('Error fetching vendor transaction details');
+                }
+            });
+        }
+
+
+
+        });
+    </script>
+
+
+}

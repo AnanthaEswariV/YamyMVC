@@ -1,0 +1,275 @@
+﻿
+@{
+    ViewData["Title"] = "SalesByItemsDetails";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Sales By Item Details</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Invoice No</th>
+                    <th>Memo</th>
+                    <th>Customer</th>
+                    <th>QTY</th>
+                    <th>Sales Price</th>
+                    <th>Amounts</th>
+                    <th>Balance</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            const table = $('#table1');
+
+            function appendRow(level, name, key, state, loadState, rowIndex, rowClass, additionalCols = [], itemId = null) {
+                const padding = (level - 1) * 30;
+                let arrow = '';
+                if (level === 1 || level === 2 || level === 3) arrow = '► ';
+
+                       let colsHtml = additionalCols.length
+            ? additionalCols.map(col => `<td>${col}</td>`).join('')
+            : `<td colspan="8"></td>`;  // To fill the remaining columns if none passed
+
+        const tr = $(`<tr class="${rowClass}" data-state="${state}" data-loadstate="${loadState}" data-key="${key}" ${itemId ? 'data-id="' + itemId + '"' : ''} style="${level > 1 ? 'display:none' : ''}">
+                          <td style="padding-left:${padding}px">${arrow}${name}</td>
+                          ${colsHtml}
+                        </tr>`);
+
+                if (rowIndex !== undefined) {
+                    $('#table1 tbody tr').eq(rowIndex).after(tr);
+                } else {
+                    $('#table1 tbody').append(tr);
+                }
+            }
+
+            // Load Types
+            function loadItemTypes() {
+                $.get('@Url.Action("GetItemTypes", "Reports")', function (res) {
+                    if (!res.status) return toastr.error('Failed to load item types');
+                    table.find('tbody').empty();
+                    res.data.forEach(type => {
+                        appendRow(1, type.name, type.key, type.state, type.loadState, undefined, 'level1');
+                    });
+                });
+            }
+
+            // Load Categories under Type
+            function loadCategories(row) {
+                const type = row.data('key');
+                $.get('@Url.Action("GetItemCategoriesByType", "Reports")', { type }, function (res) {
+                    if (!res.status) return toastr.error('Failed to load categories');
+                    let index = row.index();
+                    res.data.forEach(cat => {
+                        appendRow(2, cat.name, cat.key, cat.state, cat.loadState, index, 'level2');
+                        index++;
+                    });
+                });
+            }
+
+               function loadItems(row) {
+            const [catId, type] = row.data('key').split('|');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            $.get('@Url.Action("GetItemsByCategoryDetails", "Reports")', { categoryId: catId, type, startDate, endDate }, function (res) {
+                if (!res.status) return toastr.error('Failed to load items');
+                console.log(res);
+                let index = row.index();
+                res.data.forEach(item => {
+                    appendRow(
+                        3,
+                        item.Item || '', // item name
+                        '',             // key not used
+                        'e',            // expandable: we will show invoices under it
+                        'u',            // not loaded yet
+                        index,
+                        'level3',
+                        [
+                            item.date || '',       // Date
+                            item.invoiceNo || '',  // Invoice No
+                            item.memo || '',       // Memo
+                            item.customer || '',   // Customer
+                            (item.qty ?? 0).toFixed(2),
+                            (item.avgPrice ?? 0).toFixed(2),
+                            (item.amount ?? 0).toFixed(2),
+                             (item.balance ?? 0).toFixed(2),
+                        ],
+                        item.Id               // pass item ID for Level 4
+                    );
+                    index++;
+                });
+            });
+        }
+
+
+                 function loadInvoices(row) {
+            const itemId = row.data('id');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            $.get('@Url.Action("GetInvoicesByItem", "Reports")', { itemId, startDate, endDate }, function (res) {
+                if (!res.status) return toastr.error('Failed to load invoices');
+                console.log(res);
+                let index = row.index();
+                res.data.forEach(inv => {
+                    appendRow(
+                        4,
+                        inv.memo || '',       // use memo as row title
+                        '',
+                        'n',                  // not expandable
+                        'l',                  // loaded
+                        index,
+                        'level4',
+                        [
+                            inv.date || '',       // Date
+                            inv.invoiceNo || '',  // Invoice No
+                            inv.memo || '',       // Memo
+                            inv.customer || '',   // Customer
+                            (inv.qty ?? 0).toFixed(2),
+                            (inv.price ?? 0).toFixed(2),
+                            (inv.amount ?? 0).toFixed(2),
+                            (inv.balance ?? 0).toFixed(2)
+                        ]
+                    );
+                    index++;
+                });
+            });
+        }
+
+
+            // Initial load
+            loadItemTypes();
+
+            // Row click: expand/collapse
+            table.on('click', 'tr', function () {
+                const row = $(this);
+                const state = row.data('state');
+                const loadState = row.data('loadstate');
+                const level = row.hasClass('level1') ? 1 : row.hasClass('level2') ? 2 : row.hasClass('level3') ? 3 : 4;
+
+                if (state === 'e') {
+                    if (loadState === 'u') {
+                        if (level === 1) loadCategories(row);
+                        else if (level === 2) loadItems(row);
+                        else if (level === 3) loadInvoices(row);
+                        row.data('loadstate', 'l');
+                    }
+                    row.data('state', 'c');
+                    row.find('td:first').text(row.find('td:first').text().replace('►', '▼'));
+
+                    // Show direct children only
+                    table.find('tbody tr').each(function () {
+                        const tr = $(this);
+                        const trLevel = tr.hasClass('level1') ? 1 : tr.hasClass('level2') ? 2 : tr.hasClass('level3') ? 3 : 4;
+                        if (tr.index() > row.index() && trLevel === level + 1) tr.show();
+                    });
+                } else if (state === 'c') {
+                    row.data('state', 'e');
+                    row.find('td:first').text(row.find('td:first').text().replace('▼', '►'));
+
+                    // Hide all descendants recursively
+                    const parentIndex = row.index();
+                    const parentLevel = level;
+                    table.find('tbody tr').each(function () {
+                        const tr = $(this);
+                        const trIndex = tr.index();
+                        const trLevel = tr.hasClass('level1') ? 1 : tr.hasClass('level2') ? 2 : tr.hasClass('level3') ? 3 : 4;
+                        if (trIndex > parentIndex && trLevel > parentLevel) {
+                            tr.hide();
+                            if (trLevel < 4) {
+                                tr.data('state', 'e');
+                                tr.find('td:first').text(tr.find('td:first').text().replace('▼', '►'));
+                                tr.data('loadstate', 'u');
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Level3 click: redirect to details
+            table.on('click', 'tr.level3', function () {
+                const itemId = $(this).data('id');
+                if (itemId) window.location.href = '@Url.Action("SalesByItemDetails", "Reports")?id=' + itemId;
+            });
+
+            // Filter
+            $('#filterBtn').click(function () {
+                table.find('tbody').empty();
+                loadItemTypes();
+            });
+
+            // Checkbox toggle
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+            });
+        });
+    </script>
+
+
+    }

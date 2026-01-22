@@ -1,10 +1,8 @@
 ﻿
 @{
-    ViewData["Title"] = "SalesByCustomerSummary";
+    ViewData["Title"] = "VendorBalanceSummary";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-
-
 <style>
     .dt-buttons .btn-primary {
         background-color: #435EBE !important;
@@ -22,7 +20,7 @@
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Sales By Customer Summary</strong>
+        <strong>Vendor Balance Summary</strong>
     </div>
 
     <div class="card-body">
@@ -56,9 +54,8 @@
         <table class="table table-striped" id="table1">
             <thead>
                 <tr>
-                    <th>S.No</th>
                     <th>Name</th>
-                    <th>Net Sales</th>
+                    <th>Amount</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -78,45 +75,41 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
     <script>
         $(document).ready(function () {
 
-            // Initial load
-            loadCustomerSalesSummary();
+            loadVendorSummary();
 
-            // Checkbox toggle → enable/disable date fields
+            // Checkbox toggle
             $('#chkAllData').change(function () {
                 const isChecked = $(this).is(':checked');
                 $('#startDate, #endDate').prop('disabled', isChecked);
-
-                if (isChecked) {
-                    $('#startDate, #endDate').val('');
-                }
-
-                loadCustomerSalesSummary();
+                loadVendorSummary();
             });
 
-            // Filter button click
+            // Filter button
             $('#filterBtn').click(function () {
-                loadCustomerSalesSummary();
+                loadVendorSummary();
             });
 
-            // Double-click row → open customer details
+            // Double-click → vendor detail
             $('#table1 tbody').on('dblclick', 'tr', function () {
                 const id = $(this).data('id');
                 if (id) {
-                    window.location.href = `/Reports/SalesByItemsDetails?id=${id}`;
+                    window.location.href = `/Reports/VendorBalanceDetail?id=${id}`;
                 }
             });
         });
 
-        function loadCustomerSalesSummary() {
+        function loadVendorSummary() {
+
             const showAll = $('#chkAllData').is(':checked');
             const startDate = $('#startDate').val();
             const endDate = $('#endDate').val();
 
             $.ajax({
-                url: '/Reports/GetSalesByCustomer',
+                url: '@Url.Action("GetVendorBalanceSummary", "Reports")',
                 type: 'GET',
                 data: {
                     showAll: showAll,
@@ -126,20 +119,21 @@
                 beforeSend: function () {
                     $('#table1 tbody').html(`
                         <tr>
-                            <td colspan="3" class="text-center text-muted py-4">
-                                <div class="spinner-border text-primary me-2"></div> Loading...
+                            <td colspan="2" class="text-center py-4">
+                                <div class="spinner-border text-primary me-2"></div>
+                                Loading...
                             </td>
                         </tr>
                     `);
                 },
                 success: function (res) {
-
+                    console.log(res);
                     if (!res.status) {
-                        toastr.error(res.message || 'Failed to load sales summary');
+                        toastr.error(res.message || 'Failed to load vendor balance summary');
                         return;
                     }
 
-                    // Destroy existing DataTable
+                    // Destroy DataTable if exists
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
                     }
@@ -148,47 +142,44 @@
                     tbody.empty();
 
                     if (res.data && res.data.length > 0) {
+
                         $.each(res.data, function (i, row) {
 
-                            const isTotal = row.customer === 'TOTAL';
+                            const isTotal = row.account === "TOTAL";
 
-                            const tr = `
+                            tbody.append(`
                                 <tr data-id="${row.id || ''}" class="${isTotal ? 'fw-bold table-secondary' : ''}">
-                                    <td>${row.sn ?? ''}</td>
-                                    <td>${row.customer ?? ''}</td>
-                                    <td class="text-end">${row.netSales ?? '0.00'}</td>
+                                    <td>${row.account ?? ''}</td>
+                                    <td class="text-end">${row.amount ?? '0.00'}</td>
                                 </tr>
-                            `;
-                            tbody.append(tr);
+                            `);
                         });
 
                         // Initialize DataTable
                         $('#table1').DataTable({
                             dom: 'Bfrtip',
+                            order: [[0, 'asc']],
+                            pageLength: 25,
                             buttons: [
                                 {
                                     extend: 'excelHtml5',
                                     text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm',
-                                    exportOptions: { columns: ':visible' }
+                                    className: 'btn btn-primary btn-sm'
                                 },
                                 {
                                     extend: 'pdfHtml5',
                                     text: '<i class="fas fa-file-pdf me-1"></i> PDF',
                                     className: 'btn btn-primary btn-sm',
-                                    exportOptions: { columns: ':visible' },
-                                    orientation: 'landscape',
+                                    orientation: 'portrait',
                                     pageSize: 'A4'
                                 }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 25
+                            ]
                         });
 
                     } else {
                         tbody.append(`
                             <tr>
-                                <td colspan="3" class="text-center text-muted py-4">
+                                <td colspan="2" class="text-center text-muted py-4">
                                     No records found
                                 </td>
                             </tr>
@@ -196,11 +187,13 @@
                     }
                 },
                 error: function () {
-                    toastr.error('Error fetching sales summary');
+                    toastr.error('Error fetching vendor balance summary');
                 }
             });
         }
     </script>
 
-
 }
+
+
+

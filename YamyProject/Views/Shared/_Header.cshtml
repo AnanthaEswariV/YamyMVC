@@ -226,17 +226,23 @@
                         <a href="">Sales</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("SalesByCustomerSummary", "Reports")">Sales By Customer Summary</a></li>
-                           @*  <li><a asp-controller="SalesSummary" asp-action="SalesByCustomerSummary">Sales By Customer Summary</a></li> *@
-                            <li><a asp-controller="SalesSummary" asp-action="ItemSummary">Sales By Item Summary</a></li>
+                            <li><a href="@Url.Action("SalesByItemSummary", "Reports")">Sales By Item Summary</a></li>
+                           @*  <li><a asp-controller="SalesSummary" asp-action="SalesByCustomerSummary">Sales By Customer Summary</a></li> 
+                            <li><a asp-controller="SalesSummary" asp-action="ItemSummary">Sales By Item Summary</a></li>*@
                         </ul>
                     </li>
                      <li class="dropdown has-submenu">
                         <a href="">Vendor & Payable</a>
                         <ul class="submenu">
-                            <li><a asp-controller="VendorAndPayable" asp-action="VendorSummary">Vendor Summary</a></li>
+                            <li><a href="@Url.Action("VendorSummary", "Reports")">Vendor Summary</a></li>
+                            <li><a href="@Url.Action("VendorAgingSummary", "Reports")">Vendor Aging Summary</a></li>
+                            <li><a href="@Url.Action("VendorBalanceSummary", "Reports")">Vendor Balance Summary</a></li>
+                            <li><a href="@Url.Action("IncomeByVendorSummary", "Reports")">Vendor Income Summary</a></li>
+                           @*  <li><a asp-controller="VendorAndPayable" asp-action="VendorSummary">Vendor Summary</a></li>
                             <li><a asp-controller="VendorAndPayable" asp-action="VendorAgingSummary">Vendor Aging Summary</a></li>
-                            <li><a asp-controller="VendorAndPayable" asp-action="VendorBalanceSummary">Vendor Balance Summary</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Income By Vendor Summary</a></li>
+                            <li><a asp-controller="VendorAndPayable" asp-action="VendorBalanceSummary">Vendor Balance Summary</a></li> 
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Income By Vendor Summary</a></li>*@
+                            
                         </ul>
                     </li>
                        <li class="dropdown has-submenu">
