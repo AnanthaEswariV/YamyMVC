@@ -215,16 +215,18 @@
                             <li><a href="@Url.Action("CustomerSummary", "Reports")">Customer Summary</a></li>
                             <li><a href="@Url.Action("CustomerAgingSummary", "Reports")">Customer Aging Summary</a></li>
                             <li><a href="@Url.Action("CustomerBalanceSummary", "Reports")">Customer Balance Summary</a></li>
+                            <li><a href="@Url.Action("IncomeByCustomer", "Reports")">Income By Customer</a></li>
                             @* <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerSummary">Customer Summary</a></li> 
-                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>*@
+                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>
                             <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerBalanceSummary">Customer Balance Summary</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>
+                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>*@
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
                         <a href="">Sales</a>
                         <ul class="submenu">
-                            <li><a asp-controller="SalesSummary" asp-action="SalesByCustomerSummary">Sales By Customer Summary</a></li>
+                            <li><a href="@Url.Action("SalesByCustomerSummary", "Reports")">Sales By Customer Summary</a></li>
+                           @*  <li><a asp-controller="SalesSummary" asp-action="SalesByCustomerSummary">Sales By Customer Summary</a></li> *@
                             <li><a asp-controller="SalesSummary" asp-action="ItemSummary">Sales By Item Summary</a></li>
                         </ul>
                     </li>

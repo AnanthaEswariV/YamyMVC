@@ -5333,6 +5333,116 @@ ORDER BY t.date;";
 
         #endregion
 
+        #region Income By Customer
+
+        public IActionResult IncomeByCustomer()
+        {
+            return View();
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetIncomeByCustomer(
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                // Build connection string dynamically based on session
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>();
+                string dateFilter = "";
+
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND t.date >= @dateFrom AND t.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateFrom", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1)));
+                }
+
+                string query = $@"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY Balance DESC) AS SN,
+                min_id AS Id,
+                Name,
+                Balance
+            FROM (
+                SELECT 
+                    h.name AS Name,
+                    SUM(t.debit - t.credit) AS Balance,
+                    MIN(h.id) AS min_id
+                FROM tbl_transaction t
+                JOIN tbl_customer h ON t.hum_id = h.id
+                WHERE t.type IN ('Sales Invoice', 'Sales Invoice Cash', 'Customer Opening Balance', 'Customer Receipt')
+                    {dateFilter}
+                GROUP BY t.hum_id, h.name
+            ) AS sub
+            ORDER BY Balance DESC;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var customerBalances = new List<object>();
+                decimal totalBalance = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal balance = reader["Balance"] != DBNull.Value ? Convert.ToDecimal(reader["Balance"]) : 0;
+
+                    customerBalances.Add(new
+                    {
+                        SN = reader["SN"],
+                        Id = reader["Id"],
+                        Customer = reader["Name"]?.ToString(),
+                        Balance = balance.ToString("N2")
+                    });
+
+                    totalBalance += balance;
+                }
+
+                await reader.CloseAsync();
+                await conn.CloseAsync();
+
+                // Add TOTAL row
+                customerBalances.Add(new
+                {
+                    SN = "",
+                    Id = "",
+                    Customer = "TOTAL",
+                    Balance = totalBalance.ToString("N2")
+                });
+
+                return Ok(new { status = true, data = customerBalances });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        #region SalesByCustomerSummary
+
+        public IActionResult SalesByCustomerSummary()
+        {
+            return View();
+        }
+
+        #endregion
     }
 
 }
