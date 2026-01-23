@@ -1,0 +1,204 @@
+﻿
+@{
+    ViewData["Title"] = "PurchaseByVendorSummary";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Purchase By Vendor Summary</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-end gap-4 mb-4">
+
+            <!-- Checkbox -->
+            <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" id="chkAllData" class="form-check-input" checked>
+                <label for="chkAllData" class="fw-bold mb-0">Show All Data</label>
+            </div>
+
+            <!-- Start Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">Start Date</h6>
+                <input type="date" class="form-control" id="startDate" disabled>
+            </div>
+
+            <!-- End Date -->
+            <div style="min-width: 200px;">
+                <h6 class="fw-bold mb-1">End Date</h6>
+                <input type="date" class="form-control" id="endDate" disabled>
+            </div>
+
+            <!-- Filter Button -->
+            <div style="min-width: 150px;">
+                <button class="btn btn-primary" id="filterBtn">Filter</button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <table class="table table-striped" id="table1">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Name</th>
+                    <th>Net Sales</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            // Initial load
+            loadVendorSummary();
+
+            // Checkbox → enable / disable date filters
+            $('#chkAllData').change(function () {
+                const isChecked = $(this).is(':checked');
+                $('#startDate, #endDate').prop('disabled', isChecked);
+            });
+
+            // Filter button
+            $('#filterBtn').click(function () {
+                loadVendorSummary();
+            });
+
+            // Double-click row → vendor details (ignore TOTAL row)
+            $('#table1 tbody').on('dblclick', 'tr', function () {
+                const id = $(this).data('id');
+                if (id) {
+                    window.location.href = `/Reports/PurchaseByVendorDetails?id=${id}`;
+                }
+            });
+        });
+
+        function loadVendorSummary() {
+
+            const showAll = $('#chkAllData').is(':checked');
+            const startDate = $('#startDate').val();
+            const endDate = $('#endDate').val();
+
+            $.ajax({
+                url: '@Url.Action("GetPurchaseByVendor", "Reports")',
+                type: 'GET',
+                data: {
+                    showAll: showAll,
+                    startDate: showAll ? null : startDate,
+                    endDate: showAll ? null : endDate
+                },
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function (res) {
+
+                    if (!res.status) {
+                        toastr.error(res.message || 'Failed to load vendor summary');
+                        return;
+                    }
+                    
+                    // Destroy DataTable if exists
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+
+                        $.each(res.data, function (i, row) {
+
+                            const isTotal = row.name === 'TOTAL';
+
+                            const tr = `
+                                <tr data-id="${row.vendorId || ''}"
+                                    class="${isTotal ? 'fw-bold table-secondary' : ''}">
+                                    <td>${row.sn ?? ''}</td>
+                                    <td>${row.name ?? ''}</td>
+                                    <td class="text-end">${row.netSales ?? '0.00'}</td>
+                                </tr>
+                            `;
+
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':visible' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':visible' },
+                                    orientation: 'portrait',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">
+                                    No records found
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error fetching vendor summary');
+                }
+            });
+        }
+    </script>
+
+
+}

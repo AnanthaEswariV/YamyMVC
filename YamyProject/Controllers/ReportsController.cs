@@ -5694,7 +5694,6 @@ ORDER BY t.date;";
         {
             return View();
         }
-
         [HttpGet]
         public async Task<IActionResult> GetItemTypes()
         {
@@ -5887,7 +5886,6 @@ ORDER BY i.type;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         [HttpGet]
         public async Task<IActionResult> GetItemsByCategoryDetails(int categoryId, string type, DateTime? startDate, DateTime? endDate)
@@ -6559,6 +6557,457 @@ ORDER BY v.name;
         }
 
         #endregion
+
+        #region Purchase By Vendor Summary
+
+        public IActionResult PurchaseByVendorSummary()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseByVendor(
+    bool isSubcontractors = false,
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var parameters = new List<MySqlParameter>();
+                string dateFilter = "";
+
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND s.date >= @startDate AND s.date <= @endDate ";
+                    parameters.Add(new MySqlParameter("@startDate", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@endDate", endDate.Value.Date));
+                }
+
+                string vendorType = isSubcontractors ? "Subcontractor" : "Vendor";
+
+                string query = $@"
+SELECT 
+    ROW_NUMBER() OVER(ORDER BY c.id) AS SN,
+    c.id AS VendorId,
+    c.name AS VendorName,
+    IFNULL(SUM(s.net), 0) AS NetSales
+FROM tbl_purchase s
+INNER JOIN tbl_vendor c ON s.vendor_id = c.id
+WHERE s.state = 0
+  AND c.type = @vendorType
+  {dateFilter}
+GROUP BY c.id, c.name
+ORDER BY c.id;
+";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@vendorType", vendorType);
+
+                if (parameters.Any())
+                    cmd.Parameters.AddRange(parameters.ToArray());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var result = new List<object>();
+                decimal totalAmount = 0;
+
+                while (await reader.ReadAsync())
+                {
+                    decimal netSales = Convert.ToDecimal(reader["NetSales"]);
+
+                    result.Add(new
+                    {
+                        SN = reader["SN"],
+                        VendorId = reader["VendorId"],
+                        Name = reader["VendorName"]?.ToString(),
+                        NetSales = netSales.ToString("N2")
+                    });
+
+                    totalAmount += netSales;
+                }
+
+                // TOTAL ROW
+                result.Add(new
+                {
+                    SN = "",
+                    VendorId = "",
+                    Name = "TOTAL",
+                    NetSales = totalAmount.ToString("N2")
+                });
+
+                return Ok(new
+                {
+                    status = true,
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        public IActionResult PurchaseByVendorDetails()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetVendorPurchaseDetails(
+        int id,
+        bool showAll = true,
+        DateTime? startDate = null,
+        DateTime? endDate = null)
+        {
+            try
+            {
+                if (id <= 0)
+                    return BadRequest(new { status = false, message = "Invalid Vendor ID" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string dateFilter = "";
+                var parameters = new List<MySqlParameter>
+        {
+            new MySqlParameter("@cid", id)
+        };
+
+                if (!showAll && startDate.HasValue && endDate.HasValue)
+                {
+                    dateFilter = " AND s.date >= @startDate AND s.date <= @endDate ";
+                    parameters.Add(new MySqlParameter("@startDate", startDate.Value.Date));
+                    parameters.Add(new MySqlParameter("@endDate", endDate.Value.Date));
+                }
+
+                string purchaseQuery = $@"
+SELECT 
+    s.id,
+    (
+        SELECT t.type 
+        FROM tbl_transaction t 
+        WHERE t.transaction_id = s.id 
+          AND t.t_type LIKE '%purchase%' 
+        LIMIT 1
+    ) AS Type,
+    s.date,
+    s.invoice_id AS Num,
+    c.name AS VendorName
+FROM tbl_purchase s
+JOIN tbl_vendor c ON s.vendor_id = c.id
+WHERE s.vendor_id = @cid
+  AND s.state = 0
+  {dateFilter}
+ORDER BY s.date;
+";
+
+                // ✅ STEP 1: Load purchases FIRST
+                var purchases = new List<dynamic>();
+
+                await using (var cmd = new MySqlCommand(purchaseQuery, conn))
+                {
+                    cmd.Parameters.AddRange(parameters.ToArray());
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        purchases.Add(new
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Type = reader["Type"]?.ToString(),
+                            Date = Convert.ToDateTime(reader["date"]).ToString("dd/MM/yyyy"),
+                            Num = reader["Num"]?.ToString(),
+                            Vendor = reader["VendorName"]?.ToString()
+                        });
+                    }
+                } // 🔴 reader CLOSED here
+
+                // ✅ STEP 2: Load items
+                var result = new List<object>();
+                decimal vendorTotal = 0;
+
+                string itemQuery = @"
+SELECT 
+    CONCAT(ti.code,' - ',ti.name) AS ItemName,
+    ts.qty,
+    ts.price,
+    ts.total,
+    IFNULL(
+        (SELECT CONCAT(code,' - ',name) 
+         FROM tbl_cost_center 
+         WHERE id = ts.cost_center_id),''
+    ) AS CostCenter
+FROM tbl_purchase_details ts
+INNER JOIN tbl_items ti ON ts.item_id = ti.id
+WHERE ts.purchase_id = @pid;
+";
+
+                foreach (var p in purchases)
+                {
+                    await using var itemCmd = new MySqlCommand(itemQuery, conn);
+                    itemCmd.Parameters.AddWithValue("@pid", p.Id);
+
+                    await using var itemReader = await itemCmd.ExecuteReaderAsync();
+
+                    while (await itemReader.ReadAsync())
+                    {
+                        decimal amount = Convert.ToDecimal(itemReader["total"]);
+                        vendorTotal += amount;
+
+                        result.Add(new
+                        {
+                            Id = p.Id,
+                            Type = p.Type,
+                            Date = p.Date,
+                            Num = p.Num,
+                            Name = p.Vendor,
+                            Item = itemReader["ItemName"]?.ToString(),
+                            Qty = Convert.ToDecimal(itemReader["qty"]).ToString("N2"),
+                            Price = Convert.ToDecimal(itemReader["price"]).ToString("N2"),
+                            Amount = amount.ToString("N2"),
+                            CostCenter = itemReader["CostCenter"]?.ToString()
+                        });
+                    }
+                }
+
+                // ✅ TOTAL ROW
+                result.Add(new
+                {
+                    Id = "",
+                    Type = "",
+                    Date = "",
+                    Num = "",
+                    Name = "TOTAL",
+                    Item = "",
+                    Qty = "",
+                    Price = "",
+                    Amount = vendorTotal.ToString("N2"),
+                    CostCenter = ""
+                });
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        #endregion
+
+        #region Purchase By Item Summary
+
+        public IActionResult PurchaseByItemSummary()
+        {
+            return View();
+        }
+
+        public IActionResult PurchaseByItemDetails()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetItemsByCategorys(
+      int categoryId,
+      string type,
+      DateTime? startDate,
+      DateTime? endDate)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string sql = @"
+        SELECT
+            i.id,
+            i.name AS item_name,
+            COALESCE(SUM(pd.qty), 0) AS qty,
+            COALESCE(SUM(pd.total), 0) AS amount,
+
+            ROUND(
+                COALESCE(
+                    SUM(pd.total)
+                    / NULLIF(MAX(total_purchase.total_amount), 0) * 100,
+                0),
+            1) AS percent_of_purchase,
+
+            ROUND(COALESCE(SUM(pd.total) / NULLIF(SUM(pd.qty), 0), 0), 2) AS avg_price,
+            ROUND(COALESCE(SUM(pd.cost_price * pd.qty), 0), 2) AS cogs,
+            ROUND(COALESCE(SUM(pd.cost_price * pd.qty) / NULLIF(SUM(pd.qty), 0), 0), 2) AS avg_cogs,
+            ROUND(COALESCE(SUM(pd.total) - SUM(pd.cost_price * pd.qty), 0), 2) AS gross_margin,
+            ROUND(
+                COALESCE(
+                    (SUM(pd.total) - SUM(pd.cost_price * pd.qty))
+                    / NULLIF(SUM(pd.total), 0) * 100,
+                0),
+            1) AS gross_margin_percent
+
+        FROM tbl_items i
+        JOIN tbl_purchase_details pd ON pd.item_id = i.id
+        JOIN tbl_purchase p ON p.id = pd.purchase_id
+            AND p.state = 0
+            AND (
+                @startDate IS NULL
+                OR @endDate IS NULL
+                OR p.date BETWEEN @startDate AND @endDate
+            )
+
+        CROSS JOIN (
+            SELECT COALESCE(SUM(pd2.total), 0) AS total_amount
+            FROM tbl_purchase_details pd2
+            JOIN tbl_purchase p2 ON p2.id = pd2.purchase_id
+            WHERE p2.state = 0
+              AND (
+                    @startDate IS NULL
+                    OR @endDate IS NULL
+                    OR p2.date BETWEEN @startDate AND @endDate
+              )
+        ) total_purchase
+
+        WHERE i.category_id = @catId
+          AND i.type = @type
+
+        GROUP BY i.id, i.name
+        ORDER BY i.name;
+        ";
+
+                await using var cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@catId", categoryId);
+                cmd.Parameters.AddWithValue("@type", type);
+
+                cmd.Parameters.AddWithValue("@startDate",
+                    (object?)startDate?.Date ?? DBNull.Value);
+
+                cmd.Parameters.AddWithValue("@endDate",
+                    (object?)endDate?.Date.AddDays(1).AddSeconds(-1) ?? DBNull.Value);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var data = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        Id = reader["id"],
+                        State = "n",
+                        LoadState = "l",
+                        Level = 3,
+                        Name = reader["item_name"],
+                        Qty = reader["qty"],
+                        Amount = reader["amount"],
+                        PercentOfPurchase = reader["percent_of_purchase"] + "%",
+                        AvgPrice = reader["avg_price"],
+                        Cogs = reader["cogs"],
+                        AvgCogs = reader["avg_cogs"],
+                        GrossMargin = reader["gross_margin"],
+                        GrossMarginPercent = reader["gross_margin_percent"] + "%"
+                    });
+                }
+
+                return Ok(new { status = true, data });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseInvoicesByItem(
+    int itemId,
+    DateTime? startDate,
+    DateTime? endDate)
+        {
+            var connStrBuilder = new MySqlConnectionStringBuilder(
+                  _config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+                             ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+            string sql = @"
+    SELECT 
+        p.date,
+        p.invoice_id AS num,
+        p.sales_man AS supplier,
+        p.po_num AS memo,
+        pd.qty,
+        pd.price,
+        pd.total AS amount,
+        (pd.qty * pd.price) - pd.discount AS balance
+    FROM tbl_purchase_details pd
+    JOIN tbl_purchase p ON pd.purchase_id = p.id
+    WHERE pd.item_id = @itemId
+      AND p.state = 0
+      AND (
+          @startDate IS NULL OR @endDate IS NULL
+          OR p.date BETWEEN @startDate AND @endDate
+      )
+    ORDER BY p.date;
+    ";
+
+            var data = new List<object>();
+            await using var cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@itemId", itemId);
+            cmd.Parameters.AddWithValue("@startDate", (object?)startDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@endDate", (object?)endDate ?? DBNull.Value);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                data.Add(new
+                {
+                    date = Convert.ToDateTime(reader["date"]).ToString("dd/MM/yyyy"),
+                    number = reader["num"],
+                    supplier = reader["supplier"],
+                    memo = reader["memo"],
+                    qty = reader["qty"],
+                    price = reader["price"],
+                    amount = reader["amount"],
+                    balance = reader["balance"]
+                });
+            }
+
+            return Ok(new { status = true, data });
+        }
+
+        #endregion
+
 
     }
 

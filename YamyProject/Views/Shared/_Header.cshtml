@@ -248,9 +248,12 @@
                        <li class="dropdown has-submenu">
                         <a href="">Purchases</a>
                         <ul class="submenu">
-                            <li><a asp-controller="PurchasesReport" asp-action="PurchaseByVendorSummary">Purchase By Vendor Summary</a></li>
-                            <li><a asp-controller="PurchasesReport" asp-action="ItemSummary">Purchase By Items Summary</a></li>
-                            <li><a asp-controller="PurchasesReport" asp-action="PurchaseBySubcontractorSummary">Purchase By Subcontractor Summary</a></li>
+                            <li><a href="@Url.Action("PurchaseByVendorSummary", "Reports")">Purchase By Vendor Summary</a></li>
+                            <li><a href="@Url.Action("PurchaseByItemSummary", "Reports")">Purchase By Item Summary</a></li>
+                            <li><a href="@Url.Action("PurchaseByVendorSummary", "Reports")">Purchase By Subcontractor Summary</a></li>
+                          @*   <li><a asp-controller="PurchasesReport" asp-action="PurchaseByVendorSummary">Purchase By Vendor Summary</a></li>
+                            <li><a asp-controller="PurchasesReport" asp-action="ItemSummary">Purchase By Items Summary</a></li> 
+                            <li><a asp-controller="PurchasesReport" asp-action="PurchaseBySubcontractorSummary">Purchase By Subcontractor Summary</a></li>*@
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
