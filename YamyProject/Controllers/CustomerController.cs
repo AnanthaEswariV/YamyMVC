@@ -176,16 +176,13 @@
                 return Json(500, new { status = false, message = ex.Message });
             }
         }
-
-
-        // Helper method to process opening balance
         private async Task ProcessOpeningBalanceAsync(MySqlConnection conn, int customerId, string formattedCode, int userId, CustomerRequest model)
         {
             decimal debitAmount = model.Debit ?? 0;
             decimal creditAmount = model.Credit ?? 0;
             string accountId = model.AccountId?.ToString() ?? "0";
 
-            // Get Opening Balance Equity account
+            // Get Opening Balance Equity account ID
             string openingBalanceEquity = await SelectDefaultLevelAccountAsync(conn, "Opening Balance Equity");
             if (string.IsNullOrWhiteSpace(openingBalanceEquity) || openingBalanceEquity == "0")
             {
@@ -198,30 +195,54 @@
             if (string.IsNullOrWhiteSpace(openingBalanceEquity) || openingBalanceEquity == "0")
                 throw new Exception("Cannot make opening balance without Opening Balance Equity account");
 
-            // Insert transactions
+            DateTime transactionDate = model.OpeningBalanceDate ?? DateTime.Now;
+
+            // Mimic your synchronous logic
+
             if (creditAmount != 0)
             {
-                await AddTransactionEntryAsync(conn, model.OpeningBalanceDate ?? DateTime.Now, openingBalanceEquity, "0", creditAmount.ToString(),
-                    customerId.ToString(), "0", "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance Equity - Customer Code - {formattedCode}", userId, DateTime.Now, "");
+                // Credit transaction: 
+                // 1) Opening Balance Equity - Debit = creditAmount, Credit=0
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, openingBalanceEquity,
+                    creditAmount.ToString(), "0",
+                    customerId.ToString(), "0",
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance Equity - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
 
-                await AddTransactionEntryAsync(conn, model.OpeningBalanceDate ?? DateTime.Now, accountId, "0", creditAmount.ToString(),
-                    customerId.ToString(), customerId.ToString(), "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance - Customer Code - {formattedCode}", userId, DateTime.Now, "");
+                // 2) Customer Account - Debit=0, Credit=creditAmount
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, accountId,
+                    "0", creditAmount.ToString(),
+                    customerId.ToString(), customerId.ToString(),
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
             }
 
             if (debitAmount != 0)
             {
-                await AddTransactionEntryAsync(conn, model.OpeningBalanceDate ?? DateTime.Now, openingBalanceEquity, debitAmount.ToString(), "0",
-                    customerId.ToString(), "0", "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance Equity - Customer Code - {formattedCode}", userId, DateTime.Now, "");
+                // Debit transaction:
+                // 1) Opening Balance Equity - Debit=0, Credit=debitAmount
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, openingBalanceEquity,
+                    "0", debitAmount.ToString(),
+                    customerId.ToString(), "0",
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance Equity - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
 
-                await AddTransactionEntryAsync(conn, model.OpeningBalanceDate ?? DateTime.Now, accountId, debitAmount.ToString(), "0",
-                    customerId.ToString(), customerId.ToString(), "Customer Opening Balance", "OPENING BALANCE",
-                    $"Opening Balance - Customer Code - {formattedCode}", userId, DateTime.Now, "");
+                // 2) Customer Account - Debit=debitAmount, Credit=0
+                await AddTransactionEntryAsync(
+                    conn, transactionDate, accountId,
+                    debitAmount.ToString(), "0",
+                    customerId.ToString(), customerId.ToString(),
+                    "Customer Opening Balance", "OPENING BALANCE",
+                    $"Opening Balance - Customer Code - {formattedCode}",
+                    userId, DateTime.Now, "");
             }
         }
-
 
         public static async Task AddTransactionEntryAsync(MySqlConnection conn, DateTime date, string accountId, string debit, string credit,
                string transactionId, string humId, string type, string voucherName, string description,
