@@ -3194,25 +3194,73 @@ VALUES
             await cmd.ExecuteNonQueryAsync();
         }
         private async Task InsertAccountingEntries(MySqlConnection conn, MySqlTransaction tx,
-            int salesId, SalesReturnRequest model, int userId)
+         int salesId, SalesReturnRequest model, int userId)
         {
+            if (model.NetTotal <= 0) return; // Skip if total <= 0
+
+            // 1️⃣ Cash / Credit
+            //string accountId = model.PaymentMethod == "Credit"
+            //    ? model.PaymentCreditAccountId.ToString()
+            //    : model.AccountCashId.ToString();
+
+            string accountId = model.PaymentMethod == "Credit"
+            ? model.PaymentCreditAccountId.ToString()
+            : model.AccountCashId.ToString();
+            int level4VatId = await GetDefaultAccountId("Vat Output");
+            int level4SalesReturnId = await GetDefaultAccountId("SalesReturn");
             var sql = @"
 INSERT INTO tbl_transaction
-(date,account_id,debit,credit,transaction_id,t_type,type,description,created_by,created_date,state,voucher_no)
+(date, account_id, debit, credit, transaction_id, t_type, type, description, created_by, created_date, state, voucher_no)
 VALUES
-(@date,@acc,0,@credit,@id,'SALES RETURN','SalesReturn Invoice',@desc,@user,@created,0,@voucher);";
+(@date, @acc, @debit, @credit, @id, 'SALES RETURN', 'SalesReturn Invoice', @desc, @user, @created, 0, @voucher);";
 
-            var cmd = new MySqlCommand(sql, conn, tx);
-            cmd.Parameters.AddWithValue("@date", model.Date);
-            cmd.Parameters.AddWithValue("@acc", model.AccountCashId);
-            cmd.Parameters.AddWithValue("@credit", model.NetTotal);
-            cmd.Parameters.AddWithValue("@id", salesId);
-            cmd.Parameters.AddWithValue("@desc", "Sales Return Invoice NO. " + model.InvoiceCode);
-            cmd.Parameters.AddWithValue("@user", userId);
-            cmd.Parameters.AddWithValue("@created", DateTime.Now);
-            cmd.Parameters.AddWithValue("@voucher", model.InvoiceCode);
-            await cmd.ExecuteNonQueryAsync();
+            using (var cmd = new MySqlCommand(sql, conn, tx))
+            {
+                // --- Cash / Credit entry ---
+                cmd.Parameters.AddWithValue("@date", model.Date);
+                cmd.Parameters.AddWithValue("@acc", accountId);
+                cmd.Parameters.AddWithValue("@debit", 0);
+                cmd.Parameters.AddWithValue("@credit", model.NetTotal);
+                cmd.Parameters.AddWithValue("@id", salesId);
+                cmd.Parameters.AddWithValue("@desc", $"SalesReturn Invoice NO. {model.InvoiceCode}");
+                cmd.Parameters.AddWithValue("@user", userId);
+                cmd.Parameters.AddWithValue("@created", DateTime.Now);
+                cmd.Parameters.AddWithValue("@voucher", model.InvoiceCode);
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.Parameters.Clear();
+
+                // --- VAT entry (if > 0) ---
+                if (model.Vat > 0)
+                {
+                    cmd.Parameters.AddWithValue("@date", model.Date);
+                    cmd.Parameters.AddWithValue("@acc", level4VatId.ToString());
+                    cmd.Parameters.AddWithValue("@debit", model.Vat);
+                    cmd.Parameters.AddWithValue("@credit", 0);
+                    cmd.Parameters.AddWithValue("@id", salesId);
+                    cmd.Parameters.AddWithValue("@desc", $"Vat Output For Return Invoice No. {model.InvoiceCode}");
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@created", DateTime.Now);
+                    cmd.Parameters.AddWithValue("@voucher", model.InvoiceCode);
+                    await cmd.ExecuteNonQueryAsync();
+
+                    cmd.Parameters.Clear();
+                }
+
+                // --- Sales Return account entry ---
+                cmd.Parameters.AddWithValue("@date", model.Date);
+                cmd.Parameters.AddWithValue("@acc", level4SalesReturnId.ToString());
+                cmd.Parameters.AddWithValue("@debit", model.TotalBefore);
+                cmd.Parameters.AddWithValue("@credit", 0);
+                cmd.Parameters.AddWithValue("@id", salesId);
+                cmd.Parameters.AddWithValue("@desc", $"SalesReturn For Invoice No. {model.InvoiceCode}");
+                cmd.Parameters.AddWithValue("@user", userId);
+                cmd.Parameters.AddWithValue("@created", DateTime.Now);
+                cmd.Parameters.AddWithValue("@voucher", model.InvoiceCode);
+                await cmd.ExecuteNonQueryAsync();
+            }
         }
+
         private async Task ReturnItemsToInventory(MySqlConnection conn, MySqlTransaction tx, int id)
         {
             var items = new List<(int itemId, decimal qty)>();

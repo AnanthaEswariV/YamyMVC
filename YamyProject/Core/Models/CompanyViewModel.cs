@@ -1530,6 +1530,10 @@ namespace YamyProject.Core.Models
         public decimal NetTotal { get; set; }
         public string Description { get; set; }
         public List<SalesReturnItemRequest> Items { get; set; }
+
+        public int PaymentCreditAccountId { get; set; }
+        public int level4VatId { get; set; }    
+        public int level4SalesReturnId { get; set; }    
     }
 
     public class SalesReturnItemRequest
