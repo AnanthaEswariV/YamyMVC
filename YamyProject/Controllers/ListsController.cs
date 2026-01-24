@@ -5065,12 +5065,12 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             string expenseAccountId = model.ExpenceAccountId.ToString();
             decimal actualTotal = 0;
 
-            // Debit & Credit entry at purchase
-            if (!string.IsNullOrEmpty(model.Supplier))
-            {
+            //// Debit & Credit entry at purchase
+            //if (!string.IsNullOrEmpty(model.Supplier))
+            //{
                 await CommonInsertTransactionAsync(conn, startDate, model.DebitAccountId.ToString(), totalAmount, 0, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy, model.CostCenter ?? 0);
                 await CommonInsertTransactionAsync(conn, startDate, model.CreditAccountId.ToString(), 0, totalAmount, assetId.ToString(), 0, "Fixed Assets", $"{model.Name} - Fixed Assets No. {assetId}", model.CreatedBy, model.CostCenter ?? 0);
-            }
+            //}
 
             DateTime currentMonthStart = startDate;
 
