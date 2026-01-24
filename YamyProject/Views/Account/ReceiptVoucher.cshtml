@@ -1344,7 +1344,13 @@
             const $row = $(this);
 
             const invDateText = $row.find("td:eq(1)").text().trim();
-            const invDate = invDateText ? new Date(invDateText).toISOString().split("T")[0] : null;
+                    const invDate = (() => {
+            const parsedDate = new Date(invDateText);
+            return !isNaN(parsedDate.getTime())
+                ? parsedDate.toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0]; // fallback to today
+        })();
+
 
             // Read amount from table column
             const totalAmount = Number($row.find("td:eq(3)").text().replace(/,/g, "")) || 0;

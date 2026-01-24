@@ -6708,10 +6708,10 @@ WHERE payment_id = @paymentId";
             if (string.IsNullOrWhiteSpace(model.PaymentType))
                 return BadRequest(new { status = false, message = "Please choose payment type." });
 
-            if ((model.Amount == 0M || model.Amount < 0))
-            {
-                return BadRequest(new { status = false, message = "Enter amount or invoice details." });
-            }
+            //if ((model.Amount == 0M || model.Amount < 0))
+            //{
+            //    return BadRequest(new { status = false, message = "Enter amount or invoice details." });
+            //}
 
 
             if (model.DebitAccountId <= 0)

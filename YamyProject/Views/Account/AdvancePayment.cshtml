@@ -1009,7 +1009,7 @@
                     Description: $('#noteField').val() || '',
                     Details: details
                 };
-
+                console.log(payload);
                 $.ajax({
                     url: '/Account/SaveAdvancePaymentVoucher',
                     type: 'POST',
