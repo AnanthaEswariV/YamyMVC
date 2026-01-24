@@ -1416,6 +1416,10 @@ WHERE a.assembly_id = @assemblyId;
             string accountId = model.PaymentMethod == "Credit"
                 ? model.PaymentCreditAccountId.ToString()
                 : model.AccountCashId.ToString();
+            int level4SalesInvoice = await GetDefaultAccountId("Sales");
+            int level4VatId = await GetDefaultAccountId("Vat Output");
+            int level4COGS = await GetDefaultAccountId("COGS");
+            int level4Id = await GetDefaultAccountId("Inventory");
 
             // =========================
             // 1. Customer / Cash / Credit Entry
@@ -1444,7 +1448,7 @@ WHERE a.assembly_id = @assemblyId;
             await InsertTransactionAsync(
                 conn, tx,
                 model.InvoiceDate,
-                model.SalesRevenueAccountId.ToString(),
+                level4SalesInvoice.ToString(),
                 0,
                 model.TotalBeforeVat,
                 invoiceId,
@@ -1464,7 +1468,7 @@ WHERE a.assembly_id = @assemblyId;
                 await InsertTransactionAsync(
                     conn, tx,
                     model.InvoiceDate,
-                    model.VatAccountId.ToString(),
+                    level4VatId.ToString(),
                     0,
                     model.Vat,
                     invoiceId,
@@ -1486,7 +1490,7 @@ WHERE a.assembly_id = @assemblyId;
                 await InsertTransactionAsync(
                     conn, tx,
                     model.InvoiceDate,
-                    model.CogsAccountId.ToString(),
+                    level4COGS.ToString(),
                     model.InventoryCost,
                     0,
                     invoiceId,
@@ -1502,7 +1506,7 @@ WHERE a.assembly_id = @assemblyId;
                 await InsertTransactionAsync(
                     conn, tx,
                     model.InvoiceDate,
-                    model.WarehouseId.ToString(),
+                    level4Id.ToString(),
                     0,
                     model.InventoryCost,
                     invoiceId,
@@ -3575,8 +3579,13 @@ WHERE c.state = 0
                 var result = new
                 {
                     customerAccountId = await GetDefaultAccountId("Invoice Payment Cash Method"),
-                    //vatOutputAccountId = await GetDefaultAccountId("Vat Output"),
-                    //salesReturnAccountId = await GetDefaultAccountId("SalesReturn")
+                    vatOutputAccountId = await GetDefaultAccountId("Vat Output"),
+                    salesReturnAccountId = await GetDefaultAccountId("SalesReturn"),
+                    level4PaymentCreditMethodId = await GetDefaultAccountId("Customer"),
+                    level4VatId = await GetDefaultAccountId("Vat Output"),
+                    level4SalesInvoice = await GetDefaultAccountId("Sales"),
+                    level4COGS = await GetDefaultAccountId("COGS"),
+                    level4Inventory = await GetDefaultAccountId("Inventory")
                 };
 
                 return Ok(new
