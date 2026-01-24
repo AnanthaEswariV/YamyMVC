@@ -1247,7 +1247,7 @@ WHERE id=@id;";
                         // Delete previous data
                         await ReturnItemsToInventory(conn, transaction, purchaseId);
                         await DeleteCostCenterTransactionEntry(conn, transaction, purchaseId.ToString(), "Purchase");
-                        await DeleteTransactionEntry(conn, transaction, purchaseId, "PURCHASE");
+                        await DeleteTransactionEntry(conn, transaction, purchaseId, "Purchase Invoice");
 
                         // Re-insert items and transactions
                         await InsertPurchaseItems(conn, transaction, purchaseId, model.Items, model.Date,
@@ -1530,14 +1530,14 @@ WHERE id=@id;";
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountId, "0",
                     model.NetTotal.ToString(), purchaseId.ToString(), model.VendorId.ToString(),
                     model.PaymentMethod == "Credit" ? "Purchase Invoice" : "Purchase Invoice Cash",
-                    "PURCHASE", $"Purchase Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+                    "Purchase Invoice Cash", $"Purchase Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
 
             // VAT transaction
             if (model.Vat > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountIds.VatId.ToString(),
-                    model.Vat.ToString(), "0", purchaseId.ToString(), "0", "Purchase Invoice", "PURCHASE",
+                    model.Vat.ToString(), "0", purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
                     $"Vat Input For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
 
@@ -1545,7 +1545,7 @@ WHERE id=@id;";
             if (model.TotalBefore > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountIds.InventoryId.ToString(),
-                    model.TotalBefore.ToString(), "0", purchaseId.ToString(), "0", "Purchase Invoice", "PURCHASE",
+                    model.TotalBefore.ToString(), "0", purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
                     $"Purchase For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
         }
@@ -2689,7 +2689,7 @@ WHERE id=@id;";
 
                         // Delete cost center and journal transactions
                         await DeleteCostCenterTransactionEntry(conn, transaction, purchaseReturnId.ToString(), "Purchase Return");
-                        await DeleteTransactionEntry(conn, transaction, purchaseReturnId, "PURCHASE RETURN");
+                        await DeleteTransactionEntry(conn, transaction, purchaseReturnId, "Purchase Return Invoice");
 
                         // Re-insert items and transactions
                         await InsertPurchaseReturnItems(conn, transaction, purchaseReturnId, model.Items,
