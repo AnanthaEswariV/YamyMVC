@@ -7411,6 +7411,15 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
 
         #endregion
 
+        #region Customer List
+
+        public IActionResult CustomerList()
+        {
+            return View();
+        }
+
+        #endregion
+
 
     }
 
