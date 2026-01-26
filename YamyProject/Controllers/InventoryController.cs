@@ -790,7 +790,7 @@
         public IActionResult StockManagement()
         {
             return View();
-        }
+        } 
 
         [HttpGet]
         public async Task<IActionResult> GetStockSettlements(
@@ -1042,6 +1042,331 @@
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
+        }
+
+
+
+        [HttpPost]
+        public async Task<IActionResult> SaveStockSettlement([FromBody] StockSettlementRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Insert items first" });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(
+                     _config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+                                ?? _config.GetConnectionString("DefaultDatabase"),
+            };
+
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+            using var tran = await conn.BeginTransactionAsync();
+
+            try
+            {
+                // 🔎 Load COA accounts
+                int inventoryAccount = await GetAccount(conn, tran, "Inventory");
+                int stockSettleAccount = await GetAccount(conn, tran, "Stock Settlement");
+
+                if (inventoryAccount == 0 || stockSettleAccount == 0)
+                    return BadRequest(new { status = false, message = "COA configuration missing" });
+
+                // 🔍 Validate item amounts (chkRequiredDate)
+                foreach (var item in model.Items)
+                {
+                    if ((item.PlusAmount == 0 && item.MinusAmount == 0))
+                        return BadRequest(new { status = false, message = "Item amount cannot be zero" });
+                }
+
+                if (model.TotalPlus == 0 && model.TotalMinus == 0)
+                    return BadRequest(new { status = false, message = "Total amount must be greater than zero" });
+
+                string invCode;
+                long invId;
+
+                if (model.Id == 0)
+                {
+                    // 🔢 Generate code
+                    invCode = await GenerateSettlementCode(conn, tran);
+
+                    // 🧾 Insert header
+                    var cmd = new MySqlCommand(@"
+                INSERT INTO tbl_item_stock_settlement
+                (code,date,warehouse_id,total_plus,total_minus,created_by,created_date,state)
+                VALUES (@code,@date,@warehouse,@plus,@minus,@user,@created,0);
+                SELECT LAST_INSERT_ID();", conn, tran);
+
+                    cmd.Parameters.AddWithValue("@code", invCode);
+                    cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                    cmd.Parameters.AddWithValue("@warehouse", model.WarehouseId);
+                    cmd.Parameters.AddWithValue("@plus", model.TotalPlus);
+                    cmd.Parameters.AddWithValue("@minus", model.TotalMinus);
+                    cmd.Parameters.AddWithValue("@user", userId);
+                    cmd.Parameters.AddWithValue("@created", DateTime.Now);
+
+                    invId = Convert.ToInt64(await cmd.ExecuteScalarAsync());
+                }
+                else
+                {
+                    invId = model.Id;
+
+                    // 🔁 Reverse previous stock
+                    await ReturnItemsToInventory(conn, tran, invId);
+
+                    // 🔄 Update header
+                    var cmd = new MySqlCommand(@"
+                UPDATE tbl_item_stock_settlement
+                SET date=@date, warehouse_id=@warehouse,
+                    total_plus=@plus, total_minus=@minus
+                WHERE id=@id", conn, tran);
+
+                    cmd.Parameters.AddWithValue("@id", invId);
+                    cmd.Parameters.AddWithValue("@date", model.Date.Date);
+                    cmd.Parameters.AddWithValue("@warehouse", model.WarehouseId);
+                    cmd.Parameters.AddWithValue("@plus", model.TotalPlus);
+                    cmd.Parameters.AddWithValue("@minus", model.TotalMinus);
+
+                    await cmd.ExecuteNonQueryAsync();
+
+                    // 🧹 Remove previous journal
+                    await DeleteJournal(conn, tran, invId);
+                }
+
+                // 📒 Insert journal entries
+                await InsertJournal(conn, tran, model, invId, stockSettleAccount, inventoryAccount, userId);
+
+                // 📦 Insert items + inventory logic
+                foreach (var item in model.Items)
+                {
+                    await InsertSettlementItem(conn, tran, invId, item);
+                    await UpdateInventoryAndTransactions(conn, tran, model.Date, invId, item);
+                }
+
+                await tran.CommitAsync();
+                return Ok(new { status = true, message = "Stock settlement saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                await tran.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateSettlementCode(MySqlConnection conn, MySqlTransaction tran)
+        {
+            var cmd = new MySqlCommand(@"
+        SELECT code FROM tbl_item_stock_settlement
+        ORDER BY CAST(SUBSTRING_INDEX(code,'-',-1) AS UNSIGNED) DESC
+        LIMIT 1", conn, tran);
+
+            var result = await cmd.ExecuteScalarAsync();
+            int next = 1;
+
+            if (result != null && result != DBNull.Value)
+                next = int.Parse(result.ToString().Replace("SIS-", "")) + 1;
+
+            return "SIS-" + next.ToString("D4");
+        }
+        private async Task ReturnItemsToInventory(MySqlConnection conn, MySqlTransaction tran, long settleId)
+        {
+            var cmd = new MySqlCommand(@"
+        SELECT d.*, i.method
+        FROM tbl_item_stock_settlement_details d
+        INNER JOIN tbl_items i ON d.item_id = i.id
+        WHERE d.settle_id=@id", conn, tran);
+
+            cmd.Parameters.AddWithValue("@id", settleId);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            var rows = new List<dynamic>();
+
+            while (await reader.ReadAsync())
+            {
+                rows.Add(new
+                {
+                    Id = reader["id"],
+                    ItemId = reader["item_id"],
+                    Qty = Convert.ToDecimal(reader["qty"]),
+                    Method = reader["method"].ToString()
+                });
+            }
+            reader.Close();
+
+            foreach (var r in rows)
+            {
+                if (r.Qty > 0)
+                {
+                    await Exec(conn, tran,
+                        "UPDATE tbl_items SET on_hand=on_hand-@qty WHERE id=@id",
+                        ("@qty", r.Qty), ("@id", r.ItemId));
+                }
+                else
+                {
+                    await Exec(conn, tran,
+                        "UPDATE tbl_items SET on_hand=on_hand+@qty WHERE id=@id",
+                        ("@qty", -r.Qty), ("@id", r.ItemId));
+                }
+
+                await Exec(conn, tran,
+                    "DELETE FROM tbl_item_transaction WHERE reference=@ref AND type='Stock Inventory Settlement'",
+                    ("@ref", settleId));
+
+                await Exec(conn, tran,
+                    "DELETE FROM tbl_item_stock_settlement_details WHERE id=@id",
+                    ("@id", r.Id));
+            }
+        }
+        private async Task DeleteJournal(MySqlConnection conn, MySqlTransaction tran, long invId)
+        {
+            await Exec(conn, tran,
+                "DELETE FROM tbl_transaction WHERE transaction_id=@id AND description LIKE 'Stock Inventory Settlement%'",
+                ("@id", invId));
+        }
+        private async Task InsertJournal(
+            MySqlConnection conn, MySqlTransaction tran,
+            StockSettlementRequest model, long invId,
+            int stockSettleAcc, int inventoryAcc, int userId)
+        {
+            if (model.TotalMinus > 0)
+            {
+                await InsertTxn(conn, tran, model.Date, stockSettleAcc, model.TotalMinus, 0, invId, userId);
+                await InsertTxn(conn, tran, model.Date, inventoryAcc, 0, model.TotalMinus, invId, userId);
+            }
+
+            if (model.TotalPlus > 0)
+            {
+                await InsertTxn(conn, tran, model.Date, stockSettleAcc, 0, model.TotalPlus, invId, userId);
+                await InsertTxn(conn, tran, model.Date, inventoryAcc, model.TotalPlus, 0, invId, userId);
+            }
+        }
+        private async Task InsertSettlementItem(
+            MySqlConnection conn, MySqlTransaction tran,
+            long invId, StockSettlementItemDto item)
+        {
+            await Exec(conn, tran, @"
+        INSERT INTO tbl_item_stock_settlement_details
+        (settle_id,item_id,on_hand,price,new_on_hand,qty,minusamount,plusamount)
+        VALUES (@sid,@item,@onhand,@price,@new,@qty,@minus,@plus)",
+                ("@sid", invId),
+                ("@item", item.ItemId),
+                ("@onhand", item.OnHand),
+                ("@price", item.Price),
+                ("@new", item.NewOnHand),
+                ("@qty", item.QtyDiff),
+                ("@minus", item.MinusAmount),
+                ("@plus", item.PlusAmount));
+
+            await Exec(conn, tran,
+                "UPDATE tbl_items SET on_hand=@qty WHERE id=@id",
+                ("@qty", item.NewOnHand),
+                ("@id", item.ItemId));
+        }
+        private async Task UpdateInventoryAndTransactions(
+            MySqlConnection conn, MySqlTransaction tran,
+            DateTime date, long invId, StockSettlementItemDto item)
+        {
+            decimal diff = item.NewOnHand - item.OnHand;
+
+            if (diff < 0) // STOCK OUT
+            {
+                decimal remaining = Math.Abs(diff);
+
+                string order = item.Method == "fifo" ? "ASC" : "DESC";
+                var cmd = new MySqlCommand($@"
+            SELECT * FROM tbl_item_transaction
+            WHERE qty_inc > 0 AND item_id=@id
+            ORDER BY id {order}", conn, tran);
+
+                cmd.Parameters.AddWithValue("@id", item.ItemId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                var txns = new List<dynamic>();
+
+                while (await reader.ReadAsync())
+                {
+                    txns.Add(new
+                    {
+                        Id = reader["id"],
+                        QtyInc = Convert.ToDecimal(reader["qty_inc"])
+                    });
+                }
+                reader.Close();
+
+                foreach (var t in txns)
+                {
+                    if (remaining <= 0) break;
+
+                    decimal used = Math.Min(remaining, t.QtyInc);
+                    remaining -= used;
+
+                    await Exec(conn, tran,
+                        "UPDATE tbl_item_transaction SET qty_inc=qty_inc-@q WHERE id=@id",
+                        ("@q", used), ("@id", t.Id));
+                }
+            }
+            else if (diff > 0) // STOCK IN
+            {
+                   await Exec(conn, tran, @"
+            INSERT INTO tbl_item_transaction
+            (date,type,reference,item_id,cost_price,qty_in,qty_inc,qty_out,description)
+            VALUES (@date,'Stock Settlement',@ref,@item,@price,@qty,@qty,0,'Stock Settlement')",
+                    ("@date", date),
+                    ("@ref", invId),
+                    ("@item", item.ItemId),
+                    ("@price", item.Price),
+                    ("@qty", diff));
+            }
+        }
+        private async Task Exec(MySqlConnection c, MySqlTransaction t, string sql, params (string, object)[] p)
+        {
+            using var cmd = new MySqlCommand(sql, c, t);
+            foreach (var x in p)
+                cmd.Parameters.AddWithValue(x.Item1, x.Item2);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        private async Task InsertTxn(
+            MySqlConnection c, MySqlTransaction t,
+            DateTime date, int acc, decimal debit, decimal credit,
+            long refId, int user)
+        {
+            await Exec(c, t, @"
+        INSERT INTO tbl_transaction
+        (date,account_id,debit,credit,transaction_id,type,description,created_by,created_date,state)
+        VALUES (@date,@acc,@dr,@cr,@ref,'Stock Inventory Settlement',
+                'Stock Inventory Settlement',@user,@now,0)",
+                ("@date", date),
+                ("@acc", acc),
+                ("@dr", debit),
+                ("@cr", credit),
+                ("@ref", refId),
+                ("@user", user),
+                ("@now", DateTime.Now));
+        }
+        private async Task<int> GetAccount(
+    MySqlConnection conn,
+    MySqlTransaction tran,
+    string category)
+        {
+            using var cmd = new MySqlCommand(
+                "SELECT account_id FROM tbl_coa_config WHERE category=@cat",
+                conn, tran);
+
+            cmd.Parameters.AddWithValue("@cat", category);
+
+            var result = await cmd.ExecuteScalarAsync();
+
+            return result == null || result == DBNull.Value
+                ? 0
+                : Convert.ToInt32(result);
         }
 
 

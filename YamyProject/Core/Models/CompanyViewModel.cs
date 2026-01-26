@@ -1081,7 +1081,7 @@ namespace YamyProject.Core.Models
     // Request model
     public class VendorCategoryRequest
     {
-        public int Id { get; set; } = 0; // 0 = new category, >0 = update
+        public int Id { get; set; } = 0; 
         public string Name { get; set; }
     }
 
@@ -1223,9 +1223,9 @@ namespace YamyProject.Core.Models
         public DateTime QuarterFourEndDate { get; set; }
         public DateTime QuarterFourDueDate { get; set; }
 
-        public int CorporateTaxId { get; set; }   // Corporate Tax config ID
+        public int CorporateTaxId { get; set; }   
         public string CorporateTaxNo { get; set; }
-        public DateTime TRNIssueDateCorp { get; set; }   // TRN issue date for corporate tax
+        public DateTime TRNIssueDateCorp { get; set; } 
         public DateTime CorporateTaxStartDate { get; set; }
         public DateTime CorporateTaxEndDate { get; set; }
         public DateTime CorporateTaxDueDate { get; set; }
@@ -1288,9 +1288,9 @@ namespace YamyProject.Core.Models
 
     public class PaymentVoucherRequest
     {
-        public int Id { get; set; } = 0; // 0 = insert, >0 = update
-        public string PaymentType { get; set; } = ""; // Employee, Vendor, General
-        public string Method { get; set; } = ""; // Cheque / Transfer / Cash
+        public int Id { get; set; } = 0; 
+        public string PaymentType { get; set; } = ""; 
+        public string Method { get; set; } = ""; 
         public int DebitAccountId { get; set; }
         public int CreditAccountId { get; set; }
         public decimal Amount { get; set; }
@@ -1307,7 +1307,7 @@ namespace YamyProject.Core.Models
         public string TransName { get; set; } = "";
         public string TransRef { get; set; } = "";
         public DateTime Date { get; set; } = DateTime.Now;
-
+        
 
         public List<InvoiceDetail> InvoiceDetails { get; set; } = new();
         public bool PrintVoucher { get; set; } = false;
@@ -1877,6 +1877,27 @@ namespace YamyProject.Core.Models
         public decimal Balance { get; set; } = 0;    
         public decimal Remaining { get; set; } = 0; 
         public bool Selected { get; set; } = true;   
+    }
+    public class StockSettlementRequest
+    {
+        public int Id { get; set; } // 0 = insert
+        public DateTime Date { get; set; }
+        public int WarehouseId { get; set; }
+        public decimal TotalPlus { get; set; }
+        public decimal TotalMinus { get; set; }
+        public List<StockSettlementItemDto> Items { get; set; }
+    }
+
+    public class StockSettlementItemDto
+    {
+        public int ItemId { get; set; }
+        public decimal OnHand { get; set; }
+        public decimal Price { get; set; }
+        public decimal NewOnHand { get; set; }
+        public decimal QtyDiff { get; set; }
+        public decimal MinusAmount { get; set; }
+        public decimal PlusAmount { get; set; }
+        public string Method { get; set; } // fifo | lifo | avg
     }
 
 

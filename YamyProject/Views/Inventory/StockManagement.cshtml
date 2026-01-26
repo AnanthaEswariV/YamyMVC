@@ -102,6 +102,7 @@
 
             <!-- Body -->
             <div class="modal-body">
+                <input type="hidden" id="settlementId" value="0">
 
                 <!-- Top Controls -->
                 <div class="row g-3 mb-3 align-items-end">
@@ -396,9 +397,14 @@
             var itemName = $(this).val();
             var warehouseId = $('#warehouseDropdown').val();
 
-            if (!itemName || !warehouseId) return;
+                 if (!warehouseId) {
+            alert('Please select a warehouse first.');
+            $(this).val('');
+            return;
+        }
 
-            // Call API
+        if (!itemName) return;
+
             $.ajax({
                 url: '@Url.Action("GetItemByCodeOrName", "Inventory")',
                 type: 'GET',
@@ -411,15 +417,15 @@
                     if (res.status) {
                         var item = res.data;
                         console.log(res);
+                        row.find('td:eq(1) input').val(item.code);
                         row.find('td:eq(3) input').val(item.qty); 
                         row.find('td:eq(4) input').val(item.costPrice.toFixed(2));
-                        row.find('td:eq(5) input').val(item.total.toFixed(2)); // SYS Amount
-                        row.find('td:eq(6) input').val(item.newQty.toFixed(2)); // New QTY
-                        row.find('td:eq(7) input').val(item.qtyDif); // QTY DIF
-                        row.find('td:eq(8) input').val(item.minusAmount); // Amount(-)
-                        row.find('td:eq(9) input').val(item.plusAmount);  // Amount(+)
+                        row.find('td:eq(5) input').val(item.total.toFixed(2));
+                        row.find('td:eq(6) input').val(item.newQty.toFixed(2)); 
+                        row.find('td:eq(7) input').val(item.qtyDif); 
+                        row.find('td:eq(8) input').val(item.minusAmount); 
+                        row.find('td:eq(9) input').val(item.plusAmount); 
 
-                        // Optionally, store itemId in a hidden input for later saving
                         if (!row.find('.itemId').length) {
                             row.append('<input type="hidden" class="itemId" value="' + item.itemId + '"/>');
                         } else {
@@ -427,13 +433,138 @@
                         }
                     } else {
                         alert(res.message);
-                        // Clear fields if item not found
                         row.find('td input').val('');
                     }
                 },
                 error: function (xhr) {
                     console.error(xhr.responseText);
                     alert('Error fetching item data.');
+                }
+            });
+        });
+
+                    $('#stockManagementTable').on('input', 'td:eq(6) input', function () {
+            var row = $(this).closest('tr');
+
+            var sysQty = parseFloat(row.find('td:eq(3) input').val()) || 0;
+            var price  = parseFloat(row.find('td:eq(4) input').val()) || 0;
+            var newQty = parseFloat($(this).val()) || 0;
+
+            // ✅ QTY DIF = NEW - SYS
+            var qtyDif = newQty - sysQty;
+            row.find('td:eq(7) input').val(qtyDif.toFixed(2));
+
+            // Reset amounts
+            row.find('td:eq(8) input').val('0.00'); // Amount (-)
+            row.find('td:eq(9) input').val('0.00'); // Amount (+)
+
+            if (qtyDif > 0) {
+                // PLUS amount
+                var plusAmount = price * qtyDif;
+                row.find('td:eq(9) input').val(plusAmount.toFixed(2));
+            }
+            else if (qtyDif < 0) {
+                // MINUS amount
+                var minusAmount = price * Math.abs(qtyDif);
+                row.find('td:eq(8) input').val(minusAmount.toFixed(2));
+            }
+        });
+
+                // ===== Submit Stock Settlement =====
+        $('#stockSettlementModal .btn-primary').on('click', function (e) {
+            e.preventDefault();
+
+            const warehouseId = $('#warehouseDropdown').val();
+            const date = $('#date').val();
+            const idVal = $('#settlementId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            if (!date) {
+                toastr.error('Please select date');
+                return;
+            }
+
+            if (!warehouseId) {
+                toastr.error('Please select warehouse');
+                return;
+            }
+
+            let items = [];
+            let totalPlus = 0;
+            let totalMinus = 0;
+
+            $('#stockManagementTable tr').each(function () {
+                const row = $(this);
+
+                const itemId = row.find('.itemId').val();
+                if (!itemId) return; // skip empty rows
+
+                const sysQty = parseFloat(row.find('td:eq(3) input').val()) || 0;
+                const price = parseFloat(row.find('td:eq(4) input').val()) || 0;
+                const newQty = parseFloat(row.find('td:eq(6) input').val()) || 0;
+                const qtyDiff = parseFloat(row.find('td:eq(7) input').val()) || 0;
+                const minusAmt = parseFloat(row.find('td:eq(8) input').val()) || 0;
+                const plusAmt = parseFloat(row.find('td:eq(9) input').val()) || 0;
+
+                if (minusAmt === 0 && plusAmt === 0) {
+                    toastr.error(`Row ${row.index() + 1}: Amount cannot be zero`);
+                    items = [];
+                    return false;
+                }
+
+                totalMinus += minusAmt;
+                totalPlus += plusAmt;
+
+                items.push({
+                    ItemId: parseInt(itemId),
+                    OnHand: sysQty,
+                    Price: price,
+                    NewOnHand: newQty,
+                    QtyDiff: qtyDiff,
+                    MinusAmount: minusAmt,
+                    PlusAmount: plusAmt,
+                    Method: row.data('method') || 'fifo'
+                });
+            });
+
+            if (items.length === 0) {
+                toastr.error('Insert items first');
+                return;
+            }
+
+            if (totalMinus === 0 && totalPlus === 0) {
+                toastr.error('Amount must be greater than zero');
+                return;
+            }
+
+            const payload = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                Date: date,
+                WarehouseId: parseInt(warehouseId),
+                TotalPlus: totalPlus,
+                TotalMinus: totalMinus,
+                Items: items
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveStockSettlement", "Inventory")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit
+                            ? 'Stock settlement updated successfully'
+                            : 'Stock settlement saved successfully');
+
+                        $('#stockSettlementModal').modal('hide');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
                 }
             });
         });
