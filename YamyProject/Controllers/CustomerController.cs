@@ -1317,10 +1317,10 @@ WHERE a.assembly_id = @assemblyId;
                 }
 
                 var deleteItemTrans = @"
-        DELETE FROM tbl_item_transaction WHERE reference=@invId AND type='Sales Invoice';
+        DELETE FROM tbl_item_transaction WHERE reference=@invId AND type='SALES';
         DELETE FROM tbl_item_card_details WHERE trans_type='Sales Invoice' AND trans_no=@invId;
         DELETE FROM tbl_cost_center_transaction WHERE ref_id=@invId AND type='Sales';
-        DELETE FROM tbl_transaction WHERE transaction_id=@invId AND type='SALES';
+        DELETE FROM tbl_transaction WHERE transaction_id=@invId AND type='Sales Invoice Cash';
     ";
                 using (var cmd = new MySqlCommand(deleteItemTrans, conn, tx))
                 {
