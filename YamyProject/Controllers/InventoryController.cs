@@ -1044,8 +1044,6 @@
             }
         }
 
-
-
         [HttpPost]
         public async Task<IActionResult> SaveStockSettlement([FromBody] StockSettlementRequest model)
         {
