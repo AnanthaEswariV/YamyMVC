@@ -3652,6 +3652,82 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetAllLevel4Accounts()
+        {
+            try
+            {
+                var list = new List<object>();
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var cmd = new MySqlCommand(
+                    "SELECT id, code, name FROM tbl_coa_level_4 ORDER BY code",
+                    conn);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        id = reader["id"],
+                        code = reader["code"],
+                        name = reader["name"]
+                    });
+                }
+
+                return Ok(list);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetDefaultAccountByCategory(
+            [FromQuery] string category)
+        {
+            try
+            {
+                int accountId = 0;
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var cmd = new MySqlCommand(
+                    "SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1",
+                    conn);
+
+                cmd.Parameters.AddWithValue("@cat", category);
+
+                var result = await cmd.ExecuteScalarAsync();
+                if (result != null && result != DBNull.Value)
+                    accountId = Convert.ToInt32(result);
+
+                return Ok(new { status = true, accountId });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
 
         #endregion
 

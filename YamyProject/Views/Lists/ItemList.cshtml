@@ -282,21 +282,21 @@
 
                     <!-- Accounts -->
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-muted">COGS Account</label>
-                                <select id="cogsAccount" class="form-select form-select-sm"></select>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted">COGS Account</label>
+                                    <select id="cogsAccount" class="form-select form-select-sm"></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted">Asset Account</label>
+                                    <select id="assetAccount" class="form-select form-select-sm"></select>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-muted">Asset Account</label>
-                                <select id="assetAccount" class="form-select form-select-sm"></select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-muted">Income Account</label>
-                                <select id="incomeAccount" class="form-select form-select-sm"></select>
-                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold text-muted">Income Account</label>
+                                    <select id="incomeAccount" class="form-select form-select-sm"></select>
+                                </div>
                             <div class="mb-3">
                                 <label class="form-label fw-semibold text-muted">Preferred Vendor</label>
                                 <select id="preferredVendor" class="form-select form-select-sm"></select>
@@ -399,8 +399,9 @@
 
     <script>
         let selectedItem = null;
-        let assemblyItems = []; 
-
+        let assemblyItems = [];
+         loadAccountsAndDefaults();
+          loadPreferredVendors();
         function loadAssemblyItems() {
             $.ajax({
               url: '@Url.Action("GetItems", "Lists")',
@@ -630,6 +631,34 @@
             });
         }
 
+           function loadPreferredVendors() {
+            $.ajax({
+                url: '@Url.Action("GetVendorAndSub", "Vendor")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const $ddl = $('#preferredVendor');
+                        $ddl.empty().append('<option value="">-- Select Vendor --</option>');
+
+                        $.each(res.data, function (i, v) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: v.id,
+                                    text: v.code + ' - ' + v.name
+                                })
+                            );
+                        });
+                    } else {
+                        toastr.error(res.message || 'Failed to load vendors');
+                    }
+                },
+                error: function (xhr) {
+                    console.error('Error loading vendors:', xhr);
+                    toastr.error('Failed to load vendors');
+                }
+            });
+        }
+
 
           $("#newWarehouseForm").submit(function (e) {
             e.preventDefault();
@@ -837,40 +866,52 @@
              });
          });
         // ===== Load Accounts =====
-        $.ajax({
-            url: '@Url.Action("GetAccruedSalaries", "HR")',
-            type: 'GET',
-            success: function (data) {
-                const dropdowns = [
-                    { ddl: '#cogsAccount', codeBox: '#code1' },
-                    { ddl: '#assetAccount', codeBox: '#code2' },
-                    { ddl: '#incomeAccount', codeBox: '#code3' },
-                    { ddl: '#preferredVendor', codeBox: '#code4' }
-                ];
+              function loadAccountsAndDefaults() {
 
-                dropdowns.forEach(set => {
-                    let $ddl = $(set.ddl);
-                    $ddl.empty().append('<option value="">-- Select --</option>');
+            $.ajax({
+                 url: '@Url.Action("GetAllLevel4Accounts", "Lists")',
+                type: 'GET',
+                success: function (accounts) {
 
-                    $.each(data, function (i, item) {
-                        $ddl.append($('<option>', {
-                            value: item.id,
-                            text: item.code + ' - ' + item.name,
-                            'data-code': item.code
-                        }));
+                    const dropdowns = [
+                        { ddl: '#incomeAccount', category: 'Sales' },
+                        { ddl: '#assetAccount', category: 'Inventory' },
+                        { ddl: '#cogsAccount', category: 'COGS' }
+                    ];
+
+                    dropdowns.forEach(cfg => {
+                        const $ddl = $(cfg.ddl);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(accounts, function (i, acc) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: acc.id,
+                                    text: acc.code + ' - ' + acc.name,
+                                    'data-code': acc.code
+                                })
+                            );
+                        });
+
+                        // 🔹 Get default account for this dropdown
+                        $.ajax({
+                            url: '@Url.Action("GetDefaultAccountByCategory", "Lists")',
+                            type: 'GET',
+                            data: { category: cfg.category },
+                            success: function (res) {
+                                if (res.status && res.accountId > 0) {
+                                    $ddl.val(res.accountId);
+                                }
+                            }
+                        });
                     });
+                },
+                error: function (xhr) {
+                    console.error("Error loading accounts", xhr);
+                }
+            });
+        }
 
-                    $ddl.on('change', function () {
-                        let code = $(this).find(':selected').data('code');
-                        $(set.codeBox).val(code || "");
-                    });
-                });
-            },
-            error: function (xhr, status, error) {
-                console.error("Error loading accounts:", status, error);
-            }
-
-        });
         // ===== Recalculate Total =====
         function recalcTotal() {
             let cost = parseFloat($("#costPriceInput").val()) || 0;

@@ -186,6 +186,23 @@
     <script>
 
         $(document).ready(function () {
+            loadLevel4Accounts();
+
+               const dropdowns = [
+          { ddl: '#fixedAssetsAccount', codeBox: '#code2', category: "Fixed Asset Credit Account" },
+          { ddl: '#accumulatedDepreciation', codeBox: '#code3', category: "Fixed Asset Credit Account" },
+          { ddl: '#depreciationExpense', codeBox: '#code4', category: "Fixed Asset Debit Account" },
+
+          { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2', category: "Fixed Asset Credit Account" },
+          { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3', category: "Fixed Asset Credit Account" },
+          { ddl: '#editDepreciationExpense', codeBox: '#editCode4', category: "Fixed Asset Debit Account" },
+
+          { ddl: '#fixedAssetsAccount1', codeBox: '#code5', category: "Fixed Asset Credit Account" },
+          { ddl: '#accumulatedDepreciation1', codeBox: '#code6', category: "Fixed Asset Credit Account" },
+          { ddl: '#depreciationExpense1', codeBox: '#code7', category: "Fixed Asset Debit Account" }
+        ];
+
+
 
             function loadFixedAssetCategories() {
                 $.ajax({
@@ -244,47 +261,109 @@
                 });
             }
 
-            function loadAccounts() {
-                $.ajax({
-                   url: '@Url.Action("GetAccruedSalaries", "HR")',
-                    type: 'GET',
-                    success: function (data) {
-                        const dropdowns = [
-                            { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
-                            { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
-                            { ddl: '#depreciationExpense', codeBox: '#code4' },
-                            { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
-                            { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
-                            { ddl: '#editDepreciationExpense', codeBox: '#editCode4' }
-                        ];
+            // function loadAccounts() {
+            //     $.ajax({
+            //        url: '@Url.Action("GetAccruedSalaries", "HR")',
+            //         type: 'GET',
+            //         success: function (data) {
+            //             const dropdowns = [
+            //                 { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
+            //                 { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
+            //                 { ddl: '#depreciationExpense', codeBox: '#code4' },
+            //                 { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
+            //                 { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
+            //                 { ddl: '#editDepreciationExpense', codeBox: '#editCode4' }
+            //             ];
 
-                        dropdowns.forEach(set => {
-                            const $ddl = $(set.ddl);
-                            $ddl.empty().append('<option value="">-- Select --</option>');
+            //             dropdowns.forEach(set => {
+            //                 const $ddl = $(set.ddl);
+            //                 $ddl.empty().append('<option value="">-- Select --</option>');
 
-                            data.forEach(item => {
-                                $ddl.append(
-                                    $('<option>', {
-                                        value: item.id,
-                                        text: item.code + ' - ' + item.name,
-                                        'data-code': item.code
-                                    })
-                                );
-                            });
+            //                 data.forEach(item => {
+            //                     $ddl.append(
+            //                         $('<option>', {
+            //                             value: item.id,
+            //                             text: item.code + ' - ' + item.name,
+            //                             'data-code': item.code
+            //                         })
+            //                     );
+            //                 });
 
-                            // 🔹 Update account code textbox on change
-                            $ddl.off('change').on('change', function () {
-                                const selected = $(this).find(':selected');
-                                $(set.codeBox).val(selected.data('code') || "");
-                            });
-                        });
-                    },
-                    error: function (xhr, status, error) {
-                        console.error("❌ Error loading accounts:", status, error);
-                        toastr.error("Server error while loading accounts");
+            //                 // 🔹 Update account code textbox on change
+            //                 $ddl.off('change').on('change', function () {
+            //                     const selected = $(this).find(':selected');
+            //                     $(set.codeBox).val(selected.data('code') || "");
+            //                 });
+            //             });
+            //         },
+            //         error: function (xhr, status, error) {
+            //             console.error("❌ Error loading accounts:", status, error);
+            //             toastr.error("Server error while loading accounts");
+            //         }
+            //     });
+            // }
+
+             function loadLevel4Accounts() {
+            $.ajax({
+                url: '@Url.Action("GetAllLevel4Accounts", "Lists")',
+                type: 'GET',
+                success: function (accounts) {
+
+                    if (!Array.isArray(accounts) || accounts.length === 0) {
+                        console.warn("No accounts found or unexpected format");
+                        return;
                     }
-                });
-            }
+
+                    dropdowns.forEach(function (set) {
+                        const $ddl = $(set.ddl);
+
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        // populate with options
+                        accounts.forEach(item => {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
+                        });
+
+                        // hook change event to update related code box
+                        $ddl.off('change').on('change', function () {
+                            const code = $(this).find(':selected').data('code') || "";
+                            $(set.codeBox).val(code);
+                        });
+
+                        // fetch and set default value based on category
+                        if (set.category) {
+
+                            $.ajax({
+                                url: '@Url.Action("GetDefaultAccountByCategory", "Lists")',
+                                type: 'GET',
+                                data: { category: set.category },
+                                success: function (d) {
+
+                                    if (d.status && d.accountId > 0) {
+                                        $ddl.val(d.accountId).trigger('change');
+                                    }
+                                },
+                                error: function (xhr, status, error) {
+                                    console.error("Error loading default account for", set.category, error);
+                                }
+                            });
+                        }
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                    toastr.error('Error loading account dropdowns');
+                }
+            });
+        }
+
+      
 
             function populateAndSelectCostCenter() {
             $.ajax({
@@ -375,7 +454,6 @@
                          alert(res.message || "Failed to load assets");
                          return;
                      }
-                     console.log('✅ Loaded assets:', res.data);
 
                      const assets = res.data;
                      const $tableBody = $('#fixedassetTable tbody');
@@ -415,7 +493,6 @@
                          $tableBody.append(row);
                      });
 
-                     console.log('✅ Table populated with', assets.length, 'rows');
 
                      // ✅ Auto-open edit modal if ID is in URL
                      const urlParams = new URLSearchParams(window.location.search);
@@ -521,49 +598,49 @@
             }
         });
 
-            $.ajax({
-          url: '@Url.Action("GetAccruedSalaries", "HR")',
-            type: 'GET',
-            success: function (data) {
-                // Map of dropdowns and their corresponding code boxes
-                const dropdowns = [
-                    { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
-                    { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
-                    { ddl: '#depreciationExpense', codeBox: '#code4' },
-                    { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
-                    { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
-                    { ddl: '#editDepreciationExpense', codeBox: '#editCode4' },
-                     { ddl: '#fixedAssetsAccount1', codeBox: '#code5' },
-                    { ddl: '#accumulatedDepreciation1', codeBox: '#code6' },
-                    { ddl: '#depreciationExpense1', codeBox: '#code7' }
-                ];
+        //     $.ajax({
+        //   url: '@Url.Action("GetAccruedSalaries", "HR")',
+        //     type: 'GET',
+        //     success: function (data) {
+        //         // Map of dropdowns and their corresponding code boxes
+        //         const dropdowns = [
+        //             { ddl: '#fixedAssetsAccount', codeBox: '#code2' },
+        //             { ddl: '#accumulatedDepreciation', codeBox: '#code3' },
+        //             { ddl: '#depreciationExpense', codeBox: '#code4' },
+        //             { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2' },
+        //             { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3' },
+        //             { ddl: '#editDepreciationExpense', codeBox: '#editCode4' },
+        //              { ddl: '#fixedAssetsAccount1', codeBox: '#code5' },
+        //             { ddl: '#accumulatedDepreciation1', codeBox: '#code6' },
+        //             { ddl: '#depreciationExpense1', codeBox: '#code7' }
+        //         ];
 
-                dropdowns.forEach(set => {
-                    const $ddl = $(set.ddl);
-                    $ddl.empty().append('<option value="">-- Select --</option>');
+        //         dropdowns.forEach(set => {
+        //             const $ddl = $(set.ddl);
+        //             $ddl.empty().append('<option value="">-- Select --</option>');
 
-                    data.forEach(item => {
-                        $ddl.append(
-                            $('<option>', {
-                                value: item.id,
-                                text: item.code + ' - ' + item.name,
-                                'data-code': item.code
-                            })
-                        );
-                    });
+        //             data.forEach(item => {
+        //                 $ddl.append(
+        //                     $('<option>', {
+        //                         value: item.id,
+        //                         text: item.code + ' - ' + item.name,
+        //                         'data-code': item.code
+        //                     })
+        //                 );
+        //             });
 
-                    // On change, update the code textbox
-                    $ddl.off('change').on('change', function () {
-                        const selected = $(this).find(':selected');
-                        const code = selected.data('code');
-                        $(set.codeBox).val(code || "");
-                    });
-                });
-            },
-            error: function (xhr, status, error) {
-                console.error("❌ Error loading accounts:", status, error);
-            }
-        });
+        //             // On change, update the code textbox
+        //             $ddl.off('change').on('change', function () {
+        //                 const selected = $(this).find(':selected');
+        //                 const code = selected.data('code');
+        //                 $(set.codeBox).val(code || "");
+        //             });
+        //         });
+        //     },
+        //     error: function (xhr, status, error) {
+        //         console.error("❌ Error loading accounts:", status, error);
+        //     }
+        // });
 
             function calculateDepreciation(lifeSelector, purchaseSelector, endDateSelector, depValueSelector, totalDaysSelector) {
             const lifeYears = parseInt($(lifeSelector).val());
