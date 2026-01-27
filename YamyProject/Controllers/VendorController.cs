@@ -3590,6 +3590,48 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @typ
 
         #endregion
 
+        #region Vendor Category
+        [HttpGet]
+        public async Task<IActionResult> GetVendorCategories()
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var categories = new List<object>();
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var query = "SELECT id, name FROM tbl_vendor_category ORDER BY name";
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    categories.Add(new
+                    {
+                        id = reader.GetInt32("id"),
+                        name = reader.GetString("name")
+                    });
+                }
+
+                return Ok(categories);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        #endregion
+
 
 
     }

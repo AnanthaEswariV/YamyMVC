@@ -7420,6 +7420,34 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
 
         #endregion
 
+        #region Customer Category List
+
+        public IActionResult CustomerCategoryList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Vendor List
+
+        public IActionResult VendorList()
+        {
+            return View();
+        }
+
+        #endregion
+
+        #region Vendor CateogoryList
+
+        public IActionResult VendorCategoryList()
+        {
+            return View();
+        }
+
+        #endregion
+
+
 
     }
 

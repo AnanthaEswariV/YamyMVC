@@ -3746,14 +3746,14 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
 
         [HttpGet]
         public async Task<IActionResult> GetProfitAndLossTree(
-            bool showAll = true,
-            DateTime? startDate = null,
-            DateTime? endDate = null)
+    bool showAll = true,
+    DateTime? startDate = null,
+    DateTime? endDate = null)
         {
             try
             {
-                // Build connection string
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
                                ?? _config.GetConnectionString("DefaultDatabase")
@@ -3762,37 +3762,43 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // Load Level-1 (Income, Cost, Expenses)
-                var queryL1 = @"
-            SELECT id, name 
-            FROM tbl_coa_level_1
-            WHERE name IN ('Income', 'Cost', 'General & Direct Expenses')
-            ORDER BY id;
-        ";
+                var categories = new[]
+                {
+            new { Name = "Income",   Code = "Income",   Order = 1 },
+            new { Name = "Cost",     Code = "Cost",     Order = 2 },
+            new { Name = "Expense",  Code = "EXPENSE",  Order = 4 }
+        };
 
                 var tree = new List<object>();
 
-                await using var cmd1 = new MySqlCommand(queryL1, conn);
-                await using var reader1 = await cmd1.ExecuteReaderAsync();
+                decimal totalIncome = 0;
+                decimal totalCost = 0;
+                decimal totalExpense = 0;
 
-                var level1List = new List<(int id, string name)>();
-
-                while (await reader1.ReadAsync())
-                    level1List.Add((Convert.ToInt32(reader1["id"]), reader1["name"].ToString()));
-
-                await reader1.CloseAsync();
-
-                // Build tree with balances & children
-                foreach (var item in level1List)
+                foreach (var cat in categories)
                 {
+                    decimal balance = await GetCategoryBalance(
+                        conn, cat.Code, showAll, startDate, endDate);
+
+                    if (cat.Code == "Income") totalIncome = balance;
+                    if (cat.Code == "Cost") totalCost = balance;
+                    if (cat.Code == "EXPENSE") totalExpense = balance;
+
                     tree.Add(new
                     {
-                        Id = item.id,
-                        Name = item.name,
-                        Balance = await GetNodeBalance(conn, 1, item.id, showAll, startDate, endDate),
-                        Children = await GetChildren(conn, 1, item.id, showAll, startDate, endDate)
+                        Name = cat.Name,
+                        Balance = balance,
+                        Children = await GetChildren(conn, 1, cat.Code, showAll, startDate, endDate)
                     });
                 }
+
+                decimal grossProfit = totalIncome - totalCost;
+                decimal netProfit = grossProfit - totalExpense;
+
+                tree.Add(new { Name = "Total Income", Balance = totalIncome });
+                tree.Add(new { Name = "Gross Profit", Balance = grossProfit });
+                tree.Add(new { Name = "Total Expenses", Balance = totalExpense });
+                tree.Add(new { Name = "Net Profit", Balance = netProfit });
 
                 return Ok(new { status = true, data = tree });
             }
@@ -3801,92 +3807,95 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
-
         private async Task<List<object>> GetChildren(
-    MySqlConnection conn,
-    int level,
-    int parentId,
-    bool showAll,
-    DateTime? startDate,
-    DateTime? endDate)
+            MySqlConnection conn,
+            int level,
+            string categoryCode,
+            bool showAll,
+            DateTime? startDate,
+            DateTime? endDate,
+            int? parentId = null)
         {
-            var list = new List<object>();
+            var result = new List<object>();
+            if (level > 4) return result;
 
-            if (level >= 4)
-                return list;  // Level-4 has no children
+            string table = $"tbl_coa_level_{level}";
+            string where = level == 1
+                ? "category_code = @cat"
+                : "main_id = @parent";
 
-            int nextLevel = level + 1;
-            string table = $"tbl_coa_level_{nextLevel}";
-
-            string query = $@"
+            string sql = $@"
         SELECT id, name
         FROM {table}
-        WHERE main_id = @parent
-        ORDER BY id;
+        WHERE {where}
+        ORDER BY code;
     ";
 
-            await using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@parent", parentId);
+            await using var cmd = new MySqlCommand(sql, conn);
+            if (level == 1)
+                cmd.Parameters.AddWithValue("@cat", categoryCode);
+            else
+                cmd.Parameters.AddWithValue("@parent", parentId);
 
             await using var reader = await cmd.ExecuteReaderAsync();
-            var children = new List<(int id, string name)>();
+            var rows = new List<(int id, string name)>();
 
             while (await reader.ReadAsync())
-                children.Add((Convert.ToInt32(reader["id"]), reader["name"].ToString()));
+                rows.Add((reader.GetInt32("id"), reader.GetString("name")));
 
             await reader.CloseAsync();
 
-            foreach (var c in children)
+            foreach (var r in rows)
             {
-                list.Add(new
+                decimal balance = await GetNodeBalance(
+                    conn, level, r.id, categoryCode, showAll, startDate, endDate);
+
+                result.Add(new
                 {
-                    Id = c.id,
-                    Name = c.name,
-                    Balance = await GetNodeBalance(conn, nextLevel, c.id, showAll, startDate, endDate),
-                    Children = await GetChildren(conn, nextLevel, c.id, showAll, startDate, endDate)
+                    Id = r.id,
+                    Name = r.name,
+                    Balance = balance,
+                    Children = await GetChildren(
+                        conn, level + 1, categoryCode, showAll, startDate, endDate, r.id)
                 });
             }
 
-            return list;
+            return result;
         }
-
-
-
-        private async Task<string> GetNodeBalance(
-    MySqlConnection conn,
-    int level,
-    int id,
-    bool showAll,
-    DateTime? startDate,
-    DateTime? endDate)
+        private async Task<decimal> GetNodeBalance(
+            MySqlConnection conn,
+            int level,
+            int id,
+            string categoryCode,
+            bool showAll,
+            DateTime? startDate,
+            DateTime? endDate)
         {
+            string signLogic = categoryCode == "Income"
+                ? "SUM(tt.credit) - SUM(tt.debit)"
+                : "SUM(tt.debit) - SUM(tt.credit)";
+
             string filter = level switch
             {
-                1 => "t1.id = @id",
-                2 => "t2.id = @id",
-                3 => "t3.id = @id",
-                4 => "t4.main_id = @id",
-                _ => throw new Exception("Invalid COA level")
+                1 => "l1.id = @id",
+                2 => "l2.id = @id",
+                3 => "l3.id = @id",
+                4 => "l4.id = @id",
+                _ => throw new Exception("Invalid level")
             };
 
-            string dateFilter = "";
-            if (!showAll && startDate.HasValue && endDate.HasValue)
-            {
-                dateFilter = " AND tt.date >= @dateFrom AND tt.date <= @dateTo ";
-            }
+            string dateFilter = (!showAll && startDate.HasValue && endDate.HasValue)
+                ? "AND tt.date BETWEEN @from AND @to"
+                : "";
 
             string sql = $@"
-        SELECT COALESCE(SUM(tt.debit) - SUM(tt.credit), 0) AS Balance
+        SELECT COALESCE({signLogic},0)
         FROM tbl_transaction tt
-        WHERE tt.account_id IN (
-            SELECT t4.id
-            FROM tbl_coa_level_4 t4
-            LEFT JOIN tbl_coa_level_3 t3 ON t3.id = t4.main_id
-            LEFT JOIN tbl_coa_level_2 t2 ON t2.id = t3.main_id
-            LEFT JOIN tbl_coa_level_1 t1 ON t1.id = t2.main_id
-            WHERE {filter}
-        )
+        JOIN tbl_coa_level_4 l4 ON tt.account_id = l4.id
+        JOIN tbl_coa_level_3 l3 ON l3.id = l4.main_id
+        JOIN tbl_coa_level_2 l2 ON l2.id = l3.main_id
+        JOIN tbl_coa_level_1 l1 ON l1.id = l2.main_id
+        WHERE {filter}
         {dateFilter};
     ";
 
@@ -3895,15 +3904,55 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
 
             if (!showAll && startDate.HasValue && endDate.HasValue)
             {
-                cmd.Parameters.AddWithValue("@dateFrom", startDate.Value.Date);
-                cmd.Parameters.AddWithValue("@dateTo", endDate.Value.Date.AddDays(1).AddSeconds(-1));
+                cmd.Parameters.AddWithValue("@from", startDate.Value);
+                cmd.Parameters.AddWithValue("@to", endDate.Value);
+            }
+
+            object val = await cmd.ExecuteScalarAsync();
+            return val == DBNull.Value ? 0 : Convert.ToDecimal(val);
+        }
+        private async Task<decimal> GetCategoryBalance(
+    MySqlConnection conn,
+    string categoryCode,   // Income | Cost | EXPENSE
+    bool showAll,
+    DateTime? startDate,
+    DateTime? endDate)
+        {
+            // Income = credit - debit
+            // Cost/Expense = debit - credit
+            string balanceExpr = categoryCode == "Income"
+                ? "SUM(tt.credit) - SUM(tt.debit)"
+                : "SUM(tt.debit) - SUM(tt.credit)";
+
+            string dateFilter = "";
+            if (!showAll && startDate.HasValue && endDate.HasValue)
+                dateFilter = " AND tt.date BETWEEN @from AND @to ";
+
+            string sql = $@"
+        SELECT COALESCE({balanceExpr}, 0)
+        FROM tbl_transaction tt
+        JOIN tbl_coa_level_4 l4 ON tt.account_id = l4.id
+        JOIN tbl_coa_level_3 l3 ON l3.id = l4.main_id
+        JOIN tbl_coa_level_2 l2 ON l2.id = l3.main_id
+        JOIN tbl_coa_level_1 l1 ON l1.id = l2.main_id
+        WHERE l1.category_code = @cat
+        {dateFilter};
+    ";
+
+            await using var cmd = new MySqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@cat", categoryCode);
+
+            if (!showAll && startDate.HasValue && endDate.HasValue)
+            {
+                cmd.Parameters.AddWithValue("@from", startDate.Value.Date);
+                cmd.Parameters.AddWithValue("@to", endDate.Value.Date.AddDays(1).AddSeconds(-1));
             }
 
             object result = await cmd.ExecuteScalarAsync();
-            decimal balance = result != DBNull.Value ? Convert.ToDecimal(result) : 0;
-
-            return balance.ToString("N2");
+            return result == DBNull.Value ? 0 : Convert.ToDecimal(result);
         }
+
+
 
         #endregion
 

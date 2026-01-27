@@ -1,6 +1,6 @@
 ﻿
 @{
-    ViewData["Title"] = "CustomerList";
+    ViewData["Title"] = "VendorList";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
@@ -35,7 +35,7 @@
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Customer List</strong>
+        <strong>Vendor List</strong>
     </div>
     <div class="table-container">
         <table class="table table-striped" id="employeeListTable">
@@ -86,7 +86,7 @@
     <script>
         function loadEmployees() {
             $.ajax({
-              url: '@Url.Action("GetCustomers", "Customer")',
+              url: '@Url.Action("GetVendorAndSub", "Vendor")',
                 type: 'GET',
                 beforeSend: function () {
                     $('#employeeListTable tbody').html(`
@@ -173,3 +173,5 @@
         });
     </script>
 }
+
+

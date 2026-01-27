@@ -326,8 +326,10 @@
                             <li><a href="@Url.Action("CountryList", "Reports")">Country List</a></li>
                             <li><a href="@Url.Action("CostCenter", "Lists")">Cost Center List</a></li>
 
-                            <li><a asp-controller="CustomerList" asp-action="CustomerList">Customer List</a></li>
-                            <li><a asp-controller="CustomerList" asp-action="CustomerCategoryList">Customer Category List</a></li>
+                            <li><a href="@Url.Action("CustomerList", "Lists")">Customer List</a></li>
+                            <li><a href="@Url.Action("CustomerCategoryList", "Lists")">Customer Category List</a></li>
+                          @*   <li><a asp-controller="CustomerList" asp-action="CustomerList">Customer List</a></li> 
+                            <li><a asp-controller="CustomerList" asp-action="CustomerCategoryList">Customer Category List</a></li>*@
 
                             <li><a href="@Url.Action("Department", "Lists")">Department List</a></li>
                             <li><a href="@Url.Action("EmployeeList", "Reports")">Employee List</a></li>
@@ -345,8 +347,10 @@
                             <li><a href="@Url.Action("Position", "Lists")">Position List</a></li>
                             <li><a href="@Url.Action("PrepaidExpense", "Lists")">Prepaid Expense List</a></li>
                             <li><a href="@Url.Action("PrepaidExpenseCategory", "Lists")">Prepaid Expense Category List</a></li>
-                            <li><a asp-controller="VendorList" asp-action="VendorList">Vendor List</a></li>
-                            <li><a asp-controller="VendorList" asp-action="VendorCategoryList">Vendor Category List</a></li>
+                            <li><a href="@Url.Action("VendorList", "Lists")">Vendor List</a></li>
+                            <li><a href="@Url.Action("VendorCategoryList", "Lists")">Vendor Category List</a></li>
+                            @* <li><a asp-controller="VendorList" asp-action="VendorList">Vendor List</a></li> 
+                            <li><a asp-controller="VendorList" asp-action="VendorCategoryList">Vendor Category List</a></li>*@
                         </ul>
                     </li>
                 </ul>
