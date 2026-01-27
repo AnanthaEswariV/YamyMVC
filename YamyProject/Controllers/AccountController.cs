@@ -492,7 +492,7 @@ namespace YamyProject.Controllers
 	                        (31, 'Losses', 6201, 16),
 	                        (32, 'Stock Write-offs', 6387, 17),
 	                        (33, 'Stock Adjustments', 46501, 18),
-	                        (34, 'Accounts Payable', 1111, 1);
+	                        (34, 'Accounts Payable', 1111, 1),
 	                        (35, 'Other Income', 46502, 12);
 
                             CREATE TABLE IF NOT EXISTS `tbl_coa_level_4` (
@@ -534,22 +534,21 @@ namespace YamyProject.Controllers
 	                        (23, 'Sales - Local', 4101001, 18, 0.000, 0.000, NULL, 0),
 	                        (24, 'Sales - GCC', 4101002, 18, 0.000, 0.000, NULL, 0),
 	                        (25, 'Materials Purchased', 5101001, 21, 0.000, 0.000, NULL, 0),
-	                        (26, 'Employee Salary Advance', 1108001, 27, 0.000, 0.000, NULL),
-                            (27, 'Employee Loans', 1108002, 27, 0.000, 0.000, NULL),
-                            (28, 'Other Employee Receivables', 1101002, 27, 0.000, 0.000, NULL),
-                            (29, 'Accrued Salary', 2102004, 10, 0.000, 0.000, NULL),
-                            (30, 'Employee Payables', 2105001, 29, 0.000, 0.000, NULL),
-                            (31, 'Stock Settlement Gain', 46501001, 35, 0.000, 0.000, NULL),
-                            (32, 'Accumulated Dep Fur', 1201002, 25, 0.000, 0.000, NULL),
-                            (33, 'PDC Receivable', 1103002, 3, 0.000, 0.000, NULL),
-                            (34, 'PDC Receivable Return', 1103003, 3, 0.000, 0.000, NULL),
-                            (35, 'PDC Receivable Hold', 1103004, 3, 0.000, 0.000, NULL),
-                            (36, 'PDC Receivable Cancel', 1103005, 3, 0.000, 0.000, NULL),
-                            (37, 'PDC Payable', 1111001, 34, 0.000, 0.000, NULL),
-                            (38, 'PDC Payable Return', 1111002, 34, 0.000, 0.000, NULL),
-                            (39, 'PDC Payable Hold', 1111003, 34, 0.000, 0.000, NULL),
-                            (40, 'PDC Payable Cancel', 1111003, 34, 0.000, 0.000, NULL),
-	                        (40, 'PDC Payable Cancel', 1111003, 69, 0.000, 0.000, NULL, 0),
+	                        (26, 'Employee Salary Advance', 1108001, 27, 0.000, 0.000, NULL, 0),
+                            (27, 'Employee Loans', 1108002, 27, 0.000, 0.000, NULL , 0),
+                            (28, 'Other Employee Receivables', 1101002, 27, 0.000, 0.000, NULL, 0),
+                            (29, 'Accrued Salary', 2102004, 10, 0.000, 0.000, NULL, 0),
+                            (30, 'Employee Payables', 2105001, 29, 0.000, 0.000, NULL, 0),
+                            (31, 'Stock Settlement Gain', 46501001, 35, 0.000, 0.000, NULL, 0),
+                            (32, 'Accumulated Dep Fur', 1201002, 25, 0.000, 0.000, NULL, 0),
+                            (33, 'PDC Receivable', 1103002, 3, 0.000, 0.000, NULL, 0),
+                            (34, 'PDC Receivable Return', 1103003, 3, 0.000, 0.000, NULL, 0),
+                            (35, 'PDC Receivable Hold', 1103004, 3, 0.000, 0.000, NULL, 0),
+                            (36, 'PDC Receivable Cancel', 1103005, 3, 0.000, 0.000, NULL, 0),
+                            (37, 'PDC Payable', 1111001, 34, 0.000, 0.000, NULL, 0),
+                            (38, 'PDC Payable Return', 1111002, 34, 0.000, 0.000, NULL, 0),
+                            (39, 'PDC Payable Hold', 1111003, 34, 0.000, 0.000, NULL, 0),
+                            (40, 'PDC Payable Cancel', 1111003, 34, 0.000, 0.000, NULL, 0),
 	                        (41, 'Sales Discount', 6101004, 25, 0.000, 0.000, NULL, 0),
 	                        (42, 'Cash On Hand', 1103006, 3, 0.000, 0.000, NULL, 0),
 	                        (43, 'Sales Return', 4101003, 19, 0.000, 0.000, NULL, 0);
@@ -3227,7 +3226,6 @@ namespace YamyProject.Controllers
             return View();
         }
 
-
         [HttpPost]
         public async Task<IActionResult> LoginUser(string username, string password, string database)
         {
@@ -3324,7 +3322,7 @@ namespace YamyProject.Controllers
 
                 return Json(new { status = true, user = userRes });
             }
-            catch
+            catch(Exception ex)
             {
                 // ❗Do NOT expose real error to the frontend
                 return Json(new { status = false, message = "Something went wrong, please try again." });
