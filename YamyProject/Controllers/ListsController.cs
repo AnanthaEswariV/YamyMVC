@@ -2850,12 +2850,12 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         on_hand = reader.GetDecimal("On_hand"),
                         total_value = reader.GetDecimal("Total_value"),
                         date = reader.GetDateOnly("Date"),
-                        active = reader.GetInt32("Active"),
+                        active = reader.IsDBNull("Active") ? (int?)null : reader.GetInt32("Active"),
                         method = reader.GetString("Method"),
                         category_id = reader.IsDBNull("Category_id") ? (int?)null : reader.GetInt32("Category_id"),
                         posItem = reader.IsDBNull("PosItem") ? (int?)null : reader.GetInt32("PosItem"),
                         item_type = reader.GetString("Item_type"),
-                        costcenter = reader.GetInt32("CostCenter"),
+                        costcenter = reader.IsDBNull("CostCenter") ? (int?)null: reader.GetInt32("CostCenter"),
                     });
 
                 }

@@ -87,7 +87,9 @@
 
 <!-- Tender Modal -->
 <div class="modal fade" id="tenderModal" tabindex="-1" aria-labelledby="tenderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
+         style="max-width: 95%;">
+
         <div class="modal-content rounded-4 shadow-lg border-0">
 
             <!-- Header -->
@@ -173,8 +175,9 @@
                         <table class="table table-bordered table-sm align-middle">
                             <thead class="table-light text-center">
                                 <tr>
-                                    <th style="width:90px;">Sr</th>
+                                    <th>Sr</th>
                                     <th>Description of Work</th>
+                                    <th>View</th>
                                     <th style="width: 90px;">Qty</th>
                                     <th style="width: 90px;">Unit</th>
                                     <th style="width: 90px;">Length</th>
@@ -215,7 +218,108 @@
 </div>
 
 
+<!-- BOM Modal -->
+<div class="modal fade" id="bomModal" tabindex="-1" aria-labelledby="bomModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
 
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white shadow-sm">
+                <h5 class="modal-title fw-semibold" id="bomModalLabel">
+                    Assembly - New Item
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+
+                <!-- Item Info -->
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <label class="form-label">Item Code</label>
+                        <input type="text" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-10">
+                        <label class="form-label">Item Name</label>
+                        <input type="text" class="form-control">
+                    </div>
+                </div>
+
+                <!-- BOM Table -->
+                <table class="table table-bordered table-striped align-middle" style="font-size:13px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Item Code</th>
+                            <th>Assembly Item Name</th>
+                            <th>Cost</th>
+                            <th>Qty</th>
+                            <th>Total</th>
+                            <th>DEL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bomTableBody">
+                        <tr>
+                            <td>1</td>
+                            <td><input class="form-control form-control-sm"></td>
+                            <td><input class="form-control form-control-sm"></td>
+                            <td><input class="form-control form-control-sm"></td>
+                            <td><input class="form-control form-control-sm"></td>
+                            <td><input class="form-control form-control-sm" readonly></td>
+                            <td>
+                                <button class="btn btn-sm btn-danger">X</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Total -->
+                <div class="row mb-3">
+                    <div class="col-md-4 offset-md-8">
+                        <label class="form-label">Total Cost</label>
+                        <input type="text" class="form-control" readonly>
+                    </div>
+                </div>
+
+                <!-- Accounts -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">COGS Account</label>
+                        <select id="cogsAccount" class="form-select form-select-sm"></select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Income Account</label>
+                        <select id="incomeAccount" class="form-select form-select-sm"></select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Asset Account</label>
+                        <select id="assetAccount" class="form-select form-select-sm"></select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Preferred Vendor</label>
+                        <select id="preferredVendor" class="form-select form-select-sm"></select>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button class="btn btn-primary">Save</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 
 @section Scripts {
@@ -263,10 +367,85 @@
             });
         }
 
+        function loadAccountsAndDefaults() {
+
+                    $.ajax({
+                         url: '@Url.Action("GetAllLevel4Accounts", "Lists")',
+                        type: 'GET',
+                        success: function (accounts) {
+
+                            const dropdowns = [
+                                { ddl: '#incomeAccount', category: 'Sales' },
+                                { ddl: '#assetAccount', category: 'Inventory' },
+                                { ddl: '#cogsAccount', category: 'COGS' }
+                            ];
+
+                            dropdowns.forEach(cfg => {
+                                const $ddl = $(cfg.ddl);
+                                $ddl.empty().append('<option value="">-- Select --</option>');
+
+                                $.each(accounts, function (i, acc) {
+                                    $ddl.append(
+                                        $('<option>', {
+                                            value: acc.id,
+                                            text: acc.code + ' - ' + acc.name,
+                                            'data-code': acc.code
+                                        })
+                                    );
+                                });
+
+                                // 🔹 Get default account for this dropdown
+                                $.ajax({
+                                    url: '@Url.Action("GetDefaultAccountByCategory", "Lists")',
+                                    type: 'GET',
+                                    data: { category: cfg.category },
+                                    success: function (res) {
+                                        if (res.status && res.accountId > 0) {
+                                            $ddl.val(res.accountId);
+                                        }
+                                    }
+                                });
+                            });
+                        },
+                        error: function (xhr) {
+                            console.error("Error loading accounts", xhr);
+                        }
+                    });
+                }
+
+        function loadPreferredVendors() {
+                $.ajax({
+                    url: '@Url.Action("GetVendorAndSub", "Vendor")',
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status) {
+                            const $ddl = $('#preferredVendor');
+                            $ddl.empty().append('<option value="">-- Select Vendor --</option>');
+
+                            $.each(res.data, function (i, v) {
+                                $ddl.append(
+                                    $('<option>', {
+                                        value: v.id,
+                                        text: v.code + ' - ' + v.name
+                                    })
+                                );
+                            });
+                        } else {
+                            toastr.error(res.message || 'Failed to load vendors');
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('Error loading vendors:', xhr);
+                        toastr.error('Failed to load vendors');
+                    }
+                });
+            }
+
         $(document).ready(function () {
 
             loadWarehouses();
-
+            loadAccountsAndDefaults();
+            loadPreferredVendors();
             function loadProjects() {
                 $.ajax({
                     url: '@Url.Action("GetProjects", "Construction")',
@@ -380,6 +559,9 @@
 
             $('#tenderItemsModal').modal('show');
             loadTenderItems(tenderId);
+
+
+                  
         });
 
             function loadTenderItems(tenderId) {
@@ -535,15 +717,11 @@
             }
         });
 
-           
-
-
-
         });
         
         $(document).ready(function () {
 
-             $(document).on("click", ".editTenderBtn", function () {
+        $(document).on("click", ".editTenderBtn", function () {
             const tenderStr = $(this).attr("data-tender");
             const tender = tenderStr ? JSON.parse(tenderStr) : null;
             if (!tender) {
@@ -585,6 +763,7 @@
                                 <tr>
                                     <td><input type="text" class="form-control sr" value="${sr}" name="Items[0].Sr" readonly></td>
                                     <td><input type="text" class="form-control description" value="${item.name ?? ''}" name="Items[0].Description" placeholder="Description of work"></td>
+                                    <td><button type="button" class="btn btn-sm btn-info view-btn" data-id="${item.id}">BOM</button></td>
                                     <td><input type="text" class="form-control qty" value="${item.qty ?? 0}" name="Items[0].Qty"></td>
                                     <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}" name="Items[0].Unit"></td>
                                     <td><input type="text" class="form-control length" value="${item.length ?? 0}" name="Items[0].Length"></td>
@@ -620,7 +799,7 @@
             $("#tenderModal").modal("show");
         });
 
-            function addEmptyRow() {
+        function addEmptyRow() {
             $("#tenderTableBody").append(`
                 <tr>
                     <td><input type="text" class="form-control sr" value="A" readonly></td>
@@ -640,8 +819,21 @@
             `);
         }
 
+        document.addEventListener("click", function (e) {
+            if (e.target.classList.contains("view-btn")) {
 
-                    $("#btnSaveEstimation").click(function () {
+                const itemId = e.target.getAttribute("data-id");
+                console.log("Clicked Item ID:", itemId);
+
+                // Open Bootstrap modal
+                const modal = new bootstrap.Modal(document.getElementById("bomModal"));
+                modal.show();
+
+                // TODO: Load BOM data using itemId (AJAX)
+            }
+        });
+
+        $("#btnSaveEstimation").click(function () {
 
             const model = {
                 Id: parseInt($("#TenderId").val()) || 0,
@@ -715,19 +907,19 @@
             });
         });
 
-            function escapeHtml(text) {
+         function escapeHtml(text) {
                 return String(text ?? "").replace(/[&<>"'`=\/]/g, s => ({
                     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
                     "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
                 })[s]);
             }
 
-            function parseDecimal(val) {
+         function parseDecimal(val) {
                 const v = parseFloat(val);
                 return isNaN(v) ? 0 : v;
             }
 
-            function buildRowHtml(sr, item = {}) {
+         function buildRowHtml(sr, item = {}) {
                 return `
 
                 <tr>
@@ -746,19 +938,19 @@
                     <td><input type="text" class="form-control note" value="${escapeHtml(item.note)}"></td>
                 </tr>`;
             }
-           
-            function addEmptyRow() {
+         
+         function addEmptyRow() {
             $("#tenderTableBody").append(buildRowHtml(0)); 
             updateSrNumbers();
         }
 
-            function updateSrNumbers() {
+         function updateSrNumbers() {
             $("#tenderTableBody tr").each(function (index) {
                 $(this).find(".sr").val(index + 1);
             });
         }
 
-                   function calculateRow($row, changedField) {
+         function calculateRow($row, changedField) {
             const qty = parseDecimal($row.find(".qty").val());
             const rate = parseDecimal($row.find(".rate").val());
 
@@ -792,8 +984,7 @@
             calculateGrandTotal();
         }
 
-
-            function calculateGrandTotal() {
+         function calculateGrandTotal() {
                 let totalSum = 0;
                 $("#tenderTableBody tr").each(function () {
                     totalSum += parseDecimal($(this).find(".total").val());
@@ -805,31 +996,29 @@
                $("#grandTotal").val(grand.toFixed(2));
             }
 
-                $("#tenderTableBody").on("input change", ".qty, .rate, .margin, .marginamount", function () {
+          $("#tenderTableBody").on("input change", ".qty, .rate, .margin, .marginamount", function () {
             const $row = $(this).closest("tr");
             const field = getChangedFieldClass(this);
             calculateRow($row, field);
         });
 
-                function getChangedFieldClass(el) {
+          function getChangedFieldClass(el) {
             const knownFields = ["qty", "rate", "margin", "marginamount"];
             const classes = $(el).attr("class").split(/\s+/);
             return classes.find(cls => knownFields.includes(cls));
         }
 
-
-
-            $("#tenderTableBody").on("input change", "tr:last-child input", function () {
+         $("#tenderTableBody").on("input change", "tr:last-child input", function () {
                 const $last = $(this).closest("tr");
                 const hasValue = $last.find("input").toArray().some(el => $(el).val().trim() !== "");
                 if (hasValue) addEmptyRow();
             });
 
-            $("#fees").on("input change", calculateGrandTotal);
+         $("#fees").on("input change", calculateGrandTotal);
 
-            addEmptyRow();
-            calculateGrandTotal();
-        });
+         addEmptyRow();
+         calculateGrandTotal();
+    });
 
 
     </script>
