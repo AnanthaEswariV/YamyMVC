@@ -1782,7 +1782,7 @@ namespace YamyProject.Controllers
             string inventoryAccount = await SelectDefaultLevelAccount(conn, trx, "Inventory");
             string openingEquityAccount = await SelectDefaultLevelAccount(conn, trx, "Opening Balance Equity");
 
-            await InsertTransactionEntry(conn, trx, dated.Date, inventoryAccount, totalValue.ToString(), "0", pId, pId, "Project Tender",
+            await InsertTransactionEntry(conn, trx, dated.Date, openingEquityAccount, totalValue.ToString(), "0", pId, pId, "Project Tender",
                 $"Project Opening Balance - Item Code - {itemCode}", (int)(HttpContext.Session.GetInt32("UserId") ?? 0), DateTime.Now.Date);
 
             await InsertTransactionEntry(conn, trx, dated.Date, openingEquityAccount, "0", totalValue.ToString(), pId, "0", "Project Tender",
