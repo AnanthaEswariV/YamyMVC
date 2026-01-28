@@ -195,6 +195,13 @@
                             <!-- Total Row -->
                             <tfoot class="table-secondary fw-semibold">
                                 <tr>
+                                    <td colspan="15" class="text-center">
+                                        <button type="button" class="btn btn-sm btn-success" id="btnAddRow">
+                                            <i class="fas fa-plus me-1"></i> Add Row
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
                                     <td colspan="11" class="text-end">Total Amount:</td>
                                     <td>
                                         <input type="text" id="grandTotal" class="form-control text-center fw-bold" readonly value="0.00" style="width: 100px;">
@@ -804,6 +811,7 @@
                 <tr>
                     <td><input type="text" class="form-control sr" value="A" readonly></td>
                     <td><input type="text" class="form-control description" placeholder="Description of work"></td>
+                         <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
                     <td><input type="text" class="form-control qty"></td>
                     <td><input type="text" class="form-control unit"></td>
                     <td><input type="text" class="form-control length"></td>
@@ -818,20 +826,24 @@
                 </tr>
             `);
         }
-
         document.addEventListener("click", function (e) {
             if (e.target.classList.contains("view-btn")) {
-
-                const itemId = e.target.getAttribute("data-id");
-                console.log("Clicked Item ID:", itemId);
-
-                // Open Bootstrap modal
-                const modal = new bootstrap.Modal(document.getElementById("bomModal"));
-                modal.show();
-
-                // TODO: Load BOM data using itemId (AJAX)
+                // Redirect to ItemList with a query parameter to trigger modal
+                window.location.href = `/Lists/ItemList?openModal=true`;
             }
         });
+
+
+                // Add this inside the editTenderBtn click handler, after modal opens
+        $("#tenderModal").on('shown.bs.modal', function () {
+            // Rebind the Add Row button
+            $("#btnAddRow").off('click').on("click", function () {
+                console.log("Add Row clicked!"); // Debug line
+                addEmptyRow();
+                toastr.success("New row added!");
+            });
+        });
+    
 
         $("#btnSaveEstimation").click(function () {
 
@@ -925,6 +937,7 @@
                 <tr>
                     <td><input type="text" class="form-control text-center sr" value="${sr}" readonly></td>
                     <td><input type="text" class="form-control description" value="${escapeHtml(item.description)}"></td>
+                        <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
                     <td><input type="text" step="any" class="form-control qty" value="${item.qty ?? ''}"></td>
                     <td><input type="text" step="any" class="form-control length" value="${item.length ?? ''}"></td>
                     <td><input type="text" step="any" class="form-control width" value="${item.width ?? ''}"></td>

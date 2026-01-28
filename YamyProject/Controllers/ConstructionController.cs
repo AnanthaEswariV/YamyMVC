@@ -1564,6 +1564,8 @@ namespace YamyProject.Controllers
                                     assemblyId = Convert.ToInt32(await boqDetailCmd.ExecuteScalarAsync());
                                 }
 
+
+
                                 // insert into tbl_items (part) if not exists
                                 string insertPartSql = @"
                             INSERT INTO tbl_items(
@@ -1610,6 +1612,10 @@ namespace YamyProject.Controllers
                                     var partObj = await partCmd.ExecuteScalarAsync();
                                     itemIdOf = partObj != null && partObj != DBNull.Value ? Convert.ToInt32(partObj) : 0;
                                 }
+
+
+
+
 
                                 // Insert assembly relationship records
                                 string insertAssemblyRel = @"

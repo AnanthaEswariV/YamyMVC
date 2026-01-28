@@ -279,120 +279,55 @@
 </div>
 
 
-<div class="modal fade" id="importModal" tabindex="-1" role="dialog" aria-labelledby="importModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white rounded-top-4">
-                <h5 class="modal-title" id="importModalLabel">BOQ Import</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h5 class="modal-title" id="importModalLabel">📋 BOQ Import</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="boqImportForm">
                     <div class="mb-3">
-                        <label for="cellStartIndex" class="form-label">Cell Starting Index</label>
-                        <input type="text" class="form-control" id="cellStartIndex" placeholder="Enter start index">
+                        <label class="form-label fw-semibold">Data Start Row Number</label>
+                        <input type="number" class="form-control" id="cellStartIndex" value="2" placeholder="e.g., 2">
+                        <small class="text-muted">
+                            Enter the Excel row number where your data starts<br>
+                            (Usually row 2 if row 1 contains headers)
+                        </small>
                     </div>
 
                     <div class="mb-3">
-                        <label for="cellEndIndex" class="form-label">Cell Ending Index</label>
-                        <input type="text" class="form-control" id="cellEndIndex" placeholder="Enter end index">
+                        <label class="form-label fw-semibold">Data End Row Number (Optional)</label>
+                        <input type="number" class="form-control" id="cellEndIndex" placeholder="Leave blank for all rows">
+                        <small class="text-muted">Leave empty to import all data rows</small>
                     </div>
 
                     <div class="mb-3">
-                        <label for="excelFileInput" class="form-label">Upload Excel File</label>
+                        <label class="form-label fw-semibold">Upload Excel File</label>
                         <input type="file" class="form-control" id="excelFileInput" accept=".xls, .xlsx">
-                        <small class="text-muted">Only .xls or .xlsx files are allowed</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="sn">Sn</label>
-                        <select class="form-control" id="sn">
-                            <option value="">-- Select --</option>
-                            <!-- A–Z options -->
-                            <script>
-                                for (let i = 65; i <= 90; i++) {
-                                    document.write(`<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}</option>`);
-                                }
-                            </script>
-                        </select>
+                        <small class="text-success">✅ Columns will be auto-detected</small>
                     </div>
 
-                    <div class="form-group">
-                        <label for="description">Description of work</label>
-                        <select class="form-control" id="description">
-                            <option value="">-- Select --</option>
-                            <script>
-                                for (let i = 65; i <= 90; i++) {
-                                    document.write(`<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}</option>`);
-                                }
-                            </script>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="qty">Quantity</label>
-                        <select class="form-control" id="qty">
-                            <option value="">-- Select --</option>
-                            <script>
-                                for (let i = 65; i <= 90; i++) {
-                                    document.write(`<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}</option>`);
-                                }
-                            </script>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="rate">Rate</label>
-                        <select class="form-control" id="rate">
-                            <option value="">-- Select --</option>
-                            <script>
-                                for (let i = 65; i <= 90; i++) {
-                                    document.write(`<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}</option>`);
-                                }
-                            </script>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="unit">Unit</label>
-                        <select class="form-control" id="unit">
-                            <option value="">-- Select --</option>
-                            <script>
-                                for (let i = 65; i <= 90; i++) {
-                                    document.write(`<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}</option>`);
-                                }
-                            </script>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="amount">Amount</label>
-                        <select class="form-control" id="amount">
-                            <option value="">-- Select --</option>
-                            <script>
-                                for (let i = 65; i <= 90; i++) {
-                                    document.write(`<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}</option>`);
-                                }
-                            </script>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="note">Note</label>
-                        <input type="text" class="form-control" id="note">
+                    <div class="alert alert-info mb-0">
+                        <strong>📌 Excel Format:</strong><br>
+                        <small>
+                            Row 1 (Header): S.No | Description | Qty | Unit | Rate | Amount<br>
+                            Row 2+ (Data): Your BOQ items
+                        </small>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="okBtn">Ok</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="okBtn">
+                    <i class="fas fa-upload me-1"></i> Import Data
+                </button>
             </div>
         </div>
     </div>
 </div>
-
-
 
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -408,23 +343,78 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+              // ==========================================
+        // 🔹 IMPROVED Column Detection Function
+        // ==========================================
+        function detectColumns(headers) {
+            const map = {};
 
+            console.log("Detecting columns from headers:", headers);
+
+            headers.forEach((header, index) => {
+                if (!header) return;
+
+                const h = String(header).toLowerCase().trim();
+
+                // More flexible matching patterns
+                if (h.match(/s\.?n\.?o?|serial|sr\.?/i)) {
+                    map.sn = index;
+                    console.log(`Found S.No at column ${index}: "${header}"`);
+                }
+                else if (h.match(/desc|work|item|particular/i)) {
+                    map.description = index;
+                    console.log(`Found Description at column ${index}: "${header}"`);
+                }
+                else if (h.match(/qty|quantity|quan/i)) {
+                    map.qty = index;
+                    console.log(`Found Qty at column ${index}: "${header}"`);
+                }
+                else if (h.match(/unit/i)) {
+                    map.unit = index;
+                    console.log(`Found Unit at column ${index}: "${header}"`);
+                }
+                else if (h.match(/length|len/i)) {
+                    map.length = index;
+                    console.log(`Found Length at column ${index}: "${header}"`);
+                }
+                else if (h.match(/width|wid/i)) {
+                    map.width = index;
+                    console.log(`Found Width at column ${index}: "${header}"`);
+                }
+                else if (h.match(/thick/i)) {
+                    map.thickness = index;
+                    console.log(`Found Thickness at column ${index}: "${header}"`);
+                }
+                else if (h.match(/rate|price|unit.*price/i)) {
+                    map.rate = index;
+                    console.log(`Found Rate at column ${index}: "${header}"`);
+                }
+                else if (h.match(/amount|total|value/i)) {
+                    map.amount = index;
+                    console.log(`Found Amount at column ${index}: "${header}"`);
+                }
+            });
+
+            console.log("Final column mapping:", map);
+            return map;
+        }
+        // ==========================================
+        // 🔹 Import Modal Logic
+        // ==========================================
         document.addEventListener("DOMContentLoaded", function () {
             const downloadBtn = document.getElementById("downloadSampleBtn");
             const importBoqBtn = document.getElementById("importBoqBtn");
             const statusMessage = document.getElementById("boqStatusMessage");
             const importModal = new bootstrap.Modal(document.getElementById("importModal"));
 
-            // Step 1: Enable Import BOQ after sample download
+            // Enable Import BOQ after sample download
             downloadBtn.addEventListener("click", function () {
-                // Simulate short delay for file download
                 setTimeout(() => {
                     importBoqBtn.classList.remove("disabled");
                     importBoqBtn.removeAttribute("disabled");
@@ -434,130 +424,154 @@
                 }, 1000);
             });
 
-            // Step 2: Show modal when Import BOQ clicked
+            // Show modal when Import BOQ clicked
             importBoqBtn.addEventListener("click", function () {
                 if (importBoqBtn.disabled) return;
                 importModal.show();
             });
 
-            // 
-
-            document.getElementById("okBtn").addEventListener("click", function () {
-                const start = document.getElementById("cellStartIndex").value.trim();
-                const end = document.getElementById("cellEndIndex").value.trim();
-                const fileInput = document.getElementById("excelFileInput");
-
-                if (!start || !end) {
-                    alert("Please enter both Cell Start and End Index.");
-                    return;
-                }
-
-                if (!fileInput.files.length) {
-                    alert("Please upload an Excel file (.xls or .xlsx).");
-                    return;
-                }
-
-                const file = fileInput.files[0];
-                const allowedExtensions = /(\.xls|\.xlsx)$/i;
-                if (!allowedExtensions.exec(file.name)) {
-                    alert("Invalid file type. Only .xls or .xlsx files are allowed.");
-                    fileInput.value = "";
-                    return;
-                }
-
-                console.log("Start:", start, "End:", end, "File:", file.name);
-
-                // TODO: Add your upload logic here (AJAX or fetch)
-
-                importModal.hide();
-            });
-        });
-
-               
-        document.getElementById("okBtn").addEventListener("click", async function () {
+       
+        document.getElementById("okBtn").addEventListener("click", function () {
             const fileInput = document.getElementById("excelFileInput");
             const startIndex = parseInt(document.getElementById("cellStartIndex").value);
             const endIndex = parseInt(document.getElementById("cellEndIndex").value);
 
             if (!fileInput.files.length) {
-                alert("Please upload an Excel file first.");
+                toastr.warning("Please upload an Excel file");
                 return;
             }
 
-            const file = fileInput.files[0];
+            if (!startIndex || startIndex < 1) {
+                toastr.warning("Please enter a valid start row number");
+                return;
+            }
+
             const reader = new FileReader();
-
             reader.onload = function (e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: "array" });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const sheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                // Get column selections (A–Z)
-                const snCol = document.getElementById("sn").value.charCodeAt(0) - 65;
-                const descCol = document.getElementById("description").value.charCodeAt(0) - 65;
-                const qtyCol = document.getElementById("qty").value.charCodeAt(0) - 65;
-                const rateCol = document.getElementById("rate").value.charCodeAt(0) - 65;
-                const unitCol = document.getElementById("unit").value.charCodeAt(0) - 65;
-                const amountCol = document.getElementById("amount").value.charCodeAt(0) - 65;
+                    if (!rows || rows.length < 2) {
+                        toastr.error("Excel file is empty or invalid");
+                        return;
+                    }
 
-                // Validate
-                if (isNaN(startIndex) || isNaN(endIndex)) {
-                    alert("Please enter valid start and end index numbers.");
-                    return;
+                    console.log("Total rows in Excel:", rows.length);
+                    console.log("First few rows:", rows.slice(0, 5));
+
+                    // Header row is always one row before data starts
+                    const headerRowIndex = startIndex - 2; // If data starts at row 2, header is at index 0
+                    const headerRow = rows[headerRowIndex];
+
+                    if (!headerRow || headerRow.length === 0) {
+                        toastr.error("Could not find header row. Please check your start index.");
+                        return;
+                    }
+
+                    console.log("Header row:", headerRow);
+
+                    // Auto-detect columns from header row
+                    const colMap = detectColumns(headerRow);
+                    console.log("Detected column mapping:", colMap);
+
+                    const tbody = document.getElementById("tenderTableBody");
+                    tbody.innerHTML = "";
+
+                    // Calculate actual array indices (Excel row numbers start at 1, array starts at 0)
+                    const startRowIndex = startIndex - 1; // Convert Excel row to array index
+                    const endRowIndex = endIndex ? endIndex : rows.length;
+
+                    let importedCount = 0;
+
+                    console.log(`Processing rows from index ${startRowIndex} to ${endRowIndex}`);
+
+                    for (let i = startRowIndex; i < endRowIndex && i < rows.length; i++) {
+                        const row = rows[i];
+
+                        if (!row || row.length === 0) {
+                            console.log(`Skipping empty row at index ${i}`);
+                            continue;
+                        }
+
+                        // Skip if all cells are empty
+                        const hasData = row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '');
+                        if (!hasData) {
+                            console.log(`Skipping row ${i} - no data`);
+                            continue;
+                        }
+
+                        // Extract values using detected column indices
+                        const srValue = colMap.sn !== undefined ? (row[colMap.sn] || (importedCount + 1)) : (importedCount + 1);
+                        const description = colMap.description !== undefined ? (row[colMap.description] || "") : "";
+                        const qty = colMap.qty !== undefined ? (row[colMap.qty] || "") : "";
+                        const unit = colMap.unit !== undefined ? (row[colMap.unit] || "") : "";
+                        const length = colMap.length !== undefined ? (row[colMap.length] || "") : "";
+                        const width = colMap.width !== undefined ? (row[colMap.width] || "") : "";
+                        const thickness = colMap.thickness !== undefined ? (row[colMap.thickness] || "") : "";
+                        const rate = colMap.rate !== undefined ? (row[colMap.rate] || "") : "";
+                        const amount = colMap.amount !== undefined ? (row[colMap.amount] || "") : "";
+
+                        console.log(`Row ${i} data:`, {
+                            sr: srValue,
+                            description,
+                            qty,
+                            unit,
+                            rate,
+                            amount
+                        });
+
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td><input class="form-control sr" value="${srValue}" readonly></td>
+                            <td><input class="form-control description" value="${description}"></td>
+                            <td><input class="form-control qty" value="${qty}"></td>
+                            <td><input class="form-control unit" value="${unit}"></td>
+                            <td><input class="form-control length" value="${length}"></td>
+                            <td><input class="form-control width" value="${width}"></td>
+                            <td><input class="form-control thick" value="${thickness}"></td>
+                            <td><input class="form-control rate" value="${rate}" disabled></td>
+                            <td><input class="form-control amount" value="${amount}" disabled></td>
+                        `;
+                        tbody.appendChild(tr);
+                        importedCount++;
+                    }
+
+                    if (importedCount === 0) {
+                        toastr.warning("No data found in the specified range. Please check your start/end row numbers.");
+                        addEmptyRow();
+                    } else {
+                        toastr.success(`✅ Successfully imported ${importedCount} items!`);
+                        console.log(`Total imported: ${importedCount} rows`);
+                    }
+
+                    // Close import modal
+                    $("#importModal").modal("hide");
+
+                } catch (error) {
+                    console.error("Import error:", error);
+                    toastr.error("Failed to import Excel file: " + error.message);
                 }
-
-                const tbody = document.getElementById("tenderTableBody");
-                tbody.innerHTML = ""; // clear old rows
-
-                for (let i = startIndex - 1; i < endIndex && i < sheetData.length; i++) {
-                    const row = sheetData[i];
-                    if (!row) continue;
-
-                    const sn = row[snCol] ?? "";
-                    const desc = row[descCol] ?? "";
-                    const qty = row[qtyCol] ?? "";
-                    const unit = row[unitCol] ?? "";
-                    const rate = row[rateCol] ?? "";
-                    const amount = row[amountCol] ?? "";
-
-                    const newRow = `
-                        <tr>
-                            <td><input type="text" class="form-control sr" value="${sn}" readonly></td>
-                            <td><input type="text" class="form-control description" value="${desc}"></td>
-                            <td><input type="number" class="form-control qty" value="${qty}"></td>
-                            <td><input type="text" class="form-control unit" value="${unit}"></td>
-                            <td><input type="text" class="form-control length"></td>
-                            <td><input type="text" class="form-control width"></td>
-                            <td><input type="text" class="form-control thick"></td>
-                            <td><input type="text" class="form-control rate" value="${rate}"></td>
-                            <td><input type="text" class="form-control amount" value="${amount}"></td>
-                        </tr>`;
-                    tbody.insertAdjacentHTML("beforeend", newRow);
-                }
-
-                // Close import modal and show tender modal
-                const importModal = bootstrap.Modal.getInstance(document.getElementById("importModal"));
-                importModal.hide();
-                const tenderModal = new bootstrap.Modal(document.getElementById("tenderModal"));
-                tenderModal.show();
             };
 
-            reader.readAsArrayBuffer(file);
+            reader.readAsArrayBuffer(fileInput.files[0]);
         });
-   
+        });
 
-
-         function loadWarehouses() {
+        // ==========================================
+        // 🔹 Helper Functions
+        // ==========================================
+        function loadWarehouses() {
             $.ajax({
-              url: '@Url.Action("GetWarehouses", "Inventory")',
+                url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
                 success: function(result) {
                     const dropdown = $('#warehouseDropdown');
                     dropdown.empty().append('<option value="">Select Warehouse</option>');
 
                     if (result.status) {
-                        // Check if there are warehouses to display
                         if (result.data && result.data.length > 0) {
                             result.data.forEach(w => {
                                 dropdown.append(`<option value="${w.id}">${w.display}</option>`);
@@ -576,9 +590,66 @@
             });
         }
 
+        function getSrForRow(rowIndex) {
+            const groupIndex = Math.floor(rowIndex / 4);
+            const posInGroup = rowIndex % 4;
+            const letter = String.fromCharCode(65 + groupIndex);
+            if (posInGroup === 0) return letter;
+            return posInGroup;
+        }
+
+        function addRow() {
+            const rowIndex = $('#tenderTableBody tr').length;
+            const srValue = getSrForRow(rowIndex);
+
+            const newRow = `
+                <tr>
+                    <td class="sr-cell text-center">${srValue}</td>
+                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
+                    <td><input type="number" class="form-control qty"></td>
+                    <td><input type="text" class="form-control unit"></td>
+                    <td><input type="text" class="form-control length"></td>
+                    <td><input type="text" class="form-control width"></td>
+                    <td><input type="text" class="form-control thick"></td>
+                    <td><input type="text" class="form-control rate" disabled></td>
+                    <td><input type="text" class="form-control amount" disabled></td>
+                </tr>`;
+
+            $('#tenderTableBody').append(newRow);
+        }
+
+        function addEmptyRow() {
+            $("#tenderTableBody").append(`
+                <tr>
+                    <td><input type="text" class="form-control sr" value="A" readonly></td>
+                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
+                    <td><input type="number" class="form-control qty"></td>
+                    <td><input type="text" class="form-control unit"></td>
+                    <td><input type="text" class="form-control length"></td>
+                    <td><input type="text" class="form-control width"></td>
+                    <td><input type="text" class="form-control thick"></td>
+                    <td><input type="text" class="form-control rate" disabled></td>
+                    <td><input type="text" class="form-control amount" disabled></td>
+                </tr>
+            `);
+        }
+
+        // ==========================================
+        // 🔹 Main Document Ready
+        // ==========================================
         $(document).ready(function () {
             loadProjectTenders();
             loadWarehouses();
+
+            // Initialize with one empty row if table is empty
+            if ($('#tenderTableBody tr').length === 0) addRow();
+
+            // Auto-add new row when typing in last row
+            $('#tenderTableBody').on('input', 'tr:last-child input', function () {
+                const $lastRow = $(this).closest('tr');
+                const filled = $lastRow.find('input').toArray().some(i => $(i).val().trim() !== '');
+                if (filled) addRow();
+            });
 
             function loadProjects() {
                 $.ajax({
@@ -603,11 +674,11 @@
                 });
             }
 
-            loadProjects(); 
+            loadProjects();
 
             function loadProjectTenders(projectId) {
                 $.ajax({
-                   url: '@Url.Action("GetProjectTenders", "Construction")',
+                    url: '@Url.Action("GetProjectTenders", "Construction")',
                     type: 'GET',
                     data: { projectId: projectId },
                     success: function (res) {
@@ -615,8 +686,7 @@
                             toastr.error('Failed to load project tenders');
                             return;
                         }
-                        
-                        // Destroy DataTable if already initialized
+
                         if ($.fn.DataTable.isDataTable('#table1')) {
                             $('#table1').DataTable().clear().destroy();
                         }
@@ -635,22 +705,20 @@
                                         <td>${row.submitDate ?? ''}</td>
                                         <td>${row.fees ?? 0}</td>
                                         <td>
-                                                        <button class="btn btn-sm btn-primary editTenderBtn" data-tender='${JSON.stringify(row)}' title="Edit Tender">
-            <i class="fas fa-pen"></i>
-        </button>
-
-                                            <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}" title="View Items"> 
-                                                <i class="fas fa-book"></i> 
+                                            <button class="btn btn-sm btn-primary editTenderBtn" data-tender='${JSON.stringify(row)}' title="Edit Tender">
+                                                <i class="fas fa-pen"></i>
                                             </button>
-                                              <button class="btn btn-sm btn-danger deleteTenderBtn" data-id='${row.id}' title="Delete Tender">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                            <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}" title="View Items">
+                                                <i class="fas fa-book"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger deleteTenderBtn" data-id='${row.id}' title="Delete Tender">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </td>
                                     </tr>`;
                                 tbody.append(tr);
                             });
 
-                            // Initialize DataTable
                             $('#table1').DataTable({
                                 dom: 'Bfrtip',
                                 buttons: [
@@ -683,7 +751,6 @@
                 if (projectId) {
                     loadProjectTenders(projectId);
                 } else {
-                    // Clear table if nothing selected
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().clear().destroy();
                     }
@@ -692,433 +759,350 @@
             });
 
             $(document).on('click', '.viewItemsBtn', function () {
-            const tenderId = $(this).data('id');
-            if (!tenderId) return;
+                const tenderId = $(this).data('id');
+                if (!tenderId) return;
 
-            $('#tenderItemsModal').modal('show');
-            loadTenderItems(tenderId);
-
-        });
+                $('#tenderItemsModal').modal('show');
+                loadTenderItems(tenderId);
+            });
 
             function loadTenderItems(tenderId) {
-            $.ajax({
-               url: '@Url.Action("GetTenderItems", "Construction")',
-                type: 'GET',
-                data: { tenderId: tenderId },
-                success: function (res) {
-                    // Destroy DataTable if already exists
-                    if ($.fn.DataTable.isDataTable('#table2')) {
-                        $('#table2').DataTable().clear().destroy();
-                    }
+                $.ajax({
+                    url: '@Url.Action("GetTenderItems", "Construction")',
+                    type: 'GET',
+                    data: { tenderId: tenderId },
+                    success: function (res) {
+                        if ($.fn.DataTable.isDataTable('#table2')) {
+                            $('#table2').DataTable().clear().destroy();
+                        }
 
-                    const tbody = $('#table2 tbody');
-                    tbody.empty();
+                        const tbody = $('#table2 tbody');
+                        tbody.empty();
 
-                    if (res.status && res.data && res.data.length > 0) {
-                        $.each(res.data, function (i, item) {
-                            const tr = `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${item.Y ?? ''}</td>
-                                    <td>${item.qty ?? 0}</td>
-                                    <td>${item.rate ?? 0}</td>
-                                    <td>${item.unit ?? ''}</td>
-                                    <td>${item.amount ?? 0}</td>
-                                </tr>`;
-                            tbody.append(tr);
-                        });
-
-                        // Initialize DataTable with export buttons
-                        $('#table2').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm'
-                                },
-                                {
-                                    extend: 'pdfHtml5',
-                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                    className: 'btn btn-primary btn-sm'
-                                }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 10
-                        });
-                    } else {
-                        tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>`);
-                    }
-                },
-                error: function () {
-                    toastr.error('Failed to load tender items');
-                }
-            });
-        }
-
-            function populateBankAccounts() {
-            $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
-                type: 'GET',
-                success: function(res) {
-                    const data = Array.isArray(res) ? res : res.data || [];
-
-                    if (!data.length) return;
-
-                    // Target both debit and credit selects
-                    const accountSelectors = ['#debitAccount'];
-
-                    accountSelectors.forEach(function(selector) {
-                        const $select = $(selector);
-                        const selectedId = $select.data('selected-id'); // optional pre-selected ID
-
-                        // Clear existing options and add default
-                        $select.empty().append('<option value="">-- Select --</option>');
-
-                        // Append new options
-                        $.each(data, function(i, item) {
-                            const $option = $('<option>', {
-                                value: item.id,
-                                text: `${item.code} - ${item.name}`,
-                                selected: String(item.id) === String(selectedId)
+                        if (res.status && res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, item) {
+                                const tr = `
+                                    <tr>
+                                        <td>${i + 1}</td>
+                                        <td>${item.Y ?? ''}</td>
+                                        <td>${item.qty ?? 0}</td>
+                                        <td>${item.rate ?? 0}</td>
+                                        <td>${item.unit ?? ''}</td>
+                                        <td>${item.amount ?? 0}</td>
+                                    </tr>`;
+                                tbody.append(tr);
                             });
 
-                            $select.append($option);
+                            $('#table2').DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        className: 'btn btn-primary btn-sm'
+                                    },
+                                    {
+                                        extend: 'pdfHtml5',
+                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        className: 'btn btn-primary btn-sm'
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 10
+                            });
+                        } else {
+                            tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load tender items');
+                    }
+                });
+            }
+
+            function populateBankAccounts() {
+                $.ajax({
+                    url: '@Url.Action("GetAccruedSalaries", "HR")',
+                    type: 'GET',
+                    success: function(res) {
+                        const data = Array.isArray(res) ? res : res.data || [];
+
+                        if (!data.length) return;
+
+                        const accountSelectors = ['#debitAccount'];
+
+                        accountSelectors.forEach(function(selector) {
+                            const $select = $(selector);
+                            const selectedId = $select.data('selected-id');
+
+                            $select.empty().append('<option value="">-- Select --</option>');
+
+                            $.each(data, function(i, item) {
+                                const $option = $('<option>', {
+                                    value: item.id,
+                                    text: `${item.code} - ${item.name}`,
+                                    selected: String(item.id) === String(selectedId)
+                                });
+
+                                $select.append($option);
+                            });
                         });
-                    });
-                },
-                error: function(err) {
-                    console.error('Failed to fetch bank accounts:', err);
-                }
-            });
-        }
+                    },
+                    error: function(err) {
+                        console.error('Failed to fetch bank accounts:', err);
+                    }
+                });
+            }
 
             populateBankAccounts();
 
             $.ajax({
-         url: '@Url.Action("GetProjects", "Construction")',
-            type: 'GET',
-            dataType: 'json',
-            success: function (response) {
-                if (response.status) {
-                    var dropdown = $('#projectDropdown');
-                    dropdown.empty().append('<option value="">-- Select Project --</option>');
-                    response.data.forEach(function (project) {
-                        dropdown.append(
-                            $('<option>', {
-                                value: project.id,
-                                text: project.name,
-                                'data-code': project.code 
-                            })
-                        );
-                    });
-                } else {
-                    console.error('Failed to load projects:', response.message);
-                }
-            },
-            error: function (xhr, status, error) {
-                console.error('Error fetching projects:', error);
-            }
-        });
-
-            $('#projectDropdown').on('change', function () {
-            var selectedOption = $(this).find('option:selected');
-            var projectCode = selectedOption.data('code') || '';
-
-            // Fill the input with project code
-            $('input[placeholder="Account Code"]').val(projectCode);
-        });
-
-            $.ajax({
-           url: '@Url.Action("GetTenders", "Construction")',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status) {
-                    var dropdown = $('#tenderDropdown');
-                    response.data.forEach(function(tender) {
-                        dropdown.append(
-                            $('<option>', {
-                                value: tender.id,
-                                text: tender.name
-                            })
-                        );
-                    });
-                } else {
-                    console.error('Failed to load tenders:', response.message);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error fetching tenders:', error);
-            }
-        });
-
-            function getSrForRow(rowIndex) {
-            // Each group = 4 rows: 0 -> A, 1 -> 1, 2 -> 2, 3 -> 3, 4 -> B, 5 -> 1...
-            const groupIndex = Math.floor(rowIndex / 4);
-            const posInGroup = rowIndex % 4;
-
-            const letter = String.fromCharCode(65 + groupIndex); // 65 = 'A'
-            if (posInGroup === 0) return letter;
-            return posInGroup; // 1,2,3
-        }
-
-            function addRow() {
-            const rowIndex = $('#tenderTableBody tr').length;
-            const srValue = getSrForRow(rowIndex);
-
-            const newRow = `
-                <tr>
-                    <td class="sr-cell text-center">${srValue}</td>
-                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
-                    <td><input type="number" class="form-control qty"></td>
-                    <td><input type="text" class="form-control unit"></td>
-                    <td><input type="text" class="form-control length"></td>
-                    <td><input type="text" class="form-control width"></td>
-                    <td><input type="text" class="form-control thick"></td>
-                    <td><input type="text" class="form-control rate" disabled></td>
-                    <td><input type="text" class="form-control amount" disabled></td>
-                </tr>`;
-
-            $('#tenderTableBody').append(newRow);
-        }
-
-            $(document).ready(function () {
-            if ($('#tenderTableBody tr').length === 0) addRow();
-        });
-
-            $('#tenderTableBody').on('input', 'tr:last-child input', function () {
-            const $lastRow = $(this).closest('tr');
-            const filled = $lastRow.find('input').toArray().some(i => $(i).val().trim() !== '');
-            if (filled) addRow();
-        });
-
-            $(document).on("click", ".editTenderBtn", function () {
-            const tenderStr = $(this).attr("data-tender");
-            const tender = tenderStr ? JSON.parse(tenderStr) : null;
-            if (!tender) {
-                console.warn("No tender data found!");
-                return;
-            }
-            console.log(tender);
-            // Fill main tender info
-            $("#TenderId").val(tender.id ?? 0);
-            $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
-            $("#projectDropdown").val(tender.project_Id ?? 0);
-            $("#projectCode").val(tender.code ?? "");
-            $("#debitAccount").val(tender.account_Id ?? 0);
-            $("#warehouseDropdown").val(tender.warehouse_Id ?? 0);
-            $("#tenderDropdown").val(tender.tender_Name_Id ?? 0);
-            $("#submissionDate").val(tender.submitDate ?? new Date().toISOString().slice(0,10));
-            $("#fees").val(tender.fees ?? 0);
-            $("#tenderDescription").val(tender.description ?? "");
-
-            // Clear existing BOQ rows
-            $("#tenderTableBody").empty();
-
-            // 🔹 Fetch tender items from another API
-            $.ajax({
-                url: '@Url.Action("GetTenderItems", "Construction")',
+                url: '@Url.Action("GetProjects", "Construction")',
                 type: 'GET',
-                data: { tenderId: tender.id },
-                success: function(res) {
-                    if (!res || !res.status) {
-                        toastr.warning("No BOQ items found");
-                        addEmptyRow(); 
-                        return;
-                    }
-                    const items = res.data;
-
-                    if (items.length > 0) {
-                        items.forEach((item, index) => {
-                            const sr = item.sr ?? String.fromCharCode(65 + index); // 'A', 'B', ...
-                            $("#tenderTableBody").append(`
-                                <tr>
-                                    <td><input type="text" class="form-control sr" value="${sr}" readonly></td>
-                                    <td><input type="text" class="form-control description" value="${item.name ?? ''}" placeholder="Description of work"></td>
-                                    <td><input type="number" class="form-control qty" value="${item.qty ?? 0}"></td>
-                                    <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}"></td>
-                                    <td><input type="text" class="form-control length" value="${item.length ?? 0}"></td>
-                                    <td><input type="text" class="form-control width" value="${item.width ?? 0}"></td>
-                                    <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}"></td>
-                                    <td><input type="text" class="form-control rate" value="${item.rate ?? 0}" disabled></td>
-                                    <td><input type="text" class="form-control amount" value="${item.amount ?? 0}" disabled></td>
-                                </tr>
-                            `);
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status) {
+                        var dropdown = $('#projectDropdown');
+                        dropdown.empty().append('<option value="">-- Select Project --</option>');
+                        response.data.forEach(function (project) {
+                            dropdown.append(
+                                $('<option>', {
+                                    value: project.id,
+                                    text: project.name,
+                                    'data-code': project.code
+                                })
+                            );
                         });
                     } else {
-                        addEmptyRow(); // fallback if no items
+                        console.error('Failed to load projects:', response.message);
                     }
                 },
-                error: function() {
-                    toastr.error("Failed to load BOQ items");
-                    addEmptyRow();
+                error: function (xhr, status, error) {
+                    console.error('Error fetching projects:', error);
                 }
             });
 
-            $("#tenderModalLabel").text("Edit Project Tender");
-            $("#tenderModal").modal("show");
-        });
-
-            function addEmptyRow() {
-            $("#tenderTableBody").append(`
-                <tr>
-                    <td><input type="text" class="form-control sr" value="A" readonly></td>
-                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
-                    <td><input type="number" class="form-control qty"></td>
-                    <td><input type="text" class="form-control unit"></td>
-                    <td><input type="text" class="form-control length"></td>
-                    <td><input type="text" class="form-control width"></td>
-                    <td><input type="text" class="form-control thick"></td>
-                    <td><input type="text" class="form-control rate" disabled></td>
-                    <td><input type="text" class="form-control amount" disabled></td>
-                </tr>
-            `);
-        }
-
-            $('#saveTenderBtn').on('click', function () {
-             const idVal = $('#TenderId').val();
-             const isEdit = idVal && parseInt(idVal) > 0;
-
-             const items = [];
-             $('#tenderTableBody tr').each(function () {
-                 const $r = $(this);
-                 const desc = ($r.find('.description').val() || '').trim();
-                 if (!desc) return; // skip empty rows
-
-                 items.push({
-                     Sr: (items.length + 1).toString(),
-                     Description: desc,
-                     Qty: parseFloat($r.find('.qty').val()) || 0,
-                     Unit: $r.find('.unit').val() || '',
-                     Length: parseFloat($r.find('.length').val()) || 0,
-                     Width: parseFloat($r.find('.width').val()) || 0,
-                     Thick: parseFloat($r.find('.thick').val()) || 0,
-                     Rate: parseFloat($r.find('.rate').val()) || 0,
-                     Amount: parseFloat($r.find('.amount').val()) || 0,
-                     Note: ''
-                 });
-             });
-
-              const todayStr = new Date().toISOString().split('T')[0];
-             const tenderData = {
-                 Id: isEdit ? parseInt(idVal) : 0,
-                Date: $('#tenderDate').val() || todayStr,
-                 ProjectId: parseInt($('#projectDropdown').val()) || 0,
-                 TenderNameId: parseInt($('#tenderDropdown').val()) || 0,
-                 AccountId: parseInt($('#debitAccount').val()) || 0,
-                 // WarehouseId: 1,
-                  WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
-                 Fees: parseFloat($('#fees').val()) || 0,
-                 SubmissionDate: $('#submissionDate').val() || todayStr,
-                 Description: $('#tenderDescription').val() || '',
-                 Items: items
-             };
-
-             if (!tenderData.ProjectId || !tenderData.TenderNameId) {
-                 toastr.warning('Please select project and tender name');
-                 return;
-             }
-
-                   if (items.length === 0) {
-            toastr.warning('Please add at least one BOQ item');
-            return;
-        }
-
-
-                 $.ajax({
-            url: '@Url.Action("SaveOrUpdateTender", "Construction")',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(tenderData),
-            success: res => {
-                toastr[res.status ? 'success' : 'error'](res.message);
-                if (res.status) {
-                    $('#tenderModal').modal('hide');
-                     setTimeout(() => location.reload(), 1500);
-                }
-            },
-            error: xhr => {
-                let msg = xhr.responseJSON?.message || (() => { try { return JSON.parse(xhr.responseText).message; } catch { return 'Error saving tender'; } })();
-                toastr.error(msg);
-            }
-        });
-
-         });
-
-            $('#tenderModal').on('hidden.bs.modal', function () {
-            const projectId = $('#projectName').val();
-            if (projectId) loadProjectTenders(projectId);
-        });
-
-            $('#tenderModal').on('hidden.bs.modal', function () {
-            // Reset form fields
-            $('#tenderForm')[0].reset();
-            $('#tenderForm').removeClass('was-validated');
-            $('#TenderId').val(0);
-            $('#tenderModalLabel').text("Project - New Tender");
-
-            // Clear BOQ table
-            $('#tenderTableBody').empty();
-
-            // Add a default empty row
-            $('#tenderTableBody').append(`
-                <tr>
-                    <td><input type="text" class="form-control sr" value="A" readonly></td>
-                    <td><input type="text" class="form-control description" placeholder="Description of work"></td>
-                    <td><input type="number" class="form-control qty"></td>
-                    <td><input type="text" class="form-control unit"></td>
-                    <td><input type="text" class="form-control length"></td>
-                    <td><input type="text" class="form-control width"></td>
-                    <td><input type="text" class="form-control thick"></td>
-                    <td><input type="text" class="form-control rate" disabled></td>
-                    <td><input type="text" class="form-control amount" disabled></td>
-                </tr>
-            `);
-        });
-
-            $(document).on('click', '.deleteTenderBtn', function () {
-            const tenderId = $(this).data('id');
-            if (!tenderId) return;
-
-            if (!confirm('Are you sure you want to delete this tender?')) return;
+            $('#projectDropdown').on('change', function () {
+                var selectedOption = $(this).find('option:selected');
+                var projectCode = selectedOption.data('code') || '';
+                $('input[placeholder="Account Code"]').val(projectCode);
+            });
 
             $.ajax({
-              url: '@Url.Action("DeleteTenders", "Construction")' + '?tenderId=' + tenderId,
-                type: 'DELETE',
-                success: function (res) {
-                    toastr[res.status ? 'success' : 'error'](res.message);
-                    if (res.status && $('#projectName').val()) {
-                        // Refresh the tender table after deletion
-                        loadProjectTenders($('#projectName').val());
+                url: '@Url.Action("GetTenders", "Construction")',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        var dropdown = $('#tenderDropdown');
+                        response.data.forEach(function(tender) {
+                            dropdown.append(
+                                $('<option>', {
+                                    value: tender.id,
+                                    text: tender.name
+                                })
+                            );
+                        });
+                    } else {
+                        console.error('Failed to load tenders:', response.message);
                     }
                 },
-                error: function (xhr) {
-                    const msg = xhr.responseJSON?.message || 'Error deleting tender';
-                    toastr.error(msg);
+                error: function(xhr, status, error) {
+                    console.error('Error fetching tenders:', error);
                 }
             });
 
-         
+            $(document).on("click", ".editTenderBtn", function () {
+                const tenderStr = $(this).attr("data-tender");
+                const tender = tenderStr ? JSON.parse(tenderStr) : null;
+                if (!tender) {
+                    console.warn("No tender data found!");
+                    return;
+                }
+                console.log(tender);
 
+                $("#TenderId").val(tender.id ?? 0);
+                $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
+                $("#projectDropdown").val(tender.project_Id ?? 0);
+                $("#projectCode").val(tender.code ?? "");
+                $("#debitAccount").val(tender.account_Id ?? 0);
+                $("#warehouseDropdown").val(tender.warehouse_Id ?? 0);
+                $("#tenderDropdown").val(tender.tender_Name_Id ?? 0);
+                $("#submissionDate").val(tender.submitDate ?? new Date().toISOString().slice(0,10));
+                $("#fees").val(tender.fees ?? 0);
+                $("#tenderDescription").val(tender.description ?? "");
 
-        });
+                $("#tenderTableBody").empty();
 
-                $(function () { // DOM ready
-            // load when button clicked OR when modal shown (covers both cases)
-            $(document).on('click', '.recycleCardBtn', function (e) {
-                loadDeletedTenders();
-                // don't prevent bootstrap modal from opening (if you use data-bs-toggle)
+                $.ajax({
+                    url: '@Url.Action("GetTenderItems", "Construction")',
+                    type: 'GET',
+                    data: { tenderId: tender.id },
+                    success: function(res) {
+                        if (!res || !res.status) {
+                            toastr.warning("No BOQ items found");
+                            addEmptyRow();
+                            return;
+                        }
+                        const items = res.data;
+
+                        if (items.length > 0) {
+                            items.forEach((item, index) => {
+                                const sr = item.sr ?? String.fromCharCode(65 + index);
+                                $("#tenderTableBody").append(`
+                                    <tr>
+                                        <td><input type="text" class="form-control sr" value="${sr}" readonly></td>
+                                        <td><input type="text" class="form-control description" value="${item.name ?? ''}" placeholder="Description of work"></td>
+                                        <td><input type="number" class="form-control qty" value="${item.qty ?? 0}"></td>
+                                        <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}"></td>
+                                        <td><input type="text" class="form-control length" value="${item.length ?? 0}"></td>
+                                        <td><input type="text" class="form-control width" value="${item.width ?? 0}"></td>
+                                        <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}"></td>
+                                        <td><input type="text" class="form-control rate" value="${item.rate ?? 0}" disabled></td>
+                                        <td><input type="text" class="form-control amount" value="${item.amount ?? 0}" disabled></td>
+                                    </tr>
+                                `);
+                            });
+                        } else {
+                            addEmptyRow();
+                        }
+                    },
+                    error: function() {
+                        toastr.error("Failed to load BOQ items");
+                        addEmptyRow();
+                    }
+                });
+
+                $("#tenderModalLabel").text("Edit Project Tender");
+                $("#tenderModal").modal("show");
             });
 
-            // also call when modal fully shown (redundant but reliable)
+            $('#saveTenderBtn').on('click', function () {
+                const idVal = $('#TenderId').val();
+                const isEdit = idVal && parseInt(idVal) > 0;
+
+                const items = [];
+                $('#tenderTableBody tr').each(function () {
+                    const $r = $(this);
+                    const desc = ($r.find('.description').val() || '').trim();
+                    if (!desc) return;
+
+                    items.push({
+                        Sr: (items.length + 1).toString(),
+                        Description: desc,
+                        Qty: parseFloat($r.find('.qty').val()) || 0,
+                        Unit: $r.find('.unit').val() || '',
+                        Length: parseFloat($r.find('.length').val()) || 0,
+                        Width: parseFloat($r.find('.width').val()) || 0,
+                        Thick: parseFloat($r.find('.thick').val()) || 0,
+                        Rate: parseFloat($r.find('.rate').val()) || 0,
+                        Amount: parseFloat($r.find('.amount').val()) || 0,
+                        Note: ''
+                    });
+                });
+
+                const todayStr = new Date().toISOString().split('T')[0];
+                const tenderData = {
+                    Id: isEdit ? parseInt(idVal) : 0,
+                    Date: $('#tenderDate').val() || todayStr,
+                    ProjectId: parseInt($('#projectDropdown').val()) || 0,
+                    TenderNameId: parseInt($('#tenderDropdown').val()) || 0,
+                    AccountId: parseInt($('#debitAccount').val()) || 0,
+                    WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
+                    Fees: parseFloat($('#fees').val()) || 0,
+                    SubmissionDate: $('#submissionDate').val() || todayStr,
+                    Description: $('#tenderDescription').val() || '',
+                    Items: items
+                };
+
+                if (!tenderData.ProjectId || !tenderData.TenderNameId) {
+                    toastr.warning('Please select project and tender name');
+                    return;
+                }
+
+                if (items.length === 0) {
+                    toastr.warning('Please add at least one BOQ item');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("SaveOrUpdateTender", "Construction")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(tenderData),
+                    success: res => {
+                        toastr[res.status ? 'success' : 'error'](res.message);
+                        if (res.status) {
+                            $('#tenderModal').modal('hide');
+                            setTimeout(() => location.reload(), 1500);
+                        }
+                    },
+                    error: xhr => {
+                        let msg = xhr.responseJSON?.message || (() => { try { return JSON.parse(xhr.responseText).message; } catch { return 'Error saving tender'; } })();
+                        toastr.error(msg);
+                    }
+                });
+            });
+
+            $('#tenderModal').on('hidden.bs.modal', function () {
+                $('#tenderForm')[0].reset();
+                $('#tenderForm').removeClass('was-validated');
+                $('#TenderId').val(0);
+                $('#tenderModalLabel').text("Project - New Tender");
+
+                $('#tenderTableBody').empty();
+
+                $('#tenderTableBody').append(`
+                    <tr>
+                        <td><input type="text" class="form-control sr" value="A" readonly></td>
+                        <td><input type="text" class="form-control description" placeholder="Description of work"></td>
+                        <td><input type="number" class="form-control qty"></td>
+                        <td><input type="text" class="form-control unit"></td>
+                        <td><input type="text" class="form-control length"></td>
+                        <td><input type="text" class="form-control width"></td>
+                        <td><input type="text" class="form-control thick"></td>
+                        <td><input type="text" class="form-control rate" disabled></td>
+                        <td><input type="text" class="form-control amount" disabled></td>
+                    </tr>
+                `);
+
+                const projectId = $('#projectName').val();
+                if (projectId) loadProjectTenders(projectId);
+            });
+
+            $(document).on('click', '.deleteTenderBtn', function () {
+                const tenderId = $(this).data('id');
+                if (!tenderId) return;
+
+                if (!confirm('Are you sure you want to delete this tender?')) return;
+
+                $.ajax({
+                    url: '@Url.Action("DeleteTenders", "Construction")' + '?tenderId=' + tenderId,
+                    type: 'DELETE',
+                    success: function (res) {
+                        toastr[res.status ? 'success' : 'error'](res.message);
+                        if (res.status && $('#projectName').val()) {
+                            loadProjectTenders($('#projectName').val());
+                        }
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON?.message || 'Error deleting tender';
+                        toastr.error(msg);
+                    }
+                });
+            });
+
+            $(document).on('click', '.recycleCardBtn', function (e) {
+                loadDeletedTenders();
+            });
+
             $('#recycleTenderModal').on('shown.bs.modal', function () {
                 loadDeletedTenders();
             });
 
             function loadDeletedTenders() {
                 $.ajax({
-                   url: '@Url.Action("GetDeletedTenders", "Construction")',
+                    url: '@Url.Action("GetDeletedTenders", "Construction")',
                     type: 'GET',
                     dataType: 'json',
                     cache: false,
@@ -1128,7 +1112,6 @@
                             return;
                         }
 
-                        // Destroy existing DataTable before re-initializing
                         if ($.fn.DataTable.isDataTable('#recycleTenderTable')) {
                             try { $('#recycleTenderTable').DataTable().clear().destroy(); } catch (err) { console.warn(err); }
                         }
@@ -1154,7 +1137,6 @@
                                     </tr>
                                 `);
                             });
-
                         } else {
                             $tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No deleted tenders found</td></tr>`);
                         }
@@ -1163,52 +1145,43 @@
                         console.error('GetDeletedTenders error:', status, err, xhr.responseText);
                         const msg = xhr.responseJSON?.message || xhr.responseText || 'Error loading deleted tenders';
                         toastr.error(msg);
-                               }
+                    }
                 });
             }
 
-             
-                    // ♻️ Restore Tender
-        $(document).on('click', '.restoreTenderBtn', function () {
-            const id = $(this).data('id');
-            if (!id) return;
+            $(document).on('click', '.restoreTenderBtn', function () {
+                const id = $(this).data('id');
+                if (!id) return;
 
-            Swal.fire({
-                title: 'Restore Tender?',
-                text: 'Are you sure you want to restore this tender?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, Restore',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#28a745'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: '@Url.Action("RestoreTender", "Construction")',
-                        type: 'POST',
-                        data: { id: id },
-                        success: function (res) {
-                            if (res.status) {
-                                toastr.success(res.message);
-                                loadDeletedTenders(); // refresh recycle bin
-                            } else {
-                                toastr.error(res.message || 'Restore failed');
+                Swal.fire({
+                    title: 'Restore Tender?',
+                    text: 'Are you sure you want to restore this tender?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Restore',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#28a745'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("RestoreTender", "Construction")',
+                            type: 'POST',
+                            data: { id: id },
+                            success: function (res) {
+                                if (res.status) {
+                                    toastr.success(res.message);
+                                    loadDeletedTenders();
+                                } else {
+                                    toastr.error(res.message || 'Restore failed');
+                                }
+                            },
+                            error: function (xhr) {
+                                toastr.error(xhr.responseJSON?.message || 'Error restoring tender');
                             }
-                        },
-                        error: function (xhr) {
-                            toastr.error(xhr.responseJSON?.message || 'Error restoring tender');
-                        }
-                    });
-                }
+                        });
+                    }
+                });
             });
         });
-
-        });
-
-
-
-        });
     </script>
-
-
 }

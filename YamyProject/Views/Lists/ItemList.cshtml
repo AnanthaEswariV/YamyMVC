@@ -3,8 +3,6 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <style>
@@ -45,7 +43,6 @@
   
 
 </style>
-
 
 <div class="inventory-header">
     Inventory Center
@@ -333,7 +330,6 @@
     </div>
 </div>
 
-
 <!-- Modal -->
 <div class="modal fade" id="itemCardModal" tabindex="-1" aria-labelledby="itemCardModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -380,9 +376,6 @@
         </div>
     </div>
 </div>
-
-
-
 
 @Html.Partial("~/Views/Inventory/_WareHouse.cshtml")
 @Html.Partial("~/Views/Lists/_ItemCategory.cshtml")
@@ -1505,6 +1498,21 @@
 
            
 
+        });
+
+
+
+                document.addEventListener("DOMContentLoaded", function () {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("openModal") === "true") {
+                const modalEl = document.getElementById("newItemModal");
+                if (modalEl) {
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                } else {
+                    console.error("Modal element not found on ItemList page");
+                }
+            }
         });
     </script>
 
