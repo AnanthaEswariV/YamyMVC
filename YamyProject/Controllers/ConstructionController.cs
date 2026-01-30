@@ -1521,9 +1521,7 @@ namespace YamyProject.Controllers
                             }
                             else
                             {
-                                // else treat as assembly components (parts). Create parts in tbl_items_boq_details & tbl_items (part) and insert assembly relationships.
-                                // create Assembly part record: insert into tbl_items_boq_details
-                                // we need to insert the BOQ detail referencing the parent BOQ item (refId -> boqId)
+                                
                                 string insertBoqDetail = @"
                             INSERT INTO tbl_items_boq_details (code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
                                 cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
@@ -1823,6 +1821,126 @@ namespace YamyProject.Controllers
             }
         }
 
+        #endregion
+
+
+        #region Project Assembly
+
+        [ApiController]
+        [Route("api/assembly")]
+        public class AssemblyController : ControllerBase
+        {
+            [HttpPost("save")]
+            public IActionResult SaveAssembly([FromBody] AssemblySaveRequest model)
+            {
+                if (model == null)
+                    return Ok(new { status = false, message = "Invalid request" });
+
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return Ok(new { status = false, message = "Enter Item Name First." });
+
+                if (model.Items == null || !model.Items.Any())
+                    return Ok(new { status = false, message = "Item Assembly can't be empty." });
+
+                for (int i = 0; i < model.Items.Count; i++)
+                {
+                    var item = model.Items[i];
+
+                    if (string.IsNullOrWhiteSpace(item.Code) ||
+                        string.IsNullOrWhiteSpace(item.Name) ||
+                        item.Qty <= 0)
+                    {
+                        return Ok(new
+                        {
+                            status = false,
+                            message = $"Item Assembly can't be 0 or empty (Row {i + 1})"
+                        });
+                    }
+                }
+
+                // === INSERT ===
+                if (model.Id == 0)
+                {
+                    AssemblyItemManager.RemoveItemByRefId(model.RefId);
+
+                    int count = 1;
+                    foreach (var row in model.Items)
+                    {
+                        AssemblyItemManager.AddItem(new AssemblyItemModel
+                        {
+                            ItemId = count++,
+                            RefId = model.RefId,
+                            No = "",
+                            Code = row.Code,
+                            Name = row.Name,
+                            Cost = row.Cost,
+                            Qty = row.Qty,
+                            Total = row.Total,
+                            AssetAccountId = model.AssetAccountId,
+                            IncomeAccountId = model.IncomeAccountId,
+                            VendorAccountId = model.VendorAccountId,
+                            COGSAccountId = model.COGSAccountId
+                        });
+                    }
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = "Assembly Items saved successfully"
+                    });
+                }
+                // === UPDATE ===
+                else
+                {
+                    AssemblyItemManager.RemoveItemByRefId(model.RefId);
+
+                    int count = 1;
+                    foreach (var row in model.Items)
+                    {
+                        AssemblyItemManager.AddItem(new AssemblyItemModel
+                        {
+                            ItemId = count++,
+                            RefId = model.RefId,
+                            No = "",
+                            Code = row.Code,
+                            Name = row.Name,
+                            Cost = row.Cost,
+                            Qty = row.Qty,
+                            Total = row.Total,
+                            AssetAccountId = model.AssetAccountId,
+                            IncomeAccountId = model.IncomeAccountId,
+                            VendorAccountId = model.VendorAccountId,
+                            COGSAccountId = model.COGSAccountId
+                        });
+                    }
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = "Assembly Items updated successfully"
+                    });
+                }
+            }
+        }
+        public static class AssemblyItemManager
+        {
+            private static List<AssemblyItemModel> _itemsList = new();
+
+            public static List<AssemblyItemModel> GetItemsList()
+                => _itemsList;
+
+            public static List<AssemblyItemModel> GetItemsListWhere(string refId)
+                => _itemsList.Where(x => x.RefId == refId).ToList();
+
+            public static void AddItem(AssemblyItemModel item)
+                => _itemsList.Add(item);
+
+            public static void RemoveItemByRefId(string refId)
+                => _itemsList.RemoveAll(x => x.RefId == refId);
+
+            public static void ClearItemsList()
+                => _itemsList.Clear();
+        }
 
 
         #endregion

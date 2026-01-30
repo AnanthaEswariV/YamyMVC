@@ -591,6 +591,46 @@ namespace YamyProject.Core.Models
         public decimal? MarginAmount { get; set; }
         public decimal? MarginPercentage { get; set; }
     }
+    public class AssemblySaveRequest
+    {
+        public int Id { get; set; }              
+        public string RefId { get; set; }         
+        public string Name { get; set; }         
+
+        public int AssetAccountId { get; set; }
+        public int IncomeAccountId { get; set; }
+        public int VendorAccountId { get; set; }
+        public int COGSAccountId { get; set; }
+
+        public List<AssemblyItemDto> Items { get; set; } = new();
+    }
+
+    public class AssemblyItemDto
+    {
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public decimal Cost { get; set; }
+        public decimal Qty { get; set; }
+        public decimal Total { get; set; }
+    }
+    public class AssemblyItemModel
+    {
+        public int ItemId { get; set; }
+        public string RefId { get; set; }
+
+        public string No { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+
+        public decimal Cost { get; set; }
+        public decimal Qty { get; set; }
+        public decimal Total { get; set; }
+
+        public int AssetAccountId { get; set; }
+        public int IncomeAccountId { get; set; }
+        public int VendorAccountId { get; set; }
+        public int COGSAccountId { get; set; }
+    }
 
 
     public class ProjectPlanningRequest

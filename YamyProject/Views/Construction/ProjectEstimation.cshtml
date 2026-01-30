@@ -242,18 +242,7 @@
             <!-- Body -->
             <div class="modal-body">
 
-                <!-- Item Info -->
-                <div class="row mb-3">
-                    <div class="col-md-2">
-                        <label class="form-label">Item Code</label>
-                        <input type="text" class="form-control" readonly>
-                    </div>
-
-                    <div class="col-md-10">
-                        <label class="form-label">Item Name</label>
-                        <input type="text" class="form-control">
-                    </div>
-                </div>
+               
 
                 <!-- BOM Table -->
                 <table class="table table-bordered table-striped align-middle" style="font-size:13px;">
@@ -262,8 +251,8 @@
                             <th>#</th>
                             <th>Item Code</th>
                             <th>Assembly Item Name</th>
-                            <th>Cost</th>
                             <th>Qty</th>
+                            <th>Cost</th>
                             <th>Total</th>
                             <th>DEL</th>
                         </tr>
@@ -272,7 +261,7 @@
                         <tr>
                             <td>1</td>
                             <td><input class="form-control form-control-sm"></td>
-                            <td><input class="form-control form-control-sm"></td>
+                            <td><select class="form-select form-select-sm itemNameSelect"></select></td>
                             <td><input class="form-control form-control-sm"></td>
                             <td><input class="form-control form-control-sm"></td>
                             <td><input class="form-control form-control-sm" readonly></td>
@@ -284,12 +273,19 @@
                 </table>
 
                 <!-- Total -->
-                <div class="row mb-3">
-                    <div class="col-md-4 offset-md-8">
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-primary add-btn">
+                            Add Item
+                        </button>
+                    </div>
+
+                    <div class="col-md-4 ms-auto">
                         <label class="form-label">Total Cost</label>
                         <input type="text" class="form-control" readonly>
                     </div>
                 </div>
+
 
                 <!-- Accounts -->
                 <div class="row mb-3">
@@ -827,11 +823,20 @@
             `);
         }
         document.addEventListener("click", function (e) {
-            if (e.target.classList.contains("view-btn")) {
+                if (e.target.classList.contains("add-btn")) {
                 // Redirect to ItemList with a query parameter to trigger modal
                 window.location.href = `/Lists/ItemList?openModal=true`;
             }
         });
+
+
+              document.addEventListener("click", function (e) {
+                if (e.target.classList.contains("view-btn")) {
+                       const modal = new bootstrap.Modal(document.getElementById("bomModal"));
+                    modal.show();
+                }
+            });
+
 
 
                 // Add this inside the editTenderBtn click handler, after modal opens
@@ -1030,9 +1035,248 @@
          $("#fees").on("input change", calculateGrandTotal);
 
          addEmptyRow();
+
          calculateGrandTotal();
+
+         loadItem();
+
+         function loadItem(selector = ".itemNameSelect") {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        url: '@Url.Action("GetItems", "Lists")',
+                        type: 'GET',
+                        success: function (res) {
+                            if (res.status) {
+                                itemsList = res.data; // Store the items in the global itemsList
+                                const dropdowns = $(selector);
+                                dropdowns.empty().append('<option value="">Select Item</option>');
+                                res.data.forEach(item => {
+                                    dropdowns.append(
+                                        `<option value="${item.id}">${item.itemName}</option>`
+                                    );
+                                });
+                                resolve(); // Resolve the promise once the items are loaded
+                            } else {
+                                reject("Failed to load items.");
+                            }
+                        },
+                        error: function (err) {
+                            console.error("Error fetching Item:", err);
+                            reject(err);
+                        }
+                    });
+                });
+            }
+
+         $(document).on("change", ".itemNameSelect", function () {
+                const selectedId = parseInt($(this).val(), 10);
+
+                const row = $(this).closest("tr");
+
+                if (selectedId) {
+                    // Find the item in the itemsList
+                    const selectedItem = itemsList.find(item => item.id === selectedId);
+                        console.log(selectedItem);
+                    if (selectedItem) {
+                        row.find("td:nth-child(2) input").val(selectedItem.code || "");
+
+                        row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
+
+                        calculateRow(row);
+                    } else {
+                    }
+                } else {
+                    row.find("td:nth-child(2) input").val("");
+                    row.find("td:nth-child(5) input").val(0);
+
+                    calculateRow(row);
+                }
+            });
+
+         $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
+                const row = $(this).closest("tr");
+
+                // Optional: Call API to check stock when qty changes
+                if ($(this).closest("td").index() === 3) { // Qty column
+                    const itemId = row.find(".itemNameSelect").val();
+                    const qty = parseFloat($(this).val()) || 0;
+                    if (itemId) {
+                        $.ajax({
+                            url: '@Url.Action("CheckItemValidity", "Customer")',
+                            type: 'GET',
+                            data: { itemId: itemId, salesQty: qty },
+                            success: function (res) {
+                                if (!res.status) {
+                                    alert(res.message);
+                                    row.find("td:nth-child(4) input").val(0);
+                                }
+                                calculateRow(row);
+                            },
+                            error: function(err) { console.error(err); }
+                        });
+                    } else {
+                        calculateRow(row);
+                    }
+                } else {
+                    calculateRow(row);
+                }
+            });
+
+         function calculateRow(row) {
+                const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0; 
+                const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0; 
+
+                const net = qty * price;
+                row.find("td:nth-child(6)").text(net.toFixed(2)); 
+                console.log(net);
+            }
+
+         const bomTableBody = document.getElementById("bomTableBody");
+
+         function attachInputListeners(row) {
+                const inputs = row.querySelectorAll("input, select");
+
+                inputs.forEach(input => {
+                    input.addEventListener("input", () => {
+                        const rows = bomTableBody.querySelectorAll("tr");
+                        const lastRow = rows[rows.length - 1];
+
+                        // If this row is the last one and any field is filled, add a new row
+                        if (row === lastRow && Array.from(inputs).some(i => i.value.trim() !== "")) {
+                            createNewRow(rows.length + 1);
+                        }
+                    });
+                });
+
+                // Delete button
+                const deleteBtn = row.querySelector("button.btn-danger");
+                deleteBtn.addEventListener("click", () => {
+                    row.remove();
+                    reindexRows();
+                });
+            }
+
+         function createNewRow(index) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${index}</td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td><input class="form-control form-control-sm" readonly></td>
+                    <td><button class="btn btn-sm btn-danger">X</button></td>
+                `;
+
+                bomTableBody.appendChild(tr);
+
+                // Attach listeners (no need to repeat all handlers)
+                attachInputListeners(tr);
+
+                // **Only load items for the new select**
+                loadItem($(tr).find(".itemNameSelect"));
+            }
+
+        function reindexRows() {
+                bomTableBody.querySelectorAll("tr").forEach((row, i) => {
+                    row.querySelector("td:first-child").textContent = i + 1;
+                });
+            }
+
+         attachInputListeners(bomTableBody.querySelector("tr"));
+
+
+                 $("#bomModal .btn-primary").click(function () {
+
+            const refId = $("#bomModalLabel").text().trim(); 
+            const items = [];
+
+            let grandTotal = 0;
+
+            $("#bomTableBody tr").each(function (index) {
+                const $row = $(this);
+
+                const code = $row.find("td:eq(1) input").val();
+                const name = $row.find("td:eq(2) select").val();
+                const qty = parseFloat($row.find("td:eq(3) input").val()) || 0;
+                const cost = parseFloat($row.find("td:eq(4) input").val()) || 0;
+                const total = qty * cost;
+
+                if (!code || !name || qty <= 0) {
+                    toastr.warning(`Invalid data in row ${index + 1}`);
+                    return false;
+                }
+
+                $row.find("td:eq(5) input").val(total.toFixed(2));
+                grandTotal += total;
+
+                items.push({
+                    ItemId: index + 1,
+                    RefId: refId,
+                    Code: code,
+                    Name: name,
+                    Qty: qty,
+                    Cost: cost,
+                    Total: total
+                });
+            });
+
+            if (items.length === 0) {
+                toastr.warning("Assembly items can't be empty");
+                return;
+            }
+
+            const model = {
+                RefId: refId,
+                AssetAccountId: $("#assetAccount").val() || 0,
+                IncomeAccountId: $("#incomeAccount").val() || 0,
+                VendorAccountId: $("#preferredVendor").val() || 0,
+                COGSAccountId: $("#cogsAccount").val() || 0,
+                TotalCost: grandTotal,
+                Items: items
+            };
+
+            // 🔹 Save to localStorage
+            localStorage.setItem("Assembly_" + refId, JSON.stringify(model));
+
+            toastr.success("Assembly saved locally");
+            $("#bomModal").modal("hide");
+        });
+        $(document).on("input", "#bomTableBody input", function () {
+            const $row = $(this).closest("tr");
+            const qty = parseFloat($row.find("td:eq(3) input").val()) || 0;
+            const cost = parseFloat($row.find("td:eq(4) input").val()) || 0;
+            const total = qty * cost;
+
+            $row.find("td:eq(5) input").val(total.toFixed(2));
+        });
+        $(".add-btn").click(function () {
+            const rowCount = $("#bomTableBody tr").length + 1;
+
+            $("#bomTableBody").append(`
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td><input class="form-control form-control-sm"></td>
+                    <td><input class="form-control form-control-sm" readonly></td>
+                    <td><button class="btn btn-sm btn-danger delRow">X</button></td>
+                </tr>
+            `);
+        });
+        $(document).on("click", ".delRow", function () {
+            $(this).closest("tr").remove();
+        });
+        function getAssembly(refId) {
+            const data = localStorage.getItem("Assembly_" + refId);
+            return data ? JSON.parse(data) : null;
+        }
+
+
     });
 
+       
 
     </script>
 
