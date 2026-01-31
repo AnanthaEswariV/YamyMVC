@@ -2268,7 +2268,7 @@ namespace YamyProject.Controllers
                     if (model.EstimatedBudget > 0)
                     {
                         await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), model.EstimatedBudget, 0, recordId);
-                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.CashAccountId.ToString(), 0, model.EstimatedBudget, recordId);
+                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), 0, model.EstimatedBudget, recordId);
                     }
 
                   

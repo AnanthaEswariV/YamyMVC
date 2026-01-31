@@ -5518,14 +5518,14 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 await conn.OpenAsync();
 
                 // 🔎 Default company rule check if selected
-                //if (model.IsDefault)
-                //{
-                //    var checkQuery = "SELECT COUNT(*) FROM tbl_company WHERE default_company = 1";
-                //    using var checkCmd = new MySqlCommand(checkQuery, conn);
-                //    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
-                //    if (exists > 0)
-                //        return BadRequest(new { status = false, message = "Only one default company is allowed" });
-                //}
+                if (model.IsDefault)
+                {
+                    var checkQuery = "SELECT COUNT(*) FROM tbl_company WHERE default_company = 1";
+                    using var checkCmd = new MySqlCommand(checkQuery, conn);
+                    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (exists > 0)
+                        return BadRequest(new { status = false, message = "Only one default company is allowed" });
+                }
 
 
 
