@@ -574,6 +574,7 @@ namespace YamyProject.Core.Models
         public string? Description { get; set; }
         public decimal? Amount { get; set; }
         public List<ProjectTenderItem> Items { get; set; } = new();
+        public string AssemblyJson { get; set; }
     }
 
     public class ProjectTenderItem
@@ -593,45 +594,73 @@ namespace YamyProject.Core.Models
     }
     public class AssemblySaveRequest
     {
-        public int Id { get; set; }              
-        public string RefId { get; set; }         
-        public string Name { get; set; }         
-
+        public string RefId { get; set; }
         public int AssetAccountId { get; set; }
+        public int COGSAccountId { get; set; }
         public int IncomeAccountId { get; set; }
         public int VendorAccountId { get; set; }
+        public List<AssemblyItemModel> Items { get; set; }
+    }
+    public class GenerateEstimateRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int TenderNameId { get; set; }
+        public int WarehouseId { get; set; }
+        public int AccountId { get; set; }
+        public DateTime Date { get; set; }
+        public DateTime SubmissionDate { get; set; }
+        public string? Description { get; set; }
+        public string? Fees { get; set; }
+        public string TotalAmount { get; set; }
+        public string? TenderName { get; set; }
+        public int AssetAccountId { get; set; }
         public int COGSAccountId { get; set; }
-
-        public List<AssemblyItemDto> Items { get; set; } = new();
+        public int IncomeAccountId { get; set; }
+        public string? AssemblyJson { get; set; }
+        public List<EstimateItemRequest> Items { get; set; }
     }
 
-    public class AssemblyItemDto
+    public class EstimateItemRequest
+    {
+        public string? Sr { get; set; }
+        public string? Name { get; set; }
+        public string? Unit { get; set; }
+        public string? Qty { get; set; }
+        public string? Rate { get; set; }
+        public string? Amount { get; set; }
+        public string? Length { get; set; }
+        public string? Width { get; set; }
+        public string? Thick { get; set; }
+        public string? Note { get; set; }
+        public string? MarginAmount { get; set; }
+        public string? MarginPercentage { get; set; }
+        public List<AssemblyItemRequest>? AssemblyItems { get; set; }
+    }
+
+    public class AssemblyItemRequest
     {
         public string Code { get; set; }
         public string Name { get; set; }
         public decimal Cost { get; set; }
         public decimal Qty { get; set; }
         public decimal Total { get; set; }
+        public int AssetAccountId { get; set; }
+        public int COGSAccountId { get; set; }
+        public int IncomeAccountId { get; set; }
+        public int VendorAccountId { get; set; }
     }
+
     public class AssemblyItemModel
     {
         public int ItemId { get; set; }
         public string RefId { get; set; }
-
-        public string No { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
-
-        public decimal Cost { get; set; }
         public decimal Qty { get; set; }
+        public decimal Cost { get; set; }
         public decimal Total { get; set; }
-
-        public int AssetAccountId { get; set; }
-        public int IncomeAccountId { get; set; }
-        public int VendorAccountId { get; set; }
-        public int COGSAccountId { get; set; }
     }
-
 
     public class ProjectPlanningRequest
     {

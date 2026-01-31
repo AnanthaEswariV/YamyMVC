@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using YamyProject.Core.Models;
+using Newtonsoft.Json;
 
 
 namespace YamyProject.Controllers
@@ -1287,663 +1288,743 @@ namespace YamyProject.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateEstimation([FromBody] ProjectTenderRequest model)
+        public async Task<IActionResult> SaveOrUpdateEstimation([FromBody] GenerateEstimateRequest model)
         {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            // 🔹 Validation: Required fields
+            if (model.Id <= 0)
+                return BadRequest(new { status = false, message = "Tender ID is required" });
+
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Project" });
+
+            if (model.TenderNameId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Tender" });
+
+            if (model.WarehouseId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Warehouse" });
+
+            if (model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Please add at least one item" });
+
+            if (string.IsNullOrEmpty(model.TotalAmount) || decimal.Parse(model.TotalAmount) == 0)
+                return BadRequest(new { status = false, message = "Total must be bigger than zero" });
+
             try
             {
-                if (model == null)
-                    return Json(new { status = false, message = "Invalid request" });
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
 
-                if (model.ProjectId <= 0)
-                    return Json(new { status = false, message = "Please select a Project" });
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
-                if (model.TenderNameId <= 0)
-                    return Json(new { status = false, message = "Please select a Tender" });
-
-                if (model.WarehouseId <= 0)
-                    return Json(new { status = false, message = "Please select a Warehouse" });
-
-                if (model.Items == null || model.Items.Count == 0)
-                    return Json(new { status = false, message = "Insert Items First." });
-
-                if (model.Fees == null) model.Fees = 0;
-                if (model.Amount == null || model.Amount == 0)
-                    return Json(new { status = false, message = "Total Must Be Bigger Than Zero" });
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                await using var transaction = await conn.BeginTransactionAsync();
 
                 try
                 {
-                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    if (userId <= 0)
-                        return Json(new { status = false, message = "User not logged in" });
-
-                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    if (model.Id > 0)
                     {
-                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                    };
-
-                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                    await conn.OpenAsync();
-
-                    await using var transaction = await conn.BeginTransactionAsync();
-
-                    try
-                    {
-                        if (model.Id > 0)
-                        {
-                            string checkEstimate = "SELECT estimate_status FROM tbl_project_tender WHERE id=@id";
-                            await using (var cmd = new MySqlCommand(checkEstimate, conn, (MySqlTransaction)transaction))
-                            {
-                                cmd.Parameters.AddWithValue("@id", model.Id);
-                                var estObj = await cmd.ExecuteScalarAsync();
-                                if (estObj != null && Convert.ToInt32(estObj) == 1)
-                                {
-                                    await transaction.RollbackAsync();
-                                    return Json(new { status = false, message = "Estimate already generated for this tender. Editing is not allowed." });
-                                }
-                            }
-                        }
-
-                        int tenderId = 0;
-
-                        string updateTender = @"
-                        UPDATE tbl_project_tender 
-                        SET modified_by = @modifiedBy, modified_date = @modifiedDate,
-                            date = @date, project_id = @projectId, submission_date = @submissionDate,
-                            description = @description, fees = @fees, amount = @amount, warehouse_id = @warehouseId, account_id = @accountId, tender_name_id = @tenderNameId,
-                        estimate_status=1 WHERE id = @id;";
-                        await using (var cmd = new MySqlCommand(updateTender, conn, (MySqlTransaction)transaction))
+                        string checkEstimate = "SELECT estimate_status FROM tbl_project_tender WHERE id=@id";
+                        await using (var cmd = new MySqlCommand(checkEstimate, conn, (MySqlTransaction)transaction))
                         {
                             cmd.Parameters.AddWithValue("@id", model.Id);
-                            cmd.Parameters.AddWithValue("@modifiedBy", userId);
-                            cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
-                            cmd.Parameters.AddWithValue("@date", model.Date.Date);
-                            cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
-                            cmd.Parameters.AddWithValue("@submissionDate", model.SubmissionDate.Date);
-                            cmd.Parameters.AddWithValue("@description", model.Description ?? "");
-                            cmd.Parameters.AddWithValue("@fees", model.Fees ?? 0);
-                            cmd.Parameters.AddWithValue("@amount", model.Amount ?? 0);
-                            cmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-                            cmd.Parameters.AddWithValue("@accountId", model.AccountId);
-                            cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
-
-                            int affected = await cmd.ExecuteNonQueryAsync();
-                            if (affected == 0)
+                            var estObj = await cmd.ExecuteScalarAsync();
+                            if (estObj != null && Convert.ToInt32(estObj) == 1)
                             {
                                 await transaction.RollbackAsync();
-                                return NotFound(new { status = false, message = "Tender not found" });
+                                return Json(new { status = false, message = "Estimate already generated for this tender. Editing is not allowed." });
                             }
                         }
-
-                        tenderId = model.Id;
-
-                        // Delete old details and dependent records (mirrors your WinForms deletes)
-                        string deleteDetails = @"
-                        DELETE FROM tbl_project_tender_details WHERE tender_id=@tenderId;
-                        DELETE FROM tbl_items_boq_details WHERE ref_id IN (SELECT id FROM tbl_items_boq WHERE ref_id=@tenderId);
-                        DELETE FROM tbl_item_assembly_bos WHERE assembly_id IN (SELECT id FROM tbl_items_boq WHERE ref_id=@tenderId);
-                        DELETE FROM tbl_items_boq WHERE ref_id=@tenderId;
-                        DELETE FROM tbl_item_transaction WHERE type = 'Project Tender' AND item_id = @tenderId;
-                        DELETE FROM tbl_transaction WHERE type = 'Project Tender' AND transaction_id = @tenderId;
-                        DELETE FROM tbl_item_card_details WHERE trans_type = 'Project Tender' AND trans_no = @tenderId;
-                    ";
-                        await using (var del = new MySqlCommand(deleteDetails, conn, (MySqlTransaction)transaction))
-                        {
-                            del.Parameters.AddWithValue("@tenderId", tenderId);
-                            await del.ExecuteNonQueryAsync();
-                        }
-
-                        int nextItemCode = 0;
-                        string nextCodeSql = "SELECT IFNULL(MAX(CAST(code AS UNSIGNED)), 0) + 1 AS next_code FROM tbl_items;";
-                        await using (var codeCmd = new MySqlCommand(nextCodeSql, conn, (MySqlTransaction)transaction))
-                        {
-                            var codeObj = await codeCmd.ExecuteScalarAsync();
-                            nextItemCode = codeObj != null && codeObj != DBNull.Value ? Convert.ToInt32(codeObj) : 1;
-                        }
-
-                        string refSr = "";
-                        int subId = 0;
-                        int assemblyItemId = 0;
-
-                        foreach (var item in model.Items)
-                        {
-                            decimal qty = item.Qty ?? 0;
-                            decimal rate = item.Rate ?? 0;
-                            decimal amount = item.Amount ?? 0;
-                            decimal marginAmount = item.MarginAmount ?? 0;
-                            decimal marginPercentage = item.MarginPercentage ?? 0;
-
-                            string sr = item.Sr ?? "";
-                            string description = item.Description ?? "";
-
-                            if (string.IsNullOrWhiteSpace(sr) || string.IsNullOrWhiteSpace(description))
-                            {
-                                continue;
-                            }
-
-                            // Insert into tbl_items_boq (BOQ row)
-                            string insertBoq = @"
-                        INSERT INTO tbl_items_boq (sr, ref_id, type, name, unit_name, qty, price, amount, length, width, thickness, note)
-                        VALUES (@sr, @refId, 'BOQ', @name, @unit, @qty, @price, @amount, @length, @width, @thickness, @note);
-                        SELECT LAST_INSERT_ID();";
-                            int boqId;
-                            await using (var boqCmd = new MySqlCommand(insertBoq, conn, (MySqlTransaction)transaction))
-                            {
-                                boqCmd.Parameters.AddWithValue("@sr", sr);
-                                boqCmd.Parameters.AddWithValue("@refId", tenderId);
-                                boqCmd.Parameters.AddWithValue("@name", description);
-                                boqCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
-                                boqCmd.Parameters.AddWithValue("@qty", qty);
-                                boqCmd.Parameters.AddWithValue("@price", rate);
-                                boqCmd.Parameters.AddWithValue("@amount", amount);
-                                boqCmd.Parameters.AddWithValue("@length", item.Length ?? 0);
-                                boqCmd.Parameters.AddWithValue("@width", item.Width ?? 0);
-                                boqCmd.Parameters.AddWithValue("@thickness", item.Thick ?? 0);
-                                boqCmd.Parameters.AddWithValue("@note", item.Note ?? "");
-                                boqId = Convert.ToInt32(await boqCmd.ExecuteScalarAsync());
-                            }
-
-                            // Insert into tbl_project_tender_details
-                            string insertTenderDetail = @"
-                        INSERT INTO tbl_project_tender_details (sr, tender_id, item_id, qty, unit_id, rate, amount, length, width, thickness, note, margin_percentage, margin_amount,total)
-                        VALUES (@sr, @tenderId, @itemId, @qty, 0, @rate, @amount, @length, @width, @thickness, @note, @margin_percentage, @margin_amount, @total);";
-                            await using (var detCmd = new MySqlCommand(insertTenderDetail, conn, (MySqlTransaction)transaction))
-                            {
-                                detCmd.Parameters.AddWithValue("@sr", sr);
-                                detCmd.Parameters.AddWithValue("@tenderId", tenderId);
-                                detCmd.Parameters.AddWithValue("@itemId", boqId);
-                                detCmd.Parameters.AddWithValue("@qty", qty);
-                                detCmd.Parameters.AddWithValue("@rate", rate);
-                                detCmd.Parameters.AddWithValue("@amount", amount);
-                                detCmd.Parameters.AddWithValue("@length", item.Length ?? 0);
-                                detCmd.Parameters.AddWithValue("@width", item.Width ?? 0);
-                                detCmd.Parameters.AddWithValue("@thickness", item.Thick ?? 0);
-                                detCmd.Parameters.AddWithValue("@note", item.Note ?? "");
-                                detCmd.Parameters.AddWithValue("@margin_percentage", marginPercentage);
-                                detCmd.Parameters.AddWithValue("@margin_amount", marginAmount);
-                                detCmd.Parameters.AddWithValue("@total", amount + marginAmount);
-                                await detCmd.ExecuteNonQueryAsync();
-                            }
-
-                            // If sr is alphabetic only => treat as assembly header and create an "Inventory Assembly" item row
-                            if (!string.IsNullOrEmpty(sr) && Regex.IsMatch(sr, @"^[A-Za-z]+$"))
-                            {
-                                refSr = sr;
-                                // insert into tbl_items (assembly) if not exists, using the pattern from your original code
-                                string insertItemSql = @"
-                            INSERT INTO tbl_items(
-                                code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
-                                cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
-                                min_amount, max_amount, on_hand, method, total_value, date, img, active, state, 
-                                created_By, created_date, Item_type)
-                            SELECT
-                                @code, @warehouseId, @type, @category, @name, @unit_id, @barcode, @cost_price, 
-                                @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
-                                @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, @state, 
-                                @created_By, @created_date, @Item_type
-                            WHERE NOT EXISTS (
-                                SELECT 1 FROM tbl_items WHERE name = @name
-                            ); SELECT LAST_INSERT_ID();";
-
-                                await using (var itemCmd = new MySqlCommand(insertItemSql, conn, (MySqlTransaction)transaction))
-                                {
-                                    itemCmd.Parameters.AddWithValue("@code", nextItemCode.ToString());
-                                    itemCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-                                    itemCmd.Parameters.AddWithValue("@type", "13 - Inventory Assembly");
-                                    itemCmd.Parameters.AddWithValue("@category", 0);
-                                    itemCmd.Parameters.AddWithValue("@name", description);
-                                    itemCmd.Parameters.AddWithValue("@unit_id", 0);
-                                    itemCmd.Parameters.AddWithValue("@barcode", "");
-                                    itemCmd.Parameters.AddWithValue("@cost_price", rate);
-                                    // NOTE: you had cmbCOGSAccount / cmbIncomeAccount / cmbAssetAccount from UI - adapt below to real account ids
-                                    itemCmd.Parameters.AddWithValue("@cogs_account_id", 0);
-                                    itemCmd.Parameters.AddWithValue("@vendor_id", 0);
-                                    itemCmd.Parameters.AddWithValue("@sales_price", 0);
-                                    itemCmd.Parameters.AddWithValue("@income_account_id", 0);
-                                    itemCmd.Parameters.AddWithValue("@asset_account_id", 0);
-                                    itemCmd.Parameters.AddWithValue("@min_amount", 0);
-                                    itemCmd.Parameters.AddWithValue("@max_amount", 0);
-                                    itemCmd.Parameters.AddWithValue("@on_hand", qty);
-                                    itemCmd.Parameters.AddWithValue("@method", "fifo");
-                                    itemCmd.Parameters.AddWithValue("@total_value", 0);
-                                    itemCmd.Parameters.AddWithValue("@date", model.Date.Date);
-                                    itemCmd.Parameters.AddWithValue("@img", "");
-                                    itemCmd.Parameters.AddWithValue("@active", 0);
-                                    itemCmd.Parameters.AddWithValue("@state", 0);
-                                    itemCmd.Parameters.AddWithValue("@created_By", userId);
-                                    itemCmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
-                                    itemCmd.Parameters.AddWithValue("@Item_type", "Inventory");
-                                    var createdItemIdObj = await itemCmd.ExecuteScalarAsync();
-                                    assemblyItemId = createdItemIdObj != null && createdItemIdObj != DBNull.Value ? Convert.ToInt32(createdItemIdObj) : 0;
-                                }
-
-                                nextItemCode++;
-
-                            }
-                            else
-                            {
-                                
-                                string insertBoqDetail = @"
-                            INSERT INTO tbl_items_boq_details (code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
-                                cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
-                                min_amount, max_amount, on_hand, method, total_value, date, img, active, state, created_By, created_date, ref_id)
-                            VALUES (@code, @warehouse_id, @type, @category, @name, @unit_id, @barcode, @cost_price, 
-                                @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
-                                @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, @state, @created_By, @created_date, @refId);
-                            SELECT LAST_INSERT_ID();";
-                                int assemblyId;
-                                string codeForPart = (refSr ?? "") + (subId + 1);
-                                await using (var boqDetailCmd = new MySqlCommand(insertBoqDetail, conn, (MySqlTransaction)transaction))
-                                {
-                                    boqDetailCmd.Parameters.AddWithValue("@code", codeForPart);
-                                    boqDetailCmd.Parameters.AddWithValue("@warehouse_id", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@type", "13 - Inventory Assembly");
-                                    boqDetailCmd.Parameters.AddWithValue("@category", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@name", description);
-                                    boqDetailCmd.Parameters.AddWithValue("@unit_id", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@barcode", "");
-                                    boqDetailCmd.Parameters.AddWithValue("@cost_price", rate);
-                                    boqDetailCmd.Parameters.AddWithValue("@cogs_account_id", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@vendor_id", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@sales_price", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@income_account_id", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@asset_account_id", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@min_amount", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@max_amount", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@on_hand", qty);
-                                    boqDetailCmd.Parameters.AddWithValue("@method", "fifo");
-                                    boqDetailCmd.Parameters.AddWithValue("@total_value", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@date", model.Date.Date);
-                                    boqDetailCmd.Parameters.AddWithValue("@img", "");
-                                    boqDetailCmd.Parameters.AddWithValue("@active", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@state", 0);
-                                    boqDetailCmd.Parameters.AddWithValue("@created_By", userId);
-                                    boqDetailCmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
-                                    boqDetailCmd.Parameters.AddWithValue("@refId", boqId);
-                                    assemblyId = Convert.ToInt32(await boqDetailCmd.ExecuteScalarAsync());
-                                }
-
-
-
-                                // insert into tbl_items (part) if not exists
-                                string insertPartSql = @"
-                            INSERT INTO tbl_items(
-                                code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
-                                cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
-                                min_amount, max_amount, on_hand, method, total_value, date, img, active, state, 
-                                created_By, created_date, Item_type)
-                            SELECT 
-                                @code, @warehouseId, @type, @category, @name, @unit_id, @barcode, @cost_price, 
-                                @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
-                                @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, @state, 
-                                @created_By, @created_date, @Item_type
-                            WHERE NOT EXISTS (
-                                SELECT 1 FROM tbl_items WHERE name = @name
-                            ); SELECT LAST_INSERT_ID();";
-                                int itemIdOf;
-                                await using (var partCmd = new MySqlCommand(insertPartSql, conn, (MySqlTransaction)transaction))
-                                {
-                                    partCmd.Parameters.AddWithValue("@code", nextItemCode);
-                                    partCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
-                                    partCmd.Parameters.AddWithValue("@type", "11 - Inventory Part");
-                                    partCmd.Parameters.AddWithValue("@category", 0);
-                                    partCmd.Parameters.AddWithValue("@name", description);
-                                    partCmd.Parameters.AddWithValue("@unit_id", 0);
-                                    partCmd.Parameters.AddWithValue("@barcode", "");
-                                    partCmd.Parameters.AddWithValue("@cost_price", rate);
-                                    partCmd.Parameters.AddWithValue("@cogs_account_id", 0);
-                                    partCmd.Parameters.AddWithValue("@vendor_id", 0);
-                                    partCmd.Parameters.AddWithValue("@sales_price", 0);
-                                    partCmd.Parameters.AddWithValue("@income_account_id", 0);
-                                    partCmd.Parameters.AddWithValue("@asset_account_id", 0);
-                                    partCmd.Parameters.AddWithValue("@min_amount", 0);
-                                    partCmd.Parameters.AddWithValue("@max_amount", 0);
-                                    partCmd.Parameters.AddWithValue("@on_hand", qty);
-                                    partCmd.Parameters.AddWithValue("@method", "fifo");
-                                    partCmd.Parameters.AddWithValue("@total_value", 0);
-                                    partCmd.Parameters.AddWithValue("@date", model.Date.Date);
-                                    partCmd.Parameters.AddWithValue("@img", "");
-                                    partCmd.Parameters.AddWithValue("@active", 0);
-                                    partCmd.Parameters.AddWithValue("@state", 0);
-                                    partCmd.Parameters.AddWithValue("@created_By", userId);
-                                    partCmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
-                                    partCmd.Parameters.AddWithValue("@Item_type", "Inventory");
-                                    var partObj = await partCmd.ExecuteScalarAsync();
-                                    itemIdOf = partObj != null && partObj != DBNull.Value ? Convert.ToInt32(partObj) : 0;
-                                }
-
-
-
-
-
-                                // Insert assembly relationship records
-                                string insertAssemblyRel = @"
-                            INSERT INTO tbl_item_assembly_bos(assembly_id, item_id, qty) VALUES (@assembly_id, @item_id, @qty);
-                            INSERT INTO tbl_item_assembly(assembly_id, item_id, qty) VALUES (@assembly_item_id, @itemId, @qty);";
-                                await using (var relCmd = new MySqlCommand(insertAssemblyRel, conn, (MySqlTransaction)transaction))
-                                {
-                                    relCmd.Parameters.AddWithValue("@assembly_id", boqId.ToString());
-                                    relCmd.Parameters.AddWithValue("@assembly_item_id", itemIdOf.ToString());
-                                    relCmd.Parameters.AddWithValue("@item_id", assemblyId.ToString());
-                                    relCmd.Parameters.AddWithValue("@itemId", assemblyItemId.ToString());
-                                    relCmd.Parameters.AddWithValue("@qty", qty);
-                                    await relCmd.ExecuteNonQueryAsync();
-                                }
-
-                                if (qty != 0)
-                                {
-                                    await InsertItemTransaction(conn, (MySqlTransaction)transaction, qty, model.Date.Date, rate, tenderId.ToString(), itemIdOf.ToString(), model.WarehouseId.ToString());
-
-                                    await InsertItemJournal(conn, (MySqlTransaction)transaction, qty, model.Date.Date, nextItemCode.ToString(), rate, 0, tenderId.ToString());
-                                }
-
-                                nextItemCode++;
-                                subId++;
-
-                            }
-                        }
-
-                        await transaction.CommitAsync();
-
-                        return Ok(new { status = true, message = model.Id == 0 ? "Project Tender created successfully" : "Project Tender updated successfully", id = tenderId });
                     }
-                    catch (Exception exInner)
+
+                    int tenderId = 0;
+
+                    string updateTenderQuery = @"
+                UPDATE tbl_project_tender 
+                SET modified_by = @modifiedBy, 
+                    modified_date = @modifiedDate,
+                    date = @date, 
+                    project_id = @projectId, 
+                    submission_date = @submissionDate, 
+                    description = @description,
+                    fees = @fees,
+                    amount = @amount,
+                    warehouse_id = @warehouseId,
+                    account_id = @accountId,
+                    tender_name_id = @tenderNameId,
+                    estimate_status = 1 
+                WHERE id = @id;";
+
+                    await using var updateCmd = new MySqlCommand(updateTenderQuery, conn, transaction);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@date", model.Date);
+                    updateCmd.Parameters.AddWithValue("@submissionDate", model.SubmissionDate);
+                    updateCmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    updateCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                    updateCmd.Parameters.AddWithValue("@accountId", model.AccountId);
+                    updateCmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+                    updateCmd.Parameters.AddWithValue("@fees", model.Fees ?? "0");
+                    updateCmd.Parameters.AddWithValue("@amount", model.TotalAmount);
+                    updateCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    updateCmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    updateCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+
+                    await updateCmd.ExecuteNonQueryAsync();
+
+                    // 🔹 Delete existing related records
+                    string deleteQuery = @"
+                DELETE FROM tbl_project_tender_details WHERE tender_id = @tenderId;
+                DELETE FROM tbl_items_boq_details WHERE ref_id IN (SELECT id FROM tbl_items_boq WHERE ref_id = @tenderId);
+                DELETE FROM tbl_item_assembly_bos WHERE assembly_id IN (SELECT id FROM tbl_items_boq WHERE ref_id = @tenderId);
+                DELETE FROM tbl_items_boq WHERE ref_id = @tenderId;
+                DELETE FROM tbl_item_transaction WHERE type = 'Project Tender' AND item_id = @tenderId;
+                DELETE FROM tbl_transaction WHERE type = 'Project Tender' AND transaction_id = @tenderId;
+                DELETE FROM tbl_item_card_details WHERE trans_type = 'Project Tender' AND trans_no = @tenderId;";
+
+                    await using var deleteCmd = new MySqlCommand(deleteQuery, conn, transaction);
+                    deleteCmd.Parameters.AddWithValue("@tenderId", model.Id);
+                    await deleteCmd.ExecuteNonQueryAsync();
+
+                    // 🔹 Get next item code
+                    string getNextCodeQuery = "SELECT IFNULL(MAX(CAST(code AS UNSIGNED)), 0) + 1 AS next_code FROM tbl_items;";
+                    await using var codeCmd = new MySqlCommand(getNextCodeQuery, conn, transaction);
+                    int itemCode = Convert.ToInt32(await codeCmd.ExecuteScalarAsync() ?? 0);
+
+                    string refSr = "";
+                    int assemblyItemId = 0;
+
+                    // 🔹 Process each item
+                    foreach (var item in model.Items)
                     {
-                        await transaction.RollbackAsync();
-                        return StatusCode(500, new { status = false, message = "An unexpected error occurred (inner): " + exInner.Message });
+                        // Validate and set defaults
+                        string sr = item.Sr ?? "";
+                        string description = item.Name ?? "";
+                        string rate = string.IsNullOrEmpty(item.Rate) ? "0" : item.Rate;
+                        string qty = string.IsNullOrEmpty(item.Qty) ? "0" : item.Qty;
+                        string amount = string.IsNullOrEmpty(item.Amount) ? "0" : item.Amount;
+                        string marginAmount = string.IsNullOrEmpty(item.MarginAmount) ? "0" : item.MarginAmount;
+                        string marginPercentage = string.IsNullOrEmpty(item.MarginPercentage) ? "0" : item.MarginPercentage;
+                        string length = string.IsNullOrEmpty(item.Length) ? "0" : item.Length;
+                        string width = string.IsNullOrEmpty(item.Width) ? "0" : item.Width;
+                        string thick = string.IsNullOrEmpty(item.Thick) ? "0" : item.Thick;
+                        string note = item.Note ?? " ";
+                        string unit = item.Unit ?? " ";
+
+                        if (string.IsNullOrEmpty(sr) || string.IsNullOrEmpty(description))
+                            continue;
+
+                        // 🔹 Insert into tbl_items_boq
+                        string insertBoqQuery = @"
+                    INSERT INTO tbl_items_boq(sr, ref_id, type, name, unit_name, qty, price, amount, length, width, thickness, note)
+                    VALUES(@sr, @tenderId, @type, @itemName, @unit, @qty, @rate, @amount, @length, @width, @thickness, @note); 
+                    SELECT LAST_INSERT_ID();";
+
+                        await using var boqCmd = new MySqlCommand(insertBoqQuery, conn, transaction);
+                        boqCmd.Parameters.AddWithValue("@sr", sr);
+                        boqCmd.Parameters.AddWithValue("@tenderId", model.Id);
+                        boqCmd.Parameters.AddWithValue("@type", "BOQ");
+                        boqCmd.Parameters.AddWithValue("@itemName", description);
+                        boqCmd.Parameters.AddWithValue("@qty", qty);
+                        boqCmd.Parameters.AddWithValue("@unit", unit);
+                        boqCmd.Parameters.AddWithValue("@rate", rate);
+                        boqCmd.Parameters.AddWithValue("@amount", amount);
+                        boqCmd.Parameters.AddWithValue("@length", length);
+                        boqCmd.Parameters.AddWithValue("@width", width);
+                        boqCmd.Parameters.AddWithValue("@thickness", thick);
+                        boqCmd.Parameters.AddWithValue("@note", note);
+
+                        int boqItemId = Convert.ToInt32(await boqCmd.ExecuteScalarAsync());
+
+                        // 🔹 Insert into tbl_project_tender_details
+                        string insertDetailsQuery = @"
+                    INSERT INTO tbl_project_tender_details 
+                    (sr, tender_id, item_id, qty, unit_id, rate, amount, length, width, thickness, note, margin_percentage, margin_amount)
+                    VALUES (@sr, @tenderId, @itemId, @qty, @unitId, @rate, @amount, @length, @width, @thickness, @note, @marginPercentage, @marginAmount);";
+
+                        await using var detailsCmd = new MySqlCommand(insertDetailsQuery, conn, transaction);
+                        detailsCmd.Parameters.AddWithValue("@sr", sr);
+                        detailsCmd.Parameters.AddWithValue("@tenderId", model.Id);
+                        detailsCmd.Parameters.AddWithValue("@itemId", boqItemId);
+                        detailsCmd.Parameters.AddWithValue("@qty", qty);
+                        detailsCmd.Parameters.AddWithValue("@unitId", "0");
+                        detailsCmd.Parameters.AddWithValue("@rate", rate);
+                        detailsCmd.Parameters.AddWithValue("@amount", amount);
+                        detailsCmd.Parameters.AddWithValue("@length", length);
+                        detailsCmd.Parameters.AddWithValue("@width", width);
+                        detailsCmd.Parameters.AddWithValue("@thickness", thick);
+                        detailsCmd.Parameters.AddWithValue("@note", note);
+                        detailsCmd.Parameters.AddWithValue("@marginPercentage", marginPercentage);
+                        detailsCmd.Parameters.AddWithValue("@marginAmount", marginAmount);
+
+                        await detailsCmd.ExecuteNonQueryAsync();
+
+                        // 🔹 Check if SR is alphabetic (Assembly Item)
+                        if (!string.IsNullOrEmpty(sr) && System.Text.RegularExpressions.Regex.IsMatch(sr, @"^[A-Za-z]+$"))
+                        {
+                            refSr = sr;
+
+                            // 🔹 Insert Assembly Item into tbl_items
+                            string insertAssemblyItemQuery = @"
+                        INSERT INTO tbl_items(
+                            code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
+                            cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
+                            min_amount, max_amount, on_hand, method, total_value, date, img, active, state, 
+                            created_By, created_date, Item_type)
+                        SELECT
+                            @code, @warehouseId, @type, @category, @name, @unit_id, @barcode, @cost_price, 
+                            @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
+                            @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, @state, 
+                            @created_By, @created_date, @Item_type
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM tbl_items WHERE name = @name
+                        ); 
+                        SELECT LAST_INSERT_ID();";
+
+                            await using var assemblyCmd = new MySqlCommand(insertAssemblyItemQuery, conn, transaction);
+                            assemblyCmd.Parameters.AddWithValue("@code", itemCode.ToString());
+                            assemblyCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                            assemblyCmd.Parameters.AddWithValue("@type", "13 - Inventory Assembly");
+                            assemblyCmd.Parameters.AddWithValue("@category", 0);
+                            assemblyCmd.Parameters.AddWithValue("@name", description);
+                            assemblyCmd.Parameters.AddWithValue("@unit_id", "0");
+                            assemblyCmd.Parameters.AddWithValue("@barcode", "");
+                            assemblyCmd.Parameters.AddWithValue("@cost_price", rate);
+                            assemblyCmd.Parameters.AddWithValue("@cogs_account_id", model.COGSAccountId);
+                            assemblyCmd.Parameters.AddWithValue("@vendor_id", 0);
+                            assemblyCmd.Parameters.AddWithValue("@sales_price", "0");
+                            assemblyCmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
+                            assemblyCmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
+                            assemblyCmd.Parameters.AddWithValue("@min_amount", 0);
+                            assemblyCmd.Parameters.AddWithValue("@max_amount", 0);
+                            assemblyCmd.Parameters.AddWithValue("@on_hand", qty);
+                            assemblyCmd.Parameters.AddWithValue("@method", "fifo");
+                            assemblyCmd.Parameters.AddWithValue("@total_value", 0);
+                            assemblyCmd.Parameters.AddWithValue("@date", model.Date);
+                            assemblyCmd.Parameters.AddWithValue("@img", "");
+                            assemblyCmd.Parameters.AddWithValue("@active", 0);
+                            assemblyCmd.Parameters.AddWithValue("@state", 0);
+                            assemblyCmd.Parameters.AddWithValue("@created_By", userId);
+                            assemblyCmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                            assemblyCmd.Parameters.AddWithValue("@Item_type", "Inventory");
+
+                            assemblyItemId = Convert.ToInt32(await assemblyCmd.ExecuteScalarAsync());
+                            itemCode++;
+
+                        }
+                        else
+                        {
+                            // 🔹 Sub-item with Assembly Items (WinForms ELSE block)
+                            if (!string.IsNullOrEmpty(model.AssemblyJson))
+                            {
+                                try
+                                {
+                                    var assemblyData = JsonConvert.DeserializeObject<Dictionary<string, List<AssemblyItemRequest>>>(model.AssemblyJson);
+
+                                    // 🔹 Loop through ALL assembly data, not just for current description
+                                    if (assemblyData != null && assemblyData.Count > 0)
+                                    {
+                                        // Process each assembly group
+                                        foreach (var assemblyGroup in assemblyData)
+                                        {
+                                            string assemblyName = assemblyGroup.Key;  
+                                            List<AssemblyItemRequest> assemblyItems = assemblyGroup.Value;
+
+                                            if (assemblyItems != null && assemblyItems.Count > 0)
+                                            {
+                                                int subId = 0;
+                                                foreach (var assemblyItem in assemblyItems)
+                                                {
+                                                    // 🔹 Create AssemblyItemModel using CURRENT ROW data
+                                                    var assemblyModel = new
+                                                    {
+                                                        Code = refSr + (subId + 1),
+                                                        Name = description,           
+                                                        Cost = decimal.Parse(rate),   
+                                                        Qty = decimal.Parse(qty),     
+                                                        Total = decimal.Parse(amount), 
+                                                        AssetAccountId = assemblyItem.AssetAccountId,
+                                                        COGSAccountId = assemblyItem.COGSAccountId,
+                                                        IncomeAccountId = assemblyItem.IncomeAccountId,
+                                                        VendorAccountId = assemblyItem.VendorAccountId
+                                                    };
+
+                                                    // 🔹 Insert into tbl_items_boq_details
+                                                    string insertBoqDetailsQuery = @"
+                                INSERT INTO tbl_items_boq_details(
+                                    code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
+                                    cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
+                                    min_amount, max_amount, on_hand, method, total_value, date, img, active, state, 
+                                    created_By, created_date, ref_id) 
+                                VALUES (
+                                    @code, @warehouse_id, @type, @category, @name, @unit_id, @barcode, @cost_price, 
+                                    @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
+                                    @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, @state, 
+                                    @created_By, @created_date, @refId); 
+                                SELECT LAST_INSERT_ID();";
+
+                                                    await using var boqDetailsCmd = new MySqlCommand(insertBoqDetailsQuery, conn, transaction);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@code", assemblyModel.Code);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@warehouse_id", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@type", "13 - Inventory Assembly");
+                                                    boqDetailsCmd.Parameters.AddWithValue("@category", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@name", assemblyModel.Name);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@unit_id", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@barcode", "");
+                                                    boqDetailsCmd.Parameters.AddWithValue("@cost_price", assemblyModel.Cost);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@cogs_account_id", assemblyModel.COGSAccountId);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@vendor_id", assemblyModel.VendorAccountId);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@sales_price", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@income_account_id", assemblyModel.IncomeAccountId);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@asset_account_id", assemblyModel.AssetAccountId);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@min_amount", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@max_amount", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@on_hand", assemblyModel.Qty);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@method", "fifo");
+                                                    boqDetailsCmd.Parameters.AddWithValue("@total_value", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@date", model.Date);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@img", "");
+                                                    boqDetailsCmd.Parameters.AddWithValue("@active", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@state", 0);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@created_By", userId);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                                                    boqDetailsCmd.Parameters.AddWithValue("@refId", boqItemId.ToString());
+
+                                                    int assemblyId = Convert.ToInt32(await boqDetailsCmd.ExecuteScalarAsync());
+
+                                                    // 🔹 Insert into tbl_items (Inventory Part)
+                                                    string insertInventoryPartQuery = @"
+                                INSERT INTO tbl_items(
+                                    code, warehouse_id, type, category_id, name, unit_id, barcode, cost_price, 
+                                    cogs_account_id, vendor_id, sales_price, income_account_id, asset_account_id, 
+                                    min_amount, max_amount, on_hand, method, total_value, date, img, active, state, 
+                                    created_By, created_date, Item_type)
+                                SELECT 
+                                    @code, @warehouseId, @type, @category, @name, @unit_id, @barcode, @cost_price, 
+                                    @cogs_account_id, @vendor_id, @sales_price, @income_account_id, @asset_account_id, 
+                                    @min_amount, @max_amount, @on_hand, @method, @total_value, @date, @img, @active, @state, 
+                                    @created_By, @created_date, @Item_type
+                                WHERE NOT EXISTS (
+                                    SELECT 1 FROM tbl_items WHERE name = @name
+                                ); 
+                                SELECT LAST_INSERT_ID();";
+
+                                                    await using var inventoryPartCmd = new MySqlCommand(insertInventoryPartQuery, conn, transaction);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@code", itemCode);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@warehouseId", model.WarehouseId);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@type", "11 - Inventory Part");
+                                                    inventoryPartCmd.Parameters.AddWithValue("@category", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@name", assemblyModel.Name);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@unit_id", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@barcode", "");
+                                                    inventoryPartCmd.Parameters.AddWithValue("@cost_price", assemblyModel.Cost);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@cogs_account_id", assemblyModel.COGSAccountId);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@vendor_id", assemblyModel.VendorAccountId);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@sales_price", "0");
+                                                    inventoryPartCmd.Parameters.AddWithValue("@income_account_id", assemblyModel.IncomeAccountId);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@asset_account_id", assemblyModel.AssetAccountId);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@min_amount", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@max_amount", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@on_hand", assemblyModel.Qty);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@method", "fifo");
+                                                    inventoryPartCmd.Parameters.AddWithValue("@total_value", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@date", model.Date);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@img", "");
+                                                    inventoryPartCmd.Parameters.AddWithValue("@active", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@state", 0);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@created_By", userId);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+                                                    inventoryPartCmd.Parameters.AddWithValue("@Item_type", "Inventory");
+
+                                                    var invResult = await inventoryPartCmd.ExecuteScalarAsync();
+                                                    int itemIdOf = 0;
+                                                    if (invResult != null && invResult != DBNull.Value && Convert.ToInt32(invResult) > 0)
+                                                    {
+                                                        itemIdOf = Convert.ToInt32(invResult);
+                                                    }
+
+                                                    // 🔹 Insert assembly relationships
+                                                    string insertAssemblyQuery = @"
+                                INSERT INTO tbl_item_assembly_bos(assembly_id, item_id, qty) 
+                                VALUES (@assembly_id, @item_id, @qty);
+                                INSERT INTO tbl_item_assembly(assembly_id, item_id, qty) 
+                                VALUES (@assembly_item_id, @itemId, @qty);";
+
+                                                    await using var assemblyRelCmd = new MySqlCommand(insertAssemblyQuery, conn, transaction);
+                                                    assemblyRelCmd.Parameters.AddWithValue("@assembly_id", boqItemId.ToString());
+                                                    assemblyRelCmd.Parameters.AddWithValue("@assembly_item_id", itemIdOf.ToString());
+                                                    assemblyRelCmd.Parameters.AddWithValue("@item_id", assemblyId.ToString());
+                                                    assemblyRelCmd.Parameters.AddWithValue("@itemId", assemblyItemId.ToString());
+                                                    assemblyRelCmd.Parameters.AddWithValue("@qty", assemblyModel.Qty);
+
+                                                    await assemblyRelCmd.ExecuteNonQueryAsync();
+
+                                                    // 🔹 Insert item transaction if qty > 0
+                                                    if (assemblyModel.Qty > 0)
+                                                    {
+                                                        await InsertItemTransactionAsync(conn, transaction, assemblyModel.Qty, model.Date,
+                                                            assemblyModel.Cost, model.Id.ToString(), itemIdOf.ToString());
+
+                                                        await InsertItemJournalAsync(conn, transaction, assemblyModel.Qty, model.Date,
+                                                            itemCode.ToString(), assemblyModel.Cost, model.Id.ToString(), userId);
+                                                    }
+
+                                                    itemCode++;
+                                                    subId++;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Error parsing AssemblyJson: {ex.Message}");
+                                }
+                            }
+                        }
                     }
+
+
+                    await transaction.CommitAsync();
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = "Estimate generated successfully",
+                        id = model.Id
+                    });
                 }
                 catch (Exception ex)
                 {
-                    return Json( new { status = false, message = "An unexpected error occurred: " + ex.Message });
+                    await transaction.RollbackAsync();
+                    throw;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = "An unexpected error occurred: " + ex.Message
+                });
             }
-           
         }
 
-        private async Task InsertItemTransaction(MySqlConnection conn, MySqlTransaction trx,
-            decimal qty, DateTime dated, decimal cost, string pId, string itemId, string warehouseId)
-        {
-            // Insert into tbl_item_transaction
-            string insert = @"
-            INSERT INTO tbl_item_transaction 
-            (date, type, reference, item_id, cost_price, qty_in, sales_price, qty_out, qty_inc, description, warehouse_id) 
-            VALUES (@date, @type, @reference, @itemId, @costPrice, @qtyIn, @sales_price, @qtyOut, @qtyInc, @description, @warehouseId);";
-            await using (var cmd = new MySqlCommand(insert, conn, trx))
-            {
-                cmd.Parameters.AddWithValue("@date", dated);
-                cmd.Parameters.AddWithValue("@type", "Project Tender");
-                cmd.Parameters.AddWithValue("@reference", pId);
-                cmd.Parameters.AddWithValue("@itemId", itemId);
-                cmd.Parameters.AddWithValue("@costPrice", cost.ToString());
-                cmd.Parameters.AddWithValue("@sales_price", "0");
-                cmd.Parameters.AddWithValue("@qtyIn", qty.ToString());
-                cmd.Parameters.AddWithValue("@qtyOut", "0");
-                cmd.Parameters.AddWithValue("@qtyInc", qty.ToString());
-                cmd.Parameters.AddWithValue("@description", "Project Opening Balance");
-                cmd.Parameters.AddWithValue("@warehouseId", warehouseId);
-                await cmd.ExecuteNonQueryAsync();
-            }
+        // 🔹 Helper Methods
 
-            await UpdateOnHandItem(conn, trx, itemId);
-            await AddItemCardDetails(conn, trx, dated, "Project Tender", pId, itemId, cost.ToString(), qty.ToString(), "0", "0", qty.ToString(), "Project Opening Balance", warehouseId);
+        private async Task InsertItemTransactionAsync(MySqlConnection conn, MySqlTransaction transaction,
+            decimal qty, DateTime date, decimal cost, string tenderId, string itemId)
+        {
+            string insertTransQuery = @"
+        INSERT INTO tbl_item_transaction 
+        (date, type, reference, item_id, cost_price, qty_in, sales_price, qty_out, qty_inc, description, warehouse_id) 
+        VALUES (@date, @type, @reference, @itemId, @costPrice, @qtyIn, @salesPrice, @qtyOut, @qtyInc, @description, @warehouseId);";
+
+            await using var transCmd = new MySqlCommand(insertTransQuery, conn, transaction);
+            transCmd.Parameters.AddWithValue("@date", date);
+            transCmd.Parameters.AddWithValue("@type", "Project Tender");
+            transCmd.Parameters.AddWithValue("@reference", tenderId);
+            transCmd.Parameters.AddWithValue("@itemId", itemId);
+            transCmd.Parameters.AddWithValue("@costPrice", cost);
+            transCmd.Parameters.AddWithValue("@qtyIn", qty);
+            transCmd.Parameters.AddWithValue("@salesPrice", "0");
+            transCmd.Parameters.AddWithValue("@qtyOut", "0");
+            transCmd.Parameters.AddWithValue("@qtyInc", qty);
+            transCmd.Parameters.AddWithValue("@description", "Project Opening Balance");
+            transCmd.Parameters.AddWithValue("@warehouseId", "0");
+
+            await transCmd.ExecuteNonQueryAsync();
+
+            await UpdateOnHandItemAsync(conn, transaction, itemId);
+            await AddItemCardDetailsAsync(conn, transaction, date, "Project Tender", tenderId, itemId,
+                cost.ToString(), qty.ToString(), "0", "0", qty.ToString(), "Project Opening Balance", "0");
         }
 
-        private async Task UpdateOnHandItem(MySqlConnection conn, MySqlTransaction trx, string itemId)
+        private async Task UpdateOnHandItemAsync(MySqlConnection conn, MySqlTransaction transaction, string itemId)
         {
-            string update = @"UPDATE tbl_items SET on_hand = (SELECT IFNULL(SUM(qty_in - qty_out),0) FROM tbl_item_transaction WHERE item_id = @itemId) WHERE id = @itemId;";
-            await using var cmd = new MySqlCommand(update, conn, trx);
+            string updateQuery = @"
+        UPDATE tbl_items 
+        SET on_hand = (SELECT SUM(qty_in - qty_out) FROM tbl_item_transaction WHERE item_id = @itemId) 
+        WHERE id = @itemId";
+
+            await using var cmd = new MySqlCommand(updateQuery, conn, transaction);
             cmd.Parameters.AddWithValue("@itemId", itemId);
             await cmd.ExecuteNonQueryAsync();
         }
 
-        private async Task AddItemCardDetails(MySqlConnection conn, MySqlTransaction trx,
-            DateTime date, string type, string reference, string itemId, string costPrice, string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description, string warehouseId)
+        private async Task AddItemCardDetailsAsync(MySqlConnection conn, MySqlTransaction transaction,
+            DateTime date, string type, string reference, string itemId, string costPrice, string qtyIn,
+            string salesPrice, string qtyOut, string qtyInc, string description, string warehouseId)
         {
-            decimal debit = 0, credit = 0, _qtyIn = 0, _qtyOut = 0;
-            decimal.TryParse(costPrice, out decimal price);
-            if (!string.IsNullOrEmpty(qtyIn) && decimal.Parse(qtyIn) > 0)
-            {
-                debit = decimal.Parse(qtyIn) * price;
-                _qtyIn = decimal.Parse(qtyIn);
-            }
-            if (!string.IsNullOrEmpty(qtyOut) && decimal.Parse(qtyOut) > 0)
-            {
-                credit = decimal.Parse(qtyOut) * price;
-                _qtyOut = decimal.Parse(qtyOut);
-            }
-
-            // compute existing balances from tbl_item_card_details
-            string sqlQtyBalance = "SELECT IFNULL(SUM(qty_in - qty_out),0) FROM tbl_item_card_details WHERE itemId = @id";
-            string sqlBalance = "SELECT IFNULL(SUM(debit - credit),0) FROM tbl_item_card_details WHERE itemId = @id";
-            decimal existingQtyBalance = 0, existingBalance = 0;
-
-            await using (var cmd = new MySqlCommand(sqlQtyBalance, conn, trx))
-            {
-                cmd.Parameters.AddWithValue("@id", itemId);
-                var qtyObj = await cmd.ExecuteScalarAsync();
-                existingQtyBalance = qtyObj != null && qtyObj != DBNull.Value ? Convert.ToDecimal(qtyObj) : 0;
-            }
-            await using (var cmd2 = new MySqlCommand(sqlBalance, conn, trx))
-            {
-                cmd2.Parameters.AddWithValue("@id", itemId);
-                var balObj = await cmd2.ExecuteScalarAsync();
-                existingBalance = balObj != null && balObj != DBNull.Value ? Convert.ToDecimal(balObj) : 0;
-            }
-
-            decimal qtyBalance = existingQtyBalance + (_qtyIn - _qtyOut);
-            decimal balance = existingBalance + (debit - credit);
-            decimal fifoQty = 0, fifoCost = 0;
-
             string invoiceNo = "INV-" + reference;
             string transNo = reference;
             string transType = type;
+            decimal qtyBalance = 0;
+            decimal debit = 0;
+            decimal credit = 0;
+            decimal price = decimal.Parse(costPrice);
+            decimal balance = 0;
+            decimal _qtyIn = 0;
+            decimal _qtyOut = 0;
 
-            string insertCard = @"
-            INSERT INTO tbl_item_card_details (
-                itemId, date, wharehouse_id, inv_no, trans_no, trans_type, description,
-                price, qty_in, qty_out, qty_balance, debit, credit, balance, fifo_qty, fifo_cost
-            ) VALUES (
-                @itemId, @date, @wharehouse_id, @inv_no, @trans_no, @trans_type, @description,
-                @price, @qty_in, @qty_out, @qty_balance, @debit, @credit, @balance, @fifo_qty, @fifo_cost
-            );";
-            await using (var cmd3 = new MySqlCommand(insertCard, conn, trx))
+            if (!string.IsNullOrEmpty(qtyIn) && decimal.Parse(qtyIn) > 0)
             {
-                cmd3.Parameters.AddWithValue("@itemId", itemId);
-                cmd3.Parameters.AddWithValue("@date", date);
-                cmd3.Parameters.AddWithValue("@wharehouse_id", warehouseId);
-                cmd3.Parameters.AddWithValue("@inv_no", invoiceNo);
-                cmd3.Parameters.AddWithValue("@trans_no", transNo);
-                cmd3.Parameters.AddWithValue("@trans_type", transType);
-                cmd3.Parameters.AddWithValue("@description", description);
-                cmd3.Parameters.AddWithValue("@price", price);
-                cmd3.Parameters.AddWithValue("@qty_in", qtyIn);
-                cmd3.Parameters.AddWithValue("@qty_out", qtyOut);
-                cmd3.Parameters.AddWithValue("@qty_balance", qtyBalance);
-                cmd3.Parameters.AddWithValue("@debit", debit);
-                cmd3.Parameters.AddWithValue("@credit", credit);
-                cmd3.Parameters.AddWithValue("@balance", balance);
-                cmd3.Parameters.AddWithValue("@fifo_qty", fifoQty);
-                cmd3.Parameters.AddWithValue("@fifo_cost", fifoCost);
-                await cmd3.ExecuteNonQueryAsync();
+                debit = decimal.Parse(qtyIn) * decimal.Parse(costPrice);
+                _qtyIn = decimal.Parse(qtyIn);
             }
+
+            if (!string.IsNullOrEmpty(qtyOut) && decimal.Parse(qtyOut) > 0)
+            {
+                credit = decimal.Parse(qtyOut) * decimal.Parse(costPrice);
+                _qtyOut = decimal.Parse(qtyOut);
+            }
+
+            // Get current balances
+            string getBalanceQuery = @"
+        SELECT IFNULL(SUM(qty_in-qty_out), 0) as QtyBalance,
+               IFNULL(SUM(debit-credit), 0) as Balance
+        FROM tbl_item_card_details 
+        WHERE itemId = @itemId";
+
+            await using var balCmd = new MySqlCommand(getBalanceQuery, conn, transaction);
+            balCmd.Parameters.AddWithValue("@itemId", itemId);
+
+            await using var reader = await balCmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                decimal _QtyBalance = reader.GetDecimal("QtyBalance");
+                decimal _Balance = reader.GetDecimal("Balance");
+                qtyBalance = _QtyBalance + (_qtyIn - _qtyOut);
+                balance = _Balance + (debit - credit);
+            }
+            await reader.CloseAsync();
+
+            // Insert card details
+            string insertCardQuery = @"
+        INSERT INTO tbl_item_card_details (
+            itemId, date, wharehouse_id, inv_no, trans_no, trans_type, description,
+            price, qty_in, qty_out, qty_balance, debit, credit, balance, fifo_qty, fifo_cost
+        ) VALUES (
+            @itemId, @date, @wharehouse_id, @inv_no, @trans_no, @trans_type, @description,
+            @price, @qty_in, @qty_out, @qty_balance, @debit, @credit, @balance, @fifo_qty, @fifo_cost
+        );";
+
+            await using var cardCmd = new MySqlCommand(insertCardQuery, conn, transaction);
+            cardCmd.Parameters.AddWithValue("@itemId", itemId);
+            cardCmd.Parameters.AddWithValue("@date", date);
+            cardCmd.Parameters.AddWithValue("@wharehouse_id", warehouseId);
+            cardCmd.Parameters.AddWithValue("@inv_no", invoiceNo);
+            cardCmd.Parameters.AddWithValue("@trans_no", transNo);
+            cardCmd.Parameters.AddWithValue("@trans_type", transType);
+            cardCmd.Parameters.AddWithValue("@description", description);
+            cardCmd.Parameters.AddWithValue("@price", price);
+            cardCmd.Parameters.AddWithValue("@qty_in", qtyIn);
+            cardCmd.Parameters.AddWithValue("@qty_out", qtyOut);
+            cardCmd.Parameters.AddWithValue("@qty_balance", qtyBalance);
+            cardCmd.Parameters.AddWithValue("@debit", debit);
+            cardCmd.Parameters.AddWithValue("@credit", credit);
+            cardCmd.Parameters.AddWithValue("@balance", balance);
+            cardCmd.Parameters.AddWithValue("@fifo_qty", 0);
+            cardCmd.Parameters.AddWithValue("@fifo_cost", 0);
+
+            await cardCmd.ExecuteNonQueryAsync();
         }
 
-        private async Task InsertItemJournal(MySqlConnection conn, MySqlTransaction trx,
-      decimal qty, DateTime dated, string itemCode, decimal cost, decimal totalValue, string pId)
+        private async Task InsertItemJournalAsync(MySqlConnection conn, MySqlTransaction transaction,
+     decimal qty, DateTime date, string itemCode, decimal cost, string tenderId, int userId)
         {
-            totalValue = qty * cost;
-
-            string inventoryAccount = await SelectDefaultLevelAccount(conn, trx, "Inventory");
-            string openingEquityAccount = await SelectDefaultLevelAccount(conn, trx, "Opening Balance Equity");
-
-            await InsertTransactionEntry(conn, trx, dated.Date, openingEquityAccount, totalValue.ToString(), "0", pId, pId, "Project Tender",
-                $"Project Opening Balance - Item Code - {itemCode}", (int)(HttpContext.Session.GetInt32("UserId") ?? 0), DateTime.Now.Date);
-
-            await InsertTransactionEntry(conn, trx, dated.Date, openingEquityAccount, "0", totalValue.ToString(), pId, "0", "Project Tender",
-                $"Project Opening Balance Equity - Item Code - {itemCode}", (int)(HttpContext.Session.GetInt32("UserId") ?? 0), DateTime.Now.Date);
-        }
-        private async Task<string> SelectDefaultLevelAccount(MySqlConnection conn, MySqlTransaction trx, string accountName)
-        {
-            string sql = "SELECT Id FROM tbl_coa_level_4 WHERE name = @name LIMIT 1";
-            using (var cmd = new MySqlCommand(sql, conn, trx))
+            try
             {
-                cmd.Parameters.AddWithValue("@name", accountName);
-                object result = await cmd.ExecuteScalarAsync();
-                return result?.ToString() ?? "0";
-            }
-        }
+                decimal totalValue = qty * cost;
 
-        private async Task InsertTransactionEntry(MySqlConnection conn, MySqlTransaction trx,
-            DateTime date, string accountId, string debit, string credit, string transactionId, string humId, string type, string description, int createdBy, DateTime createdDate)
-        {
-            string insert = @"
-            INSERT INTO tbl_transaction 
-            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state) 
-            VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @type, @description, @createdBy, @createdDate, 0);";
-            await using (var cmd = new MySqlCommand(insert, conn, trx))
-            {
-                cmd.Parameters.AddWithValue("@date", date);
-                cmd.Parameters.AddWithValue("@accountId", accountId);
-                cmd.Parameters.AddWithValue("@debit", debit);
-                cmd.Parameters.AddWithValue("@credit", credit);
-                cmd.Parameters.AddWithValue("@transactionId", transactionId);
-                cmd.Parameters.AddWithValue("@humId", humId);
-                cmd.Parameters.AddWithValue("@tType", "");
-                cmd.Parameters.AddWithValue("@type", type.Trim());
-                cmd.Parameters.AddWithValue("@description", description);
-                cmd.Parameters.AddWithValue("@createdBy", createdBy);
-                cmd.Parameters.AddWithValue("@createdDate", createdDate);
-                await cmd.ExecuteNonQueryAsync();
+                // Get default accounts from tbl_coa_config
+                int inventoryAccountId = await SelectDefaultLevelAccountAsync(conn, transaction, "Inventory");
+                int equityAccountId = await SelectDefaultLevelAccountAsync(conn, transaction, "Opening Balance Equity");
+
+                // Insert Inventory Account Entry
+                await InsertTransactionEntryAsync(conn, transaction, date, inventoryAccountId.ToString(),
+                    totalValue.ToString(), "0", tenderId, tenderId, "Project Tender",
+                    $"Project Opening Balance - Item Code - {itemCode}", userId, DateTime.Now.Date);
+
+                // Insert Opening Balance Equity Entry
+                await InsertTransactionEntryAsync(conn, transaction, date, equityAccountId.ToString(),
+                    "0", totalValue.ToString(), tenderId, "0", "Project Tender",
+                    $"Project Opening Balance Equity - Item Code - {itemCode}", userId, DateTime.Now.Date);
             }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+            
+        }
+        private async Task<int> SelectDefaultLevelAccountAsync(MySqlConnection conn, MySqlTransaction transaction, string category)
+        {
+            string query = "SELECT category, account_id FROM tbl_coa_config WHERE category = @category";
+
+            await using var cmd = new MySqlCommand(query, conn, transaction);
+            cmd.Parameters.AddWithValue("@category", category);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return Convert.ToInt32(reader["account_id"]);
+            }
+
+            return 0;
+        }
+        private async Task InsertTransactionEntryAsync(MySqlConnection conn, MySqlTransaction transaction,
+            DateTime date, string accountId, string debit, string credit, string transactionId,
+            string humId, string type, string description, int createdBy, DateTime createdDate)
+        {
+            string insertQuery = @"
+        INSERT INTO tbl_transaction 
+        (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state) 
+        VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @type, @description, @createdBy, @createdDate, 0);";
+
+            await using var cmd = new MySqlCommand(insertQuery, conn, transaction);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@type", type.Trim());
+            cmd.Parameters.AddWithValue("@tType", "");
+            cmd.Parameters.AddWithValue("@hum_id", humId);
+            cmd.Parameters.AddWithValue("@description", description);
+            cmd.Parameters.AddWithValue("@createdBy", createdBy);
+            cmd.Parameters.AddWithValue("@createdDate", createdDate);
+
+            await cmd.ExecuteNonQueryAsync();
         }
 
         #endregion
 
+        //#region Project Assembly
 
-        #region Project Assembly
+        //[ApiController]
+        //[Route("api/assembly")]
+        //public class AssemblyController : ControllerBase
+        //{
+        //    [HttpPost("save")]
+        //    public IActionResult SaveAssembly([FromBody] AssemblySaveRequest model)
+        //    {
+        //        if (model == null)
+        //            return Ok(new { status = false, message = "Invalid request" });
 
-        [ApiController]
-        [Route("api/assembly")]
-        public class AssemblyController : ControllerBase
-        {
-            [HttpPost("save")]
-            public IActionResult SaveAssembly([FromBody] AssemblySaveRequest model)
-            {
-                if (model == null)
-                    return Ok(new { status = false, message = "Invalid request" });
+        //        if (string.IsNullOrWhiteSpace(model.Name))
+        //            return Ok(new { status = false, message = "Enter Item Name First." });
 
-                if (string.IsNullOrWhiteSpace(model.Name))
-                    return Ok(new { status = false, message = "Enter Item Name First." });
+        //        if (model.Items == null || !model.Items.Any())
+        //            return Ok(new { status = false, message = "Item Assembly can't be empty." });
 
-                if (model.Items == null || !model.Items.Any())
-                    return Ok(new { status = false, message = "Item Assembly can't be empty." });
+        //        for (int i = 0; i < model.Items.Count; i++)
+        //        {
+        //            var item = model.Items[i];
 
-                for (int i = 0; i < model.Items.Count; i++)
-                {
-                    var item = model.Items[i];
+        //            if (string.IsNullOrWhiteSpace(item.Code) ||
+        //                string.IsNullOrWhiteSpace(item.Name) ||
+        //                item.Qty <= 0)
+        //            {
+        //                return Ok(new
+        //                {
+        //                    status = false,
+        //                    message = $"Item Assembly can't be 0 or empty (Row {i + 1})"
+        //                });
+        //            }
+        //        }
 
-                    if (string.IsNullOrWhiteSpace(item.Code) ||
-                        string.IsNullOrWhiteSpace(item.Name) ||
-                        item.Qty <= 0)
-                    {
-                        return Ok(new
-                        {
-                            status = false,
-                            message = $"Item Assembly can't be 0 or empty (Row {i + 1})"
-                        });
-                    }
-                }
+        //        // === INSERT ===
+        //        if (model.Id == 0)
+        //        {
+        //            AssemblyItemManager.RemoveItemByRefId(model.RefId);
 
-                // === INSERT ===
-                if (model.Id == 0)
-                {
-                    AssemblyItemManager.RemoveItemByRefId(model.RefId);
+        //            int count = 1;
+        //            foreach (var row in model.Items)
+        //            {
+        //                AssemblyItemManager.AddItem(new AssemblyItemModel
+        //                {
+        //                    ItemId = count++,
+        //                    RefId = model.RefId,
+        //                    No = "",
+        //                    Code = row.Code,
+        //                    Name = row.Name,
+        //                    Cost = row.Cost,
+        //                    Qty = row.Qty,
+        //                    Total = row.Total,
+        //                    AssetAccountId = model.AssetAccountId,
+        //                    IncomeAccountId = model.IncomeAccountId,
+        //                    VendorAccountId = model.VendorAccountId,
+        //                    COGSAccountId = model.COGSAccountId
+        //                });
+        //            }
 
-                    int count = 1;
-                    foreach (var row in model.Items)
-                    {
-                        AssemblyItemManager.AddItem(new AssemblyItemModel
-                        {
-                            ItemId = count++,
-                            RefId = model.RefId,
-                            No = "",
-                            Code = row.Code,
-                            Name = row.Name,
-                            Cost = row.Cost,
-                            Qty = row.Qty,
-                            Total = row.Total,
-                            AssetAccountId = model.AssetAccountId,
-                            IncomeAccountId = model.IncomeAccountId,
-                            VendorAccountId = model.VendorAccountId,
-                            COGSAccountId = model.COGSAccountId
-                        });
-                    }
+        //            return Ok(new
+        //            {
+        //                status = true,
+        //                message = "Assembly Items saved successfully"
+        //            });
+        //        }
+        //        // === UPDATE ===
+        //        else
+        //        {
+        //            AssemblyItemManager.RemoveItemByRefId(model.RefId);
 
-                    return Ok(new
-                    {
-                        status = true,
-                        message = "Assembly Items saved successfully"
-                    });
-                }
-                // === UPDATE ===
-                else
-                {
-                    AssemblyItemManager.RemoveItemByRefId(model.RefId);
+        //            int count = 1;
+        //            foreach (var row in model.Items)
+        //            {
+        //                AssemblyItemManager.AddItem(new AssemblyItemModel
+        //                {
+        //                    ItemId = count++,
+        //                    RefId = model.RefId,
+        //                    No = "",
+        //                    Code = row.Code,
+        //                    Name = row.Name,
+        //                    Cost = row.Cost,
+        //                    Qty = row.Qty,
+        //                    Total = row.Total,
+        //                    AssetAccountId = model.AssetAccountId,
+        //                    IncomeAccountId = model.IncomeAccountId,
+        //                    VendorAccountId = model.VendorAccountId,
+        //                    COGSAccountId = model.COGSAccountId
+        //                });
+        //            }
 
-                    int count = 1;
-                    foreach (var row in model.Items)
-                    {
-                        AssemblyItemManager.AddItem(new AssemblyItemModel
-                        {
-                            ItemId = count++,
-                            RefId = model.RefId,
-                            No = "",
-                            Code = row.Code,
-                            Name = row.Name,
-                            Cost = row.Cost,
-                            Qty = row.Qty,
-                            Total = row.Total,
-                            AssetAccountId = model.AssetAccountId,
-                            IncomeAccountId = model.IncomeAccountId,
-                            VendorAccountId = model.VendorAccountId,
-                            COGSAccountId = model.COGSAccountId
-                        });
-                    }
+        //            return Ok(new
+        //            {
+        //                status = true,
+        //                message = "Assembly Items updated successfully"
+        //            });
+        //        }
+        //    }
+        //}
+        //public static class AssemblyItemManager
+        //{
+        //    private static List<AssemblyItemModel> _itemsList = new();
 
-                    return Ok(new
-                    {
-                        status = true,
-                        message = "Assembly Items updated successfully"
-                    });
-                }
-            }
-        }
-        public static class AssemblyItemManager
-        {
-            private static List<AssemblyItemModel> _itemsList = new();
+        //    public static List<AssemblyItemModel> GetItemsList()
+        //        => _itemsList;
 
-            public static List<AssemblyItemModel> GetItemsList()
-                => _itemsList;
+        //    public static List<AssemblyItemModel> GetItemsListWhere(string refId)
+        //        => _itemsList.Where(x => x.RefId == refId).ToList();
 
-            public static List<AssemblyItemModel> GetItemsListWhere(string refId)
-                => _itemsList.Where(x => x.RefId == refId).ToList();
+        //    public static void AddItem(AssemblyItemModel item)
+        //        => _itemsList.Add(item);
 
-            public static void AddItem(AssemblyItemModel item)
-                => _itemsList.Add(item);
+        //    public static void RemoveItemByRefId(string refId)
+        //        => _itemsList.RemoveAll(x => x.RefId == refId);
 
-            public static void RemoveItemByRefId(string refId)
-                => _itemsList.RemoveAll(x => x.RefId == refId);
-
-            public static void ClearItemsList()
-                => _itemsList.Clear();
-        }
+        //    public static void ClearItemsList()
+        //        => _itemsList.Clear();
+        //}
 
 
-        #endregion
+        //#endregion
 
         #region Project Planning
 
