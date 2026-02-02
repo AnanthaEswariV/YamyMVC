@@ -570,10 +570,18 @@
                     const invoiceData = $('<button>', {
             class: 'btn btn-sm btn-primary editInvoiceBtn',
             html: '<i class="fas fa-pen"></i>',
-            'data-invoice': JSON.stringify(sale) // store JSON directly
+            'data-invoice': JSON.stringify(sale) 
+        });
+                    const viewInvoiceBtn = $('<button>', {
+            class: 'btn btn-sm btn-primary viewInvoiceBtn ms-1',
+            html: '<i class="fas fa-eye"></i>',
+            'data-invoice': JSON.stringify(sale)
         });
 
-        row.append($('<td>').append(invoiceData));
+
+        const actionTd = $('<td>');
+        actionTd.append(invoiceData, viewInvoiceBtn);
+        row.append(actionTd);
         tbody.append(row);
                 });
             }

@@ -1234,6 +1234,36 @@ namespace YamyProject.Core.Models
         public List<SalesItemRequest> Items { get; set; } = new List<SalesItemRequest>();
     }
 
+    public class SaleReportDto
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        public string InvoiceNo { get; set; }
+        public string CustomerName { get; set; }
+        public string PaymentMethod { get; set; }
+        public decimal Total { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Net { get; set; }
+        public string AccountName { get; set; }
+        public string City { get; set; }
+        public string SalesMan { get; set; }
+        public DateTime ShipDate { get; set; }
+    }
+    public class SaleItemReportDto
+    {
+        public int ItemId { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public decimal Qty { get; set; }
+        public decimal Price { get; set; }
+        public decimal Discount { get; set; }
+        public decimal Vat { get; set; }
+        public decimal Total { get; set; }
+        public string CostCenterName { get; set; }
+        public string UnitName { get; set; }
+    }
+
+
     public class SalesItemRequest
     {
         public int ItemId { get; set; }

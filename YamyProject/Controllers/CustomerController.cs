@@ -1560,6 +1560,128 @@ WHERE a.assembly_id = @assemblyId;
         }
 
 
+        [HttpGet]
+        public async Task<IActionResult> GetSalesInvoiceReport(int salesId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 SALES HEADER (SalesDetails)
+                var saleCmd = new MySqlCommand(@"
+SELECT 
+    s.id,
+    s.date,
+    s.invoice_id,
+    c.name AS customerName,
+    s.payment_method,
+    s.total,
+    s.vat,
+    s.net,
+    s.city,
+    s.sales_man,
+    s.ship_date,
+    (SELECT name FROM tbl_coa_level_4 WHERE id = s.account_cash_id) accountName
+FROM tbl_sales s
+INNER JOIN tbl_customer c ON s.customer_id = c.id
+WHERE s.id = @salesId
+", conn);
+
+                saleCmd.Parameters.AddWithValue("@salesId", salesId);
+
+                SaleReportDto sale = null;
+
+                await using (var reader = await saleCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        sale = new SaleReportDto
+                        {
+                            Id = reader.GetInt32("id"),
+                            Date = reader.GetDateTime("date"),
+                            InvoiceNo = reader.GetString("invoice_id"),
+                            CustomerName = reader.GetString("customerName"),
+                            PaymentMethod = reader.GetString("payment_method"),
+                            Total = reader.GetDecimal("total"),
+                            Vat = reader.GetDecimal("vat"),
+                            Net = reader.GetDecimal("net"),
+                            City = reader.GetString("city"),
+                            SalesMan = reader.GetString("sales_man"),
+                            ShipDate = reader.GetDateTime("ship_date"),
+                            AccountName = reader.GetString("accountName")
+                        };
+                    }
+                }
+
+                if (sale == null)
+                    return NotFound(new { status = false, message = "Invoice not found" });
+
+                // 🔹 ITEMS (ItemDetails)
+                var itemCmd = new MySqlCommand(@"
+SELECT 
+    d.item_id,
+    i.code,
+    i.name,
+    d.qty,
+    d.price,
+    d.discount,
+    d.vat,
+    d.total,
+    (SELECT name FROM tbl_sub_cost_center WHERE id = d.cost_center_id) costCenterName,
+    (SELECT name FROM tbl_unit WHERE id = i.unit_id) unitName
+FROM tbl_sales_details d
+INNER JOIN tbl_items i ON d.item_id = i.id
+WHERE d.sales_id = @salesId
+", conn);
+
+                itemCmd.Parameters.AddWithValue("@salesId", salesId);
+
+                var items = new List<SaleItemReportDto>();
+
+                await using (var reader = await itemCmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new SaleItemReportDto
+                        {
+                            ItemId = reader.GetInt32("item_id"),
+                            Code = reader.GetString("code"),
+                            Name = reader.GetString("name"),
+                            Qty = reader.GetDecimal("qty"),
+                            Price = reader.GetDecimal("price"),
+                            Discount = reader.GetDecimal("discount"),
+                            Vat = reader.GetDecimal("vat"),
+                            Total = reader.GetDecimal("total"),
+                            CostCenterName = reader.GetString("costCenterName"),
+                            UnitName = reader.GetString("unitName")
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = new
+                    {
+                        sale,
+                        items
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Sales Quotation
