@@ -796,7 +796,6 @@ namespace YamyProject.Controllers
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetSalesReport(DateTime? dateFrom, DateTime? dateTo, int? customerId)
         {
