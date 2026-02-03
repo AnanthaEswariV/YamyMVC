@@ -353,4 +353,173 @@ namespace YamyProject.Core.Models
         }
     }
 
+    public static class SalesOrderPdfGenerator
+    {
+        public static byte[] Generate(
+            CompanyReportDto company,
+            SaleReportDto sale,
+            List<SaleItemReportDto> items)
+        {
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(20);
+                    page.DefaultTextStyle(x => x.FontSize(9));
+
+                    page.Content().Column(col =>
+                    {
+                        // ================= HEADER =================
+                        col.Item().Border(1).Padding(10).Row(row =>
+                        {
+                            // LEFT – Company Info
+                            row.RelativeColumn(3).Column(c =>
+                            {
+                                c.Item().Text(company.Name).Bold().FontSize(11);
+                                if (!string.IsNullOrEmpty(company.Phone))
+                                    c.Item().Text(company.Phone);
+                                if (!string.IsNullOrEmpty(company.Email))
+                                    c.Item().Text(company.Email);
+                                if (!string.IsNullOrEmpty(company.Address))
+                                    c.Item().Text(company.Address);
+                                if (!string.IsNullOrEmpty(company.TRN))
+                                    c.Item().Text($"TRN : {company.TRN}");
+                            });
+
+                            // CENTER – Logo
+                            row.RelativeColumn(4)
+                                .AlignCenter()
+                                .AlignMiddle()
+                                .Height(70)
+                                .Element(el =>
+                                {
+                                    if (company.Logo != null && company.Logo.Length > 0)
+                                        el.Image(company.Logo).FitArea();
+                                });
+
+                            // RIGHT – QR
+                            row.RelativeColumn(3)
+                                .AlignRight()
+                                .Height(70)
+                                .Image(GetQrCode(company.QrCode))
+                                .FitArea();
+                        });
+
+                        // ================= TITLE =================
+                        col.Item().PaddingVertical(10)
+                            .AlignCenter()
+                            .Text("SALES ORDER")
+                            .Bold()
+                            .FontSize(14);
+
+                        col.Item().AlignCenter().Text("Sales Order").SemiBold();
+                        col.Item().PaddingVertical(5).LineHorizontal(1);
+
+                        // ================= CUSTOMER + ORDER INFO =================
+                        col.Item().Row(row =>
+                        {
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text($"Customer : {sale.CustomerName}");
+                                if (!string.IsNullOrEmpty(sale.City))
+                                    c.Item().Text($"City : {sale.City}");
+                            });
+
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text($"Order No : {sale.InvoiceNo}");
+                                c.Item().Text($"Date : {sale.Date:dd-MM-yyyy}");
+                                if (!string.IsNullOrEmpty(sale.SalesMan))
+                                    c.Item().Text($"Sales Man : {sale.SalesMan}");
+                            });
+                        });
+
+                        col.Item().PaddingVertical(10).LineHorizontal(1);
+
+                        // ================= ITEMS TABLE =================
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30);
+                                columns.RelativeColumn(3);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(50);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(60);
+                            });
+
+                            table.Header(h =>
+                            {
+                                h.Cell().Text("S/N").Bold();
+                                h.Cell().Text("Item Name").Bold();
+                                h.Cell().Text("Qty").Bold();
+                                h.Cell().Text("Unit").Bold();
+                                h.Cell().Text("Price").Bold();
+                                h.Cell().Text("Disc").Bold();
+                                h.Cell().Text("Total").Bold();
+                            });
+
+                            int i = 1;
+                            foreach (var item in items)
+                            {
+                                table.Cell().Text(i++.ToString());
+                                table.Cell().Text(item.Name);
+                                table.Cell().Text(item.Qty.ToString("N2"));
+                                table.Cell().Text(item.UnitName);
+                                table.Cell().Text(item.Price.ToString("N2"));
+                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Total.ToString("N2"));
+                            }
+                        });
+
+                        // ================= TOTALS =================
+                        col.Item().AlignRight().PaddingTop(15).Column(c =>
+                        {
+                            c.Item().Text($"Sub Total : {sale.Total:N2}");
+                            c.Item().Text($"VAT : {sale.Vat:N2}");
+                            c.Item().Text($"Total Discount : {items.Sum(x => x.Discount):N2}");
+                            c.Item().Text($"Grand Total : {sale.Net:N2}").Bold();
+                        });
+
+                        // ================= FOOTER =================
+                        page.Footer().PaddingTop(20).Row(row =>
+                        {
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text("Prepared By").SemiBold();
+                                c.Item().PaddingTop(20).Text("Signature");
+                            });
+
+                            row.RelativeColumn().AlignRight().Column(c =>
+                            {
+                                c.Item().Text("Approved By").SemiBold().AlignRight();
+                                c.Item().PaddingTop(20).AlignRight().Text("Signature");
+                            });
+                        });
+                    });
+                });
+            }).GeneratePdf();
+        }
+
+        // ================= DEFAULT QR HANDLER =================
+        private static byte[] GetQrCode(byte[] qrCode)
+        {
+            if (qrCode != null && qrCode.Length > 0)
+                return qrCode;
+
+            var path = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "assets",
+                "images",
+                "DefaultQR.jpg");
+
+            return File.Exists(path) ? File.ReadAllBytes(path) : null;
+        }
+    }
+
+
 }
