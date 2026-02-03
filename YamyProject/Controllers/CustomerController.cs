@@ -3311,6 +3311,171 @@ VALUES
             return $"{prefix}{(lastNumber + 1):D4}";
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetSalesProformaInvoice(int salesId)
+        {
+            try
+            {
+                // Build connection string (supports dynamic database selection)
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ---------------- COMPANY INFO ----------------
+                var companyCmd = new MySqlCommand(@"
+SELECT 
+    name,
+    phone1,
+    gmail,
+    address,
+    trn_no,
+    logoComp
+FROM tbl_company
+LIMIT 1;
+", conn);
+
+                CompanyReportDto company = null;
+                await using (var reader = await companyCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        company = new CompanyReportDto
+                        {
+                            Name = reader.GetString("name"),
+                            Phone = reader.IsDBNull("phone1") ? null : reader.GetString("phone1"),
+                            Email = reader.IsDBNull("gmail") ? null : reader.GetString("gmail"),
+                            Address = reader.IsDBNull("address") ? null : reader.GetString("address"),
+                            TRN = reader.IsDBNull("trn_no") ? null : reader.GetString("trn_no"),
+                            Logo = reader.IsDBNull("logoComp") ? null : (byte[])reader["logoComp"]
+                        };
+                    }
+                }
+
+                if (company == null)
+                    return BadRequest("Company info not found");
+
+                // ---------------- SALES HEADER ----------------
+                var salesCmd = new MySqlCommand(@"
+SELECT 
+    s.id,
+    s.date,
+    s.invoice_id,
+    s.bill_to,
+    s.city,
+    s.sales_man,
+    s.ship_date,
+    s.ship_via,
+    s.ship_to,
+    s.po_num,
+    s.payment_method,
+    s.payment_terms,
+    s.payment_date,
+    s.total,
+    s.vat,
+    s.net,
+    s.pay,
+    s.change,
+    c.name AS customerName,
+    c.main_phone,
+    c.email,
+    c.trn,
+    (SELECT name FROM tbl_coa_level_4 WHERE id=s.account_cash_id) AS accountName
+FROM tbl_sales_proforma s
+INNER JOIN tbl_customer c ON s.customer_id = c.id
+WHERE s.id = @salesId;
+", conn);
+
+                salesCmd.Parameters.Add("@salesId", MySqlDbType.Int32).Value = salesId;
+
+                SaleReportDto sale = null;
+                await using (var reader = await salesCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        sale = new SaleReportDto
+                        {
+                            Id = reader.GetInt32("id"),
+                            Date = reader.GetDateTime("date"),
+                            InvoiceNo = reader.GetString("invoice_id"),
+                            CustomerName = reader.GetString("customerName"),
+                            City = reader.IsDBNull("city") ? null : reader.GetString("city"),
+                            SalesMan = reader.IsDBNull("sales_man") ? null : reader.GetString("sales_man"),
+                            ShipDate = reader.IsDBNull("ship_date") ? null : reader.GetDateTime("ship_date"),
+                            PaymentMethod = reader.IsDBNull("payment_method") ? null : reader.GetString("payment_method"),
+                            Total = reader.GetDecimal("total"),
+                            Vat = reader.GetDecimal("vat"),
+                            Net = reader.GetDecimal("net"),
+                            AccountName = reader.IsDBNull("accountName") ? null : reader.GetString("accountName")
+                        };
+                    }
+                }
+
+                if (sale == null)
+                    return NotFound("Sales proforma not found");
+
+                // ---------------- ITEM DETAILS ----------------
+                var itemCmd = new MySqlCommand(@"
+SELECT 
+    d.id,
+    d.item_id,
+    i.code,
+    i.name,
+    d.qty,
+    d.cost_price,
+    d.price,
+    (d.qty*d.cost_price) AS subCostTotal,
+    (d.qty*d.price) AS subPriceTotal,
+    d.discount,
+    ((d.qty*d.price)-d.discount) AS subTotal,
+    d.vatp AS vatAmount,
+    d.vat AS vatPercentage,
+    d.total,
+    (SELECT name FROM tbl_sub_cost_center WHERE id=d.cost_center_id) AS costCenterName,
+    (SELECT name FROM tbl_unit WHERE id=i.unit_id) AS unitName
+FROM tbl_sales_proforma_details d
+INNER JOIN tbl_items i ON d.item_id = i.id
+WHERE d.sales_id = @salesId;
+", conn);
+
+                itemCmd.Parameters.Add("@salesId", MySqlDbType.Int32).Value = salesId;
+
+                var items = new List<SaleItemReportDto>();
+                await using (var reader = await itemCmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new SaleItemReportDto
+                        {
+                            ItemId = reader.GetInt32("item_id"),
+                            Code = reader.GetString("code"),
+                            Name = reader.GetString("name"),
+                            Qty = Convert.ToDecimal(reader["qty"]),
+                            Price = Convert.ToDecimal(reader["price"]),
+                            Discount = Convert.ToDecimal(reader["discount"]),
+                            Vat = Convert.ToDecimal(reader["vatPercentage"]),
+                            Total = Convert.ToDecimal(reader["total"]),
+                            CostCenterName = reader.IsDBNull("costCenterName") ? null : reader.GetString("costCenterName"),
+                            UnitName = reader.IsDBNull("unitName") ? null : reader.GetString("unitName")
+                        });
+                    }
+                }
+
+                // ---------------- PDF GENERATION ----------------
+                byte[] pdfBytes = SalesProformaPdfGenerator.Generate(company, sale, items);
+
+                return File(pdfBytes, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
 
         #endregion
 
