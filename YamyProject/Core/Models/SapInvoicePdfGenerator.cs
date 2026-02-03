@@ -1,0 +1,184 @@
+﻿using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace YamyProject.Core.Models
+{
+    public static class SapInvoicePdfGenerator
+    {
+        public static byte[] Generate(
+            CompanyReportDto company,
+            SaleReportDto sale,
+            List<SaleItemReportDto> items)
+        {
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(20);
+                    page.DefaultTextStyle(x => x.FontSize(9));
+
+                    // ================= CONTENT =================
+                    page.Content().Column(col =>
+                    {
+                        // 🔹 HEADER
+                        col.Item().Border(1).Padding(10).Row(row =>
+                        {
+                            // LEFT – Company Info
+                            row.RelativeColumn(3).Column(c =>
+                            {
+                                c.Item().Text(company.Name).Bold().FontSize(11);
+                                c.Item().Text(company.Phone);
+                                c.Item().Text(company.Email);
+                            });
+
+                            // CENTER – Logo (small)
+                            row.RelativeColumn(4)
+                                .AlignCenter()
+                                .AlignMiddle()
+                                .Height(70)
+                                .Element(el =>
+                                {
+                                    if (company.Logo != null && company.Logo.Length > 0)
+                                        el.Image(company.Logo).FitArea();
+                                });
+
+                            // RIGHT – QR (default if null)
+                            row.RelativeColumn(3)
+                                .AlignRight()
+                                .Height(70)
+                                .Image(GetQrCode(company.QrCode))
+                                .FitArea();
+                        });
+
+                        // 🔹 TITLE
+                        col.Item().PaddingVertical(10)
+                            .AlignCenter()
+                            .Text("TAX INVOICE")
+                            .Bold()
+                            .FontSize(14);
+
+                        col.Item().AlignCenter().Text("Sale").SemiBold();
+                        col.Item().PaddingVertical(5).LineHorizontal(1);
+
+                        // 🔹 CUSTOMER + BILL
+                        col.Item().Row(row =>
+                        {
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text($"Name : {sale.CustomerName}");
+                                c.Item().Text($"Address : {sale.City}");
+                            });
+
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text($"Bill No : {sale.InvoiceNo}");
+                                c.Item().Text($"Amount : {sale.Total:N2}");
+                                c.Item().Text($"Date : {sale.Date:dd-MM-yyyy}");
+                                c.Item().Text($"Sales Man : {sale.SalesMan}");
+                            });
+                        });
+
+                        col.Item().PaddingVertical(10).LineHorizontal(1);
+
+                        // 🔹 ITEMS TABLE
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30);
+                                columns.RelativeColumn(3);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(40);
+                                columns.ConstantColumn(60);
+                            });
+
+                            table.Header(h =>
+                            {
+                                h.Cell().Text("S/N").Bold();
+                                h.Cell().Text("Item Name").Bold();
+                                h.Cell().Text("Qty").Bold();
+                                h.Cell().Text("Unit").Bold();
+                                h.Cell().Text("Price").Bold();
+                                h.Cell().Text("Disc").Bold();
+                                h.Cell().Text("Net").Bold();
+                            });
+
+                            int i = 1;
+                            foreach (var item in items)
+                            {
+                                table.Cell().Text(i++.ToString());
+                                table.Cell().Text(item.Name);
+                                table.Cell().Text(item.Qty.ToString("N2"));
+                                table.Cell().Text(item.UnitName);
+                                table.Cell().Text(item.Price.ToString("N2"));
+                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Total.ToString("N2"));
+                            }
+                        });
+
+                        // 🔹 TOTALS
+                        col.Item().AlignRight().PaddingTop(15).Column(c =>
+                        {
+                            c.Item().Text($"TOTAL : {sale.Total:N2}");
+                            c.Item().Text($"TOTAL VAT : {sale.Vat:N2}");
+                            c.Item().Text($"TOTAL DISCOUNT : {items.Sum(x => x.Discount):N2}");
+                            c.Item().Text($"TOTAL AMOUNT : {sale.Net:N2}").Bold();
+                        });
+
+                        page.Footer().PaddingTop(20).Row(row =>
+                        {
+                            // Created By
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text("Created By").SemiBold();
+                                c.Item().PaddingTop(20).Text("Signature");
+                            });
+
+                            // Approved By
+                            row.RelativeColumn().AlignRight().Column(c =>
+                            {
+                                c.Item().Text("Approved By").SemiBold().AlignRight();
+                                c.Item().PaddingTop(20).AlignRight().Text("Signature");
+                            });
+                        });
+
+                    });
+                });
+            }).GeneratePdf();
+        }
+
+        // ================= DEFAULT QR HANDLER =================
+        private static byte[] GetQrCode(byte[] qrCode)
+        {
+            if (qrCode != null && qrCode.Length > 0)
+                return qrCode;
+
+            var path = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "assets",
+                "images",
+                "DefaultQR.jpg");
+
+            return System.IO.File.Exists(path)
+                ? System.IO.File.ReadAllBytes(path)
+                : null;
+        }
+
+
+
+        public class SalesInvoiceReportDto
+        {
+            public SaleReportDto Sale { get; set; }
+            public List<SaleItemReportDto> Items { get; set; }
+        }
+    }
+}

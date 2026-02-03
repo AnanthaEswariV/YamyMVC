@@ -1,4 +1,6 @@
-﻿namespace YamyProject.Controllers
+﻿using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+
+namespace YamyProject.Controllers
 {
     public class CustomerController : Controller
     {
@@ -1559,7 +1561,6 @@ WHERE a.assembly_id = @assemblyId;
             await cmd.ExecuteNonQueryAsync();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetSalesInvoiceReport(int salesId)
         {
@@ -1575,7 +1576,7 @@ WHERE a.assembly_id = @assemblyId;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔹 SALES HEADER (SalesDetails)
+                // 🔹 SALES HEADER
                 var saleCmd = new MySqlCommand(@"
 SELECT 
     s.id,
@@ -1589,13 +1590,14 @@ SELECT
     s.city,
     s.sales_man,
     s.ship_date,
-    (SELECT name FROM tbl_coa_level_4 WHERE id = s.account_cash_id) accountName
+    coa.name AS accountName
 FROM tbl_sales s
 INNER JOIN tbl_customer c ON s.customer_id = c.id
-WHERE s.id = @salesId
+LEFT JOIN tbl_coa_level_4 coa ON coa.id = s.account_cash_id
+WHERE s.id = @salesId;
 ", conn);
 
-                saleCmd.Parameters.AddWithValue("@salesId", salesId);
+                saleCmd.Parameters.Add("@salesId", MySqlDbType.Int32).Value = salesId;
 
                 SaleReportDto sale = null;
 
@@ -1609,14 +1611,14 @@ WHERE s.id = @salesId
                             Date = reader.GetDateTime("date"),
                             InvoiceNo = reader.GetString("invoice_id"),
                             CustomerName = reader.GetString("customerName"),
-                            PaymentMethod = reader.GetString("payment_method"),
+                            PaymentMethod = reader.IsDBNull("payment_method") ? null : reader.GetString("payment_method"),
                             Total = reader.GetDecimal("total"),
                             Vat = reader.GetDecimal("vat"),
                             Net = reader.GetDecimal("net"),
-                            City = reader.GetString("city"),
-                            SalesMan = reader.GetString("sales_man"),
-                            ShipDate = reader.GetDateTime("ship_date"),
-                            AccountName = reader.GetString("accountName")
+                            City = reader.IsDBNull("city") ? null : reader.GetString("city"),
+                            SalesMan = reader.IsDBNull("sales_man") ? null : reader.GetString("sales_man"),
+                            ShipDate = reader.IsDBNull("ship_date") ? (DateTime?)null : reader.GetDateTime("ship_date"),
+                            AccountName = reader.IsDBNull("accountName") ? null : reader.GetString("accountName")
                         };
                     }
                 }
@@ -1624,7 +1626,7 @@ WHERE s.id = @salesId
                 if (sale == null)
                     return NotFound(new { status = false, message = "Invoice not found" });
 
-                // 🔹 ITEMS (ItemDetails)
+                // 🔹 ITEMS
                 var itemCmd = new MySqlCommand(@"
 SELECT 
     d.item_id,
@@ -1635,14 +1637,16 @@ SELECT
     d.discount,
     d.vat,
     d.total,
-    (SELECT name FROM tbl_sub_cost_center WHERE id = d.cost_center_id) costCenterName,
-    (SELECT name FROM tbl_unit WHERE id = i.unit_id) unitName
+    cc.name AS costCenterName,
+    u.name AS unitName
 FROM tbl_sales_details d
 INNER JOIN tbl_items i ON d.item_id = i.id
-WHERE d.sales_id = @salesId
+LEFT JOIN tbl_sub_cost_center cc ON cc.id = d.cost_center_id
+LEFT JOIN tbl_unit u ON u.id = i.unit_id
+WHERE d.sales_id = @salesId;
 ", conn);
 
-                itemCmd.Parameters.AddWithValue("@salesId", salesId);
+                itemCmd.Parameters.Add("@salesId", MySqlDbType.Int32).Value = salesId;
 
                 var items = new List<SaleItemReportDto>();
 
@@ -1655,26 +1659,72 @@ WHERE d.sales_id = @salesId
                             ItemId = reader.GetInt32("item_id"),
                             Code = reader.GetString("code"),
                             Name = reader.GetString("name"),
-                            Qty = reader.GetDecimal("qty"),
-                            Price = reader.GetDecimal("price"),
-                            Discount = reader.GetDecimal("discount"),
-                            Vat = reader.GetDecimal("vat"),
-                            Total = reader.GetDecimal("total"),
-                            CostCenterName = reader.GetString("costCenterName"),
-                            UnitName = reader.GetString("unitName")
+
+                            Qty = Convert.ToDecimal(reader["qty"]),
+                            Price = Convert.ToDecimal(reader["price"]),
+                            Discount = Convert.ToDecimal(reader["discount"]),
+                            Vat = Convert.ToDecimal(reader["vat"]),
+                            Total = Convert.ToDecimal(reader["total"]),
+
+                            CostCenterName = reader.IsDBNull("costCenterName")
+                                ? null
+                                : reader.GetString("costCenterName"),
+
+                            UnitName = reader.IsDBNull("unitName")
+                                ? null
+                                : reader.GetString("unitName")
                         });
                     }
                 }
 
-                return Ok(new
+
+                // 🔹 COMPANY INFO
+                var companyCmd = new MySqlCommand(@"
+SELECT 
+    id,
+    name,
+    phone1,
+    gmail,
+    address,
+    trn_no,
+    logoComp
+FROM tbl_company
+LIMIT 1;
+", conn);
+
+                CompanyReportDto company = null;
+
+                await using (var reader = await companyCmd.ExecuteReaderAsync())
                 {
-                    status = true,
-                    data = new
+                    if (await reader.ReadAsync())
                     {
-                        sale,
-                        items
+                        company = new CompanyReportDto
+                        {
+                           // Id = reader.GetInt32("id"),
+                            Name = reader.GetString("name"),
+                            Phone = reader.IsDBNull("phone1") ? null : reader.GetString("phone1"),
+                            Email = reader.IsDBNull("gmail") ? null : reader.GetString("gmail"),
+                            Address = reader.IsDBNull("address") ? null : reader.GetString("address"),
+                            TRN = reader.IsDBNull("trn_no") ? null : reader.GetString("trn_no"),
+                            Logo = reader.IsDBNull("logoComp")? null: (byte[])reader["logoComp"]
+
+                        };
                     }
-                });
+                }
+
+                if (company == null)
+                    return BadRequest(new { status = false, message = "Company info not found" });
+
+
+                // 🔹 PDF GENERATION
+                byte[] pdfBytes = SapInvoicePdfGenerator.Generate(company, sale, items);
+
+                return File(
+    pdfBytes,
+    "application/pdf",
+    fileDownloadName: null // null or omit => browser opens inline
+);
+
             }
             catch (Exception ex)
             {

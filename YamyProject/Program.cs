@@ -1,3 +1,4 @@
+using QuestPDF.Infrastructure;
 using YamyProject.Core.Consts.Mapping;
 using YamyProject.Services;
 using YamyProject.Services.Implementations;
@@ -51,7 +52,7 @@ builder.Services.AddScoped<IItemStockSettlementService, ItemStockSettlementServi
 
 builder.Services.AddScoped<ISalesClientService, SalesClientService>();
 
-
+QuestPDF.Settings.License = LicenseType.Community;
 ////
 // Microservice HTTP client
 //builder.Services.AddHttpClient<IMicroserviceClientt, MicroserviceClientt>(client =>

@@ -586,6 +586,18 @@
                 });
             }
 
+                    $(document).on('click', '.viewInvoiceBtn', function () {
+            const sale = $(this).data('invoice');
+            const salesId = sale.id;
+
+            const newTab = window.open();
+            newTab.document.write(`
+                <iframe src="/Customer/GetSalesInvoiceReport?salesId=${salesId}"
+                        style="width:100%; height:100%;" frameborder="0"></iframe>
+            `);
+        });
+
+
             function clearSaleItemsTable() {
                 $('#table2 tbody').empty();
             }

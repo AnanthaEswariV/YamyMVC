@@ -1247,7 +1247,7 @@ namespace YamyProject.Core.Models
         public string AccountName { get; set; }
         public string City { get; set; }
         public string SalesMan { get; set; }
-        public DateTime ShipDate { get; set; }
+        public DateTime? ShipDate { get; set; }
     }
     public class SaleItemReportDto
     {
@@ -1262,6 +1262,18 @@ namespace YamyProject.Core.Models
         public string CostCenterName { get; set; }
         public string UnitName { get; set; }
     }
+    public class CompanyReportDto
+    {
+        public string Name { get; set; }
+        public string Phone { get; set; }
+        public string Email { get; set; }
+        public string Address { get; set; }
+        public string TRN { get; set; }
+
+        public byte[] Logo { get; set; }
+        public byte[] QrCode { get; set; }
+    }
+
 
 
     public class SalesItemRequest
