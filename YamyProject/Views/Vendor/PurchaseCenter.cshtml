@@ -627,12 +627,12 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li>
-                        <a class="dropdown-item" href="#" onclick="viewInvoice(${sale.id})">
-                            Invoice Report
-                        </a>
+                      <a class="dropdown-item viewPurchaseInvoiceBtn" href="#" data-purchase-id="${sale.id}">
+                        Invoice Report
+                      </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="#" onclick="viewReceive(${sale.id})">
+                       <a class="dropdown-item viewPurchaseReceiveBtn" href="#" data-purchase-id="${sale.id}">
                             Receive Report
                         </a>
                     </li>
@@ -689,7 +689,30 @@
                 table1Body.append(row);
             });
         }
-        
+
+            $(document).on('click', '.viewPurchaseInvoiceBtn', function (e) {
+            e.preventDefault();
+            const purchaseId = $(this).data('purchase-id');
+            if (!purchaseId) return;
+            const newTab = window.open('', '_blank');
+            newTab.document.write(`
+                <iframe src="/Vendor/GetPurchaseInvoiceReport?purchaseId=${purchaseId}"
+                        style="width:100%; height:100vh; border:none;"></iframe>
+            `);
+        });
+
+        $(document).on('click', '.viewPurchaseReceiveBtn', function (e) {
+            e.preventDefault();
+            const purchaseId = $(this).data('purchase-id');
+            if (!purchaseId) return;
+            const newTab = window.open('', '_blank');
+            newTab.document.write(`
+                <iframe src="/Vendor/GetPurchaseReceiveNoteReport?purchaseId=${purchaseId}"
+                        style="width:100%; height:100vh; border:none;"></iframe>
+            `);
+        });
+
+
         function populateItemWiseTable(data) {
 
             const tableBody = $("#itemWiseTableData tbody").empty();
@@ -734,13 +757,13 @@
                     <i class="fas fa-eye"></i>
                 </button>
                 <ul class="dropdown-menu">
-                    <li>
-                        <a class="dropdown-item" href="#" onclick="viewInvoice(${item.id})">
-                            Invoice Report
-                        </a>
+                     <li>
+                      <a class="dropdown-item viewPurchaseInvoiceBtn" href="#" data-purchase-id="${item.id}">
+                        Invoice Report
+                      </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="#" onclick="viewReceive(${item.id})">
+                       <a class="dropdown-item viewPurchaseReceiveBtn" href="#" data-purchase-id="${item.id}">
                             Receive Report
                         </a>
                     </li>
