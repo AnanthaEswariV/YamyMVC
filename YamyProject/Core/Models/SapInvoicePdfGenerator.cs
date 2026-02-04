@@ -1213,6 +1213,198 @@ namespace YamyProject.Core.Models
         }
     }
 
+    public static class PurchaseReturnInvoicePdfGenerator
+    {
+        public static byte[] Generate(
+            CompanyReportDto company,
+            PurchaseReportDto purchase,
+            List<PurchaseItemReportDto> items)
+        {
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(20);
+                    page.DefaultTextStyle(x => x.FontSize(9));
+
+                    // ================= CONTENT =================
+                    page.Content().Column(col =>
+                    {
+                        // 🔹 HEADER
+                        col.Item().Border(1).Padding(10).Row(row =>
+                        {
+                            // LEFT – Company Info
+                            row.RelativeColumn(3).Column(c =>
+                            {
+                                c.Item().Text(company.Name).Bold().FontSize(11);
+                                if (!string.IsNullOrEmpty(company.Phone))
+                                    c.Item().Text(company.Phone);
+                                if (!string.IsNullOrEmpty(company.Email))
+                                    c.Item().Text(company.Email);
+                                if (!string.IsNullOrEmpty(company.Address))
+                                    c.Item().Text(company.Address);
+                                if (!string.IsNullOrEmpty(company.TRN))
+                                    c.Item().Text($"TRN : {company.TRN}");
+                            });
+
+                            // CENTER – Logo (small)
+                            row.RelativeColumn(4)
+                                .AlignCenter()
+                                .AlignMiddle()
+                                .Height(70)
+                                .Element(el =>
+                                {
+                                    if (company.Logo != null && company.Logo.Length > 0)
+                                        el.Image(company.Logo).FitArea();
+                                });
+
+                            // RIGHT – QR (default if null)
+                            row.RelativeColumn(3)
+                                .AlignRight()
+                                .Height(70)
+                                .Image(GetQrCode(company.QrCode))
+                                .FitArea();
+                        });
+
+                        // 🔹 TITLE
+                        col.Item().PaddingVertical(10)
+                            .AlignCenter()
+                            .Text("PURCHASE RETURN INVOICE")
+                            .Bold()
+                            .FontSize(14);
+
+                        col.Item().AlignCenter().Text("Purchase Return").SemiBold();
+                        col.Item().PaddingVertical(5).LineHorizontal(1);
+
+                        // 🔹 VENDOR + PURCHASE INFO
+                        col.Item().Row(row =>
+                        {
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text($"Vendor Name : {purchase.VendorName}");
+                                if (!string.IsNullOrEmpty(purchase.BillTo))
+                                    c.Item().Text($"Bill To : {purchase.BillTo}");
+                                if (!string.IsNullOrEmpty(purchase.City))
+                                    c.Item().Text($"City : {purchase.City}");
+                                if (!string.IsNullOrEmpty(purchase.VendorPhone))
+                                    c.Item().Text($"Phone : {purchase.VendorPhone}");
+                                if (!string.IsNullOrEmpty(purchase.VendorEmail))
+                                    c.Item().Text($"Email : {purchase.VendorEmail}");
+                                if (!string.IsNullOrEmpty(purchase.VendorTRN))
+                                    c.Item().Text($"TRN : {purchase.VendorTRN}");
+                            });
+
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text($"Invoice No : {purchase.InvoiceNo}");
+                                c.Item().Text($"Date : {purchase.Date:dd-MM-yyyy}");
+                                if (!string.IsNullOrEmpty(purchase.SalesMan))
+                                    c.Item().Text($"Sales Man : {purchase.SalesMan}");
+                                if (purchase.ShipDate.HasValue)
+                                    c.Item().Text($"Ship Date : {purchase.ShipDate.Value:dd-MM-yyyy}");
+                                if (!string.IsNullOrEmpty(purchase.ShipVia))
+                                    c.Item().Text($"Ship Via : {purchase.ShipVia}");
+                                if (!string.IsNullOrEmpty(purchase.ShipTo))
+                                    c.Item().Text($"Ship To : {purchase.ShipTo}");
+                                if (!string.IsNullOrEmpty(purchase.PoNumber))
+                                    c.Item().Text($"PO Number : {purchase.PoNumber}");
+                                if (!string.IsNullOrEmpty(purchase.PaymentMethod))
+                                    c.Item().Text($"Payment Method : {purchase.PaymentMethod}");
+                                if (!string.IsNullOrEmpty(purchase.PaymentTerms))
+                                    c.Item().Text($"Payment Terms : {purchase.PaymentTerms}");
+                                if (purchase.PaymentDate.HasValue)
+                                    c.Item().Text($"Payment Date : {purchase.PaymentDate.Value:dd-MM-yyyy}");
+                            });
+                        });
+
+                        col.Item().PaddingVertical(10).LineHorizontal(1);
+
+                        // 🔹 ITEMS TABLE
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30);    // S/N
+                                columns.RelativeColumn(3);     // Item Name
+                                columns.ConstantColumn(40);    // Qty
+                                columns.ConstantColumn(50);    // Unit
+                                columns.ConstantColumn(50);    // Price
+                                columns.ConstantColumn(50);    // Discount
+                                columns.ConstantColumn(60);    // Total
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Text("S/N").Bold();
+                                header.Cell().Text("Item Name").Bold();
+                                header.Cell().Text("Qty").Bold();
+                                header.Cell().Text("Unit").Bold();
+                                header.Cell().Text("Price").Bold();
+                                header.Cell().Text("Discount").Bold();
+                                header.Cell().Text("Total").Bold();
+                            });
+
+                            int i = 1;
+                            foreach (var item in items)
+                            {
+                                table.Cell().Text(i++.ToString());
+                                table.Cell().Text(item.Name);
+                                table.Cell().Text(item.Qty.ToString("N2"));
+                                table.Cell().Text(item.UnitName ?? "-");
+                                table.Cell().Text(item.Price.ToString("N2"));
+                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Total.ToString("N2"));
+                            }
+                        });
+
+                        // 🔹 TOTALS
+                        col.Item().AlignRight().PaddingTop(15).Column(c =>
+                        {
+                            c.Item().Text($"Total Amount : {purchase.Total:N2}");
+                            c.Item().Text($"Discount : {items.Sum(x => x.Discount):N2}");
+                            c.Item().Text($"VAT ({purchase.Vat:P0}) : {purchase.Vat:N2}");
+                            c.Item().Text($"Grand Total : {purchase.Net:N2}").Bold();
+                        });
+
+                        // 🔹 FOOTER
+                        page.Footer().PaddingTop(20).Row(row =>
+                        {
+                            row.RelativeColumn().Column(c =>
+                            {
+                                c.Item().Text("Prepared By").SemiBold();
+                                c.Item().PaddingTop(20).Text("Signature");
+                            });
+
+                            row.RelativeColumn().AlignRight().Column(c =>
+                            {
+                                c.Item().Text("Approved By").SemiBold().AlignRight();
+                                c.Item().PaddingTop(20).AlignRight().Text("Signature");
+                            });
+                        });
+                    });
+                });
+            }).GeneratePdf();
+        }
+
+        // ================= DEFAULT QR HANDLER =================
+        private static byte[] GetQrCode(byte[] qrCode)
+        {
+            if (qrCode != null && qrCode.Length > 0)
+                return qrCode;
+
+            var path = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "assets",
+                "images",
+                "DefaultQR.jpg");
+
+            return File.Exists(path)
+                ? File.ReadAllBytes(path)
+                : null;
+        }
+    }
 
 
 }
