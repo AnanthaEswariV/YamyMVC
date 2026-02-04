@@ -2061,7 +2061,11 @@ namespace YamyProject.Controllers
                 p.status AS `Status`,
                 p.project_type AS `Project Type`,
                 p.estimated_budget AS `Est Budget`,
-                p.progress AS `Progress`,
+                IFNULL((
+    SELECT AVG(a.progress)
+    FROM tbl_project_activity a
+    WHERE a.planning_id = p.id
+), 0) AS `Progress`,
                 p.fund_account_id As `Fund_Account_Id`,
                 p.project_id As `Project_Id`,
                 p.site As `Site`,
@@ -3326,7 +3330,6 @@ INNER JOIN tbl_project_planning p
             }
           
         }
-
         [HttpGet]
         public async Task<IActionResult> GetRoles()
         {
@@ -3364,7 +3367,6 @@ INNER JOIN tbl_project_planning p
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         [HttpPost]
         public async Task<IActionResult> SaveOrUpdateProjectResource([FromBody] ProjectResourceRequest model)

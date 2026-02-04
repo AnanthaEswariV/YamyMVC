@@ -316,7 +316,7 @@
 
                         <!-- Activity Tab -->
                         <div class="tab-pane fade show active" id="activity" role="tabpanel" aria-labelledby="activity-tab">
-                            <div class="table-responsive">
+                            <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
                                 <table id="activityTable" class="table table-bordered table-striped align-middle">
                                     <thead class="table-light">
                                         <tr>
@@ -1266,6 +1266,7 @@
 
                             if (res.data && res.data.length > 0) {
                                 $.each(res.data, function (i, row) {
+                                     const progress = row.progress != null ? parseFloat(row.progress).toFixed(2) : '0.00';
                                     const tr = `
                                         <tr data-id="${row.projectNo}" style="cursor:pointer;">
                                             <td>${i + 1}</td>
@@ -1276,7 +1277,7 @@
                                             <td>${row.status ?? ''}</td>
                                             <td>${row.projectType ?? ''}</td>
                                             <td>${row.estBudget ?? 0}</td>
-                                            <td>${row.progress ?? ''}</td>
+                                            <td>${progress ?? ''}</td>
                                             <td>
                                                 <button class="btn btn-sm btn-primary editPlanningBtn"
                                                         data-planning='${JSON.stringify(row)}'
@@ -2362,7 +2363,6 @@
                          currentPlanningId ||
                          0;
 
-        console.log("Planning ID found:", planningId);
             const selectedResources = [];
             // Collect selected resources from the table
                  $('#assignResourceForm tbody tr').each(function () {
@@ -2501,6 +2501,10 @@
             const progress = parseInt($('#subActivityProgress').val()) || 0;
             const startDate = $('#subActivityStartDate').val();
             const endDate = $('#subActivityEndDate').val();
+            let planningId = Number($('#currentPlanningId').val()) ||
+                         Number($('#planningId').val()) ||
+                         currentPlanningId ||
+                         0;
 
             const assignedResources = [];
             $('.resource-checkbox:checked').each(function () {
@@ -2514,7 +2518,7 @@
 
                const model = {
             Id: currentActivityId,
-            PlanningId: currentPlanningId,
+            PlanningId: planningId,
             TenderId: currentTenderId, 
             ItemId: currentItemId,
             StartDate: startDate,
@@ -2523,7 +2527,7 @@
             AssignedResources: assignedResources
         };
 
-
+        console.log(model);
           
             $.ajax({
                url: '@Url.Action("SaveOrUpdateProjectActivity", "Construction")',
