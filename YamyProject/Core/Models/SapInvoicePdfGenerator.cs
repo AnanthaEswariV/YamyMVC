@@ -1067,5 +1067,152 @@ namespace YamyProject.Core.Models
         }
     }
 
+    public static class PurchaseOrderInvoicePdfGenerator
+    {
+        public static byte[] Generate(
+            CompanyReportDto company,
+            PurchaseReportDto purchase,
+            List<PurchaseItemReportDto> items)
+        {
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(25);
+                    page.DefaultTextStyle(x => x.FontSize(9));
+                    page.Content().Column(col =>
+                    {
+                        // HEADER: Company info left, Logo center, blank right (or QR if you want)
+                        col.Item().Row(row =>
+                        {
+                            row.RelativeColumn(3).Column(c =>
+                            {
+                                c.Item().Text(company.Name).Bold().FontSize(11);
+                                if (!string.IsNullOrEmpty(company.Phone))
+                                    c.Item().Text($"Phone: {company.Phone}");
+                                if (!string.IsNullOrEmpty(company.Email))
+                                    c.Item().Text($"Email: {company.Email}");
+                                if (!string.IsNullOrEmpty(company.Address))
+                                    c.Item().Text(company.Address);
+                                if (!string.IsNullOrEmpty(company.TRN))
+                                    c.Item().Text($"TRN: {company.TRN}");
+                            });
+
+                            row.RelativeColumn(4)
+                                .AlignCenter()
+                                .AlignMiddle()
+                                .Height(70)
+                                .Element(el =>
+                                {
+                                    if (company.Logo != null && company.Logo.Length > 0)
+                                        el.Image(company.Logo).FitArea();
+                                });
+
+                            row.RelativeColumn(3).AlignRight(); // Empty or QR code here if needed
+                        });
+
+                        col.Item().PaddingVertical(10).AlignCenter()
+                            .Text("Local Purchase Order").Bold().FontSize(16);
+
+                        // PURCHASE INFO section left aligned
+                        col.Item().PaddingBottom(10).Column(c =>
+                        {
+                            c.Item().Text($"No : {purchase.InvoiceNo}").Bold();
+                            c.Item().Text($"Tax Registration Number : {company.TRN ?? ""}");
+                            c.Item().Text($"Date : {purchase.Date:MM/dd/yyyy}");
+                            c.Item().Text($"To M/S : {purchase.VendorName}");
+                            c.Item().Text($"Tel No : {purchase.VendorPhone ?? ""}");
+                            c.Item().Text($"PROJECT : {purchase.City ?? ""}");
+                        });
+
+                        // Instruction note
+                        col.Item().Padding(5).Border(1).Text("Please Send Supply the mentioned items below").SemiBold();
+
+                        // ITEMS TABLE
+                        col.Item().Table(table =>
+                        {
+                            // Columns: No., Description, Unit, Qty., Rate, Total
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30);      // No.
+                                columns.RelativeColumn(5);      // Description
+                                columns.RelativeColumn(2);      // Unit
+                                columns.ConstantColumn(40);     // Qty.
+                                columns.ConstantColumn(50);     // Rate
+                                columns.ConstantColumn(50);     // Total
+                            });
+
+                            // Table Header
+                            table.Header(header =>
+                            {
+                                header.Cell().Text("No.").Bold().FontSize(10).AlignCenter();
+                                header.Cell().Text("DESCRIPTION").Bold().FontSize(10);
+                                header.Cell().Text("UNIT").Bold().FontSize(10).AlignCenter();
+                                header.Cell().Text("Qty.").Bold().FontSize(10).AlignCenter();
+                                header.Cell().Text("Rate").Bold().FontSize(10).AlignRight();
+                                header.Cell().Text("Total").Bold().FontSize(10).AlignRight();
+                            });
+
+                            int index = 1;
+                            foreach (var item in items)
+                            {
+                                table.Cell().Text(index++.ToString()).AlignCenter();
+                                table.Cell().Text(item.Name).Underline();
+                                table.Cell().Text(item.UnitName ?? "Unit").AlignCenter();
+                                table.Cell().Text(item.Qty.ToString("N0")).AlignCenter();
+                                table.Cell().Text(item.CostPrice.ToString("N2")).AlignRight();
+                                table.Cell().Text(item.Total.ToString("N2")).AlignRight();
+                            }
+                        });
+
+                        // Empty space between table and totals block
+                        col.Item().PaddingVertical(10);
+
+                        // TOTALS block right aligned with grey background
+                        col.Item().AlignRight().Padding(5).Background("#d0d0d0").Width(250).Column(c =>
+                        {
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeColumn().Text("Total Amount").Bold().AlignRight();
+                                r.ConstantColumn(80).Text($"{purchase.Total:N2}").AlignRight();
+                            });
+                            c.Item().LineHorizontal(1);
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeColumn().Text("Discount").Bold().AlignRight();
+                                r.ConstantColumn(80).Text($"{purchase.Pay:N2}").AlignRight();
+                            });
+                            c.Item().LineHorizontal(1);
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeColumn().Text("Total Amount").Bold().AlignRight();
+                                // Calculate total amount after discount if needed or use purchase.Net
+                                decimal netAmount = purchase.Total - purchase.Pay;
+                                r.ConstantColumn(80).Text($"{netAmount:N2}").AlignRight();
+                            });
+                            c.Item().LineHorizontal(1);
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeColumn().Text("VAT 5%").Bold().AlignRight();
+                                r.ConstantColumn(80).Text($"{purchase.Vat:N2}").AlignRight();
+                            });
+                            c.Item().LineHorizontal(1);
+                            c.Item().Row(r =>
+                            {
+                                r.RelativeColumn().Text("Grand Total Amount").Bold().FontSize(11).AlignRight();
+                                r.ConstantColumn(80).Text($"{purchase.Net:N2}").Bold().FontSize(11).AlignRight();
+                            });
+                        });
+
+                        // Footer note left aligned
+                        col.Item().PaddingTop(10).Text($"Contact Person for Delivery: {purchase.VendorName ?? ""}");
+                    });
+                });
+            }).GeneratePdf();
+        }
+    }
+
+
 
 }

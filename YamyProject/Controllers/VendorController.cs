@@ -2580,7 +2580,172 @@ VALUES {string.Join(", ", valueList)};";
             return newCode;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetPurchaseOrderInvoiceReport(int purchaseId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
 
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 PURCHASE HEADER + VENDOR
+                var purchaseCmd = new MySqlCommand(@"
+SELECT 
+    p.id,
+    p.date,
+    p.invoice_id,
+    p.bill_to,
+    (SELECT CONCAT(code, ' ', name, description) FROM tbl_projects WHERE id = p.project_id) AS city,
+    p.sales_man,
+    p.ship_date,
+    p.ship_via,
+    p.ship_to,
+    p.po_num,
+    p.payment_method,
+    p.payment_terms,
+    p.payment_date,
+    p.total,
+    p.vat,
+    p.net,
+    p.pay,
+    p.`change`,
+    (SELECT name FROM tbl_coa_level_4 WHERE id = p.account_cash_id) AS accountName,
+    v.name AS vendorName,
+    v.main_phone,
+    v.email,
+    v.trn,
+    v.mobile
+FROM tbl_purchase_order p
+INNER JOIN tbl_vendor v ON p.vendor_id = v.id
+WHERE p.id = @purchaseId;
+", conn);
+                purchaseCmd.Parameters.Add("@purchaseId", MySqlDbType.Int32).Value = purchaseId;
+
+                PurchaseReportDto purchase = null;
+                await using (var reader = await purchaseCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        purchase = new PurchaseReportDto
+                        {
+                            Id = reader.GetInt32("id"),
+                            Date = reader.GetDateTime("date"),
+                            InvoiceNo = reader.GetString("invoice_id"),
+                            VendorName = reader.GetString("vendorName"),
+                            BillTo = reader.IsDBNull("bill_to") ? null : reader.GetString("bill_to"),
+                            City = reader.IsDBNull("city") ? null : reader.GetString("city"),
+                            SalesMan = reader.IsDBNull("sales_man") ? null : reader.GetString("sales_man"),
+                            ShipDate = reader.IsDBNull("ship_date") ? (DateTime?)null : reader.GetDateTime("ship_date"),
+                            ShipVia = reader.IsDBNull("ship_via") ? null : reader.GetString("ship_via"),
+                            ShipTo = reader.IsDBNull("ship_to") ? null : reader.GetString("ship_to"),
+                            PoNumber = reader.IsDBNull("po_num") ? null : reader.GetString("po_num"),
+                            PaymentMethod = reader.IsDBNull("payment_method") ? null : reader.GetString("payment_method"),
+                            PaymentTerms = reader.IsDBNull("payment_terms") ? null : reader.GetString("payment_terms"),
+                            PaymentDate = reader.IsDBNull("payment_date") ? (DateTime?)null : reader.GetDateTime("payment_date"),
+                            Total = reader.GetDecimal("total"),
+                            Vat = reader.GetDecimal("vat"),
+                            Net = reader.GetDecimal("net"),
+                            Pay = reader.GetDecimal("pay"),
+                            Change = reader.GetDecimal("change"),
+                            AccountName = reader.IsDBNull("accountName") ? null : reader.GetString("accountName"),
+
+                            VendorPhone = reader.IsDBNull("main_phone") ? null : reader.GetString("main_phone"),
+                            VendorEmail = reader.IsDBNull("email") ? null : reader.GetString("email"),
+                            VendorTRN = reader.IsDBNull("trn") ? null : reader.GetString("trn"),
+                            VendorMobile = reader.IsDBNull("mobile") ? null : reader.GetString("mobile")
+                        };
+                    }
+                }
+
+                if (purchase == null)
+                    return NotFound(new { status = false, message = "Purchase invoice not found" });
+
+                // 🔹 PURCHASE ITEMS
+                var itemCmd = new MySqlCommand(@"
+SELECT 
+    d.id,
+    d.item_id,
+    i.name,
+    d.qty,
+    d.cost_price,
+    d.price,
+    d.discount,
+    ((d.qty*d.cost_price)-d.discount) AS subTotal,
+    d.vat AS vatPercentage,
+    d.total,
+    d.cost_center_id,
+    (SELECT name FROM tbl_sub_cost_center WHERE id=d.cost_center_id) AS costCenterName,
+    i.unit_id,
+    (SELECT name FROM tbl_unit WHERE id=i.unit_id) AS unitName,
+    i.code
+FROM tbl_purchase_order_details d
+INNER JOIN tbl_items i ON d.item_id = i.id
+WHERE d.purchase_id = @purchaseId;
+", conn);
+                itemCmd.Parameters.Add("@purchaseId", MySqlDbType.Int32).Value = purchaseId;
+
+                var items = new List<PurchaseItemReportDto>();
+                await using (var reader = await itemCmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new PurchaseItemReportDto
+                        {
+                            ItemId = reader.GetInt32("item_id"),
+                            Code = reader.GetString("code"),
+                            Name = reader.GetString("name"),
+                            Qty = Convert.ToDecimal(reader["qty"]),
+                            CostPrice = Convert.ToDecimal(reader["cost_price"]),
+                            Price = Convert.ToDecimal(reader["price"]),
+                            Discount = Convert.ToDecimal(reader["discount"]),
+                            Vat = Convert.ToDecimal(reader["vatPercentage"]),
+                            Total = Convert.ToDecimal(reader["total"]),
+                            SubTotal = Convert.ToDecimal(reader["subTotal"]),
+                            CostCenterName = reader.IsDBNull("costCenterName") ? null : reader.GetString("costCenterName"),
+                            UnitName = reader.IsDBNull("unitName") ? null : reader.GetString("unitName")
+                        });
+                    }
+                }
+
+                // 🔹 COMPANY INFO
+                var companyCmd = new MySqlCommand("SELECT * FROM tbl_company LIMIT 1;", conn);
+                CompanyReportDto company = null;
+                await using (var reader = await companyCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        company = new CompanyReportDto
+                        {
+                            Name = reader.GetString("name"),
+                            Phone = reader.IsDBNull("phone1") ? null : reader.GetString("phone1"),
+                            Email = reader.IsDBNull("gmail") ? null : reader.GetString("gmail"),
+                            Address = reader.IsDBNull("address") ? null : reader.GetString("address"),
+                            TRN = reader.IsDBNull("trn_no") ? null : reader.GetString("trn_no"),
+                            Logo = reader.IsDBNull("logoComp") ? null : (byte[])reader["logoComp"]
+                        };
+                    }
+                }
+
+                if (company == null)
+                    return BadRequest(new { status = false, message = "Company info not found" });
+
+                // 🔹 GENERATE PDF
+                byte[] pdfBytes = PurchaseOrderInvoicePdfGenerator.Generate(company, purchase, items);
+
+                return File(pdfBytes, "application/pdf", fileDownloadName: null);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 
