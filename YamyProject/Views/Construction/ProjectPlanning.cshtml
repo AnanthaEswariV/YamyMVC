@@ -111,7 +111,6 @@
         </table>
     </div>
 </div>
-
 <!-- Modal -->
 <div class="modal fade" id="planningModal" tabindex="-1" aria-labelledby="planningModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -736,7 +735,6 @@
     </div>
 </div>
 
-
 <!-- Project Resource - New Modal -->
 <div class="modal fade" id="projectResourceModal" tabindex="-1" aria-labelledby="projectResourceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -890,18 +888,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
-
     <script>
-                 let currentTenderId = null;
-                 let currentPlanningId = null;
-                let currentItemId = null;
+               let currentTenderId = null;
+               let currentPlanningId = null;
+               let currentItemId = null;
 
-                        function getCurrentPlanningId() {
+               function getCurrentPlanningId() {
             return currentPlanningId ||
                    Number($('#planningId').val()) ||
                    Number($('#currentPlanningId').val()) ||
@@ -1194,7 +1190,7 @@
 
                 });
 
-                        function loadProjects() {
+                function loadProjects() {
                     $.ajax({
                       url: '@Url.Action("GetProjects", "Construction")',
                         type: 'GET',
@@ -1231,7 +1227,7 @@
                     });
                 }
 
-                        function loadProjectPlanning() {
+                function loadProjectPlanning() {
                     const reportedBy = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
                     const projectType = $('#chkProjectType').is(':checked') ? null : $('#projectType').val();
                     const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
@@ -1325,11 +1321,11 @@
                     });
                 }
 
-                        $("#addPlanningBtn").on("click", () => $("#pettyCashSection").hide());
+                $("#addPlanningBtn").on("click", () => $("#pettyCashSection").hide());
 
-                        $(document).on("click", ".editPlanningBtn", () => $("#pettyCashSection").slideDown());
+                $(document).on("click", ".editPlanningBtn", () => $("#pettyCashSection").slideDown());
 
-                        $("#btnSavePlanning").on("click", function () {
+                $("#btnSavePlanning").on("click", function () {
 
                     // Collect form values
                     const model = {
@@ -1424,7 +1420,7 @@
                     });
                 });
 
-                        $(document).on("click", ".editPlanningBtn", function () {
+                $(document).on("click", ".editPlanningBtn", function () {
                     const planning = $(this).data("planning");
                     if (!planning) return;
 
@@ -1461,7 +1457,7 @@
                     loadResourceList(currentPlanningId);
                 });
 
-                        $("#addPlanningBtn").on("click", function () {
+                $("#addPlanningBtn").on("click", function () {
                     $("#planningModalLabel").text("Planning - New");
                     $("#btnSavePlanning").text("Save");
                     $("#pettyCashSection").hide();
@@ -1469,7 +1465,7 @@
                     $("#planningForm")[0].reset();
                 });
 
-                                function loadActivityPlanning(tenderId) {
+                function loadActivityPlanning(tenderId) {
             $.ajax({
              url: '@Url.Action("GetProjectTenderDetails", "Construction")',
                 type: 'GET',
@@ -1503,7 +1499,7 @@
         }
 
 
-                        function loadRequestMaterial(planningId) {
+                function loadRequestMaterial(planningId) {
                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                         url: '@Url.Action("GetRequestedMaterial", "Construction")',
@@ -1540,7 +1536,7 @@
                     });
                 }
 
-                        function loadIssuedMaterial(planningId) {
+                function loadIssuedMaterial(planningId) {
                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                       url: '@Url.Action("GetIssuedMaterial", "Construction")',
@@ -1575,7 +1571,7 @@
                     });
                 }
 
-                        function loadReceivedMaterial(planningId) {
+                function loadReceivedMaterial(planningId) {
                             if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                        url: '@Url.Action("GetReceivedMaterial", "Construction")',
@@ -1610,7 +1606,7 @@
                     });
                 }
 
-                        function loadResourceList(planningId) {
+                function loadResourceList(planningId) {
                              if (!planningId) planningId = getCurrentPlanningId();
                     $.ajax({
                         url: '@Url.Action("GetResourceData", "Construction")',
@@ -1648,44 +1644,44 @@
                     });
                 }
 
-                        $('.editPlanningBtn').on('click', function () {
+                $('.editPlanningBtn').on('click', function () {
                     const tender = $(this).data('planning');
                     $('#pettyCashSection').show();
                     $('#activity-tab').tab('show');
                     loadActivityPlanning(tender.tenderId);
                 });
 
-                        $('#activity-tab').on('shown.bs.tab', function () {
+                $('#activity-tab').on('shown.bs.tab', function () {
                     if (currentTenderId) {
                         loadActivityPlanning(currentTenderId);
                     }
                 });
 
-                        $('#request-tab').on('shown.bs.tab', function () {
+                $('#request-tab').on('shown.bs.tab', function () {
                     if(currentPlanningId){
                         loadRequestMaterial(currentPlanningId);
                     }
                 });
 
-                        $('#issue-tab').on('shown.bs.tab', function () {
+                $('#issue-tab').on('shown.bs.tab', function () {
                     if (currentPlanningId) {
                         loadIssuedMaterial(currentPlanningId);
                     }
                 });
 
-                        $('#receive-tab').on('shown.bs.tab', function () {
+                $('#receive-tab').on('shown.bs.tab', function () {
                     if (currentPlanningId) {
                         loadReceivedMaterial(currentPlanningId);
                     }
                 });
 
-                        $('#resource-tab').on('shown.bs.tab', function () {
+                $('#resource-tab').on('shown.bs.tab', function () {
                     if (currentPlanningId) {
                         loadResourceList(currentPlanningId);
                     }
                 });
 
-                        $(document).ready(function () {
+                $(document).ready(function () {
 
                     // Load items dynamically from tender selection
                     function loadItems(tenderId, targetDropdown = null) {
@@ -1838,23 +1834,23 @@
                     });
                 });
 
-                        function formatDate(dateStr) {
+                function formatDate(dateStr) {
                             // Convert DD/MM/YYYY to YYYY-MM-DD for input[type=date]
                             var parts = dateStr.split('/');
                             return parts[2] + '-' + parts[1] + '-' + parts[0];
                         }
 
-                        document.addEventListener('DOMContentLoaded', function() {
-                            const activityInput = document.getElementById('activitys');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const activityInput = document.getElementById('activitys');
 
-                        activityInput.addEventListener('click', function() {
+                activityInput.addEventListener('click', function() {
                         // Open Sub-Activity modal
                         // var subActivityModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
                         // subActivityModal.show();
                     });
 
 
-                        $(document).ready(function () {
+                $(document).ready(function () {
             // Load requested data for dropdowns
             function loadRequestedItems(planningId, dropdown) {
                 $.ajax({
@@ -1992,7 +1988,7 @@
             });
         });
 
-                       $(document).ready(function () {
+                $(document).ready(function () {
             // 🔹 Load issued-but-not-received materials for dropdowns
             function loadPendingReceivedItems(planningId, dropdown) {
                 $.ajax({
@@ -2178,9 +2174,7 @@
 
         });
 
-
-             // Function to toggle employee dropdown
-        function toggleEmployeeDropdown() {
+                function toggleEmployeeDropdown() {
             const selectedType = $('input[name="type"]:checked').val();
             if (selectedType === "Labour") {
                 $('#employeeSection').show();
@@ -2189,18 +2183,13 @@
             }
         }
 
-        // Initial check on page load
-        toggleEmployeeDropdown();
+                toggleEmployeeDropdown();
 
-        // When type changes
-        $('input[name="type"]').change(function() {
+                $('input[name="type"]').change(function() {
             toggleEmployeeDropdown();
         });
 
-
-
-                // 🟩 Open modal for new role
-        $("#addRoleBtn").on("click", function () {
+                $("#addRoleBtn").on("click", function () {
             $("#roleId").val(0);
             $("#roleCode").val(""); // Auto-generate in API
             $("#roleName").val("");
@@ -2208,8 +2197,7 @@
             $("#newRoleModal").modal("show");
         });
 
-        // 🟦 Submit form (Add/Edit)
-        $("#newRoleForm").on("submit", function (e) {
+                $("#newRoleForm").on("submit", function (e) {
             e.preventDefault();
             const form = this;
 
@@ -2251,7 +2239,6 @@
             });
         });
 
-
                 function loadRoles() {
             $.ajax({
                url: '@Url.Action("GetRoles", "Construction")',
@@ -2274,8 +2261,7 @@
             });
         }
 
-
-        loadRoles();
+                loadRoles();
 
 
             $("#saveResourceBtn").on("click", function (e) {

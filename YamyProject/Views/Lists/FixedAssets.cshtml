@@ -400,51 +400,131 @@
 
 
             loadFixedAssetCategories();
-            loadAccounts();
+            // loadAccounts();
             populateAndSelectCostCenter();
             bindCategoryChangeHandlers();
             
 
         });
 
-          
 
-         function addFixedAssetsCategory() {
-                    let model = {
-                        CategoryName: $("#categoryName").val(),
-                        AssetsAccountId: $("#fixedAssetsAccount1").val(),
-                        DepreciationAccountId: $("#accumulatedDepreciation1").val(),
-                        ExpenceAccountId: $("#depreciationExpense1").val()
-                    };
+             function addFixedAssetsCategory() {
+            const categoryName = $("#categoryName").val().trim();
+            const assetsId = $("#fixedAssetsAccount1").val();
+            const depreciationId = $("#accumulatedDepreciation1").val();
+            const expenseId = $("#depreciationExpense1").val();
 
-                    if (!model.CategoryName) {
-                        alert("Please enter Category Name");
-                        return;
-                    }
+            if (!categoryName) {
+                toastr.warning("Please enter Category Name");
+                return;
+            }
 
-                    $.ajax({
-                       url: '@Url.Action("AddFixedAssetsCategory", "Lists")',
-                        method: "POST",
-                        contentType: "application/json",
-                        data: JSON.stringify(model),
-                        success: function (res) {
-                            if (res.status) {
-                                $("#addFixedAssetsCategoryModal").modal("hide");
-                                $("#addFixedAssetsCategoryForm")[0].reset();
-                                       // Show success message
-                                // Optional: reload page after short delay
-                                setTimeout(() => location.reload(), 1500); loadFixedAssetCategories();
+            $.ajax({
+                url: '@Url.Action("AddFixedAssetsCategory", "Lists")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    CategoryName: categoryName,
+                    AssetsAccountId: assetsId,
+                    DepreciationAccountId: depreciationId,
+                    ExpenceAccountId: expenseId
+                }),
+                success: function (res) {
 
-                            } else {
-                                    toastr.error(res.message || "Error saving category");
-                            }
-                        },
-                        error: function (xhr) {
-                               console.error(err);
-                            toastr.error("Server error occurred while saving category");
+                    if (res && res.status) {
+                        toastr.success(res.message || "Category added successfully");
+
+                        // ✅ Close modal (same as Unit)
+                        const modalEl = document.getElementById("addFixedAssetsCategoryModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+
+                        // ✅ Reset form
+                        $("#addFixedAssetsCategoryForm")[0].reset();
+
+                        // ✅ ADD TO THE *REAL* DROPDOWN
+                        if (res.id && res.categoryName) {
+
+                            // Remove if already exists
+                            $('#assetCategory option[value="' + res.id + '"]').remove();
+                            $('#editAssetCategory option[value="' + res.id + '"]').remove();
+                             // Create option for main dropdown
+                             const optionMain = new Option(res.categoryName, res.id, true, true);
+
+                             // Create option for edit dropdown
+                             const optionEdit = new Option(res.categoryName, res.id, true, true);
+
+                             // Append
+                             $('#assetCategory').append(optionMain);
+                             $('#editAssetCategory').append(optionEdit);
+
+
+                        } else {
+                            console.error("❌ Missing id or categoryName", res);
                         }
-                    });
+
+                    } else {
+                        toastr.error(res?.message || "Failed to add category");
+                    }
+                },
+                error: function (xhr) {
+                    console.error("❌ AJAX Error:", xhr);
+                    toastr.error(xhr.responseJSON?.message || "Server error");
                 }
+            });
+        }
+
+
+
+        function editFixedAssetsCategory() {
+            let model = {
+                Id: parseInt($("#editCategoryId").val()),
+                CategoryName: $("#editCategoryName").val(),
+                AssetsAccountId: $("#editFixedAssetsAccount").val(),
+                DepreciationAccountId: $("#editAccumulatedDepreciation").val(),
+                ExpenceAccountId: $("#editDepreciationExpense").val()
+            };
+
+            if (!model.CategoryName) {
+                toastr.warning("Please enter Category Name");
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("EditFixedAssetsCategory", "Lists")',
+                method: "PUT",
+                contentType: "application/json",
+                data: JSON.stringify(model),
+                success: function(res) {
+                    if (res.status) {
+                        $("#editFixedAssetsCategoryModal").modal("hide");
+                        $("#editFixedAssetsCategoryForm")[0].reset();
+
+                        // ✅ Update dropdown
+                        if (res.id && res.categoryName) {
+                            const dropdown = $("#fixedAssetsCategoryDropdown");
+                            // Remove old option
+                            dropdown.find(`option[value="${res.id}"]`).remove();
+                            // Add updated option
+                            const option = new Option(res.categoryName, res.id, true, true);
+                            dropdown.append(option);
+                        }
+
+                        toastr.success(res.message);
+                    } else {
+                        toastr.error(res.message || "Error updating category");
+                    }
+                },
+                error: function(xhr) {
+                    console.error(xhr);
+                    toastr.error(xhr.responseJSON?.message || "Server error occurred while updating category");
+                }
+            });
+        }
+
+
+
+
         function loadAllFixedAssets() {
              $.ajax({
            url: '@Url.Action("GetAllFixedAssets", "Lists")',

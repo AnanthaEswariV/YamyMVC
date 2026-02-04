@@ -21,7 +21,6 @@
         {
               return View();
         }
-
         [IgnoreAntiforgeryToken]
         [HttpPost]
         public async Task<IActionResult> SaveWarehouse([FromBody] WarehouseRequest model)
@@ -35,11 +34,9 @@
             try
             {
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                //var userId = model.CreadedBy; // Get UserId from request
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
 
-                // Get connection string
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
@@ -48,23 +45,28 @@
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔎 Check duplicate
-                var checkQuery = "SELECT COUNT(*) FROM tbl_warehouse WHERE name = @name";
+                // Check duplicate (exclude current record when updating)
+                var checkQuery = model.Id == 0
+                    ? "SELECT COUNT(*) FROM tbl_warehouse WHERE name = @name"
+                    : "SELECT COUNT(*) FROM tbl_warehouse WHERE name = @name AND id != @id";
+
                 using (var checkCmd = new MySqlCommand(checkQuery, conn))
                 {
                     checkCmd.Parameters.AddWithValue("@name", model.Name);
-                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                    if (model.Id > 0)
+                        checkCmd.Parameters.AddWithValue("@id", model.Id);
 
-                    if (exists && model.Id == 0)
+                    var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+                    if (exists)
                         return BadRequest(new { status = false, message = "Warehouse name already exists. Enter another name." });
                 }
-
 
                 if (model.Id == 0) // INSERT
                 {
                     // Generate next warehouse code
                     int lastCodeNum = 0;
-                    var getCodeQuery = @"SELECT Code FROM tbl_warehouse WHERE Code LIKE 'WH-%' ORDER BY CAST(SUBSTRING(Code, 4) AS UNSIGNED) DESC LIMIT 1";
+                    var getCodeQuery = @"SELECT Code FROM tbl_warehouse WHERE Code LIKE 'WH-%' 
+                                ORDER BY CAST(SUBSTRING(Code, 4) AS UNSIGNED) DESC LIMIT 1";
                     using (var codeCmd = new MySqlCommand(getCodeQuery, conn))
                     using (var reader = await codeCmd.ExecuteReaderAsync())
                     {
@@ -74,9 +76,12 @@
 
                     string newCode = "WH-" + (lastCodeNum + 1).ToString("D4");
 
-                    // Insert
+                    // ✅ Insert and get the new ID
                     var insertQuery = @"INSERT INTO tbl_warehouse (Code, Name, emp_id, City, building_name, account_id, State, created_by, created_date) 
-                                VALUES (@code, @name, @emp_id, @city, @building_name, @account_id, 0, @created_by, @created_date)";
+                        VALUES (@code, @name, @emp_id, @city, @building_name, @account_id, 0, @created_by, @created_date);
+                        SELECT LAST_INSERT_ID();";
+
+                    int newId;
                     using (var insertCmd = new MySqlCommand(insertQuery, conn))
                     {
                         insertCmd.Parameters.AddWithValue("@code", newCode);
@@ -88,16 +93,24 @@
                         insertCmd.Parameters.AddWithValue("@created_by", userId);
                         insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
 
-                        await insertCmd.ExecuteNonQueryAsync();
+                        newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
                     }
 
-                    return Ok(new { status = true, message = "Warehouse added successfully", code = newCode });
+                    return Ok(new
+                    {
+                        status = true,
+                        id = newId,
+                        name = model.Name.Trim(),
+                        code = newCode,
+                        message = "Warehouse added successfully"
+                    });
                 }
                 else // UPDATE
                 {
                     var updateQuery = @"UPDATE tbl_warehouse 
-                                SET Name=@name, emp_id=@emp_id, City=@city, building_name=@building_name, account_id=@account_id 
-                                WHERE Id=@id";
+                        SET Name=@name, emp_id=@emp_id, City=@city, building_name=@building_name, account_id=@account_id 
+                        WHERE Id=@id";
+
                     using (var updateCmd = new MySqlCommand(updateQuery, conn))
                     {
                         updateCmd.Parameters.AddWithValue("@name", model.Name);
@@ -112,7 +125,13 @@
                             return NotFound(new { status = false, message = "Warehouse not found" });
                     }
 
-                    return Ok(new { status = true, message = "Warehouse updated successfully" });
+                    return Ok(new
+                    {
+                        status = true,
+                        id = model.Id,
+                        name = model.Name.Trim(),
+                        message = "Warehouse updated successfully"
+                    });
                 }
             }
             catch (Exception ex)
@@ -120,7 +139,7 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
+        
         [HttpPut]
         public async Task<IActionResult> EditWarehouse([FromBody] WarehouseRequest model)
         {

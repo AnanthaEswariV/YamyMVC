@@ -602,27 +602,33 @@
        if ($('#allCat').is(':checked')) $('#categoryDropdown').prop('disabled', true);
 
 
-        // ===== Load Warehouses =====
-        function loadWarehouses(selector = "#warehouse, #warehouseDropdown") {
+                      function loadWarehouses(selectedId = null) {
             $.ajax({
-              url: '@Url.Action("GetWarehouses", "Inventory")',
+                url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
-                success: function (res) {
-                    if (res.status) {
-                        const dropdowns = $(selector);
-                        dropdowns.empty().append('<option value="">Select Warehouse</option>');
+                success: function(res) {
+                    const $warehouse = $('#warehouse');
+                    const $warehouseDropdown = $('#warehouseDropdown');
+
+                    $warehouse.empty().append('<option value="">-- Select Warehouse --</option>');
+                    $warehouseDropdown.empty().append('<option value="">-- Select Warehouse --</option>');
+
+                    if (res.status && res.data.length > 0) {
                         res.data.forEach(w => {
-                            dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
+                            const option1 = new Option(w.name, w.id, selectedId == w.id, selectedId == w.id);
+                            const option2 = new Option(w.name, w.id, selectedId == w.id, selectedId == w.id);
+
+                            $warehouse.append(option1);
+                            $warehouseDropdown.append(option2);
                         });
-                    } else {
-                        alert(res.message);
                     }
                 },
-                error: function (err) {
-                    console.error("Error fetching warehouses:", err);
+                error: function(xhr) {
+                    console.error('❌ Error loading warehouses:', xhr.responseJSON?.message || xhr.statusText);
                 }
             });
         }
+
 
            function loadPreferredVendors() {
             $.ajax({
@@ -652,8 +658,7 @@
             });
         }
 
-
-          $("#newWarehouseForm").submit(function (e) {
+                $("#newWarehouseForm").submit(function(e) {
             e.preventDefault();
 
             let model = {
@@ -664,40 +669,46 @@
                 EmpId: parseInt($("#manager").val()) || null,
                 AccountId: parseInt($("#accruedSalaries").val()) || null,
             };
-
             $.ajax({
-                url: "/Inventory/SaveWarehouse",
-                type: "POST",
-                contentType: "application/json",
+                url: '/Inventory/SaveWarehouse',
+                type: 'POST',
+                contentType: 'application/json',
                 data: JSON.stringify(model),
-                success: function (res) {
+                success: function(res) {
                     if (res && res.status) {
-                        toastr.success(res.message || "Warehouse saved successfully!");
-                        $("#warehouseCode").val(res.code || "");
-                        $("#newWarehouseModal").modal("hide");
+                        toastr.success(res.message || 'Warehouse saved successfully!');
+
+                        $("#newWarehouseModal").modal('hide');
                         $("#newWarehouseForm")[0].reset();
                         $("#warehouseId").val(0);
 
-                        //      // ✅ Refresh warehouse table and dropdown
-                        // if (typeof loadWarehouse === "function") {
-                        //     loadWarehouse();
-                        // }
-                        // if (typeof loadWarehouses === "function") {
-                        //     loadWarehouses();
-                        // }
-                        setTimeout(function () {
-                            location.reload();
-                        }, 1500);
+                        if (res.id && res.name) {
+
+                            $('#warehouse option[value="' + res.id + '"]').remove();
+                            $('#warehouseDropdown option[value="' + res.id + '"]').remove();
+
+                            const newOption1 = new Option(res.name, res.id, true, true);
+                            const newOption2 = new Option(res.name, res.id, true, true);
+
+                            $('#warehouse').append(newOption1);
+                            $('#warehouseDropdown').append(newOption2);
+
+                        } else {
+                            console.error('❌ Missing id or name in response');
+                            console.error('res.id:', res.id);
+                            console.error('res.name:', res.name);
+                        }
                     } else {
-                        toastr.error(res?.message || "Failed to save warehouse");
+                        toastr.error(res?.message || 'Failed to save warehouse');
+                        console.error('❌ Status is false');
                     }
                 },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
+                error: function(xhr) {
+                    console.error('❌ AJAX Error:', xhr);
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Server error');
                 }
             });
         });
-
 
         // ===== Load Units =====
               function loadUnitsDropdown(selector = "#mainUnit") {
@@ -1104,7 +1115,6 @@
             });
         }
 
-
         function loadManagersDropdown(selector, selectedId = null) {
              $.getJSON('@Url.Action("GetAllEmployees", "Inventory")', function(employees) {
                  const $dropdown = $(selector);
@@ -1119,42 +1129,116 @@
              });
          }
 
+        function saveUnit() {
+            const name = $("#addUnitName").val();
 
-           function saveUnit() {
-              const name = $("#addUnitName").val();
+            if (!name.trim()) {
+                toastr.warning("Please enter a unit name.");
+                return;
+            }
 
-              if (!name.trim()) {
-                  toastr.warning("Please enter a unit name.");
-                  return;
-              }
+            $.ajax({
+                url: '@Url.Action("AddUnit", "Lists")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ Name: name }),
+                success: function(res) {
 
-              $.ajax({
-              url: '@Url.Action("AddUnit", "Lists")',
-                  type: 'POST',
-                  contentType: 'application/json',
-                  data: JSON.stringify({ Name: name }),
-                  success: function (res) {
-                      if (res.status) {
-                          const modalEl = document.getElementById("addUnitModal");
-                          const modal = bootstrap.Modal.getInstance(modalEl);
-                          modal.hide();
-                          $("#addUnitForm")[0].reset();
-                          toastr.success('Unit Added Successfully!');
-                          // Optional reload after short delay
-                          setTimeout(function () {
-                              location.reload();
-                          }, 1500);
-                      } else {
-                          toastr.error(res.message || 'Failed to add unit');
-                      }
-                  },
-                  error: function (xhr) {
-                      toastr.error("Error: " + xhr.responseText);
-                  }
-              });
-          }
+                    if (res && res.status) {
+                        toastr.success(res.message || 'Unit Added Successfully!');
 
-               function populateAndSelectCostCenter() {
+                        // ✅ FIXED: Close the MODAL, not the form
+                        const modalEl = document.getElementById("addUnitModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) {
+                            modal.hide();
+                        }
+
+                        // ✅ Reset the FORM
+                        $("#addUnitForm")[0].reset();
+
+                        // ✅ Add to dropdown
+                        if (res.id && res.name) {
+
+                            // Remove if already exists (prevent duplicates)
+                            $('#mainUnit option[value="' + res.id + '"]').remove();
+
+                            // Add new option and select it
+                            const newOption = new Option(res.name, res.id, true, true);
+                            $('#mainUnit').append(newOption);
+
+                        } else {
+                            console.error('❌ Missing id or name in response');
+                            console.error('res.id:', res.id);
+                            console.error('res.name:', res.name);
+                        }
+                    } else {
+                        toastr.error(res?.message || 'Failed to add unit');
+                        console.error('❌ Status is false');
+                    }
+                },
+                error: function(xhr) {
+                    console.error('❌ AJAX Error:', xhr);
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Server error');
+                }
+            });
+        }
+
+        function updateUnit() {
+            const id = parseInt($("#editUnitId").val());
+            const name = $("#editUnitName").val();
+
+            if (!id || !name.trim()) {
+                toastr.warning("Please enter a unit name.");
+                return;
+            }
+
+
+            $.ajax({
+                url: '@Url.Action("EditUnit", "Lists")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ Id: id, Name: name }),
+                success: function(res) {
+                    console.log('📥 Update response:', res);
+
+                    if (res && res.status) {
+                        toastr.success(res.message || 'Unit Updated Successfully!');
+
+                        // ✅ Close the modal
+                        const modalEl = document.getElementById("editUnitModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) {
+                            modal.hide();
+                        }
+
+                        // ✅ Reset form
+                        $("#editUnitForm")[0].reset();
+                        $("#editUnitId").val('');
+
+                        // ✅ Update dropdown option
+                        if (res.id && res.name) {
+
+                            // Remove old option
+                            $('#mainUnit option[value="' + res.id + '"]').remove();
+
+                            // Add updated option and select it
+                            const newOption = new Option(res.name, res.id, true, true);
+                            $('#mainUnit').append(newOption);
+
+                        }
+                    } else {
+                        toastr.error(res?.message || 'Failed to update unit');
+                    }
+                },
+                error: function(xhr) {
+                    console.error('❌ Update error:', xhr);
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Server error');
+                }
+            });
+        }
+
+        function populateAndSelectCostCenter() {
              $.ajax({
                  url: '@Url.Action("GetCostCenters", "Lists")',
                  type: 'GET',
@@ -1180,15 +1264,12 @@
              });
          }
 
-        // ==================
-        // INIT ON PAGE LOAD
-        // ==================
         $(document).ready(function () {
             // Load data
             loadAssemblyItems();
             loadItems();
             loadCategories();
-            loadWarehouses();
+             loadWarehouses();
             loadUnitsDropdown("#mainUnit");
            loadManagersDropdown('#manager');
           loadManagersDropdown('#editManager');
@@ -1363,7 +1444,7 @@
                  // List all dropdowns you want to populate
                  const dropdowns = [
                      { ddl: '#editaccruedSalaries' },
-                     { ddl: '#accruedSalaries' } // <-- NEW dropdown added
+                     { ddl: '#accruedSalaries' }
                  ];
 
                  dropdowns.forEach(set => {
@@ -1444,50 +1525,70 @@
                      }
                  });
 
+                function saveCategory() {
+            const id = parseInt($("#categoryId").val()) || 0;
+            const name = $("#categoryName").val().trim();
 
-          $("#categoryForm").on("submit", function (e) {
-             e.preventDefault();
+            if (!name) {
+                toastr.warning("Please enter a category name.");
+                return;
+            }
 
-             const form = this;
-             if (!form.checkValidity()) {
-                 form.classList.add("was-validated");
-                 return;
-             }
+            const isEdit = id > 0;
+            const data = { Id: id, CategoryName: name };
 
-             const idVal = $("#categoryId").val();
-             const isEdit = idVal && parseInt(idVal) > 0;
+            $.ajax({
+                url: isEdit
+                    ? '@Url.Action("EditCategory", "Lists")'
+                    : '@Url.Action("AddCategory", "Lists")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(data),
+                success: function(res) {
+                    if (res && res.status) {
+                        toastr.success(res.message || (isEdit ? "Category updated" : "Category added"));
 
-             const categoryData = {
-                 Id: isEdit ? parseInt(idVal) : 0,
-                 CategoryName: $("#categoryName").val().trim()
-             };
+                        // ✅ Close modal
+                        const modalEl = document.getElementById("addCategoryModal");
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
 
-             $.ajax({
-                 url: isEdit
-         ? '@Url.Action("EditCategory", "Lists")'
-         : '@Url.Action("AddCategory", "Lists")',
-                 type: "POST",
-                 contentType: "application/json",
-                 data: JSON.stringify(categoryData),
+                        // ✅ Reset form
+                        $("#categoryForm")[0].reset();
+                        $("#categoryId").val(0);
 
-                 success: function (res) {
-                     if (res.status) {
-                         toastr.success(isEdit ? "Category updated successfully" : "Category added successfully");
-                         $("#addCategoryModal").modal("hide");
+                        // ✅ Prepare display text with code
+                        const displayText = res.code ? `${res.code} - ${res.categoryName}` : res.categoryName;
 
-                         setTimeout(() => {
-                             location.reload();
-                         }, 1000);
-                     } else {
-                         toastr.error(res.message);
-                     }
-                 },
+                        // ✅ Update dropdowns
+                        if (res.id && res.categoryName) {
+                            if (isEdit) {
+                                $(`#categoryDropdown option[value="${res.id}"]`).text(displayText);
+                                $(`#categoryDropdowns option[value="${res.id}"]`).text(displayText);
+                            } else {
+                                const option1 = new Option(displayText, res.id, true, true);
+                                const option2 = new Option(displayText, res.id, true, true);
+                                $("#categoryDropdown").append(option1);
+                                $("#categoryDropdowns").append(option2);
+                            }
+                        }
+                    } else {
+                        toastr.error(res?.message || "Failed to save category");
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Server error");
+                }
+            });
+        }
 
-                 error: function (xhr) {
-                     toastr.error(xhr.responseJSON?.message || "Request error");
-                 }
-             });
-         });
+
+        // Optional: attach form submit
+        $("#categoryForm").on("submit", function(e) {
+            e.preventDefault();
+            saveCategory();
+        });
+
 
 
                $("#addUnitForm").on("submit", function(e) {

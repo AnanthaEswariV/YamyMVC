@@ -67,10 +67,7 @@ namespace YamyProject.Controllers
         [HttpPost]
         public async Task<IActionResult> AddCategory([FromBody] ItemCatoryViewModel model)
         {
-            if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (string.IsNullOrWhiteSpace(model.CategoryName))
+            if (model == null || string.IsNullOrWhiteSpace(model.CategoryName))
                 return BadRequest(new { status = false, message = "Category name is required" });
 
             try
@@ -88,7 +85,7 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🚫 CHECK: Category already exists?
+                // ✅ Check if category already exists (case-insensitive)
                 string existsQuery = "SELECT COUNT(*) FROM tbl_item_category WHERE LOWER(name) = LOWER(@name)";
                 using (var existsCmd = new MySqlCommand(existsQuery, conn))
                 {
@@ -97,7 +94,6 @@ namespace YamyProject.Controllers
                     if (count > 0)
                         return Conflict(new { status = false, message = "Category name already exists" });
                 }
-
                 // STEP 1: Insert category without code
                 string insertQuery = @"
             INSERT INTO tbl_item_category (name)
@@ -122,8 +118,9 @@ namespace YamyProject.Controllers
                 return Ok(new
                 {
                     status = true,
-                    message = "Category created successfully",
+                    message = "Category added successfully",
                     id = newId,
+                    categoryName = model.CategoryName.Trim(),
                     code = categoryCode
                 });
             }
@@ -136,14 +133,8 @@ namespace YamyProject.Controllers
         [HttpPost]
         public async Task<IActionResult> EditCategory([FromBody] ItemCatoryViewModel model)
         {
-            if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (model.Id <= 0)
-                return BadRequest(new { status = false, message = "Invalid category ID" });
-
-            if (string.IsNullOrWhiteSpace(model.CategoryName))
-                return BadRequest(new { status = false, message = "Category name is required" });
+            if (model == null || model.Id <= 0 || string.IsNullOrWhiteSpace(model.CategoryName))
+                return BadRequest(new { status = false, message = "Invalid data." });
 
             try
             {
@@ -160,40 +151,28 @@ namespace YamyProject.Controllers
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🚫 CHECK: Duplicate name (excluding current item)
-                string existsQuery = @"
-            SELECT COUNT(*)
-            FROM tbl_item_category
-            WHERE LOWER(name) = LOWER(@name)
-              AND id <> @id";
-
+                // ✅ Check for duplicate name
+                string existsQuery = @"SELECT COUNT(*) FROM tbl_item_category 
+                               WHERE LOWER(name) = LOWER(@name) AND id != @id";
                 using (var existsCmd = new MySqlCommand(existsQuery, conn))
                 {
                     existsCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
                     existsCmd.Parameters.AddWithValue("@id", model.Id);
-
                     int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
                     if (count > 0)
                         return Conflict(new { status = false, message = "Category name already exists" });
                 }
 
-                // UPDATE
-                string updateQuery = @"
-            UPDATE tbl_item_category
-            SET name=@name
-            WHERE id=@id;";
-
+                // ✅ Update category
+                string updateQuery = @"UPDATE tbl_item_category SET name=@name WHERE id=@id";
                 using var cmd = new MySqlCommand(updateQuery, conn);
-                cmd.Parameters.AddWithValue("@id", model.Id);
                 cmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
-             
+                cmd.Parameters.AddWithValue("@id", model.Id);
+                int rows = await cmd.ExecuteNonQueryAsync();
 
-                int affected = await cmd.ExecuteNonQueryAsync();
-
-                if (affected == 0)
-                    return NotFound(new { status = false, message = "Category not found" });
-
-                return Ok(new { status = true, message = "Category updated successfully" });
+                return rows > 0
+                    ? Ok(new { status = true, message = "Category updated successfully", id = model.Id, categoryName = model.CategoryName.Trim() })
+                    : NotFound(new { status = false, message = "Category not found." });
             }
             catch (Exception ex)
             {
@@ -556,15 +535,29 @@ namespace YamyProject.Controllers
                     if (count > 0)
                         return Conflict(new { status = false, message = "Unit already exists" });
                 }
-                var query = "INSERT INTO tbl_unit (Name) VALUES (@name)";
-                using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@name", model.Name);
-                await cmd.ExecuteNonQueryAsync();
-                return Ok(new { status = true, message = "Unit added successfully" });
+
+                // ✅ FIXED: Insert and get ID in one query
+                var query = @"INSERT INTO tbl_unit (Name) VALUES (@name);
+                     SELECT LAST_INSERT_ID();";
+
+                int newId;
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Unit added successfully",
+                    id = newId,
+                    name = model.Name.Trim()
+                });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                throw ex;
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
@@ -601,15 +594,21 @@ namespace YamyProject.Controllers
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@name", model.Name.Trim());
                 cmd.Parameters.AddWithValue("@id", model.Id);
-
                 var rows = await cmd.ExecuteNonQueryAsync();
+
                 return rows > 0
-                    ? Ok(new { status = true, message = "Unit updated successfully." })
+                    ? Ok(new
+                    {
+                        status = true,
+                        message = "Unit updated successfully.",
+                        id = model.Id,
+                        name = model.Name.Trim()
+                    })
                     : NotFound(new { status = false, message = "Unit not found." });
             }
             catch (Exception ex)
             {
-                throw ex;
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 
@@ -4827,17 +4826,15 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
         [HttpPost]
         public async Task<IActionResult> AddFixedAssetsCategory([FromBody] FixedAssetsCategoryRequest model)
         {
-            if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (string.IsNullOrWhiteSpace(model.CategoryName))
+            if (model == null || string.IsNullOrWhiteSpace(model.CategoryName))
                 return BadRequest(new { status = false, message = "Please enter category name" });
 
             try
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -4849,71 +4846,78 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 {
                     checkCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
                     var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
-
                     if (exists && model.Id == 0)
                         return BadRequest(new { status = false, message = "Category already exists. Enter another name." });
                 }
 
-                // ✅ Insert new
+                // ✅ Insert and get new ID
                 var insertQuery = @"
             INSERT INTO tbl_fixed_assets_category 
                 (category_name, assets_account_id, depreciation_account_id, expence_account_id)
             VALUES 
-                (@name, @assetsId, @depreciationId, @expenceId)";
-                using var insertCmd = new MySqlCommand(insertQuery, conn);
-                insertCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
-                insertCmd.Parameters.AddWithValue("@assetsId", model.AssetsAccountId);
-                insertCmd.Parameters.AddWithValue("@depreciationId", model.DepreciationAccountId);
-                insertCmd.Parameters.AddWithValue("@expenceId", model.ExpenceAccountId);
+                (@name, @assetsId, @depreciationId, @expenceId);
+            SELECT LAST_INSERT_ID();";
 
-                await insertCmd.ExecuteNonQueryAsync();
+                int newId;
+                using (var insertCmd = new MySqlCommand(insertQuery, conn))
+                {
+                    insertCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
+                    insertCmd.Parameters.AddWithValue("@assetsId", model.AssetsAccountId);
+                    insertCmd.Parameters.AddWithValue("@depreciationId", model.DepreciationAccountId);
+                    insertCmd.Parameters.AddWithValue("@expenceId", model.ExpenceAccountId);
 
-                return Ok(new { status = true, message = "Category added successfully" });
+                    newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Category added successfully",
+                    id = newId,
+                    categoryName = model.CategoryName.Trim()
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
         [HttpPut]
         public async Task<IActionResult> EditFixedAssetsCategory([FromBody] FixedAssetsCategoryRequest model)
         {
-            if (model == null || model.Id <= 0)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (string.IsNullOrWhiteSpace(model.CategoryName))
-                return BadRequest(new { status = false, message = "Category name is required" });
+            if (model == null || model.Id <= 0 || string.IsNullOrWhiteSpace(model.CategoryName))
+                return BadRequest(new { status = false, message = "Invalid request or category name" });
 
             try
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // ✅ Check for duplicate category name
-                var checkQuery = "SELECT COUNT(*) FROM tbl_fixed_assets_category WHERE Category_Name = @name AND Id != @id";
+                // ✅ Check duplicate excluding current
+                var checkQuery = "SELECT COUNT(*) FROM tbl_fixed_assets_category WHERE category_name = @name AND id != @id";
                 using (var checkCmd = new MySqlCommand(checkQuery, conn))
                 {
                     checkCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
                     checkCmd.Parameters.AddWithValue("@id", model.Id);
-
                     var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
                     if (exists)
                         return BadRequest(new { status = false, message = "Category name already exists." });
                 }
 
-                // ✅ Update record
-                var updateQuery = @"UPDATE tbl_fixed_assets_category 
-                            SET Category_Name = @name, 
-                                Assets_Account_Id = @assetsAccountId, 
-                                Depreciation_Account_Id = @depreciationAccountId, 
-                                Expence_Account_Id = @expenseAccountId
-                            WHERE Id = @id";
+                // ✅ Update
+                var updateQuery = @"
+            UPDATE tbl_fixed_assets_category 
+            SET category_name = @name, 
+                assets_account_id = @assetsAccountId, 
+                depreciation_account_id = @depreciationAccountId, 
+                expence_account_id = @expenseAccountId
+            WHERE id = @id";
 
                 using var updateCmd = new MySqlCommand(updateQuery, conn);
                 updateCmd.Parameters.AddWithValue("@name", model.CategoryName.Trim());
@@ -4924,13 +4928,20 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
                 await updateCmd.ExecuteNonQueryAsync();
 
-                return Ok(new { status = true, message = "Fixed Assets Category updated successfully" });
+                return Ok(new
+                {
+                    status = true,
+                    message = "Fixed Assets Category updated successfully",
+                    id = model.Id,
+                    categoryName = model.CategoryName.Trim()
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         [HttpDelete]
         public async Task<IActionResult> DeleteFixedAssetCategory(int id)
