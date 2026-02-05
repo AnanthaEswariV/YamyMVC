@@ -717,7 +717,7 @@
                 if (selectedItem) {
                     row.find("td:nth-child(2) input").val(selectedItem.code || "");
 
-                    row.find("td:nth-child(5) input").val(selectedItem.sales_price || 0);
+                    row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
 
                     calculateRow(row);
                 } else {

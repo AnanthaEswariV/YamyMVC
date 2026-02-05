@@ -673,7 +673,7 @@ namespace YamyProject.Controllers
                     insertCmd.Parameters.AddWithValue("@name", categoryName);
                     int newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
 
-                    return Json(new { status = true, message = "Category added successfully", id = newId });
+                    return Json(new { status = true, message = "Category added successfully", id = newId, name= categoryName });
                 }
                 else // Update
                 {
@@ -684,7 +684,7 @@ namespace YamyProject.Controllers
 
                     int affected = await updateCmd.ExecuteNonQueryAsync();
 
-                    return Json(new { status = true, message = "Category updated successfully" });
+                    return Json(new { status = true, message = "Category updated successfully", id=model.Id, name = categoryName });
                 }
             }
             catch (Exception ex)

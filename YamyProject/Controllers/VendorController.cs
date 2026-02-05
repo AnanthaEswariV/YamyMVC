@@ -749,6 +749,7 @@ namespace YamyProject.Controllers
                             ItemName = reader["ItemName"]?.ToString(),
                             Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
                             CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                            Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
                             Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
                             Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
                             Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
@@ -789,6 +790,7 @@ namespace YamyProject.Controllers
     i.name AS ItemName,
     pd.qty AS Qty,
     pd.cost_price AS CostPrice,
+    pd.price As Price,
     pd.vat AS ItemVat,
     pd.total AS ItemTotal,
     p.warehouse_id AS Warehouse_Id,
@@ -851,6 +853,7 @@ WHERE p.state = 0;
     p.description AS Description,
     p.pay AS Pay,
     i.id As ItemId,
+    d.price As Price,
     d.cost_center_id AS Cost_Center_Id
 FROM tbl_purchase p
 INNER JOIN tbl_purchase_details d ON p.id = d.purchase_id

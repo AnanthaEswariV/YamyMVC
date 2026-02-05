@@ -3009,6 +3009,128 @@ namespace YamyProject.Controllers
                 {
                     throw new Exception($"Failed to create database '{dbName}': {ex.Message}", ex);
                 }
+
+                try
+                {
+                    using (var conn = new MySqlConnection(builder.ConnectionString))
+                    {
+                        await conn.OpenAsync();
+
+                        // 1️⃣ Insert company in its own database
+                        string insertCompanyQuery = $@"
+INSERT INTO `{dbName}`.tbl_company
+(name, descriptions, phone1, phone2, gmail, mobile_number, website, address, trn_no, logoComp)
+VALUES (@Name, @Descriptions, @Phone1, '', @Gmail, '', '', '', '', NULL);";
+
+                        using (var cmd = new MySqlCommand(insertCompanyQuery, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Name", request.Name.Trim());
+                            cmd.Parameters.AddWithValue("@Descriptions", request.Address.Trim());
+                            cmd.Parameters.AddWithValue("@Phone1", request.Phone1.Trim());
+                            cmd.Parameters.AddWithValue("@Gmail", request.Gmail.Trim());
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+
+                        // 2️⃣ Insert user with hashed password
+//                        string salt;
+//                        string passwordHash = PasswordHelper.HashPassword(model.Password, out salt);
+
+//                        string insertUserQuery = $@"
+//INSERT INTO `{dbName}`.tbl_sec_users
+//(user_name, passwordhash, salt, emp_id, first_name, last_name, role_id, active, state)
+//VALUES (@UserName, @PasswordHash, @Salt, 0, @FirstName, '', 1, 0, 0);";
+
+//                        using (var cmd = new MySqlCommand(insertUserQuery, conn))
+//                        {
+//                            cmd.Parameters.AddWithValue("@UserName", request.Name);
+//                            cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
+//                            cmd.Parameters.AddWithValue("@Salt", salt);
+//                            cmd.Parameters.AddWithValue("@FirstName", request.Name);
+
+//                            await cmd.ExecuteNonQueryAsync();
+//                        }
+
+                        // 3️⃣ Get last inserted user ID
+                        string getUserIdQuery = $"SELECT id FROM `{dbName}`.tbl_sec_users ORDER BY id DESC LIMIT 1;";
+                        int recordId = 0;
+
+                        using (var cmd = new MySqlCommand(getUserIdQuery, conn))
+                        {
+                            object resultId = await cmd.ExecuteScalarAsync();
+                            if (resultId != null && resultId != DBNull.Value)
+                                recordId = Convert.ToInt32(resultId);
+                        }
+
+                        // 4️⃣ Insert default permissions for this user
+                        if (recordId > 0)
+                        {
+                            string insertPermissionsQuery = $@"
+INSERT INTO `{dbName}`.tbl_user_permissions
+(user_id, sub_menu_id, can_view, can_edit, can_delete)
+VALUES
+(@UserId, 1, 1, 1, 1),
+(@UserId, 2, 1, 1, 1),
+(@UserId, 3, 1, 1, 1),
+(@UserId, 4, 1, 1, 1),
+(@UserId, 5, 1, 1, 1),
+(@UserId, 0, 1, 1, 1),
+(@UserId, 6, 1, 1, 1),
+(@UserId, 7, 1, 1, 1),
+(@UserId, 8, 1, 1, 1),
+(@UserId, 9, 1, 1, 1),
+(@UserId, 10, 1, 1, 1),
+(@UserId, 11, 1, 1, 1),
+(@UserId, 12, 1, 1, 1),
+(@UserId, 13, 1, 1, 1),
+(@UserId, 14, 1, 1, 1),
+(@UserId, 15, 1, 1, 1),
+(@UserId, 16, 1, 1, 1),
+(@UserId, 17, 1, 1, 1),
+(@UserId, 18, 1, 1, 1),
+(@UserId, 19, 1, 1, 1),
+(@UserId, 20, 1, 1, 1),
+(@UserId, 21, 1, 1, 1),
+(@UserId, 22, 1, 1, 1),
+(@UserId, 23, 1, 0, 0),
+(@UserId, 24, 1, 0, 0),
+(@UserId, 25, 1, 1, 1);"; // add remaining as needed
+
+                            using (var cmd = new MySqlCommand(insertPermissionsQuery, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@UserId", recordId);
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+                        }
+
+//                        // 5️⃣ Insert company record into global `yamycompany` table
+//                        string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
+//                        string insertGlobalCompanyQuery = $@"
+//INSERT INTO yamycompany.tbl_company
+//(database_name, name, code, descriptions, phone1, phone2, gmail, mobile_number, website, address, trn_no, logoComp, default_company, customer_code)
+//VALUES
+//(@DbName, @Name, @Code, @Descriptions, @Phone1, '', @Gmail, '', '', '', '', NULL, @DefaultCompany, @CustomerCode);";
+
+//                        using (var cmd = new MySqlCommand(insertGlobalCompanyQuery, conn))
+//                        {
+//                            cmd.Parameters.AddWithValue("@DbName", dbName);
+//                            cmd.Parameters.AddWithValue("@Name", request.Name.Trim());
+//                            cmd.Parameters.AddWithValue("@Code", request.Code);
+//                            cmd.Parameters.AddWithValue("@Descriptions", request.Address.Trim());
+//                            cmd.Parameters.AddWithValue("@Phone1", request.Phone1.Trim());
+//                            cmd.Parameters.AddWithValue("@Gmail", request.Gmail.Trim());
+//                            cmd.Parameters.AddWithValue("@DefaultCompany", request.DefaultCompany ?? 0);
+//                            cmd.Parameters.AddWithValue("@CustomerCode", customerCode);
+
+//                            await cmd.ExecuteNonQueryAsync();
+//                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Failed to create database '{dbName}': {ex.Message}", ex);
+                }
+
             }
             catch (Exception ex)
             {

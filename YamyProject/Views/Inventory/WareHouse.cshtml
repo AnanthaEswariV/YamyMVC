@@ -134,353 +134,297 @@
 
 
     <script>
-               $(document).ready(function () {
+        $(document).ready(function () {
             if (document.getElementById("warehouseTable")) {
                 loadWarehouse();
             }
-
-
-              $("#newWarehouseForm").submit(function (e) {
-            e.preventDefault();
-
-            let model = {
-                Id: parseInt($("#warehouseId").val()) || 0,
-                Name: $("#warehouseName").val(),
-                City: $("#city").val(),
-                BuildingName: $("#buildingName").val(),
-                EmpId: parseInt($("#manager").val()) || null,
-                AccountId: parseInt($("#accruedSalaries").val()) || null,
-            };
-
-            $.ajax({
-                url: "/Inventory/SaveWarehouse",
-                type: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(model),
-                success: function (res) {
-                    if (res && res.status) {
-                        toastr.success(res.message || "Warehouse saved successfully!");
-                        $("#warehouseCode").val(res.code || "");
-                        $("#newWarehouseModal").modal("hide");
-                        $("#newWarehouseForm")[0].reset();
-                        $("#warehouseId").val(0);
-
-                        //      // ✅ Refresh warehouse table and dropdown
-                        // if (typeof loadWarehouse === "function") {
-                        //     loadWarehouse();
-                        // }
-                        // if (typeof loadWarehouses === "function") {
-                        //     loadWarehouses();
-                        // }
-                        setTimeout(function () {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        toastr.error(res?.message || "Failed to save warehouse");
-                    }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
-                }
-            });
         });
-        });
-          toastr.options = {
-                 "closeButton": true,
-                 "debug": false,
-                 "newestOnTop": false,
-                 "progressBar": true,
-                 "positionClass": "toast-top-right",
-                 "preventDuplicates": false,
-                 "onclick": null,
-                 "showDuration": "300",
-                 "hideDuration": "1000",
-                 "timeOut": "5000",
-                 "extendedTimeOut": "1000",
-                 "showEasing": "swing",
-                 "hideEasing": "linear",
-                 "showMethod": "fadeIn",
-                 "hideMethod": "fadeOut"
-             };
+
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
 
         $(function () {
 
-
-        var table = $('#itemsTable').DataTable({
-            columns: [
-                { data: 'itemName' },
-                { data: 'barcode' },
-                { data: 'costPrice' },
-                { data: 'salesPrice' },
-                { data: 'qty' },
-                { data: 'type' }
-            ]
-        });
-
-        // Load warehouses into dropdown
-        function loadWarehouses() {
-            $.ajax({
-                url: '@Url.Action("GetWarehouses", "Inventory")',
-                type: 'GET',
-                success: function(result) {
-                    const dropdown = $('#warehouseDropdown');
-                    dropdown.empty().append('<option value="">Select Warehouse</option>');
-
-                    if (result.status) {
-                        result.data.forEach(w => {
-                            // use 'display' field from API
-                            dropdown.append(`<option value="${w.id}">${w.display}</option>`);
-                        });
-                    } else {
-                        alert(result.message);
-                    }
-                },
-                error: function(err) {
-                    console.error(err);
-                }
+            var table = $('#itemsTable').DataTable({
+                columns: [
+                    { data: 'itemName' },
+                    { data: 'barcode' },
+                    { data: 'costPrice' },
+                    { data: 'salesPrice' },
+                    { data: 'qty' },
+                    { data: 'type' }
+                ]
             });
-        }
 
-        // Call on page load
-        loadWarehouses();
-        loadWarehouse();
+            // Load warehouses into dropdown
+            function loadWarehouses() {
+                $.ajax({
+                    url: '@Url.Action("GetWarehouses", "Inventory")',
+                    type: 'GET',
+                    success: function(result) {
+                        const dropdown = $('#warehouseDropdown');
+                        dropdown.empty().append('<option value="">Select Warehouse</option>');
 
-            // Load items when warehouse is selected
-        $('#warehouseDropdown').change(function () {
-            let warehouseId = $(this).val();
-            if (!warehouseId) {
-                table.clear().draw();
-                return;
+                        if (result.status) {
+                            result.data.forEach(w => {
+                                dropdown.append(`<option value="${w.id}">${w.display}</option>`);
+                            });
+                        } else {
+                            alert(result.message);
+                        }
+                    },
+                    error: function(err) {
+                        console.error(err);
+                    }
+                });
             }
 
-            $.ajax({
-               url: '@Url.Action("GetWarehouseItems", "Inventory")' + '?warehouseId=' + warehouseId,
-                type: 'GET',
-                success: function (res) {
-                    if (res.status) {
-                        table.clear().rows.add(res.data).draw();
-                    } else {
-                        table.clear().draw();
-                        toastr.warning("No items found");
-                    }
-                },
-                error: function () {
-                    toastr.error("Failed to load items");
+            // Call on page load
+            loadWarehouses();
+            loadWarehouse();
+
+            // Load items when warehouse is selected
+            $('#warehouseDropdown').change(function () {
+                let warehouseId = $(this).val();
+                if (!warehouseId) {
+                    table.clear().draw();
+                    return;
                 }
+
+                $.ajax({
+                    url: '@Url.Action("GetWarehouseItems", "Inventory")' + '?warehouseId=' + warehouseId,
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status) {
+                            table.clear().rows.add(res.data).draw();
+                        } else {
+                            table.clear().draw();
+                            toastr.warning("No items found");
+                        }
+                    },
+                    error: function () {
+                        toastr.error("Failed to load items");
+                    }
+                });
             });
-        });
 
-         // Open Employee modal from Warehouse modal
-        $('.openEmployeeNew').on('click', function (e) {
-            e.preventDefault();
+            // Open Employee modal from Warehouse modal
+            $('.openEmployeeNew').on('click', function (e) {
+                e.preventDefault();
+                $('#newWarehouseModal').modal('hide');
+                $('#newEmployeeModal').modal('show');
+            });
+        $('#newEmployeeModal').one('hidden.bs.modal', function handler() {
+            console.log('🟢 Employee modal closed - refreshing managers');
 
-            // Hide Warehouse modal first
-            $('#newWarehouseModal').modal('hide');
-
-            // Then show Employee modal
-            $('#newEmployeeModal').modal('show');
-        });
-
-        // When Employee modal closes, bring Warehouse modal back
-        $('#newEmployeeModal').on('hidden.bs.modal', function () {
+            loadManagersDropdown('#manager');
+            loadManagersDropdown('#editManager');
             $('#newWarehouseModal').modal('show');
+
+            // Re-attach for next time
+            $('#newEmployeeModal').one('hidden.bs.modal', handler);
         });
 
-        function loadWarehouse() {
-            $.ajax({
-                url: '@Url.Action("GetWarehouses", "Inventory")',
-                type: 'GET',
-                success: function (res) {
+            function loadWarehouse() {
+                $.ajax({
+                    url: '@Url.Action("GetWarehouses", "Inventory")',
+                    type: 'GET',
+                    success: function (res) {
 
-                    let tbody = $("#warehouseTable tbody");
-                    tbody.empty();
+                        let tbody = $("#warehouseTable tbody");
+                        tbody.empty();
 
-                    if (res.status && res.data.length > 0) {
-                        res.data.forEach((w, index) => {
-                            tbody.append(`
+                        if (res.status && res.data.length > 0) {
+                            res.data.forEach((w, index) => {
+                                tbody.append(`
                                 <tr>
                                     <td>${w.display}</td>
                                     <td class="text-center">
-                                              <button class="btn btn-sm btn-outline-primary edit-warehouse"
-                data-id="${w.id}"
-                data-code="${w.code}"
-                data-name="${w.name}"
-                data-empid="${w.empId}"
-                data-city="${w.city}"
-                data-building="${w.buildingName}"
-                data-accountid="${w.accountId}">
-           <i class="fas fa-pen"></i> 
-        </button>
-
+                                        <button class="btn btn-sm btn-outline-primary edit-warehouse"
+                                            data-id="${w.id}"
+                                            data-code="${w.code}"
+                                            data-name="${w.name}"
+                                            data-empid="${w.empId}"
+                                            data-city="${w.city}"
+                                            data-building="${w.buildingName}"
+                                            data-accountid="${w.accountId}">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
                                         <button class="btn btn-sm btn-outline-danger delete-warehouse" data-id="${w.id}">
                                             <i class="fas fa-prescription-bottle-alt"></i>
                                         </button>
                                     </td>
                                 </tr>
                             `);
-                        });
-                    } else {
-                        tbody.append(`
+                            });
+                        } else {
+                            tbody.append(`
                             <tr>
                                 <td colspan="2" class="text-center text-muted">No warehouses found</td>
                             </tr>
                         `);
-                    }
-                },
-                error: function () {
-                    toastr.error("❌ Failed to load warehouses");
-                }
-            });
-        }
-
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const WarehouseId = urlParams.get('Id');
-        if (WarehouseId) {
-            setTimeout(function() {
-                const $editBtn = $('.edit-warehouse').filter(function() {
-                    return String($(this).data('id')) === String(WarehouseId);
-                });
-
-                if ($editBtn.length > 0) {
-                    $editBtn.click();
-                } else {
-                    toastr.info(`Loading item #${WarehouseId}...`);
-                    setTimeout(function() {
-                        const $retryBtn = $('.edit-warehouse').filter(function() {
-                            return String($(this).data('id')) === String(WarehouseId);
-                        });
-                        if ($retryBtn.length > 0) {
-                            $retryBtn.click();
-                        } else {
-                            toastr.warning(`Item #${WarehouseId} not found`);
                         }
-                    }, 2000);
-                }
-            }, 1500);
-        }
-
-
-             $("#newWarehouseForm").submit(function (e) {
-            e.preventDefault();
-
-            let model = {
-                Id: parseInt($("#warehouseId").val()) || 0,
-                Name: $("#warehouseName").val(),
-                City: $("#city").val(),
-                BuildingName: $("#buildingName").val(),
-                EmpId: parseInt($("#manager").val()) || null,
-                AccountId: parseInt($("#accruedSalaries").val()) || null,
-            };
-
-            $.ajax({
-                url: "/Inventory/SaveWarehouse",
-                type: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(model),
-                success: function (res) {
-                    if (res && res.status) {
-                        toastr.success(res.message || "Warehouse saved successfully!");
-                        $("#warehouseCode").val(res.code || "");
-                        $("#newWarehouseModal").modal("hide");
-                        $("#newWarehouseForm")[0].reset();
-                        $("#warehouseId").val(0);
-
-                        //      // ✅ Refresh warehouse table and dropdown
-                        // if (typeof loadWarehouse === "function") {
-                        //     loadWarehouse();
-                        // }
-                        // if (typeof loadWarehouses === "function") {
-                        //     loadWarehouses();
-                        // }
-                        setTimeout(function () {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        toastr.error(res?.message || "Failed to save warehouse");
+                    },
+                    error: function () {
+                        toastr.error("❌ Failed to load warehouses");
                     }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
-                }
-            });
-        });
+                });
+            }
 
 
-        $(document).on("click", ".edit-warehouse", function() {
-            const btn = $(this);
+            const urlParams = new URLSearchParams(window.location.search);
+            const WarehouseId = urlParams.get('Id');
+            if (WarehouseId) {
+                setTimeout(function() {
+                    const $editBtn = $('.edit-warehouse').filter(function() {
+                        return String($(this).data('id')) === String(WarehouseId);
+                    });
 
-
-            $("#editWarehouseId").val(btn.data("id"));
-            $("#editWarehouseCode").val(btn.data("code"));
-            $("#editWarehouseName").val(btn.data("name"));
-            $("#editManager").val(btn.data("empid"));
-            $("#editCity").val(btn.data("city"));
-            $("#editBuildingName").val(btn.data("building"));
-            $("#editaccruedSalaries").val(btn.data("accountid"));
-
-            $("#editWarehouseModal").modal("show");
-        });
-
-        $("#editWarehouseForm").submit(function(e) {
-            e.preventDefault();
-
-            let model = {
-                Id: parseInt($("#editWarehouseId").val()),
-                Name: $("#editWarehouseName").val(),
-                City: $("#editCity").val(),
-                BuildingName: $("#editBuildingName").val(),
-                EmpId: parseInt($("#editManager").val()) || null,
-                AccountId: parseInt($("#editaccruedSalaries").val()) || null
-            };
-
-            $.ajax({
-                url: '@Url.Action("EditWarehouse", "Inventory")',
-                type: "PUT",
-                contentType: "application/json",
-                data: JSON.stringify(model),
-                success: function(res) {
-                    if(res.status) {
-                        toastr.success(res.message);
-                        $("#editWarehouseModal").modal("hide");
-                        setTimeout(() => location.reload(), 1000);
+                    if ($editBtn.length > 0) {
+                        $editBtn.click();
                     } else {
-                        toastr.error(res.message);
+                        toastr.info(`Loading item #${WarehouseId}...`);
+                        setTimeout(function() {
+                            const $retryBtn = $('.edit-warehouse').filter(function() {
+                                return String($(this).data('id')) === String(WarehouseId);
+                            });
+                            if ($retryBtn.length > 0) {
+                                $retryBtn.click();
+                            } else {
+                                toastr.warning(`Item #${WarehouseId} not found`);
+                            }
+                        }, 2000);
                     }
-                },
-                error: function(xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
-                }
+                }, 1500);
+            }
+
+            // ✅ SINGLE warehouse form submit handler
+            $("#newWarehouseForm").submit(function (e) {
+                e.preventDefault();
+
+                let model = {
+                    Id: parseInt($("#warehouseId").val()) || 0,
+                    Name: $("#warehouseName").val(),
+                    City: $("#city").val(),
+                    BuildingName: $("#buildingName").val(),
+                    EmpId: parseInt($("#manager").val()) || null,
+                    AccountId: parseInt($("#accruedSalaries").val()) || null,
+                };
+
+                $.ajax({
+                    url: "/Inventory/SaveWarehouse",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(model),
+                    success: function (res) {
+                        if (res && res.status) {
+                            toastr.success(res.message || "Warehouse saved successfully!");
+                            $("#warehouseCode").val(res.code || "");
+                            $("#newWarehouseModal").modal("hide");
+                            $("#newWarehouseForm")[0].reset();
+                            $("#warehouseId").val(0);
+                            setTimeout(function () {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            toastr.error(res?.message || "Failed to save warehouse");
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText || "Server error");
+                    }
+                });
             });
-        });
 
-        // Delete warehouse
-        $(document).on("click", ".delete-warehouse", function() {
-            const id = $(this).data("id");
 
-            if(confirm("Are you sure you want to delete this warehouse?")) {
-                        $.ajax({
-        url: '@Url.Action("DeleteWarehouse", "Inventory")' + '/' + id,
-                    type: "DELETE",
+            $(document).on("click", ".edit-warehouse", function() {
+                const btn = $(this);
+
+                $("#editWarehouseId").val(btn.data("id"));
+                $("#editWarehouseCode").val(btn.data("code"));
+                $("#editWarehouseName").val(btn.data("name"));
+                $("#editManager").val(btn.data("empid"));
+                $("#editCity").val(btn.data("city"));
+                $("#editBuildingName").val(btn.data("building"));
+                $("#editaccruedSalaries").val(btn.data("accountid"));
+
+                $("#editWarehouseModal").modal("show");
+            });
+
+            $("#editWarehouseForm").submit(function(e) {
+                e.preventDefault();
+
+                let model = {
+                    Id: parseInt($("#editWarehouseId").val()),
+                    Name: $("#editWarehouseName").val(),
+                    City: $("#editCity").val(),
+                    BuildingName: $("#editBuildingName").val(),
+                    EmpId: parseInt($("#editManager").val()) || null,
+                    AccountId: parseInt($("#editaccruedSalaries").val()) || null
+                };
+
+                $.ajax({
+                    url: '@Url.Action("EditWarehouse", "Inventory")',
+                    type: "PUT",
+                    contentType: "application/json",
+                    data: JSON.stringify(model),
                     success: function(res) {
-                        if(res && res.status) {
-                            toastr.success(res.message || "Warehouse deleted successfully");
+                        if(res.status) {
+                            toastr.success(res.message);
+                            $("#editWarehouseModal").modal("hide");
                             setTimeout(() => location.reload(), 1000);
                         } else {
-                            toastr.error(res.message || "Failed to delete warehouse");
+                            toastr.error(res.message);
                         }
                     },
                     error: function(xhr) {
                         toastr.error(xhr.responseJSON?.message || xhr.statusText);
                     }
                 });
-            }
+            });
+
+            // Delete warehouse
+            $(document).on("click", ".delete-warehouse", function() {
+                const id = $(this).data("id");
+
+                if(confirm("Are you sure you want to delete this warehouse?")) {
+                    $.ajax({
+                        url: '@Url.Action("DeleteWarehouse", "Inventory")' + '/' + id,
+                        type: "DELETE",
+                        success: function(res) {
+                            if(res && res.status) {
+                                toastr.success(res.message || "Warehouse deleted successfully");
+                                setTimeout(() => location.reload(), 1000);
+                            } else {
+                                toastr.error(res.message || "Failed to delete warehouse");
+                            }
+                        },
+                        error: function(xhr) {
+                            toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                        }
+                    });
+                }
+            });
+
         });
 
-
-        });
-
-              function loadManagersDropdown(selector, selectedId = null) {
+        // ✅ IMPROVED: Load managers function with better handling
+        function loadManagersDropdown(selector, selectedId = null) {
             $.getJSON('@Url.Action("GetAllEmployees", "Inventory")', function(employees) {
                 const $dropdown = $(selector);
                 $dropdown.empty().append('<option value="">Select Manager</option>');
@@ -489,6 +433,8 @@
                     const selected = selectedId && emp.id === selectedId ? 'selected' : '';
                     $dropdown.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
                 });
+
+                console.log(`✅ Loaded ${employees.length} employees into ${selector}`);
             }).fail(function() {
                 console.error("Failed to load employees for dropdown:", selector);
             });
@@ -496,30 +442,24 @@
 
         // Call this on page load
         $(document).ready(function() {
-        loadManagersDropdown('#manager');
-        loadManagersDropdown('#editManager');
+            loadManagersDropdown('#manager');
+            loadManagersDropdown('#editManager');
         });
 
-
-
-
-
-
-         $(document).on('click', '.openEmployeeNew', function(e) {
+        $(document).on('click', '.openEmployeeNew', function(e) {
             e.preventDefault();
 
             // Reset form for adding new employee
             $('#newEmployeeForm')[0].reset();
-            $('#EmployeeId').val(''); // clear ID for Add mode
-            $('#cityDropdown').html('<option value="">-- Select --</option>'); // reset city dropdown
-            $('#saveOrUpdateBtn').data('action', 'save').text('Save'); // set save mode
+            $('#EmployeeId').val('');
+            $('#cityDropdown').html('<option value="">-- Select --</option>');
+            $('#saveOrUpdateBtn').data('action', 'save').text('Save');
 
             // Show the modal
             $('#newEmployeeModal').modal('show');
         });
 
-
-                          // Function to get today's date in YYYY-MM-DD format
+        // Function to get today's date in YYYY-MM-DD format
         function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
@@ -532,7 +472,6 @@
         document.getElementById('newEmployeeModal').addEventListener('shown.bs.modal', function () {
             const todayDate = getTodayDate();
 
-            // Fill all date fields
             const dateFields = [
                 'BirthDay',
                 'PassportIssueDate',
@@ -553,23 +492,22 @@
             });
         });
 
-
-          // Form submit handler
+        // ✅ FIXED: Form submit handler - removed duplicate dropdown update logic
         $('#newEmployeeForm').on('submit', function (e) {
             e.preventDefault();
 
-            const form = this;                     
+            const form = this;
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
                 return;
             }
 
-            // Decide create vs update by EmployeeId presence (robust)
             const idVal = $('#EmployeeId').val();
             const isEdit = idVal && parseInt(idVal) > 0;
-          const url = isEdit
-        ? '@Url.Action("EditEmployee", "HR")'
-        : '@Url.Action("SaveEmployee", "HR")';
+            const url = isEdit
+                ? '@Url.Action("EditEmployee", "HR")'
+                : '@Url.Action("SaveEmployee", "HR")';
+
             const employeeData = {
                 Id: isEdit ? parseInt(idVal) : 0,
                 Name: $('input[name="EmployeeName"]').val() || '',
@@ -628,12 +566,12 @@
                 contentType: 'application/json',
                 data: JSON.stringify(employeeData),
                 success: function (res) {
+                    console.log('AJAX response:', res);
+
                     if (res.status) {
                         toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
-                            $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
-                            setTimeout(function () {
-                                location.reload(); // or call a function to reload table/dropdown
-                            }, 1500);
+                        $('#newEmployeeModal').modal('hide');
+                        // ✅ Manager dropdown will be refreshed when modal closes via the hidden.bs.modal event
                     } else {
                         toastr.error(res.message || 'Operation failed');
                     }
@@ -644,72 +582,57 @@
             });
         });
 
+        $(document).ready(function () {
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function (data) {
+                    const dropdowns = [
+                        { ddl: '#editaccruedSalaries' },
+                        { ddl: '#accruedSalaries' }
+                    ];
 
-           $(document).ready(function () {
-                       $.ajax({
-            url: '@Url.Action("GetAccruedSalaries", "HR")',
-            type: 'GET',
-            success: function (data) {
+                    dropdowns.forEach(set => {
+                        let $ddl = $(set.ddl);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
 
-                // List all dropdowns you want to populate
-                const dropdowns = [
-                    { ddl: '#editaccruedSalaries' },
-                    { ddl: '#accruedSalaries' } // <-- NEW dropdown added
-                ];
-
-                dropdowns.forEach(set => {
-
-                    let $ddl = $(set.ddl);
-                    $ddl.empty().append('<option value="">-- Select --</option>');
-
-                    // Fill dropdown
-                    $.each(data, function (i, item) {
-                        $ddl.append(
-                            $('<option>', {
-                                value: item.id,
-                                text: item.code + ' - ' + item.name,
-                                'data-code': item.code
-                            })
-                        );
-                    });
-
-                    // If dropdown has code box (edit screen), connect change event
-                    if (set.codeBox) {
-                        $ddl.on('change', function () {
-                            let selected = $(this).find(':selected');
-                            let code = selected.data('code');
-                            $(set.codeBox).val(code || "");
+                        $.each(data, function (i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
                         });
-                    }
-                });
-            },
-            error: function (xhr, status, error) {
-                console.error("❌ Error loading accounts:", status, error);
-            }
-        });
 
+                        if (set.codeBox) {
+                            $ddl.on('change', function () {
+                                let selected = $(this).find(':selected');
+                                let code = selected.data('code');
+                                $(set.codeBox).val(code || "");
+                            });
+                        }
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading accounts:", status, error);
+                }
+            });
 
+            let countryCities = [];
 
-
-         let countryCities = []; // global storage for countries and cities
-
-            // Function to load country & city dropdowns
-         function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+            function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
                 const $country = $(countryIdSelector);
                 const $city = $(cityIdSelector);
 
                 $.getJSON(apiUrl, function (data) {
-                    countryCities = data; // store globally
-
-                    // Populate country dropdown
+                    countryCities = data;
                     $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
                 });
 
-                // Event: When country changes, populate cities
                 $country.on('change', function () {
                     const selectedCountryId = $(this).val();
-
-                    // Reset city dropdown
                     $city.html('<option value="">-- Select --</option>');
 
                     if (selectedCountryId) {
@@ -719,28 +642,24 @@
                 });
             }
 
-         loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
+            loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
 
-         $.ajax({
-                    url: '@Url.Action("GetCountryOfIssue", "HR")',
-                    type: 'GET',
-                    success: function (data) {
-                        let $ddl = $('#countryOfIssue');
-                        $ddl.empty().append('<option value="">-- Select --</option>');
+            $.ajax({
+                url: '@Url.Action("GetCountryOfIssue", "HR")',
+                type: 'GET',
+                success: function (data) {
+                    let $ddl = $('#countryOfIssue');
+                    $ddl.empty().append('<option value="">-- Select --</option>');
 
-                        $.each(data, function (i, country) {
-                            $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
-                        });
-                    },
-                    error: function () {
-                        alert("Error loading countries");
-                    }
-                });
-
+                    $.each(data, function (i, country) {
+                        $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
+                    });
+                },
+                error: function () {
+                    alert("Error loading countries");
+                }
             });
-
-        
-
+        });
 
     </script>
 }

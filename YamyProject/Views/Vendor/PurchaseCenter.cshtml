@@ -666,7 +666,7 @@
                             <tr>
                                 <td>${item.itemName}</td>
                                 <td>${item.qty}</td>
-                                <td>${item.costPrice.toFixed(2)}</td>
+                                <td>${item.price.toFixed(2)}</td>
                                 <td>${item.vat.toFixed(2)}</td>
                                 <td>${item.total.toFixed(2)}</td>
                             </tr>
@@ -690,7 +690,7 @@
             });
         }
 
-            $(document).on('click', '.viewPurchaseInvoiceBtn', function (e) {
+        $(document).on('click', '.viewPurchaseInvoiceBtn', function (e) {
             e.preventDefault();
             const purchaseId = $(this).data('purchase-id');
             if (!purchaseId) return;
@@ -745,7 +745,7 @@
                             <td>${sale.net.toFixed(2)}</td>
                             <td>${item.itemName}</td>
                             <td>${item.qty}</td>
-                            <td>${item.costPrice.toFixed(2)}</td>
+                            <td>${item.price.toFixed(2)}</td>
                             <td>${item.vat.toFixed(2)}</td>
                             <td>${item.total.toFixed(2)}</td>
                             <td>
@@ -960,11 +960,11 @@
             if (selectedId) {
                 // Find the item in the itemsList
                 const selectedItem = itemsList.find(item => item.id === selectedId);
-
+                console.log(selectedItem);
                 if (selectedItem) {
                     row.find("td:nth-child(2) input").val(selectedItem.code || "");
 
-                    row.find("td:nth-child(5) input").val(selectedItem.sales_price || 0);
+                    row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
 
                     calculateRow(row);
                 } else {
@@ -1103,7 +1103,7 @@
             const item = {
                 ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
                 Quantity: qty,
-                CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
+                CostPrice: parseFloat(row.find('td:nth-child(5) input').data('price')) || 0,
                 Price: price,
                 VatPercentage: vatPercentage,
                 Vat: calculatedVat,

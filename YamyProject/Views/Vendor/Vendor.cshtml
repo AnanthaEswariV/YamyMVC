@@ -700,17 +700,19 @@
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ Name: categoryName }),
-                success: function (res) {
-                    if (res.status) {
-                        toastr.success('Category added successfully');
-                        $('#addCategoryModal').modal('hide');
+                      success: function (res) {
+            if (res.status) {
+                toastr.success('Category added successfully');
+                $('#addCategoryModal').modal('hide');
 
-                        // Add new category to dropdown and select it
-                        $('#customerCategory').append(new Option(res.name, res.id, true, true));
-                    } else {
-                        toastr.error(res.message);
-                    }
-                },
+                const newOption = new Option(res.name, res.id, false, true);
+                $('#customerCategory')
+                    .append(newOption)
+                    .trigger('change.select2');
+            } else {
+                toastr.error(res.message);
+            }
+        },
                 error: function (xhr) {
                     toastr.error(xhr.responseJSON?.message || xhr.statusText);
                 }

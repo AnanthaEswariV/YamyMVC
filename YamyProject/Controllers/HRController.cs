@@ -103,7 +103,6 @@ namespace YamyProject.Controllers
              @active, 0)";
 
                 using var insertCmd = new MySqlCommand(insertQuery, conn);
-
                 insertCmd.Parameters.AddWithValue("@code", newCode);
                 insertCmd.Parameters.AddWithValue("@name", model.Name ?? "");
                 insertCmd.Parameters.AddWithValue("@birth_day", model.BirthDay);
@@ -152,9 +151,8 @@ namespace YamyProject.Controllers
                 insertCmd.Parameters.AddWithValue("@petty_cash_id", model.PettyCashId ?? 0);
                 insertCmd.Parameters.AddWithValue("@active", model.Active != 0 ? 1 : 0);
 
-                await insertCmd.ExecuteNonQueryAsync();
-
-                return Ok(new { status = true, message = "Employee added successfully", code = newCode });
+                var newId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+                return Ok(new { status = true, message = "Employee added successfully", code = newCode , id= newId, name= model.Name.Trim() });
             }
             catch(Exception ex)
             {
