@@ -392,45 +392,4 @@
 
 
 <script>
-    // $(document).ready(function () {
-    //     loadUserMenu();
-    // });
-
-    // function loadUserMenu() {
-    //     $.ajax({
-    //         url: '/Account/GetUserMenu',
-    //         type: 'GET',
-    //         success: function (res) {
-    //             if (!res.status) return;
-
-    //             let html = '';
-
-    //             res.data.forEach(main => {
-    //                 html += `
-    //                     <li class="dropdown">
-    //                         ${main.name}
-    //                         <ul class="submenu">
-    //                 `;
-
-    //                 main.subMenus.forEach(sub => {
-    //                     html += `
-    //                         <li>
-    //                             <a href="${sub.url}">${sub.name}</a>
-    //                         </li>
-    //                     `;
-    //                 });
-
-    //                 html += `
-    //                         </ul>
-    //                     </li>
-    //                 `;
-    //             });
-
-    //             $("#dynamicMenu").html(html);
-    //         },
-    //         error: function () {
-    //             toastr.error("Failed to load menu");
-    //         }
-    //     });
-    // }
 </script>
