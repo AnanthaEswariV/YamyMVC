@@ -5633,7 +5633,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    //Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -5655,9 +5655,9 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 {
                     var insertQuery = @"
             INSERT INTO tbl_company
-            (name, address, descriptions, phone1, phone2, gmail, mobile_number, website, trn_no, code, logoComp, stampComp, default_company)
+            (name, address, descriptions, phone1, phone2, gmail, mobile_number, website, trn_no, country_id, logoComp, stampComp)
             VALUES
-            (@name, @address, @descriptions, @phone1, @phone2, @gmail, @mobile_number, @website, @trn_no, @code, @logoComp, @stampComp, @default_company)";
+            (@name, @address, @descriptions, @phone1, @phone2, @gmail, @mobile_number, @website, @trn_no, @country_id, @logoComp, @stampComp)";
 
                     using var insertCmd = new MySqlCommand(insertQuery, conn);
                     insertCmd.Parameters.AddWithValue("@name", model.Name.Trim());
@@ -5669,8 +5669,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     insertCmd.Parameters.AddWithValue("@mobile_number", model.MobileNumber?.Trim() ?? "");
                     insertCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
                     insertCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
-                    insertCmd.Parameters.AddWithValue("@code", model.CountryId);
-                    insertCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
+                    insertCmd.Parameters.AddWithValue("@country_id", model.CountryId);
+                    //insertCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
                     insertCmd.Parameters.AddWithValue("@logoComp", ImagebyteArray ?? (object)DBNull.Value);
                     insertCmd.Parameters.AddWithValue("@stampComp", ImagebyteArrayStamp ?? (object)DBNull.Value);
 
@@ -5683,8 +5683,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     var updateQuery = @"
             UPDATE tbl_company
             SET name = @name, address = @address, descriptions = @descriptions, phone1 = @phone1, phone2 = @phone2, gmail = @gmail,
-                mobile_number = @mobile_number, website = @website, trn_no = @trn_no, code = @code, logoComp = @logoComp,
-                stampComp = @stampComp, default_company = @default_company
+                mobile_number = @mobile_number, website = @website, trn_no = @trn_no, country_id = @country_id, logoComp = @logoComp,
+                stampComp = @stampComp
             WHERE id = @id";
 
                     using var updateCmd = new MySqlCommand(updateQuery, conn);
@@ -5697,10 +5697,10 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     updateCmd.Parameters.AddWithValue("@mobile_number", model.MobileNumber?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@website", model.Website?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@trn_no", model.TrnNo?.Trim() ?? "");
-                    updateCmd.Parameters.AddWithValue("@code", model.CountryId);
+                    updateCmd.Parameters.AddWithValue("@country_id", model.CountryId);
                     updateCmd.Parameters.AddWithValue("@logoComp", ImagebyteArray ?? (object)DBNull.Value);
                     updateCmd.Parameters.AddWithValue("@stampComp", ImagebyteArrayStamp ?? (object)DBNull.Value);
-                    updateCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
+                   // updateCmd.Parameters.AddWithValue("@default_company", model.IsDefault ? 1 : 0);
                     updateCmd.Parameters.AddWithValue("@id", model.Id);
 
                     int affected = await updateCmd.ExecuteNonQueryAsync();
