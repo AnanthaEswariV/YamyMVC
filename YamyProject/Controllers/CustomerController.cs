@@ -1068,6 +1068,8 @@ WHERE a.assembly_id = @assemblyId;
             return Json(new { status = true, message = "Item is valid" });
         }
 
+        #region
+
         [HttpPost]
         public async Task<IActionResult> SaveInvoice([FromBody] SalesInvoiceRequest model)
         {
@@ -1329,7 +1331,7 @@ WHERE a.assembly_id = @assemblyId;
                     await cmd.ExecuteNonQueryAsync();
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw ex;
             }
@@ -1520,6 +1522,7 @@ WHERE a.assembly_id = @assemblyId;
                 );
             }
         }
+
         private static async Task InsertTransactionAsync(
             MySqlConnection conn,
             MySqlTransaction tx,
@@ -1559,6 +1562,9 @@ WHERE a.assembly_id = @assemblyId;
 
             await cmd.ExecuteNonQueryAsync();
         }
+
+
+        #endregion
 
         [HttpGet]
         public async Task<IActionResult> GetSalesInvoiceReport(int salesId)
@@ -1730,6 +1736,10 @@ LIMIT 1;
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
+
+
 
         #endregion
 

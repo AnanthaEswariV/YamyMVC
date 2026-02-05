@@ -119,7 +119,7 @@ namespace YamyProject.Core.Models
                                 table.Cell().Text(item.Qty.ToString("N2"));
                                 table.Cell().Text(item.UnitName);
                                 table.Cell().Text(item.Price.ToString("N2"));
-                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Discount?.ToString("N2"));
                                 table.Cell().Text(item.Total.ToString("N2"));
                             }
                         });
@@ -300,7 +300,7 @@ namespace YamyProject.Core.Models
                                 table.Cell().Text(item.Qty.ToString("N2"));
                                 table.Cell().Text(item.UnitName);
                                 table.Cell().Text(item.Price.ToString("N2"));
-                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Discount?.ToString("N2"));
                                 table.Cell().Text(item.Total.ToString("N2"));
                             }
                         });
@@ -470,7 +470,7 @@ namespace YamyProject.Core.Models
                                 table.Cell().Text(item.Qty.ToString("N2"));
                                 table.Cell().Text(item.UnitName);
                                 table.Cell().Text(item.Price.ToString("N2"));
-                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Discount?.ToString("N2"));
                                 table.Cell().Text(item.Total.ToString("N2"));
                             }
                         });
@@ -638,7 +638,7 @@ namespace YamyProject.Core.Models
                                 table.Cell().Text(item.Qty.ToString("N2"));
                                 table.Cell().Text(item.UnitName);
                                 table.Cell().Text(item.Price.ToString("N2"));
-                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Discount?.ToString("N2"));
                                 table.Cell().Text(item.Total.ToString("N2"));
                             }
                         });
@@ -790,7 +790,7 @@ namespace YamyProject.Core.Models
                                 table.Cell().Text(item.Qty.ToString("N2"));
                                 table.Cell().Text(item.UnitName);
                                 table.Cell().Text(item.Price.ToString("N2"));
-                                table.Cell().Text(item.Discount.ToString("N2"));
+                                table.Cell().Text(item.Discount?.ToString("N2"));
                                 table.Cell().Text(item.Total.ToString("N2"));
                             }
                         });
