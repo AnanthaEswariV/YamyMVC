@@ -1622,7 +1622,6 @@ namespace YamyProject.Controllers
         }
 
 
-
         [HttpGet]
         public async Task<IActionResult> GetAttendance(string? employeeName = null, string? month = null, string? year = null)
         {

@@ -748,7 +748,7 @@
          });
 
            // Form submit handler
-         $('#newEmployeeForm').on('submit', function (e) {
+        $('#newEmployeeForm').on('submit', function (e) {
              e.preventDefault();
 
              const form = this;
@@ -757,12 +757,12 @@
                  return;
              }
 
-             // Decide create vs update by EmployeeId presence (robust)
              const idVal = $('#EmployeeId').val();
              const isEdit = idVal && parseInt(idVal) > 0;
-           const url = isEdit
-         ? '@Url.Action("EditEmployee", "HR")'
-         : '@Url.Action("SaveEmployee", "HR")';
+             const url = isEdit
+                 ? '@Url.Action("EditEmployee", "HR")'
+                 : '@Url.Action("SaveEmployee", "HR")';
+
              const employeeData = {
                  Id: isEdit ? parseInt(idVal) : 0,
                  Name: $('input[name="EmployeeName"]').val() || '',
@@ -813,6 +813,7 @@
                  Active: $('#employeeActive').is(':checked') ? 1 : 0
              };
 
+             console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
 
              $.ajax({
                  url: url,
@@ -820,12 +821,12 @@
                  contentType: 'application/json',
                  data: JSON.stringify(employeeData),
                  success: function (res) {
+                     console.log('AJAX response:', res);
+
                      if (res.status) {
                          toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
-                             $('#newEmployeeModal').modal('hide'); // Optional: reload page or table
-                             setTimeout(function () {
-                                 location.reload(); // or call a function to reload table/dropdown
-                             }, 1500);
+                         $('#newEmployeeModal').modal('hide');
+                         // ✅ Manager dropdown will be refreshed when modal closes via the hidden.bs.modal event
                      } else {
                          toastr.error(res.message || 'Operation failed');
                      }
@@ -1115,7 +1116,7 @@
             });
         }
 
-        function loadManagersDropdown(selector, selectedId = null) {
+               function loadManagersDropdown(selector, selectedId = null) {
              $.getJSON('@Url.Action("GetAllEmployees", "Inventory")', function(employees) {
                  const $dropdown = $(selector);
                  $dropdown.empty().append('<option value="">Select Manager</option>');
@@ -1124,6 +1125,8 @@
                      const selected = selectedId && emp.id === selectedId ? 'selected' : '';
                      $dropdown.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
                  });
+
+                 console.log(`✅ Loaded ${employees.length} employees into ${selector}`);
              }).fail(function() {
                  console.error("Failed to load employees for dropdown:", selector);
              });

@@ -1217,16 +1217,16 @@ namespace YamyProject.Core.Models
         public string? ShipTo { get; set; }
         public string PaymentMethod { get; set; } = string.Empty;
         public int AccountCashId { get; set; }
-        public int PaymentCreditAccountId { get; set; }
+        public int? PaymentCreditAccountId { get; set; }
         public string? PaymentTerms { get; set; }
         public DateTime PaymentDate { get; set; }
         public decimal TotalBeforeVat { get; set; }
         public decimal Vat { get; set; }
         public decimal NetTotal { get; set; }
-        public int SalesRevenueAccountId { get; set; } 
-        public int VatAccountId { get; set; }        
-        public decimal InventoryCost { get; set; }   
-        public int CogsAccountId { get; set; }
+        public int? SalesRevenueAccountId { get; set; } 
+        public int? VatAccountId { get; set; }        
+        public decimal? InventoryCost { get; set; }   
+        public int? CogsAccountId { get; set; }
 
 
 

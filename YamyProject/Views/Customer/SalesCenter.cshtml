@@ -832,56 +832,65 @@
             $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
 
-            const form = this;
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-                return;
-            }
             const invoiceId = $("#salescenterform").data("invoiceId") || 0;
         $('#paymentTermsValue').val($('#paymentTerms').val());
             // Collect invoice header data
-            const invoiceData = {
-                Id: invoiceId, // 0 = New, or set existing Id for edit
-                InvoiceDate: $('#date').val(),
-                CustomerId: parseInt($('#customerName').val()) || 0,
-                InvoiceCode: $('#invoiceCode').val().trim(),
-                PoNo: $('#poNo').val().trim(),
-                BillTo: $('#billTo').val().trim(),
-                City: $('#emirates').val(),
-                SalesMan: $('#salesMan').val().trim(),
-                ShipDate: $('#shipDate').val(),
-                ShipVia: $('#viaType').val(),
-                ShipTo: $('#ship').val().trim(),
-                PaymentMethod: $('#invoiceType').val(),
-                AccountCashId: parseInt($('#accountName').val()) || 0,
-                PaymentTerms: $('#paymentTermsValue').val(),
-                PaymentDate: $('#duedate').val(),
-                TotalBeforeVat: parseFloat($('#totalBeforeVat').val()) || 0,
-                Vat: parseFloat($('#totalVat').val()) || 0,
-                NetTotal: parseFloat($('#netAmount').val()) || 0,
-                WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
-                Items: []
-            };
+                 const invoiceData = {
+            Id: invoiceId,
+            InvoiceDate: $('#date').val() ? new Date($('#date').val()).toISOString() : new Date().toISOString(),
+            CustomerId: parseInt($('#customerName').val()) || 0,
+            InvoiceCode: $('#invoiceCode').val().trim() || '',
+            WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
+            PoNo: $('#poNo').val().trim() || '',
+            BillTo: $('#billTo').val().trim() || '',
+            City: $('#emirates').val() || '',
+            SalesMan: $('#salesMan').val().trim() || '',
+            ShipDate: $('#shipDate').val() ? new Date($('#shipDate').val()).toISOString() : new Date().toISOString(),
+            ShipVia: $('#viaType').val() || '',
+            ShipTo: $('#ship').val().trim() || '',
+            PaymentMethod: $('#invoiceType').val() || '',
+            AccountCashId: parseInt($('#accountName').val()) || 0,
+            PaymentCreditAccountId: 0,
+            PaymentTerms: $('#paymentTermsValue').val() || '',
+            PaymentDate: $('#duedate').val() ? new Date($('#duedate').val()).toISOString() : new Date().toISOString(),
+            TotalBeforeVat: parseFloat($('#totalBeforeVat').val()) || 0,
+            Vat: parseFloat($('#totalVat').val()) || 0,
+            NetTotal: parseFloat($('#netAmount').val()) || 0,
+            SalesRevenueAccountId: 0,
+            VatAccountId: 0,
+            InventoryCost: 0,
+            CogsAccountId: 0,
+            Items: []
+        };
+
 
             // Collect table items
             $('#salesModal tbody tr').each(function () {
                 const row = $(this);
-                       const item = {
+               let price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
+        let qty = parseFloat(row.find('.qty').val()) || 0;
+        let discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
+        let taxP = parseFloat(row.find('.tax').val()) || 0;
+
+        const vat = ((price * qty) - discount) * (taxP / 100) || 0;
+
+        const item = {
             ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-            Qty: parseFloat(row.find('.qty').val()) || 0,
-            Price: parseFloat(row.find('td:nth-child(5) input').val()) || 0,
-            CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0, // or wherever you store cost
-            Discount: parseFloat(row.find('td:nth-child(6) input').val()) || 0,
-            VatP: parseFloat(row.find('.tax').val()) || 0,   // VAT percentage
-            Vat: ((parseFloat(row.find('td:nth-child(5) input').val()) * parseFloat(row.find('.qty').val())) - parseFloat(row.find('td:nth-child(6) input').val())) * (parseFloat(row.find('.tax').val()) / 100),
+            Qty: qty,
+            Price: price,
+            CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
+            Discount: discount,
+            VatP: taxP,
+            Vat: vat,
             Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
             CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
         };
 
+
                 invoiceData.Items.push(item);
             });
 
-
+            console.log(invoiceData);
             // AJAX POST to API
             $.ajax({
                  url: '@Url.Action("SaveInvoice", "Customer")',
@@ -1013,14 +1022,12 @@
 
         $(document).on("change", ".itemNameSelect", function () {
             const selectedId = parseInt($(this).val(), 10); 
-            console.log("Selected ID: ", selectedId); 
 
             const row = $(this).closest("tr"); 
 
             if (selectedId) {
                 // Find the item in the itemsList
                 const selectedItem = itemsList.find(item => item.id === selectedId);
-                console.log("Selected Item: ", selectedItem); 
 
                 if (selectedItem) {
                     row.find("td:nth-child(2) input").val(selectedItem.code || "");
