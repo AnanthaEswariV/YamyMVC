@@ -658,7 +658,7 @@
                 ProjectSites: selectedProjectIds
             };
 
-            console.log(JSON.stringify(customerData)); // Log the serialized JSON to ensure it looks correct
+            console.log(JSON.stringify(customerData)); 
 
             $.ajax({
                 url: '@Url.Action("SaveCustomer", "Customer")',

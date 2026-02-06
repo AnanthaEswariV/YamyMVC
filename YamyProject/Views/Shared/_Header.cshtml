@@ -1,8 +1,5 @@
 ﻿<div class="top-navbar">
     <div class="d-flex align-items-center  w-100">
-
-        <!-- Left: Navigation Menu -->
-      @*   <ul class="navbar-links"  id="dynamicMenu"> *@
         <ul class="navbar-links">
             <li class="dropdown">
                 File
@@ -299,7 +296,7 @@
                             <li><a href="@Url.Action("WareHouseSummary", "Reports")">Warehouse Summary</a></li>
                         </ul>
                     </li>
-                    <li><a href="">Corporate Tax</a></li>
+                    @* <li><a href="">Corporate Tax</a></li> *@
                     <li class="dropdown has-submenu">
                         <a href="">Bank</a>
                         <ul class="submenu">
@@ -366,14 +363,6 @@
             </li>
         </ul>
 
-        @*  <div class="navbar-user dropdown ms-auto">
-            <!-- Username with icon -->
-            <a class="d-flex align-items-center text-decoration-none dropdown-toggle"
-               href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-person-circle fs-5 me-2"></i>
-                <span id="navUsername">@((Context.Session.GetString("UserName") ?? "User"))</span>
-            </a>
-        </div> *@
 
         <div style="position:relative;display:inline-block;margin-left:auto">
             <button onclick="document.getElementById('menu').style.display=document.getElementById('menu').style.display=='block'?'none':'block'"
@@ -388,7 +377,6 @@
         </div>
     </div>
 </div>
-
 
 
 <script>

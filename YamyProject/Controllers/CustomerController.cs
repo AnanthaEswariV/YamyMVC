@@ -756,14 +756,16 @@ namespace YamyProject.Controllers
 
                     invoices.Add(new
                     {
-                        Sn = reader.GetInt32("SN"),
-                        InvoiceId = reader.GetInt32("InvoiceId"),
-                        VoucherNo = reader.GetString("V - No"),
-                        Date = reader.GetDateTime("Date").ToString("yyyy-MM-dd"), // Format date
-                        AccountName = reader.GetString("Account Name"),
-                        Type = reader.GetString("type"),
+                        Sn = reader.GetUInt64("SN").ToString(),
+                        InvoiceId = reader["InvoiceId"].ToString(),   
+                        VoucherNo = reader["V - No"].ToString(),
+                        Date = reader.GetDateTime("Date").ToString("yyyy-MM-dd"),
+                        AccountName = reader["Account Name"].ToString(),
+                        Type = reader["type"].ToString(),
                         Amount = amount.ToString("N2")
                     });
+
+
                 }
 
                 // Add total row
