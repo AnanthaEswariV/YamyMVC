@@ -11,7 +11,6 @@
             _connection = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
         }
 
-
         #region Change Password
 
         public IActionResult ChangePassword()
@@ -142,75 +141,6 @@
         {
             return View();
         }
-
-        //[HttpGet]
-        //public async Task<IActionResult> GetConfigDefaults()
-        //{
-        //    try
-        //    {
-        //        var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-        //        {
-        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-        //        };
-
-        //        using var conn = new MySqlConnection(connStr.ConnectionString);
-        //        await conn.OpenAsync();
-
-        //        var cmd = new MySqlCommand("SELECT category, account_id FROM tbl_coa_config", conn);
-
-        //        var dict = new Dictionary<string, int>();
-        //        using var reader = await cmd.ExecuteReaderAsync();
-        //        while (await reader.ReadAsync())
-        //        {
-        //            dict[reader.GetString("category")] = reader.GetInt32("account_id");
-        //        }
-
-        //        return Ok(dict);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, new { message = ex.Message });
-        //    }
-        //}
-
-        //[HttpGet]
-        //public async Task<IActionResult> GetAccounts(string category)
-        //{
-        //    try
-        //    {
-        //        var connStr = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-        //        {
-        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-        //        };
-
-        //        using var conn = new MySqlConnection(connStr.ConnectionString);
-        //        await conn.OpenAsync();
-
-        //        var cmd = new MySqlCommand(
-        //            "SELECT id, CONCAT(code,' - ',name) AS name FROM tbl_coa_level_4 WHERE name LIKE @pattern ORDER BY code", conn);
-        //        cmd.Parameters.AddWithValue("@pattern", $"%{category}%");
-
-        //        var list = new List<object>();
-        //        using var reader = await cmd.ExecuteReaderAsync();
-        //        while (await reader.ReadAsync())
-        //        {
-        //            list.Add(new
-        //            {
-        //                id = reader.GetInt32("id"),
-        //                name = reader.GetString("name")
-        //            });
-        //        }
-
-        //        return Ok(list);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, new { message = ex.Message });
-        //    }
-        //}
-
-
-
         [HttpGet]
         public async Task<IActionResult> GetAccounts(string category)
         {
@@ -226,14 +156,14 @@
                 using var conn = new MySqlConnection(connStr.ConnectionString);
                 await conn.OpenAsync();
 
-                // 1️⃣ Get accounts (equivalent to tableLevel4 binding)
-                var accountsCmd = new MySqlCommand(@"
+                // Accounts list
+                var accounts = new List<object>();
+                var cmd = new MySqlCommand(@"
             SELECT id, CONCAT(code,' - ',name) AS name
             FROM tbl_coa_level_4
             ORDER BY code", conn);
 
-                var accounts = new List<object>();
-                using (var reader = await accountsCmd.ExecuteReaderAsync())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
                     {
@@ -245,7 +175,7 @@
                     }
                 }
 
-                // 2️⃣ Get selected account for category (equivalent to coaConfigDict)
+                // Selected account
                 var selectedCmd = new MySqlCommand(@"
             SELECT account_id
             FROM tbl_coa_config
@@ -253,24 +183,19 @@
             LIMIT 1", conn);
 
                 selectedCmd.Parameters.AddWithValue("@category", category);
-
-                var selectedAccountIdObj = await selectedCmd.ExecuteScalarAsync();
-                int? selectedAccountId = selectedAccountIdObj != null
-                    ? Convert.ToInt32(selectedAccountIdObj)
-                    : (int?)null;
+                var selectedObj = await selectedCmd.ExecuteScalarAsync();
 
                 return Ok(new
                 {
                     accounts,
-                    selectedAccountId
+                    selectedAccountId = selectedObj != null ? Convert.ToInt32(selectedObj) : (int?)null
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, ex.Message);
             }
         }
-
 
         [HttpPost]
         public async Task<IActionResult> SaveDefaultAccounts([FromBody] List<DefaultAccountSettingDto> settings)
@@ -310,8 +235,6 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
-
 
         #endregion
 
