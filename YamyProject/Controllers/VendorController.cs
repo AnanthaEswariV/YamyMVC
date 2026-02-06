@@ -446,7 +446,7 @@ namespace YamyProject.Controllers
                     Database = HttpContext.Session.GetString("DatabaseName")
                                ?? _config.GetConnectionString("DefaultDatabase")
                 };
-
+                //
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
@@ -458,9 +458,9 @@ namespace YamyProject.Controllers
                 t.date,
                 t.type,
                 ta.name AS Description,
-                t.debit,
+                t.debit,    
                 t.credit,
-                0 AS Balance  -- placeholder, compute in C# if needed
+                0 AS Balance 
             FROM tbl_transaction t
             INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
             WHERE t.hum_id = @id
@@ -495,7 +495,7 @@ namespace YamyProject.Controllers
 
                     decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
                     decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
-                    balance += credit - debit; // compute balance manually
+                    balance += credit - debit; 
 
                     transactions.Add(new
                     {
