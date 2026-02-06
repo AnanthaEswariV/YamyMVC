@@ -4933,7 +4933,6 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
         #region User Permission
 
-
         public IActionResult User()
         {
             return View();
@@ -5265,7 +5264,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
         // 3. GET USER PERMISSIONS
         [HttpGet]
-        public async Task<IActionResult> GetUserPermissions(int targetUserId)
+        public async Task<IActionResult> GetUserPermissions()
         {
             try
             {
@@ -5276,51 +5275,45 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 using var conn = GetConnection();
                 await conn.OpenAsync();
 
-                // Check if user has permissions
                 string countQuery = @"SELECT COUNT(*) FROM tbl_user_permissions WHERE user_id = @userId";
-                int count = 0;
+                int count;
                 using (var cmd = new MySqlCommand(countQuery, conn))
                 {
-                    cmd.Parameters.AddWithValue("@userId", targetUserId);
+                    cmd.Parameters.AddWithValue("@userId", userId);
                     count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                 }
 
                 if (count == 0)
-                {
                     return Ok(new { status = true, data = new List<object>(), hasPermissions = false });
-                }
 
-                // Get permissions with menu details
                 string query = @"SELECT p.id, p.user_id, s.id AS sub_menu_id, s.name AS sub_menu_name,
-                                m.id AS main_menu_id, m.name AS main_menu_name,
-                                p.can_view, p.can_edit, p.can_delete
-                                FROM tbl_user_permissions p
-                                INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
-                                INNER JOIN tbl_main_menus m ON s.m_id = m.id
-                                WHERE p.user_id = @userId
-                                ORDER BY m.id, s.id";
+                         m.id AS main_menu_id, m.name AS main_menu_name,
+                         p.can_view, p.can_edit, p.can_delete
+                         FROM tbl_user_permissions p
+                         INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
+                         INNER JOIN tbl_main_menus m ON s.m_id = m.id
+                         WHERE p.user_id = @userId
+                         ORDER BY m.id, s.id";
 
                 var data = new List<object>();
                 using (var cmd = new MySqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@userId", targetUserId);
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    cmd.Parameters.AddWithValue("@userId", userId);
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
                     {
-                        while (await reader.ReadAsync())
+                        data.Add(new
                         {
-                            data.Add(new
-                            {
-                                id = reader["id"],
-                                userId = reader["user_id"],
-                                subMenuId = reader["sub_menu_id"],
-                                subMenuName = reader["sub_menu_name"],
-                                mainMenuId = reader["main_menu_id"],
-                                mainMenuName = reader["main_menu_name"],
-                                canView = Convert.ToBoolean(reader["can_view"]),
-                                canEdit = Convert.ToBoolean(reader["can_edit"]),
-                                canDelete = Convert.ToBoolean(reader["can_delete"])
-                            });
-                        }
+                            id = reader["id"],
+                            userId = reader["user_id"],
+                            subMenuId = reader["sub_menu_id"],
+                            subMenuName = reader["sub_menu_name"],
+                            mainMenuId = reader["main_menu_id"],
+                            mainMenuName = reader["main_menu_name"],
+                            canView = Convert.ToBoolean(reader["can_view"]),
+                            canEdit = Convert.ToBoolean(reader["can_edit"]),
+                            canDelete = Convert.ToBoolean(reader["can_delete"])
+                        });
                     }
                 }
 

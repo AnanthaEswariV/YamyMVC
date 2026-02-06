@@ -96,39 +96,51 @@
             let selectedDb = sessionStorage.getItem("selectedDatabase");
             $("#database").val(selectedDb);
 
-            $("#loginForm").submit(function (e) {
-                e.preventDefault();
+                  $("#loginForm").submit(function (e) {
+            e.preventDefault();
 
-                var data = {
-                    username: $("#username").val(),
-                    password: $("#password").val(),
-                    database: $("#database").val()
-                };
+            var data = {
+                username: $("#username").val(),
+                password: $("#password").val(),
+                database: $("#database").val()
+            };
 
-                     $.ajax({
-            url: '@Url.Action("LoginUser", "Account")',
-            type: "POST",
-            data: data,
+            $.ajax({
+                url: '@Url.Action("LoginUser", "Account")',
+                type: "POST",
+                data: data,
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Login successful!');
+                        $("#navUsername").text(res.user.userName + " ▾");
 
-            success: function (res) {
-                if (res.status) {
-
-                    toastr.success('Login successful!');
-                    $("#navUsername").text(res.user.userName + " ▾");
-
-                    setTimeout(function () {
-                        window.location.href = '@Url.Action("Index", "Home")';
-                    }, 1500);
-                } else {
-                    toastr.error(res.message);
-                }
-            },
-            error: function (xhr) {
-                toastr.error('An error occurred: ' + xhr.responseText);
+                        // 🔥 CALL PERMISSIONS API HERE
+                            $.ajax({
+        url: '@Url.Action("GetUserPermissions", "Account")',
+        type: 'GET',
+        success: function (res) {
+            if (res.status) {
+                localStorage.setItem("userPermissions", JSON.stringify(res.data));
             }
+
+                                // redirect after permissions loaded
+                                window.location.href = '@Url.Action("Index", "Home")';
+                            },
+                            error: function () {
+                                toastr.error("Failed to load permissions");
+                            }
+                        });
+
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('An error occurred: ' + xhr.responseText);
+                }
+            });
         });
 
-            });
         });
     </script>
 
