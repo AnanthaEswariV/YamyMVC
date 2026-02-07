@@ -2615,15 +2615,15 @@ LIMIT 1;
         {
             var sql = @"
         INSERT INTO tbl_cost_center_transaction 
-        (date, cost_center_id, debit, credit, transaction_id, type, description) 
-        VALUES (@date, @costCenterId, @debit, @credit, @transactionId, @type, @description);";
+        (date, cost_center_id, debit, credit, ref_id, type, description) 
+        VALUES (@date, @costCenterId, @debit, @credit, @ref_id, @type, @description);";
 
             using var cmd = new MySqlCommand(sql, conn, tx);
             cmd.Parameters.AddWithValue("@date", date);
             cmd.Parameters.AddWithValue("@costCenterId", costCenterId);
             cmd.Parameters.AddWithValue("@debit", debit);
             cmd.Parameters.AddWithValue("@credit", credit);
-            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@ref_id", transactionId);
             cmd.Parameters.AddWithValue("@type", type);
             cmd.Parameters.AddWithValue("@description", description);
             await cmd.ExecuteNonQueryAsync();
