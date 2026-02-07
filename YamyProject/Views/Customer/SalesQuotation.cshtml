@@ -1178,7 +1178,7 @@
 
             const invoiceData = {
                 Id: $("#salescenterform").data("invoiceId") || 0,
-                Date: $('#editDate').val(),
+                InvoiceDate: $('#editDate').val(),
                 CustomerId: parseInt($('#editCustomerName').val()) || 0,
                 InvoiceCode: $('#editInvoiceCode').val().trim(),
                 PONumber: $('#editPoNo').val().trim(),
@@ -1318,7 +1318,12 @@
             $("#salesCenterModal").modal("show");
         }
 
-    
+
+                function toIsoDate(value) {
+            if (!value) return null;
+            const d = new Date(value + 'T00:00:00');
+            return isNaN(d.getTime()) ? null : d.toISOString();
+        }
 
 
                 $('#salescentersform').on('submit', function (e) {
@@ -1328,8 +1333,8 @@
         $('#paymentTermsValue').val($('#paymentTerms').val());
             // Collect invoice header data
                  const invoiceData = {
-            
-             Date: $('#createDate').val(),
+
+             InvoiceDate: $('#createDate').val(),
             CustomerId: parseInt($('#createCustomerName').val()) || 0,
             WarehouseId: parseInt($('#createWarehouseDropdown').val()) || 0,
             PoNo: $('#createPoNo').val().trim() || '',
