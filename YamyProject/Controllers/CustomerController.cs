@@ -3286,7 +3286,6 @@ WHERE d.sales_id = @salesId;
             return View();
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetSalesOrders(
     DateTime? dateFrom,

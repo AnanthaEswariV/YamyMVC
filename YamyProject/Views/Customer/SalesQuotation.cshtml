@@ -1318,15 +1318,7 @@
             $("#salesCenterModal").modal("show");
         }
 
-
-                function toIsoDate(value) {
-            if (!value) return null;
-            const d = new Date(value + 'T00:00:00');
-            return isNaN(d.getTime()) ? null : d.toISOString();
-        }
-
-
-                $('#salescentersform').on('submit', function (e) {
+        $('#salescentersform').on('submit', function (e) {
             e.preventDefault();
 
             const invoiceId = $("#salescentersform").data("invoiceId") || 0;
