@@ -25,6 +25,7 @@
         overflow-y: auto;
     }
 </style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
@@ -146,7 +147,6 @@
 
     </div>
 </div>
-
 <!-- Modal -->
 <div class="modal fade" id="salesModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -347,7 +347,6 @@
         </div>
     </div>
 </div>
-
 
 <!-- CREATE INVOICE MODAL -->
 <div class="modal fade" id="salesCenterModal" tabindex="-1">
@@ -582,7 +581,7 @@
                 loadSalesQuotation();
             });
 
-        function getTodayDate() {
+            function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -590,7 +589,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
+            document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
             const todayDate = getTodayDate();
 
             // Fill all date fields
@@ -608,10 +607,10 @@
             });
         });
 
-        $('#paymentTerms, #createPaymentTerms').prop('disabled', true);
-        setDueDate();
+            $('#paymentTerms, #createPaymentTerms').prop('disabled', true);
+            setDueDate();
 
-             function setDueDate() {
+            function setDueDate() {
             // Determine which modal is active
             const isCreateModal = $('#salesCenterModal').hasClass('show');
 
@@ -646,13 +645,13 @@
             $(dueDateField).val(`${yyyy}-${mm}-${dd}`);
         }
 
-        $('#invoiceType, #createInvoiceType').on('change', function () {
+            $('#invoiceType, #createInvoiceType').on('change', function () {
             const type = $(this).val();
             setDueDate();
             loadAccountName(type);
         });
 
-                $('#paymentTerms, #createPaymentTerms').on('change', function() {
+            $('#paymentTerms, #createPaymentTerms').on('change', function() {
             const isCreate = $(this).attr('id') === 'createPaymentTerms';
             const value = $(this).val();
 
@@ -666,7 +665,7 @@
             setDueDate();
         });
 
-                function loadAccountName(invoiceType) {
+            function loadAccountName(invoiceType) {
             if (!invoiceType) {
                 console.warn('Invoice type not provided to loadAccountName');
                 return;
@@ -734,8 +733,8 @@
                 }
             });
         }
-            // Improved change handler
-        $("#invoiceType, #createInvoiceType").on("change", function () {
+                // Improved change handler
+            $("#invoiceType, #createInvoiceType").on("change", function () {
             const type = $(this).val();
             const isCreate = $(this).attr('id') === 'createInvoiceType';
 
@@ -753,11 +752,9 @@
 
             setDueDate();
         });
-        loadAccountName($("#invoiceType, #createInvoiceType").val());
+            loadAccountName($("#invoiceType, #createInvoiceType").val());
 
-
-
-        $('#salesModal').on('hidden.bs.modal', function () {
+            $('#salesModal').on('hidden.bs.modal', function () {
             // Clear header inputs
             $(this).find('input, select, textarea').val('');
 
@@ -770,7 +767,6 @@
             // Optional: reset modal title
             $(this).find('.modal-title').text('New Invoice');
         });
-
 
         });
 
@@ -795,7 +791,7 @@
 
         let itemsList = [];
 
-          function loadItem(selector) {
+        function loadItem(selector) {
             return new Promise((resolve, reject) => {
                 $.ajax({
                     url: '@Url.Action("GetItems", "Lists")',
@@ -1140,7 +1136,6 @@
             calculateInvoiceTotals();
         }
 
-
         // $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
         //     const row = $(this).closest("tr");
 
@@ -1195,7 +1190,6 @@
             $('#totalVat').val(totalVat.toFixed(2));
             $('#netAmount').val(netAmount.toFixed(2));
         }
-
 
          function openSalesModal(invoice) {
 
@@ -1262,7 +1256,6 @@
             $("#salesModal .modal-title").text("Edit Invoice");
             $("#salesModal").modal("show");
         }
-
 
          $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
@@ -1344,7 +1337,7 @@
             });
         });
 
-           function openSalesCenterModal(invoice) {
+         function openSalesCenterModal(invoice) {
 
             $("#createCustomerName").val(invoice.customerId || "");
             $("#createDate").val(invoice.date ? invoice.date.split("T")[0] : "");
@@ -1412,8 +1405,7 @@
             $("#salesCenterModal").modal("show");
         }
 
-
-        $('#salescentersform').on('submit', function (e) {
+         $('#salescentersform').on('submit', function (e) {
             e.preventDefault();
 
             const invoiceId = $("#salescentersform").data("invoiceId") || 0;
