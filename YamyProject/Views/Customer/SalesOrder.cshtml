@@ -393,6 +393,8 @@
                         </div>
                     </div>
 
+
+                 
                     <div class="row g-2 mt-2">
                         <div class="col-md-4">
                             <label class="form-label">Bill To</label>
@@ -481,7 +483,6 @@
                                 <option value="">-- Select --</option>
                             </select>
                         </div>
-
                     </div>
 
                     <div class="table-responsive mt-3">
@@ -581,7 +582,7 @@
                 loadSalesQuotation();
             });
 
-           function getTodayDate() {
+        function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -589,7 +590,7 @@
             return `${year}-${month}-${day}`;
         }
 
-           document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
             const todayDate = getTodayDate();
 
             // Fill all date fields
@@ -607,95 +608,156 @@
             });
         });
 
-            $('#paymentTerms').prop('disabled', true);
-            setDueDate();
+        $('#paymentTerms, #createPaymentTerms').prop('disabled', true);
+        setDueDate();
 
-            function setDueDate() {
-                const invoiceType = $('#invoiceType').val();
-                let days = 0;
+             function setDueDate() {
+            // Determine which modal is active
+            const isCreateModal = $('#salesCenterModal').hasClass('show');
 
-                if (invoiceType === 'Credit') {
-                    $('#paymentTerms').prop('disabled', false);
-                    days = parseInt($('#paymentTerms').val()) || 0; // get selected payment term
-                } else {
-                    $('#paymentTerms').prop('disabled', true);
-                    days = 0; // Cash: due today
-                }
+            const invoiceType = isCreateModal
+                ? $('#createInvoiceType').val()
+                : $('#invoiceType').val();
 
-                const today = new Date();
-                const dueDate = new Date();
-                dueDate.setDate(today.getDate() + days);
+            const paymentTerms = isCreateModal
+                ? $('#createPaymentTerms').val()
+                : $('#paymentTerms').val();
 
-                const yyyy = dueDate.getFullYear();
-                const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
-                const dd = String(dueDate.getDate()).padStart(2, '0');
+            const dueDateField = isCreateModal ? '#createDuedate' : '#duedate';
+            const dateField = isCreateModal ? '#createDate' : '#date';
 
-                $('#duedate').val(`${yyyy}-${mm}-${dd}`);
+            let days = 0;
+
+            if (invoiceType === 'Credit') {
+                days = parseInt(paymentTerms, 10) || 30; // Default to 30 if not set
             }
 
-            $('#invoiceType').on('change', setDueDate);
+            // Use the invoice date as base, not today
+            const baseDateStr = $(dateField).val();
+            const baseDate = baseDateStr ? new Date(baseDateStr) : new Date();
 
+            const dueDate = new Date(baseDate);
+            dueDate.setDate(dueDate.getDate() + days);
 
-            $('#paymentTerms').on('change', setDueDate);
+            const yyyy = dueDate.getFullYear();
+            const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(dueDate.getDate()).padStart(2, '0');
 
-                  // Call this on modal open and on invoice type change
-        function loadAccountName(invoiceType) {
-            // First: fetch all accounts
+            $(dueDateField).val(`${yyyy}-${mm}-${dd}`);
+        }
+
+        $('#invoiceType, #createInvoiceType').on('change', function () {
+            const type = $(this).val();
+            setDueDate();
+            loadAccountName(type);
+        });
+
+                $('#paymentTerms, #createPaymentTerms').on('change', function() {
+            const isCreate = $(this).attr('id') === 'createPaymentTerms';
+            const value = $(this).val();
+
+            // Update hidden field
+            if (isCreate) {
+                $('#createPaymentTermsValue').val(value);
+            } else {
+                $('#paymentTermsValue').val(value);
+            }
+
+            setDueDate();
+        });
+
+                function loadAccountName(invoiceType) {
+            if (!invoiceType) {
+                console.warn('Invoice type not provided to loadAccountName');
+                return;
+            }
+
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
-                success: function(accounts) {
-                    const $ddl = $("#accountName");
-                    $ddl.empty().append('<option value="">-- Select --</option>');
+                success: function (accounts) {
+                    const $accountName = $('#accountName');
+                    const $createAccountName = $('#createAccountName');
 
-                    // Append all accounts
-                    $.each(accounts, function(i, item) {
-                        $ddl.append(
-                            $('<option>', {
-                                value: item.id,
-                                text: item.code + ' - ' + item.name,
-                                'data-code': item.code
-                            })
-                        );
+                    $accountName.empty().append('<option value="">-- Select --</option>');
+                    $createAccountName.empty().append('<option value="">-- Select --</option>');
+
+                    $.each(accounts, function (_, item) {
+                        const option = $('<option>', {
+                            value: item.id,
+                            text: `${item.code} - ${item.name}`
+                        });
+
+                        $accountName.append(option.clone());
+                        $createAccountName.append(option);
                     });
 
-                    // Now: fetch the selected account ID based on invoice type
+                    // Get payment method info after accounts are loaded
                     $.ajax({
                         url: '/Customer/GetPaymentMethodInfo',
                         type: 'GET',
                         data: { method: invoiceType },
-                        success: function(res) {
+                        success: function (res) {
                             if (res.status) {
-                                $ddl.val(res.accountId);
-                                $("#paymentTerms").prop('disabled', !res.paymentTermsEnabled);
-                                $("#paymentTermsValue").val(res.paymentTermsEnabled ? $("#paymentTerms").val() : "");
+                                // Set account
+                                $accountName.val(res.accountId);
+                                $createAccountName.val(res.accountId);
+
+                                // Handle payment terms
+                                const isCredit = invoiceType === 'Credit';
+                                $('#paymentTerms, #createPaymentTerms').prop('disabled', !isCredit);
+
+                                if (isCredit && res.paymentTerms) {
+                                    $('#paymentTerms').val(res.paymentTerms);
+                                    $('#createPaymentTerms').val(res.paymentTerms);
+                                    $('#paymentTermsValue').val(res.paymentTerms);
+                                    $('#createPaymentTermsValue').val(res.paymentTerms);
+                                } else {
+                                    $('#paymentTerms, #createPaymentTerms').val('30'); // Default
+                                }
+
+                                // Recalculate due date
+                                setDueDate();
                             } else {
-                                console.error("❌ Failed to get account ID for invoice type");
+                                toastr.error('Failed to load payment method info');
                             }
                         },
-                        error: function(xhr, status, error) {
-                            console.error("❌ Error fetching selected account ID:", error);
+                        error: function(xhr) {
+                            console.error('Error loading payment method info:', xhr);
+                            toastr.error('Error loading payment configuration');
                         }
                     });
                 },
-                error: function(xhr, status, error) {
-                    console.error("❌ Error loading accounts:", error);
+                error: function(xhr) {
+                    console.error('Error loading accounts:', xhr);
+                    toastr.error('Failed to load account names');
                 }
             });
         }
-
-        // Bind invoiceType change
-        $("#invoiceType").on("change", function() {
+            // Improved change handler
+        $("#invoiceType, #createInvoiceType").on("change", function () {
             const type = $(this).val();
-            loadAccountName(type);
+            const isCreate = $(this).attr('id') === 'createInvoiceType';
+
+            if (type) {
+                loadAccountName(type);
+            }
+
+            // Update payment terms immediately
+            const isCredit = type === 'Credit';
+            if (isCreate) {
+                $('#createPaymentTerms').prop('disabled', !isCredit);
+            } else {
+                $('#paymentTerms').prop('disabled', !isCredit);
+            }
+
+            setDueDate();
         });
-
-        // Optionally call once when modal opens to load default type
-        loadAccountName($("#invoiceType").val());
+        loadAccountName($("#invoiceType, #createInvoiceType").val());
 
 
 
-            $('#salesModal').on('hidden.bs.modal', function () {
+        $('#salesModal').on('hidden.bs.modal', function () {
             // Clear header inputs
             $(this).find('input, select, textarea').val('');
 
@@ -741,6 +803,7 @@
                     success: function (res) {
                         if (res.status) {
                             itemsList = res.data;
+                            console.log(res);
                             const dropdowns = selector ? $(selector) : $(".itemNameSelect");
                             dropdowns.empty().append('<option value="">Select Item</option>');
                             res.data.forEach(item => {
@@ -830,7 +893,6 @@
                         toastr.error('Failed to load sales data.');
                         return;
                     }
-                    console.log(res);
                     if (selectionMethod === "Default") {
                         populateDefaultTables(res.data);
                     } else {
@@ -1010,14 +1072,17 @@
                     if (res.status) {
                         const customerDdl = $("#customerName");
                         const typeDdl = $("#type");
+                        const createCustomerName = $("#createCustomerName");
 
                         customerDdl.empty().append('<option value="">-- Select Customer --</option>');
                         typeDdl.empty().append('<option value="">-- Select Customer --</option>');
+                        createCustomerName.empty().append('<option value="">-- Select Customer --</option>');
 
                         res.data.forEach(c => {
                             const option = `<option value="${c.id}">${c.name}</option>`;
                             customerDdl.append(option);
                             typeDdl.append(option);
+                            createCustomerName.append(option);
                         });
                     } else {
                         toastr.error('Failed to load customers.');
@@ -1075,6 +1140,7 @@
             calculateInvoiceTotals();
         }
 
+
         // $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
         //     const row = $(this).closest("tr");
 
@@ -1130,8 +1196,8 @@
             $('#netAmount').val(netAmount.toFixed(2));
         }
 
-          function openSalesModal(invoice) {
-            console.log(invoice);
+
+         function openSalesModal(invoice) {
 
             // 🔹 Header
             $("#customerName").val(invoice.customerId || 0);
@@ -1189,14 +1255,14 @@
                 // Load cost centers
                 populateAndSelectCostCenter();
             });
-
-            // 🔹 Save invoice ID
+                 // 🔹 Save invoice ID
             $("#salescenterform").data("invoiceId", invoice.id || 0);
 
             // 🔹 UI
             $("#salesModal .modal-title").text("Edit Invoice");
             $("#salesModal").modal("show");
         }
+
 
          $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
@@ -1278,12 +1344,10 @@
             });
         });
 
-        function openSalesCenterModal(invoice) {
-            console.log('Opening Create Invoice Modal:', invoice);
+           function openSalesCenterModal(invoice) {
 
             $("#createCustomerName").val(invoice.customerId || "");
             $("#createDate").val(invoice.date ? invoice.date.split("T")[0] : "");
-            $("#createInvoiceCode").val(invoice.invoiceCode || "");
             $("#createPoNo").val(invoice.poNumber || "");
             $("#createPerformaNo").val(invoice.performaNo || "");
             $("#createQuotationNo").val(invoice.quotationNo || "");
@@ -1348,6 +1412,7 @@
             $("#salesCenterModal").modal("show");
         }
 
+
         $('#salescentersform').on('submit', function (e) {
             e.preventDefault();
 
@@ -1409,7 +1474,6 @@
                 invoiceData.Items.push(item);
             });
 
-            console.log(invoiceData);
             // AJAX POST to API
             $.ajax({
                  url: '@Url.Action("SaveInvoice", "Customer")',
