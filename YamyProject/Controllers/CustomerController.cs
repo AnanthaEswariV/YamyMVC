@@ -2463,7 +2463,7 @@ LIMIT 1;
         }
 
         private async Task InsertItemTransactionRecordAsync(MySqlConnection conn, MySqlTransaction tx,
-            DateTime date, string type, string reference, string itemId, string costPrice,
+            DateTime date, string type, string reference, string itemId, string price,
             string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description,
             string warehouseId)
         {
@@ -2477,7 +2477,7 @@ LIMIT 1;
             cmd.Parameters.AddWithValue("@type", type);
             cmd.Parameters.AddWithValue("@reference", reference);
             cmd.Parameters.AddWithValue("@itemId", itemId);
-            cmd.Parameters.AddWithValue("@costPrice", costPrice);
+            cmd.Parameters.AddWithValue("@costPrice", price);
             cmd.Parameters.AddWithValue("@sales_price", salesPrice);
             cmd.Parameters.AddWithValue("@qtyIn", qtyIn);
             cmd.Parameters.AddWithValue("@qtyOut", qtyOut);
@@ -2487,7 +2487,7 @@ LIMIT 1;
             await cmd.ExecuteNonQueryAsync();
 
             await UpdateOnHandItemAsync(conn, tx, itemId);
-            await AddItemCardDetailsAsync(conn, tx, date, type, reference, itemId, costPrice,
+            await AddItemCardDetailsAsync(conn, tx, date, type, reference, itemId, price,
                 qtyIn, salesPrice, qtyOut, qtyInc, description, warehouseId);
         }
 
@@ -4747,7 +4747,7 @@ VALUES
             cmd.Parameters.AddWithValue("@date", model.Date);
             cmd.Parameters.AddWithValue("@ref", salesId);
             cmd.Parameters.AddWithValue("@item", item.ItemId);
-            cmd.Parameters.AddWithValue("@cost", item.CostPrice);
+            cmd.Parameters.AddWithValue("@cost", item.Price);
             cmd.Parameters.AddWithValue("@qty", item.Quantity);
             cmd.Parameters.AddWithValue("@price", item.Price);
             cmd.Parameters.AddWithValue("@desc", "Sales Return Invoice No. " + model.InvoiceCode);

@@ -315,7 +315,7 @@
                                     <td>
                                         <select class="form-select form-select-sm tax"></select>
                                     </td>
-                                    <td class="text-center" required>0</td>
+                                    <td class="text-center" required></td>
                                     <td>
                                         <select class="form-select form-select-sm costCenterSelect"></select>
                                     </td>
@@ -343,6 +343,225 @@
                             <div>
                                 <label>Net Amount</label>
                                 <input class="form-control form-control-sm text-end fw-bold" id="netAmount" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="salesCenterModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="purchaseOrderInvoiceForm" class="needs-validation" novalidate>
+                <input type="hidden" id="purchaseInvoiceId" value="0">
+                <!-- Header -->
+                <div class="modal-header bg-primary text-white py-2">
+                    <h6 class="modal-title fw-bold mx-auto">Purchase Invoice</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+
+                    <!-- Row 1 -->
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            <label class="form-label">Vendor/Subcontractor</label>
+                            <select class="form-select form-select-sm" id="purchasecustomerName" required>
+                                <option value="">-- Select Vendor/Subcontractors --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control form-control-sm" id="purchasedate">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Invoice</label>
+                            <input class="form-control form-control-sm" id="purchaseinvoiceCode" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Performa Invoice No</label>
+                            <input id="purchasepoNo" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Quotation No</label>
+                            <input id="purchasebillTo" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <!-- Row 2 -->
+                    <div class="row g-2 mt-2">
+                        <div class="col-md-2">
+                            <label class="form-label">Invoice Type</label>
+                            <select class="form-select form-select-sm" id="purchaseinvoiceType">
+                                <option value="Cash" selected>Cash</option>
+                                <option value="Credit">Credit</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Purchase Type</label>
+                            <select class="form-select form-select-sm" id="purchaseType">
+                                <option value="Inventory" selected>Inventory</option>
+                                <option value="Fixed Assets">Fixed Assets</option>
+                                <option value="Expenses">Expenses</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2" id="fixedAssetCategoryWrapper" style="display:none;">
+                            <label class="form-label">Fixed Asset Category</label>
+                            <select class="form-select form-select-sm" id="fixedAssetCategory">
+                                <option value="">-- Select Category --</option>
+                                <!-- Fixed asset categories here -->
+                            </select>
+                        </div>
+
+
+                        <div class="col-md-2">
+                            <label class="form-label">Emirates</label>
+                            <select class="form-select form-select-sm" id="purchaseemirates">
+                                <option value="Abu Dhabi" selected>Abu Dhabi</option>
+                                <option value="Dubai">Dubai</option>
+                                <option value="Sharjah">Sharjah</option>
+                                <option value="Ajman">Ajman</option>
+                                <option value="Fujairah">Fujairah</option>
+                                <option value="Ras Al Khaimah"></option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Warehouse</label>
+                            <select class="form-select" id="purchasewarehouseDropdown"><option value="">Select Warehouse</option></select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Payment Terms</label>
+                            <input type="hidden" id="purchasepaymentTermsValue">
+                            <select class="form-select form-select-sm" id="purchasepaymentTerms" disabled>
+                                <option value="30">30</option>
+                                <option value="60">60</option>
+                                <option value="90">90</option>
+                                <option value="120">120</option>
+                                <option value="150">150</option>
+                                <option value="180">180</option>
+                                <option value="210">210</option>
+                                <option value="240">240</option>
+                                <option value="270">270</option>
+                                <option value="300">300</option>
+                                <option value="330">330</option>
+                                <option value="360">360</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <!-- Row 3 -->
+                    <div class="row g-2 mt-2">
+
+                        <div class="col-md-2">
+                            <label class="form-label">Due to</label>
+                            <input type="date" class="form-control form-control-sm" id="purchaseduedate">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Ship</label>
+                            <input class="form-control form-control-sm" id="purchaseship">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Ship Date</label>
+                            <input type="date" class="form-control form-control-sm" id="purchaseshipDate">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Via</label>
+                            <select class="form-select form-select-sm" id="purchaseviaType">
+                                <option value="DHL" selected>DHL</option>
+                                <option value="MAIL">MAIL</option>
+                                <option value="On Site">On Site</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Sales Man</label>
+                            <input type="text" class="form-control form-control-sm" id="purchasesalesMan">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label for="accountName" class="form-label">Account Name</label>
+                            <select id="purchaseaccountName" class="form-select form-select-sm" required>
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-sm align-middle">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th>S.No</th>
+                                    <th>Code</th>
+                                    <th>Item Name</th>
+                                    <th>QTY</th>
+                                    <th>Price</th>
+                                    <th>Disc</th>
+                                    <th>Net</th>
+                                    <th>VAT</th>
+                                    <th>Amount</th>
+                                    <th>Cost Center</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td><input type="text" class="form-control form-control-sm" required></td>
+                                    <td><select class="form-select form-select-sm itemNameSelect" required></select></td>
+                                    <td><input type="number" class="form-control form-control-sm qty" required></td>
+                                    <td><input class="form-control form-control-sm"></td>
+                                    <td><input class="form-control form-control-sm"></td>
+                                    <td class="text-center">0</td>
+                                    <td>
+                                        <select class="form-select form-select-sm tax"></select>
+                                    </td>
+                                    <td class="text-center" required>0</td>
+                                    <td>
+                                        <select class="form-select form-select-sm costCenterSelect"></select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Notes & Totals -->
+                    <div class="row mt-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" rows="4"></textarea>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="mb-2">
+                                <label>Total Before VAT</label>
+                                <input class="form-control form-control-sm text-end" id="purchasetotalBeforeVat" readonly>
+                            </div>
+                            <div class="mb-2">
+                                <label>Total VAT</label>
+                                <input class="form-control form-control-sm text-end" id="purchasetotalVat" readonly>
+                            </div>
+                            <div>
+                                <label>Net Amount</label>
+                                <input class="form-control form-control-sm text-end fw-bold" id="purchasenetAmount" readonly>
                             </div>
                         </div>
                     </div>
@@ -415,55 +634,35 @@
             return `${year}-${month}-${day}`;
         }
 
-            document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
-            const todayDate = getTodayDate();
+            // ============================================
+        // SALES MODAL - Payment Terms & Due Date Logic
+        // ============================================
+        $('#paymentTerms').prop('disabled', true);
+        setDueDate();
 
-            const dateFields = [
-                'date',
-                'duedate',
-                'shipDate'
-            ];
-
-            dateFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    field.value = todayDate;
-                }
-            });
-        });
-
-           $('#paymentTerms').prop('disabled', true);
-            setDueDate();
-
-            function setDueDate() {
-                const invoiceType = $('#invoiceType').val();
-                let days = 0;
-
-                if (invoiceType === 'Credit') {
-                    $('#paymentTerms').prop('disabled', false);
-                    days = parseInt($('#paymentTerms').val()) || 0; 
-                } else {
-                    $('#paymentTerms').prop('disabled', true);
-                    days = 0; // Cash: due today
-                }
-
-                const today = new Date();
-                const dueDate = new Date();
-                dueDate.setDate(today.getDate() + days);
-
-                const yyyy = dueDate.getFullYear();
-                const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
-                const dd = String(dueDate.getDate()).padStart(2, '0');
-
-                $('#duedate').val(`${yyyy}-${mm}-${dd}`);
+        function setDueDate() {
+            const invoiceType = $('#invoiceType').val();
+            let days = 0;
+            if (invoiceType === 'Credit') {
+                $('#paymentTerms').prop('disabled', false);
+                days = parseInt($('#paymentTerms').val()) || 0;
+            } else {
+                $('#paymentTerms').prop('disabled', true);
+                days = 0;
             }
+            const today = new Date();
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + days);
+            const yyyy = dueDate.getFullYear();
+            const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(dueDate.getDate()).padStart(2, '0');
+            $('#duedate').val(`${yyyy}-${mm}-${dd}`);
+        }
 
-            $('#invoiceType').on('change', setDueDate);
+        $('#invoiceType').on('change', setDueDate);
+        $('#paymentTerms').on('change', setDueDate);
 
-            $('#paymentTerms').on('change', setDueDate);
-
-            function loadAccountName(invoiceType) {
-            // First: fetch all accounts
+        function loadAccountName(invoiceType) {
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
@@ -471,7 +670,6 @@
                     const $ddl = $("#accountName");
                     $ddl.empty().append('<option value="">-- Select --</option>');
 
-                    // Append all accounts
                     $.each(accounts, function(i, item) {
                         $ddl.append(
                             $('<option>', {
@@ -482,7 +680,6 @@
                         );
                     });
 
-                    // Now: fetch the selected account ID based on invoice type
                     $.ajax({
                         url: '/Customer/GetPaymentMethodInfo',
                         type: 'GET',
@@ -492,20 +689,135 @@
                                 $ddl.val(res.accountId);
                                 $("#paymentTerms").prop('disabled', !res.paymentTermsEnabled);
                                 $("#paymentTermsValue").val(res.paymentTermsEnabled ? $("#paymentTerms").val() : "");
-                            } else {
-                                console.error("❌ Failed to get account ID for invoice type");
                             }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error("❌ Error fetching selected account ID:", error);
                         }
                     });
-                },
-                error: function(xhr, status, error) {
-                    console.error("❌ Error loading accounts:", error);
                 }
             });
         }
+
+        $("#invoiceType").on("change", function() {
+            loadAccountName($(this).val());
+        });
+
+        loadAccountName($("#invoiceType").val());
+
+        $('#salesModal').on('hidden.bs.modal', function () {
+            $(this).find('input, select, textarea').val('');
+            $(this).find('tbody').empty();
+            $("#purchaseInvoiceForm").removeData("invoiceId");
+            $(this).find('.modal-title').text('Purchase Invoice');
+        });
+
+        // ============================================
+        // SALES CENTER MODAL - Payment Terms & Due Date Logic
+        // ============================================
+        $('#purchasepaymentTerms').prop('disabled', true);
+        setPurchaseDueDate();
+
+        function setPurchaseDueDate() {
+            const invoiceType = $('#purchaseinvoiceType').val();
+            let days = 0;
+            if (invoiceType === 'Credit') {
+                $('#purchasepaymentTerms').prop('disabled', false);
+                days = parseInt($('#purchasepaymentTerms').val()) || 0;
+            } else {
+                $('#purchasepaymentTerms').prop('disabled', true);
+                days = 0;
+            }
+            const today = new Date();
+            const dueDate = new Date();
+            dueDate.setDate(today.getDate() + days);
+            const yyyy = dueDate.getFullYear();
+            const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(dueDate.getDate()).padStart(2, '0');
+            $('#purchaseduedate').val(`${yyyy}-${mm}-${dd}`);
+        }
+
+        $('#purchaseinvoiceType').on('change', setPurchaseDueDate);
+        $('#purchasepaymentTerms').on('change', setPurchaseDueDate);
+
+        function loadPurchaseAccountName(invoiceType) {
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
+                    const $ddl = $("#purchaseaccountName");
+                    $ddl.empty().append('<option value="">-- Select --</option>');
+
+                    $.each(accounts, function(i, item) {
+                        $ddl.append(
+                            $('<option>', {
+                                value: item.id,
+                                text: item.code + ' - ' + item.name,
+                                'data-code': item.code
+                            })
+                        );
+                    });
+
+                    $.ajax({
+                        url: '/Customer/GetPaymentMethodInfo',
+                        type: 'GET',
+                        data: { method: invoiceType },
+                        success: function(res) {
+                            if (res.status) {
+                                $ddl.val(res.accountId);
+                                $("#purchasepaymentTerms").prop('disabled', !res.paymentTermsEnabled);
+                                $("#purchasepaymentTermsValue").val(res.paymentTermsEnabled ? $("#purchasepaymentTerms").val() : "");
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        $("#purchaseinvoiceType").on("change", function() {
+            loadPurchaseAccountName($(this).val());
+        });
+
+        loadPurchaseAccountName($("#purchaseinvoiceType").val());
+
+        $('#salesCenterModal').on('hidden.bs.modal', function () {
+            $(this).find('input, select, textarea').val('');
+            $(this).find('tbody').empty();
+            $("#purchaseInvoiceForm").removeData("invoiceId");
+            $(this).find('.modal-title').text('Purchase Invoice');
+        });
+
+        // ============================================
+        // Set Today's Date on Modal Open
+        // ============================================
+        function getTodayDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // SALES MODAL - Set dates on open
+        $('#salesModal').on('shown.bs.modal', function () {
+            const todayDate = getTodayDate();
+            const dateFields = ['date', 'duedate', 'shipDate'];
+            dateFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value) {
+                    field.value = todayDate;
+                }
+            });
+        });
+
+        // SALES CENTER MODAL - Set dates on open
+        $('#salesCenterModal').on('shown.bs.modal', function () {
+            const todayDate = getTodayDate();
+            const dateFields = ['purchasedate', 'purchaseduedate', 'purchaseshipDate'];
+            dateFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && !field.value) {
+                    field.value = todayDate;
+                }
+            });
+        });
 
             $("#invoiceType").on("change", function() {
             const type = $(this).val();
@@ -602,6 +914,10 @@
                 data-sales-id="${sale.id}">
             <i class="fas fa-eye"></i>
         </button>
+
+         <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
+                                    <i class="fas fa-file-invoice"></i>
+                                </button>
                         </td>
                     </tr>
                 `);
@@ -649,6 +965,12 @@
                     e.stopPropagation();
                     openSalesModal(sale);
                 });
+
+                   row.find(".createInvoiceBtn").on("click", function (e) {
+                        e.stopPropagation();
+                        openSalesCenterModal(sale);
+                    });
+
 
                 table1Body.append(row);
             });
@@ -712,6 +1034,13 @@
                 data-sales-id="${item.id}">
             <i class="fas fa-eye"></i>
         </button>
+
+
+         <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
+                                    <i class="fas fa-file-invoice"></i>
+                                </button>
+
+
                             </td>
                         </tr>
                     `);
@@ -719,6 +1048,10 @@
                     row.find(".editSalesQuotationBtn").on("click", function (e) {
                         e.stopPropagation();
                         openSalesModal(sale);
+                    });
+                       row.find(".createInvoiceBtn").on("click", function (e) {
+                        e.stopPropagation();
+                        openSalesCenterModal(sale);
                     });
 
                     tableBody.append(row);
@@ -747,14 +1080,17 @@
                     if (res.status) {
                         const customerDdl = $("#customerName");
                         const typeDdl = $("#type");
+                        const purchasecustomerName = $("#purchasecustomerName");
 
                         customerDdl.empty().append('<option value="">-- Select Vendor/Subcontractors --</option>');
                         typeDdl.empty().append('<option value="">-- Select Vendor/Subcontractors --</option>');
+                        purchasecustomerName.empty().append('<option value="">-- Select Vendor/Subcontractors --</option>');
 
                         res.data.forEach(c => {
                             const option = `<option value="${c.id}">${c.name}</option>`;
                             customerDdl.append(option);
                             typeDdl.append(option);
+                            purchasecustomerName.append(option);
                         });
                     } else {
                         toastr.error('Failed to load Vendors.');
@@ -790,13 +1126,13 @@
             });
         }
 
-         function loadWarehouses(selector = "#warehouseDropdown") {
+        function loadWarehouses(selector) {
             $.ajax({
               url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
-                        const dropdowns = $(selector);
+                        const dropdowns = selector ? $(selector) : $("#warehouseDropdown, #purchasewarehouseDropdown");
                         dropdowns.empty().append('<option value="">Select Warehouse</option>');
                         res.data.forEach(w => {
                             dropdowns.append(`<option value="${w.id}">${w.display}</option>`);
@@ -804,13 +1140,9 @@
                     } else {
                         alert(res.message);
                     }
-                },
-                error: function (err) {
-                    console.error("Error fetching warehouses:", err);
                 }
             });
         }
-
         let itemsList = [];
 
         function loadItem(selector = ".itemNameSelect") {
@@ -1126,7 +1458,7 @@
                         <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
                         <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
                         <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
-                        <td class="text-center">${item.vat || 0}</td>
+                        <td class="text-center">${invoice.total || 0}</td>
                         <td><select class="form-select form-select-sm tax"></select></td>
                         <td class="text-center">${item.total || 0}</td>
                         <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.cost_Center_Id || ''}"></select></td>
@@ -1158,6 +1490,206 @@
             $("#salesModal").modal("show");
         }
 
+               function openSalesCenterModal(invoice) {
+            console.log('Opening Purchase Invoice Modal:', invoice);
+
+            // Map invoice data to purchase modal fields
+            $("#purchasecustomerName").val(invoice.vendorId || "");
+            $("#purchaseinvoiceCode").val(invoice.invoiceCode || "");
+            $("#purchasepoNo").val(invoice.poNumber || "");
+            $("#purchasebillTo").val(invoice.quotationNo || "");
+            $("#purchaseemirates").val(invoice.city || "");
+            $("#purchasesalesMan").val(invoice.salesMan || "");
+            $("#purchaseviaType").val(invoice.ship_Via || "");
+            $("#purchaseship").val(invoice.shipTo || "");
+            $("#purchaseinvoiceType").val(invoice.paymentMethod || "Cash");
+            $("#purchaseaccountName").val(invoice.account_Cash_Id || "");
+            $("#purchasepaymentTermsValue").val(invoice.payment_Terms || "");
+            $("#purchasewarehouseDropdown").val(invoice.warehouseId || "");
+
+            $("#purchasetotalBeforeVat").val(invoice.total || 0);
+            $("#purchasetotalVat").val(invoice.vat || 0);
+            $("#purchasenetAmount").val(invoice.net || 0);
+
+            // Get the table from salesCenterModal
+            const tbody = $("#salesCenterModal tbody");
+            tbody.empty();
+
+            (invoice.items || []).forEach((item, idx) => {
+                tbody.append(`
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td><input class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
+                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                        <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
+                        <td><input class="form-control form-control-sm" value="${item.discount || 0}"></td>
+                        <td class="text-center">${invoice.total || 0}</td>
+                        <td><select class="form-select form-select-sm tax"></select></td>
+                        <td class="text-center">${item.total || 0}</td>
+                        <td>
+                            <select class="form-select form-select-sm costCenterSelect"
+                                    data-selected-id="${item.costCenterId || ''}">
+                            </select>
+                        </td>
+                    </tr>
+                `);
+            });
+
+            Promise.all([
+                loadItem("#salesCenterModal .itemNameSelect"),
+                loadTax("#salesCenterModal .tax")
+            ]).then(() => {
+                $("#salesCenterModal tbody tr").each(function (i) {
+                    const item = invoice.items[i];
+                    if (!item) return;
+
+                    $(this).find(".itemNameSelect").val(item.itemId || "");
+                    $(this).find(".tax").val(item.taxId || "");
+                });
+
+                populateAndSelectCostCenter();
+            });
+
+            $("#purchaseInvoiceForm").data("invoiceId", invoice.id || 0);
+
+            $("#salesCenterModal .modal-title").text("Purchase Invoice");
+            $("#salesCenterModal").modal("show");
+        }
+
+        // Form submit handler for Purchase Invoice
+        $('#purchaseOrderInvoiceForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const invoiceId = $("#purchaseInvoiceForm").data("invoiceId") || 0;
+            $('#purchasepaymentTermsValue').val($('#purchasepaymentTerms').val());
+
+            // Helper function to format date properly
+            function getDateValue(selector) {
+                const value = $(selector).val();
+                return (value && value.trim() !== '') ? value : null;
+            }
+
+            // Collect invoice header data
+            const invoiceData = {
+                Date: getDateValue('#purchasedate'),
+                VendorId: parseInt($('#purchasecustomerName').val()) || 0,
+                WarehouseId: parseInt($('#purchasewarehouseDropdown').val()) || 0,
+                PoNo: $('#purchasepoNo').val().trim() || '',
+                PerformaNo: $('#purchasepoNo').val().trim(),
+                BillTo: $('#purchasebillTo').val().trim() || '',
+                City: $('#purchaseemirates').val() || '',
+                SalesMan: $('#purchasesalesMan').val().trim() || '',
+                ShipDate: getDateValue('#purchaseshipDate'),
+                ShipVia: $('#purchaseviaType').val() || '',
+                ShipTo: $('#purchaseship').val().trim() || '',
+                PaymentMethod: $('#purchaseinvoiceType').val() || '',
+                AccountCashId: parseInt($('#purchaseaccountName').val()) || 0,
+                PaymentCreditAccountId: 0,
+                PaymentTerms: $('#purchasepaymentTermsValue').val() || '',
+                PaymentDate: getDateValue('#purchaseduedate'),
+                TotalBefore: parseFloat($('#purchasetotalBeforeVat').val()) || 0,
+                Vat: parseFloat($('#purchasetotalVat').val()) || 0,
+                NetTotal: parseFloat($('#purchasenetAmount').val()) || 0,
+                PurchaseType: $('#purchaseType').val() || 'Inventory',
+                FixedAssetCategoryId: $('#purchaseType').val() === 'Fixed Assets' ? parseInt($('#fixedAssetCategory').val()) || 0 : 0,
+                Items: []
+            };
+
+            // Collect table items
+            $('#salesCenterModal tbody tr').each(function () {
+                const row = $(this);
+                let price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
+                let qty = parseFloat(row.find('.qty').val()) || 0;
+                let discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
+                let taxId = parseInt(row.find('.tax').val()) || 0;
+                let taxP = parseFloat(row.find('.tax option:selected').data('value')) || 0;
+
+                const taxableAmount = (price * qty) - discount;
+                const vat = taxableAmount * (taxP / 100) || 0;
+
+                const item = {
+                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                    Quantity: qty,
+                    Price: price,
+                    CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
+                    Discount: discount,
+                    TaxId: taxId,
+                    VatPercentage: taxP,
+                    Vat: vat,
+                    Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
+                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
+                };
+
+                invoiceData.Items.push(item);
+            });
+
+            console.log('Sending Purchase Invoice Data:', invoiceData);
+
+            // AJAX POST to API
+            $.ajax({
+                url: '@Url.Action("SavePurchaseInvoice", "Vendor")', 
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(invoiceData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Purchase Invoice saved successfully');
+                        $('#salesCenterModal').modal('hide');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    console.error("❌ AJAX ERROR", xhr);
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+        // Calculate row totals for purchase modal
+        $(document).on("change input", "#salesCenterModal .qty, #salesCenterModal td:nth-child(5) input, #salesCenterModal td:nth-child(6) input, #salesCenterModal .tax", function() {
+            const row = $(this).closest("tr");
+            calculatePurchaseRow(row);
+        });
+
+        function calculatePurchaseRow(row) {
+            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0;
+            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0;
+            const discount = parseFloat(row.find("td:nth-child(6) input").val()) || 0;
+
+            const net = qty * price - discount;
+            row.find("td:nth-child(7)").text(net.toFixed(2));
+
+            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0;
+            const taxAmount = net * (taxPercent / 100);
+            const amount = net + taxAmount;
+
+            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`);
+            row.find("td:nth-child(9)").text(amount.toFixed(2));
+
+            calculatePurchaseInvoiceTotals();
+        }
+
+        function calculatePurchaseInvoiceTotals() {
+            let totalBeforeVat = 0;
+            let totalVat = 0;
+
+            $('#salesCenterModal tbody tr').each(function () {
+                const net = parseFloat($(this).find("td:nth-child(7)").text()) || 0;
+                const amount = parseFloat($(this).find("td:nth-child(9)").text()) || 0;
+
+                totalBeforeVat += net;
+                totalVat += (amount - net);
+            });
+
+            const netAmount = totalBeforeVat + totalVat;
+
+            $('#purchasetotalBeforeVat').val(totalBeforeVat.toFixed(2));
+            $('#purchasetotalVat').val(totalVat.toFixed(2));
+            $('#purchasenetAmount').val(netAmount.toFixed(2));
+        }
 
     </script>
 }

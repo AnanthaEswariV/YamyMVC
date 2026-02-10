@@ -1419,7 +1419,7 @@ WHERE id=@id;";
             txnCmd.Parameters.AddWithValue("@type", "Purchase Invoice");
             txnCmd.Parameters.AddWithValue("@reference", purchaseId.ToString());
             txnCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-            txnCmd.Parameters.AddWithValue("@costPrice", item.CostPrice);
+            txnCmd.Parameters.AddWithValue("@costPrice", item.Price);
             txnCmd.Parameters.AddWithValue("@qtyIn", item.Quantity);
             txnCmd.Parameters.AddWithValue("@salesPrice", 0);
             txnCmd.Parameters.AddWithValue("@qtyOut", 0);
@@ -2213,6 +2213,7 @@ LIMIT 1;
                             ItemName = reader["ItemName"]?.ToString(),
                             Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
                             CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
+                            Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
                             Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
                             Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
                             Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
@@ -2252,6 +2253,7 @@ SELECT
     i.code AS ItemCode,
     i.name AS ItemName,
     pd.qty AS Qty,
+    pd.price AS Price,
     pd.cost_price AS CostPrice,
     pd.vat AS ItemVat,
     pd.total AS ItemTotal,
@@ -2296,6 +2298,7 @@ WHERE p.state = 0
     CONCAT(i.code,' - ',i.name) AS ItemName,
     d.qty AS Qty,
     d.cost_price AS CostPrice,
+    d.price AS Price,
     d.vat AS ItemVat,
       i.code AS ItemCode,
     d.total AS ItemTotal,
@@ -3292,7 +3295,7 @@ VALUES {string.Join(", ", valueList)}";
         }
 
         private async Task InsertItemTransaction(MySqlConnection conn, MySqlTransaction transaction,
-            DateTime date, string type, string reference, string itemId, string costPrice,
+            DateTime date, string type, string reference, string itemId, string price,
             string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description, string warehouseId)
         {
             await using var cmd = new MySqlCommand(@"
@@ -3305,7 +3308,7 @@ VALUES (@date, @type, @reference, @itemId, @costPrice, @qtyIn, @sales_price, @qt
             cmd.Parameters.AddWithValue("@type", type);
             cmd.Parameters.AddWithValue("@reference", reference);
             cmd.Parameters.AddWithValue("@itemId", itemId);
-            cmd.Parameters.AddWithValue("@costPrice", costPrice);
+            cmd.Parameters.AddWithValue("@costPrice", price);
             cmd.Parameters.AddWithValue("@sales_price", salesPrice);
             cmd.Parameters.AddWithValue("@qtyIn", qtyIn);
             cmd.Parameters.AddWithValue("@qtyOut", qtyOut);
@@ -3319,7 +3322,7 @@ VALUES (@date, @type, @reference, @itemId, @costPrice, @qtyIn, @sales_price, @qt
             await UpdateOnHandItem(conn, transaction, itemId);
 
             // Add item card details
-            await AddItemCardDetails(conn, transaction, date, type, reference, itemId, costPrice,
+            await AddItemCardDetails(conn, transaction, date, type, reference, itemId, price,
                 qtyIn, salesPrice, qtyOut, qtyInc, description, warehouseId);
         }
 
