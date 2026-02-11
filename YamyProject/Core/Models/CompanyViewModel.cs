@@ -1579,6 +1579,7 @@ namespace YamyProject.Core.Models
         public decimal Vat { get; set; }
         public decimal Total { get; set; }
         public int CostCenterId { get; set; }
+        public decimal VatP { get; set; }   
     }
 
     public class QuotationRequest

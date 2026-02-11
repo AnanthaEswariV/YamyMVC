@@ -747,9 +747,9 @@
             $('#paymentTerms').on('change', setDueDate);
 
              $(document).on("click", ".editInvoiceBtn", function () {
-            const invoice = $(this).data("invoice"); // Get invoice JSON
+            const invoice = $(this).data("invoice");
             if (!invoice) return;
-
+            console.log(invoice);
             // Header Fields
             $("#customerName").val(invoice.customerId || 0);
             $("#date").val(invoice.date ? invoice.date.split('T')[0] : '');
@@ -802,14 +802,14 @@
 
                 // Load items dropdown and set selected value
                 loadItem($row.find('.itemNameSelect')).then(() => {
-                    $row.find('.itemNameSelect').val(item.itemId);  // Ensure the correct item is selected
+                    $row.find('.itemNameSelect').val(item.itemId);  
                 }).catch(error => {
                     console.error("Error loading items:", error);
                 });
 
                 // Load tax dropdown and set selected value
                 loadTax($row.find('.tax')).then(() => {
-                    $row.find('.tax').val(item.vatP);  // Ensure the correct tax is selected
+                    $row.find('.tax').val(item.vatP);  
                 }).catch(error => {
                     console.error("Error loading taxes:", error);
                 });
@@ -890,7 +890,6 @@
                 invoiceData.Items.push(item);
             });
 
-            console.log(invoiceData);
             // AJAX POST to API
             $.ajax({
                  url: '@Url.Action("SaveInvoice", "Customer")',

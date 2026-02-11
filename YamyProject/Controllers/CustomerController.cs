@@ -2750,7 +2750,8 @@ LIMIT 1;
                             Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
                             CostCenterId = reader["Cost_Center_Id"] != DBNull.Value
                                 ? Convert.ToInt32(reader["Cost_Center_Id"])
-                                : 0
+                                : 0,
+                            VatP = reader["VatP"] == DBNull.Value ? 0m : Convert.ToDecimal(reader["VatP"]),
                         });
                     }
                 }
@@ -2784,6 +2785,7 @@ SELECT
     sd.qty AS Qty,
     sd.price AS Price,
     sd.vat AS ItemVat,
+     sd.vatp AS VatP,
     s.warehouse_id AS Warehouse_Id,
     s.po_num AS PO_Num,
     s.bill_to AS Bill_To,
@@ -2825,6 +2827,7 @@ SELECT
     i.code AS ItemCode,
     i.name AS ItemName,
     sd.qty AS Qty,
+    sd.vatp AS VatP,
     sd.price AS Price,
     sd.vat AS ItemVat,
     s.warehouse_id AS Warehouse_Id,

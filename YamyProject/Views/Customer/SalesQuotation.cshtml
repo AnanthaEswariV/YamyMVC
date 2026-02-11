@@ -286,6 +286,9 @@
                             </thead>
                             <tbody></tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addEditItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <div class="row mt-3">
@@ -320,7 +323,6 @@
     </div>
 </div>
 
-<!-- CREATE INVOICE MODAL -->
 <div class="modal fade" id="salesCenterModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -520,7 +522,7 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
 
-        $(document).ready(function () {
+             $(document).ready(function () {
             loadEditAccountName();
             loadCustomers();
             loadSalesQuotation();
@@ -552,61 +554,83 @@
                 loadSalesQuotation();
             });
 
-           function getTodayDate() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-           $('button[data-bs-target="#salesModal"]').on('click', function() {
-            // Clear the modal completely
-            $("#salescenterform")[0].reset();
-            $("#editInvoiceId").val("0");
-            $("#editItemsTable tbody").empty();
-            $("#salescenterform").removeData("invoiceId");
-
-            // Set modal title
-            $("#salesModal .modal-title").text("New Sales Quotation");
-
-            // Set today's date immediately for new quotations
-            const todayDate = getTodayDate();
-            $('#editDate').val(todayDate);
-            $('#editDuedate').val(todayDate);
-            $('#editShipDate').val(todayDate);
-
-            // Add 5 blank rows to start
-            for (let i = 0; i < 5; i++) {
-                addEditItemRow();
+            function getTodayDate() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
             }
-        });
 
-           // EDIT MODAL - Set dates on open
-           $('#salesModal').on('shown.bs.modal', function () {
-            const todayDate = getTodayDate();
-            const dateFields = ['editDate', 'editDuedate', 'editShipDate'];
-            dateFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    field.value = todayDate;
-                }
+            function addEditItemRow() {
+                const rowCount = $("#editItemsTable tbody tr").length + 1;
+
+                const newRow = $(`
+                    <tr>
+                        <td>${rowCount}</td>
+                        <td><input type="text" class="form-control form-control-sm" readonly></td>
+                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                        <td><input type="number" class="form-control form-control-sm qty" value="0"></td>
+                        <td><input type="number" class="form-control form-control-sm" value="0" step="0.01"></td>
+                        <td><input type="number" class="form-control form-control-sm" value="0" step="0.01" disabled></td>
+                        <td class="text-center">0.00</td>
+                        <td><select class="form-select form-select-sm tax"></select></td>
+                        <td class="text-center">0.00</td>
+                        <td><select class="form-select form-select-sm costCenterSelect"></select></td>
+                    </tr>
+                `);
+
+                $("#editItemsTable tbody").append(newRow);
+
+                loadItem(newRow.find('.itemNameSelect'));
+                loadTax(newRow.find('.tax'));
+                populateAndSelectCostCenter();
+            }
+
+            $('button[data-bs-target="#salesModal"]').on('click', function() {
+                $("#salescenterform")[0].reset();
+                $("#editInvoiceId").val("0");
+                $("#editItemsTable tbody").empty();
+                $("#salescenterform").removeData("invoiceId");
+
+                $("#salesModal .modal-title").text("New Sales Quotation");
+
+                const todayDate = getTodayDate();
+                $('#editDate').val(todayDate);
+                $('#editDuedate').val(todayDate);
+                $('#editShipDate').val(todayDate);
+
+                addEditItemRow();
             });
-        });
 
-           // CREATE MODAL - Set dates on open
-           $('#salesCenterModal').on('shown.bs.modal', function () {
-            const todayDate = getTodayDate();
-            const dateFields = ['createDate', 'createDuedate', 'createShipDate'];
-            dateFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    field.value = todayDate;
-                }
+            $('#salesModal').on('shown.bs.modal', function () {
+                const todayDate = getTodayDate();
+                const dateFields = ['editDate', 'editDuedate', 'editShipDate'];
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
             });
-        });
 
-            // EDIT MODAL - Payment Terms Logic
+            $(document).on('click', '#addEditItemRowBtn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addEditItemRow();
+            });
+
+            $('#salesCenterModal').on('shown.bs.modal', function () {
+                const todayDate = getTodayDate();
+                const dateFields = ['createDate', 'createDuedate', 'createShipDate'];
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
+            });
+
             function setEditDueDate() {
                 const invoiceType = $('#editInvoiceType').val();
                 let days = 0;
@@ -633,7 +657,6 @@
             $('#editInvoiceType').on('change', setEditDueDate);
             $('#editPaymentTerms').on('change', setEditDueDate);
 
-            // CREATE MODAL - Payment Terms Logic
             function setCreateDueDate() {
                 const invoiceType = $('#createInvoiceType').val();
                 let days = 0;
@@ -660,7 +683,6 @@
             $('#createInvoiceType').on('change', setCreateDueDate);
             $('#createPaymentTerms').on('change', setCreateDueDate);
 
-            // EDIT MODAL - Load Account Name
             function loadEditAccountName(invoiceType) {
                 $.ajax({
                     url: '@Url.Action("GetAccruedSalaries", "HR")',
@@ -699,7 +721,6 @@
                 loadEditAccountName($(this).val());
             });
 
-            // CREATE MODAL - Load Account Name
             function loadCreateAccountName(invoiceType) {
                 $.ajax({
                     url: '@Url.Action("GetAccruedSalaries", "HR")',
@@ -738,7 +759,6 @@
                 loadCreateAccountName($(this).val());
             });
 
-            // EDIT MODAL - Clear on close
             $('#salesModal').on('hidden.bs.modal', function () {
                 $(this).find('input, select, textarea').val('');
                 $("#editItemsTable tbody").empty();
@@ -746,7 +766,6 @@
                 $(this).find('.modal-title').text('Sales Quotation');
             });
 
-            // CREATE MODAL - Clear on close
             $('#salesCenterModal').on('hidden.bs.modal', function () {
                 $(this).find('input, select, textarea').val('');
                 $("#createItemsTable tbody").empty();
@@ -754,57 +773,7 @@
                 $(this).find('.modal-title').text('Create Sales Invoice');
             });
 
-
-
-        $('button[data-bs-target="#salesModal"]').on('click', function() {
-            // Clear the modal completely
-            $("#salescenterform")[0].reset();
-            $("#editInvoiceId").val("0");
-            $("#editItemsTable tbody").empty();
-            $("#salescenterform").removeData("invoiceId");
-
-            // Set modal title
-            $("#salesModal .modal-title").text("New Sales Quotation");
-
-            for (let i = 0; i < 1; i++) {
-                addEditItemRow();
-            }
-        });
-
-        // Function to add a new blank row to the edit items table
-        function addEditItemRow() {
-            const rowCount = $("#editItemsTable tbody tr").length + 1;
-
-            const newRow = $(`
-                <tr>
-                    <td>${rowCount}</td>
-                    <td><input type="text" class="form-control form-control-sm" readonly></td>
-                    <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                    <td><input type="number" class="form-control form-control-sm qty" value="0"></td>
-                    <td><input type="number" class="form-control form-control-sm" value="0" step="0.01"></td>
-                    <td><input type="number" class="form-control form-control-sm" value="0" step="0.01" disabled></td>
-                    <td class="text-center">0.00</td>
-                    <td><select class="form-select form-select-sm tax"></select></td>
-                    <td class="text-center">0.00</td>
-                    <td><select class="form-select form-select-sm costCenterSelect"></select></td>
-                </tr>
-            `);
-
-            $("#editItemsTable tbody").append(newRow);
-
-            // Load dropdowns for the new row only
-            loadItem(newRow.find('.itemNameSelect'));
-            loadTax(newRow.find('.tax'));
-            populateAndSelectCostCenter();
-        }
-
-        $(document).on('click', '#addEditItemRowBtn', function() {
-            addEditItemRow();
-        });
-
-
-
-        });
+        }); 
 
         function loadWarehouses(selector) {
             $.ajax({
@@ -1175,6 +1144,9 @@
             $(`#${prefix}NetAmount`).val(netAmount.toFixed(2));
         }
 
+
+
+
         function openSalesModal(invoice) {
             console.log('Opening Edit Modal:', invoice);
 
@@ -1237,6 +1209,7 @@
             $("#salesModal .modal-title").text("Edit Quotation");
             $("#salesModal").modal("show");
         }
+
         $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
             const form = this;
@@ -1247,10 +1220,8 @@
 
             $('#editPaymentTermsValue').val($('#editPaymentTerms').val());
 
-            // Helper function to format date properly
             function getDateValue(selector) {
                 const value = $(selector).val();
-                // If empty or invalid, return null; otherwise return the date string
                 return (value && value.trim() !== '') ? value : null;
             }
 
@@ -1302,7 +1273,7 @@
                 invoiceData.Items.push(item);
             });
 
-            console.log('Sending data:', invoiceData); // Debug: check the dates
+            console.log('Sending data:', invoiceData); 
 
             $.ajax({
                 url: '@Url.Action("SaveQuotation", "Customer")',
