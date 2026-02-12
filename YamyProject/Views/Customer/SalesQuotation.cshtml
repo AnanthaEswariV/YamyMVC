@@ -476,6 +476,9 @@
                             </thead>
                             <tbody></tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addEditItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <div class="row mt-3">
@@ -582,6 +585,7 @@
                 `);
 
                 $("#editItemsTable tbody").append(newRow);
+                $("#createItemsTable tbody").append(newRow);
 
                 loadItem(newRow.find('.itemNameSelect'));
                 loadTax(newRow.find('.tax'));
@@ -882,6 +886,9 @@
                  }
              });
          }
+
+
+
 
         function loadSalesQuotation() {
             const customerId = $("#type").val() || null;
