@@ -757,9 +757,6 @@
             $(this).find('.modal-title').text('New Invoice');
         });
 
-            // ========================================
-            // UNIFIED ADD ROW FUNCTION
-            // ========================================
             function addEditItemRow(tableSelector) {
                 const $tbody = $(tableSelector).find('tbody');
                 const rowCount = $tbody.find('tr').length + 1;
@@ -787,9 +784,6 @@
                 populateAndSelectCostCenter();
             }
 
-            // ========================================
-            // ADD ROW BUTTON CLICK HANDLER
-            // ========================================
             $(document).on('click', '.addRowBtn', function(e) {
                 e.preventDefault();
                 e.stopPropagation();

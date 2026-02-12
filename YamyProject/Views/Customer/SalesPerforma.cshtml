@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "SalesPerforma";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -279,7 +278,7 @@
 
                     <!-- Table -->
                     <div class="table-responsive mt-3">
-                        <table class="table table-bordered table-sm align-middle">
+                        <table class="table table-bordered table-sm align-middle" id="editItemsTable">
                             <thead class="table-light text-center">
                                 <tr>
                                     <th>S.No</th>
@@ -295,24 +294,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>1</td>
-                                    <td><input type="text" class="form-control form-control-sm" required></td>
-                                    <td><select class="form-select form-select-sm itemNameSelect" required></select></td>
-                                    <td><input type="number" class="form-control form-control-sm qty" required></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td><input class="form-control form-control-sm" disabled></td>
-                                    <td class="text-center">0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm tax"></select>
-                                    </td>
-                                    <td class="text-center" required>0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm costCenterSelect"></select>
-                                    </td>
-                                </tr>
                             </tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addEditItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <!-- Notes & Totals -->
@@ -348,8 +334,6 @@
         </div>
     </div>
 </div>
-
-
 
 <!-- CREATE INVOICE MODAL -->
 <div class="modal fade" id="salesCenterModal" tabindex="-1">
@@ -439,7 +423,7 @@
                                 <option value="150">150</option>
                                 <option value="180">180</option>
                                 <option value="210">210</option>
-                                <option value="240">240</option>+
+                                <option value="240">240</option>
                                 <option value="270">270</option>
                                 <option value="300">300</option>
                                 <option value="330">330</option>
@@ -487,7 +471,7 @@
                         </div>
                     </div>
 
-                    <div class="table-responsive mt-3"> 
+                    <div class="table-responsive mt-3">
                         <table class="table table-bordered table-sm align-middle" id="createItemsTable">
                             <thead class="table-light text-center">
                                 <tr>
@@ -505,6 +489,9 @@
                             </thead>
                             <tbody></tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addCreateItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <div class="row mt-3">
@@ -553,6 +540,8 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
 
+
+
         $(document).ready(function () {
 
             loadCustomers();
@@ -571,6 +560,7 @@
                         .val("");
                 }
             });
+
             $("#filterBtn").click(loadSalesQuotation);
             $("#type").change(loadSalesQuotation);
             $("#paymentMethod").change(loadSalesQuotation);
@@ -585,216 +575,236 @@
                 loadSalesQuotation();
             });
 
-           function getTodayDate() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
+            function getTodayDate() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
 
             document.getElementById('salesModal').addEventListener('shown.bs.modal', function () {
-            const todayDate = getTodayDate();
-
-            const dateFields = [
-                'date',
-                'duedate',
-                'shipDate'
-            ];
-
-            dateFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    field.value = todayDate;
-                }
+                const todayDate = getTodayDate();
+                const dateFields = ['date', 'duedate', 'shipDate'];
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
             });
-        });
 
             document.getElementById('salesCenterModal').addEventListener('shown.bs.modal', function () {
-            const todayDate = getTodayDate();
-
-            const dateFields = [
-                'createDate',
-                'createDuedate',
-                'createShipDate'
-            ];
-
-            dateFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    field.value = todayDate;
-                }
+                const todayDate = getTodayDate();
+                const dateFields = ['createDate', 'createDuedate', 'createShipDate'];
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
             });
-        });
-
-
 
             $('#paymentTerms, #createPaymentTerms').prop('disabled', true);
             setDueDate();
 
             function setDueDate() {
-            // Determine which modal is active
-            const isCreateModal = $('#salesCenterModal').hasClass('show');
+                const isCreateModal = $('#salesCenterModal').hasClass('show');
+                const invoiceType = isCreateModal ? $('#createInvoiceType').val() : $('#invoiceType').val();
+                const paymentTerms = isCreateModal ? $('#createPaymentTerms').val() : $('#paymentTerms').val();
+                const dueDateField = isCreateModal ? '#createDuedate' : '#duedate';
+                const dateField = isCreateModal ? '#createDate' : '#date';
 
-            const invoiceType = isCreateModal
-                ? $('#createInvoiceType').val()
-                : $('#invoiceType').val();
+                let days = 0;
+                if (invoiceType === 'Credit') {
+                    days = parseInt(paymentTerms, 10) || 30;
+                }
 
-            const paymentTerms = isCreateModal
-                ? $('#createPaymentTerms').val()
-                : $('#paymentTerms').val();
+                const baseDateStr = $(dateField).val();
+                const baseDate = baseDateStr ? new Date(baseDateStr) : new Date();
+                const dueDate = new Date(baseDate);
+                dueDate.setDate(dueDate.getDate() + days);
 
-            const dueDateField = isCreateModal ? '#createDuedate' : '#duedate';
-            const dateField = isCreateModal ? '#createDate' : '#date';
-
-            let days = 0;
-
-            if (invoiceType === 'Credit') {
-                days = parseInt(paymentTerms, 10) || 30; // Default to 30 if not set
+                const yyyy = dueDate.getFullYear();
+                const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(dueDate.getDate()).padStart(2, '0');
+                $(dueDateField).val(`${yyyy}-${mm}-${dd}`);
             }
-
-            // Use the invoice date as base, not today
-            const baseDateStr = $(dateField).val();
-            const baseDate = baseDateStr ? new Date(baseDateStr) : new Date();
-
-            const dueDate = new Date(baseDate);
-            dueDate.setDate(dueDate.getDate() + days);
-
-            const yyyy = dueDate.getFullYear();
-            const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(dueDate.getDate()).padStart(2, '0');
-
-            $(dueDateField).val(`${yyyy}-${mm}-${dd}`);
-        }
 
             $('#invoiceType, #createInvoiceType').on('change', function () {
-            const type = $(this).val();
-            setDueDate();
-            loadAccountName(type);
-        });
+                const type = $(this).val();
+                setDueDate();
+                loadAccountName(type);
+            });
 
             $('#paymentTerms, #createPaymentTerms').on('change', function() {
-            const isCreate = $(this).attr('id') === 'createPaymentTerms';
-            const value = $(this).val();
-
-            // Update hidden field
-            if (isCreate) {
-                $('#createPaymentTermsValue').val(value);
-            } else {
-                $('#paymentTermsValue').val(value);
-            }
-
-            setDueDate();
-        });
+                const isCreate = $(this).attr('id') === 'createPaymentTerms';
+                const value = $(this).val();
+                if (isCreate) {
+                    $('#createPaymentTermsValue').val(value);
+                } else {
+                    $('#paymentTermsValue').val(value);
+                }
+                setDueDate();
+            });
 
             function loadAccountName(invoiceType) {
-            if (!invoiceType) {
-                console.warn('Invoice type not provided to loadAccountName');
-                return;
-            }
+                if (!invoiceType) {
+                    console.warn('Invoice type not provided to loadAccountName');
+                    return;
+                }
 
-            $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
-                type: 'GET',
-                success: function (accounts) {
-                    const $accountName = $('#accountName');
-                    const $createAccountName = $('#createAccountName');
+                $.ajax({
+                    url: '@Url.Action("GetAccruedSalaries", "HR")',
+                    type: 'GET',
+                    success: function (accounts) {
+                        const $accountName = $('#accountName');
+                        const $createAccountName = $('#createAccountName');
 
-                    $accountName.empty().append('<option value="">-- Select --</option>');
-                    $createAccountName.empty().append('<option value="">-- Select --</option>');
+                        $accountName.empty().append('<option value="">-- Select --</option>');
+                        $createAccountName.empty().append('<option value="">-- Select --</option>');
 
-                    $.each(accounts, function (_, item) {
-                        const option = $('<option>', {
-                            value: item.id,
-                            text: `${item.code} - ${item.name}`
+                        $.each(accounts, function (_, item) {
+                            const option = $('<option>', {
+                                value: item.id,
+                                text: `${item.code} - ${item.name}`
+                            });
+                            $accountName.append(option.clone());
+                            $createAccountName.append(option);
                         });
 
-                        $accountName.append(option.clone());
-                        $createAccountName.append(option);
-                    });
+                        $.ajax({
+                            url: '/Customer/GetPaymentMethodInfo',
+                            type: 'GET',
+                            data: { method: invoiceType },
+                            success: function (res) {
+                                if (res.status) {
+                                    $accountName.val(res.accountId);
+                                    $createAccountName.val(res.accountId);
+                                    const isCredit = invoiceType === 'Credit';
+                                    $('#paymentTerms, #createPaymentTerms').prop('disabled', !isCredit);
 
-                    // Get payment method info after accounts are loaded
-                    $.ajax({
-                        url: '/Customer/GetPaymentMethodInfo',
-                        type: 'GET',
-                        data: { method: invoiceType },
-                        success: function (res) {
-                            if (res.status) {
-                                // Set account
-                                $accountName.val(res.accountId);
-                                $createAccountName.val(res.accountId);
-
-                                // Handle payment terms
-                                const isCredit = invoiceType === 'Credit';
-                                $('#paymentTerms, #createPaymentTerms').prop('disabled', !isCredit);
-
-                                if (isCredit && res.paymentTerms) {
-                                    $('#paymentTerms').val(res.paymentTerms);
-                                    $('#createPaymentTerms').val(res.paymentTerms);
-                                    $('#paymentTermsValue').val(res.paymentTerms);
-                                    $('#createPaymentTermsValue').val(res.paymentTerms);
+                                    if (isCredit && res.paymentTerms) {
+                                        $('#paymentTerms').val(res.paymentTerms);
+                                        $('#createPaymentTerms').val(res.paymentTerms);
+                                        $('#paymentTermsValue').val(res.paymentTerms);
+                                        $('#createPaymentTermsValue').val(res.paymentTerms);
+                                    } else {
+                                        $('#paymentTerms, #createPaymentTerms').val('30');
+                                    }
+                                    setDueDate();
                                 } else {
-                                    $('#paymentTerms, #createPaymentTerms').val('30'); // Default
+                                    toastr.error('Failed to load payment method info');
                                 }
-
-                                // Recalculate due date
-                                setDueDate();
-                            } else {
-                                toastr.error('Failed to load payment method info');
+                            },
+                            error: function(xhr) {
+                                console.error('Error loading payment method info:', xhr);
+                                toastr.error('Error loading payment configuration');
                             }
-                        },
-                        error: function(xhr) {
-                            console.error('Error loading payment method info:', xhr);
-                            toastr.error('Error loading payment configuration');
-                        }
-                    });
-                },
-                error: function(xhr) {
-                    console.error('Error loading accounts:', xhr);
-                    toastr.error('Failed to load account names');
-                }
-            });
-        }
-                // Improved change handler
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading accounts:', xhr);
+                        toastr.error('Failed to load account names');
+                    }
+                });
+            }
+
             $("#invoiceType, #createInvoiceType").on("change", function () {
-            const type = $(this).val();
-            const isCreate = $(this).attr('id') === 'createInvoiceType';
+                const type = $(this).val();
+                const isCreate = $(this).attr('id') === 'createInvoiceType';
 
-            if (type) {
-                loadAccountName(type);
-            }
+                if (type) {
+                    loadAccountName(type);
+                }
 
-            // Update payment terms immediately
-            const isCredit = type === 'Credit';
-            if (isCreate) {
-                $('#createPaymentTerms').prop('disabled', !isCredit);
-            } else {
-                $('#paymentTerms').prop('disabled', !isCredit);
-            }
+                const isCredit = type === 'Credit';
+                if (isCreate) {
+                    $('#createPaymentTerms').prop('disabled', !isCredit);
+                } else {
+                    $('#paymentTerms').prop('disabled', !isCredit);
+                }
+                setDueDate();
+            });
 
-            setDueDate();
-        });
             loadAccountName($("#invoiceType, #createInvoiceType").val());
 
             $('#salesModal').on('hidden.bs.modal', function () {
-            // Clear header inputs
-            $(this).find('input, select, textarea').val('');
+                $(this).find('input, select, textarea').val('');
+                $(this).find('tbody').empty();
+                $("#salescenterform").removeData("invoiceId");
+                $(this).find('.modal-title').text('New Invoice');
+            });
 
-            // Clear table rows
-            $(this).find('tbody').empty();
+            // ✅ FIXED: Separate handlers for each modal's Add Row button
+            $(document).on('click', '#addEditItemRowBtn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addEditItemRow();
+            });
 
-            // Reset invoiceId data
-            $("#salescenterform").removeData("invoiceId");
+            $(document).on('click', '#addCreateItemRowBtn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addCreateItemRow();
+            });
 
-            // Optional: reset modal title
-            $(this).find('.modal-title').text('New Invoice');
-        });
+            // ✅ FIXED: Function for Edit Modal
+            function addEditItemRow() {
+                const rowCount = $("#editItemsTable tbody tr").length + 1;
 
+                const newRow = $(`
+                    <tr>
+                        <td>${rowCount}</td>
+                        <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                        <td><input type="number" class="form-control form-control-sm qty" value="0"></td>
+                        <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01"></td>
+                        <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" disabled></td>
+                        <td class="text-center itemNet">0.00</td>
+                        <td><select class="form-select form-select-sm tax"></select></td>
+                        <td class="text-center itemAmount">0.00</td>
+                        <td><select class="form-select form-select-sm costCenterSelect"></select></td>
+                    </tr>
+                `);
+
+                $("#editItemsTable tbody").append(newRow);
+
+                loadItem(newRow.find('.itemNameSelect'));
+                loadTax(newRow.find('.tax'));
+                populateAndSelectCostCenter();
+            }
+
+            // ✅ FIXED: Function for Create Modal
+            function addCreateItemRow() {
+                const rowCount = $("#createItemsTable tbody tr").length + 1;
+
+                const newRow = $(`
+                    <tr>
+                        <td>${rowCount}</td>
+                        <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                        <td><input type="number" class="form-control form-control-sm qty" value="0"></td>
+                        <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01"></td>
+                        <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01"></td>
+                        <td class="text-center itemNet">0.00</td>
+                        <td><select class="form-select form-select-sm tax"></select></td>
+                        <td class="text-center itemAmount">0.00</td>
+                        <td><select class="form-select form-select-sm costCenterSelect"></select></td>
+                    </tr>
+                `);
+
+                $("#createItemsTable tbody").append(newRow);
+
+                loadItem(newRow.find('.itemNameSelect'));
+                loadTax(newRow.find('.tax'));
+                populateAndSelectCostCenter();
+            }
         });
 
         function loadWarehouses(selector) {
             $.ajax({
-              url: '@Url.Action("GetWarehouses", "Inventory")',
+                url: '@Url.Action("GetWarehouses", "Inventory")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
@@ -811,6 +821,7 @@
         }
 
         let itemsList = [];
+        let taxesList = [];
 
         function loadItem(selector = ".itemNameSelect") {
             return new Promise((resolve, reject) => {
@@ -819,15 +830,13 @@
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
-                            itemsList = res.data; // Store the items in the global itemsList
+                            itemsList = res.data;
                             const dropdowns = $(selector);
                             dropdowns.empty().append('<option value="">Select Item</option>');
                             res.data.forEach(item => {
-                                dropdowns.append(
-                                    `<option value="${item.id}">${item.itemName}</option>`
-                                );
+                                dropdowns.append(`<option value="${item.id}">${item.itemName}</option>`);
                             });
-                            resolve(); // Resolve the promise once the items are loaded
+                            resolve();
                         } else {
                             reject("Failed to load items.");
                         }
@@ -847,13 +856,12 @@
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
+                            taxesList = res.data;
                             const dropdowns = $(selector);
                             dropdowns.empty().append('<option value="">-- Select Tax --</option>');
                             res.data.forEach(item => {
                                 const text = `${item.name}-${item.value}%`;
-                                dropdowns.append(
-                                    `<option value="${item.id}" data-value="${item.value}">${text}</option>`
-                                );
+                                dropdowns.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
                             });
                             resolve();
                         } else {
@@ -869,30 +877,139 @@
         }
 
         function populateAndSelectCostCenter() {
-             $.ajax({
-                 url: '@Url.Action("GetCostCenters", "Lists")',
-                 type: 'GET',
-                 success: function (res) {
-                     const data = Array.isArray(res) ? res : (res.data || []);
-                     if (!data.length) return;
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    if (!data.length) return;
 
-                     const allSelects = $('.costCenterSelect');
+                    const allSelects = $('.costCenterSelect');
 
-                     allSelects.each(function () {
-                         const $select = $(this);
-                         const selectedId = $select.data('selected-id');
+                    allSelects.each(function () {
+                        const $select = $(this);
+                        const selectedId = $select.data('selected-id');
 
-                         $select.empty().append('<option value="">-- Select --</option>');
+                        $select.empty().append('<option value="">-- Select --</option>');
 
-                         $.each(data, function (i, item) {
-                             const isSelected = String(item.id) === String(selectedId);
-                             const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
-                             $select.append(option);
-                         });
-                     });
-                 }
-             });
-         }
+                        $.each(data, function (i, item) {
+                            const isSelected = String(item.id) === String(selectedId);
+                            const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
+                            $select.append(option);
+                        });
+                    });
+                }
+            });
+        }
+
+        function loadCustomers() {
+            $.ajax({
+                url: '@Url.Action("GetCustomers", "Customer")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const customerDdl = $("#customerName");
+                        const typeDdl = $("#type");
+                        const createCustomerName = $("#createCustomerName");
+
+                        customerDdl.empty().append('<option value="">-- Select Customer --</option>');
+                        typeDdl.empty().append('<option value="">-- Select Customer --</option>');
+                        createCustomerName.empty().append('<option value="">-- Select Customer --</option>');
+
+                        res.data.forEach(c => {
+                            const option = `<option value="${c.id}">${c.name}</option>`;
+                            customerDdl.append(option);
+                            typeDdl.append(option);
+                            createCustomerName.append(option);
+                        });
+                    } else {
+                        toastr.error('Failed to load customers.');
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading customers.');
+                }
+            });
+        }
+
+        $(document).on("change", ".itemNameSelect", function () {
+            const selectedId = parseInt($(this).val(), 10);
+            const row = $(this).closest("tr");
+
+            if (selectedId) {
+                const selectedItem = itemsList.find(item => item.id === selectedId);
+                if (selectedItem) {
+                    row.find(".itemCode").val(selectedItem.code || "");
+                    row.find(".itemPrice").val(selectedItem.cost_price || 0);
+                    row.find(".itemPrice").data('cost-price', selectedItem.cost_price || 0);
+                    calculateRow(row);
+                } else {
+                    console.log("Item not found in itemsList.");
+                }
+            } else {
+                row.find(".itemCode").val("");
+                row.find(".itemPrice").val(0);
+                row.find(".itemPrice").data('cost-price', 0);
+                calculateRow(row);
+            }
+        });
+
+        function calculateRow(row) {
+            const qty = parseFloat(row.find(".qty").val()) || 0;
+            const price = parseFloat(row.find(".itemPrice").val()) || 0;
+            const discount = parseFloat(row.find(".itemDiscount").val()) || 0;
+
+            const net = qty * price - discount;
+            row.find(".itemNet").text(net.toFixed(2));
+
+            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0;
+            const taxAmount = net * (taxPercent / 100);
+            const amount = net + taxAmount;
+
+            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`);
+            row.find(".itemAmount").text(amount.toFixed(2));
+
+            calculateInvoiceTotals();
+        }
+
+        $(document).on("input", ".qty, .itemPrice, .itemDiscount", function() {
+            const row = $(this).closest("tr");
+            calculateRow(row);
+        });
+
+        $(document).on("change", ".tax", function() {
+            const row = $(this).closest("tr");
+            calculateRow(row);
+        });
+
+        function calculateInvoiceTotals() {
+            let totalBeforeVat = 0;
+            let totalVat = 0;
+
+            const isCreateModal = $('#salesCenterModal').hasClass('show');
+            const tableSelector = isCreateModal ? '#createItemsTable tbody tr' : '#editItemsTable tbody tr';
+
+            $(tableSelector).each(function () {
+                const row = $(this);
+                const net = parseFloat(row.find(".itemNet").text()) || 0;
+                const amount = parseFloat(row.find(".itemAmount").text()) || 0;
+
+                totalBeforeVat += net;
+                totalVat += (amount - net);
+            });
+
+            const netAmount = totalBeforeVat + totalVat;
+
+            if (isCreateModal) {
+                $('#createTotalBeforeVat').val(totalBeforeVat.toFixed(2));
+                $('#createTotalVat').val(totalVat.toFixed(2));
+                $('#createNetAmount').val(netAmount.toFixed(2));
+            } else {
+                $('#totalBeforeVat').val(totalBeforeVat.toFixed(2));
+                $('#totalVat').val(totalVat.toFixed(2));
+                $('#netAmount').val(netAmount.toFixed(2));
+            }
+        }
 
         function loadSalesQuotation() {
             const customerId = $("#type").val() || null;
@@ -928,7 +1045,6 @@
             const table2Body = $("#table2 tbody").empty();
 
             data.forEach((sale, index) => {
-
                 const row = $(`
                     <tr data-index="${index}">
                         <td>${index + 1}</td>
@@ -944,32 +1060,23 @@
                             <button class="btn btn-sm btn-primary editSalesQuotationBtn">
                                 <i class="fas fa-pen"></i>
                             </button>
-                               <button class="btn btn-sm btn-primary viewInvoiceBtn"
-                data-sales-id="${sale.id}">
-            <i class="fas fa-eye"></i>
-        </button>
-
-
-        <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
-                                    <i class="fas fa-file-invoice"></i>
-                                </button>
+                            <button class="btn btn-sm btn-primary viewInvoiceBtn" data-sales-id="${sale.id}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
+                                <i class="fas fa-file-invoice"></i>
+                            </button>
                         </td>
                     </tr>
                 `);
 
-                // Show item details on row click
                 row.on("click", function (e) {
-                    // Prevent row click if edit button is clicked
-                    if ($(e.target).closest(".editSalesQuotationBtn").length) return;
+                    if ($(e.target).closest(".editSalesQuotationBtn, .viewInvoiceBtn, .createInvoiceBtn").length) return;
 
                     table2Body.empty();
 
                     if (!sale.items || sale.items.length === 0) {
-                        table2Body.append(`
-                            <tr>
-                                <td colspan="5" class="text-center">No Items</td>
-                            </tr>
-                        `);
+                        table2Body.append('<tr><td colspan="5" class="text-center">No Items</td></tr>');
                         return;
                     }
 
@@ -986,17 +1093,15 @@
                     });
                 });
 
-                // 👉 EDIT BUTTON CLICK
                 row.find(".editSalesQuotationBtn").on("click", function (e) {
-                    e.stopPropagation(); // Prevent row click
-                    openSalesModal(sale); // Call your modal function
+                    e.stopPropagation();
+                    openSalesModal(sale);
                 });
 
-
-                   row.find(".createInvoiceBtn").on("click", function (e) {
-                        e.stopPropagation();
-                        openSalesCenterModal(sale);
-                    });
+                row.find(".createInvoiceBtn").on("click", function (e) {
+                    e.stopPropagation();
+                    openSalesCenterModal(sale);
+                });
 
                 table1Body.append(row);
             });
@@ -1029,28 +1134,22 @@
                                 <button class="btn btn-sm btn-primary editSalesQuotationBtn">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                 <button class="btn btn-sm btn-primary viewInvoiceBtn"
-                data-sales-id="${item.id}">
-            <i class="fas fa-eye"></i>
-        </button>
-
-
-
-        <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
+                                <button class="btn btn-sm btn-primary viewInvoiceBtn" data-sales-id="${sale.id}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
                                     <i class="fas fa-file-invoice"></i>
                                 </button>
                             </td>
                         </tr>
                     `);
 
-                    // Edit button click
                     row.find(".editSalesQuotationBtn").on("click", function (e) {
                         e.stopPropagation();
                         openSalesModal(sale);
                     });
 
-
-                   row.find(".createInvoiceBtn").on("click", function (e) {
+                    row.find(".createInvoiceBtn").on("click", function (e) {
                         e.stopPropagation();
                         openSalesCenterModal(sale);
                     });
@@ -1060,168 +1159,25 @@
             });
         }
 
-
-         $(document).on('click', '.viewInvoiceBtn', function () {
+        $(document).on('click', '.viewInvoiceBtn', function () {
             const salesId = $(this).data('sales-id');
-
             if (!salesId) {
                 console.error('Sales ID missing');
                 return;
             }
-
             const newTab = window.open('', '_blank');
-            newTab.document.write(`
-                <iframe src="/Customer/GetSalesProformaInvoice?salesId=${salesId}"
-                        style="width:100%; height:100%; border:none;"></iframe>
-            `);
+            newTab.document.write(`<iframe src="/Customer/GetSalesProformaInvoice?salesId=${salesId}" style="width:100%; height:100%; border:none;"></iframe>`);
         });
-
 
         function formatDate(dateStr) {
             const date = new Date(dateStr);
             return date.toISOString().split('T')[0];
         }
 
-        function syncDateCheckbox() {
-            const enabled = $("#chkDate").is(":checked");
-            $("#startDate, #endDate").prop("disabled", !enabled);
-        }
+        function openSalesModal(invoice) {
+            console.log('Opening Edit Invoice Modal:', invoice);
 
-          function loadCustomers() {
-            $.ajax({
-                url: '@Url.Action("GetCustomers", "Customer")',
-                type: 'GET',
-                success: function (res) {
-                    if (res.status) {
-                        const customerDdl = $("#customerName");
-                        const typeDdl = $("#type");
-                        const createCustomerName = $("#createCustomerName");
-
-                        customerDdl.empty().append('<option value="">-- Select Customer --</option>');
-                        typeDdl.empty().append('<option value="">-- Select Customer --</option>');
-                        createCustomerName.empty().append('<option value="">-- Select Customer --</option>');
-
-                        res.data.forEach(c => {
-                            const option = `<option value="${c.id}">${c.name}</option>`;
-                            customerDdl.append(option);
-                            typeDdl.append(option);
-                            createCustomerName.append(option);
-                        });
-                    } else {
-                        toastr.error('Failed to load customers.');
-                    }
-                },
-                error: function () {
-                    toastr.error('Error loading customers.');
-                }
-            });
-        }
-
-        $(document).on("change", ".itemNameSelect", function () {
-            const selectedId = parseInt($(this).val(), 10);
-
-            const row = $(this).closest("tr");
-
-            if (selectedId) {
-                // Find the item in the itemsList
-                const selectedItem = itemsList.find(item => item.id === selectedId);
-
-                if (selectedItem) {
-                    row.find("td:nth-child(2) input").val(selectedItem.code || "");
-
-                    row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
-
-                    calculateRow(row);
-                } else {
-                    console.log("Item not found in itemsList.");
-                }
-            } else {
-                row.find("td:nth-child(2) input").val("");
-                row.find("td:nth-child(5) input").val(0);
-
-                calculateRow(row);
-            }
-        });
-
-        function calculateRow(row) {
-            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0; // Quantity
-            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0; // Price
-            const discount = parseFloat(row.find("td:nth-child(6) input").val()) || 0; // Discount
-
-            // Net = Quantity * Price - Discount
-            const net = qty * price - discount;
-            row.find("td:nth-child(7)").text(net.toFixed(2)); // Set the "Net" field
-
-            const taxPercent = parseFloat(row.find(".tax option:selected").data("value")) || 0; // Tax percentage
-            const taxAmount = net * (taxPercent / 100); // Calculate tax
-            const amount = net + taxAmount; // Total amount including tax
-
-            row.find(".tax").attr("title", `Tax Amount: ${taxAmount.toFixed(2)}`); // Set tax title
-            row.find("td:nth-child(9)").text(amount.toFixed(2)); // Set the "Amount" field
-
-            // Update the invoice totals (optional)
-            calculateInvoiceTotals();
-        }
-
-        // $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
-        //     const row = $(this).closest("tr");
-
-        //     // Optional: Call API to check stock when qty changes
-        //     if ($(this).closest("td").index() === 3) { // Qty column
-        //         const itemId = row.find(".itemNameSelect").val();
-        //         const qty = parseFloat($(this).val()) || 0;
-        //         if (itemId) {
-        //             $.ajax({
-        //                 url: '@Url.Action("CheckItemValidity", "Customer")',
-        //                 type: 'GET',
-        //                 data: { itemId: itemId, salesQty: qty },
-        //                 success: function (res) {
-        //                     if (!res.status) {
-        //                         alert(res.message);
-        //                         row.find("td:nth-child(4) input").val(0);
-        //                     }
-        //                     calculateRow(row);
-        //                 },
-        //                 error: function(err) { console.error(err); }
-        //             });
-        //         } else {
-        //             calculateRow(row);
-        //         }
-        //     } else {
-        //         calculateRow(row);
-        //     }
-        // });
-
-        $(document).on("change", ".tax, .qty", function() {
-            const row = $(this).closest("tr");
-            calculateRow(row);
-        });
-
-         function calculateInvoiceTotals() {
-            let totalBeforeVat = 0;
-            let totalVat = 0;
-
-            $('#salesModal tbody tr').each(function () {
-                const row = $(this);
-
-                const net = parseFloat(row.find("td:nth-child(7)").text()) || 0;
-                const amount = parseFloat(row.find("td:nth-child(9)").text()) || 0;
-
-                totalBeforeVat += net;
-                totalVat += (amount - net);
-            });
-
-            const netAmount = totalBeforeVat + totalVat;
-
-            $('#totalBeforeVat').val(totalBeforeVat.toFixed(2));
-            $('#totalVat').val(totalVat.toFixed(2));
-            $('#netAmount').val(netAmount.toFixed(2));
-        }
-
-          function openSalesModal(invoice) {
-            console.log(invoice);
-
-            // 🔹 Header
+            // Populate header fields
             $("#customerName").val(invoice.customerId || 0);
             $("#date").val(invoice.date ? invoice.date.split('T')[0] : '');
             $("#invoiceCode").val(invoice.invoiceCode || '');
@@ -1241,52 +1197,85 @@
             $("#netAmount").val(invoice.net || 0);
             $("#warehouseDropdown").val(invoice.warehouseId || '');
 
-            // 🔹 Clear rows
-            $("#salesModal tbody").empty();
+            const tbody = $("#editItemsTable tbody");
+            tbody.empty();
 
-            // 🔹 Add rows first (with empty dropdowns)
-            (invoice.items || []).forEach((item, idx) => {
-                const row = $(`
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
-                        <td class="text-center">${item.vat || 0}</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">${item.total || 0}</td>
-                        <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
-                    </tr>
-                `);
-                $("#salesModal tbody").append(row);
-            });
-
-            // 🔹 Now load dropdowns and set selected values
+            // Load data first
             Promise.all([loadItem(), loadTax()]).then(() => {
-                // Set selected item for each row
-                $("#salesModal tbody tr").each(function(idx) {
-                    const item = invoice.items[idx];
-                    if (item) {
-                        $(this).find('.itemNameSelect').val(item.itemId || '');
-                        $(this).find('.tax').val(item.taxId || '');
+                console.log('Items loaded:', itemsList);
+                console.log('Taxes loaded:', taxesList);
+
+                // Create combined items list
+                const allItems = [...itemsList];
+                (invoice.items || []).forEach(invoiceItem => {
+                    const exists = allItems.find(item => Number(item.id) === Number(invoiceItem.itemId));
+                    if (!exists && invoiceItem.itemId) {
+                        allItems.push({
+                            id: invoiceItem.itemId,
+                            itemName: invoiceItem.itemName,
+                            code: invoiceItem.itemCode,
+                            cost_price: invoiceItem.costPrice || 0
+                        });
                     }
                 });
 
-                // Load cost centers
+                // Create rows
+                (invoice.items || []).forEach((item, idx) => {
+                    console.log('Processing item:', item);
+
+                    const row = $(`
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td><input type="text" class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
+                            <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                            <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                            <td><input type="number" class="form-control form-control-sm itemPrice" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}" step="0.01"></td>
+                            <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
+                            <td class="text-center itemNet">${((item.qty * item.price) - item.discount || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm tax"></select></td>
+                            <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                        </tr>
+                    `);
+
+                    // Populate item dropdown
+                    const itemSelect = row.find('.itemNameSelect');
+                    itemSelect.append('<option value="">Select Item</option>');
+                    allItems.forEach(itm => {
+                        const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
+                        itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
+                        if (selected) console.log('✓ Matched item:', itm.itemName, 'ID:', itm.id);
+                    });
+
+                    // Populate tax dropdown
+                    const taxSelect = row.find('.tax');
+                    taxSelect.append('<option value="">-- Select Tax --</option>');
+                    taxesList.forEach(tax => {
+                        const matchByPercentage = Number(tax.value) === Number(item.vatP || item.vatPercentage);
+                        const matchById = Number(tax.id) === Number(item.taxId);
+                        const selected = (matchByPercentage || matchById) ? 'selected' : '';
+                        const text = `${tax.name}-${tax.value}%`;
+                        taxSelect.append(`<option value="${tax.id}" data-value="${tax.value}" ${selected}>${text}</option>`);
+                        if (selected) console.log('✓ Matched tax:', text, 'ID:', tax.id);
+                    });
+
+                    tbody.append(row);
+                });
+
                 populateAndSelectCostCenter();
+
+                // Recalculate all rows
+                $("#editItemsTable tbody tr").each(function() {
+                    calculateRow($(this));
+                });
             });
 
-            // 🔹 Save invoice ID
             $("#salescenterform").data("invoiceId", invoice.id || 0);
-
-            // 🔹 UI
             $("#salesModal .modal-title").text("Edit Invoice");
             $("#salesModal").modal("show");
         }
 
-         $('#salescenterform').on('submit', function (e) {
+        $('#salescenterform').on('submit', function (e) {
             e.preventDefault();
             const form = this;
             if (!form.checkValidity()) {
@@ -1296,57 +1285,58 @@
 
             $('#paymentTermsValue').val($('#paymentTerms').val());
 
-                 const invoiceData = {
-            Id: $("#salescenterform").data("invoiceId") || 0,
-            Date: $('#date').val(),
-            CustomerId: parseInt($('#customerName').val()) || 0,
-            InvoiceCode: $('#invoiceCode').val().trim(),
-            PONumber: $('#poNo').val().trim(),
-            BillTo: $('#billTo').val().trim(),
-            City: $('#emirates').val(),
-            SalesMan: $('#salesMan').val().trim(),
-            ShipDate: $('#shipDate').val(),
-            ShipVia: $('#viaType').val(),
-            ShipTo: $('#ship').val().trim(),
-            PaymentMethod: $('#invoiceType').val(),
-            AccountCashId: parseInt($('#accountName').val()) || 0,
-            PaymentTerms: $('#paymentTermsValue').val(),
-            PaymentDate: $('#duedate').val(),
-            TotalBefore: parseFloat($('#totalBeforeVat').val()) || 0,
-            Vat: parseFloat($('#totalVat').val()) || 0,
-            NetTotal: parseFloat($('#netAmount').val()) || 0,
-            WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
-            Items: []
-        };
-
-            $('#salesModal tbody tr').each(function () {
-            const row = $(this);
-
-            const qty = parseFloat(row.find('.qty').val()) || 0;
-            const price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
-            const discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
-            const vatPercentage = parseFloat(row.find('.tax').val()) || 0;
-
-            const taxableAmount = (qty * price) - discount;
-            const calculatedVat = taxableAmount * (vatPercentage / 100);
-
-            const item = {
-                ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-                Quantity: qty,
-                CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
-                Price: price,
-                VatPercentage: vatPercentage,
-                Vat: calculatedVat,
-                Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
-                CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+            const invoiceData = {
+                Id: $("#salescenterform").data("invoiceId") || 0,
+                Date: $('#date').val(),
+                CustomerId: parseInt($('#customerName').val()) || 0,
+                InvoiceCode: $('#invoiceCode').val().trim(),
+                PONumber: $('#poNo').val().trim(),
+                BillTo: $('#billTo').val().trim(),
+                City: $('#emirates').val(),
+                SalesMan: $('#salesMan').val().trim(),
+                ShipDate: $('#shipDate').val(),
+                ShipVia: $('#viaType').val(),
+                ShipTo: $('#ship').val().trim(),
+                PaymentMethod: $('#invoiceType').val(),
+                AccountCashId: parseInt($('#accountName').val()) || 0,
+                PaymentTerms: $('#paymentTermsValue').val(),
+                PaymentDate: $('#duedate').val(),
+                TotalBefore: parseFloat($('#totalBeforeVat').val()) || 0,
+                Vat: parseFloat($('#totalVat').val()) || 0,
+                NetTotal: parseFloat($('#netAmount').val()) || 0,
+                WarehouseId: parseInt($('#warehouseDropdown').val()) || 0,
+                Items: []
             };
 
-            invoiceData.Items.push(item);
-        });
+            $('#editItemsTable tbody tr').each(function () {
+                const row = $(this);
 
+                const qty = parseFloat(row.find('.qty').val()) || 0;
+                const price = parseFloat(row.find('.itemPrice').val()) || 0;
+                const discount = parseFloat(row.find('.itemDiscount').val()) || 0;
+                const taxId = parseInt(row.find('.tax').val()) || 0;
+                const taxPercentage = parseFloat(row.find('.tax option:selected').data('value')) || 0;
+
+                const taxableAmount = (qty * price) - discount;
+                const calculatedVat = taxableAmount * (taxPercentage / 100);
+
+                const item = {
+                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                    Quantity: qty,
+                    CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
+                    Price: price,
+                    TaxId: taxId,
+                    VatPercentage: taxPercentage,
+                    Vat: calculatedVat,
+                    Total: parseFloat(row.find('.itemAmount').text()) || 0,
+                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+                };
+
+                invoiceData.Items.push(item);
+            });
 
             $.ajax({
-                 url: '@Url.Action("SaveProformaInvoice", "Customer")',
+                url: '@Url.Action("SaveProformaInvoice", "Customer")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(invoiceData),
@@ -1366,22 +1356,27 @@
             });
         });
 
-             function openSalesCenterModal(invoice) {
+        function openSalesCenterModal(invoice) {
+            console.log('Opening Create Invoice Modal:', invoice);
 
+            // Populate header fields
             $("#createCustomerName").val(invoice.customerId || "");
+            $("#createDate").val(invoice.date ? invoice.date.split("T")[0] : "");
+            $("#createInvoiceCode").val(invoice.invoiceCode || "");
             $("#createPoNo").val(invoice.poNumber || "");
             $("#createPerformaNo").val(invoice.performaNo || "");
             $("#createQuotationNo").val(invoice.quotationNo || "");
             $("#createBillTo").val(invoice.billTo || "");
             $("#createEmirates").val(invoice.city || "");
             $("#createSalesMan").val(invoice.salesMan || "");
+            $("#createShipDate").val(invoice.shipDate ? invoice.shipDate.split("T")[0] : "");
             $("#createViaType").val(invoice.shipVia || "");
             $("#createShip").val(invoice.shipTo || "");
             $("#createInvoiceType").val(invoice.paymentMethod || "Cash");
             $("#createAccountName").val(invoice.accountCashId || "");
             $("#createPaymentTermsValue").val(invoice.paymentTerms || "");
+            $("#createDuedate").val(invoice.paymentDate ? invoice.paymentDate.split("T")[0] : "");
             $("#createWarehouseDropdown").val(invoice.warehouseId || "");
-
             $("#createTotalBeforeVat").val(invoice.total || 0);
             $("#createTotalVat").val(invoice.vat || 0);
             $("#createNetAmount").val(invoice.net || 0);
@@ -1389,112 +1384,147 @@
             const tbody = $("#createItemsTable tbody");
             tbody.empty();
 
-            (invoice.items || []).forEach((item, idx) => {
-                tbody.append(`
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><input class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.discount || 0}"></td>
-                        <td class="text-center">${item.vat || 0}</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">${item.total || 0}</td>
-                        <td>
-                            <select class="form-select form-select-sm costCenterSelect"
-                                    data-selected-id="${item.costCenterId || ''}">
-                            </select>
-                        </td>
-                    </tr>
-                `);
-            });
+            // Load data first
+            Promise.all([loadItem(), loadTax()]).then(() => {
+                console.log('Items loaded:', itemsList);
+                console.log('Taxes loaded:', taxesList);
 
-            Promise.all([
-                loadItem("#createItemsTable .itemNameSelect"),
-                loadTax("#createItemsTable .tax")
-            ]).then(() => {
-                $("#createItemsTable tbody tr").each(function (i) {
-                    const item = invoice.items[i];
-                    if (!item) return;
+                // Create combined items list
+                const allItems = [...itemsList];
+                (invoice.items || []).forEach(invoiceItem => {
+                    const exists = allItems.find(item => Number(item.id) === Number(invoiceItem.itemId));
+                    if (!exists && invoiceItem.itemId) {
+                        allItems.push({
+                            id: invoiceItem.itemId,
+                            itemName: invoiceItem.itemName,
+                            code: invoiceItem.itemCode,
+                            cost_price: invoiceItem.costPrice || 0
+                        });
+                    }
+                });
 
-                    $(this).find(".itemNameSelect").val(item.itemId || "");
-                    $(this).find(".tax").val(item.taxId || "");
+                console.log('Combined items list:', allItems);
+
+                // Create rows
+                (invoice.items || []).forEach((item, idx) => {
+                    console.log('Processing item:', item);
+
+                    const row = $(`
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td><input class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
+                            <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                            <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                            <td><input type="number" class="form-control form-control-sm itemPrice" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}" step="0.01"></td>
+                            <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01"></td>
+                            <td class="text-center itemNet">${((item.qty * item.price) - item.discount || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm tax"></select></td>
+                            <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                        </tr>
+                    `);
+
+                    // Populate item dropdown
+                    const itemSelect = row.find('.itemNameSelect');
+                    itemSelect.append('<option value="">Select Item</option>');
+                    allItems.forEach(itm => {
+                        const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
+                        itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
+                        if (selected) console.log('✓ Matched item:', itm.itemName, 'ID:', itm.id);
+                    });
+
+                    // Populate tax dropdown
+                    const taxSelect = row.find('.tax');
+                    taxSelect.append('<option value="">-- Select Tax --</option>');
+                    taxesList.forEach(tax => {
+                        const matchByPercentage = Number(tax.value) === Number(item.vatP);
+                        const matchById = Number(tax.id) === Number(item.taxId);
+                        const selected = (matchByPercentage || matchById) ? 'selected' : '';
+                        const text = `${tax.name}-${tax.value}%`;
+                        taxSelect.append(`<option value="${tax.id}" data-value="${tax.value}" ${selected}>${text}</option>`);
+                        if (selected) console.log('✓ Matched tax:', text, 'ID:', tax.id);
+                    });
+
+                    tbody.append(row);
                 });
 
                 populateAndSelectCostCenter();
+
+                // Recalculate all rows
+                $("#createItemsTable tbody tr").each(function() {
+                    calculateRow($(this));
+                });
             });
 
             $("#salescentersform").data("invoiceId", invoice.id || 0);
-
             $("#salesCenterModal .modal-title").text("Create Quotation from Performa");
             $("#salesCenterModal").modal("show");
         }
 
-         $('#salescentersform').on('submit', function (e) {
+        $('#salescentersform').on('submit', function (e) {
             e.preventDefault();
 
             const invoiceId = $("#salescentersform").data("invoiceId") || 0;
-        $('#paymentTermsValue').val($('#paymentTerms').val());
-            // Collect invoice header data
-                 const invoiceData = {
+            $('#createPaymentTermsValue').val($('#createPaymentTerms').val());
 
-             Date: $('#createDate').val(),
-            CustomerId: parseInt($('#createCustomerName').val()) || 0,
-            WarehouseId: parseInt($('#createWarehouseDropdown').val()) || 0,
-            PoNo: $('#createPoNo').val().trim() || '',
-            PerformaNo: $('#createPerformaNo').val().trim(),
-            BillTo: $('#createBillTo').val().trim() || '',
-            City: $('#createEmirates').val() || '',
-            SalesMan: $('#createSalesMan').val().trim() || '',
-            ShipDate: $('#createShipDate').val(),
-            ShipVia: $('#createViaType').val() || '',
-            ShipTo: $('#createShip').val().trim() || '',
-            PaymentMethod: $('#createInvoiceType').val() || '',
-            AccountCashId: parseInt($('#createAccountName').val()) || 0,
-            PaymentCreditAccountId: 0,
-            PaymentTerms: $('#createPaymentTermsValue').val() || '',
-             PaymentDate: $('#createDuedate').val(),
-            TotalBeforeVat: parseFloat($('#createTotalBeforeVat').val()) || 0,
-            Vat: parseFloat($('#createTotalVat').val()) || 0,
-            NetTotal: parseFloat($('#createNetAmount').val()) || 0,
-            SalesRevenueAccountId: 0,
-            VatAccountId: 0,
-            InventoryCost: 0,
-            CogsAccountId: 0,
-            Items: []
-        };
+            const invoiceData = {
+                Date: $('#createDate').val(),
+                CustomerId: parseInt($('#createCustomerName').val()) || 0,
+                WarehouseId: parseInt($('#createWarehouseDropdown').val()) || 0,
+                PoNo: $('#createPoNo').val().trim() || '',
+                PerformaNo: $('#createPerformaNo').val().trim(),
+                BillTo: $('#createBillTo').val().trim() || '',
+                City: $('#createEmirates').val() || '',
+                SalesMan: $('#createSalesMan').val().trim() || '',
+                ShipDate: $('#createShipDate').val(),
+                ShipVia: $('#createViaType').val() || '',
+                ShipTo: $('#createShip').val().trim() || '',
+                PaymentMethod: $('#createInvoiceType').val() || '',
+                AccountCashId: parseInt($('#createAccountName').val()) || 0,
+                PaymentCreditAccountId: 0,
+                PaymentTerms: $('#createPaymentTermsValue').val() || '',
+                PaymentDate: $('#createDuedate').val(),
+                TotalBeforeVat: parseFloat($('#createTotalBeforeVat').val()) || 0,
+                Vat: parseFloat($('#createTotalVat').val()) || 0,
+                NetTotal: parseFloat($('#createNetAmount').val()) || 0,
+                SalesRevenueAccountId: 0,
+                VatAccountId: 0,
+                InventoryCost: 0,
+                CogsAccountId: 0,
+                Items: []
+            };
 
-
-            // Collect table items
+            // ✅ Use class selectors instead of nth-child
             $('#createItemsTable tbody tr').each(function () {
                 const row = $(this);
-               let price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
-        let qty = parseFloat(row.find('.qty').val()) || 0;
-        let discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
-        let taxP = parseFloat(row.find('.tax').val()) || 0;
 
-        const vat = ((price * qty) - discount) * (taxP / 100) || 0;
+                const qty = parseFloat(row.find('.qty').val()) || 0;
+                const price = parseFloat(row.find('.itemPrice').val()) || 0;
+                const discount = parseFloat(row.find('.itemDiscount').val()) || 0;
+                const taxId = parseInt(row.find('.tax').val()) || 0;
+                const taxPercentage = parseFloat(row.find('.tax option:selected').data('value')) || 0;
 
-        const item = {
-            ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-            Qty: qty,
-            Price: price,
-            CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
-            Discount: discount,
-            VatP: taxP,
-            Vat: vat,
-            Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
-            CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
-        };
+                const taxableAmount = (qty * price) - discount;
+                const calculatedVat = taxableAmount * (taxPercentage / 100);
 
+                const item = {
+                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                    Qty: qty,
+                    Price: price,
+                    CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
+                    Discount: discount,
+                    TaxId: taxId,
+                    VatP: taxPercentage,
+                    Vat: calculatedVat,
+                    Total: parseFloat(row.find('.itemAmount').text()) || 0,
+                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
+                };
 
                 invoiceData.Items.push(item);
             });
 
-            // AJAX POST to API
             $.ajax({
-                 url: '@Url.Action("SaveQuotation", "Customer")',
+                url: '@Url.Action("SaveQuotation", "Customer")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(invoiceData),
@@ -1513,6 +1543,5 @@
                 }
             });
         });
-
     </script>
 }
