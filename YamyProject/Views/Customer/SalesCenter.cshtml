@@ -540,6 +540,7 @@
                 });
             }
 
+
             function renderSummaryTable() {
                 const tbody = $('#table1 tbody');
                 tbody.empty();
@@ -687,8 +688,7 @@
             return `${year}-${month}-${day}`;
         }
 
-
-               function addEditItemRow() {
+            function addEditItemRow() {
             const rowCount = $("#salesModal tbody tr").length + 1;
 
             const newRow = $(`
@@ -753,8 +753,6 @@
             });
         });
 
-    
-
             $('#paymentTerms').prop('disabled', true);
             setDueDate(); 
 
@@ -788,8 +786,6 @@
                    $(document).on("click", ".editInvoiceBtn", function () {
             const invoice = $(this).data("invoice");
             if (!invoice) return;
-            console.log('Edit Invoice:', invoice);
-            console.log('Invoice items:', invoice.items); // Debug full items
 
             // Header Fields
             $("#customerName").val(invoice.customerId || 0);
@@ -819,8 +815,6 @@
                 loadItem(),
                 loadTax()
             ]).then(() => {
-                console.log('Items loaded:', itemsList);
-                console.log('Taxes loaded:', taxesList);
 
                 // Create a combined items list
                 const allItems = [...itemsList];
@@ -837,12 +831,9 @@
                     }
                 });
 
-                console.log('Combined items list:', allItems);
 
                 // Add invoice items
                 (invoice.items || []).forEach((item, idx) => {
-                    console.log('Processing item:', item);
-                    console.log('Item tax info - vatP:', item.vatP, 'itemVat:', item.itemVat, 'All properties:', Object.keys(item));
 
                     const row = $(`
                         <tr>
@@ -875,7 +866,6 @@
                     // Populate tax dropdown
                     // Try multiple possible property names for tax percentage
                     const taxPercentage = item.vatP || item.vat_P || item.taxPercentage || item.tax_Percentage || 0;
-                    console.log('Using tax percentage:', taxPercentage);
 
                     const taxSelect = row.find('.tax');
                     taxSelect.append('<option value="">-- Select Tax --</option>');
@@ -888,13 +878,9 @@
 
                         if (selected) {
                             matchFound = true;
-                            console.log('✓ Matched tax:', text, 'Tax value:', tax.value, 'Item tax:', taxPercentage);
                         }
                     });
 
-                    if (!matchFound) {
-                        console.warn('⚠ No tax match found for item. Item tax:', taxPercentage, 'Available tax values:', taxesList.map(t => t.value));
-                    }
 
                     $("#salesModal tbody").append(row);
                 });
@@ -1037,8 +1023,6 @@
                     success: function (res) {
                         if (res.status) {
                             itemsList = res.data;
-                            console.log('Total items loaded:', itemsList.length); 
-                            console.log('Item IDs:', itemsList.map(i => i.id)); 
 
                             const dropdowns = selector ? $(selector) : $(".itemNameSelect");
                             dropdowns.empty().append('<option value="">Select Item</option>');

@@ -813,7 +813,7 @@ namespace YamyProject.Controllers
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // 🔹 BASE QUERY (NO GROUP BY – IMPORTANT)
+                
                 string query = @"
 SELECT
     s.id AS Id,
@@ -1844,7 +1844,7 @@ LIMIT 1;
                 // =======================
                 // 3. INSERT INVOICE
                 // =======================
-                long invId = 0;
+                long invId = model.Id;
                 string invoiceCode = model.InvoiceCode;
 
                 if (model.Id == 0) // New Invoice
@@ -1902,6 +1902,73 @@ LIMIT 1;
 
                     invId = Convert.ToInt64(await cmdInsert.ExecuteScalarAsync());
                 }
+                if (model.Id != 0) // Existing Invoice
+                {
+                    // Update existing invoice
+                    var updateSql = @"
+        UPDATE tbl_sales
+        SET
+            date = @date,
+            customer_id = @customer_id,
+            invoice_id = @invoice_id,
+            warehouse_id = @warehouse_id,
+            po_num = @po_num,
+            bill_to = @bill_to,
+            city = @city,
+            sales_man = @sales_man,
+            ship_date = @ship_date,
+            ship_via = @ship_via,
+            ship_to = @ship_to,
+            payment_method = @payment_method,
+            account_cash_id = @account_cash_id,
+            payment_terms = @payment_terms,
+            payment_date = @payment_date,
+            total = @total,
+            vat = @vat,
+            net = @net,
+            pay = @pay,
+            `change` = @change,
+            modified_by = @modified_by,
+            modified_date = @modified_date,
+            state = @state
+        WHERE id = @id;
+    ";
+
+                    using var cmdUpdate = new MySqlCommand(updateSql, conn, tx);
+                    cmdUpdate.Parameters.AddWithValue("@date", model.InvoiceDate.Date);
+                    cmdUpdate.Parameters.AddWithValue("@customer_id", model.CustomerId);
+                    cmdUpdate.Parameters.AddWithValue("@invoice_id", invoiceCode);
+                    cmdUpdate.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+                    cmdUpdate.Parameters.AddWithValue("@po_num", model.PoNo ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@city", model.City ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@ship_date", model.ShipDate.Date);
+                    cmdUpdate.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
+                    cmdUpdate.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+                    cmdUpdate.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@payment_date", model.PaymentDate.Date);
+                    cmdUpdate.Parameters.AddWithValue("@total", model.TotalBeforeVat);
+                    cmdUpdate.Parameters.AddWithValue("@vat", model.Vat);
+                    cmdUpdate.Parameters.AddWithValue("@net", model.NetTotal);
+                    cmdUpdate.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
+                    cmdUpdate.Parameters.AddWithValue("@change", model.PaymentMethod == "Cash" ? 0 : model.NetTotal);
+                    cmdUpdate.Parameters.AddWithValue("@modified_by", userId);
+                    cmdUpdate.Parameters.AddWithValue("@modified_date", DateTime.Now.Date);
+                    cmdUpdate.Parameters.AddWithValue("@state", 0);
+                    cmdUpdate.Parameters.AddWithValue("@id", model.Id); 
+
+                    await cmdUpdate.ExecuteNonQueryAsync();
+
+                    await CommonDelete.ReturnItemsToInventoryAsync(conn, tx, invId);
+                    await CommonDelete.DeleteSalesDetailsAsync(conn, tx, invId);
+                    await CommonDelete.DeleteItemTransactionsAsync(conn, tx, invId);
+                    await CommonDelete.DeleteCostCenterTransactionEntryAsync(conn, tx, invId.ToString(), "Sales");
+                    await CommonDelete.DeleteTransactionEntryAsync(conn, tx, invId, "SALES");
+                }
+
 
                 // =======================
                 // 4. INSERT SALES ITEMS & CALCULATE INVENTORY COST
@@ -2025,10 +2092,62 @@ LIMIT 1;
             }
         }
 
-        // =======================
-        // HELPER METHODS
-        // =======================
 
+        public static class CommonDelete
+        {
+           
+            public static async Task ReturnItemsToInventoryAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
+            {
+                var sql = @"UPDATE tbl_items i
+                    INNER JOIN tbl_item_transaction t ON i.id = t.item_id
+                    SET i.on_hand = i.on_hand + t.qty_out
+                    WHERE t.reference = @refId AND t.type = 'Sales Invoice'";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@refId", invoiceId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            public static async Task DeleteSalesDetailsAsync(MySqlConnection conn, MySqlTransaction tx, long salesId)
+            {
+                var sql = "DELETE FROM tbl_sales_details WHERE sales_id = @salesId";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@salesId", salesId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+         
+            public static async Task DeleteItemTransactionsAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
+            {
+                var sql = @"DELETE FROM tbl_item_transaction WHERE reference = @invId AND type = 'Sales Invoice';
+                    DELETE FROM tbl_item_card_details WHERE trans_type = 'Sales Invoice' AND trans_no = @invId";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@invId", invoiceId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            public static async Task DeleteCostCenterTransactionEntryAsync(MySqlConnection conn, MySqlTransaction tx, string refId, string type)
+            {
+                var sql = "DELETE FROM tbl_cost_center_transaction WHERE type = @type AND ref_id = @id";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@id", refId);
+                cmd.Parameters.AddWithValue("@type", type);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            public static async Task DeleteTransactionEntryAsync(MySqlConnection conn, MySqlTransaction tx, long transactionId, string type)
+            {
+                var sql = "DELETE FROM tbl_transaction WHERE t_type = @tType AND transaction_id = @id";
+
+                using var cmd = new MySqlCommand(sql, conn, tx);
+                cmd.Parameters.AddWithValue("@id", transactionId);
+                cmd.Parameters.AddWithValue("@tType", type);
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
         private async Task<Dictionary<string, int>> GetDefaultAccountsAsync(
             MySqlConnection conn, MySqlTransaction tx)
         {
