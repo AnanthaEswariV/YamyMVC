@@ -2811,7 +2811,6 @@ WITH Dedup AS (
 
         DENSE_RANK() OVER (ORDER BY pr.date) AS SN,
 
-        -- 🔹 HEADER FIELDS
         pr.id AS Id,
         pr.date AS Date,
         pr.invoice_id AS InvoiceNo,
@@ -2836,17 +2835,17 @@ WITH Dedup AS (
         pr.description AS Description,
         pr.pay AS Pay,
 
-        -- 🔹 JV
+       
         CONCAT('000', t.transaction_id) AS JVNo,
 
-        -- 🔹 ITEM FIELDS
-        prd.item_id AS ItemId,
+        i.id AS ItemId,
         i.code AS ItemCode,
         i.name AS ItemName,
         prd.qty AS Qty,
-     prd.price AS Price,
         prd.cost_price AS CostPrice,
+        prd.price AS Price,
         prd.vat AS ItemVat,
+        prd.vatp AS VatP,
         prd.total AS ItemTotal,
         prd.cost_center_id AS Cost_Center_Id
 
@@ -2890,7 +2889,9 @@ SELECT
     Qty,
     Price,
     CostPrice,
+    Price,
     ItemVat,
+    VatP,
     ItemTotal,
     Cost_Center_Id
 FROM Dedup
@@ -2995,7 +2996,9 @@ ORDER BY pr.date
                             ItemName = reader["ItemName"]?.ToString(),
                             Qty = Convert.ToDecimal(reader["Qty"]),
                             CostPrice = Convert.ToDecimal(reader["Price"]),
+                            Price = Convert.ToDecimal(reader["Price"]),
                             Vat = Convert.ToDecimal(reader["ItemVat"]),
+                            VatP = Convert.ToDecimal(reader["VatP"]),
                             Total = Convert.ToDecimal(reader["ItemTotal"]),
                             Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value
                                                 ? Convert.ToInt32(reader["Cost_Center_Id"])

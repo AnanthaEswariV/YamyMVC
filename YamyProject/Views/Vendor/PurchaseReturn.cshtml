@@ -219,24 +219,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>1</td>
-                                    <td><input type="text" class="form-control form-control-sm" required></td>
-                                    <td><select class="form-select form-select-sm itemNameSelect" required></select></td>
-                                    <td><input type="number" class="form-control form-control-sm qty" required></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td class="text-center">0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm tax"></select>
-                                    </td>
-                                    <td class="text-center" required>0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm costCenterSelect"></select>
-                                    </td>
-                                </tr>
+                                
                             </tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addEditItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <!-- Notes & Totals -->
@@ -426,6 +414,74 @@
                 $(this).find('.modal-title').text('New Invoice');
             });
 
+                 $(document).on('click', '#addEditItemRowBtn', function(e) {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 addEditItemRow();
+             });
+
+                function addEditItemRow() {
+            const tableBody = $("#salesModal .table tbody");
+            const rowCount = tableBody.find("tr").length + 1;
+
+            const newRow = $(`
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"><option value="">Select Item</option></select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="0" min="0" step="1"></td>
+                    <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01" min="0"></td>
+                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0" disabled></td>
+                    <td class="text-center itemNet">0.00</td>
+                    <td><select class="form-select form-select-sm tax"><option value="">-- Select Tax --</option></select></td>
+                    <td class="text-center itemAmount">0.00</td>
+                    <td><select class="form-select form-select-sm costCenterSelect"><option value="">-- Select --</option></select></td>
+                </tr>
+            `);
+
+            tableBody.append(newRow);
+
+            // Populate item dropdown for this row
+            const itemSelect = newRow.find('.itemNameSelect');
+            if (itemsList && itemsList.length > 0) {
+                itemsList.forEach(item => {
+                    itemSelect.append(`<option value="${item.id}">${item.itemName}</option>`);
+                });
+            } else {
+                console.warn("⚠️ itemsList is empty. Items may not have loaded yet.");
+            }
+
+            // Populate tax dropdown for this row
+            const taxSelect = newRow.find('.tax');
+            if (taxesList && taxesList.length > 0) {
+                taxesList.forEach(item => {
+                    const text = `${item.name}-${item.value}%`;
+                    taxSelect.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
+                });
+            } else {
+                console.warn("⚠️ taxesList is empty. Taxes may not have loaded yet.");
+            }
+
+            // Populate cost center for this row
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    const costCenterSelect = newRow.find('.costCenterSelect');
+
+                    costCenterSelect.empty().append('<option value="">-- Select --</option>');
+                    $.each(data, function (i, item) {
+                        costCenterSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
+                    });
+                },
+                error: function(err) {
+                    console.error("❌ Error loading cost centers:", err);
+                }
+            });
+        }
+
+
             });
 
             function loadPurchaseReturns() {
@@ -574,62 +630,60 @@
             }
 
             let itemsList = [];
+         let taxesList = [];
 
-            function loadItem(selector = ".itemNameSelect") {
-                return new Promise((resolve, reject) => {
-                    $.ajax({
-                        url: '@Url.Action("GetItems", "Lists")',
-                        type: 'GET',
-                        success: function (res) {
-                            if (res.status) {
-                                itemsList = res.data; // Store the items in the global itemsList
-                                const dropdowns = $(selector);
-                                dropdowns.empty().append('<option value="">Select Item</option>');
-                                res.data.forEach(item => {
-                                    dropdowns.append(
-                                        `<option value="${item.id}">${item.itemName}</option>`
-                                    );
-                                });
-                                resolve(); // Resolve the promise once the items are loaded
-                            } else {
-                                reject("Failed to load items.");
-                            }
-                        },
-                        error: function (err) {
-                            console.error("Error fetching Item:", err);
-                            reject(err);
-                        }
-                    });
-                });
-            }
+         function loadItem(selector = ".itemNameSelect") {
+             return new Promise((resolve, reject) => {
+                 $.ajax({
+                     url: '@Url.Action("GetItems", "Lists")',
+                     type: 'GET',
+                     success: function (res) {
+                         if (res.status) {
+                             itemsList = res.data;
+                             const dropdowns = $(selector);
+                             dropdowns.empty().append('<option value="">Select Item</option>');
+                             res.data.forEach(item => {
+                                 dropdowns.append(`<option value="${item.id}">${item.itemName}</option>`);
+                             });
+                             resolve();
+                         } else {
+                             reject("Failed to load items.");
+                         }
+                     },
+                     error: function (err) {
+                         console.error("Error fetching Item:", err);
+                         reject(err);
+                     }
+                 });
+             });
+         }
 
-            function loadTax(selector = ".tax") {
-                return new Promise((resolve, reject) => {
-                    $.ajax({
-                        url: '@Url.Action("GetTaxes", "Lists")',
-                        type: 'GET',
-                        success: function (res) {
-                            if (res.status) {
-                                const dropdowns = $(selector);
-                                dropdowns.empty().append('<option value="">-- Select Tax --</option>');
-                                res.data.forEach(item => {
-                                    const text = `${item.name}-${item.value}%`;
-                                    dropdowns.append(
-                                        `<option value="${item.id}" data-value="${item.value}">${text}</option>`
-                                    );
-                                });
-                                resolve();
-                            } else {
-                                reject("Failed to load taxes.");
-                            }
-                        },
-                        error: function (err) {
-                            console.error("Error fetching taxes:", err);
-                            reject(err);
-                        }
-                    });
-                });
-            }
+         function loadTax(selector = ".tax") {
+             return new Promise((resolve, reject) => {
+                 $.ajax({
+                     url: '@Url.Action("GetTaxes", "Lists")',
+                     type: 'GET',
+                     success: function (res) {
+                         if (res.status) {
+                             taxesList = res.data;
+                             const dropdowns = $(selector);
+                             dropdowns.empty().append('<option value="">-- Select Tax --</option>');
+                             res.data.forEach(item => {
+                                 const text = `${item.name}-${item.value}%`;
+                                 dropdowns.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
+                             });
+                             resolve();
+                         } else {
+                             reject("Failed to load taxes.");
+                         }
+                     },
+                     error: function (err) {
+                         console.error("Error fetching taxes:", err);
+                         reject(err);
+                     }
+                 });
+             });
+         }
 
             function populateAndSelectCostCenter() {
                  $.ajax({
@@ -768,7 +822,7 @@
                 $('#totalBeforeVat').val(totalBeforeVat.toFixed(2));
                 $('#totalVat').val(totalVat.toFixed(2));
                 $('#netAmount').val(netAmount.toFixed(2));
-            }
+            }       
 
         $('#purchaseReturnForm').on('submit', function (e) {
             e.preventDefault();
@@ -811,42 +865,32 @@
                 Items: []
             };
 
-            // Collect items from table
             $('#salesModal tbody tr').each(function () {
-                const row = $(this);
+                 const row = $(this);
 
-                const itemId = parseInt(row.find('.itemNameSelect').val()) || 0;
-                const qty = parseFloat(row.find('.qty').val()) || 0;
+                 const qty = parseFloat(row.find('.qty').val()) || 0;
+                 const price = parseFloat(row.find('.itemPrice').val()) || 0;
+                 const discount = parseFloat(row.find('.itemDiscount').val()) || 0;
+                 const taxId = parseInt(row.find('.tax').val()) || 0;
+                 const taxPercentage = parseFloat(row.find('.tax option:selected').data('value')) || 0;
 
-                // Only process rows with valid items and quantities
-                if (itemId === 0 || qty === 0) return;
+                 const taxableAmount = (qty * price) - discount;
+                 const calculatedVat = taxableAmount * (taxPercentage / 100);
 
-                const price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
-                const discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
-                const taxId = parseInt(row.find('.tax').val()) || 0;
-                const taxPercent = parseFloat(row.find('.tax option:selected').data('value')) || 0;
-                const costPrice = parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0;
+                 const item = {
+                     ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                     Qty: qty,
+                     CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
+                     Price: price,
+                     TaxId: taxId,
+                     VatPercentage: taxPercentage,
+                     Vat: calculatedVat,
+                     Total: parseFloat(row.find('.itemAmount').text()) || 0,
+                     CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+                 };
 
-                // Calculate net and VAT
-                const netPrice = (qty * price) - discount;
-                const calculatedVat = netPrice * (taxPercent / 100);
-                const total = netPrice + calculatedVat;
-
-                const item = {
-                    ItemId: itemId,
-                    Qty: qty,
-                    CostPrice: costPrice,
-                    Price: price,
-                    Discount: discount,
-                    TaxId: taxId,
-                    VatPercentage: taxPercent,
-                    Vat: calculatedVat,
-                    Total: total,
-                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
-                };
-
-                purchaseReturnData.Items.push(item);
-            });
+                  purchaseReturnData.Items.push(item);
+             });
 
             // Validate items exist
             if (purchaseReturnData.Items.length === 0) {
@@ -854,7 +898,7 @@
                 return;
             }
 
-            console.log('Submitting Purchase Return Data:', purchaseReturnData); // Debug log
+            console.log('Submitting Purchase Return Data:', purchaseReturnData); 
 
             // Submit to API
             $.ajax({
@@ -878,7 +922,7 @@
             });
         });
 
-        function openPurchaseReturnModal(purchaseReturn) {
+             function openPurchaseReturnModal(purchaseReturn) {
             console.log('Opening Purchase Return Modal:', purchaseReturn);
 
             // 🔹 Populate Header Fields
@@ -902,7 +946,7 @@
             $("#totalVat").val(purchaseReturn.vat || 0);
             $("#netAmount").val(purchaseReturn.net || 0);
             $("#warehouseDropdown").val(purchaseReturn.warehouseId || '');
-            $("#purchaseReturnNotes").val(purchaseReturn.description || ''); // Fixed: use the correct ID
+            $("#purchaseReturnNotes").val(purchaseReturn.description || '');
 
             // 🔹 Enable/Disable Payment Terms based on Invoice Type
             if (purchaseReturn.paymentMethod === 'Credit') {
@@ -911,49 +955,80 @@
                 $('#paymentTerms').prop('disabled', true);
             }
 
-            // 🔹 Clear existing table rows
-            $("#salesModal tbody").empty();
+            // ✅ Define tbody BEFORE using it
+            const tbody = $("#salesModal tbody");
+            tbody.empty();
 
-            // 🔹 Add rows for each item
-            (purchaseReturn.items || []).forEach((item, idx) => {
-                const row = $(`
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.costPrice || 0}" data-cost-price="${item.costPrice || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="0" disabled></td>
-                        <td class="text-center">${(item.qty * item.costPrice).toFixed(2)}</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">${item.total || 0}</td>
-                        <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.cost_Center_Id || 0}"></select></td>
-                    </tr>
-                `);
-                $("#salesModal tbody").append(row);
-            });
-
-            // 🔹 Load dropdowns and populate with existing values
+            // Load data first
             Promise.all([loadItem(), loadTax()]).then(() => {
-                // Set selected item for each row
-                $("#salesModal tbody tr").each(function(idx) {
-                    const item = purchaseReturn.items[idx]; // ✅ Changed from invoice.items to purchaseReturn.items
-                    if (item) {
-                        $(this).find('.itemNameSelect').val(item.itemId || '');
-                        $(this).find('.tax').val(item.taxId || '');
+
+                // Create combined items list
+                const allItems = [...itemsList];
+                (purchaseReturn.items || []).forEach(purchaseReturnItem => {
+                    const exists = allItems.find(item => Number(item.id) === Number(purchaseReturnItem.itemId));
+                    if (!exists && purchaseReturnItem.itemId) {
+                        allItems.push({
+                            id: purchaseReturnItem.itemId,
+                            itemName: purchaseReturnItem.itemName,
+                            code: purchaseReturnItem.itemCode,
+                            cost_price: purchaseReturnItem.costPrice || 0
+                        });
                     }
                 });
 
-                // Load cost centers
+                // Create rows
+                (purchaseReturn.items || []).forEach((item, idx) => {
+
+                    const row = $(`
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td><input type="text" class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
+                            <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                            <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                            <td><input type="number" class="form-control form-control-sm itemPrice" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}" step="0.01"></td>
+                            <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
+                            <td class="text-center itemNet">${((item.qty * item.price) - item.discount || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm tax"></select></td>
+                            <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                        </tr>
+                    `);
+
+                    // Populate item dropdown
+                    const itemSelect = row.find('.itemNameSelect');
+                    itemSelect.append('<option value="">Select Item</option>');
+                    allItems.forEach(itm => {
+                        const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
+                        itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
+                        if (selected) console.log('✓ Matched item:', itm.itemName, 'ID:', itm.id);
+                    });
+
+                    // Populate tax dropdown
+                    const taxSelect = row.find('.tax');
+                    taxSelect.append('<option value="">-- Select Tax --</option>');
+                    taxesList.forEach(tax => {
+                        const matchByPercentage = Number(tax.value) === Number(item.vatP || item.vatPercentage);
+                        const matchById = Number(tax.id) === Number(item.taxId);
+                        const selected = (matchByPercentage || matchById) ? 'selected' : '';
+                        const text = `${tax.name}-${tax.value}%`;
+                        taxSelect.append(`<option value="${tax.id}" data-value="${tax.value}" ${selected}>${text}</option>`);
+                        if (selected) console.log('✓ Matched tax:', text, 'ID:', tax.id);
+                    });
+
+                    // ✅ APPEND to tbody (now it's defined)
+                    tbody.append(row);
+                });
+
                 populateAndSelectCostCenter();
+
+                // Recalculate all rows
+                $("#salesModal tbody tr").each(function() {
+                    calculateRow($(this));
+                });
             });
 
-            // 🔹 Update Modal Title
             $("#salesModal .modal-title").text(purchaseReturn.id ? "Edit Purchase Return" : "Add Purchase Return");
-
-            // 🔹 Show Modal
             $("#salesModal").modal("show");
         }
-    
  </script>
 }
