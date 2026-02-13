@@ -736,7 +736,6 @@
                 $(this).find('.modal-title').text('New Invoice');
             });
 
-            // ✅ FIXED: Separate handlers for each modal's Add Row button
             $(document).on('click', '#addEditItemRowBtn', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -749,7 +748,6 @@
                 addCreateItemRow();
             });
 
-            // ✅ FIXED: Function for Edit Modal
             function addEditItemRow() {
                 const rowCount = $("#editItemsTable tbody tr").length + 1;
 

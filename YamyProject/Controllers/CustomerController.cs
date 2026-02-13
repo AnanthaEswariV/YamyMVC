@@ -4556,12 +4556,13 @@ SELECT
     sr.vat AS Vat,
     sr.net AS Net,
     CONCAT('000', MAX(t.transaction_id)) AS JvNo,
-    sd.id AS ItemId,
+    i.id AS ItemId,
     i.code AS ItemCode,
     i.name AS ItemName,
     sd.qty AS Qty,
     sd.price AS Price,
     sd.vat AS ItemVat,
+    sd.vatp AS VatP,
     sd.total AS ItemTotal,
     sd.cost_center_id AS Cost_Center_Id
 FROM tbl_sales_return sr
@@ -4598,12 +4599,13 @@ GROUP BY
     sr.pay,
     sr.vat,
     sr.net,
-    sd.id,
+    i.id,
     i.code,
     i.name,
     sd.qty,
     sd.price,
     sd.vat,
+    sd.vatp,
     sd.total,
     sd.cost_center_id
 ORDER BY sr.date DESC, sr.id;
@@ -4696,6 +4698,7 @@ ORDER BY sr.date DESC, sr.id;
                             Qty = reader["Qty"] != DBNull.Value ? Convert.ToDecimal(reader["Qty"]) : 0,
                             Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
                             Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            VatP = reader["VatP"] != DBNull.Value ? Convert.ToDecimal(reader["VatP"]) : 0,
                             Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
                             CostCenterId = reader["Cost_Center_Id"] != DBNull.Value
                                 ? Convert.ToInt32(reader["Cost_Center_Id"])
