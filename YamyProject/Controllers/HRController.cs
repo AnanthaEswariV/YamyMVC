@@ -1123,28 +1123,76 @@ namespace YamyProject.Controllers
                                 return BadRequest(new { status = false, message = $"Date {row.WorkDate:yyyy-MM-dd} does not contain time in/out for employee {row.EmpId}." });
                             }
                         }
+
                     }
 
-                    // We use the month/year of the first row (same logic as WinForms)
+                    //// We use the month/year of the first row (same logic as WinForms)
+                    //var firstRow = model.AttendanceRows[0];
+                    //int month = firstRow.WorkDate.Month;
+                    //int year = firstRow.WorkDate.Year;
+                    //DateTime endOfMonthDate = new DateTime(year, month, DateTime.DaysInMonth(year, month));
+
+                    //string checkDuplicateSql = "SELECT 1 FROM tbl_attendancesheet WHERE code=@code AND YEAR(WorkDate)=@year AND MONTH(WorkDate)=@month LIMIT 1;";
+                    //using (var cmdDup = new MySqlCommand(checkDuplicateSql, conn, (MySqlTransaction)tx))
+                    //{
+                    //    cmdDup.Parameters.AddWithValue("@code", firstRow.EmpId);
+                    //    cmdDup.Parameters.AddWithValue("@year", year);
+                    //    cmdDup.Parameters.AddWithValue("@month", month);
+                    //    var dupExists = await cmdDup.ExecuteScalarAsync();
+                    //    if (dupExists != null)
+                    //    {
+                    //        await tx.RollbackAsync();
+                    //        return Conflict(new { status = false, message = "Employee Month already saved before" });
+                    //    }
+                    //}
+
+                    // Get first row month/year
                     var firstRow = model.AttendanceRows[0];
                     int month = firstRow.WorkDate.Month;
                     int year = firstRow.WorkDate.Year;
                     DateTime endOfMonthDate = new DateTime(year, month, DateTime.DaysInMonth(year, month));
 
-                    // 2) Check duplicate: if attendance for this employee/month already exists (original WinForms used rows[0] Emp ID)
-                    string checkDuplicateSql = "SELECT 1 FROM tbl_attendancesheet WHERE code=@code AND YEAR(WorkDate)=@year AND MONTH(WorkDate)=@month LIMIT 1;";
-                    using (var cmdDup = new MySqlCommand(checkDuplicateSql, conn, (MySqlTransaction)tx))
+                    // Start and end of month
+                    DateTime startOfMonth = new DateTime(year, month, 1);
+                    DateTime endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+
+                    // Get existing dates for that employee in that month
+                    string getExistingSql = @"
+    SELECT WorkDate
+    FROM tbl_attendancesheet
+    WHERE code = @code
+    AND WorkDate >= @startDate
+    AND WorkDate <= @endDate;";
+
+                    var existingDates = new HashSet<DateTime>();
+
+                    using (var cmd = new MySqlCommand(getExistingSql, conn, (MySqlTransaction)tx))
                     {
-                        cmdDup.Parameters.AddWithValue("@code", firstRow.EmpId);
-                        cmdDup.Parameters.AddWithValue("@year", year);
-                        cmdDup.Parameters.AddWithValue("@month", month);
-                        var dupExists = await cmdDup.ExecuteScalarAsync();
-                        if (dupExists != null)
+                        cmd.Parameters.Add("@code", MySqlDbType.VarChar).Value = firstRow.EmpId;
+                        cmd.Parameters.Add("@startDate", MySqlDbType.Date).Value = startOfMonth;
+                        cmd.Parameters.Add("@endDate", MySqlDbType.Date).Value = endOfMonth;
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            await tx.RollbackAsync();
-                            return Conflict(new { status = false, message = "Employee Month already saved before" });
+                            while (await reader.ReadAsync())
+                            {
+                                existingDates.Add(reader.GetDateTime("WorkDate").Date);
+                            }
                         }
                     }
+                    var newRows = model.AttendanceRows
+                        .Where(r => !existingDates.Contains(r.WorkDate.Date))
+                        .ToList();
+                    if (newRows.Count == 0)
+                    {
+                        await tx.RollbackAsync();
+                        return Conflict(new
+                        {
+                            status = false,
+                            message = "Attendance already uploaded for this employee and month."
+                        });
+                    }
+
 
                     // 3) Insert into tbl_attendance_salary and get id (attendanceSalaryId) and compute refr like winforms
                     string insertAttendanceSalarySql = @"INSERT INTO `tbl_attendance_salary`(date, emp_code, created_by, created_date)
