@@ -1699,6 +1699,7 @@ namespace YamyProject.Core.Models
         public decimal CostPrice { get; set; }        
         public decimal Price { get; set; }        
         public decimal Vat { get; set; }              
+        public decimal VatP { get; set; }              
         public decimal Total { get; set; }            
         public int? Cost_Center_Id { get; set; }      
     }
