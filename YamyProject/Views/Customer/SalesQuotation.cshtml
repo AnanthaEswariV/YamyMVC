@@ -144,7 +144,6 @@
     </div>
 </div>
 
-<!-- EDIT QUOTATION MODAL -->
 <div class="modal fade" id="salesModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -566,31 +565,140 @@
                 return `${year}-${month}-${day}`;
             }
 
-            function addEditItemRow() {
-                const rowCount = $("#editItemsTable tbody tr").length + 1;
+                   // Remove the duplicate button ID issue by having separate handlers
+        $(document).on('click', '#salesModal #addEditItemRowBtn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            addEditItemRow();
+        });
 
-                const newRow = $(`
-                    <tr>
-                        <td>${rowCount}</td>
-                        <td><input type="text" class="form-control form-control-sm" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="0"></td>
-                        <td><input type="number" class="form-control form-control-sm" value="0" step="0.01"></td>
-                        <td><input type="number" class="form-control form-control-sm" value="0" step="0.01" disabled></td>
-                        <td class="text-center">0.00</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">0.00</td>
-                        <td><select class="form-select form-select-sm costCenterSelect"></select></td>
-                    </tr>
-                `);
+        $(document).on('click', '#salesCenterModal #addEditItemRowBtn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            addCreateItemRow();
+        });
 
-                $("#editItemsTable tbody").append(newRow);
-                $("#createItemsTable tbody").append(newRow);
+        function addEditItemRow() {
+            const tableBody = $("#editItemsTable tbody");
+            const rowCount = tableBody.find("tr").length + 1;
 
-                loadItem(newRow.find('.itemNameSelect'));
-                loadTax(newRow.find('.tax'));
-                populateAndSelectCostCenter();
+            const newRow = $(`
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"><option value="">Select Item</option></select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="0" min="0" step="1"></td>
+                    <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01" min="0"></td>
+                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0" disabled></td>
+                    <td class="text-center itemNet">0.00</td>
+                    <td><select class="form-select form-select-sm tax"><option value="">-- Select Tax --</option></select></td>
+                    <td class="text-center itemAmount">0.00</td>
+                    <td><select class="form-select form-select-sm costCenterSelect"><option value="">-- Select --</option></select></td>
+                </tr>
+            `);
+
+            tableBody.append(newRow);
+
+            // Populate item dropdown for this row
+            const itemSelect = newRow.find('.itemNameSelect');
+            if (itemsList && itemsList.length > 0) {
+                itemsList.forEach(item => {
+                    itemSelect.append(`<option value="${item.id}">${item.itemName}</option>`);
+                });
+            } else {
+                console.warn("⚠️ itemsList is empty");
             }
+
+            // Populate tax dropdown for this row
+            const taxSelect = newRow.find('.tax');
+            if (taxesList && taxesList.length > 0) {
+                taxesList.forEach(item => {
+                    const text = `${item.name}-${item.value}%`;
+                    taxSelect.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
+                });
+            } else {
+                console.warn("⚠️ taxesList is empty");
+            }
+
+            // Populate cost center for this row
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    const costCenterSelect = newRow.find('.costCenterSelect');
+
+                    costCenterSelect.empty().append('<option value="">-- Select --</option>');
+                    $.each(data, function (i, item) {
+                        costCenterSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
+                    });
+                },
+                error: function(err) {
+                    console.error("❌ Error loading cost centers:", err);
+                }
+            });
+        }
+
+        function addCreateItemRow() {
+            const tableBody = $("#createItemsTable tbody");
+            const rowCount = tableBody.find("tr").length + 1;
+
+            const newRow = $(`
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"><option value="">Select Item</option></select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="0" min="0" step="1"></td>
+                    <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01" min="0"></td>
+                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0"></td>
+                    <td class="text-center itemNet">0.00</td>
+                    <td><select class="form-select form-select-sm tax"><option value="">-- Select Tax --</option></select></td>
+                    <td class="text-center itemAmount">0.00</td>
+                    <td><select class="form-select form-select-sm costCenterSelect"><option value="">-- Select --</option></select></td>
+                </tr>
+            `);
+
+            tableBody.append(newRow);
+
+            // Populate item dropdown for this row
+            const itemSelect = newRow.find('.itemNameSelect');
+            if (itemsList && itemsList.length > 0) {
+                itemsList.forEach(item => {
+                    itemSelect.append(`<option value="${item.id}">${item.itemName}</option>`);
+                });
+            } else {
+                console.warn("⚠️ itemsList is empty");
+            }
+
+            // Populate tax dropdown for this row
+            const taxSelect = newRow.find('.tax');
+            if (taxesList && taxesList.length > 0) {
+                taxesList.forEach(item => {
+                    const text = `${item.name}-${item.value}%`;
+                    taxSelect.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
+                });
+            } else {
+                console.warn("⚠️ taxesList is empty");
+            }
+
+            // Populate cost center for this row
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    const costCenterSelect = newRow.find('.costCenterSelect');
+
+                    costCenterSelect.empty().append('<option value="">-- Select --</option>');
+                    $.each(data, function (i, item) {
+                        costCenterSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
+                    });
+                },
+                error: function(err) {
+                    console.error("❌ Error loading cost centers:", err);
+                }
+            });
+        }
 
             $('button[data-bs-target="#salesModal"]').on('click', function() {
                 $("#salescenterform")[0].reset();
@@ -619,11 +727,6 @@
                 });
             });
 
-            $(document).on('click', '#addEditItemRowBtn', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                addEditItemRow();
-            });
 
             $('#salesCenterModal').on('shown.bs.modal', function () {
                 const todayDate = getTodayDate();
