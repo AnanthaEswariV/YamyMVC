@@ -5,7 +5,6 @@
 }
 
 
-
 <style>
     .dt-buttons .btn-primary {
         background-color: #435EBE !important;
@@ -304,24 +303,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>1</td>
-                                    <td><input type="text" class="form-control form-control-sm" required></td>
-                                    <td><select class="form-select form-select-sm itemNameSelect" required></select></td>
-                                    <td><input type="number" class="form-control form-control-sm qty" required></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td class="text-center">0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm tax"></select>
-                                    </td>
-                                    <td class="text-center" required></td>
-                                    <td>
-                                        <select class="form-select form-select-sm costCenterSelect"></select>
-                                    </td>
-                                </tr>
+                              
                             </tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addEditItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <!-- Notes & Totals -->
@@ -523,24 +510,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>1</td>
-                                    <td><input type="text" class="form-control form-control-sm" required></td>
-                                    <td><select class="form-select form-select-sm itemNameSelect" required></select></td>
-                                    <td><input type="number" class="form-control form-control-sm qty" required></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td><input class="form-control form-control-sm"></td>
-                                    <td class="text-center">0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm tax"></select>
-                                    </td>
-                                    <td class="text-center" required>0</td>
-                                    <td>
-                                        <select class="form-select form-select-sm costCenterSelect"></select>
-                                    </td>
-                                </tr>
+                               
                             </tbody>
                         </table>
+                        <button type="button" class="btn btn-sm btn-success" id="addCreateItemRowBtn">
+                            <i class="bi bi-plus-circle"></i> Add Row
+                        </button>
                     </div>
 
                     <!-- Notes & Totals -->
@@ -626,7 +601,7 @@
             populateAndSelectCostCenter();
             loadProjects();
 
-             function getTodayDate() {
+        function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -634,9 +609,6 @@
             return `${year}-${month}-${day}`;
         }
 
-            // ============================================
-        // SALES MODAL - Payment Terms & Due Date Logic
-        // ============================================
         $('#paymentTerms').prop('disabled', true);
         setDueDate();
 
@@ -709,9 +681,6 @@
             $(this).find('.modal-title').text('Purchase Invoice');
         });
 
-        // ============================================
-        // SALES CENTER MODAL - Payment Terms & Due Date Logic
-        // ============================================
         $('#purchasepaymentTerms').prop('disabled', true);
         setPurchaseDueDate();
 
@@ -784,9 +753,6 @@
             $(this).find('.modal-title').text('Purchase Invoice');
         });
 
-        // ============================================
-        // Set Today's Date on Modal Open
-        // ============================================
         function getTodayDate() {
             const today = new Date();
             const year = today.getFullYear();
@@ -795,7 +761,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        // SALES MODAL - Set dates on open
         $('#salesModal').on('shown.bs.modal', function () {
             const todayDate = getTodayDate();
             const dateFields = ['date', 'duedate', 'shipDate'];
@@ -807,7 +772,6 @@
             });
         });
 
-        // SALES CENTER MODAL - Set dates on open
         $('#salesCenterModal').on('shown.bs.modal', function () {
             const todayDate = getTodayDate();
             const dateFields = ['purchasedate', 'purchaseduedate', 'purchaseshipDate'];
@@ -839,6 +803,141 @@
             // Optional: reset modal title
             $(this).find('.modal-title').text('New Invoice');
         });
+
+
+          $(document).on('click', '#addEditItemRowBtn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addEditItemRow();
+            });
+
+            $(document).on('click', '#addCreateItemRowBtn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addCreateItemRow();
+            });
+
+            function addEditItemRow() {
+            const tableBody = $("#salesModal .table tbody");
+            const rowCount = tableBody.find("tr").length + 1;
+
+            const newRow = $(`
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"><option value="">Select Item</option></select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="0" min="0" step="1"></td>
+                    <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01" min="0"></td>
+                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0" disabled></td>
+                    <td class="text-center itemNet">0.00</td>
+                    <td><select class="form-select form-select-sm tax"><option value="">-- Select Tax --</option></select></td>
+                    <td class="text-center itemAmount">0.00</td>
+                    <td><select class="form-select form-select-sm costCenterSelect"><option value="">-- Select --</option></select></td>
+                </tr>
+            `);
+
+            tableBody.append(newRow);
+
+            // Populate item dropdown for this row
+            const itemSelect = newRow.find('.itemNameSelect');
+            if (itemsList && itemsList.length > 0) {
+                itemsList.forEach(item => {
+                    itemSelect.append(`<option value="${item.id}">${item.itemName}</option>`);
+                });
+            } else {
+                console.warn("⚠️ itemsList is empty");
+            }
+
+            // Populate tax dropdown for this row
+            const taxSelect = newRow.find('.tax');
+            if (taxesList && taxesList.length > 0) {
+                taxesList.forEach(item => {
+                    const text = `${item.name}-${item.value}%`;
+                    taxSelect.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
+                });
+            } else {
+                console.warn("⚠️ taxesList is empty");
+            }
+
+            // Populate cost center for this row
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    const costCenterSelect = newRow.find('.costCenterSelect');
+
+                    costCenterSelect.empty().append('<option value="">-- Select --</option>');
+                    $.each(data, function (i, item) {
+                        costCenterSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
+                    });
+                },
+                error: function(err) {
+                    console.error("❌ Error loading cost centers:", err);
+                }
+            });
+        }
+
+        function addCreateItemRow() {
+            const tableBody = $("#salesCenterModal .table tbody");
+            const rowCount = tableBody.find("tr").length + 1;
+
+            const newRow = $(`
+                <tr>
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm itemCode" readonly></td>
+                    <td><select class="form-select form-select-sm itemNameSelect"><option value="">Select Item</option></select></td>
+                    <td><input type="number" class="form-control form-control-sm qty" value="0" min="0" step="1"></td>
+                    <td><input type="number" class="form-control form-control-sm itemPrice" value="0" step="0.01" min="0"></td>
+                    <td><input type="number" class="form-control form-control-sm itemDiscount" value="0" step="0.01" min="0"></td>
+                    <td class="text-center itemNet">0.00</td>
+                    <td><select class="form-select form-select-sm tax"><option value="">-- Select Tax --</option></select></td>
+                    <td class="text-center itemAmount">0.00</td>
+                    <td><select class="form-select form-select-sm costCenterSelect"><option value="">-- Select --</option></select></td>
+                </tr>
+            `);
+
+            tableBody.append(newRow);
+
+            // Populate item dropdown for this row
+            const itemSelect = newRow.find('.itemNameSelect');
+            if (itemsList && itemsList.length > 0) {
+                itemsList.forEach(item => {
+                    itemSelect.append(`<option value="${item.id}">${item.itemName}</option>`);
+                });
+            } else {
+                console.warn("⚠️ itemsList is empty");
+            }
+
+            // Populate tax dropdown for this row
+            const taxSelect = newRow.find('.tax');
+            if (taxesList && taxesList.length > 0) {
+                taxesList.forEach(item => {
+                    const text = `${item.name}-${item.value}%`;
+                    taxSelect.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
+                });
+            } else {
+                console.warn("⚠️ taxesList is empty");
+            }
+
+            // Populate cost center for this row
+            $.ajax({
+                url: '@Url.Action("GetCostCenters", "Lists")',
+                type: 'GET',
+                success: function (res) {
+                    const data = Array.isArray(res) ? res : (res.data || []);
+                    const costCenterSelect = newRow.find('.costCenterSelect');
+
+                    costCenterSelect.empty().append('<option value="">-- Select --</option>');
+                    $.each(data, function (i, item) {
+                        costCenterSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
+                    });
+                },
+                error: function(err) {
+                    console.error("❌ Error loading cost centers:", err);
+                }
+            });
+        }
         });
 
         function loadSalesQuotation() {
@@ -1143,7 +1242,9 @@
                 }
             });
         }
+
         let itemsList = [];
+        let taxesList = [];
 
         function loadItem(selector = ".itemNameSelect") {
             return new Promise((resolve, reject) => {
@@ -1152,15 +1253,13 @@
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
-                            itemsList = res.data; // Store the items in the global itemsList
+                            itemsList = res.data;
                             const dropdowns = $(selector);
                             dropdowns.empty().append('<option value="">Select Item</option>');
                             res.data.forEach(item => {
-                                dropdowns.append(
-                                    `<option value="${item.id}">${item.itemName}</option>`
-                                );
+                                dropdowns.append(`<option value="${item.id}">${item.itemName}</option>`);
                             });
-                            resolve(); // Resolve the promise once the items are loaded
+                            resolve();
                         } else {
                             reject("Failed to load items.");
                         }
@@ -1180,13 +1279,12 @@
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
+                            taxesList = res.data;
                             const dropdowns = $(selector);
                             dropdowns.empty().append('<option value="">-- Select Tax --</option>');
                             res.data.forEach(item => {
                                 const text = `${item.name}-${item.value}%`;
-                                dropdowns.append(
-                                    `<option value="${item.id}" data-value="${item.value}">${text}</option>`
-                                );
+                                dropdowns.append(`<option value="${item.id}" data-value="${item.value}">${text}</option>`);
                             });
                             resolve();
                         } else {
@@ -1227,7 +1325,7 @@
              });
          }
 
-         $(document).on("change", ".itemNameSelect", function () {
+        $(document).on("change", ".itemNameSelect", function () {
             const selectedId = parseInt($(this).val(), 10);
 
             const row = $(this).closest("tr");
@@ -1367,31 +1465,33 @@
                 Items: []
             };
 
-            // Collect all table rows
-            $('#salesModal tbody tr').each(function () {
-                const row = $(this);
-                const qty = parseFloat(row.find('.qty').val()) || 0;
-                const price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
-                const discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
-                const vatPercentage = parseFloat(row.find('.tax').val()) || 0;
+           $('#salesModal tbody tr').each(function () {
+                 const row = $(this);
 
-                const taxableAmount = (qty * price) - discount;
-                const calculatedVat = taxableAmount * (vatPercentage / 100);
+                 const qty = parseFloat(row.find('.qty').val()) || 0;
+                 const price = parseFloat(row.find('.itemPrice').val()) || 0;
+                 const discount = parseFloat(row.find('.itemDiscount').val()) || 0;
+                 const taxId = parseInt(row.find('.tax').val()) || 0;
+                 const taxPercentage = parseFloat(row.find('.tax option:selected').data('value')) || 0;
 
-                const item = {
-                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-                    Quantity: qty,
-                    CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
-                    Price: price,
-                    Discount: discount,
-                    VatPercentage: vatPercentage,
-                    Vat: calculatedVat,
-                    Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
-                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
-                };
+                 const taxableAmount = (qty * price) - discount;
+                 const calculatedVat = taxableAmount * (taxPercentage / 100);
 
-                invoiceData.Items.push(item);
-            });
+                 const item = {
+                     ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                     Quantity: qty,
+                     CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
+                     Price: price,
+                     TaxId: taxId,
+                     VatPercentage: taxPercentage,
+                     Vat: calculatedVat,
+                     Total: parseFloat(row.find('.itemAmount').text()) || 0,
+                     CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+                 };
+
+                  invoiceData.Items.push(item);
+             });
+
 
             // Send AJAX request to API
             $.ajax({
@@ -1415,8 +1515,7 @@
             });
         });
 
-
-            function openSalesModal(invoice) {
+         function openSalesModal(invoice) {
             console.log(invoice);
 
             // 🔹 Header
@@ -1445,52 +1544,82 @@
         } else {
             $('#paymentTerms').prop('disabled', true);
         }
-            // 🔹 Clear rows
-            $("#salesModal tbody").empty();
 
-            // 🔹 Add rows first (with empty dropdowns)
-            (invoice.items || []).forEach((item, idx) => {
-                const row = $(`
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect" value="${item.itemId}"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
-                        <td class="text-center">${invoice.total || 0}</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">${item.total || 0}</td>
-                        <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.cost_Center_Id || ''}"></select></td>
-                    </tr>
-                `);
-                $("#salesModal tbody").append(row);
-            });
+            const tbody = $("#salesModal tbody");
+             tbody.empty();
 
-            // 🔹 Now load dropdowns and set selected values
-            Promise.all([loadItem(), loadTax()]).then(() => {
-                // Set selected item for each row
-                $("#salesModal tbody tr").each(function(idx) {
-                    const item = invoice.items[idx];
-                    if (item) {
-                        $(this).find('.itemNameSelect').val(item.itemId || '');
-                        $(this).find('.tax').val(item.taxId || '');
-                    }
-                });
+                Promise.all([loadItem(), loadTax()]).then(() => {
 
-                // Load cost centers
-                populateAndSelectCostCenter();
-            });
+                 // Create combined items list
+                 const allItems = [...itemsList];
+                 (invoice.items || []).forEach(invoiceItem => {
+                     const exists = allItems.find(item => Number(item.id) === Number(invoiceItem.itemId));
+                     if (!exists && invoiceItem.itemId) {
+                         allItems.push({
+                             id: invoiceItem.itemId,
+                             itemName: invoiceItem.itemName,
+                             code: invoiceItem.itemCode,
+                             cost_price: invoiceItem.costPrice || 0
+                         });
+                     }
+                 });
 
-            // 🔹 Save invoice ID
+                 // Create rows
+                 (invoice.items || []).forEach((item, idx) => {
+
+                     const row = $(`
+                         <tr>
+                             <td>${idx + 1}</td>
+                             <td><input type="text" class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
+                             <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                             <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                             <td><input type="number" class="form-control form-control-sm itemPrice" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}" step="0.01"></td>
+                             <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
+                             <td class="text-center itemNet">${((item.qty * item.price) - item.discount || 0).toFixed(2)}</td>
+                             <td><select class="form-select form-select-sm tax"></select></td>
+                             <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
+                             <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                         </tr>
+                     `);
+
+                     // Populate item dropdown
+                     const itemSelect = row.find('.itemNameSelect');
+                     itemSelect.append('<option value="">Select Item</option>');
+                     allItems.forEach(itm => {
+                         const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
+                         itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
+                         if (selected) console.log('✓ Matched item:', itm.itemName, 'ID:', itm.id);
+                     });
+
+                     // Populate tax dropdown
+                     const taxSelect = row.find('.tax');
+                     taxSelect.append('<option value="">-- Select Tax --</option>');
+                     taxesList.forEach(tax => {
+                         const matchByPercentage = Number(tax.value) === Number(item.vatP || item.vatPercentage);
+                         const matchById = Number(tax.id) === Number(item.taxId);
+                         const selected = (matchByPercentage || matchById) ? 'selected' : '';
+                         const text = `${tax.name}-${tax.value}%`;
+                         taxSelect.append(`<option value="${tax.id}" data-value="${tax.value}" ${selected}>${text}</option>`);
+                         if (selected) console.log('✓ Matched tax:', text, 'ID:', tax.id);
+                     });
+
+                     tbody.append(row);
+                 });
+
+                 populateAndSelectCostCenter();
+
+                 // Recalculate all rows
+                  $("#salesModal tbody tr").each(function() {
+                     calculateRow($(this));
+                 });
+             });
+
             $("#purchaseInvoiceForm").data("purchaseInvoiceId", invoice.id || 0);
-
-            // 🔹 UI
             $("#salesModal .modal-title").text("Edit Purchase");
             $("#salesModal").modal("show");
         }
 
-               function openSalesCenterModal(invoice) {
+         function openSalesCenterModal(invoice) {
             console.log('Opening Purchase Invoice Modal:', invoice);
 
             // Map invoice data to purchase modal fields
@@ -1511,53 +1640,81 @@
             $("#purchasetotalVat").val(invoice.vat || 0);
             $("#purchasenetAmount").val(invoice.net || 0);
 
-            // Get the table from salesCenterModal
-            const tbody = $("#salesCenterModal tbody");
-            tbody.empty();
 
-            (invoice.items || []).forEach((item, idx) => {
-                tbody.append(`
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td><input class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.price || 0}"></td>
-                        <td><input class="form-control form-control-sm" value="${item.discount || 0}"></td>
-                        <td class="text-center">${invoice.total || 0}</td>
-                        <td><select class="form-select form-select-sm tax"></select></td>
-                        <td class="text-center">${item.total || 0}</td>
-                        <td>
-                            <select class="form-select form-select-sm costCenterSelect"
-                                    data-selected-id="${item.costCenterId || ''}">
-                            </select>
-                        </td>
-                    </tr>
-                `);
-            });
+                 const tbody = $("#salesCenterModal tbody");
+             tbody.empty();
 
-            Promise.all([
-                loadItem("#salesCenterModal .itemNameSelect"),
-                loadTax("#salesCenterModal .tax")
-            ]).then(() => {
-                $("#salesCenterModal tbody tr").each(function (i) {
-                    const item = invoice.items[i];
-                    if (!item) return;
+                Promise.all([loadItem(), loadTax()]).then(() => {
 
-                    $(this).find(".itemNameSelect").val(item.itemId || "");
-                    $(this).find(".tax").val(item.taxId || "");
-                });
+                 // Create combined items list
+                 const allItems = [...itemsList];
+                 (invoice.items || []).forEach(invoiceItem => {
+                     const exists = allItems.find(item => Number(item.id) === Number(invoiceItem.itemId));
+                     if (!exists && invoiceItem.itemId) {
+                         allItems.push({
+                             id: invoiceItem.itemId,
+                             itemName: invoiceItem.itemName,
+                             code: invoiceItem.itemCode,
+                             cost_price: invoiceItem.costPrice || 0
+                         });
+                     }
+                 });
 
-                populateAndSelectCostCenter();
-            });
+                 // Create rows
+                 (invoice.items || []).forEach((item, idx) => {
+
+                     const row = $(`
+                         <tr>
+                             <td>${idx + 1}</td>
+                             <td><input type="text" class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
+                             <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                             <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                             <td><input type="number" class="form-control form-control-sm itemPrice" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}" step="0.01"></td>
+                             <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
+                             <td class="text-center itemNet">${((item.qty * item.price) - item.discount || 0).toFixed(2)}</td>
+                             <td><select class="form-select form-select-sm tax"></select></td>
+                             <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
+                             <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                         </tr>
+                     `);
+
+                     // Populate item dropdown
+                     const itemSelect = row.find('.itemNameSelect');
+                     itemSelect.append('<option value="">Select Item</option>');
+                     allItems.forEach(itm => {
+                         const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
+                         itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
+                         if (selected) console.log('✓ Matched item:', itm.itemName, 'ID:', itm.id);
+                     });
+
+                     // Populate tax dropdown
+                     const taxSelect = row.find('.tax');
+                     taxSelect.append('<option value="">-- Select Tax --</option>');
+                     taxesList.forEach(tax => {
+                         const matchByPercentage = Number(tax.value) === Number(item.vatP || item.vatPercentage);
+                         const matchById = Number(tax.id) === Number(item.taxId);
+                         const selected = (matchByPercentage || matchById) ? 'selected' : '';
+                         const text = `${tax.name}-${tax.value}%`;
+                         taxSelect.append(`<option value="${tax.id}" data-value="${tax.value}" ${selected}>${text}</option>`);
+                         if (selected) console.log('✓ Matched tax:', text, 'ID:', tax.id);
+                     });
+
+                     tbody.append(row);
+                 });
+
+                 populateAndSelectCostCenter();
+
+                 // Recalculate all rows
+                  $("#salesCenterModal tbody tr").each(function() {
+                     calculateRow($(this));
+                 });
+             });
 
             $("#purchaseInvoiceForm").data("invoiceId", invoice.id || 0);
 
             $("#salesCenterModal .modal-title").text("Purchase Invoice");
             $("#salesCenterModal").modal("show");
         }
-
-
 
         $('#purchaseOrderInvoiceForm').on('submit', function (e) {
             e.preventDefault();
@@ -1597,35 +1754,33 @@
                 Items: []
             };
 
-            // Collect table items
             $('#salesCenterModal tbody tr').each(function () {
-                const row = $(this);
-                let price = parseFloat(row.find('td:nth-child(5) input').val()) || 0;
-                let qty = parseFloat(row.find('.qty').val()) || 0;
-                let discount = parseFloat(row.find('td:nth-child(6) input').val()) || 0;
-                let taxId = parseInt(row.find('.tax').val()) || 0;
-                let taxP = parseFloat(row.find('.tax option:selected').data('value')) || 0;
+                 const row = $(this);
 
-                const taxableAmount = (price * qty) - discount;
-                const vat = taxableAmount * (taxP / 100) || 0;
+                 const qty = parseFloat(row.find('.qty').val()) || 0;
+                 const price = parseFloat(row.find('.itemPrice').val()) || 0;
+                 const discount = parseFloat(row.find('.itemDiscount').val()) || 0;
+                 const taxId = parseInt(row.find('.tax').val()) || 0;
+                 const taxPercentage = parseFloat(row.find('.tax option:selected').data('value')) || 0;
 
-                const item = {
-                    ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
-                    Quantity: qty,
-                    Price: price,
-                    CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
-                    Discount: discount,
-                    TaxId: taxId,
-                    VatPercentage: taxP,
-                    Vat: vat,
-                    Total: parseFloat(row.find('td:nth-child(9)').text()) || 0,
-                    CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0
-                };
+                 const taxableAmount = (qty * price) - discount;
+                 const calculatedVat = taxableAmount * (taxPercentage / 100);
 
-                invoiceData.Items.push(item);
-            });
+                 const item = {
+                     ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
+                     Quantity: qty,
+                     CostPrice: parseFloat(row.find('.itemPrice').data('cost-price')) || 0,
+                     Price: price,
+                     TaxId: taxId,
+                     VatPercentage: taxPercentage,
+                     Vat: calculatedVat,
+                     Total: parseFloat(row.find('.itemAmount').text()) || 0,
+                     CostCenterId: parseInt(row.find('.costCenterSelect').val()) || 0,
+                 };
 
-            console.log('Sending Purchase Invoice Data:', invoiceData);
+                  invoiceData.Items.push(item);
+             });
+
 
             // AJAX POST to API
             $.ajax({
@@ -1649,7 +1804,6 @@
             });
         });
 
-        // Calculate row totals for purchase modal
         $(document).on("change input", "#salesCenterModal .qty, #salesCenterModal td:nth-child(5) input, #salesCenterModal td:nth-child(6) input, #salesCenterModal .tax", function() {
             const row = $(this).closest("tr");
             calculatePurchaseRow(row);

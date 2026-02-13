@@ -2217,6 +2217,7 @@ LIMIT 1;
                             CostPrice = reader["CostPrice"] != DBNull.Value ? Convert.ToDecimal(reader["CostPrice"]) : 0,
                             Price = reader["Price"] != DBNull.Value ? Convert.ToDecimal(reader["Price"]) : 0,
                             Vat = reader["ItemVat"] != DBNull.Value ? Convert.ToDecimal(reader["ItemVat"]) : 0,
+                            VatP = reader["VatP"] != DBNull.Value ? Convert.ToDecimal(reader["VatP"]) : 0,
                             Total = reader["ItemTotal"] != DBNull.Value ? Convert.ToDecimal(reader["ItemTotal"]) : 0,
                             Cost_Center_Id = reader["Cost_Center_Id"] != DBNull.Value ? Convert.ToInt32(reader["Cost_Center_Id"]) : (int?)null
                         });
@@ -2258,6 +2259,7 @@ SELECT
     pd.price AS Price,
     pd.cost_price AS CostPrice,
     pd.vat AS ItemVat,
+    pd.vatp AS VatP,
     pd.total AS ItemTotal,
     p.warehouse_id AS Warehouse_Id,
     p.po_num AS PO_Num,
@@ -2302,6 +2304,7 @@ WHERE p.state = 0
     d.cost_price AS CostPrice,
     d.price AS Price,
     d.vat AS ItemVat,
+    d.vatp AS VatP,
       i.code AS ItemCode,
     d.total AS ItemTotal,
     p.warehouse_id AS Warehouse_Id,
