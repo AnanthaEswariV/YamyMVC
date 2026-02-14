@@ -2535,16 +2535,63 @@ LIMIT 1;
                             "0", $"Sales Invoice No. {invoiceCode} (Neg. Stock)", warehouseId.ToString());
                     }
                 }
+
+                //        else // Average cost method
+                //        {
+                //            using (var cmd = new MySqlCommand(@"
+                //SELECT 
+                //    CASE 
+                //        WHEN SUM(qty_in - qty_out) = 0 THEN 0
+                //        ELSE SUM((qty_in - qty_out) * cost_price) / SUM(qty_in - qty_out)
+                //    END AS cost_price 
+                //FROM tbl_item_transaction 
+                //WHERE item_id = @id AND date <= @date", conn, tx))
+                //            {
+                //                cmd.Parameters.AddWithValue("@id", itemId);
+                //                cmd.Parameters.AddWithValue("@date", invoiceDate);
+                //                var result = await cmd.ExecuteScalarAsync();
+                //                if (result != null && result != DBNull.Value)
+                //                    costPrice = Convert.ToDecimal(result);
+                //            }
+
+                //            await InsertItemTransactionRecordAsync(conn, tx, invoiceDate.Date, "Sales Invoice",
+                //                invId.ToString(), itemId.ToString(), costPrice.ToString(), "0",
+                //                salesPrice.ToString(), qty.ToString(), "0",
+                //                $"Sales Invoice No. {invoiceCode}", warehouseId.ToString());
+
+                //            // Get cost from item card details
+                //            using (var cmdCard = new MySqlCommand(@"
+                //SELECT (balance / qty_balance) cost 
+                //FROM tbl_item_card_details 
+                //WHERE DATE <= @date AND trans_type = 'Purchase Invoice' AND itemId = @itemId
+                //ORDER BY trans_no DESC LIMIT 1", conn, tx))
+                //            {
+                //                cmdCard.Parameters.AddWithValue("@date", invoiceDate.Date);
+                //                cmdCard.Parameters.AddWithValue("@itemId", itemId.ToString());
+                //                using var reader = await cmdCard.ExecuteReaderAsync();
+
+                //                if (await reader.ReadAsync())
+                //                {
+                //                    totalCost = reader.GetDecimal("cost") * qty;
+                //                }
+                //                await reader.CloseAsync();
+                //            }
+                //        }
+
+
                 else // Average cost method
                 {
+                    // Get weighted average cost from remaining inventory (qty_inc)
                     using (var cmd = new MySqlCommand(@"
-                SELECT 
-                    CASE 
-                        WHEN SUM(qty_in - qty_out) = 0 THEN 0
-                        ELSE SUM((qty_in - qty_out) * cost_price) / SUM(qty_in - qty_out)
-                    END AS cost_price 
-                FROM tbl_item_transaction 
-                WHERE item_id = @id AND date <= @date", conn, tx))
+        SELECT 
+            CASE 
+                WHEN SUM(qty_inc) = 0 THEN 0
+                ELSE SUM(qty_inc * cost_price) / SUM(qty_inc)
+            END AS cost_price 
+        FROM tbl_item_transaction 
+        WHERE item_id = @id 
+          AND date <= @date
+          AND qty_inc > 0", conn, tx))
                     {
                         cmd.Parameters.AddWithValue("@id", itemId);
                         cmd.Parameters.AddWithValue("@date", invoiceDate);
@@ -2553,29 +2600,36 @@ LIMIT 1;
                             costPrice = Convert.ToDecimal(result);
                     }
 
+                    // Fallback: If no cost found, get the last purchase price
+                    if (costPrice == 0)
+                    {
+                        using (var cmdFallback = new MySqlCommand(@"
+            SELECT cost_price 
+            FROM tbl_item_transaction 
+            WHERE item_id = @id 
+              AND date <= @date 
+              AND qty_in > 0
+            ORDER BY date DESC, id DESC
+            LIMIT 1", conn, tx))
+                        {
+                            cmdFallback.Parameters.AddWithValue("@id", itemId);
+                            cmdFallback.Parameters.AddWithValue("@date", invoiceDate);
+                            var result = await cmdFallback.ExecuteScalarAsync();
+                            if (result != null && result != DBNull.Value)
+                                costPrice = Convert.ToDecimal(result);
+                        }
+                    }
+
+                    // Calculate total cost for this sale
+                    totalCost = costPrice * qty;
+
+                    // Insert the transaction record
                     await InsertItemTransactionRecordAsync(conn, tx, invoiceDate.Date, "Sales Invoice",
                         invId.ToString(), itemId.ToString(), costPrice.ToString(), "0",
                         salesPrice.ToString(), qty.ToString(), "0",
                         $"Sales Invoice No. {invoiceCode}", warehouseId.ToString());
-
-                    // Get cost from item card details
-                    using (var cmdCard = new MySqlCommand(@"
-                SELECT (balance / qty_balance) cost 
-                FROM tbl_item_card_details 
-                WHERE DATE <= @date AND trans_type = 'Purchase Invoice' AND itemId = @itemId
-                ORDER BY trans_no DESC LIMIT 1", conn, tx))
-                    {
-                        cmdCard.Parameters.AddWithValue("@date", invoiceDate.Date);
-                        cmdCard.Parameters.AddWithValue("@itemId", itemId.ToString());
-                        using var reader = await cmdCard.ExecuteReaderAsync();
-
-                        if (await reader.ReadAsync())
-                        {
-                            totalCost = reader.GetDecimal("cost") * qty;
-                        }
-                        await reader.CloseAsync();
-                    }
                 }
+
 
                 return totalCost;
             }
