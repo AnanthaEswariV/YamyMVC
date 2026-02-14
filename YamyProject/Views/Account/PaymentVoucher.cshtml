@@ -743,41 +743,30 @@
     loadBanks();
     loadChequeBooks();
 
-    $(document).on('input change', '.pay-input', function() {
-    const payValue = $(this).val();
-    const $row = $(this).closest('tr');
-    const $paymentInput = $row.find('.payment-input');
-    
-    const currentPaymentValue = $paymentInput.val().trim();
-    
-    if (currentPaymentValue === '' || 
-        currentPaymentValue === '0' || 
-        parseFloat(currentPaymentValue) === 0) {
-        $paymentInput.val(payValue);
-    }
+$(document).on('focus', '.pay-input', function () {
+    $(this).data('previous-value', $(this).val());
 });
 
-    $(document).on('focus', '.pay-input', function() {
-    const $this = $(this);
-    $this.data('previous-value', $this.val());
-});
+$(document).on('blur', '.pay-input', function () {
 
-    $(document).on('blur', '.pay-input', function() {
     const $this = $(this);
     const newValue = $this.val();
     const previousValue = $this.data('previous-value');
-    const $row = $this.closest('tr');
-    const $paymentInput = $row.find('.payment-input');
+
+    const $paymentInput = $this.closest('tr').find('.payment-input');
     const paymentValue = $paymentInput.val().trim();
-    
-    // If Payment equals the previous Pay value or is 0, update it
-    if (paymentValue === previousValue || 
-        paymentValue === '0' || 
+
+    if (
         paymentValue === '' ||
-        parseFloat(paymentValue) === 0) {
+        paymentValue === '0' ||
+        parseFloat(paymentValue) === 0 ||
+        paymentValue === previousValue
+    ) {
         $paymentInput.val(newValue);
     }
 });
+
+
 
     async function loadVendorInvoices() {
     // ✅ CHECK IF WE'RE IN EDIT MODE - DON'T RELOAD INVOICES
@@ -839,7 +828,7 @@
                             <td>
                                 <input type="text" 
                                        class="form-control form-control-sm payment-input" 
-                                       value="0">
+                                       value="0" disabled>
                             </td>
                             <td>
                                 <input type="text" 
@@ -1464,7 +1453,6 @@ voucherData.InvoiceDetails.push({
     });
 }
 
- // Clear editing flag when modal is hidden
 $('#paymentVoucherModal').on('hidden.bs.modal', function () {
     $(this).removeData("editing");
     $(".costCenterSelect, .creditCostCenterSelect")
@@ -1472,9 +1460,6 @@ $('#paymentVoucherModal').on('hidden.bs.modal', function () {
         .empty();
 });
 
-// ✅ SIMPLE FIX: Just update your existing $('#btnAddStock').on('click') handler
-
-// FIND THIS CODE IN YOUR EXISTING FILE:
 $('#btnAddStock').on('click', function() {
     // Clear the editing flag
     $("#paymentVoucherModal").removeData("editing");
@@ -1498,7 +1483,6 @@ $('#btnAddStock').on('click', function() {
     $('#transferFields').addClass('d-none');
 });
 
-// ✅ REPLACE WITH THIS CODE (adds cost center and account loading):
 $('#btnAddStock').on('click', function() {
     // Clear the editing flag
     $("#paymentVoucherModal").removeData("editing");
