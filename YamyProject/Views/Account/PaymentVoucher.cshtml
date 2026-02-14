@@ -479,7 +479,6 @@
     const paymentType = $(this).val();
     const isSubContractor = $('#subContractor').is(':checked');
 
-    // Hide all dynamic fields first
     $('#amountInputDiv').hide();
     $('#employeeNoteDiv').hide();
     $('#vendorNameSelect').closest('.col-md-6').hide();
@@ -1286,7 +1285,7 @@ $(document).on('blur', '.pay-input', function () {
     modal.modal("show");
 });
 
-    $("#paymentVoucherForm").on("submit", function (e) {
+$("#paymentVoucherForm").on("submit", function (e) {
     e.preventDefault();
 
     const form = this;
@@ -1295,6 +1294,7 @@ $(document).on('blur', '.pay-input', function () {
         return;
     }
 
+    // Calculate total amount from table or use direct input
     let tableAmount = 0;
     const firstRow = $("#paymentVoucherModal table tbody tr").first();
     if (firstRow.length) {
@@ -1303,40 +1303,41 @@ $(document).on('blur', '.pay-input', function () {
     const amount = Number($("#amountInput").val()) || tableAmount || 0;
     const paymentMethod = $("#paymentMethodSelect").val();
 
+    // Build main voucher data object
     const voucherData = {
         Id: Number($("#voucherId").val()) || 0,
         Date: $("#date").val(),
-
+        
         PaymentType: $("#paymentTypeSelect").val(),
         IsSubContractor: $("#subContractor").is(":checked"),
         Method: paymentMethod,
 
-        // Debit
+        // Debit (Pay To)
         DebitAccountId: Number($("#accountNameSelect").val()) || 0,
-        DebitCostCenterId: Number($(".costCenterSelect").val()) || 0,
+        DebitCostCenterId: Number($(".costCenterSelect").val()) || null,
         VendorId: Number($("#vendorNameSelect").val()) || null,
 
-        // Credit
+        // Credit (Pay From)
         CreditAccountId: Number($("#creditAccountNameSelect").val()) || 0,
-        CreditCostCenterId: Number($(".creditCostCenterSelect").val()) || 0,
+        CreditCostCenterId: Number($(".creditCostCenterSelect").val()) || null,
 
-       Amount: amount,
+        Amount: amount,
+        Description: "", // Add if you have a description field
 
-
-
-        // Cheque
+        // Cheque fields - initialize as null
         BankId: null,
         BankAccountId: null,
         BookNo: null,
-        CheckName: "",
-        CheckNo: "",
+        CheckName: null,
+        CheckNo: null,
         CheckDate: null,
 
-        // Transfer
+        // Transfer fields - initialize as null
         TransDate: null,
-        TransName: "",
-        TransRef: "",
+        TransName: null,
+        TransRef: null,
 
+        // Collections
         Employees: [],
         InvoiceDetails: []
     };
@@ -1349,49 +1350,90 @@ $(document).on('blur', '.pay-input', function () {
         voucherData.BankId = Number($("#bankNameSelect").val()) || null;
         voucherData.BankAccountId = Number($("#bankAccountSelect").val()) || null;
         voucherData.BookNo = Number($("#bookNoSelect").val()) || null;
-        voucherData.CheckName = $("#chequeBookSelect").val();
-        voucherData.CheckNo = $("#chequeNoSelect").val();
-        voucherData.CheckDate = $("#chequeDate").val();
+        voucherData.CheckName = $("#chequeBookSelect").val() || null;
+        voucherData.CheckNo = $("#chequeNoSelect").val() || null;
+        voucherData.CheckDate = $("#chequeDate").val() || null;
     }
 
     if (paymentMethod === "Transfer") {
-        voucherData.TransDate = $("#transferDate").val();
-        voucherData.TransName = $("#transferName").val();
-        voucherData.TransRef = $("#transferRef").val();
+        voucherData.TransDate = $("#transferDate").val() || null;
+        voucherData.TransName = $("#transferName").val() || null;
+        voucherData.TransRef = $("#transferRef").val() || null;
     }
 
     /* =======================
-       EMPLOYEES (IMPORTANT)
-       value = EMPLOYEE ID
+       EMPLOYEES
     ======================== */
 
     $("#employeeList input[type=checkbox]:checked").each(function () {
         voucherData.Employees.push({
-            EmployeeId: Number($(this).data("employee-id"))
+            EmployeeId: Number($(this).data("employee-id")) || 0
         });
     });
 
- $("#paymentVoucherModal table tbody tr").each(function () {
-    const $row = $(this); // declare $row here
-    const tds = $row.find("td");
-voucherData.InvoiceDetails.push({
-    InvId: Number(tds.eq(2).data("id")) || 0,
-    InvCode: tds.eq(2).text().trim(),
-    InvDate: $row.data("inv-date")?.split("T")[0] || null,
-    Total: Number(tds.eq(3).text().replace(/,/g, '')) || 0, 
-    Pay: Number(tds.eq(4).find("input").val()) || 0,         
-    Payment: tds.eq(5).find("input").val().trim() || "",      
-    Description: tds.eq(6).find("input").val().trim() || "", 
-    VendorId: Number($("#vendorNameSelect").val()) || null
-});
+    $("#paymentVoucherModal table tbody tr").each(function () {
+        const $row = $(this);
+        const tds = $row.find("td");
+        
+        const payAmount = Number(tds.eq(4).find("input").val()) || 0;
+        
+        if (payAmount === 0) {
+            return; 
+        }
 
-});
+ 
+        let invId = Number($row.data("inv-id")) || 0;
+        let humId = Number($row.data("hum-id")) || 0;
+        
+        if (humId === 0) {
+            if (voucherData.PaymentType === "Vendor") {
+                humId = voucherData.VendorId;
+            } else if (voucherData.PaymentType === "Employee") {
+                humId = Number($row.data("emp-id")) || 0;
+            }
+        }
+
+        // Determine VoucherType
+        let voucherType = $row.data("voucher-type") || "";
+        
+        if (!voucherType) {
+            const paymentType = $("#paymentTypeSelect").val();
+            if (paymentType === "Employee") {
+                voucherType = "Salary";
+            } else if (paymentType === "Vendor") {
+                voucherType = "Vendor Invoice";
+            } else if (paymentType === "General") {
+                voucherType = "General";
+            }
+        }
+
+        voucherData.InvoiceDetails.push({
+            InvId: invId,
+            InvCode: tds.eq(2).text().trim() || "",
+            InvDate: $row.data("inv-date")?.split("T")[0] || null,
+            Total: Number(tds.eq(3).text().replace(/,/g, '')) || 0,
+            Pay: payAmount,
+            Payment: tds.eq(5).find("input").val()?.trim() || "",
+            Description: tds.eq(6).find("input").val()?.trim() || "",
+            VendorId: humId,
+            VoucherType: voucherType
+        });
+    });
 
 
-    /* =======================
-       AJAX SAVE
-    ======================== */
-    
+    console.log("Voucher Data:", voucherData);
+    console.log("Invoice Details:", voucherData.InvoiceDetails);
+
+
+    // if (voucherData.InvoiceDetails.length > 0) {
+    //     const missingIds = voucherData.InvoiceDetails.filter(inv => inv.InvId === 0);
+    //     if (missingIds.length > 0) {
+    //         console.error("Missing Invoice IDs:", missingIds);
+    //         toastr.error("Some invoices are missing IDs. Please check the table data.");
+    //         return;
+    //     }
+    // }
+
     $.ajax({
         url: '@Url.Action("SavePaymentVoucher", "Account")',
         type: "POST",
@@ -1411,12 +1453,31 @@ voucherData.InvoiceDetails.push({
             }
         },
         error: function (xhr) {
+            console.error("Error:", xhr);
             toastr.error(xhr.responseJSON?.message || xhr.statusText);
         }
     });
 });
 
 
+
+function addInvoiceRow(invoiceData) {
+    const row = $("<tr></tr>")
+        .data("inv-id", invoiceData.id)           // CRITICAL: Store invoice ID
+        .data("inv-date", invoiceData.date)       // Store invoice date
+        .data("hum-id", invoiceData.vendorId)     // Store vendor/employee ID
+        .data("voucher-type", invoiceData.type);  // Store voucher type
+    
+    row.append($("<td></td>").text(rowNumber));
+    row.append($("<td></td>").text(invoiceData.date));
+    row.append($("<td></td>").text(invoiceData.code));
+    row.append($("<td></td>").text(invoiceData.amount));
+    row.append($("<td></td>").html('<input type="number" class="form-control" />'));
+    row.append($("<td></td>").html('<input type="text" class="form-control" />'));
+    row.append($("<td></td>").html('<input type="text" class="form-control" />'));
+    
+    $("#paymentVoucherModal table tbody").append(row);
+}
 });
 
     function populateAndSelectCostCenter() {

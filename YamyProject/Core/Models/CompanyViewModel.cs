@@ -1399,43 +1399,58 @@ namespace YamyProject.Core.Models
 
     public class PaymentVoucherRequest
     {
-        public int Id { get; set; } = 0; 
-        public string PaymentType { get; set; } = ""; 
-        public string Method { get; set; } = ""; 
-        public int DebitAccountId { get; set; }
-        public int CreditAccountId { get; set; }
+        public int Id { get; set; }
+        public DateTime Date { get; set; } 
+        public string PaymentType { get; set; }
+        public bool IsSubContractor { get; set; }
+        public string Method { get; set; }
         public decimal Amount { get; set; }
-        public string Description { get; set; } = "";
-        public int DebitCostCenterId { get; set; }
-        public int CreditCostCenterId { get; set; }
+
+        // Debit
+        public int DebitAccountId { get; set; }
+        public int? DebitCostCenterId { get; set; }
+        public int? VendorId { get; set; }
+
+        // Credit
+        public int CreditAccountId { get; set; }
+        public int? CreditCostCenterId { get; set; }
+
+        public string Description { get; set; }
+
+        // Cheque
         public int? BankId { get; set; }
         public int? BankAccountId { get; set; }
         public int? BookNo { get; set; }
-        public string CheckName { get; set; } = "";
-        public string CheckNo { get; set; } = "";
-        public DateTime? CheckDate { get; set; }
-        public DateTime? TransDate { get; set; }
-        public string TransName { get; set; } = "";
-        public string TransRef { get; set; } = "";
-        public DateTime Date { get; set; } = DateTime.Now;
-        
+        public string CheckName { get; set; }
+        public string CheckNo { get; set; }
+        public DateTime? CheckDate { get; set; }  
 
-        public List<InvoiceDetail> InvoiceDetails { get; set; } = new();
-        public bool PrintVoucher { get; set; } = false;
+        // Transfer
+        public DateTime? TransDate { get; set; }  
+        public string TransName { get; set; }
+        public string TransRef { get; set; }
+
+        public List<EmployeeInfo> Employees { get; set; } = new List<EmployeeInfo>();
+        public List<InvoiceDetail> InvoiceDetails { get; set; } = new List<InvoiceDetail>();
+    }
+
+    public class EmployeeInfo
+    {
+        public int EmployeeId { get; set; }
     }
 
     public class InvoiceDetail
     {
-        public int InvId { get; set; }
-        public string InvCode { get; set; } = "";
+        public int? InvId { get; set; }
+        public string InvCode { get; set; }
+        public DateTime InvDate { get; set; }  
         public decimal Total { get; set; }
         public decimal Pay { get; set; }
-        public string Description { get; set; } = "";
-        public string VoucherType { get; set; } = "";
-        public int? VendorId { get; set; }  // make nullable
-        public DateTime? InvDate { get; set; } // make nullable
+        public string? Payment { get; set; }
+        public string Description { get; set; }
+        public int? VendorId { get; set; }
+        public string VoucherType { get; set; }
     }
-
     public class CustomerInvoiceDto
     {
         public int SN { get; set; }

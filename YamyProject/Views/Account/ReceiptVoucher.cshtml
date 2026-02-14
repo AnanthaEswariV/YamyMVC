@@ -326,8 +326,6 @@
     </div>
 </div>
 
-
-
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -715,47 +713,30 @@
             });
         });
 
-                // Auto-copy Pay value to Payment field when Pay input changes
-        $(document).on('input change', '.pay-input', function() {
-            const payValue = $(this).val();
-            const $row = $(this).closest('tr');
-            const $paymentInput = $row.find('.payment-input');
-
-            // Get current payment value
-            const currentPaymentValue = $paymentInput.val().trim();
-
-            // Auto-fill Payment if it's empty, 0, or matches the previous Pay value
-            if (currentPaymentValue === '' ||
-                currentPaymentValue === '0' ||
-                parseFloat(currentPaymentValue) === 0) {
-                $paymentInput.val(payValue);
-            }
+              $(document).on('focus', '.pay-input', function () {
+            $(this).data('previous-value', $(this).val());
         });
 
-        // Also handle when user focuses on Pay field and it has a value
-        $(document).on('focus', '.pay-input', function() {
-            const $this = $(this);
-            // Store the current value
-            $this.data('previous-value', $this.val());
-        });
+        $(document).on('blur', '.pay-input', function () {
 
-        // When Pay input loses focus, check if Payment should be updated
-        $(document).on('blur', '.pay-input', function() {
             const $this = $(this);
             const newValue = $this.val();
             const previousValue = $this.data('previous-value');
-            const $row = $this.closest('tr');
-            const $paymentInput = $row.find('.payment-input');
+
+            const $paymentInput = $this.closest('tr').find('.payment-input');
             const paymentValue = $paymentInput.val().trim();
 
-            // If Payment equals the previous Pay value or is 0, update it
-            if (paymentValue === previousValue ||
-                paymentValue === '0' ||
+            if (
                 paymentValue === '' ||
-                parseFloat(paymentValue) === 0) {
+                paymentValue === '0' ||
+                parseFloat(paymentValue) === 0 ||
+                paymentValue === previousValue
+            ) {
                 $paymentInput.val(newValue);
             }
         });
+
+
 
         async function loadCustomerInvoices() {
 
@@ -821,7 +802,7 @@
                     </td>
                     <td>
                         <input type="text"
-                               class="form-control form-control-sm payment-input"
+                               class="form-control form-control-sm payment-input" disabled
                                value="${isNegative ? amount : 0}"
                                ${isNegative ? "disabled" : ""}>
                     </td>
