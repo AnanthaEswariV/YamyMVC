@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Text.RegularExpressions;
 using YamyProject.Core.Models;
 
 namespace YamyProject.Controllers
@@ -446,38 +447,38 @@ namespace YamyProject.Controllers
                     Database = HttpContext.Session.GetString("DatabaseName")
                                ?? _config.GetConnectionString("DefaultDatabase")
                 };
-                //
+
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
                 string query = @"
-            SELECT 
-                t.id,
-                t.transaction_id AS InvoiceId,
-                t.voucher_no AS VoucherNo,
-                t.date,
-                t.type,
-                ta.name AS Description,
-                t.debit,    
-                t.credit,
-                0 AS Balance 
-            FROM tbl_transaction t
-            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-            WHERE t.hum_id = @id
-              AND t.state = 0
-              AND t.type IN (
-                  'Vendor Payment', 
-                  'Petty Cash', 
-                  'Purchase Invoice', 
-                  'Purchase Invoice Cash', 
-                  'Vendor Opening Balance',
-                  'Vendor Advance Payment',
-                  'Check Cancel (Vendor)', 
-                  'Purchase Return Invoice', 
-                  'Debit Note', 
-                  'PDC Payable'
-              )
-            ORDER BY t.id;";
+        SELECT 
+            t.id,
+            t.transaction_id AS InvoiceId,
+            t.voucher_no AS VoucherNo,
+            t.date,
+            t.type,
+            ta.name AS Description,
+            t.debit,    
+            t.credit,
+            0 AS Balance 
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE t.hum_id = @id
+          AND t.state = 0
+          AND t.type IN (
+              'Vendor Payment', 
+              'Petty Cash', 
+              'Purchase Invoice', 
+              'Purchase Invoice Cash', 
+              'Vendor Opening Balance',
+              'Vendor Advance Payment',
+              'Check Cancel (Vendor)', 
+              'Purchase Return Invoice', 
+              'Debit Note', 
+              'PDC Payable'
+          )
+        ORDER BY t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@id", id);
@@ -495,7 +496,26 @@ namespace YamyProject.Controllers
 
                     decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
                     decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
-                    balance += credit - debit; 
+                    balance += credit - debit;
+
+                    string description = reader["Description"]?.ToString() ?? "";
+
+                    // Determine payment type based on description (case-insensitive)
+                    string paymentType = "";
+                    string normalizedDescription = Regex.Replace(description, @"\s+", " ").Trim();
+
+                    if (normalizedDescription.Equals("Cash On Hand", StringComparison.OrdinalIgnoreCase))
+                    {
+                        paymentType = "Cash Payment";
+                    }
+                    else if (normalizedDescription.Equals("Suppliers (Creditors) Net", StringComparison.OrdinalIgnoreCase))
+                    {
+                        paymentType = "Purchase Credit";
+                    }
+                    else
+                    {
+                        paymentType = "";
+                    }
 
                     transactions.Add(new
                     {
@@ -505,10 +525,11 @@ namespace YamyProject.Controllers
                         Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
                         VoucherNo = reader["VoucherNo"]?.ToString() ?? $"GV-00{invoiceId}",
                         Type = reader["type"]?.ToString() ?? "",
-                        Description = reader["Description"]?.ToString() ?? "",
+                        Description = description,
                         Debit = debit.ToString("N2"),
                         Credit = credit.ToString("N2"),
-                        Balance = balance.ToString("N2")
+                        Balance = balance.ToString("N2"),
+                        PaymentType = paymentType  
                     });
                 }
 
@@ -519,6 +540,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetVendorCashInvoices(int id)
         {
@@ -1529,13 +1551,15 @@ WHERE id=@id;";
                 ? accountIds.PaymentCreditMethodId.ToString()
                 : model.AccountCashId.ToString();
 
+            string description = model.PaymentMethod == "Credit"
+           ? "Purchase Invoice"
+           : "Purchase Invoice Cash";   
             // Main transaction entry
             if (model.NetTotal > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountId, "0",
-                    model.NetTotal.ToString(), purchaseId.ToString(), model.VendorId.ToString(),
-                    model.PaymentMethod == "Credit" ? "Purchase Invoice" : "Purchase Invoice Cash",
-                    "Purchase Invoice Cash", $"Purchase Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
+                    model.NetTotal.ToString(), purchaseId.ToString(), model.VendorId.ToString(), "Purchase Invoice",
+                    description, $"Purchase Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
 
             // VAT transaction

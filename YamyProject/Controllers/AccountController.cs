@@ -6818,6 +6818,7 @@ WHERE payment_id = @paymentId";
                             invoices.Add(new
                             {
                                 sn = ++snCounter,
+                                id = reader["id"],
                                 invoiceId = reader["invoice_id"],
                                 date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
                                 amount = reader["change"]

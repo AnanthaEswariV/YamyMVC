@@ -770,7 +770,6 @@ $(document).on('blur', '.pay-input', function () {
     async function loadVendorInvoices() {
     // ✅ CHECK IF WE'RE IN EDIT MODE - DON'T RELOAD INVOICES
     if ($("#paymentVoucherModal").data("editing")) {
-        console.log("Edit mode active - skipping invoice reload");
         return;
     }
 
@@ -813,10 +812,10 @@ $(document).on('blur', '.pay-input', function () {
             if (vendor.invoices && vendor.invoices.length > 0) {
                 vendor.invoices.forEach(inv => {
                     tbody.append(`
-                        <tr data-inv-date="${inv.date}" data-inv-id="${inv.invoiceId}">
+                        <tr data-inv-date="${inv.date}" data-inv-id="${inv.id}">
                             <td>${rowIndex++}</td>
                             <td>${inv.date || ''}</td>
-                            <td data-id="${inv.invoiceId}">${inv.invoiceId || ''}</td>
+                            <td data-id="${inv.id}">${inv.id || ''}</td>
                             <td class="text-end">${(inv.amount || 0).toLocaleString()}</td>
                             <td>
                                 <input type="number" 
@@ -886,7 +885,6 @@ $(document).on('blur', '.pay-input', function () {
             subContractor: isSubContractor 
         },
         success: function(res) {
-            console.log('API Response:', res); // Debug
             
             if (!res.status) {
                 toastr.error(res.message || 'Failed to fetch payment type details');
@@ -927,15 +925,12 @@ $(document).on('blur', '.pay-input', function () {
                     const $vendorSelect = $('#vendorNameSelect');
                     $vendorSelect.empty().append('<option value="">-- Select Vendor --</option>');
                     
-                    console.log('Loading vendors:', data.Vendors); // Debug
-                    
                     data.Vendors.forEach(v => {
                         $vendorSelect.append(
                             `<option value="${v.id}" data-code="${v.code}">${v.code} - ${v.name}</option>`
                         );
                     });
                     
-                    console.log('Vendors loaded:', data.Vendors.length); // Debug
                 } else {
                     console.warn('No vendors in response'); // Debug
                 }
@@ -952,7 +947,6 @@ $(document).on('blur', '.pay-input', function () {
                     const $employeeList = $('#employeeList');
                     $employeeList.empty();
                     
-                    console.log('Loading employees:', data.Employees); // Debug
                     
                     data.Employees.forEach(emp => {
                         $employeeList.append(`
@@ -992,7 +986,6 @@ $(document).on('blur', '.pay-input', function () {
     $(document).on("click", ".editPaymentVoucherBtn", function () {
     const voucher = $(this).data("customer");
     if (!voucher) return;
-    console.log('Edit voucher:', voucher); // Debug
 
     /* =========================
        RESET MODAL
@@ -1007,27 +1000,18 @@ $(document).on('blur', '.pay-input', function () {
     ========================== */
     modal.data("editing", true);
 
-    /* =========================
-       HEADER - INCLUDING SUBCONTRACTOR CHECKBOX
-    ========================== */
     $("#voucherId").val(voucher.id || 0);
     $("#date").val(voucher.Date?.split("T")[0] || "");
     
-    // Set payment type WITHOUT triggering change event
     $("#paymentTypeSelect").val(voucher.Type || "");
     
-    // ✅ FIX: Check subcontractor checkbox based on IsSubContractor property
     const isSubContractor = voucher.IsSubContractor || false;
     $("#subContractor").prop('checked', isSubContractor);
     
-    console.log('IsSubContractor:', isSubContractor); // Debug
     
-    // Set payment method WITHOUT triggering change event
     $("#paymentMethodSelect").val(voucher.Method || "");
 
-    /* =========================
-       MANUALLY SHOW/HIDE FIELDS BASED ON TYPE
-    ========================== */
+
     $('#amountInputDiv').hide();
     $('#employeeNoteDiv').hide();
     $('#vendorNameSelect').closest('.col-md-6').hide();
@@ -1041,14 +1025,11 @@ $(document).on('blur', '.pay-input', function () {
         $("#amountInput").val(voucher.Amount || 0);
     }
 
-    /* =========================
-       LOAD ACCOUNTS
-    ========================== */
+
     $.ajax({
         url: '@Url.Action("GetAccruedSalaries", "HR")',
         type: 'GET',
         success: function(accounts) {
-            // Populate Debit Account
             const $debitSelect = $("#accountNameSelect");
             $debitSelect.empty().append('<option value="">-- Select --</option>');
             
@@ -1115,14 +1096,12 @@ $(document).on('blur', '.pay-input', function () {
         // ✅ FIX: Determine vendor type based on IsSubContractor
         const vendorType = isSubContractor ? 'Subcontractor' : 'Vendor';
         
-        console.log('Loading vendor type:', vendorType); // Debug
         
         $.ajax({
             url: '@Url.Action("GetVendors", "Account")',
             type: 'GET',
             data: { type: vendorType },
             success: function(res) {
-                console.log('Vendors response:', res); // Debug
                 
                 if (!res.status || !res.data) {
                     console.error('No vendors data in response');
@@ -1138,11 +1117,9 @@ $(document).on('blur', '.pay-input', function () {
                     );
                 });
                 
-                console.log('Vendors loaded:', res.data.length); // Debug
                 
                 // Set vendor from first invoice
                 const vendorId = voucher.InvoiceDetails?.[0]?.HumId || "";
-                console.log('Setting vendor ID:', vendorId); // Debug
                 
                 if (vendorId) {
                     $vendorSelect.val(vendorId);
@@ -1204,7 +1181,6 @@ $(document).on('blur', '.pay-input', function () {
             type: 'GET',
             success: function(res) {
                 if (!res.status || !res.data) return;
-                console.log(res);
                 const $bankSelect = $('#bankNameSelect');
                 $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
                 
@@ -1421,9 +1397,6 @@ $("#paymentVoucherForm").on("submit", function (e) {
     });
 
 
-    console.log("Voucher Data:", voucherData);
-    console.log("Invoice Details:", voucherData.InvoiceDetails);
-
 
     // if (voucherData.InvoiceDetails.length > 0) {
     //     const missingIds = voucherData.InvoiceDetails.filter(inv => inv.InvId === 0);
@@ -1458,7 +1431,6 @@ $("#paymentVoucherForm").on("submit", function (e) {
         }
     });
 });
-
 
 
 function addInvoiceRow(invoiceData) {
