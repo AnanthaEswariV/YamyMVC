@@ -7309,14 +7309,14 @@ WHERE payment_id = @paymentId";
                     }
 
                     // Delete old transactions
-                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='PAYMENT'", conn, transaction))
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='Vendor Payment'", conn, transaction))
                     {
                         delCmd.Parameters.AddWithValue("@id", id);
                         await delCmd.ExecuteNonQueryAsync();
                     }
 
                     // Delete old cost center transactions
-                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='Payment'", conn, transaction))
+                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='Vendor Payment'", conn, transaction))
                     {
                         delCmd.Parameters.AddWithValue("@id", id);
                         await delCmd.ExecuteNonQueryAsync();

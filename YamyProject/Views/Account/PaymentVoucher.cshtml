@@ -1408,7 +1408,7 @@ $("#paymentVoucherForm").on("submit", function (e) {
         }
 
         voucherData.InvoiceDetails.push({
-            InvId: invId,
+            InvId:Number($row.data("inv-id")) || 0,
             InvCode: tds.eq(2).text().trim() || "",
             InvDate: $row.data("inv-date")?.split("T")[0] || null,
             Total: Number(tds.eq(3).text().replace(/,/g, '')) || 0,
