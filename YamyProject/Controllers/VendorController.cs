@@ -498,19 +498,23 @@ namespace YamyProject.Controllers
                     decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
                     balance += credit - debit;
 
-                    string description = reader["Description"]?.ToString() ?? "";
+                    string type = reader["type"]?.ToString() ?? "";
 
                     // Determine payment type based on description (case-insensitive)
                     string paymentType = "";
-                    string normalizedDescription = Regex.Replace(description, @"\s+", " ").Trim();
+                    string normalizedDescription = Regex.Replace(type, @"\s+", " ").Trim();
 
-                    if (normalizedDescription.Equals("Cash On Hand", StringComparison.OrdinalIgnoreCase))
+                    if (normalizedDescription.Equals("Purchase Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
                         paymentType = "Cash Payment";
                     }
-                    else if (normalizedDescription.Equals("Suppliers (Creditors) Net", StringComparison.OrdinalIgnoreCase))
+                    else if (normalizedDescription.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase))
                     {
                         paymentType = "Purchase Credit";
+                    }
+                    else if (normalizedDescription.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase))
+                    {
+                        paymentType = "Vendor Payment";
                     }
                     else
                     {
@@ -525,7 +529,7 @@ namespace YamyProject.Controllers
                         Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
                         VoucherNo = reader["VoucherNo"]?.ToString() ?? $"GV-00{invoiceId}",
                         Type = reader["type"]?.ToString() ?? "",
-                        Description = description,
+                        Description = type,
                         Debit = debit.ToString("N2"),
                         Credit = credit.ToString("N2"),
                         Balance = balance.ToString("N2"),

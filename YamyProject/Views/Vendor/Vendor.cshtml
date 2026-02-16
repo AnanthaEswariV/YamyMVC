@@ -491,7 +491,6 @@
                 type: 'GET',
                 success: function(res) {
                     if (!res.status || !res.data) return;
-                    console.log(res);
                     const container = $('#projectContainer');
                     container.empty();
 
@@ -855,7 +854,6 @@
                     if (res.status) {
                         let tbody = $("#pettyCashVoucherTable tbody");
                         tbody.empty();
-                        console.log(res);
                         if (res.data && res.data.length > 0) {
                             $.each(res.data, function (i, row) {
                                 let tr = `
