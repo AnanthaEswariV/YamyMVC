@@ -437,7 +437,7 @@ namespace YamyProject.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetVendorInvoices(int id)
+        public async Task<IActionResult> GetVendorInvoices(int id, DateTime? startDate, DateTime? endDate)
         {
             try
             {
@@ -452,36 +452,41 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 string query = @"
-        SELECT 
-            t.id,
-            t.transaction_id AS InvoiceId,
-            t.voucher_no AS VoucherNo,
-            t.date,
-            t.type,
-            ta.name AS Description,
-            t.debit,    
-            t.credit,
-            0 AS Balance 
-        FROM tbl_transaction t
-        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-        WHERE t.hum_id = @id
-          AND t.state = 0
-          AND t.type IN (
-              'Vendor Payment', 
-              'Petty Cash', 
-              'Purchase Invoice', 
-              'Purchase Invoice Cash', 
-              'Vendor Opening Balance',
-              'Vendor Advance Payment',
-              'Check Cancel (Vendor)', 
-              'Purchase Return Invoice', 
-              'Debit Note', 
-              'PDC Payable'
-          )
-        ORDER BY t.id;";
+    SELECT 
+        t.id,
+        t.transaction_id AS InvoiceId,
+        t.voucher_no AS VoucherNo,
+        t.date,
+        t.type,
+        ta.name AS Description,
+        t.debit,    
+        t.credit,
+        0 AS Balance 
+    FROM tbl_transaction t
+    INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+    WHERE t.hum_id = @id
+      AND t.state = 0
+      AND t.type IN (
+          'Vendor Payment', 
+          'Petty Cash', 
+          'Purchase Invoice', 
+          'Purchase Invoice Cash', 
+          'Vendor Opening Balance',
+          'Vendor Advance Payment',
+          'Check Cancel (Vendor)', 
+          'Purchase Return Invoice', 
+          'Debit Note', 
+          'PDC Payable'
+      )
+      AND (@startDate IS NULL OR DATE(t.date) >= @startDate)
+      AND (@endDate IS NULL OR DATE(t.date) <= @endDate)
+    ORDER BY t.date, t.id;";
+
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@id", id);
+                cmd.Parameters.AddWithValue("@startDate", startDate.HasValue ? startDate.Value.Date : (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@endDate", endDate.HasValue ? endDate.Value.Date : (object)DBNull.Value);
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 var transactions = new List<object>();
@@ -546,7 +551,7 @@ namespace YamyProject.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetVendorCashInvoices(int id)
+        public async Task<IActionResult> GetVendorCashInvoices(int id, DateTime? startDate, DateTime? endDate)
         {
             try
             {
@@ -563,21 +568,25 @@ namespace YamyProject.Controllers
                 List<string> includeTypes = new() { "%Purchase Invoice Cash%" };
 
                 string query = @"
-            SELECT 
-                t.id,
-                t.transaction_id AS InvoiceId,
-                t.voucher_no AS VoucherNo,
-                t.date,
-                CONCAT(ta.code, ' - ', ta.name) AS AccountName,
-                t.type,
-                CASE 
-                    WHEN t.type = 'Purchase Invoice Cash' 
-                        THEN IF(t.debit = 0, t.credit, t.debit)
-                    ELSE 0
-                END AS Amount
-            FROM tbl_transaction t
-            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-            WHERE t.hum_id = @id AND t.state = 0";
+    SELECT 
+        t.id,
+        t.transaction_id AS InvoiceId,
+        t.voucher_no AS VoucherNo,
+        t.date,
+        CONCAT(ta.code, ' - ', ta.name) AS AccountName,
+        t.type,
+        CASE 
+            WHEN t.type = 'Purchase Invoice Cash' 
+                THEN IF(t.debit = 0, t.credit, t.debit)
+            ELSE 0
+        END AS Amount
+    FROM tbl_transaction t
+    INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+    WHERE t.hum_id = @id 
+      AND t.state = 0
+      AND (@startDate IS NULL OR DATE(t.date) >= @startDate)
+      AND (@endDate IS NULL OR DATE(t.date) <= @endDate)";
+
 
                 if (includeTypes.Any())
                     query += " AND (" + string.Join(" OR ", includeTypes.Select((t, i) => $"t.type LIKE @include{i}")) + ")";
@@ -586,6 +595,12 @@ namespace YamyProject.Controllers
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@id", id);
+                cmd.Parameters.AddWithValue("@startDate",
+    startDate.HasValue ? startDate.Value.Date : (object)DBNull.Value);
+
+                cmd.Parameters.AddWithValue("@endDate",
+                    endDate.HasValue ? endDate.Value.Date : (object)DBNull.Value);
+
                 for (int i = 0; i < includeTypes.Count; i++)
                     cmd.Parameters.AddWithValue($"@include{i}", includeTypes[i]);
 

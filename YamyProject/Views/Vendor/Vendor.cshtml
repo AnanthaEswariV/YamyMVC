@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "Vendor";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -35,12 +34,29 @@
         max-height: calc(100vh - 200px);
         overflow-y: auto;
     }
+
+    #exportButtons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
 </style>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <div class="warehouse-header">
     <center> Vendor Center</center>
 </div>
+
 <div class="employee-toolbar">
     <div class="container">
 
@@ -62,7 +78,7 @@
                     </li>
                     <li class="nav-item me-2">
                         <a class="nav-link" href="/Inventory/WarehouseTransfer" id="btnTransfer">
-                            <i class="bi bi-arrow-left-right me-1"></i> New Transcation
+                            <i class="bi bi-arrow-left-right me-1"></i> New Transaction
                         </a>
                     </li>
                 </ul>
@@ -84,7 +100,6 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- rows -->
                                 </tbody>
                             </table>
                         </div>
@@ -98,6 +113,26 @@
                         <h5 class="card-title">Vendor Informations</h5>
                     </div>
                     <div class="card-body">
+
+                        <!-- Date Filter -->
+                        <div class="row mb-3 align-items-end">
+                            <div class="col-auto">
+                                <label for="startDate" class="form-label mb-1">Start Date</label>
+                                <input type="date" id="startDate" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-auto">
+                                <label for="endDate" class="form-label mb-1">End Date</label>
+                                <input type="date" id="endDate" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" id="btnFilterDate" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-funnel-fill me-1"></i> Set
+                                </button>
+                            </div>
+                            <div class="col-auto ms-auto">
+                                <div id="exportButtons" class="d-flex gap-2"></div>
+                            </div>
+                        </div>
 
                         <div class="row">
                             <div class="col-md-6">
@@ -125,45 +160,44 @@
                                 </div>
                             </div>
                         </div>
+
                         <ul class="nav nav-tabs" id="myTab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home"
-                                   role="tab" aria-controls="home" aria-selected="true">Transactions</a>
+                                <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home" role="tab"
+                                   aria-controls="home" aria-selected="true">Transactions</a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" id="profile-tab" data-bs-toggle="tab" href="#profile"
-                                   role="tab" aria-controls="profile" aria-selected="false">Cash Invoice</a>
+                                <a class="nav-link" id="profile-tab" data-bs-toggle="tab" href="#profile" role="tab"
+                                   aria-controls="profile" aria-selected="false">Cash Invoice</a>
                             </li>
                         </ul>
+
                         <div class="tab-content" id="myTabContent">
-                            <div class="tab-pane fade show active" id="home" role="tabpanel"
-                                 aria-labelledby="home-tab">
+                            <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
                                 <div class="table-responsive" style="overflow-y: auto;">
                                     <table class="table table-striped custom-table mb-0" id="pettyCashVoucherTable">
-                                        <thead class="table-ligh">
+                                        <thead class="table-light">
                                             <tr>
                                                 <th>S.No</th>
                                                 <th>Date</th>
                                                 <th>Voucher No</th>
                                                 <th>Voucher Type</th>
                                                 <th>Description</th>
-                                                <th>Payment Type</th> 
+                                                <th>Payment Type</th>
                                                 <th>Debit</th>
                                                 <th>Credit</th>
                                                 <th>Balance</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <!-- Rows will be loaded dynamically -->
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
-                            <div class="tab-pane fade" id="profile" role="tabpanel"
-                                 aria-labelledby="profile-tab">
+                            <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
                                 <div class="table-responsive" style="overflow-y: auto;">
                                     <table class="table table-striped custom-table mb-0" id="pettyCashTransactionsTable">
-                                        <thead class="table-ligh">
+                                        <thead class="table-light">
                                             <tr>
                                                 <th>S.No</th>
                                                 <th>V - No</th>
@@ -182,6 +216,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
 
 
@@ -388,11 +423,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
-
+        var currentCustomerId = 0; // Global variable to track selected customer
 
         $(document).ready(function () {
             loadCustomerCategories();
@@ -484,7 +520,6 @@
                          console.error("❌ Error loading accounts:", status, error);
                      }
                  });
-
 
             $.ajax({
                 url: '@Url.Action("GetProjects", "Construction")',
@@ -721,7 +756,7 @@
 
         });
 
-             function loadCustomerCategories(selectedId = null) {
+            function loadCustomerCategories(selectedId = null) {
             $.ajax({
                 url: '@Url.Action("GetVendorCategories", "Subcontractor")',
                 type: 'GET',
@@ -742,12 +777,42 @@
             });
         }
 
-
             $('#btnAddCustomer').on('click', function () {
             clearCustomerForm();
             $("#newCustomerModalLabel").text("New Customer");
             $("#newCustomerModal").modal("show");
         });
+
+            $("#btnFilterDate").on("click", function () {
+                if (currentCustomerId > 0) {
+                    loadTransactions(currentCustomerId);
+                    loadCashInvoices(currentCustomerId);
+                }
+            });
+
+                    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr("href");
+
+                // Clear existing buttons
+                $("#exportButtons").empty();
+
+                if(target === "#home") {
+                    // Transactions tab
+                    if ($.fn.DataTable.isDataTable("#pettyCashVoucherTable")) {
+                        var table = $("#pettyCashVoucherTable").DataTable();
+                        table.buttons().container().appendTo('#exportButtons');
+                        table.columns.adjust().draw();
+                    }
+                }
+                else if(target === "#profile") {
+                    // Cash Invoice tab
+                    if ($.fn.DataTable.isDataTable("#pettyCashTransactionsTable")) {
+                        var table = $("#pettyCashTransactionsTable").DataTable();
+                        table.buttons().container().appendTo('#exportButtons');
+                        table.columns.adjust().draw();
+                    }
+                }
+            });
 
 
          });
@@ -817,6 +882,8 @@
         }
 
         function loadCustomerDetails(customerId) {
+
+            currentCustomerId = customerId;
             // Fetch customer details first
             $.ajax({
                 url: '@Url.Action("GetCustomerDetails", "Subcontractor")',
@@ -846,75 +913,180 @@
         }
 
         function loadTransactions(customerId) {
+
+            let startDate = $("#startDate").val();
+            let endDate = $("#endDate").val();
+
+            // Destroy DataTable first if it exists
+            if ($.fn.DataTable.isDataTable("#pettyCashVoucherTable")) {
+                $("#pettyCashVoucherTable").DataTable().destroy();
+            }
+
+            let tbody = $("#pettyCashVoucherTable tbody");
+            tbody.empty();
+
             $.ajax({
                 url: '@Url.Action("GetVendorInvoices", "Vendor")',
                 type: "GET",
-                data: { id: customerId },
-                success: function (res) {
-                    if (res.status) {
-                        let tbody = $("#pettyCashVoucherTable tbody");
-                        tbody.empty();
-                        if (res.data && res.data.length > 0) {
-                            $.each(res.data, function (i, row) {
-                                let tr = `
-                                    <tr>
-                                        <td>${row.sn}</td>
-                                        <td>${row.date}</td>
-                                        <td>${row.voucherNo}</td>
-                                        <td>${row.type}</td>
-                                        <td>${row.description}</td>
-                                        <td>${row.paymentType || ''}</td>
-                                        <td>${row.debit}</td>
-                                        <td>${row.credit}</td>
-                                        <td>${row.balance}</td>
-                                    </tr>`;
-                                tbody.append(tr);
-                            });
-                        } else {
-                            tbody.append(`<tr><td colspan="8" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No transactions found</td></tr>`);
-                        }
-                    } else {
-                        alert("Error loading transactions: " + res.message);
-                    }
+                data: {
+                    id: customerId,
+                    startDate: startDate,
+                    endDate: endDate
                 },
-                error: function (xhr, status, error) {
-                    alert("Error loading transactions: " + error);
+                success: function (res) {
+
+                    if (res.status && res.data.length > 0) {
+
+                        $.each(res.data, function (i, row) {
+                            tbody.append(`
+                                <tr>
+                                    <td>${row.sn}</td>
+                                    <td>${row.date}</td>
+                                    <td>${row.voucherNo}</td>
+                                    <td>${row.type}</td>
+                                    <td>${row.description}</td>
+                                    <td>${row.paymentType || ''}</td>
+                                    <td class="text-end">${row.debit}</td>
+                                    <td class="text-end">${row.credit}</td>
+                                    <td class="text-end">${row.balance}</td>
+                                </tr>
+                            `);
+                        });
+
+                        // Initialize DataTable after data is loaded
+                        let table = $("#pettyCashVoucherTable").DataTable({
+                            dom: 'rtip',
+                            order: [[0, 'asc']],
+                            pageLength: 15,
+                            paging: false,
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                     className: 'btn btn-primary btn-sm',
+                                    title: 'Vendor Transactions'
+                                },
+                                {
+                                    extend: 'print',
+                                    text: '<i class="fas fa-print me-1"></i> Print',
+                                     className: 'btn btn-primary btn-sm',
+                                    title: 'Vendor Transactions'
+                                }
+                            ]
+                        });
+
+                        // Update buttons - check if Transactions tab is active or if it's the first load
+                        var activeTab = $('.nav-link.active[data-bs-toggle="tab"]').attr('href');
+                        if (activeTab === '#home' || !activeTab) {
+                            $("#exportButtons").empty();
+                            table.buttons().container().appendTo('#exportButtons');
+                        }
+
+                    } else {
+                        // No data - just show message, don't initialize DataTable
+                        tbody.append(`
+                            <tr>
+                                <td colspan="9" class="text-center text-muted p-4">
+                                    No transactions found
+                                </td>
+                            </tr>
+                        `);
+
+                        // Clear export buttons when no data
+                        var activeTab = $('.nav-link.active[data-bs-toggle="tab"]').attr('href');
+                        if (activeTab === '#home' || !activeTab) {
+                            $("#exportButtons").empty();
+                        }
+                    }
                 }
             });
         }
 
         function loadCashInvoices(customerId) {
+
+            let startDate = $("#startDate").val();
+            let endDate = $("#endDate").val();
+
+            // Destroy DataTable first if it exists
+            if ($.fn.DataTable.isDataTable("#pettyCashTransactionsTable")) {
+                $("#pettyCashTransactionsTable").DataTable().destroy();
+            }
+
+            let tbody = $("#pettyCashTransactionsTable tbody");
+            tbody.empty();
+
             $.ajax({
                 url: '@Url.Action("GetVendorCashInvoices", "Vendor")',
                 type: "GET",
-                data: { id: customerId },
-                success: function (res) {
-                    if (res.status) {
-                        let tbody = $("#pettyCashTransactionsTable tbody");
-                        tbody.empty();
-
-                        if (res.data && res.data.length > 0) {
-                            $.each(res.data, function (i, row) {
-                                let tr = `
-                                    <tr>
-                                        <td>${row.sn}</td>
-                                        <td>${row.voucherNo}</td>
-                                        <td>${row.date}</td>
-                                        <td>${row.accountName}</td>
-                                        <td>${row.type}</td>
-                                        <td>${row.amount}</td>
-                                    </tr>`;
-                                tbody.append(tr);
-                            });
-                        } else {
-                            tbody.append(`<tr><td colspan="6" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No cash invoices found</td></tr>`);
-                        }
-                    } else {
-                        alert("Error loading cash invoices: " + res.message);
-                    }
+                data: {
+                    id: customerId,
+                    startDate: startDate,
+                    endDate: endDate
                 },
-                error: function (xhr, status, error) {
-                    alert("Error loading cash invoices: " + error);
+                success: function (res) {
+
+                    if (res.status && res.data.length > 0) {
+
+                        $.each(res.data, function (i, row) {
+                            let isTotal = row.sn === "Total";
+
+                            tbody.append(`
+                                <tr ${isTotal ? 'class="table-secondary fw-bold"' : ''}>
+                                    <td>${row.sn}</td>
+                                    <td>${row.voucherNo}</td>
+                                    <td>${row.date}</td>
+                                    <td>${row.accountName}</td>
+                                    <td>${row.type}</td>
+                                    <td class="text-end">${row.amount}</td>
+                                </tr>
+                            `);
+                        });
+
+                        // Initialize DataTable after data is loaded
+                        let table = $("#pettyCashTransactionsTable").DataTable({
+                            dom: 'rtip',
+                            order: [[0, 'asc']],
+                            pageLength: 15,
+                            paging: false,
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                     className: 'btn btn-primary btn-sm',
+                                    title: 'Vendor Cash Invoices'
+                                },
+                                {
+                                    extend: 'print',
+                                    text: '<i class="fas fa-print me-1"></i> Print',
+                                     className: 'btn btn-primary btn-sm',
+                                    title: 'Vendor Cash Invoices'
+                                }
+                            ]
+                        });
+
+                        // Update buttons - check if Cash Invoice tab is active
+                        var activeTab = $('.nav-link.active[data-bs-toggle="tab"]').attr('href');
+                        if (activeTab === '#profile') {
+                            $("#exportButtons").empty();
+                            table.buttons().container().appendTo('#exportButtons');
+                        }
+
+                    } else {
+                        // No data - just show message, don't initialize DataTable
+                        tbody.append(`
+                            <tr>
+                                <td colspan="6" class="text-center text-muted p-4">
+                                    No cash invoices found
+                                </td>
+                            </tr>
+                        `);
+
+                        // Clear export buttons when no data
+                        var activeTab = $('.nav-link.active[data-bs-toggle="tab"]').attr('href');
+                        if (activeTab === '#profile') {
+                            $("#exportButtons").empty();
+                        }
+                    }
                 }
             });
         }
