@@ -821,7 +821,7 @@ namespace YamyProject.Controllers
             }
         }
         [HttpGet]
-        public async Task<IActionResult> GetVendorInvoices(int id)
+        public async Task<IActionResult> GetVendorInvoices(int id, string startDate = null, string endDate = null)
         {
             try
             {
@@ -835,34 +835,56 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 string query = @"
-            SELECT 
-                t.id,
-                t.transaction_id AS InvoiceId,
-                t.voucher_no AS VoucherNo,
-                t.date,
-                t.type,
-                ta.name AS Description,
-                t.debit,
-                t.credit
-            FROM tbl_transaction t
-            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-            WHERE t.hum_id = @id 
-              AND t.state = 0
-              AND t.type IN (
-                  'Subcontractor Payment',
-                  'Petty Cash', 
-                  'Purchase Invoice', 
-                  'Purchase Invoice Cash', 
-                  'Subcontractor Opening Balance', 
-                  'Check Cancel (Subcontractor)', 
-                  'Purchase Return Invoice', 
-                  'Debit Note', 
-                  'PDC Payable'
-              )
-            ORDER BY t.id;";
+        SELECT 
+            t.id,
+            t.transaction_id AS InvoiceId,
+            t.voucher_no AS VoucherNo,
+            t.date,
+            t.type,
+            ta.name AS Description,
+            t.debit,
+            t.credit
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE t.hum_id = @id 
+          AND t.state = 0
+          AND t.type IN (
+              'Subcontractor Payment',
+              'Petty Cash', 
+              'Purchase Invoice', 
+              'Purchase Invoice Cash', 
+              'Subcontractor Opening Balance', 
+              'Check Cancel (Subcontractor)', 
+              'Purchase Return Invoice', 
+              'Debit Note', 
+              'PDC Payable'
+          )";
+
+                // Add date filter if provided
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    query += " AND t.date >= @startDate";
+                }
+
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    query += " AND t.date <= @endDate";
+                }
+
+                query += " ORDER BY t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@id", id);
+
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    cmd.Parameters.Add(new MySqlParameter("@startDate", DateTime.Parse(startDate)));
+                }
+
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    cmd.Parameters.Add(new MySqlParameter("@endDate", DateTime.Parse(endDate)));
+                }
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -902,8 +924,9 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
-        public async Task<IActionResult> GetVendorCashInvoices(int id)
+        public async Task<IActionResult> GetVendorCashInvoices(int id, string startDate = null, string endDate = null)
         {
             try
             {
@@ -919,30 +942,52 @@ namespace YamyProject.Controllers
                 List<string> includeTypes = new() { "%Purchase Invoice Cash%" };
 
                 string query = @"
-            SELECT 
-                t.id,
-                t.transaction_id AS InvoiceId,
-                t.voucher_no AS VoucherNo,
-                t.date,
-                CONCAT(ta.code, ' - ', ta.name) AS AccountName,
-                t.type,
-                CASE 
-                    WHEN t.type LIKE 'Purchase Invoice Cash%' THEN IF(t.debit = 0, t.credit, t.debit)
-                    ELSE 0
-                END AS Amount
-            FROM tbl_transaction t
-            INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-            WHERE t.hum_id = @id AND t.state = 0";
+        SELECT 
+            t.id,
+            t.transaction_id AS InvoiceId,
+            t.voucher_no AS VoucherNo,
+            t.date,
+            CONCAT(ta.code, ' - ', ta.name) AS AccountName,
+            t.type,
+            CASE 
+                WHEN t.type LIKE 'Purchase Invoice Cash%' THEN IF(t.debit = 0, t.credit, t.debit)
+                ELSE 0
+            END AS Amount
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE t.hum_id = @id AND t.state = 0";
 
                 if (includeTypes.Any())
                     query += " AND (" + string.Join(" OR ", includeTypes.Select((t, i) => $"t.type LIKE @include{i}")) + ")";
+
+                // Add date filter if provided
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    query += " AND t.date >= @startDate";
+                }
+
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    query += " AND t.date <= @endDate";
+                }
 
                 query += " ORDER BY t.date, t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@id", id);
+
                 for (int i = 0; i < includeTypes.Count; i++)
                     cmd.Parameters.AddWithValue($"@include{i}", includeTypes[i]);
+
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    cmd.Parameters.Add(new MySqlParameter("@startDate", DateTime.Parse(startDate)));
+                }
+
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    cmd.Parameters.Add(new MySqlParameter("@endDate", DateTime.Parse(endDate)));
+                }
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 var invoices = new List<object>();
@@ -966,7 +1011,7 @@ namespace YamyProject.Controllers
                         Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
                         AccountName = reader["AccountName"]?.ToString() ?? "",
                         Type = reader["type"]?.ToString() ?? "",
-                        Amount = amount.ToString("F2")
+                        Amount = amount.ToString("N2")
                     });
                 }
 
@@ -979,7 +1024,7 @@ namespace YamyProject.Controllers
                     Date = "",
                     AccountName = "Total",
                     Type = "",
-                    Amount = totalAmount.ToString("F2")
+                    Amount = totalAmount.ToString("N2")
                 });
 
                 return Ok(new { status = true, data = invoices });
@@ -989,6 +1034,7 @@ namespace YamyProject.Controllers
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
 
         #endregion

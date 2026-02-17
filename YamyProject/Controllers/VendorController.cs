@@ -4341,6 +4341,5 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @typ
         #endregion
 
 
-
     }
 }
