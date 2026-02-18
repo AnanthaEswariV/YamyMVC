@@ -1897,6 +1897,7 @@ LIMIT 1;
                     ? defaultAccounts["COGS"] : 0;
                 int level4Inventory = defaultAccounts.ContainsKey("Inventory")
                     ? defaultAccounts["Inventory"] : 0;
+               
 
                 // Set default cash account if not provided
                 if (model.AccountCashId <= 0 && model.PaymentMethod == "Cash")
@@ -2127,71 +2128,80 @@ LIMIT 1;
                 // =======================
                 if (model.NetTotal > 0)
                 {
-                    // Determine account ID based on payment method
-                    string accountId = model.PaymentMethod == "Credit"
-                        ? level4PaymentCreditMethodId.ToString()
-                        : model.AccountCashId.ToString();
-
                     string transactionType = model.PaymentMethod == "Credit"
                         ? "Sales Invoice"
                         : "Sales Invoice Cash";
 
-                    // 6.1 Debit: Cash/AR Account
-                    await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date, accountId,
-                        model.NetTotal.ToString(), "0", invId.ToString(), model.CustomerId.ToString(),
-                        transactionType, "SALES", $"Sales Invoice NO. {invoiceCode}",
+                    string accountId = model.PaymentMethod == "Credit"
+                        ? level4PaymentCreditMethodId.ToString()
+                        : model.AccountCashId.ToString();
+
+                    // 1️⃣ Debit: Cash / A/R
+                    await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
+                        accountId,
+                        model.NetTotal.ToString(), "0",
+                        invId.ToString(), model.CustomerId.ToString(),
+                        transactionType, "SALES",
+                        $"Sales Invoice NO. {invoiceCode}",
                         userId, DateTime.Now.Date, invoiceCode);
 
-                    // 6.2 Credit: Sales Revenue
+                    // 2️⃣ Credit: Sales Revenue (Total Before VAT)
                     await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
-                        level4SalesInvoice.ToString(), "0", model.TotalBeforeVat.ToString(),
-                        invId.ToString(), "0", transactionType, "SALES",
+                        level4SalesInvoice.ToString(),
+                        "0", model.TotalBeforeVat.ToString(),
+                        invId.ToString(), "0",
+                        transactionType, "SALES",
                         $"Sales Revenue For Invoice No. {invoiceCode}",
                         userId, DateTime.Now.Date, invoiceCode);
 
-                    // 6.3 Credit: VAT Output (if applicable)
+                    // 3️⃣ Credit: VAT (if > 0)
                     if (model.Vat > 0)
                     {
                         await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
-                            level4VatId.ToString(), "0", model.Vat.ToString(),
-                            invId.ToString(), "0", transactionType, "SALES",
+                            level4VatId.ToString(),
+                            "0", model.Vat.ToString(),
+                            invId.ToString(), "0",
+                            transactionType, "SALES",
                             $"Vat Output For Invoice No. {invoiceCode}",
                             userId, DateTime.Now.Date, invoiceCode);
                     }
 
-                    // 6.4 COGS and Inventory entries
+                    // 4️⃣ COGS + Inventory
                     if (itemInventoryCost > 0)
                     {
-                        // Get warehouse account
-                        int warehouseAccountId = 0;
+                        int warehouseAccountId = defaultAccounts.ContainsKey("COGS")
+                ? defaultAccounts["COGS"] : 0;
+
                         using (var cmdWarehouse = new MySqlCommand(
                             "SELECT account_id FROM tbl_warehouse WHERE id = @id", conn, tx))
                         {
                             cmdWarehouse.Parameters.AddWithValue("@id", model.WarehouseId);
                             var result = await cmdWarehouse.ExecuteScalarAsync();
-                            if (result != DBNull.Value && result != null)
-                                warehouseAccountId = Convert.ToInt32(result);
+
+                            ////if (result != null && result != DBNull.Value)
+                            ////    warehouseAccountId = Convert.ToInt32(result);
                         }
 
-                        // 6.4.1 Debit: COGS
+                        // 4.1 Debit COGS
                         await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
-                            level4COGS.ToString(), itemInventoryCost.ToString("N2"), "0",
-                            invId.ToString(), "0", "Sales Invoice", "SALES",
+                            level4COGS.ToString(),
+                            itemInventoryCost.ToString("N2"), "0",
+                            invId.ToString(), "0",
+                            "Sales Invoice", "SALES",
                             $"COGS For Sales No. {invoiceCode}",
                             userId, DateTime.Now.Date, invoiceCode);
 
-                        // 6.4.2 Credit: Inventory
-                        string inventoryAccountId = warehouseAccountId > 0
-                            ? warehouseAccountId.ToString()
-                            : level4Inventory.ToString();
-
+                        // 4.2 Credit Inventory (NO FALLBACK — same as desktop)
                         await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
-                            inventoryAccountId, "0", itemInventoryCost.ToString("N2"),
-                            invId.ToString(), "0", "Sales Invoice", "SALES",
+                            warehouseAccountId.ToString(),
+                            "0", itemInventoryCost.ToString("N2"),
+                            invId.ToString(), "0",
+                            "Sales Invoice", "SALES",
                             $"Item Sold For Sales No. {invoiceCode}",
                             userId, DateTime.Now.Date, invoiceCode);
                     }
                 }
+
 
                 // =======================
                 // 8. COMMIT TRANSACTION
