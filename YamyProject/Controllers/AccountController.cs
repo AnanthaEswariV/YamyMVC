@@ -9318,7 +9318,7 @@ WHERE pd.payment_id = @paymentId";
         (date,account_id,debit,credit,transaction_id,hum_id,t_type,type,
          description,created_by,created_date,state,voucher_no)
         VALUES
-        (@date,@acc,@debit,@credit,@tid,@hum,@ttype,'Advance PAYMENT',
+        (@date,@acc,@debit,@credit,@tid,@hum,@ttype,'Customer Advance Payment',
          @desc,@user,@dt,0,@code)";
 
                 using var cmd = new MySqlCommand(sql, conn, trx);
