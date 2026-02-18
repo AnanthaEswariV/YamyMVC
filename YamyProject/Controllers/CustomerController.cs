@@ -581,7 +581,8 @@ namespace YamyProject.Controllers
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase"),
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -592,16 +593,14 @@ namespace YamyProject.Controllers
             ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
             t.id,
             t.transaction_id AS InvoiceId,
-            t.voucher_no AS 'V - No',
+            t.voucher_no AS VoucherNo,
             t.date,
             ta.name AS AccountName,
             t.type,
             t.debit,
             t.credit
-        FROM 
-            tbl_transaction t
-        INNER JOIN 
-            tbl_coa_level_4 ta ON t.account_id = ta.id
+        FROM tbl_transaction t
+        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
         WHERE
             t.hum_id = @id 
             AND t.state = 0 
@@ -617,31 +616,22 @@ namespace YamyProject.Controllers
                 'PDC Receivable'
             )";
 
-                // Add date filter if provided
                 if (!string.IsNullOrEmpty(startDate))
-                {
                     query += " AND t.date >= @startDate";
-                }
 
                 if (!string.IsNullOrEmpty(endDate))
-                {
                     query += " AND t.date <= @endDate";
-                }
 
                 query += " ORDER BY t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.Add(new MySqlParameter("@id", id));
+                cmd.Parameters.AddWithValue("@id", id);
 
                 if (!string.IsNullOrEmpty(startDate))
-                {
-                    cmd.Parameters.Add(new MySqlParameter("@startDate", DateTime.Parse(startDate)));
-                }
+                    cmd.Parameters.AddWithValue("@startDate", DateTime.Parse(startDate));
 
                 if (!string.IsNullOrEmpty(endDate))
-                {
-                    cmd.Parameters.Add(new MySqlParameter("@endDate", DateTime.Parse(endDate)));
-                }
+                    cmd.Parameters.AddWithValue("@endDate", DateTime.Parse(endDate));
 
                 using var reader = await cmd.ExecuteReaderAsync();
 
@@ -653,92 +643,85 @@ namespace YamyProject.Controllers
 
                 while (await reader.ReadAsync())
                 {
-                    string type = reader.IsDBNull(reader.GetOrdinal("type")) ? "" : reader.GetString("type");
+                    string type = reader["type"]?.ToString() ?? "";
 
-                    decimal originalDebit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
-                    decimal originalCredit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
+                    decimal originalDebit = reader["debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["debit"]);
+                    decimal originalCredit = reader["credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["credit"]);
 
-                    string invoiceIdStr = reader.IsDBNull(reader.GetOrdinal("InvoiceId")) ? null : reader.GetString("InvoiceId");
-                    int invoiceId = 0;
-                    if (!string.IsNullOrEmpty(invoiceIdStr))
-                    {
-                        int.TryParse(invoiceIdStr, out invoiceId);
-                    }
+                    string voucherNo = reader["VoucherNo"] == DBNull.Value
+                        ? $"SV-00{reader["InvoiceId"]}"
+                        : reader["VoucherNo"].ToString();
 
-                    string voucherNo = reader.IsDBNull(reader.GetOrdinal("V - No"))
-                        ? $"SV-00{invoiceId}"
-                        : reader.GetString("V - No");
-
-                    string accountName = reader.GetString("AccountName");
-                    string dateStr = reader.GetDateTime("date").ToString("yyyy-MM-dd");
-                    int transactionId = reader.GetInt32("id");
+                    string dateStr = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd");
 
                     // ================= SALES INVOICE CASH =================
                     if (type.Equals("Sales Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
-                        // 🔹 Row 1: Credit (Sales)
+                        // Row 1 (Sales - Credit logically)
                         runningBalance += amount;
                         totalCredit += amount;
 
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = type,
-                            AccountName = accountName,
-                            Debit = "0.00",
-                            Credit = amount.ToString("N2"),
+                            AccountName = reader["AccountName"],
+                            Debit = amount.ToString("N2"),   
+                            Credit = "0.00",
                             Balance = runningBalance.ToString("N2")
                         });
 
-                        // 🔹 Row 2: Debit (Cash Receipt)
+                        // Row 2 (Cash Receipt - Debit logically)
                         runningBalance -= amount;
                         totalDebit += amount;
 
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = "Cash Receipt",
-                            AccountName = accountName,
-                            Debit = amount.ToString("N2"),
-                            Credit = "0.00",
+                            AccountName = reader["AccountName"],
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),   
                             Balance = runningBalance.ToString("N2")
                         });
                     }
+
+                    // ================= SALES INVOICE =================
                     else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase))
                     {
-                        decimal amount = originalDebit;   // stored in debit column
+                        decimal amount = originalDebit;
 
-                        runningBalance += amount;         // increase balance
-                        totalCredit += amount;            // because we show it as credit
+                        runningBalance += amount;
+                        totalCredit += amount;
 
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = type,
-                            AccountName = accountName,
-                            Debit = "0.00",               // reversed for display
-                            Credit = amount.ToString("N2"),
+                            AccountName = reader["AccountName"],
+                            Debit = amount.ToString("N2"),  
+                            Credit = "0.00",
                             Balance = runningBalance.ToString("N2")
                         });
                     }
 
-
+                    // ================= CUSTOMER RECEIPT / ADVANCE =================
                     else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase) ||
-             type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
+                             type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
@@ -748,21 +731,19 @@ namespace YamyProject.Controllers
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = type,
-                            AccountName = accountName,
-                            Debit = amount.ToString("N2"),  
-                            Credit = "0.00",
+                            AccountName = reader["AccountName"],
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"), 
                             Balance = runningBalance.ToString("N2")
                         });
                     }
 
-
-
-                    // ================= NORMAL SALES / CREDIT NOTE =================
+                    // ================= NORMAL TYPES =================
                     else
                     {
                         runningBalance += originalDebit - originalCredit;
@@ -772,21 +753,20 @@ namespace YamyProject.Controllers
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = type,
-                            AccountName = accountName,
-                            Debit = originalDebit.ToString("N2"),
-                            Credit = originalCredit.ToString("N2"),
+                            AccountName = reader["AccountName"],
+                            Debit = originalCredit.ToString("N2"),   
+                            Credit = originalDebit.ToString("N2"),   
                             Balance = runningBalance.ToString("N2")
                         });
                     }
                 }
 
-
-                // Add total row
+                // ================= TOTAL ROW =================
                 transactions.Add(new
                 {
                     SN = "Total",
@@ -796,8 +776,8 @@ namespace YamyProject.Controllers
                     VoucherNo = "",
                     Type = "",
                     AccountName = "Total",
-                    Debit = totalDebit.ToString("N2"),
-                    Credit = totalCredit.ToString("N2"),
+                    Debit = totalCredit.ToString("N2"), 
+                    Credit = totalDebit.ToString("N2"),   
                     Balance = runningBalance.ToString("N2")
                 });
 
