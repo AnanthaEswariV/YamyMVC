@@ -2159,17 +2159,19 @@ WHERE i.type = '11 - Inventory Part' AND i.active = 0
                         result.Add(new ItemMovingDto
                         {
                             Date = reader.GetDateTime("Date"),
-                            InvNo = reader["InvNo"].ToString(),
-                            CustomerName = reader["CustomerName"].ToString(),
-                            ItemName = reader["ItemName"].ToString(),
-                            CostPrice = reader.GetDecimal("CostPrice"),
-                            SalesPrice = reader.GetDecimal("SalesPrice"),
-                            Qty = reader.GetDecimal("Qty"),
-                            CostAmount = reader.GetDecimal("CostAmount"),
-                            SalesAmount = reader.GetDecimal("SalesAmount"),
-                            Profit = reader.GetDecimal("Profit")
+                            InvNo = reader["InvNo"]?.ToString(),
+                            CustomerName = reader["CustomerName"]?.ToString(),
+                            ItemName = reader["ItemName"]?.ToString(),
+
+                            CostPrice = reader.IsDBNull("CostPrice") ? 0 : reader.GetDecimal("CostPrice"),
+                            SalesPrice = reader.IsDBNull("SalesPrice") ? 0 : reader.GetDecimal("SalesPrice"),
+                            Qty = reader.IsDBNull("Qty") ? 0 : reader.GetDecimal("Qty"),
+                            CostAmount = reader.IsDBNull("CostAmount") ? 0 : reader.GetDecimal("CostAmount"),
+                            SalesAmount = reader.IsDBNull("SalesAmount") ? 0 : reader.GetDecimal("SalesAmount"),
+                            Profit = reader.IsDBNull("Profit") ? 0 : reader.GetDecimal("Profit")
                         });
                     }
+
                 }
 
                 return Ok(new { status = true, data = result });
