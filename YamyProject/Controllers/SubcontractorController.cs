@@ -889,32 +889,110 @@ namespace YamyProject.Controllers
                 using var reader = await cmd.ExecuteReaderAsync();
 
                 var transactions = new List<object>();
-                int snCounter = 1;
-                decimal balance = 0;
+                decimal runningBalance = 0;
+                decimal totalDebit = 0;
+                decimal totalCredit = 0;
+                int displaySN = 1;
 
                 while (await reader.ReadAsync())
                 {
+                    string type = reader["type"]?.ToString() ?? "";
+
+                    decimal originalDebit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
+                    decimal originalCredit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
+
                     string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "0";
                     int invoiceId = 0;
                     int.TryParse(invoiceIdStr, out invoiceId);
 
-                    decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
-                    decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
-                    balance += credit - debit;
+                    string voucherNo = string.IsNullOrEmpty(reader["VoucherNo"]?.ToString()) ? $"PV-00{invoiceId}" : reader["VoucherNo"].ToString();
+                    string description = reader["Description"]?.ToString() ?? "";
+                    string dateStr = reader.GetDateTime("date").ToString("yyyy-MM-dd");
+                    int transactionId = Convert.ToInt32(reader["id"]);
 
-                    transactions.Add(new
+                    if (type.Equals("Purchase Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
-                        SN = snCounter++,
-                        Id = Convert.ToInt32(reader["id"]),
-                        InvoiceId = invoiceId,
-                        Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
-                        VoucherNo = string.IsNullOrEmpty(reader["VoucherNo"]?.ToString()) ? $"GV-00{invoiceId}" : reader["VoucherNo"].ToString(),
-                        Type = reader["type"]?.ToString() ?? "",
-                        Description = reader["Description"]?.ToString() ?? "",
-                        Debit = debit.ToString("N2"),
-                        Credit = credit.ToString("N2"),
-                        Balance = balance.ToString("N2")
-                    });
+                        // Split Purchase Invoice Cash into TWO rows
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+
+                        // Row 1: Credit (Purchase)
+                        runningBalance += amount;
+                        totalCredit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+
+                        // Row 2: Debit (Payment)
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = "Cash Payment",
+                            Description = description,
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else if (type.Equals("Subcontractor Payment", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Subcontractor Payment: Show credit amount as debit only, reduce balance
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else
+                    {
+                        // Purchase Invoice transactions on credit: Normal display, calculate running balance
+                        runningBalance += originalCredit - originalDebit;
+                        totalDebit += originalDebit;
+                        totalCredit += originalCredit;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            Debit = originalDebit.ToString("N2"),
+                            Credit = originalCredit.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
                 }
 
                 return Ok(new { status = true, data = transactions });

@@ -435,112 +435,209 @@ namespace YamyProject.Controllers
 
             await cmd.ExecuteNonQueryAsync();
         }
-
         [HttpGet]
-        public async Task<IActionResult> GetVendorInvoices(int id, DateTime? startDate, DateTime? endDate)
+        public async Task<IActionResult> GetVendorInvoices(int id, string startDate = null, string endDate = null)
         {
             try
             {
-                var connStrBuilder = new MySqlConnectionStringBuilder(
-                    _config.GetConnectionString("DefaultConnection"))
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName")
-                               ?? _config.GetConnectionString("DefaultDatabase")
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
                 string query = @"
-    SELECT 
-        t.id,
-        t.transaction_id AS InvoiceId,
-        t.voucher_no AS VoucherNo,
-        t.date,
-        t.type,
-        ta.name AS Description,
-        t.debit,    
-        t.credit,
-        0 AS Balance 
-    FROM tbl_transaction t
-    INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-    WHERE t.hum_id = @id
-      AND t.state = 0
-      AND t.type IN (
-          'Vendor Payment', 
-          'Petty Cash', 
-          'Purchase Invoice', 
-          'Purchase Invoice Cash', 
-          'Vendor Opening Balance',
-          'Vendor Advance Payment',
-          'Check Cancel (Vendor)', 
-          'Purchase Return Invoice', 
-          'Debit Note', 
-          'PDC Payable'
-      )
-      AND (@startDate IS NULL OR DATE(t.date) >= @startDate)
-      AND (@endDate IS NULL OR DATE(t.date) <= @endDate)
-    ORDER BY t.date, t.id;";
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
+            t.id,
+            t.transaction_id AS InvoiceId,
+            t.voucher_no AS VoucherNo,
+            t.date,
+            t.type,
+            ta.name AS Description,
+            t.debit,
+            t.credit
+        FROM 
+            tbl_transaction t
+        INNER JOIN 
+            tbl_coa_level_4 ta ON t.account_id = ta.id
+        WHERE
+            t.hum_id = @id 
+            AND t.state = 0 
+            AND t.type IN (
+                'Vendor Payment',
+                'Purchase Invoice', 
+                'Purchase Invoice Cash', 
+                'Vendor Opening Balance', 
+                'Vendor Advance Payment',
+                'Check Cancel (Vendor)', 
+                'Purchase Return Invoice', 
+                'Debit Note', 
+                'PDC Payable'
+            )";
 
+                // Add date filter if provided
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    query += " AND t.date >= @startDate";
+                }
+
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    query += " AND t.date <= @endDate";
+                }
+
+                query += " ORDER BY t.id;";
 
                 using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@id", id);
-                cmd.Parameters.AddWithValue("@startDate", startDate.HasValue ? startDate.Value.Date : (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@endDate", endDate.HasValue ? endDate.Value.Date : (object)DBNull.Value);
+                cmd.Parameters.Add(new MySqlParameter("@id", id));
+
+                if (!string.IsNullOrEmpty(startDate))
+                {
+                    cmd.Parameters.Add(new MySqlParameter("@startDate", DateTime.Parse(startDate)));
+                }
+
+                if (!string.IsNullOrEmpty(endDate))
+                {
+                    cmd.Parameters.Add(new MySqlParameter("@endDate", DateTime.Parse(endDate)));
+                }
 
                 using var reader = await cmd.ExecuteReaderAsync();
+
                 var transactions = new List<object>();
-                int snCounter = 1;
-                decimal balance = 0;
+                decimal runningBalance = 0;
+                decimal totalDebit = 0;
+                decimal totalCredit = 0;
+                int displaySN = 1;
 
                 while (await reader.ReadAsync())
                 {
-                    string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "0";
+                    string type = reader.IsDBNull(reader.GetOrdinal("type")) ? "" : reader.GetString("type");
+
+                    decimal originalDebit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
+                    decimal originalCredit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
+
+                    string invoiceIdStr = reader.IsDBNull(reader.GetOrdinal("InvoiceId")) ? null : reader.GetString("InvoiceId");
                     int invoiceId = 0;
-                    int.TryParse(invoiceIdStr, out invoiceId);
-
-                    decimal debit = reader.IsDBNull(reader.GetOrdinal("debit")) ? 0 : reader.GetDecimal("debit");
-                    decimal credit = reader.IsDBNull(reader.GetOrdinal("credit")) ? 0 : reader.GetDecimal("credit");
-                    balance += credit - debit;
-
-                    string type = reader["type"]?.ToString() ?? "";
-
-                    // Determine payment type based on description (case-insensitive)
-                    string paymentType = "";
-                    string normalizedDescription = Regex.Replace(type, @"\s+", " ").Trim();
-
-                    if (normalizedDescription.Equals("Purchase Invoice Cash", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(invoiceIdStr))
                     {
-                        paymentType = "Cash Payment";
+                        int.TryParse(invoiceIdStr, out invoiceId);
                     }
-                    else if (normalizedDescription.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase))
+
+                    string voucherNo = string.IsNullOrEmpty(reader.GetString("VoucherNo")) ? $"PV-00{invoiceId}" : reader.GetString("VoucherNo");
+                    string description = reader.GetString("Description");
+                    string dateStr = reader.GetDateTime("date").ToString("yyyy-MM-dd");
+                    int transactionId = reader.GetInt32("id");
+
+                    if (type.Equals("Purchase Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
-                        paymentType = "Purchase Credit";
+                        // Split Purchase Invoice Cash into TWO rows
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+
+                        // Row 1: Credit (Purchase)
+                        runningBalance += amount;
+                        totalCredit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            PaymentType = "Cash",
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+
+                        // Row 2: Debit (Payment)
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = "Cash Payment",
+                            Description = description,
+                            PaymentType = "Cash Payment",
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
                     }
-                    else if (normalizedDescription.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase))
+                    else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase) ||
+                             type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase))
                     {
-                        paymentType = "Vendor Payment";
+                        // Vendor Payment: Show credit amount as debit only, reduce balance
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            PaymentType = "Cash Payment",
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
                     }
                     else
                     {
-                        paymentType = "";
-                    }
+                        // Purchase/Invoice transactions on credit: Normal display, calculate running balance
+                        runningBalance += originalCredit - originalDebit;
+                        totalDebit += originalDebit;
+                        totalCredit += originalCredit;
 
-                    transactions.Add(new
-                    {
-                        SN = snCounter++,
-                        Id = Convert.ToInt32(reader["id"]),
-                        InvoiceId = invoiceId,
-                        Date = reader.GetDateTime("date").ToString("yyyy-MM-dd"),
-                        VoucherNo = reader["VoucherNo"]?.ToString() ?? $"GV-00{invoiceId}",
-                        Type = reader["type"]?.ToString() ?? "",
-                        Description = type,
-                        Debit = debit.ToString("N2"),
-                        Credit = credit.ToString("N2"),
-                        Balance = balance.ToString("N2"),
-                        PaymentType = paymentType  
-                    });
+                        string paymentType = type.Contains("Credit") ? "Purchase Credit" : "";
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            PaymentType = paymentType,
+                            Debit = originalDebit.ToString("N2"),
+                            Credit = originalCredit.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
                 }
+
+                // Add total row
+                transactions.Add(new
+                {
+                    SN = "Total",
+                    Id = "",
+                    InvoiceId = "",
+                    Date = "",
+                    VoucherNo = "",
+                    Type = "",
+                    Description = "Total",
+                    PaymentType = "",
+                    Debit = totalDebit.ToString("N2"),
+                    Credit = totalCredit.ToString("N2"),
+                    Balance = runningBalance.ToString("N2")
+                });
 
                 return Ok(new { status = true, data = transactions });
             }
