@@ -718,10 +718,30 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
+                    else if (type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
+                    {
+                        decimal amount = originalDebit;
+
+                        runningBalance += amount;
+                        totalCredit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            AccountName = reader["AccountName"],
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
 
                     // ================= CUSTOMER RECEIPT / ADVANCE =================
-                    else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase) ||
-                             type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
+                    else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
@@ -739,6 +759,48 @@ namespace YamyProject.Controllers
                             AccountName = reader["AccountName"],
                             Debit = "0.00",
                             Credit = amount.ToString("N2"), 
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else if (type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase))
+                    {
+                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
+
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            AccountName = reader["AccountName"],
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase))
+                    {
+                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
+
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = reader["id"],
+                            InvoiceId = reader["InvoiceId"],
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            AccountName = reader["AccountName"],
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
                         });
                     }
@@ -5057,8 +5119,8 @@ VALUES
 INSERT INTO tbl_item_transaction
 (date,type,reference,item_id,cost_price,qty_in,sales_price,qty_out,qty_inc,description,warehouse_id)
 VALUES
-(@date,'Sales Return Invoice',@ref,@item,@cost,@qty,@price,0,@qty,@desc,@wh);";
-
+(@date,'SalesReturn Invoice',@ref,@item,@cost,@qty,@price,0,@qty,@desc,@wh);";
+            //SalesReturn Invoice
             var cmd = new MySqlCommand(sql, conn, tx);
             cmd.Parameters.AddWithValue("@date", model.Date);
             cmd.Parameters.AddWithValue("@ref", salesId);
@@ -5098,9 +5160,9 @@ VALUES
             int level4SalesReturnId = await GetDefaultAccountId("SalesReturn");
             var sql = @"
 INSERT INTO tbl_transaction
-(date, account_id, debit, credit, transaction_id, t_type, type, description, created_by, created_date, state, voucher_no)
+(date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
 VALUES
-(@date, @acc, @debit, @credit, @id, 'SALES RETURN', 'SalesReturn Invoice', @desc, @user, @created, 0, @voucher);";
+(@date, @acc, @debit, @credit, @id, @hum_id, 'SALES RETURN', 'SalesReturn Invoice', @desc, @user, @created, 0, @voucher);";
 
             using (var cmd = new MySqlCommand(sql, conn, tx))
             {
@@ -5110,6 +5172,7 @@ VALUES
                 cmd.Parameters.AddWithValue("@debit", 0);
                 cmd.Parameters.AddWithValue("@credit", model.NetTotal);
                 cmd.Parameters.AddWithValue("@id", salesId);
+                cmd.Parameters.AddWithValue("@hum_id", model.CustomerId);
                 cmd.Parameters.AddWithValue("@desc", $"SalesReturn Invoice NO. {model.InvoiceCode}");
                 cmd.Parameters.AddWithValue("@user", userId);
                 cmd.Parameters.AddWithValue("@created", DateTime.Now);
@@ -5126,6 +5189,7 @@ VALUES
                     cmd.Parameters.AddWithValue("@debit", model.Vat);
                     cmd.Parameters.AddWithValue("@credit", 0);
                     cmd.Parameters.AddWithValue("@id", salesId);
+                    cmd.Parameters.AddWithValue("@hum_id",0);
                     cmd.Parameters.AddWithValue("@desc", $"Vat Output For Return Invoice No. {model.InvoiceCode}");
                     cmd.Parameters.AddWithValue("@user", userId);
                     cmd.Parameters.AddWithValue("@created", DateTime.Now);
@@ -5141,6 +5205,7 @@ VALUES
                 cmd.Parameters.AddWithValue("@debit", model.TotalBefore);
                 cmd.Parameters.AddWithValue("@credit", 0);
                 cmd.Parameters.AddWithValue("@id", salesId);
+                cmd.Parameters.AddWithValue("@hum_id", 0);
                 cmd.Parameters.AddWithValue("@desc", $"SalesReturn For Invoice No. {model.InvoiceCode}");
                 cmd.Parameters.AddWithValue("@user", userId);
                 cmd.Parameters.AddWithValue("@created", DateTime.Now);
@@ -5894,7 +5959,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
         }
         public static async Task DeleteTransactionEntries(MySqlConnection conn, int debitNoteId, string type, string invCode)
         {
-            string transactionType = $"Debit Note {invCode}";
+            string transactionType = $"Credit Note {invCode}";
 
             var query = "DELETE FROM tbl_transaction WHERE t_type = @tType AND transaction_id = @id";
 
@@ -5934,7 +5999,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
                     debit: model.Vat.ToString(),
                     credit: "0",
                     transactionId: creditNoteId.ToString(),
-                    humId: creditNoteId.ToString(),
+                    humId: "0",
                     tType: $"Credit Note {invCode}",
                     type: $"Credit Note {invCode}",
                     description: $"Vat Output For Invoice No. {invCode}",
@@ -5951,7 +6016,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
                 debit: model.Amount.ToString(),
                 credit: "0",
                 transactionId: creditNoteId.ToString(),
-                humId: creditNoteId.ToString(),
+                humId: "0",
                 tType: $"Credit Note {invCode}",
                 type: $"Credit Note {invCode}",
                 description: $"Revenue For Invoice No. {invCode}",
@@ -5977,7 +6042,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @typ
             cmd.Parameters.AddWithValue("@transactionId", transactionId);
             cmd.Parameters.AddWithValue("@humId", humId);
             cmd.Parameters.AddWithValue("@tType", tType);
-            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@type", "Credit Note");
             cmd.Parameters.AddWithValue("@description", description);
             cmd.Parameters.AddWithValue("@createdBy", createdBy);
             cmd.Parameters.AddWithValue("@createdDate", createdDate);
