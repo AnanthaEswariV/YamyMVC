@@ -581,8 +581,7 @@ namespace YamyProject.Controllers
             {
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
-                    Database = HttpContext.Session.GetString("DatabaseName")
-                               ?? _config.GetConnectionString("DefaultDatabase"),
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
                 };
 
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
@@ -654,12 +653,12 @@ namespace YamyProject.Controllers
 
                     string dateStr = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd");
 
-                    // ================= SALES INVOICE CASH =================
+                    // Sales Invoice Cash: split into sales (credit) and cash receipt (debit)
                     if (type.Equals("Sales Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
-                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
 
-                        // Row 1 (Sales - Credit logically)
+                        // Sales part increases balance (credit)
                         runningBalance += amount;
                         totalCredit += amount;
 
@@ -672,12 +671,12 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = type,
                             AccountName = reader["AccountName"],
-                            Debit = amount.ToString("N2"),   
-                            Credit = "0.00",
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
                         });
 
-                        // Row 2 (Cash Receipt - Debit logically)
+                        // Cash receipt reduces balance (debit)
                         runningBalance -= amount;
                         totalDebit += amount;
 
@@ -690,57 +689,12 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = "Cash Receipt",
                             AccountName = reader["AccountName"],
-                            Debit = "0.00",
-                            Credit = amount.ToString("N2"),   
-                            Balance = runningBalance.ToString("N2")
-                        });
-                    }
-
-                    // ================= SALES INVOICE =================
-                    else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase))
-                    {
-                        decimal amount = originalDebit;
-
-                        runningBalance += amount;
-                        totalCredit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            AccountName = reader["AccountName"],
-                            Debit = amount.ToString("N2"),  
-                            Credit = "0.00",
-                            Balance = runningBalance.ToString("N2")
-                        });
-                    }
-                    else if (type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
-                    {
-                        decimal amount = originalDebit;
-
-                        runningBalance += amount;
-                        totalCredit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            AccountName = reader["AccountName"],
                             Debit = amount.ToString("N2"),
                             Credit = "0.00",
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-
-                    // ================= CUSTOMER RECEIPT / ADVANCE =================
+                    // Customer Receipt reduces balance (debit)
                     else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
@@ -757,17 +711,20 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = type,
                             AccountName = reader["AccountName"],
-                            Debit = "0.00",
-                            Credit = amount.ToString("N2"), 
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    else if (type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase))
+                    // Sales Invoice increases balance (credit)
+                    else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Customer Opening Balance", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
                     {
-                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
 
-                        runningBalance -= amount;
-                        totalDebit += amount;
+                        runningBalance += amount;
+                        totalCredit += amount;
 
                         transactions.Add(new
                         {
@@ -783,7 +740,10 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase))
+                    // SalesReturn Invoice, Credit Note, PDC Receivable reduce balance (debit)
+                    else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("PDC Receivable", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
@@ -799,16 +759,15 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = type,
                             AccountName = reader["AccountName"],
-                            Debit = "0.00",
-                            Credit = amount.ToString("N2"),
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-
-                    // ================= NORMAL TYPES =================
                     else
                     {
-                        runningBalance += originalDebit - originalCredit;
+                        // General case: credit increases balance, debit decreases balance
+                        runningBalance += originalCredit - originalDebit;
                         totalDebit += originalDebit;
                         totalCredit += originalCredit;
 
@@ -821,14 +780,14 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = type,
                             AccountName = reader["AccountName"],
-                            Debit = originalCredit.ToString("N2"),   
-                            Credit = originalDebit.ToString("N2"),   
+                            Debit = originalDebit.ToString("N2"),
+                            Credit = originalCredit.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
                         });
                     }
                 }
 
-                // ================= TOTAL ROW =================
+                // Total row
                 transactions.Add(new
                 {
                     SN = "Total",
@@ -838,8 +797,8 @@ namespace YamyProject.Controllers
                     VoucherNo = "",
                     Type = "",
                     AccountName = "Total",
-                    Debit = totalCredit.ToString("N2"), 
-                    Credit = totalDebit.ToString("N2"),   
+                    Debit = totalDebit.ToString("N2"),
+                    Credit = totalCredit.ToString("N2"),
                     Balance = runningBalance.ToString("N2")
                 });
 

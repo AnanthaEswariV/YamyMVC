@@ -576,7 +576,7 @@ namespace YamyProject.Controllers
                     else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Vendor Opening Balance", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Check Cancel (Vendor)", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Check Cancel", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("PDC Payable", StringComparison.OrdinalIgnoreCase))
                     {
                         // Debit decreases balance (payment reduces amount owed)
