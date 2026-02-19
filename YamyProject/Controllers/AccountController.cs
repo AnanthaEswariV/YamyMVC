@@ -9197,7 +9197,7 @@ WHERE pd.payment_id = @paymentId";
                     await cmd.ExecuteNonQueryAsync();
 
                     await Execute(conn, trx, "DELETE FROM tbl_advance_payment_voucher_details WHERE payment_id=@id", id);
-                    await Execute(conn, trx, "DELETE FROM tbl_transaction WHERE transaction_id=@id AND type='Advance PAYMENT'", id);
+                    await Execute(conn, trx, "DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='Advance PAYMENT'", id);
                     await Execute(conn, trx, "DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='AdvancePayment'", id);
                 }
 
@@ -9291,44 +9291,77 @@ WHERE pd.payment_id = @paymentId";
             }
         }
 
-        private async Task InsertJournal(MySqlConnection conn, MySqlTransaction trx,
-            AdvancePaymentVoucherRequest m, AdvancePaymentDetailRequest d,
-            int id, string code, int user)
+        private async Task InsertJournal(
+      MySqlConnection conn,
+      MySqlTransaction trx,
+      AdvancePaymentVoucherRequest m,
+      AdvancePaymentDetailRequest d,
+      int id,
+      string code,
+      int user)
         {
             try
             {
-                string tType = $"{m.PaymentType} Advance Payment";
+                string paymentType = m.PaymentType?.Trim().ToLower();
 
-                await ExecuteJournal(conn, trx, m.Date, m.DebitAccountId, d.Amount, 0, id, d.PartnerId, tType, code, user);
-                await ExecuteJournal(conn, trx, m.Date, m.CreditAccountId, 0, d.Amount, id, "0", tType, code, user);
+                string type = paymentType switch
+                {
+                    "customer" => "Customer Advance Payment",
+                    "vendor" => "Vendor Advance Payment",
+                    "employee" => "Employee Advance Payment",
+                    _ => throw new Exception("Invalid payment type")
+                };
+
+                // You don't need separate tType if it's same meaning
+                string tType = type;
+
+                await ExecuteJournal(conn, trx, m.Date, m.DebitAccountId,
+                    d.Amount, 0, id, d.PartnerId,
+                    tType, type, code, user);
+
+                await ExecuteJournal(conn, trx, m.Date, m.CreditAccountId,
+                    0, d.Amount, id, "0",
+                    tType, type, code, user);
             }
             catch (Exception ex)
             {
-                throw new Exception("Error inserting journal entries: " + ex.Message);
+                throw new Exception("Error inserting journal entries", ex);
             }
         }
 
-        private async Task ExecuteJournal(MySqlConnection conn, MySqlTransaction trx,
-            DateTime date, int acc, decimal debit, decimal credit,
-            int id, string hum, string tType, string code, int user)
+
+        private async Task ExecuteJournal(
+            MySqlConnection conn,
+            MySqlTransaction trx,
+            DateTime date,
+            int acc,
+            decimal debit,
+            decimal credit,
+            int id,
+            string hum,
+            string tType,
+            string type,
+            string code,
+            int user)
         {
             try
             {
                 string sql = @"INSERT INTO tbl_transaction
-        (date,account_id,debit,credit,transaction_id,hum_id,t_type,type,
-         description,created_by,created_date,state,voucher_no)
+            (date, account_id, debit, credit, transaction_id, hum_id, t_type, type,
+             description, created_by, created_date, state, voucher_no)
         VALUES
-        (@date,@acc,@debit,@credit,@tid,@hum,@ttype,'Customer Advance Payment',
-         @desc,@user,@dt,0,@code)";
+            (@date, @acc, @debit, @credit, @tid, @hum, 'Advance PAYMENT', @type,
+             @desc, @user, @dt, 0, @code)";
 
                 using var cmd = new MySqlCommand(sql, conn, trx);
+
                 cmd.Parameters.AddWithValue("@date", date);
                 cmd.Parameters.AddWithValue("@acc", acc);
                 cmd.Parameters.AddWithValue("@debit", debit);
                 cmd.Parameters.AddWithValue("@credit", credit);
                 cmd.Parameters.AddWithValue("@tid", id);
                 cmd.Parameters.AddWithValue("@hum", hum);
-                cmd.Parameters.AddWithValue("@ttype", tType);
+                cmd.Parameters.AddWithValue("@type", type);
                 cmd.Parameters.AddWithValue("@desc", $"ADVANCE Payment Voucher NO. {code}");
                 cmd.Parameters.AddWithValue("@user", user);
                 cmd.Parameters.AddWithValue("@dt", DateTime.Now);
@@ -9338,10 +9371,10 @@ WHERE pd.payment_id = @paymentId";
             }
             catch (Exception ex)
             {
-                throw new Exception("Error inserting journal entry: " + ex.Message);
+                throw new Exception("Error inserting journal entry", ex);
             }
-
         }
+
 
         private async Task InsertCostCenter(MySqlConnection conn, MySqlTransaction trx,
             int id, AdvancePaymentVoucherRequest m, bool debit)

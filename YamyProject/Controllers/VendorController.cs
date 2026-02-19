@@ -436,7 +436,7 @@ namespace YamyProject.Controllers
             await cmd.ExecuteNonQueryAsync();
         }
         [HttpGet]
-        public async Task<IActionResult> GetVendorInvoices(int id, string startDate = null, string endDate = null)
+        public async Task<IActionResult> GetVendorInvoices(int id, string startDate = null, string endDate = null)  
         {
             try
             {
@@ -574,8 +574,73 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase) ||
-                             type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase))
+                    else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Vendor Payment: Show credit amount as debit only, reduce balance
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            PaymentType = "Cash Payment",
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else if (type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Vendor Payment: Show credit amount as debit only, reduce balance
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            PaymentType = "Cash Payment",
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else if (type.Equals("Purchase Return Invoice", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Vendor Payment: Show credit amount as debit only, reduce balance
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        runningBalance -= amount;
+                        totalDebit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceId,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            Description = description,
+                            PaymentType = "Cash Payment",
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    else if (type.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase))
                     {
                         // Vendor Payment: Show credit amount as debit only, reduce balance
                         decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
@@ -3323,7 +3388,7 @@ WHERE id=@id;";
 
                         // Delete cost center and journal transactions
                         await DeleteCostCenterTransactionEntry(conn, transaction, purchaseReturnId.ToString(), "Purchase Return");
-                        await DeleteTransactionEntry(conn, transaction, purchaseReturnId, "Purchase Return Invoice");
+                        await DeleteTransactionEntry(conn, transaction, purchaseReturnId, "PURCHASE RETURN");
 
                         // Re-insert items and transactions
                         await InsertPurchaseReturnItems(conn, transaction, purchaseReturnId, model.Items,
@@ -3566,22 +3631,22 @@ INSERT INTO tbl_item_card_details (
             await AddTransactionEntry(conn, transaction, model.Date,
                 model.PaymentMethod == "Credit" ? accountIds.PaymentCreditMethodId.ToString() : model.AccountCashId.ToString(),
                 "0", model.NetTotal.ToString(), purchaseReturnId.ToString(), model.VendorId.ToString(),
-                "Purchase Return Invoice", "PURCHASE RETURN",
+                "PURCHASE RETURN", "Purchase Return Invoice",
                 $"Purchase Return Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
 
             // VAT transaction entry
             if (model.Vat > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date,
-                    accountIds.VatId.ToString(), model.Vat.ToString(), "0",
-                    purchaseReturnId.ToString(), "0", "Purchase Return Invoice", "PURCHASE RETURN",
+                    accountIds.VatId.ToString(), model.Vat.ToString(), "0", 
+                    purchaseReturnId.ToString(), "0", "PURCHASE RETURN", "Purchase Return Invoice",
                     $"Vat Input For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
 
             // Purchase Return transaction entry
             await AddTransactionEntry(conn, transaction, model.Date,
                 accountIds.PurchaseReturnId.ToString(), model.TotalBefore.ToString(), "0",
-                purchaseReturnId.ToString(), "0", "Purchase Return Invoice", "PURCHASE RETURN",
+                purchaseReturnId.ToString(), "0", "PURCHASE RETURN", "Purchase Return Invoice",
                 $"Purchase Return For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
         }
 
