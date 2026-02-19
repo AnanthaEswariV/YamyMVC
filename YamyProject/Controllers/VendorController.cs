@@ -533,10 +533,9 @@ namespace YamyProject.Controllers
 
                     if (type.Equals("Purchase Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Split Purchase Invoice Cash into TWO rows
                         decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
 
-                        // Row 1: Credit (Purchase)
+                        // Credit increases balance (amount owed)
                         runningBalance += amount;
                         totalCredit += amount;
 
@@ -555,7 +554,7 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
 
-                        // Row 2: Debit (Payment)
+                        // Debit decreases balance (payment reduces amount owed)
                         runningBalance -= amount;
                         totalDebit += amount;
 
@@ -574,10 +573,14 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase))
+                    else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Vendor Opening Balance", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Check Cancel (Vendor)", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("PDC Payable", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Vendor Payment: Show credit amount as debit only, reduce balance
-                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        // Debit decreases balance (payment reduces amount owed)
+                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
                         runningBalance -= amount;
                         totalDebit += amount;
 
@@ -596,12 +599,14 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    else if (type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase))
+                    else if (type.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Debit Note", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Purchase Return Invoice", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Vendor Payment: Show credit amount as debit only, reduce balance
+                        // Credit increases balance (amount owed)
                         decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
-                        runningBalance -= amount;
-                        totalDebit += amount;
+                        runningBalance += amount;
+                        totalCredit += amount;
 
                         transactions.Add(new
                         {
@@ -618,53 +623,9 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    else if (type.Equals("Purchase Return Invoice", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Vendor Payment: Show credit amount as debit only, reduce balance
-                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
-                        runningBalance -= amount;
-                        totalDebit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            Description = description,
-                            PaymentType = "Cash Payment",
-                            Debit = amount.ToString("N2"),
-                            Credit = "0.00",
-                            Balance = runningBalance.ToString("N2")
-                        });
-                    }
-                    else if (type.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Vendor Payment: Show credit amount as debit only, reduce balance
-                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
-                        runningBalance -= amount;
-                        totalDebit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = transactionId,
-                            InvoiceId = invoiceId,
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            Description = description,
-                            PaymentType = "Cash Payment",
-                            Debit = amount.ToString("N2"),
-                            Credit = "0.00",
-                            Balance = runningBalance.ToString("N2")
-                        });
-                    }
                     else
                     {
-                        // Purchase/Invoice transactions on credit: Normal display, calculate running balance
+                        // General case, credit increases, debit decreases balance
                         runningBalance += originalCredit - originalDebit;
                         totalDebit += originalDebit;
                         totalCredit += originalCredit;
@@ -686,6 +647,7 @@ namespace YamyProject.Controllers
                             Balance = runningBalance.ToString("N2")
                         });
                     }
+
                 }
 
                 // Add total row
@@ -4398,13 +4360,13 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
 
         public static async Task DeleteTransactionEntries(MySqlConnection conn, int debitNoteId,string type, string invCode)
         {
-            string transactionType = $"Debit Note {invCode}";
+            string transactionType = $"Debit Note";
 
-            var query = "DELETE FROM tbl_transaction WHERE t_type = @tType AND transaction_id = @id";
+            var query = "DELETE FROM tbl_transaction WHERE type = @type AND transaction_id = @id";
 
             await using var cmd = new MySqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@id", debitNoteId);
-            cmd.Parameters.AddWithValue("@tType", transactionType);
+            cmd.Parameters.AddWithValue("@type", transactionType);
 
             int rowsAffected = await cmd.ExecuteNonQueryAsync();
             Console.WriteLine($"{rowsAffected} transaction(s) deleted for {transactionType}");
@@ -4414,7 +4376,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
         public static async Task AddDebitNoteTransactions(MySqlConnection conn, int debitNoteId, DebitNoteRequest model, int userId, string invCode)
         {
             // 1️⃣ Vendor Debit Entry
-            await AddTransactionEntry(conn, model.Date, model.AccountCashId, model.Amount.ToString(), "0",
+            await AddTransactionEntry(conn, model.Date, model.AccountCashId, "0", model.TotalAmount.ToString(),
                 debitNoteId.ToString(), model.VendorId.ToString(), $"Debit Note {invCode}", $"Debit Note {invCode}",
                 $"Debit Note NO. {invCode}", userId, DateTime.Now, invCode);
 
@@ -4438,7 +4400,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
             var query = @"
 INSERT INTO tbl_transaction
 (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state, voucher_no)
-VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @type, @description, @createdBy, @createdDate, 0, @voucherNo);";
+VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, 'Debit Note', @description, @createdBy, @createdDate, 0, @voucherNo);";
 
             using var cmd = new MySqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@date", date);
@@ -4448,7 +4410,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, @typ
             cmd.Parameters.AddWithValue("@transactionId", transactionId);
             cmd.Parameters.AddWithValue("@humId", humId);
             cmd.Parameters.AddWithValue("@tType", tType);
-            cmd.Parameters.AddWithValue("@type", type);
             cmd.Parameters.AddWithValue("@description", description);
             cmd.Parameters.AddWithValue("@createdBy", createdBy);
             cmd.Parameters.AddWithValue("@createdDate", createdDate);
