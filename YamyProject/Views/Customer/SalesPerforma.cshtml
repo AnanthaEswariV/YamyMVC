@@ -939,8 +939,8 @@
                 const selectedItem = itemsList.find(item => item.id === selectedId);
                 if (selectedItem) {
                     row.find(".itemCode").val(selectedItem.code || "");
-                    row.find(".itemPrice").val(selectedItem.cost_price || 0);
-                    row.find(".itemPrice").data('cost-price', selectedItem.cost_price || 0);
+                    row.find(".itemPrice").val(selectedItem.sales_price || 0);
+                    // row.find(".itemPrice").data('cost-price', selectedItem.cost_price || 0);
                     calculateRow(row);
                 } else {
                     console.log("Item not found in itemsList.");

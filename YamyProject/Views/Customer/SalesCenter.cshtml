@@ -786,7 +786,7 @@
                    $(document).on("click", ".editInvoiceBtn", function () {
             const invoice = $(this).data("invoice");
             if (!invoice) return;
-
+            console.log(invoice);
             // Header Fields
             $("#customerName").val(invoice.customerId || 0);
             $("#date").val(invoice.date ? invoice.date.split('T')[0] : '');
@@ -841,7 +841,7 @@
                             <td><input type="text" class="form-control form-control-sm" value="${item.itemCode || ''}" readonly></td>
                             <td><select class="form-select form-select-sm itemNameSelect"></select></td>
                             <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                            <td><input class="form-control form-control-sm" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}"></td>
+                            <td><input class="form-control form-control-sm" value="${item.price || 0}" data-sales-price="${item.sales_Price  || 0}"></td>
                             <td><input class="form-control form-control-sm" value="${item.discount || 0}" disabled></td>
                             <td class="text-center">${(item.net || 0).toFixed(2)}</td>
                             <td><select class="form-select form-select-sm tax"></select></td>
@@ -955,7 +955,7 @@
             ItemId: parseInt(row.find('.itemNameSelect').val()) || 0,
             Qty: qty,
             Price: price,
-            CostPrice: parseFloat(row.find('td:nth-child(5) input').data('cost-price')) || 0,
+            CostPrice: parseFloat(row.find('td:nth-child(5) input').data('sales_Price')) || 0,
             Discount: discount,
             VatP: taxP,
             Vat: vat,
@@ -1100,18 +1100,18 @@
          }
 
         $(document).on("change", ".itemNameSelect", function () {
-            const selectedId = parseInt($(this).val(), 10); 
-
+            const selectedId = parseInt($(this).val(), 10);
+           
             const row = $(this).closest("tr"); 
 
             if (selectedId) {
                 // Find the item in the itemsList
                 const selectedItem = itemsList.find(item => item.id === selectedId);
-
+                 console.log('Selected Item:', selectedItem);
                 if (selectedItem) {
                     row.find("td:nth-child(2) input").val(selectedItem.code || "");
 
-                    row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
+                    row.find("td:nth-child(5) input").val(selectedItem.sales_price || 0);
 
                     calculateRow(row);
                 } else {

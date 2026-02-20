@@ -1197,6 +1197,7 @@ namespace YamyProject.Core.Models
         public decimal Discount { get; set; }
         public int Sales_Id { get; set; }
         public decimal Cost_Price { get; set; }
+        public decimal Sales_Price { get; set; }
         public decimal VatP { get; set; }
         public int Cost_Center_Id { get; set; }
     }
@@ -1591,6 +1592,7 @@ namespace YamyProject.Core.Models
         public string ItemName { get; set; }
         public decimal Qty { get; set; }
         public decimal Price { get; set; }
+        public decimal Sales_Price { get; set; }
         public decimal Vat { get; set; }
         public decimal Total { get; set; }
         public int CostCenterId { get; set; }
