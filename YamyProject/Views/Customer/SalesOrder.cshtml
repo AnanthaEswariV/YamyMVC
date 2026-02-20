@@ -792,6 +792,37 @@
                 addEditItemRow(targetTable);
             });
 
+
+                               $(document).on("input", "td:nth-child(4) input, td:nth-child(5) input, td:nth-child(6) input", function() {
+            const row = $(this).closest("tr");
+            const isInsideSalesCenterModal = $(this).closest('#salesCenterModal').length > 0;
+            const isQtyColumn = $(this).closest("td").index() === 3;
+
+            if (isQtyColumn && isInsideSalesCenterModal) {
+                const itemId = row.find(".itemNameSelect").val();
+                const qty = parseFloat($(this).val()) || 0;
+                if (itemId) {
+                    $.ajax({
+                        url: '@Url.Action("CheckItemValidity", "Customer")',
+                        type: 'GET',
+                        data: { itemId: itemId, salesQty: qty },
+                        success: function (res) {
+                            if (!res.status) {
+                                alert(res.message);
+                                row.find("td:nth-child(4) input").val(0);
+                            }
+                            calculateRow(row);
+                        },
+                        error: function(err) { console.error(err); }
+                    });
+                } else {
+                    calculateRow(row);
+                }
+            } else {
+                calculateRow(row);
+            }
+        });
+
         });
 
 
