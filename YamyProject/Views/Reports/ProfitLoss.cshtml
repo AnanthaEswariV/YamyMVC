@@ -253,16 +253,13 @@
                 });
             }
 
-            // Click row → Level 4 → open TransactionByAccount
-            $('#table1 tbody').on('click', 'tr', function () {
-                const level = $(this).data('level');
-                const id = $(this).data('id');
-
-                if (level === 4 && id) {
-                     window.location.href = '@Url.Action("TransactionByAccount", "Reports")' + '?accountId=' + id;
-
-                }
-            });
+                    $(document).on('dblclick', '#table1 tbody tr', function () {
+            const level = $(this).data('level');
+            const id = $(this).data('id');
+            if (level === 5 && id) {
+                window.location.href = '@Url.Action("TransactionByAccount", "Reports")' + '?accountId=' + id;
+            }
+        });
 
         });
     </script>
