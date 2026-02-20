@@ -813,7 +813,7 @@
                  Active: $('#employeeActive').is(':checked') ? 1 : 0
              };
 
-             console.log((isEdit ? 'Updating' : 'Saving') + ' employee:', employeeData);
+        
 
              $.ajax({
                  url: url,
@@ -821,7 +821,7 @@
                  contentType: 'application/json',
                  data: JSON.stringify(employeeData),
                  success: function (res) {
-                     console.log('AJAX response:', res);
+                 
 
                      if (res.status) {
                          toastr.success(isEdit ? 'Employee updated successfully' : 'Employee saved successfully');
@@ -982,7 +982,7 @@
 
         $(document).on("click", ".edit-item", function () {
             const data = $(this).data();  
-            console.log(data);
+          
             // Fill modal inputs
             $("#itemId").val(data.id);
             $("#itemNameInput").val(data.name);
@@ -1126,7 +1126,6 @@
                      $dropdown.append(`<option value="${emp.id}" ${selected}>${emp.name}</option>`);
                  });
 
-                 console.log(`✅ Loaded ${employees.length} employees into ${selector}`);
              }).fail(function() {
                  console.error("Failed to load employees for dropdown:", selector);
              });
@@ -1203,7 +1202,7 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ Id: id, Name: name }),
                 success: function(res) {
-                    console.log('📥 Update response:', res);
+     
 
                     if (res && res.status) {
                         toastr.success(res.message || 'Unit Updated Successfully!');
@@ -1314,7 +1313,7 @@
                     success: function (result) {
                         let tbody = $("#dataTable tbody");
                         tbody.empty();
-
+                        console.log(result);
                         if (result.status && result.data.length > 0) {
                             $.each(result.data, function (i, t) {
                                 tbody.append(`
@@ -1327,8 +1326,8 @@
                                         <td>${t.type}</td>
                                         <td class="text-end">${t.qtyIn}</td>
                                         <td class="text-end">${t.qtyOut}</td>
-                                        <td class="text-end">${t.costPrice}</td>
-                                        <td class="text-end">${t.salesPrice}</td>
+                                         <td class="text-end">${t.costPrice}</td>
+                                         <td class="text-end">${t.salesPrice}</td>
                                         <td class="text-end">${t.qtyBalance}</td>
                                     </tr>
                                 `);
@@ -1604,9 +1603,7 @@
 
         });
 
-
-
-                document.addEventListener("DOMContentLoaded", function () {
+        document.addEventListener("DOMContentLoaded", function () {
             const params = new URLSearchParams(window.location.search);
             if (params.get("openModal") === "true") {
                 const modalEl = document.getElementById("newItemModal");
