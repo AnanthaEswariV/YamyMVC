@@ -435,6 +435,36 @@ namespace YamyProject.Controllers
 
             await cmd.ExecuteNonQueryAsync();
         }
+
+        //public async Task<IActionResult> DeleteVendor(int id)
+        //{
+        //    try
+        //    {
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
+        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+        //        // Check for related transactions
+        //        var checkCmd = new MySqlCommand(
+        //            "SELECT COUNT(*) FROM tbl_transaction WHERE hum_id=@id AND type IN ('Vendor Payment', 'Purchase Invoice', 'Vendor Opening Balance', 'Vendor Advance Payment', 'Check Cancel', 'Purchase Return Invoice', 'Debit Note', 'PDC Payable')",
+        //            conn);
+        //        checkCmd.Parameters.AddWithValue("@id", id);
+        //        int relatedCount = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+        //        if (relatedCount > 0)
+        //            return Json(new { status = false, message = "Cannot delete vendor with existing transactions." });
+        //        var delCmd = new MySqlCommand("DELETE FROM tbl_vendor WHERE id=@id", conn);
+        //        delCmd.Parameters.AddWithValue("@id", id);
+        //        await delCmd.ExecuteNonQueryAsync();
+        //        return Json(new { status = true, message = "Vendor deleted successfully" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
         [HttpGet]
         public async Task<IActionResult> GetVendorInvoices(int id, string startDate = null, string endDate = null)  
         {
@@ -574,7 +604,7 @@ namespace YamyProject.Controllers
                         });
                     }
                     else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Vendor Opening Balance", StringComparison.OrdinalIgnoreCase)
+                       
                         || type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Check Cancel", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("PDC Payable", StringComparison.OrdinalIgnoreCase))
@@ -593,7 +623,6 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = type,
                             Description = description,
-                            PaymentType = "Cash Payment",
                             Debit = amount.ToString("N2"),
                             Credit = "0.00",
                             Balance = runningBalance.ToString("N2")
@@ -601,6 +630,7 @@ namespace YamyProject.Controllers
                     }
                     else if (type.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Debit Note", StringComparison.OrdinalIgnoreCase)
+                         || type.Equals("Vendor Opening Balance", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Purchase Return Invoice", StringComparison.OrdinalIgnoreCase))
                     {
                         // Credit increases balance (amount owed)
@@ -617,7 +647,6 @@ namespace YamyProject.Controllers
                             VoucherNo = voucherNo,
                             Type = type,
                             Description = description,
-                            PaymentType = "Cash Payment",
                             Debit = "0.00",
                             Credit = amount.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
