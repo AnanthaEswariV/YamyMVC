@@ -712,13 +712,13 @@
 
         // ===== Load Units =====
               function loadUnitsDropdown(selector = "#mainUnit") {
-            $.get('/Lists/GetUnit', function (res) {
+              $.get('/Lists/GetMainUnits', function (res) {
                 const dropdown = $(selector);
                 dropdown.empty().append('<option value="">-- Select Unit --</option>');
 
                 if (res && res.status && res.data && res.data.length > 0) {
                     res.data.forEach(u => {
-                        dropdown.append(`<option value="${u.id}">${u.unitName}</option>`);
+                        dropdown.append(`<option value="${u.id}">${u.name}</option>`);
                     });
                 } else {
                     dropdown.append('<option value="">No units found</option>');

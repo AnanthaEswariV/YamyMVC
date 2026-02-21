@@ -469,53 +469,12 @@
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUnit()
+        public async Task<IActionResult> GetUnits()
         {
             try
             {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName")
-                          ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-
-                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                var query = @"select id,name from tbl_unit";
-
-                using var cmd = new MySqlCommand(query, conn);
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                var categories = new List<object>();
-
-                while (await reader.ReadAsync())
-                {
-                    categories.Add(new
-                    {
-                        Id = reader["id"],
-                        UnitName = reader["Name"].ToString()
-                    });
-                }
-
-                return Ok(new { status = true, data = categories });
-            }
-           catch(Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> AddUnit([FromBody] UnitViewModel model)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(model.Name))
-                    return BadRequest(new { status = false, message = "Unit is required" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName")
                                ?? _config.GetConnectionString("DefaultDatabase")
@@ -524,34 +483,45 @@
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // ✅ Check if unit already exists (case-insensitive)
-                string existsQuery = "SELECT COUNT(*) FROM tbl_unit WHERE LOWER(Name) = LOWER(@name)";
-                using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                var units = new List<UnitRequest>();
+
+                // MAIN UNITS
+                string mainQuery = "SELECT id, name FROM tbl_unit";
+                using (var cmd = new MySqlCommand(mainQuery, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
-                    if (count > 0)
-                        return Conflict(new { status = false, message = "Unit already exists" });
+                    while (await reader.ReadAsync())
+                    {
+                        units.Add(new UnitRequest
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Name = reader["name"]?.ToString(),
+                            IsMain = true,
+                            IsSub = false
+                        });
+                    }
                 }
 
-                // ✅ FIXED: Insert and get ID in one query
-                var query = @"INSERT INTO tbl_unit (Name) VALUES (@name);
-                     SELECT LAST_INSERT_ID();";
-
-                int newId;
-                using (var cmd = new MySqlCommand(query, conn))
+                // SUB UNITS
+                string subQuery = "SELECT id, code, name, main_id FROM tbl_sub_unit ORDER BY code";
+                using (var cmd = new MySqlCommand(subQuery, conn))
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    while (await reader.ReadAsync())
+                    {
+                        units.Add(new UnitRequest
+                        {
+                            Id = Convert.ToInt32(reader["id"]),
+                            Code = reader["code"]?.ToString(),
+                            Name = reader["name"]?.ToString(),
+                            IsMain = false,
+                            IsSub = true,
+                            MainId = Convert.ToInt32(reader["main_id"])
+                        });
+                    }
                 }
 
-                return Ok(new
-                {
-                    status = true,
-                    message = "Unit added successfully",
-                    id = newId,
-                    name = model.Name.Trim()
-                });
+                return Ok(units);
             }
             catch (Exception ex)
             {
@@ -559,6 +529,101 @@
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetMainUnits()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                var mainUnits = new List<object>();
+
+                var query = "SELECT id, name FROM tbl_unit ORDER BY name";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    mainUnits.Add(new
+                    {
+                        Id = Convert.ToInt32(reader["id"]),
+                        Name = reader["name"].ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = mainUnits });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> SaveUnit([FromBody] UnitRequest model)
+        {
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Enter Unit Name" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(
+                _config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName")
+                           ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            if (model.IsMain)
+            {
+                if (model.Id > 0)
+                {
+                    string update = "UPDATE tbl_unit SET name=@name WHERE id=@id";
+                    using var cmd = new MySqlCommand(update, conn);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                else
+                {
+                    string insert = "INSERT INTO tbl_unit (name) VALUES (@name)";
+                    using var cmd = new MySqlCommand(insert, conn);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            else
+            {
+                if (model.MainId <= 0)
+                    return BadRequest(new { status = false, message = "Select Main Unit" });
+
+                if (model.Id > 0)
+                {
+                    string update = "UPDATE tbl_sub_unit SET name=@name, main_id=@main WHERE id=@id";
+                    using var cmd = new MySqlCommand(update, conn);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@main", model.MainId);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                else
+                {
+                    string insert = "INSERT INTO tbl_sub_unit (name, main_id) VALUES (@name,@main)";
+                    using var cmd = new MySqlCommand(insert, conn);
+                    cmd.Parameters.AddWithValue("@name", model.Name);
+                    cmd.Parameters.AddWithValue("@main", model.MainId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+
+            return Ok(new { status = true });
+        }
         [HttpPost]
         public async Task<IActionResult> EditUnit([FromBody] UnitViewModel model)
         {
@@ -603,6 +668,108 @@
                         name = model.Name.Trim()
                     })
                     : NotFound(new { status = false, message = "Unit not found." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteMainUnit([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid main unit ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if main unit is used in items
+                var checkQuery = "SELECT COUNT(1) FROM tbl_items WHERE unit_id = @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Ok(new { status = false, message = "Main unit is already used in items and cannot be deleted." });
+                }
+
+                // Check if main unit has sub units
+                var checkSubQuery = "SELECT COUNT(1) FROM tbl_sub_unit WHERE main_id = @id";
+                using (var checkSubCmd = new MySqlCommand(checkSubQuery, conn))
+                {
+                    checkSubCmd.Parameters.AddWithValue("@id", id);
+                    var subCount = Convert.ToInt32(await checkSubCmd.ExecuteScalarAsync());
+                    if (subCount > 0)
+                        return Ok(new { status = false, message = "Main unit has sub units. Delete sub units first." });
+                }
+
+                // Delete main unit
+                var deleteQuery = "DELETE FROM tbl_unit WHERE id = @id";
+                using (var delCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    delCmd.Parameters.AddWithValue("@id", id);
+                    var rows = await delCmd.ExecuteNonQueryAsync();
+                    return rows > 0
+                        ? Ok(new { status = true, message = "Main unit deleted successfully." })
+                        : NotFound(new { status = false, message = "Main unit not found." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteSubUnit([FromBody] int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid sub unit ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check if sub unit is used in items_unit
+                var checkQuery = "SELECT COUNT(1) FROM tbl_items_unit WHERE unit_id = @id";
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    var count = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (count > 0)
+                        return Ok(new { status = false, message = "Sub unit is already used in items and cannot be deleted." });
+                }
+
+                // Delete sub unit
+                var deleteQuery = "DELETE FROM tbl_sub_unit WHERE id = @id";
+                using (var delCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    delCmd.Parameters.AddWithValue("@id", id);
+                    var rows = await delCmd.ExecuteNonQueryAsync();
+                    return rows > 0
+                        ? Ok(new { status = true, message = "Sub unit deleted successfully." })
+                        : NotFound(new { status = false, message = "Sub unit not found." });
+                }
             }
             catch (Exception ex)
             {
@@ -3202,9 +3369,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 cmd.Parameters.AddWithValue("@factor", 1);
                 await cmd.ExecuteNonQueryAsync();
             }
-
-           
-
             // Insert sub units
             if (model.Units != null && model.Units.Any())
             {
@@ -3217,7 +3381,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         cmd.Parameters.AddWithValue("@unit_id", unit.UnitId.Value);
                         cmd.Parameters.AddWithValue("@factor", unit.Factor.Value);
                         await cmd.ExecuteNonQueryAsync();
-
                     }
                 }
             }

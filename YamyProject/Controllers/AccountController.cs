@@ -2031,6 +2031,17 @@
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
+                            CREATE TABLE IF NOT EXISTS `tbl_sub_unit` (
+                          `id` int NOT NULL AUTO_INCREMENT,
+                          `code` int DEFAULT NULL,
+                          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `main_id` int DEFAULT NULL,
+                          `project_id` INT NOT NULL DEFAULT 0,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
                         CREATE TABLE IF NOT EXISTS `tbl_tax` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,

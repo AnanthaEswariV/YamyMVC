@@ -3,266 +3,365 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <style>
-    .dt-buttons .btn-primary {
-        background-color: #435EBE !important;
-        color: #fff !important;
-        border: none !important;
+    .tree-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
     }
 
-        .dt-buttons .btn-primary:hover {
-            background-color: #3b51a0 !important;
-            color: #fff !important;
+    .tree-node {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        margin: 2px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        position: relative;
+    }
+
+        .tree-node:hover {
+            background-color: #f5f7fa;
         }
+
+    .main-node {
+        font-weight: 600;
+        color: #1976d2;
+    }
+
+    .sub-node {
+        margin-left: 30px;
+        background: #fafafa;
+        font-weight: 500;
+        color: #555;
+    }
+
+    .node-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 5px;
+    }
+
+    .loading, .empty-state {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+    }
 </style>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-
-
-<div class="card">
-    <div class="card-header text-center">
-        <strong>Unit List</strong>
-    </div>
-
-    <div class="card-body">
-        <div class="d-flex justify-content-end align-items-center mb-4">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUnitModal">
-                <i class="bi bi-plus-lg"></i> Add Unit
-            </button>
+<div class="page-heading mb-3">
+    <div class="row">
+        <div class="col-6">
+            <h3>Units</h3>
         </div>
-
-        <!-- Table -->
-        <table class="table table-striped" id="unitTable">
-            <thead>
-                <tr>
-                    <th>S.No</th>
-                    <th>Unit Name</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div class="col-6 text-end">
+            <button class="btn btn-primary" id="addUnitBtn"><i class="bi bi-plus-lg"></i> Add Unit</button>
+        </div>
     </div>
-
 </div>
 
-@Html.Partial("_Unit")
+<section class="section">
+    <div class="card">
+        <div class="card-body">
+            <div class="tree-container">
+                <div id="unitTree">
+                    <div class="loading">Loading units...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal -->
+<div class="modal fade" id="unitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="unitForm">
+                    <div class="mb-3">
+                        <label class="form-label">Type</label><br />
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="type" id="radioMain" value="main" />
+                            <label class="form-check-label" for="radioMain">Main Unit</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="type" id="radioSub" value="sub" />
+                            <label class="form-check-label" for="radioSub">Sub Unit</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="mainSelectDiv" style="display:none;">
+                        <label for="mainUnitId" class="form-label">Select Main Unit</label>
+                        <select id="mainUnitId" name="mainUnitId" class="form-select">
+                            <option value="">Choose main unit...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Unit Name</label>
+                        <input type="text" class="form-control" id="name" required />
+                    </div>
+
+                    <input type="hidden" id="editId" />
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" id="saveUnitBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
+        let unitData = [];
 
-         $(document).ready(function () {
-                loadUnits
-         });
-
-          function loadUnits() {
-            $.ajax({
-        url: '@Url.Action("GetUnit", "Lists")',
-                type: 'GET',
-
-                beforeSend: function () {
-                    $('#unitTable tbody').html(`
-                        <tr>
-                            <td colspan="3" class="text-center text-muted py-4">
-                                <div class="spinner-border text-primary me-2"></div>Loading Units...
-                            </td>
-                        </tr>
-                    `);
-                },
-
-                success: function (res) {
-                    console.log(res);
-                    if (!res || res.length === 0) {
-                        const tbody = $('#unitTable tbody');
-                        tbody.html(`
-                            <tr>
-                                <td colspan="3" class="text-center text-muted py-4">
-                                    No units found
-                                </td>
-                            </tr>
-                        `);
-                        return;
-                    }
-
-                    // Destroy existing DataTable if initialized
-                    if ($.fn.DataTable.isDataTable('#unitTable')) {
-                        $('#unitTable').DataTable().clear().destroy();
-                    }
-
-                    const tbody = $('#unitTable tbody');
-                    tbody.empty();
-
-                          $.each(res.data, function (i, u) {
-            const tr = `
-                <tr data-id="${u.id}">
-                    <td>${i + 1}</td>
-                    <td>${u.unitName}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-primary editUnitBtn"
-                                data-unit='${JSON.stringify(u)}'>
-                            <i class="fas fa-pen"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger deleteUnitBtn"
-                                onclick="deleteUnit(${u.id})">
-                            <i class="fas fa-prescription-bottle-alt"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.append(tr);
-        });
-
-
-                    $('#unitTable').DataTable({
-                        dom: 'Bfrtip',
-                        buttons: [
-                            {
-                                extend: 'excelHtml5',
-                                text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                className: 'btn btn-primary btn-sm',
-                                  exportOptions: {
-                columns: ':not(:last-child)'
-            }
-                            },
-                            {
-                                extend: 'pdfHtml5',
-                                text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                className: 'btn btn-primary btn-sm',
-                                orientation: 'landscape',
-                                pageSize: 'A4',
-                                  exportOptions: {
-                columns: ':not(:last-child)'
-            }
-                            }
-                        ],
-                        order: [[0, 'asc']],
-                        pageLength: 15
-                    });
-                },
-
-                error: function () {
-                    toastr.error('Error loading units data');
+        // Load all units
+        function loadUnits() {
+            $('#unitTree').html('<div class="loading">Loading units...</div>');
+            $.get('@Url.Action("GetUnits", "Lists")', function (response) {
+                if (!response || response.length === 0) {
+                    $('#unitTree').html('<div class="empty-state">No units found</div>');
+                    return;
                 }
+                unitData = response;
+                renderUnitTree();
             });
         }
 
-          function saveUnit() {
-            const name = $("#addUnitName").val();
+        // Render Tree
+        function renderUnitTree() {
+            const container = $('#unitTree');
+            container.empty();
 
-            if (!name.trim()) {
-                toastr.warning("Please enter a unit name.");
-                return;
+            const mainUnits = unitData.filter(x => x.isMain);
+            const subUnits = unitData.filter(x => x.isSub);
+
+            mainUnits.forEach(main => {
+                const children = subUnits.filter(sub => sub.mainId === main.id);
+                container.append(createUnitNode(main, children, true));
+            });
+        }
+
+               function createUnitNode(node, children = [], isMain = false) {
+            const hasChildren = children.length > 0;
+            const childrenId = `children-${node.id}`;
+
+            let html = `<div class="${isMain ? 'main-node' : 'sub-node'} tree-node">
+                <div style="cursor:pointer;" onclick="toggleChildren('${childrenId}')">
+                    ${hasChildren ? '▶' : ''}
+                </div>
+                <div>${node.name}</div>
+                <div class="node-actions">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal(${node.id}, ${isMain})">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="${isMain ? `deleteMainUnit(${node.id})` : `deleteSubUnit(${node.id})`}">
+                        <i class="fas fa-prescription-bottle-alt"></i>
+                    </button>
+                    ${isMain ? `<button class="btn btn-sm btn-outline-primary" onclick="openAddSubModal(${node.id})">+ Sub</button>` : ''}
+                </div>
+            </div>`;
+
+            if (hasChildren) {
+                html += `<div id="${childrenId}" style="display:none;margin-left:25px;">`;
+                children.forEach(child => {
+                    html += createUnitNode(child, [], false);
+                });
+                html += `</div>`;
             }
 
+            return html;
+        }
+
+        function toggleChildren(id) {
+            $('#' + id).slideToggle();
+        }
+
+        // Open Add/Edit Modal
+        $('#addUnitBtn').on('click', function () {
+            $('#editId').val('');
+            $('#name').val('');
+            $('#radioMain').prop('checked', false);
+            $('#radioSub').prop('checked', false);
+            $('#mainId').val('');
+            $('#mainSelectDiv').hide();
+            $('#unitModal .modal-title').text('Add Unit');
+            $('#unitModal').modal('show');
+        });
+
+         function openEditModal(id, isMain) {
+            const unit = unitData.find(u => u.id === id);
+            if (!unit) return;
+
+            $('#editId').val(unit.id);
+            $('#name').val(unit.name);
+            if (isMain) {
+                $('#radioMain').prop('checked', true);
+                $('#mainSelectDiv').hide();
+                $('#mainUnitId').val('');
+            } else {
+                $('#radioSub').prop('checked', true);
+                $('#mainSelectDiv').show();
+                loadMainUnits(); // reload main units dropdown
+                $('#mainUnitId').val(unit.mainId); // set selected main
+            }
+
+            $('#unitModal .modal-title').text('Edit Unit');
+            $('#unitModal').modal('show');
+        }
+
+        function openAddSubModal(mainId) {
+            $('#editId').val('');
+            $('#name').val('');
+            $('#radioSub').prop('checked', true);
+            $('#mainSelectDiv').show();
+            $('#mainId').val(mainId);
+            $('#unitModal .modal-title').text('Add Sub Unit');
+            $('#unitModal').modal('show');
+        }
+
+        // Handle type selection
+        $('input[name="type"]').change(function () {
+            if ($(this).val() === 'sub') {
+                $('#mainSelectDiv').show();
+                const mainSelect = $('#mainId');
+                mainSelect.empty().append('<option value="">Choose main unit...</option>');
+                unitData.filter(x => x.isMain).forEach(u => {
+                    mainSelect.append(`<option value="${u.id}">${u.name}</option>`);
+                });
+            } else {
+                $('#mainSelectDiv').hide();
+                $('#mainId').val('');
+            }
+        });
+
+         $('#saveUnitBtn').on('click', function () {
+            const name = $('#name').val().trim();
+            const isMain = $('#radioMain').is(':checked');
+            const isSub = $('#radioSub').is(':checked');
+            const mainId = $('#mainUnitId').val();
+            const id = $('#editId').val();
+
+            if (!name) { toastr.warning('Enter Unit Name'); return; }
+            if (!isMain && !isSub) { toastr.warning('Select type'); return; }
+            if (isSub && !mainId) { toastr.warning('Select Main Unit'); return; }
+
+            const model = {
+                Id: id ? parseInt(id) : 0,
+                Name: name,
+                IsMain: isMain,
+                IsSub: isSub,
+                MainId: isSub ? parseInt(mainId) : null
+            };
+
             $.ajax({
-            url: '@Url.Action("AddUnit", "Lists")',
+                url: '@Url.Action("SaveUnit", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ Name: name }),
+                data: JSON.stringify(model),
                 success: function (res) {
                     if (res.status) {
-                        const modalEl = document.getElementById("addUnitModal");
-                        const modal = bootstrap.Modal.getInstance(modalEl);
-                        modal.hide();
-                        $("#addUnitForm")[0].reset();
-                        toastr.success('Unit Added Successfully!');
-                        // Optional reload after short delay
-                        setTimeout(function () {
-                            location.reload();
-                        }, 1500);
+                        toastr.success('Saved successfully');
+                        $('#unitModal').modal('hide');
+                        loadUnits(); // reload tree
                     } else {
-                        toastr.error(res.message || 'Failed to add unit');
+                        toastr.error(res.message);
                     }
                 },
                 error: function (xhr) {
-                    toastr.error("Error: " + xhr.responseText);
+                    toastr.error(xhr.responseJSON?.message || 'Something went wrong');
                 }
             });
-        }
-
-          $(document).on('click', '.editUnitBtn', function () {
-            const unit = $(this).data('unit'); // parses the data-unit JSON automatically
-            openEditModal(unit.id, unit.unitName);
         });
 
-          function openEditModal(id, name) {
-            $("#editUnitId").val(id);
-            $("#editUnitName").val(name);
-            const modal = new bootstrap.Modal(document.getElementById("editUnitModal"));
-            modal.show();
-        }
-
-           function updateUnit() {
-            const id = $("#editUnitId").val();
-            const name = $("#editUnitName").val();
-
-            if (!name.trim()) {
-                alert("Please enter a unit name.");
-                return;
-            }
+        function deleteSubUnit(id) {
+            if (!confirm('Delete this Sub Unit?')) return;
 
             $.ajax({
-               url: '@Url.Action("EditUnit", "Lists")',
+                url: '@Url.Action("DeleteSubUnit", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ id: id, name: name }),
-                success: function(res) {
+                data: JSON.stringify(id),
+                success: function (res) {
                     if (res.status) {
-                        const modalEl = document.getElementById("editUnitModal");
-                        const modal = bootstrap.Modal.getInstance(modalEl);
-                        modal.hide();
-                        toastr.success('Unit Edited Successfully!');
-                        setTimeout(() => location.reload(), 1500);
+                        toastr.success('Deleted successfully');
+                        loadUnits();
                     } else {
                         toastr.error(res.message);
-                    }
-                },
-                error: function(xhr) {
-                    if (xhr.status === 409) {
-                        toastr.warning('Unit name already exists.');
-                    } else {
-                        toastr.error('Error updating unit.');
                     }
                 }
             });
         }
 
-          function deleteUnit(id) {
-            if (!confirm("Are you sure you want to delete this unit?")) return;
+        function deleteMainUnit(id) {
+            if (!confirm('Delete this Main Unit and all its subunits?')) return;
 
             $.ajax({
-                url: '@Url.Action("DeleteUnit", "Lists")' + '?id=' + id,
+                url: '@Url.Action("DeleteMainUnit", "Lists")',
                 type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(id),
                 success: function(res) {
                     if (res.status) {
-                        toastr.success('Unit Deleted Successfully!');
-                        setTimeout(() => location.reload(), 1500);
+                        toastr.success('Main Unit deleted successfully');
+                        loadUnits();
                     } else {
                         toastr.error(res.message);
                     }
                 },
                 error: function(xhr) {
-                    toastr.error('Error deleting unit.');
+                    toastr.error(xhr.responseJSON?.message || 'Failed to delete Main Unit');
                 }
             });
         }
 
-           document.addEventListener("DOMContentLoaded", loadUnits);
+        function loadMainUnits() {
+            $.ajax({
+                url: '/Lists/GetMainUnits', 
+                type: 'GET',
+                success: function(res) {
+                    const ddl = $('#mainUnitId'); 
+                    ddl.empty().append('<option value="">Choose main unit...</option>');
+
+                    if (res.status && res.data.length > 0) {
+                        res.data.forEach(u => {
+                            ddl.append(`<option value="${u.id}">${u.name}</option>`);
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Failed to load main units');
+                }
+            });
+        }
+
+        $('#radioSub').change(function() {
+            $('#mainSelectDiv').show();
+            loadMainUnits();
+        });
+
+        $('#radioMain').change(function() {
+            $('#mainSelectDiv').hide();
+            $('#mainUnitId').val('');
+        });
+
+        $(document).ready(function () {
+            loadUnits();
+            loadMainUnits();
+        });
     </script>
 }

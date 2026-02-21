@@ -336,10 +336,16 @@ namespace YamyProject.Core.Models
 
     public class UnitRequest
     {
-        public int? UnitId { get; set; }
+        public int Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public bool IsMain { get; set; }
+        public bool IsSub { get; set; }
+        public int? MainId { get; set; }
+        public int? UnitId { get; set; }   
         public decimal? Factor { get; set; }
+    
     }
-
     public class AssemblyRequest
     {
         public int? ItemId { get; set; }
