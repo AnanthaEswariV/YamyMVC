@@ -1,10 +1,7 @@
 ﻿@{
-
     ViewData["Title"] = "ChartOfAccount";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-
-
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
@@ -80,8 +77,6 @@
         </div>
     </div>
 </div>
-
-
 
 <!-- COA - New Account Modal -->
 <div class="modal fade" id="coaModal" tabindex="-1" aria-labelledby="coaModalLabel" aria-hidden="true">
@@ -172,15 +167,13 @@
     </div>
 </div>
 
-
-
-
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -515,26 +508,11 @@
 
         }
     </style>
-    <script>
-               $(function () {
-           
 
-            // --- Render empty state ---
-            function renderEmpty(title, message) {
-                return `
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    <h3>${title}</h3>
-                    <p>${message || ''}</p>
-                </div>
-                `;
-            }
-               
-            // --- Build tree recursively ---
+    <script>
+        $(function () {
+
+            // --- Build tree recursively (unchanged except edit handler change) ---
             function buildTree(nodes, container) {
                 container.empty();
                 const ul = $("<ul></ul>");
@@ -547,15 +525,14 @@
                 const li = $("<li>").addClass(`level-${level}`);
                 const nodeDiv = $("<div>").addClass(`tree-node level-${level}`);
 
-                // --- Normalize values ---
                 const id = node.id ?? '';
                 const code = node.code ?? '';
                 const name = node.name ?? '';
                 const debit = (node.debit === 0 || node.debit) ? node.debit : '';
                 const credit = (node.credit === 0 || node.credit) ? node.credit : '';
                 const date = formatDateForInput(node.date ?? node.due ?? '');
-                const costCenter  = node.costCenter  ?? '';
-                // --- Attach data attributes ---
+                const costCenter = node.costCenter ?? '';
+
                 nodeDiv.attr({
                     'data-id': id,
                     'data-code': code,
@@ -563,10 +540,9 @@
                     'data-debit': debit,
                     'data-credit': credit,
                     'data-date': date,
-                     'data-costCenter': costCenter
+                    'data-costCenter': costCenter
                 });
 
-                // --- Toggle / dot ---
                 if (node.children && Array.isArray(node.children) && node.children.length) {
                     const toggle = $("<div class='toggle'>▶</div>");
                     toggle.on("click", function (e) {
@@ -590,7 +566,7 @@
                 infoDiv.append(`<div class='account-name'>${name}</div>`);
                 nodeDiv.append(infoDiv);
 
-                // --- Actions for level 4 ---
+                // --- Actions for level 4 (use coaModal edit so dropdowns show) ---
                 if (level === 3) {
                     const actionContainer = $("<div class='action-container'></div>");
                     const editBtn = $(`<button class="btn btn-sm btn-outline-primary ms-2" title="Edit"><i class="fas fa-pen"></i></button>`);
@@ -598,28 +574,19 @@
                     editBtn.on("click", e => {
                         e.stopPropagation();
                         const $node = $(e.currentTarget).closest('.tree-node');
-                        openEditModal(
-                            $node.attr('data-id'),
-                            $node.attr('data-name'),
-                            $node.attr('data-debit'),
-                            $node.attr('data-credit'),
-                            $node.attr('data-date'),
-                            $node.attr('data-costCenter')
-                        );
+                        const nid = $node.attr('data-id');
+                        openCoaEditModal(nid);
                     });
 
-                          const deleteBtn = $(`<button class="btn btn-sm btn-outline-danger ms-2" title="Delete"><i class="fas fa-trash-alt"></i></button>`);
+                    const deleteBtn = $(`<button class="btn btn-sm btn-outline-danger ms-2" title="Delete"><i class="fas fa-trash-alt"></i></button>`);
 
-        deleteBtn.on("click", e => {
-            e.stopPropagation();
-            const $node = $(e.currentTarget).closest('.tree-node');
-            const nid = $node.attr('data-id');
-            const nname = $node.attr('data-name');
-
-            // Call the ajax delete function
-            deleteLevel4Account(nid, nname);
-        });
-
+                    deleteBtn.on("click", e => {
+                        e.stopPropagation();
+                        const $node = $(e.currentTarget).closest('.tree-node');
+                        const nid = $node.attr('data-id');
+                        const nname = $node.attr('data-name');
+                        deleteLevel4Account(nid, nname);
+                    });
 
                     actionContainer.append(editBtn, deleteBtn);
                     nodeDiv.append(actionContainer);
@@ -634,7 +601,6 @@
 
                 li.append(nodeDiv);
 
-                // --- Recursion for children ---
                 if (node.children && Array.isArray(node.children) && node.children.length) {
                     const childUl = $("<ul></ul>").hide();
                     node.children.forEach(child => childUl.append(createNodeLi(child, level + 1)));
@@ -644,7 +610,7 @@
                 return li;
             }
 
-            // --- Search setup ---
+            // --- Search setup (unchanged) ---
             function setupSearch() {
                 $('#searchInput').on('input', function () {
                     const searchTerm = $(this).val().toLowerCase().trim();
@@ -672,182 +638,282 @@
                 });
             }
 
-            // --- Load tree ---
+            // --- Load chart of accounts (unchanged) ---
             function loadChartOfAccounts() {
                 $("#coaTree").html('<div class="loading"><div class="spinner"></div>Loading accounts...</div>');
-                      $.getJSON('@Url.Action("GetCOA", "Lists")').done(function (data) {
-                        if (data && data.status === false) {
-                            $("#coaTree").html(renderEmpty("Unable to Load Accounts", data.message));
-                            return;
-                        }
-                        let nodes = (data && data.data && Array.isArray(data.data)) ? data.data : data;
-                        if (!Array.isArray(nodes)) {
-                            $("#coaTree").html(renderEmpty("Data Format Error", "Unexpected data format received from server."));
-                            return;
-                        }
-                        buildTree(nodes, $("#coaTree"));
-                        setupSearch();
-                    })
-                    .fail(function (xhr, status, error) {
-                        $("#coaTree").html(renderEmpty("Connection Error", "Unable to load Chart of Accounts. Please try again."));
-                    });
+                $.getJSON('@Url.Action("GetCOA", "Lists")').done(function (data) {
+                    if (data && data.status === false) {
+                        $("#coaTree").html(renderEmpty("Unable to Load Accounts", data.message));
+                        return;
+                    }
+                    let nodes = (data && data.data && Array.isArray(data.data)) ? data.data : data;
+                    if (!Array.isArray(nodes)) {
+                        $("#coaTree").html(renderEmpty("Data Format Error", "Unexpected data format received from server."));
+                        return;
+                    }
+                    buildTree(nodes, $("#coaTree"));
+                    setupSearch();
+                })
+                .fail(function () {
+                    $("#coaTree").html(renderEmpty("Connection Error", "Unable to load Chart of Accounts. Please try again."));
+                });
             }
 
-
-                       function openEditModal(id, name, debit = 0, credit = 0, date = null, costCenter  = null) {
-
-            $("#editAccountId").val(id);
-            $("#editAccountName").val(name);
-            $("#editDebit").val(debit);
-            $("#editCredit").val(credit);
-            $("#editDate").val(formatDateForInput(date));
-
-            const $editSelect = $(".editcostCenterSelect");
-
-            $.ajax({
-                url: '@Url.Action("GetCostCenters", "Lists")',
-                type: 'GET',
-                success: function(res) {
-                    const data = Array.isArray(res) ? res : (res.data || []);
-
-                    $editSelect.empty().append('<option value="">-- Select --</option>');
-
-                    data.forEach(item => {
-                        $editSelect.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`);
-                    });
-
-                    // ✅ Set the selected value AFTER options are populated
-                    if (costCenter) {
-                        // Convert to string for comparison since HTML values are strings
-                        $editSelect.val(String(costCenter));
-                    }
-
-                    $("#editAccountModal").modal("show");
-                },
-                error: function(xhr) {
-                    toastr.error('Failed to load cost centers');
-                }
-            });
-        }
-
-
-                 $("#saveEditAccount").on("click", function () {
-
-            const payload = {
-                Id: parseInt($("#editAccountId").val()) || 0,
-                Name: $("#editAccountName").val(),
-                Debit: parseFloat($("#editDebit").val()) || 0,
-                Credit: parseFloat($("#editCredit").val()) || 0,
-                Date: $("#editDate").val() || null,
-                CostCenter: $(".editcostCenterSelect").val() || null // ✅ get value from edit dropdown
-            };
-
-            $.ajax({
-                url: '@Url.Action("EditCoaLevel4", "Lists")',
-                type: 'PUT',
-                contentType: "application/json; charset=utf-8",
-                data: JSON.stringify(payload),
-                success: function (res) {
-                    if (res.status) {
-                        toastr.success(res.message || "Account updated successfully");
-                        $("#editAccountModal").modal("hide");
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        toastr.warning(res.message || "Failed to update");
-                    }
-                },
-                error: function () {
-                    toastr.error("Error updating account");
-                }
-            });
-        });
-
-
-
-            function formatDateForInput(d) {
-            if (!d) return '';
-            const dt = new Date(d);
-            if (isNaN(dt.getTime())) return '';
-            const month = (dt.getMonth() + 1).toString().padStart(2, '0');
-            const day = dt.getDate().toString().padStart(2, '0');
-            return `${dt.getFullYear()}-${month}-${day}`;
-        }
-
-
-                function deleteLevel4Account(id, name) {
+            function renderEmpty(title, message) {
+                return `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h3>${title}</h3>
+                    <p>${message || ''}</p>
+                </div>
+                `;
+            }
+         function openCoaEditModal(id) {
             if (!id) {
-                toastr.error("Invalid account selected.");
+                toastr.error("Invalid account id");
                 return;
             }
 
-            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+            const toInt = v => {
+                const n = parseInt(v);
+                return isNaN(n) ? 0 : n;
+            };
 
+            const $modal = $('#coaModal');
+            const $ddl1 = $modal.find('#ddlLevel1');
+            const $ddl2 = $modal.find('#ddlLevel2');
+            const $ddl3 = $modal.find('#ddlLevel3');
+
+            // Fetch Level4 account details
             $.ajax({
-                url: `@Url.Action("DeleteCoaLevel4", "Lists")?id=${id}`, 
-                type: 'DELETE',
+                url: '@Url.Action("GetLevel4AccountById", "Lists")',
+                type: 'GET',
+                data: { id: id },
                 success: function (res) {
-                    if (res.status) {
-                        toastr.success(res.message || "Account deleted successfully");
+                    if (!res || !res.status) {
+                        toastr.error(res?.message || "Failed to load account details");
+                        return;
+                    }
+                    console.log(res);
+                    const d = res.data || {};
+                    d.level1Id = toInt(d.level1Id);
+                    d.level2Id = toInt(d.level2Id);
+                    d.level3Id = toInt(d.level3Id);
+
+                    loadLevel1Options(d);
+                },
+                error: function () {
+                    toastr.error('Failed to fetch account details');
+                }
+            });
+
+            function loadLevel1Options(d) {
+                $.ajax({
+                    url: '@Url.Action("GetLevel1Accounts", "Lists")',
+                    type: 'GET',
+                    success: function (r1) {
+                        $ddl1.empty().append('<option value="">Select Level 1</option>');
+                        if (r1.status && Array.isArray(r1.data)) {
+                            r1.data.forEach(row => $ddl1.append(`<option value="${row.id}">${row.name}</option>`));
+                        }
+
+                        // Append Level1 if missing from list
+                        if (d.level1Id && $ddl1.find(`option[value="${d.level1Id}"]`).length === 0) {
+                            $ddl1.append(`<option value="${d.level1Id}">${d.level1Name || 'Level 1'}</option>`);
+                        }
+
+                        if (d.level1Id) {
+                            $ddl1.val(String(d.level1Id));
+                            loadLevel2Options(d.level1Id, d);
+                        } else {
+                            populateFieldsAndShow(d);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 1 accounts.');
+                        populateFieldsAndShow(d);
+                    }
+                });
+            }
+
+            function loadLevel2Options(level1Id, d) {
+                if (!level1Id) return populateFieldsAndShow(d);
+
+                $.ajax({
+                    url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
+                    type: 'GET',
+                    success: function (r2) {
+                        $ddl2.empty().append('<option value="">Select Level 2</option>');
+                        if (r2.status && Array.isArray(r2.data)) {
+                            r2.data.forEach(row => $ddl2.append(`<option value="${row.id}">${row.name}</option>`));
+                        }
+
+                        // Append Level2 if missing
+                        if (d.level2Id && $ddl2.find(`option[value="${d.level2Id}"]`).length === 0) {
+                            $ddl2.append(`<option value="${d.level2Id}">${d.level2Name || 'Level 2'}</option>`);
+                        }
+
+                        if (d.level2Id) {
+                            $ddl2.val(String(d.level2Id));
+                            loadLevel3Options(d.level2Id, d);
+                        } else if (d.level3Id) {
+                            // Try to resolve Level2 from Level3
+                            $.ajax({
+                                url: '@Url.Action("GetLevel3ById", "Lists")',
+                                type: 'GET',
+                                data: { id: d.level3Id },
+                                success: function (rL3) {
+                                    const resolvedLevel2Id = toInt(rL3?.data?.lvl2Id || rL3?.data?.level2Id || 0);
+                                    const resolvedLevel2Name = rL3?.data?.level2Name || d.level2Name || '';
+                                    if (resolvedLevel2Id > 0) {
+                                        if ($ddl2.find(`option[value="${resolvedLevel2Id}"]`).length === 0) {
+                                            $ddl2.append(`<option value="${resolvedLevel2Id}">${resolvedLevel2Name || 'Level 2'}</option>`);
+                                        }
+                                        $ddl2.val(String(resolvedLevel2Id));
+                                        loadLevel3Options(resolvedLevel2Id, d);
+                                    } else {
+                                        loadLevel3Options(0, d);
+                                    }
+                                },
+                                error: function () {
+                                    loadLevel3Options(0, d);
+                                }
+                            });
+                        } else {
+                            populateFieldsAndShow(d);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 2 accounts.');
+                        populateFieldsAndShow(d);
+                    }
+                });
+            }
+
+            function loadLevel3Options(level2Id, d) {
+                $ddl3.empty().append('<option value="">Select Level 3</option>');
+
+                if (!level2Id || level2Id <= 0) {
+                    if (d.level3Id) {
+                        $ddl3.append(`<option value="${d.level3Id}">${d.level3Name || 'Level 3'}</option>`);
+                        $ddl3.val(String(d.level3Id));
+                    }
+                    return populateFieldsAndShow(d);
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetLevel3AccountsByLevel2", "Lists")' + '?id=' + level2Id,
+                    type: 'GET',
+                    success: function (r3) {
+                        if (r3.status && Array.isArray(r3.data)) {
+                            r3.data.forEach(row => $ddl3.append(`<option value="${row.id}">${row.name}</option>`));
+                        }
+
+                        if (d.level3Id && $ddl3.find(`option[value="${d.level3Id}"]`).length === 0) {
+                            $ddl3.append(`<option value="${d.level3Id}">${d.level3Name || 'Level 3'}</option>`);
+                        }
+
+                        if (d.level3Id) $ddl3.val(String(d.level3Id));
+                        populateFieldsAndShow(d);
+                    },
+                    error: function () {
+                        toastr.error('Failed to load Level 3 accounts.');
+                        populateFieldsAndShow(d);
+                    }
+                });
+            }
+       // Add this flag at the top of your $(function() { ... })
+let isEditMode = false;
+
+// In openCoaEditModal, set the flag BEFORE showing the modal
+function populateFieldsAndShow(d) {
+    const id = d.level4Id || d.Id || 0;
+    const name = d.level4Name || d.level4 || d.name || "";
+    const debit = (d.debit !== undefined && d.debit !== null) ? d.debit : 0;
+    const credit = (d.credit !== undefined && d.credit !== null) ? d.credit : 0;
+    const dateVal = d.date ? d.date.toString().slice(0, 10) : '';
+    const costCenter = (d.costCenter !== undefined && d.costCenter !== null) ? String(d.costCenter) : '';
+
+    const $modal = $('#coaModal');
+    $modal.find('#level4Id').val(id);
+    $modal.find('#txtLevel4').val(name);
+    $modal.find('#txtDebit').val(debit);
+    $modal.find('#txtCredit').val(credit);
+    $modal.find('#txtDate').val(dateVal);
+    $modal.find('#coaModalLabel').text('Edit Level 4 Account');
+
+    isEditMode = true; // ✅ Set flag BEFORE showing modal
+
+    populateAndSelectCostCenter(function () {
+        $modal.find('.costCenterSelect, .editcostCenterSelect').val(costCenter);
+    });
+
+    const modalEl = document.getElementById('coaModal');
+    if (modalEl && window.bootstrap) {
+        new bootstrap.Modal(modalEl).show();
+    } else {
+        $modal.modal('show');
+    }
+}
+        }
+            // --- Delete Level4 (unchanged) ---
+            function deleteLevel4Account(id, name) {
+                if (!id) {
+                    toastr.error("Invalid account selected.");
+                    return;
+                }
+
+                if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
+                $.ajax({
+                    url: `@Url.Action("DeleteCoaLevel4", "Lists")?id=${id}`,
+                    type: 'DELETE',
+                    success: function (res) {
+                        if (res.status) {
+                            toastr.success(res.message || "Account deleted successfully");
                             setTimeout(function () {
                                 location.reload();
                             }, 1500);
-                    } else {
-                        toastr.error(res.message || "Failed to delete account");
+                        } else {
+                            toastr.error(res.message || "Failed to delete account");
+                        }
+                    },
+                    error: function (xhr) {
+                        toastr.error(xhr.responseJSON?.message || xhr.statusText || "Error deleting account");
                     }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || "Error deleting account");
-                }
-            });
-        }
+                });
+            }
 
-
+            // --- format helper ---
+            function formatDateForInput(d) {
+                if (!d) return '';
+                const dt = new Date(d);
+                if (isNaN(dt.getTime())) return '';
+                const month = (dt.getMonth() + 1).toString().padStart(2, '0');
+                const day = dt.getDate().toString().padStart(2, '0');
+                return `${dt.getFullYear()}-${month}-${day}`;
+            }
 
             // --- Initial load ---
             loadChartOfAccounts();
 
-            // Expose edit modal for debugging
-            window.openEditModal = openEditModal;
-        });
+            // expose for debugging if needed
+            window.openCoaEditModal = openCoaEditModal;
 
-               function populateAndSelectCostCenter() {
-            $.ajax({
-                url: '@Url.Action("GetCostCenters", "Lists")',
-                type: 'GET',
-                success: function (res) {
-                    const data = Array.isArray(res) ? res : (res.data || []);
-                    if (!data.length) return;
+            // --- populate cost centers (called on ready) ---
+            populateAndSelectCostCenter();
 
-                    const allSelects = $('.costCenterSelect, .editcostCenterSelect');
-
-                    allSelects.each(function () {
-                        const $select = $(this);
-                        const selectedId = $select.data('selected-id');
-
-                        $select.empty().append('<option value="">-- Select --</option>');
-
-                        $.each(data, function (i, item) {
-                            const isSelected = String(item.id) === String(selectedId);
-                            const option = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`;
-                            $select.append(option);
-                        });
-                    });
-                }
-            });
-        }
-
-
-
-
-        $(document).ready(function () {
-              populateAndSelectCostCenter();
-            // Load LEVEL 1 (All)
+            // --- Level1/2/3 loaders used by add modal ---
             function loadLevel1() {
                 $.ajax({
-                   url: `@Url.Action("GetLevel1Accounts", "Lists")`,
+                    url: `@Url.Action("GetLevel1Accounts", "Lists")`,
                     type: 'GET',
                     success: function (res) {
-                        const $ddl1 = $('#coaModal select').eq(0);
+                        const $ddl1 = $('#ddlLevel1');
                         $ddl1.empty().append('<option value="">Select Level 1</option>');
                         if (res.status && res.data?.length > 0) {
                             res.data.forEach(row => {
@@ -861,21 +927,18 @@
                 });
             }
 
-            // Load LEVEL 2 based on selected Level 1
             function loadLevel2(level1Id) {
-                const $ddl2 = $('#coaModal select').eq(1);
-                const $ddl3 = $('#coaModal select').eq(2);
+                const $ddl2 = $('#ddlLevel2');
+                const $ddl3 = $('#ddlLevel3');
                 $ddl2.empty().append('<option value="">Select Level 2</option>');
                 $ddl3.empty().append('<option value="">Select Level 3</option>');
                 if (!level1Id) return;
                 $.ajax({
-                   url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
+                    url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
                     type: 'GET',
                     success: function (res) {
                         if (res.status && res.data?.length > 0) {
-                            res.data.forEach(row => {
-                                $ddl2.append(`<option value="${row.id}">${row.name}</option>`);
-                            });
+                            res.data.forEach(row => $ddl2.append(`<option value="${row.id}">${row.name}</option>`));
                         }
                     },
                     error: function () {
@@ -884,20 +947,16 @@
                 });
             }
 
-            // Load LEVEL 3 based on selected Level 2
             function loadLevel3(level2Id) {
-                const $ddl3 = $('#coaModal select').eq(2);
+                const $ddl3 = $('#ddlLevel3');
                 $ddl3.empty().append('<option value="">Select Level 3</option>');
                 if (!level2Id) return;
-
                 $.ajax({
                     url: '@Url.Action("GetLevel3AccountsByLevel2", "Lists")' + '?id=' + level2Id,
                     type: 'GET',
                     success: function (res) {
                         if (res.status && res.data?.length > 0) {
-                            res.data.forEach(row => {
-                                $ddl3.append(`<option value="${row.id}">${row.name}</option>`);
-                            });
+                            res.data.forEach(row => $ddl3.append(`<option value="${row.id}">${row.name}</option>`));
                         }
                     },
                     error: function () {
@@ -906,88 +965,128 @@
                 });
             }
 
-            // When modal opens → load Level 1
-            $('#coaModal').on('shown.bs.modal', function () {
-                loadLevel1();
-                $('#coaModal select').eq(1).empty().append('<option value="">Select Level 2</option>');
-                $('#coaModal select').eq(2).empty().append('<option value="">Select Level 3</option>');
+             // Update the shown.bs.modal handler to skip reset in edit mode
+$('#coaModal').on('shown.bs.modal', function () {
+    if (isEditMode) {
+        isEditMode = false; // ✅ Reset flag, skip overwriting dropdowns
+        return;
+    }
+    // Only runs for Add mode
+    loadLevel1();
+    $('#ddlLevel2').empty().append('<option value="">Select Level 2</option>');
+    $('#ddlLevel3').empty().append('<option value="">Select Level 3</option>');
+});
+
+            $('#ddlLevel1').on('change', function () {
+                loadLevel2($(this).val());
             });
 
-            // On Level 1 change → load Level 2
-            $('#coaModal select').eq(0).on('change', function () {
-                const level1Id = $(this).val();
-                loadLevel2(level1Id);
+            $('#ddlLevel2').on('change', function () {
+                loadLevel3($(this).val());
             });
 
-            // On Level 2 change → load Level 3
-            $('#coaModal select').eq(1).on('change', function () {
-                const level2Id = $(this).val();
-                loadLevel3(level2Id);
-            });
+            // --- Submit form: create or update Level4 ---
+            $('#coaForm').on('submit', function (e) {
+                e.preventDefault();
+                const form = this;
 
-               // 🔹 Submit form
-              $('#coaForm').on('submit', function (e) {
-            e.preventDefault();
-            const form = this;
+                if (!form.checkValidity()) {
+                    form.classList.add('was-validated');
+                    return;
+                }
 
-            if (!form.checkValidity()) {
-                form.classList.add('was-validated');
-                return;
-            }
+                const idVal = $('#level4Id').val();
+                const isEdit = idVal && parseInt(idVal) > 0;
 
-            const idVal = $('#level4Id').val();
-            const isEdit = idVal && parseInt(idVal) > 0;
+                const debitVal = parseFloat($('#txtDebit').val()) || 0;
+                const creditVal = parseFloat($('#txtCredit').val()) || 0;
+                const dateVal = $('#txtDate').val() || null;
 
-            const debitVal = parseFloat($('#txtDebit').val()) || 0;
-            const creditVal = parseFloat($('#txtCredit').val()) || 0;
-            const dateVal = $('#txtDate').val() || null;
+                const costCenterVal = $('.costCenterSelect').val() || null;
 
-            const costCenterVal = isEdit
-                ? $('.editcostCenterSelect').val() || null
-                : $('.costCenterSelect').val() || null;
+                const payload = {
+                    Id: isEdit ? parseInt(idVal) : 0,
+                    Name: $('#txtLevel4').val().trim(),
+                    Level3Id: parseInt($('#ddlLevel3').val() || 0),
+                    Debit: debitVal,
+                    Credit: creditVal,
+                    Date: dateVal,
+                    CostCenter: costCenterVal
+                };
 
-            const payload = {
-                Id: isEdit ? parseInt(idVal) : 0,
-                Name: $('#txtLevel4').val().trim(),
-                Level3Id: parseInt($('#ddlLevel3').val()),
-                Debit: debitVal,
-                Credit: creditVal,
-                Date: dateVal,
-                CostCenter: costCenterVal
-            };
-
-            $.ajax({
-                url: isEdit
-                    ? '@Url.Action("UpdateLevel4Account", "Lists")'
-                    : '@Url.Action("AddLevel4Account", "Lists")',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(payload),
-                success: function (res) {
-                    if (res.status) {
-                        toastr.success(isEdit ? 'Level 4 Account updated successfully' : 'Level 4 Account added successfully');
-                        $('#coaModal').modal('hide');
-                        $('#coaForm')[0].reset();
-                        $('#level4Id').val(0);
-                        $('#coaModalLabel').text('COA - New Account');
-                        form.classList.remove('was-validated');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        toastr.error(res.message);
-                    }
-                },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                if (isEdit) {
+                    $.ajax({
+                        url: '@Url.Action("EditCoaLevel4", "Lists")',
+                        type: 'PUT',
+                        contentType: 'application/json; charset=utf-8',
+                        data: JSON.stringify(payload),
+                        success: function (res) {
+                            if (res.status) {
+                                toastr.success(res.message || 'Level 4 Account updated successfully');
+                                $('#coaModal').modal('hide');
+                                $('#coaForm')[0].reset();
+                                $('#level4Id').val(0);
+                                $('#coaModalLabel').text('COA - New Account');
+                                form.classList.remove('was-validated');
+                                setTimeout(() => location.reload(), 1000);
+                            } else {
+                                toastr.error(res.message || 'Failed to update account');
+                            }
+                        },
+                        error: function (xhr) {
+                            toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Error updating account');
+                        }
+                    });
+                } else {
+                    $.ajax({
+                        url: '@Url.Action("AddLevel4Account", "Lists")',
+                        type: 'POST',
+                        contentType: 'application/json; charset=utf-8',
+                        data: JSON.stringify(payload),
+                        success: function (res) {
+                            if (res.status) {
+                                toastr.success(res.message || 'Level 4 Account added successfully');
+                                $('#coaModal').modal('hide');
+                                $('#coaForm')[0].reset();
+                                $('#level4Id').val(0);
+                                $('#coaModalLabel').text('COA - New Account');
+                                form.classList.remove('was-validated');
+                                setTimeout(() => location.reload(), 1000);
+                            } else {
+                                toastr.error(res.message || 'Failed to add account');
+                            }
+                        },
+                        error: function (xhr) {
+                            toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Error adding account');
+                        }
+                    });
                 }
             });
+
+            // --- populateCostCenters function (unchanged, ensure it's called on ready) ---
+           function populateAndSelectCostCenter(callback) {
+    $.ajax({
+        url: '@Url.Action("GetCostCenters", "Lists")',
+        type: 'GET',
+        success: function (res) {
+            const data = Array.isArray(res) ? res : (res.data || []);
+            
+            const allSelects = $('.costCenterSelect, .editcostCenterSelect');
+            allSelects.each(function () {
+                const $select = $(this);
+                const selectedId = $select.data('selected-id');
+                $select.empty().append('<option value="">-- Select --</option>');
+                $.each(data, function (i, item) {
+                    const isSelected = String(item.id) === String(selectedId);
+                    $select.append(`<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`);
+                });
+            });
+
+            if (typeof callback === 'function') callback(); // ✅ Fire after options loaded
+        }
+    });
+}
+
         });
-
-
-
-        });
-
-
-   
-
     </script>
 }

@@ -1318,17 +1318,19 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                         return BadRequest(new { status = false, message = "Account name already exists." });
                 }
 
-                // 🔹 Update ONLY allowed fields
+                // In EditCoaLevel4, update the SQL:
                 using (var cmd = new MySqlCommand(@"
-            UPDATE tbl_coa_level_4
-            SET name = @name,
-                debit = @debit,
-                credit = @credit,
-                date = @date,
-                costCenter = @costCenter
-            WHERE id = @id", conn))
+    UPDATE tbl_coa_level_4
+    SET name = @name,
+        main_id = @level3Id, -- allow changing parent
+        debit = @debit,
+        credit = @credit,
+        date = @date,
+        costCenter = @costCenter
+    WHERE id = @id", conn))
                 {
                     cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@level3Id", model.Level3Id); // new parent
                     cmd.Parameters.AddWithValue("@debit", model.Debit ?? 0);
                     cmd.Parameters.AddWithValue("@credit", model.Credit ?? 0);
                     cmd.Parameters.AddWithValue("@date", model.Date ?? DateTime.Now);
@@ -1336,7 +1338,6 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@costCenter", model.CostCenter ?? 0);
                     await cmd.ExecuteNonQueryAsync();
                 }
-
                 // 🔹 Handle Opening Balance
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
@@ -1387,7 +1388,79 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        [HttpGet]
+        public async Task<IActionResult> GetLevel4AccountById(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { status = false, message = "Invalid Level 4 ID" });
 
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                l4.id AS Level4Id,
+                l4.name AS Level4Name,
+                l4.code AS Level4Code,
+                l4.debit AS Debit,
+                l4.credit AS Credit,
+                l4.date AS Date,
+                IFNULL(l4.costcenter, 0) AS CostCenter,
+                l4.main_id AS Level3Id,
+                l3.name AS Level3Name,
+                l3.main_id AS Level2Id,
+                l2.name AS Level2Name,
+                l2.main_id AS Level1Id,
+                l1.name AS Level1Name
+            FROM tbl_coa_level_4 l4
+            INNER JOIN tbl_coa_level_3 l3 ON l4.main_id = l3.id
+            INNER JOIN tbl_coa_level_2 l2 ON l3.main_id = l2.id
+            INNER JOIN tbl_coa_level_1 l1 ON l2.main_id = l1.id
+            WHERE l4.id = @id
+            LIMIT 1;";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var data = new
+                    {
+                        Level4Id = reader["Level4Id"] is DBNull ? 0 : Convert.ToInt32(reader["Level4Id"]),
+                        Level4Name = reader["Level4Name"]?.ToString() ?? "",
+                        Level4Code = reader["Level4Code"]?.ToString() ?? "",
+                        Debit = reader["Debit"] != DBNull.Value ? Convert.ToDecimal(reader["Debit"]) : 0,
+                        Credit = reader["Credit"] != DBNull.Value ? Convert.ToDecimal(reader["Credit"]) : 0,
+                        Date = reader["Date"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(reader["Date"]),
+                        CostCenter = reader["CostCenter"] != DBNull.Value ? Convert.ToInt32(reader["CostCenter"]) : 0,
+                        Level3Id = reader["Level3Id"] != DBNull.Value ? Convert.ToInt32(reader["Level3Id"]) : 0,
+                        Level3Name = reader["Level3Name"]?.ToString() ?? "",
+                        Level2Id = reader["Level2Id"] != DBNull.Value ? Convert.ToInt32(reader["Level2Id"]) : 0,
+                        Level2Name = reader["Level2Name"]?.ToString() ?? "",
+                        Level1Id = reader["Level1Id"] != DBNull.Value ? Convert.ToInt32(reader["Level1Id"]) : 0,
+                        Level1Name = reader["Level1Name"]?.ToString() ?? ""
+                    };
+
+                    return Ok(new { status = true, data });
+                }
+                else
+                {
+                    return NotFound(new { status = false, message = "Level 4 account not found." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
         [HttpDelete]
         public async Task<IActionResult> DeleteCoaLevel4(int id)
         {
