@@ -1,6 +1,4 @@
-﻿    using Microsoft.CodeAnalysis.Elfie.Diagnostics;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     [Route("Lists/[action]")]
     public class ListsController : Controller

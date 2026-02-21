@@ -1,9 +1,4 @@
-﻿using Humanizer;
-using Microsoft.AspNetCore.Identity.Data;
-using System.Linq;
-using YamyProject.Core.Models.DTOs;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     public class AccountController : Controller
     {
@@ -2034,6 +2029,7 @@ namespace YamyProject.Controllers
                           `project_id` INT NOT NULL DEFAULT 0,
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
                         CREATE TABLE IF NOT EXISTS `tbl_tax` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -8293,12 +8289,12 @@ WHERE payment_id = @receiptId";
 
                     var insertQuery = @"INSERT INTO tbl_receipt_voucher
                 (date, code, type, method, amount, debit_account_id, debit_cost_center_id, 
-                 credit_account_id, credit_cost_center_id, description,
+                 credit_account_id, credit_cost_center_id,
                  bank_id, bank_account_id, book_no, check_name, check_no, check_date,
                  trans_date, trans_name, trans_ref, created_by, created_date, state)
                 VALUES
                 (@date, @code, @type, @method, @amount, @debit_account_id, @debit_cost_center_id,
-                 @credit_account_id, @credit_cost_center_id, @description,
+                 @credit_account_id, @credit_cost_center_id,
                  @bank_id, @bank_account, @book_no, @check_name, @check_no, @check_date,
                  @trans_date, @trans_name, @trans_ref, @created_by, @created_date, 0);
                 SELECT LAST_INSERT_ID();";
@@ -8311,10 +8307,7 @@ WHERE payment_id = @receiptId";
                     cmd.Parameters.AddWithValue("@amount", model.Amount);
                     cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId > 0 ? (object)model.CreditAccountId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@credit_cost_center_id", model.CreditCostCenterId > 0 ? (object)model.CreditCostCenterId : DBNull.Value);
-                    foreach (var inv in model.InvoiceDetails)
-                    {
-                        cmd.Parameters.AddWithValue("@description", inv.Description ?? string.Empty);
-                    }
+                 //   cmd.Parameters.AddWithValue("@description", model.Description ?? "");
                     cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId > 0 ? (object)model.DebitAccountId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@debit_cost_center_id", model.DebitCostCenterId > 0 ? (object)model.DebitCostCenterId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@bank_id", model.Method == "Cheque" && model.BankId.HasValue ? (object)model.BankId.Value : DBNull.Value);
@@ -8370,7 +8363,7 @@ WHERE payment_id = @receiptId";
                     var updateQuery = @"UPDATE tbl_receipt_voucher SET
                 date=@date, code=@code, type=@type, method=@method, amount=@amount,
                 debit_account_id=@debit_account_id, debit_cost_center_id=@debit_cost_center_id,
-                description=@description, credit_account_id=@credit_account_id, credit_cost_center_id=@credit_cost_center_id,
+                 credit_account_id=@credit_account_id, credit_cost_center_id=@credit_cost_center_id,
                 bank_account_id=@bank_account, book_no=@book_no, bank_id=@bank_id, bank_code=@bank_code,
                 check_name=@check_name, check_no=@check_no, check_date=@check_date,
                 trans_date=@trans_date, trans_name=@trans_name, trans_ref=@trans_ref,
@@ -8386,10 +8379,6 @@ WHERE payment_id = @receiptId";
                     cmd.Parameters.AddWithValue("@amount", model.Amount);
                     cmd.Parameters.AddWithValue("@credit_account_id", model.CreditAccountId > 0 ? (object)model.CreditAccountId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@credit_cost_center_id", model.CreditCostCenterId > 0 ? (object)model.CreditCostCenterId : DBNull.Value);
-                    foreach (var inv in model.InvoiceDetails)
-                    {
-                        cmd.Parameters.AddWithValue("@description", inv.Description ?? string.Empty);
-                    }
                     cmd.Parameters.AddWithValue("@debit_account_id", model.DebitAccountId > 0 ? (object)model.DebitAccountId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@debit_cost_center_id", model.DebitCostCenterId > 0 ? (object)model.DebitCostCenterId : DBNull.Value);
                     cmd.Parameters.AddWithValue("@bank_id", model.Method == "Cheque" && model.BankId.HasValue ? (object)model.BankId.Value : DBNull.Value);

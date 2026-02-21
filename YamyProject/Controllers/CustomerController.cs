@@ -1,6 +1,4 @@
-﻿using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     public class CustomerController : Controller
     {
@@ -574,6 +572,242 @@ namespace YamyProject.Controllers
             }
         }
 
+        //[HttpGet]
+        //public async Task<IActionResult> GetInvoices(int id, string startDate = null, string endDate = null)
+        //{
+        //    try
+        //    {
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase"),
+        //        };
+
+        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+
+        //        string query = @"
+        //SELECT
+        //    ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
+        //    t.id,
+        //    t.transaction_id AS InvoiceId,
+        //    t.voucher_no AS VoucherNo,
+        //    t.date,
+        //    ta.name AS AccountName,
+        //    t.type,
+        //    t.debit,
+        //    t.credit
+        //FROM tbl_transaction t
+        //INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+        //WHERE
+        //    t.hum_id = @id 
+        //    AND t.state = 0 
+        //    AND t.type IN (
+        //        'Customer Receipt', 
+        //        'Sales Invoice', 
+        //        'Sales Invoice Cash', 
+        //        'Customer Opening Balance', 
+        //        'Customer Advance Payment',
+        //        'Check Cancel (Customer)', 
+        //        'SalesReturn Invoice', 
+        //        'Credit Note', 
+        //        'PDC Receivable'
+        //    )";
+
+        //        if (!string.IsNullOrEmpty(startDate))
+        //            query += " AND t.date >= @startDate";
+
+        //        if (!string.IsNullOrEmpty(endDate))
+        //            query += " AND t.date <= @endDate";
+
+        //        query += " ORDER BY t.id;";
+
+        //        using var cmd = new MySqlCommand(query, conn);
+        //        cmd.Parameters.AddWithValue("@id", id);
+
+        //        if (!string.IsNullOrEmpty(startDate))
+        //            cmd.Parameters.AddWithValue("@startDate", DateTime.Parse(startDate));
+
+        //        if (!string.IsNullOrEmpty(endDate))
+        //            cmd.Parameters.AddWithValue("@endDate", DateTime.Parse(endDate));
+
+        //        using var reader = await cmd.ExecuteReaderAsync();
+
+        //        var transactions = new List<object>();
+        //        decimal runningBalance = 0;
+        //        decimal totalDebit = 0;
+        //        decimal totalCredit = 0;
+        //        int displaySN = 1;
+
+        //        while (await reader.ReadAsync())
+        //        {
+        //            string type = reader["type"]?.ToString() ?? "";
+
+        //            decimal originalDebit = reader["debit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["debit"]);
+        //            decimal originalCredit = reader["credit"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["credit"]);
+
+        //            string voucherNo = reader["VoucherNo"] == DBNull.Value
+        //                ? $"SV-00{reader["InvoiceId"]}"
+        //                : reader["VoucherNo"].ToString();
+
+        //            string dateStr = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd");
+
+        //            // Sales Invoice Cash: split into sales (credit) and cash receipt (debit)
+        //            if (type.Equals("Sales Invoice Cash", StringComparison.OrdinalIgnoreCase))
+        //            {
+        //                decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+
+        //                // Sales part increases balance (credit)
+        //                runningBalance += amount;
+        //                totalCredit += amount;
+
+        //                transactions.Add(new
+        //                {
+        //                    SN = displaySN++,
+        //                    Id = reader["id"],
+        //                    InvoiceId = reader["InvoiceId"],
+        //                    Date = dateStr,
+        //                    VoucherNo = voucherNo,
+        //                    Type = type,
+        //                    AccountName = reader["AccountName"],
+        //                    Debit = "0.00",
+        //                    Credit = amount.ToString("N2"),
+        //                    Balance = runningBalance.ToString("N2")
+        //                });
+
+        //                // Cash receipt reduces balance (debit)
+        //                runningBalance -= amount;
+        //                totalDebit += amount;
+
+        //                transactions.Add(new
+        //                {
+        //                    SN = displaySN++,
+        //                    Id = reader["id"],
+        //                    InvoiceId = reader["InvoiceId"],
+        //                    Date = dateStr,
+        //                    VoucherNo = voucherNo,
+        //                    Type = "Cash Receipt",
+        //                    AccountName = reader["AccountName"],
+        //                    Debit = amount.ToString("N2"),
+        //                    Credit = "0.00",
+        //                    Balance = runningBalance.ToString("N2")
+        //                });
+        //            }
+        //            // Customer Receipt reduces balance (debit)
+        //            else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase))
+        //            {
+        //                decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
+
+        //                runningBalance -= amount;
+        //                totalDebit += amount;
+
+        //                transactions.Add(new
+        //                {
+        //                    SN = displaySN++,
+        //                    Id = reader["id"],
+        //                    InvoiceId = reader["InvoiceId"],
+        //                    Date = dateStr,
+        //                    VoucherNo = voucherNo,
+        //                    Type = type,
+        //                    AccountName = reader["AccountName"],
+        //                    Debit = amount.ToString("N2"),
+        //                    Credit = "0.00",
+        //                    Balance = runningBalance.ToString("N2")
+        //                });
+        //            }
+        //            // Sales Invoice increases balance (credit)
+        //            else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase)
+        //                || type.Equals("Customer Opening Balance", StringComparison.OrdinalIgnoreCase)
+        //                || type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
+        //            {
+        //                decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+
+        //                runningBalance += amount;
+        //                totalCredit += amount;
+
+        //                transactions.Add(new
+        //                {
+        //                    SN = displaySN++,
+        //                    Id = reader["id"],
+        //                    InvoiceId = reader["InvoiceId"],
+        //                    Date = dateStr,
+        //                    VoucherNo = voucherNo,
+        //                    Type = type,
+        //                    AccountName = reader["AccountName"],
+        //                    Debit = "0.00",
+        //                    Credit = amount.ToString("N2"),
+        //                    Balance = runningBalance.ToString("N2")
+        //                });
+        //            }
+        //            // SalesReturn Invoice, Credit Note, PDC Receivable reduce balance (debit)
+        //            else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase)
+        //                || type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase)
+        //                || type.Equals("PDC Receivable", StringComparison.OrdinalIgnoreCase))
+        //            {
+        //                decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
+
+        //                runningBalance -= amount;
+        //                totalDebit += amount;
+
+        //                transactions.Add(new
+        //                {
+        //                    SN = displaySN++,
+        //                    Id = reader["id"],
+        //                    InvoiceId = reader["InvoiceId"],
+        //                    Date = dateStr,
+        //                    VoucherNo = voucherNo,
+        //                    Type = type,
+        //                    AccountName = reader["AccountName"],
+        //                    Debit = amount.ToString("N2"),
+        //                    Credit = "0.00",
+        //                    Balance = runningBalance.ToString("N2")
+        //                });
+        //            }
+        //            else
+        //            {
+        //                // General case: credit increases balance, debit decreases balance
+        //                runningBalance += originalCredit - originalDebit;
+        //                totalDebit += originalDebit;
+        //                totalCredit += originalCredit;
+
+        //                transactions.Add(new
+        //                {
+        //                    SN = displaySN++,
+        //                    Id = reader["id"],
+        //                    InvoiceId = reader["InvoiceId"],
+        //                    Date = dateStr,
+        //                    VoucherNo = voucherNo,
+        //                    Type = type,
+        //                    AccountName = reader["AccountName"],
+        //                    Debit = originalDebit.ToString("N2"),
+        //                    Credit = originalCredit.ToString("N2"),
+        //                    Balance = runningBalance.ToString("N2")
+        //                });
+        //            }
+        //        }
+
+        //        // Total row
+        //        transactions.Add(new
+        //        {
+        //            SN = "Total",
+        //            Id = "",
+        //            InvoiceId = "",
+        //            Date = "",
+        //            VoucherNo = "",
+        //            Type = "",
+        //            AccountName = "Total",
+        //            Debit = totalDebit.ToString("N2"),
+        //            Credit = totalCredit.ToString("N2"),
+        //            Balance = runningBalance.ToString("N2")
+        //        });
+
+        //        return Ok(new { status = true, data = transactions });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { status = false, message = ex.Message });
+        //    }
+        //}
+
         [HttpGet]
         public async Task<IActionResult> GetInvoices(int id, string startDate = null, string endDate = null)
         {
@@ -588,32 +822,32 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 string query = @"
-        SELECT
-            ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
-            t.id,
-            t.transaction_id AS InvoiceId,
-            t.voucher_no AS VoucherNo,
-            t.date,
-            ta.name AS AccountName,
-            t.type,
-            t.debit,
-            t.credit
-        FROM tbl_transaction t
-        INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
-        WHERE
-            t.hum_id = @id 
-            AND t.state = 0 
-            AND t.type IN (
-                'Customer Receipt', 
-                'Sales Invoice', 
-                'Sales Invoice Cash', 
-                'Customer Opening Balance', 
-                'Customer Advance Payment',
-                'Check Cancel (Customer)', 
-                'SalesReturn Invoice', 
-                'Credit Note', 
-                'PDC Receivable'
-            )";
+SELECT
+    ROW_NUMBER() OVER (ORDER BY t.id) AS SN,
+    t.id,
+    t.transaction_id AS InvoiceId,
+    t.voucher_no AS VoucherNo,
+    t.date,
+    ta.name AS AccountName,
+    t.type,
+    t.debit,
+    t.credit
+FROM tbl_transaction t
+INNER JOIN tbl_coa_level_4 ta ON t.account_id = ta.id
+WHERE
+    t.hum_id = @id 
+    AND t.state = 0 
+    AND t.type IN (
+        'Customer Receipt', 
+        'Sales Invoice', 
+        'Sales Invoice Cash', 
+        'Customer Opening Balance', 
+        'Customer Advance Payment',
+        'Check Cancel (Customer)', 
+        'SalesReturn Invoice', 
+        'Credit Note', 
+        'PDC Receivable'
+    )";
 
                 if (!string.IsNullOrEmpty(startDate))
                     query += " AND t.date >= @startDate";
@@ -652,134 +886,138 @@ namespace YamyProject.Controllers
                         : reader["VoucherNo"].ToString();
 
                     string dateStr = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd");
+                    int transactionId = Convert.ToInt32(reader["id"]);
+                    string invoiceIdStr = reader["InvoiceId"]?.ToString() ?? "";
+                    string accountName = reader["AccountName"]?.ToString() ?? "";
 
-                    // Sales Invoice Cash: split into sales (credit) and cash receipt (debit)
+                    // Sales Invoice Cash: split into sales (debit) and cash receipt (credit)
                     if (type.Equals("Sales Invoice Cash", StringComparison.OrdinalIgnoreCase))
                     {
-                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
-                        // Sales part increases balance (credit)
+                        // Sales part increases balance (debit)
                         runningBalance += amount;
-                        totalCredit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            AccountName = reader["AccountName"],
-                            Debit = "0.00",
-                            Credit = amount.ToString("N2"),
-                            Balance = runningBalance.ToString("N2")
-                        });
-
-                        // Cash receipt reduces balance (debit)
-                        runningBalance -= amount;
                         totalDebit += amount;
 
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
+                            Id = transactionId,
+                            InvoiceId = invoiceIdStr,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            AccountName = accountName,
+                            Debit = amount.ToString("N2"),
+                            Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+
+                        // Cash receipt reduces balance (credit)
+                        runningBalance -= amount;
+                        totalCredit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceIdStr,
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = "Cash Receipt",
-                            AccountName = reader["AccountName"],
-                            Debit = amount.ToString("N2"),
-                            Credit = "0.00",
-                            Balance = runningBalance.ToString("N2")
-                        });
-                    }
-                    // Customer Receipt reduces balance (debit)
-                    else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase))
-                    {
-                        decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
-
-                        runningBalance -= amount;
-                        totalDebit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            AccountName = reader["AccountName"],
-                            Debit = amount.ToString("N2"),
-                            Credit = "0.00",
-                            Balance = runningBalance.ToString("N2")
-                        });
-                    }
-                    // Sales Invoice increases balance (credit)
-                    else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Customer Opening Balance", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
-                    {
-                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
-
-                        runningBalance += amount;
-                        totalCredit += amount;
-
-                        transactions.Add(new
-                        {
-                            SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
-                            Date = dateStr,
-                            VoucherNo = voucherNo,
-                            Type = type,
-                            AccountName = reader["AccountName"],
+                            AccountName = accountName,
                             Debit = "0.00",
                             Credit = amount.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    // SalesReturn Invoice, Credit Note, PDC Receivable reduce balance (debit)
-                    else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase)
+                    // Customer Receipt: credit decreases balance (payment received)
+                    else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Check Cancel (Customer)", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("PDC Receivable", StringComparison.OrdinalIgnoreCase))
+                    {
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+
+                        runningBalance -= amount;
+                        totalCredit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceIdStr,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            AccountName = accountName,
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    // Sales Invoice / Opening Balance: debit increases balance (amount owed)
+                    else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Customer Opening Balance", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
-                        runningBalance -= amount;
+                        runningBalance += amount;
                         totalDebit += amount;
 
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
+                            Id = transactionId,
+                            InvoiceId = invoiceIdStr,
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = type,
-                            AccountName = reader["AccountName"],
+                            AccountName = accountName,
                             Debit = amount.ToString("N2"),
                             Credit = "0.00",
+                            Balance = runningBalance.ToString("N2")
+                        });
+                    }
+                    // SalesReturn / Credit Note: credit decreases balance (return reduces amount owed)
+                    else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase))
+                    {
+                        decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
+
+                        runningBalance -= amount;
+                        totalCredit += amount;
+
+                        transactions.Add(new
+                        {
+                            SN = displaySN++,
+                            Id = transactionId,
+                            InvoiceId = invoiceIdStr,
+                            Date = dateStr,
+                            VoucherNo = voucherNo,
+                            Type = type,
+                            AccountName = accountName,
+                            Debit = "0.00",
+                            Credit = amount.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
                         });
                     }
                     else
                     {
-                        // General case: credit increases balance, debit decreases balance
-                        runningBalance += originalCredit - originalDebit;
+                        // General case: debit increases balance, credit decreases balance
+                        runningBalance += originalDebit - originalCredit;
                         totalDebit += originalDebit;
                         totalCredit += originalCredit;
 
                         transactions.Add(new
                         {
                             SN = displaySN++,
-                            Id = reader["id"],
-                            InvoiceId = reader["InvoiceId"],
+                            Id = transactionId,
+                            InvoiceId = invoiceIdStr,
                             Date = dateStr,
                             VoucherNo = voucherNo,
                             Type = type,
-                            AccountName = reader["AccountName"],
+                            AccountName = accountName,
                             Debit = originalDebit.ToString("N2"),
                             Credit = originalCredit.ToString("N2"),
                             Balance = runningBalance.ToString("N2")
