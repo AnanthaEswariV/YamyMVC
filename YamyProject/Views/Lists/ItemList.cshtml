@@ -709,25 +709,28 @@
                 }
             });
         });
-
         // ===== Load Units =====
-              function loadUnitsDropdown(selector = "#mainUnit") {
-              $.get('/Lists/GetMainUnits', function (res) {
-                const dropdown = $(selector);
-                dropdown.empty().append('<option value="">-- Select Unit --</option>');
+                    function loadUnitsDropdown(selector = "#mainUnit", selectedId = null) {
+                    $.get('/Lists/GetMainUnits', function (res) {
+                      const dropdown = $(selector);
+                      dropdown.empty().append('<option value="">-- Select Unit --</option>');
 
-                if (res && res.status && res.data && res.data.length > 0) {
-                    res.data.forEach(u => {
-                        dropdown.append(`<option value="${u.id}">${u.name}</option>`);
-                    });
-                } else {
-                    dropdown.append('<option value="">No units found</option>');
-                }
-            }).fail(function (err) {
-                console.error("Error loading units:", err);
-                toastr.error("Failed to load units");
-            });
-        }
+                      if (res && res.status && res.data && res.data.length > 0) {
+                          res.data.forEach(u => {
+                              dropdown.append(`<option value="${u.id}">${u.name}</option>`);
+                          });
+                          // If a selectedId was provided, select it
+                          if (selectedId) {
+                              dropdown.val(selectedId);
+                          }
+                      } else {
+                          dropdown.append('<option value="">No units found</option>');
+                      }
+                  }).fail(function (err) {
+                      console.error("Error loading units:", err);
+                      toastr.error("Failed to load units");
+                  });
+              }
 
 
          $(document).on('shown.bs.modal', '#newWarehouseModal', function () {
@@ -1131,61 +1134,44 @@
              });
          }
 
-        function saveUnit() {
-            const name = $("#addUnitName").val();
+              function saveUnit() {
+             const name = $("#addUnitName").val();
 
-            if (!name.trim()) {
-                toastr.warning("Please enter a unit name.");
-                return;
-            }
+             if (!name.trim()) {
+                 toastr.warning("Please enter a unit name.");
+                 return;
+             }
 
-            $.ajax({
-                url: '@Url.Action("AddUnit", "Lists")',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ Name: name }),
-                success: function(res) {
+             $.ajax({
+                 url: '@Url.Action("SaveUnit", "Lists")',
+                 type: 'POST',
+                 contentType: 'application/json',
+                 // send IsMain true to create a MAIN unit (tbl_unit)
+                 data: JSON.stringify({ Name: name, IsMain: true }),
+                 success: function(res) {
+                     if (res && res.status) {
+                         toastr.success(res.message || 'Unit Added Successfully!');
 
-                    if (res && res.status) {
-                        toastr.success(res.message || 'Unit Added Successfully!');
+                         // Close the modal
+                         const modalEl = document.getElementById("addUnitModal");
+                         const modal = bootstrap.Modal.getInstance(modalEl);
+                         if (modal) modal.hide();
 
-                        // ✅ FIXED: Close the MODAL, not the form
-                        const modalEl = document.getElementById("addUnitModal");
-                        const modal = bootstrap.Modal.getInstance(modalEl);
-                        if (modal) {
-                            modal.hide();
-                        }
+                         // Reset the form
+                         $("#addUnitForm")[0].reset();
 
-                        // ✅ Reset the FORM
-                        $("#addUnitForm")[0].reset();
+                         // Always reload the units dropdown and select the new unit (if id returned)
+                         loadUnitsDropdown("#mainUnit", res.id || null);
 
-                        // ✅ Add to dropdown
-                        if (res.id && res.name) {
-
-                            // Remove if already exists (prevent duplicates)
-                            $('#mainUnit option[value="' + res.id + '"]').remove();
-
-                            // Add new option and select it
-                            const newOption = new Option(res.name, res.id, true, true);
-                            $('#mainUnit').append(newOption);
-
-                        } else {
-                            console.error('❌ Missing id or name in response');
-                            console.error('res.id:', res.id);
-                            console.error('res.name:', res.name);
-                        }
-                    } else {
-                        toastr.error(res?.message || 'Failed to add unit');
-                        console.error('❌ Status is false');
-                    }
-                },
-                error: function(xhr) {
-                    console.error('❌ AJAX Error:', xhr);
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Server error');
-                }
-            });
-        }
-
+                     } else {
+                         toastr.error(res?.message || 'Failed to add unit');
+                     }
+                 },
+                 error: function(xhr) {
+                     toastr.error(xhr.responseJSON?.message || xhr.statusText || 'Server error');
+                 }
+             });
+         }
         function updateUnit() {
             const id = parseInt($("#editUnitId").val());
             const name = $("#editUnitName").val();

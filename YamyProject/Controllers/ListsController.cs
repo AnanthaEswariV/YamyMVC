@@ -567,7 +567,7 @@
         [HttpPost]
         public async Task<IActionResult> SaveUnit([FromBody] UnitRequest model)
         {
-            if (string.IsNullOrWhiteSpace(model.Name))
+            if (model == null || string.IsNullOrWhiteSpace(model.Name))
                 return BadRequest(new { status = false, message = "Enter Unit Name" });
 
             var connStrBuilder = new MySqlConnectionStringBuilder(
@@ -577,52 +577,97 @@
                            ?? _config.GetConnectionString("DefaultDatabase")
             };
 
-            using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-            await conn.OpenAsync();
-
-            if (model.IsMain)
+            try
             {
-                if (model.Id > 0)
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // MAIN unit
+                if (model.IsMain)
                 {
-                    string update = "UPDATE tbl_unit SET name=@name WHERE id=@id";
-                    using var cmd = new MySqlCommand(update, conn);
-                    cmd.Parameters.AddWithValue("@name", model.Name);
-                    cmd.Parameters.AddWithValue("@id", model.Id);
-                    await cmd.ExecuteNonQueryAsync();
+                    // Duplicate check (case-insensitive)
+                    string existsQuery = model.Id > 0
+                        ? "SELECT COUNT(*) FROM tbl_unit WHERE LOWER(name) = LOWER(@name) AND id <> @id"
+                        : "SELECT COUNT(*) FROM tbl_unit WHERE LOWER(name) = LOWER(@name)";
+
+                    using (var existsCmd = new MySqlCommand(existsQuery, conn))
+                    {
+                        existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        if (model.Id > 0) existsCmd.Parameters.AddWithValue("@id", model.Id);
+
+                        int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                        if (count > 0)
+                            return Conflict(new { status = false, message = "Main unit name already exists." });
+                    }
+
+                    if (model.Id > 0)
+                    {
+                        string update = "UPDATE tbl_unit SET name=@name WHERE id=@id";
+                        using var cmd = new MySqlCommand(update, conn);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        await cmd.ExecuteNonQueryAsync();
+
+                        return Ok(new { status = true, id = model.Id, name = model.Name.Trim(), message = "Main unit updated successfully." });
+                    }
+                    else
+                    {
+                        string insert = "INSERT INTO tbl_unit (name) VALUES (@name); SELECT LAST_INSERT_ID();";
+                        using var cmd = new MySqlCommand(insert, conn);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        var newIdObj = await cmd.ExecuteScalarAsync();
+                        int newId = Convert.ToInt32(newIdObj);
+                        return Ok(new { status = true, id = newId, name = model.Name.Trim(), message = "Main unit added successfully." });
+                    }
                 }
-                else
+                else // SUB unit
                 {
-                    string insert = "INSERT INTO tbl_unit (name) VALUES (@name)";
-                    using var cmd = new MySqlCommand(insert, conn);
-                    cmd.Parameters.AddWithValue("@name", model.Name);
-                    await cmd.ExecuteNonQueryAsync();
+                    if (model.MainId == null || model.MainId <= 0)
+                        return BadRequest(new { status = false, message = "Select Main Unit" });
+
+                    // Duplicate check within same main unit (case-insensitive)
+                    string existsSubQuery = model.Id > 0
+                        ? "SELECT COUNT(*) FROM tbl_sub_unit WHERE LOWER(name) = LOWER(@name) AND main_id = @mainId AND id <> @id"
+                        : "SELECT COUNT(*) FROM tbl_sub_unit WHERE LOWER(name) = LOWER(@name) AND main_id = @mainId";
+
+                    using (var existsCmd = new MySqlCommand(existsSubQuery, conn))
+                    {
+                        existsCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        existsCmd.Parameters.AddWithValue("@mainId", model.MainId);
+                        if (model.Id > 0) existsCmd.Parameters.AddWithValue("@id", model.Id);
+
+                        int count = Convert.ToInt32(await existsCmd.ExecuteScalarAsync());
+                        if (count > 0)
+                            return Conflict(new { status = false, message = "Sub unit name already exists for the selected main unit." });
+                    }
+
+                    if (model.Id > 0)
+                    {
+                        string update = "UPDATE tbl_sub_unit SET name=@name, main_id=@main WHERE id=@id";
+                        using var cmd = new MySqlCommand(update, conn);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        cmd.Parameters.AddWithValue("@main", model.MainId);
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        await cmd.ExecuteNonQueryAsync();
+
+                        return Ok(new { status = true, id = model.Id, name = model.Name.Trim(), message = "Sub unit updated successfully." });
+                    }
+                    else
+                    {
+                        string insert = "INSERT INTO tbl_sub_unit (name, main_id) VALUES (@name,@main); SELECT LAST_INSERT_ID();";
+                        using var cmd = new MySqlCommand(insert, conn);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        cmd.Parameters.AddWithValue("@main", model.MainId);
+                        var newIdObj = await cmd.ExecuteScalarAsync();
+                        int newId = Convert.ToInt32(newIdObj);
+                        return Ok(new { status = true, id = newId, name = model.Name.Trim(), message = "Sub unit added successfully." });
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                if (model.MainId <= 0)
-                    return BadRequest(new { status = false, message = "Select Main Unit" });
-
-                if (model.Id > 0)
-                {
-                    string update = "UPDATE tbl_sub_unit SET name=@name, main_id=@main WHERE id=@id";
-                    using var cmd = new MySqlCommand(update, conn);
-                    cmd.Parameters.AddWithValue("@name", model.Name);
-                    cmd.Parameters.AddWithValue("@main", model.MainId);
-                    cmd.Parameters.AddWithValue("@id", model.Id);
-                    await cmd.ExecuteNonQueryAsync();
-                }
-                else
-                {
-                    string insert = "INSERT INTO tbl_sub_unit (name, main_id) VALUES (@name,@main)";
-                    using var cmd = new MySqlCommand(insert, conn);
-                    cmd.Parameters.AddWithValue("@name", model.Name);
-                    cmd.Parameters.AddWithValue("@main", model.MainId);
-                    await cmd.ExecuteNonQueryAsync();
-                }
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
-
-            return Ok(new { status = true });
         }
         [HttpPost]
         public async Task<IActionResult> EditUnit([FromBody] UnitViewModel model)
