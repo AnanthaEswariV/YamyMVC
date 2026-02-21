@@ -931,9 +931,9 @@ WHERE
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    // Customer Receipt: credit decreases balance (payment received)
+                    // Customer Receipt / Advance / PDC: credit decreases balance (payment received)
                     else if (type.Equals("Customer Receipt", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase)
+                      
                         || type.Equals("Check Cancel (Customer)", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("PDC Receivable", StringComparison.OrdinalIgnoreCase))
                     {
@@ -956,9 +956,10 @@ WHERE
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    // Sales Invoice / Opening Balance: debit increases balance (amount owed)
+                    // Sales Invoice / Opening Balance: debit increases balance (amount owed by customer)
                     else if (type.Equals("Sales Invoice", StringComparison.OrdinalIgnoreCase)
-                        || type.Equals("Customer Opening Balance", StringComparison.OrdinalIgnoreCase))
+                        || type.Equals("Customer Opening Balance", StringComparison.OrdinalIgnoreCase)
+                          || type.Equals("Customer Advance Payment", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalDebit > 0 ? originalDebit : originalCredit;
 
@@ -979,13 +980,14 @@ WHERE
                             Balance = runningBalance.ToString("N2")
                         });
                     }
-                    // SalesReturn / Credit Note: credit decreases balance (return reduces amount owed)
+                    // SalesReturn / Credit Note: INCREASES balance shown in credit column
+                    // (return means goods come back, customer owes less — shown as credit, balance decreases)
                     else if (type.Equals("SalesReturn Invoice", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Credit Note", StringComparison.OrdinalIgnoreCase))
                     {
                         decimal amount = originalCredit > 0 ? originalCredit : originalDebit;
 
-                        runningBalance -= amount;
+                        runningBalance -= amount;   // reduces what customer owes
                         totalCredit += amount;
 
                         transactions.Add(new
@@ -6192,7 +6194,7 @@ VALUES (@refId, @invNo, @invId, @invDate, @invType, @total, @vat, @amount, @bala
                 debit: "0",
                 credit: model.TotalAmount.ToString(),
                 transactionId: creditNoteId.ToString(),        // Use credit note ID
-                humId: creditNoteId.ToString(),           // Customer/Account as hum_id
+                humId: model.CustomerId.ToString(),  // Customer/Account as hum_id
                 tType: $"Credit Note {invCode}",
                 type: $"Credit Note {invCode}",
                 description: $"Credit Note {invCode}",

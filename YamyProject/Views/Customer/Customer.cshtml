@@ -851,6 +851,9 @@
                             dom: 'rtip',
                             order: [[0, 'asc']],
                             pageLength: 15,
+                            columnDefs: [
+                             { targets: 0, type: "num" }
+                            ],
                             buttons: [
                                 {
                                     extend: 'excelHtml5',
