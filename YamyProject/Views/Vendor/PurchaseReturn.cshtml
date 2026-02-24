@@ -370,7 +370,7 @@
 
                         // Now: fetch the selected account ID based on invoice type
                         $.ajax({
-                            url: '/Customer/GetPaymentMethodInfo',
+                            url: '/Vendor/GetPaymentMethodInfo',
                             type: 'GET',
                             data: { method: invoiceType },
                             success: function(res) {
