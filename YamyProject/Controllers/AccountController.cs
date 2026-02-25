@@ -46,16 +46,32 @@
                 string dbName = await GenerateNextSalesCode();
 
                 // Create DB
-                CreateDatabase(dbName, request);
-
+                 await CreateDatabase(dbName, request);
 
                 await InsertCompany(request, dbName);
 
                 return Ok(new { status = true, message = "The new company was successfully created!", database = dbName });
             }
+            catch (MySqlException mysqlEx)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = $"MySQL Error {mysqlEx.Number}: {mysqlEx.Message}",
+                    errorCode = mysqlEx.Number,
+                    sqlState = mysqlEx.SqlState
+                });
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, new { status = false, message = ex.Message });
+                // ✅ Shows full chain of errors
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message,
+                    innerError = ex.InnerException?.Message,
+                    fullError = ex.ToString()
+                });
             }
         }
 
@@ -2917,7 +2933,8 @@
 
 
                         // Environment variable (same as old code)
-                        string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
+                        string customerCode = "123";
+                        //string customerCode = Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User);
 
                         int recordId = 0;
 
@@ -3245,8 +3262,8 @@ VALUES
                 insertCmd.Parameters.AddWithValue("@TrnNo", request.TrnNo ?? "");
                 insertCmd.Parameters.AddWithValue("@LogoComp", DBNull.Value);
                 insertCmd.Parameters.AddWithValue("@DefaultCompany", request.DefaultCompany ?? 0);
-                insertCmd.Parameters.AddWithValue("@CustomerCode",
-                    Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User) ?? "");
+                insertCmd.Parameters.AddWithValue("@CustomerCode", "123");
+                   // Environment.GetEnvironmentVariable("yamy_company_code", EnvironmentVariableTarget.User) ?? "");
                 insertCmd.Parameters.AddWithValue("@StampComp", DBNull.Value);
 
                 await insertCmd.ExecuteNonQueryAsync();

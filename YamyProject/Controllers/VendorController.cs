@@ -1024,7 +1024,7 @@ WHERE p.state = 0;
     p.payment_method AS PaymentMethod,
     p.total AS Total,
     p.vat AS Vat,
-    p.vatp AS VatP,
+    d.vatp AS VatP,
     p.net AS Net,
     v.id AS VendorId,
     CONCAT(i.code,' - ',i.name) AS ItemName,
