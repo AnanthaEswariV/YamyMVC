@@ -854,8 +854,8 @@ namespace YamyProject.Controllers
 
                 if (!string.IsNullOrEmpty(paymentMethod))
                 {
-                    query += " AND p.payment_method = @payment ";
-                    parameters.Add(new MySqlParameter("@payment", paymentMethod));
+                    query += " AND LOWER(p.payment_method) = LOWER(@payment) ";
+                    parameters.Add(new MySqlParameter("@payment", paymentMethod.Trim()));
                 }
 
                 if (dateFrom.HasValue)
@@ -870,19 +870,6 @@ namespace YamyProject.Controllers
                     parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
                 }
 
-                // Grouping
-                query += selectionMethod == "Default"
-                    ? @" GROUP BY p.id, p.date, p.invoice_id, v.code, v.name, p.total, p.vat, p.net "
-                    : @" GROUP BY p.id, p.date, p.invoice_id, v.code, v.name,
-                      p.total, p.vat, p.net,
-                      i.code, i.name, d.qty, d.cost_price, d.vat, d.total ";
-
-                // Pagination
-                int offset = (page - 1) * pageSize;
-                query += " ORDER BY p.date DESC LIMIT @limit OFFSET @offset ";
-
-                parameters.Add(new MySqlParameter("@limit", pageSize));
-                parameters.Add(new MySqlParameter("@offset", offset));
 
                 var purchases = new List<PurchaseDto>();
 
@@ -1009,7 +996,7 @@ FROM tbl_purchase p
 INNER JOIN tbl_vendor v ON p.vendor_id = v.id
 LEFT JOIN tbl_purchase_details pd ON p.id = pd.purchase_id
 LEFT JOIN tbl_items i ON pd.item_id = i.id
-WHERE p.state = 0;
+WHERE p.state = 0
     ";
         }
 
@@ -1055,7 +1042,7 @@ FROM tbl_purchase p
 INNER JOIN tbl_purchase_details d ON p.id = d.purchase_id
 INNER JOIN tbl_items i ON d.item_id = i.id
 INNER JOIN tbl_vendor v ON p.vendor_id = v.id
-WHERE p.state = 0;
+WHERE p.state = 0
 
     ";
         }
@@ -3044,7 +3031,6 @@ WHERE d.purchase_id = @purchaseId;
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // ---------------- MAIN QUERY ----------------
                 string query = @"
 WITH Dedup AS (
     SELECT
@@ -3086,7 +3072,6 @@ WITH Dedup AS (
         pr.description AS Description,
         pr.pay AS Pay,
 
-       
         CONCAT('000', t.transaction_id) AS JVNo,
 
         i.id AS ItemId,
@@ -3106,6 +3091,35 @@ WITH Dedup AS (
     LEFT JOIN tbl_purchase_return_details prd ON pr.id = prd.purchase_id
     LEFT JOIN tbl_items i ON prd.item_id = i.id
     WHERE pr.state = 0
+";
+
+                var parameters = new List<MySqlParameter>();
+
+                if (vendorId.HasValue)
+                {
+                    query += " AND pr.vendor_id = @vendorId ";
+                    parameters.Add(new MySqlParameter("@vendorId", vendorId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    query += " AND LOWER(pr.payment_method) = LOWER(@payment) ";
+                    parameters.Add(new MySqlParameter("@payment", paymentMethod.Trim()));
+                }
+
+                if (dateFrom.HasValue)
+                {
+                    query += " AND pr.date >= @dateFrom ";
+                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
+                }
+
+                if (dateTo.HasValue)
+                {
+                    query += " AND pr.date <= @dateTo ";
+                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
+                }
+
+                query += @"
 )
 
 SELECT
@@ -3140,50 +3154,14 @@ SELECT
     Qty,
     Price,
     CostPrice,
-    Price,
     ItemVat,
     VatP,
     ItemTotal,
     Cost_Center_Id
 FROM Dedup
 WHERE rn = 1
-ORDER BY Date;
-
+ORDER BY Date DESC;
 ";
-
-                var parameters = new List<MySqlParameter>();
-
-                // Vendor filter
-                if (vendorId.HasValue)
-                {
-                    query += " AND pr.vendor_id = @vendorId";
-                    parameters.Add(new MySqlParameter("@vendorId", vendorId.Value));
-                }
-
-                // Payment method filter
-                if (!string.IsNullOrEmpty(paymentMethod))
-                {
-                    query += " AND pr.payment_method = @payment";
-                    parameters.Add(new MySqlParameter("@payment", paymentMethod));
-                }
-
-                // Date filter
-                if (dateFrom.HasValue && dateTo.HasValue)
-                {
-                    query += " AND pr.date >= @dateFrom AND pr.date <= @dateTo";
-                    parameters.Add(new MySqlParameter("@dateFrom", dateFrom.Value.Date));
-                    parameters.Add(new MySqlParameter("@dateTo", dateTo.Value.Date));
-                }
-
-                query += @"
-GROUP BY 
-    pr.id, pr.date, pr.invoice_id,
-    v.code, v.name,
-    pr.payment_method,
-    pr.total, pr.vat, pr.net
-ORDER BY pr.date
-";
-
                 var result = new List<object>();
 
                 await using var cmd = new MySqlCommand(query, conn);
