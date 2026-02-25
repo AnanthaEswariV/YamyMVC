@@ -46,33 +46,37 @@
                 string dbName = await GenerateNextSalesCode();
 
                 // Create DB
-                 await CreateDatabase(dbName, request);
+                await CreateDatabase(dbName, request);
 
                 await InsertCompany(request, dbName);
 
                 return Ok(new { status = true, message = "The new company was successfully created!", database = dbName });
             }
-            catch (MySqlException mysqlEx)
-            {
-                return StatusCode(500, new
-                {
-                    status = false,
-                    message = $"MySQL Error {mysqlEx.Number}: {mysqlEx.Message}",
-                    errorCode = mysqlEx.Number,
-                    sqlState = mysqlEx.SqlState
-                });
-            }
             catch (Exception ex)
             {
-                // ✅ Shows full chain of errors
-                return StatusCode(500, new
-                {
-                    status = false,
-                    message = ex.Message,
-                    innerError = ex.InnerException?.Message,
-                    fullError = ex.ToString()
-                });
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
+                //catch (MySqlException mysqlEx)
+                //{
+                //    return StatusCode(500, new
+                //    {
+                //        status = false,
+                //        message = $"MySQL Error {mysqlEx.Number}: {mysqlEx.Message}",
+                //        errorCode = mysqlEx.Number,
+                //        sqlState = mysqlEx.SqlState
+                //    });
+                //}
+                //catch (Exception ex)
+                //{
+                //    // ✅ Shows full chain of errors
+                //    return StatusCode(500, new
+                //    {
+                //        status = false,
+                //        message = ex.Message,
+                //        innerError = ex.InnerException?.Message,
+                //        fullError = ex.ToString()
+                //    });
+                //}
         }
 
         private async Task<string> GenerateNextSalesCode()
