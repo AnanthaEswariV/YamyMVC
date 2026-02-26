@@ -6923,7 +6923,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
             INSERT INTO tbl_transaction
             (date, account_id, debit, credit, transaction_id, hum_id, t_type, type,
              description, created_by, created_date, state, voucher_no)
-            VALUES (@date, @acc, '0', @credit, @id, '0', 'Petty Cash', 'PettyCash',
+            VALUES (@date, @acc, '0', @credit, @id, '0', 'Petty Cash', 'Petty Cash',
                     @desc, @user, NOW(), 0, @code)", conn, tx);
 
                 creditCmd.Parameters.AddWithValue("@date", voucherDate);

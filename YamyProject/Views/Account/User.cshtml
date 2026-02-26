@@ -1861,8 +1861,8 @@
                             </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" id="userName" placeholder="User Name" />
+                        <div class="col-md-6">userName
+                            <input type="text" class="form-control" id="userName" placeholder="Enter User Name" />
                             <div class="form-check ms-3">
                                 <input class="form-check-input" type="checkbox" id="activeCheck" checked>
                                 <label class="form-check-label small" for="activeCheck">
@@ -2162,6 +2162,7 @@
 
                loadEmployeeDropdown();
                loadRolesDropdown();
+
                $('#roleForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -2201,21 +2202,24 @@
             });
         });
 
-               $('#newUserModal .btn-primary').on('click', function(e) {
+              $(document).on('click', '#newUserModal .btn-primary', function(e) {
             e.preventDefault();
 
-            const userData = {
-                Id: $('#userId').val() ? parseInt($('#userId').val()) : 0, // Add hidden input for edit
-                Username: $('#userName').val().trim(),
-                Password: $('#password').val().trim(),
-                ConfirmPassword: $('#confirmPassword').val().trim(),
-                FirstName: $('#firstName').val().trim(),
-                LastName: $('#lastName').val().trim(),
-                RoleId: $('#role').val() ? parseInt($('#role').val()) : 0,
-                EmployeeId: $('#empName').val() ? parseInt($('#empName').val()) : -1,
-                IsActive: $('#activeCheck').is(':checked')
-            };
+              const modal = $('#newUserModal');
 
+        const userData = {
+            Id: modal.find('#userId').val() ? parseInt(modal.find('#userId').val()) : 0,
+            Username: modal.find('#userName').val().trim(),
+            Password: modal.find('#password').val().trim(),
+            ConfirmPassword: modal.find('#confirmPassword').val().trim(),
+            FirstName: modal.find('#firstName').val().trim(),
+            LastName: modal.find('#lastName').val().trim(),
+            RoleId: modal.find('#role').val() ? parseInt(modal.find('#role').val()) : 0,
+            EmployeeId: modal.find('#empName').val() ? parseInt(modal.find('#empName').val()) : -1,
+            IsActive: modal.find('#activeCheck').is(':checked')
+        };
+
+            console.log(userData);
             // Simple client-side validation
              if(!userData.FirstName) {
                 toastr.warning("Enter First Name");
@@ -2265,13 +2269,6 @@
             });
         });
 
-
-
-                  
-
-
-
-        // Save Permissions Button Click Handler
         $('#savePermissionsBtn').on('click', function (e) {
             e.preventDefault();
 

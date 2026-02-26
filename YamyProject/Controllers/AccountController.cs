@@ -1935,6 +1935,17 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+                         INSERT INTO `tbl_sec_roles` (`id`, `name`) VALUES
+                            (1, 'Admin'),
+                            (2, 'Manager'),
+                            (3, 'Accountant'),
+                            (4, 'Sales'),
+                            (5, 'Purchaser'),
+                            (6, 'Inventory Manager'),
+                            (7, 'HR'),
+                            (8, 'Cashier'),
+                            (9, 'Auditor');
+
                         CREATE TABLE IF NOT EXISTS `tbl_sec_role_form` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `role_id` int DEFAULT NULL,

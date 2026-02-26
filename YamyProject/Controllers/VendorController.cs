@@ -505,6 +505,7 @@ namespace YamyProject.Controllers
                 'Check Cancel (Vendor)', 
                 'Purchase Return Invoice', 
                 'Debit Note', 
+                'Petty Cash',
                 'PDC Payable'
             )";
 
@@ -604,7 +605,6 @@ namespace YamyProject.Controllers
                         });
                     }
                     else if (type.Equals("Vendor Payment", StringComparison.OrdinalIgnoreCase)
-                       
                         || type.Equals("Vendor Advance Payment", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Check Cancel", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("PDC Payable", StringComparison.OrdinalIgnoreCase))
@@ -629,6 +629,7 @@ namespace YamyProject.Controllers
                         });
                     }
                     else if (type.Equals("Purchase Invoice", StringComparison.OrdinalIgnoreCase)
+                        || type.Equals("Petty Cash", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Debit Note", StringComparison.OrdinalIgnoreCase)
                          || type.Equals("Vendor Opening Balance", StringComparison.OrdinalIgnoreCase)
                         || type.Equals("Purchase Return Invoice", StringComparison.OrdinalIgnoreCase))
