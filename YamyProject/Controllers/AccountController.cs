@@ -1356,6 +1356,7 @@
                             description TEXT NULL,
                             amount DECIMAL(18,2) NOT NULL DEFAULT 0,
                             project_id INT(10) NOT NULL DEFAULT '0',
+                            vendor_id INT(10) NOT NULL DEFAULT '0',
                             note TEXT NULL,
                             hum_name VARCHAR(100) NULL,
                             PRIMARY KEY (`id`)

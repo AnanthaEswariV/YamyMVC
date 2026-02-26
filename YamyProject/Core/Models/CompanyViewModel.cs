@@ -443,6 +443,7 @@ namespace YamyProject.Core.Models
         public string? CostCenterId { get; set; }
         public string? Category { get; set; }
         public string? ProjectId { get; set; }
+        public string? VendorId { get; set; }
         public string? Description { get; set; }
         public decimal? Amount { get; set; }
         public string? Note { get; set; }

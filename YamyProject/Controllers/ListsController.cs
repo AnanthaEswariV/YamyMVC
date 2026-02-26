@@ -6257,11 +6257,12 @@ WHERE
                         var note = d.Note ?? "";
                         var amount = d.Amount ?? 0;
                         var ProjectId = string.IsNullOrWhiteSpace(d.ProjectId) ? "0" : d.ProjectId;
+                        var VendorId = string.IsNullOrWhiteSpace(d.VendorId) ? "0" : d.VendorId;
                         string insertDetailQuery = @"
                     INSERT INTO tbl_petty_cash_details  
-                        ( petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount,project_id, description, category, note)
+                        ( petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount,project_id, vendor_id, description, category, note)
                     VALUES
-                        ( @petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount,@project_id, @description, @category, @note);";
+                        ( @petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount,@project_id, @vendor_id, @description, @category, @note);";
 
                         using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
                         cmdDetail.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
@@ -6274,6 +6275,7 @@ WHERE
                         cmdDetail.Parameters.AddWithValue("@description", description);
                         cmdDetail.Parameters.AddWithValue("@category", category);
                         cmdDetail.Parameters.AddWithValue("@project_id", ProjectId);
+                        cmdDetail.Parameters.AddWithValue("@vendor_id", VendorId);
                         cmdDetail.Parameters.AddWithValue("@note", note);
 
                         await cmdDetail.ExecuteNonQueryAsync();
@@ -6349,12 +6351,14 @@ WHERE
                 // Get voucher detail data
                 string detailsQuery = @"
             SELECT dt.id, dt.petty_cash_id, dt.entry_date, dt.ref_id, dt.hum_id, dt.hum_name, dt.category,
-                   dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.note,
+                   dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.vendor_id, dt.note,
             c.name AS categoryName,
-            p.name AS projectName
+            p.name AS projectName,
+            v.name AS vendorName
             FROM tbl_petty_cash_details dt
                 LEFT JOIN tbl_petty_cash_category c ON c.id = dt.category
                 LEFT JOIN tbl_projects p ON p.id = dt.project_id
+                LEFT JOIN tbl_vendor v ON v.id = dt.vendor_id
             WHERE dt.petty_cash_id = @id
             ORDER BY dt.entry_date";
 
@@ -6385,8 +6389,10 @@ WHERE
                             description = reader["description"]?.ToString() ?? "",
                             amount = amount,
                             projectId = reader["project_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["project_id"]),
+                            VendorId = reader["vendor_id"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["vendor_id"]),
                             note = reader["note"]?.ToString() ?? "",
-                            projectName = reader["projectName"]?.ToString() ?? ""
+                            projectName = reader["projectName"]?.ToString() ?? "",
+                            vendorName = reader["vendorName"]?.ToString() ?? ""
                         });
                     }
                 }

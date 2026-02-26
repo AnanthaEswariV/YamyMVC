@@ -51,6 +51,7 @@
                     <th>Category</th>
                     <th>Type</th>
                     <th>Project</th>
+                    <th>Vendor</th>
                     <th>Description</th>
                     <th>Amount</th>
                     <th>Note</th>
@@ -114,6 +115,7 @@
                                 <th>Category</th>
                                 <th>Type</th>
                                 <th>Project</th>
+                                <th>Vendor</th>
                                 <th>Description</th>
                                 <th>Amount</th>
                                 <th>Note</th>
@@ -128,6 +130,7 @@
                                 <td><select class="form-select form-select-sm pettyCashCategorySelect"></select></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
                                 <td><select class="form-select form-select-sm projectName"></select></td>
+                                <td><select class="form-select form-select-sm vendorName"></select></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
                                 <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
@@ -193,6 +196,7 @@
                                 <th>Category</th>
                                 <th>Type</th>
                                 <th>Project</th>
+                                <th>Vendor</th>
                                 <th>Description</th>
                                 <th>Amount</th>
                                 <th>Note</th>
@@ -441,6 +445,7 @@
                 <td><select class="form-select form-select-sm pettyCashCategorySelect"></select></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
                     <td><select class="form-select form-select-sm projectName"></select></td>
+                    <td><select class="form-select form-select-sm vendorName"></select></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
                 <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
@@ -481,7 +486,6 @@
                 success: function(res) {
                     const tbody = $("#table1 tbody");
                     tbody.empty();
-                  
                     if (res.status && res.data && res.data.details.length > 0) {
                         const voucher = res.data; // <-- Save the whole voucher object
 
@@ -494,6 +498,7 @@
                                     <td>${row.category ?? ''}</td>
                                     <td>${row.humName ?? ''}</td>
                                     <td>${row.projectName ?? ''}</td>
+                                    <td>${row.vendorName ?? ''}</td>
                                     <td>${row.description ?? ''}</td>
                                     <td>${row.amount ?? 0}</td>
                                     <td>${row.note ?? ''}</td>
@@ -533,7 +538,7 @@
         function calculateTotalAmount() {
             let total = 0;
             $('#pettyCashTableBody tr').each(function() {
-                const val = parseFloat($(this).find('td:eq(7) input').val());
+                const val = parseFloat($(this).find('td:eq(8) input').val());
                 if (!isNaN(val)) total += val;
             });
             return total;
@@ -548,11 +553,11 @@
 
             const totalAmount = calculateTotalAmount();
             if (!totalAmount) return toastr.warning('Enter at least one valid amount');
-
+            
             const details = [];
             $('#pettyCashTableBody tr').each(function() {
                 const row = $(this);
-                const amount = parseFloat(row.find('td:eq(7) input').val()) || 0;
+                const amount = parseFloat(row.find('td:eq(8) input').val()) || 0;
 
                 if (amount > 0) {
                     const Category = row.find('select.pettyCashCategorySelect').val();
@@ -560,7 +565,8 @@
                     details.push({
                         EntryDate: new Date(row.find('td:eq(1) input').val()).toISOString(), // ✅ proper DateTime
                         RefId: row.find('td:eq(2) input').val(),
-                             ProjectId: $(this).find(".projectName").val(),
+                        ProjectId: $(this).find(".projectName").val(),
+                        VendorId: $(this).find(".vendorName").val(),
                         Category: Category ? Category.toString() : null, // ✅ string for C# model
                         HumName: row.find('td:eq(4) input').val(),
                         CostCenterId: row.find('td:eq(5) select').val() || null, // ✅ string
@@ -570,6 +576,7 @@
                     });
                 }
             });
+
 
             $.ajax({
                    url: '@Url.Action("SavePettyCashVoucher", "Lists")',
@@ -589,7 +596,7 @@
                         $('#pettyCashTableBody').empty();
                                    setTimeout(function () {
                                         location.reload();
-                                     }, 1500); // Optional delay before redirect
+                                     }, 1500); 
                         addNewRow();
                         loadPettyCashCards();
                     } else {
@@ -644,6 +651,45 @@
             });
         }
 
+function loadVendors() {
+    $.ajax({
+        url: '@Url.Action("GetVendor", "Vendor")',
+        type: 'GET',
+        success: function (result) {
+
+            if (!result.status || !result.data) {
+                toastr.error('Failed to load vendors');
+                return;
+            }
+
+            // Select both add + edit dropdowns
+            const dropdowns = $('.vendorName, .editVendorName');
+
+            dropdowns.each(function () {
+                const dropdown = $(this);
+                const selectedVendorId = dropdown.data('selected-vendor'); // ✅ get selected vendor id if any
+
+                dropdown.empty()
+                        .append('<option value="">-- Select Vendor Name --</option>');
+
+                result.data.forEach(vendor => {
+                    dropdown.append(
+                        $('<option>', {
+                            value: vendor.id,
+                            text: vendor.name,
+                            selected: vendor.id == selectedVendorId // ✅ set selected
+                        })
+                    );
+                });
+            });
+
+        },
+        error: function () {
+            toastr.error('Error loading vendors');
+        }
+    });
+}
+
         function loadEditProjects() {
             $.ajax({
                  url: '@Url.Action("GetProjects", "Construction")',
@@ -675,10 +721,12 @@
             
         $('#addPettyCashModal').on('shown.bs.modal', function () {
             loadProjects();
+             loadVendors();
         });
 
         $('#editPettyCashModal').on('shown.bs.modal', function () {
                     loadEditProjects();
+                    loadVendors();
             });
 
         $(document).ready(function() {
@@ -689,6 +737,7 @@
             populateAndSelectCostCenter();
             loadProjects();
             loadEditProjects();
+                loadVendors();
         });
 
         $(document).on("click", ".editPettyCashBtn", function () {
@@ -714,7 +763,6 @@
                    
                     // Load petty cash dropdown and set selected value
             loadPettyCashCardsTo("#editPettyCashNameDropdown", voucher.voucher.cashAccountId);
-
             // Fill table rows
             const tbody = $("#editPettyCashTableBody");
             voucher.details.forEach((row, i) => {
@@ -734,13 +782,18 @@
                             data-selected-project="${row.projectId}">
                     </select>
                 </td>
+               <td>
+    <select class="form-select form-select-sm editVendorName"
+            data-selected-vendor="${row.vendorId}">
+    </select>
+</td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.description ?? ''}"></td>
                         <td><input type="number" class="form-control form-control-sm" step="0.01" value="${row.amount ?? 0}"></td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.note ?? ''}"></td>
                     </tr>`;
                 tbody.append(tr);
             });
-
+            loadVendors();
             loadPettyCashCategoriesToTable("#editPettyCashTableBody");
             $modal.modal("show");
         });
@@ -812,7 +865,7 @@
 
             $('#editPettyCashTableBody tr').each(function () {
                 const row = $(this);
-                const amount = parseFloat(row.find('td:eq(7) input').val()) || 0;
+                const amount = parseFloat(row.find('td:eq(8) input').val()) || 0;
 
                 if (amount > 0) {
                     const category = row.find('td:eq(3) select').val();
@@ -826,9 +879,10 @@
                         Category: category ? category.toString() : null,
                         HumName: row.find('td:eq(4) input').val() || null,
                         ProjectId: row.find('td:eq(5) select').val(),
-                        Description: row.find('td:eq(6) input').val() || null,
+                        VendorId: row.find('td:eq(6) select').val(),
+                        Description: row.find('td:eq(7) input').val() || null,
                         Amount: amount,
-                        Note: row.find('td:eq(8) input').val() || ""
+                        Note: row.find('td:eq(9) input').val() || ""
                     });
                 }
             });
@@ -923,8 +977,6 @@
                         const details = res.data.details;
                         // ✅ FIX: Fill Header Fields with proper fallbacks
                         $('#pettyCashCode').val(header.code ?? '');
-                        console.log(header);
-                        console.log(details);
                         // ✅ FIX: Populate dropdown correctly
                         const displayText = header.employeeName
                             ? `${header.code} - ${header.employeeName}`
