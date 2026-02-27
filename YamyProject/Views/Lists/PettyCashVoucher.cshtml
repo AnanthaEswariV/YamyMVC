@@ -1145,7 +1145,7 @@ function loadVendors() {
                     Note: ""                                              
                 });
             });
-
+            console.log(details);
             if (!details.length) return toastr.warning("Enter at least one valid amount");
                  const cashAccountId = parseInt($(".bankAccountSelect").val()) || 0;
         if (cashAccountId === 0) {
@@ -1155,7 +1155,7 @@ function loadVendors() {
                 Id: voucherId,
                 Code: pettyCashCode,
                 VoucherDate: voucherDate,
-                    CashAccountId: cashAccountId,
+                CashAccountId: cashAccountId,
                 EmployeeId: parseInt($("#employeeId").val()) || 1,       
                 Notes: "",
                 Total: totalAmount,

@@ -6874,7 +6874,7 @@ WHERE
                     string costCenter = d.CostCenterId ?? "0";
                     string accountId = d.Category ?? "0";
                     string description = d.Description ?? "";
-                    string humId = d.HumId ?? "0";
+                    string humId = d.VendorId ?? "0";
 
                     // Cost Center Debit
                     var ccCmd = new MySqlCommand(@"
@@ -6893,7 +6893,7 @@ WHERE
                 INSERT INTO tbl_transaction
                 (date, account_id, debit, credit, transaction_id, hum_id, t_type, type,
                  description, created_by, created_date, state, voucher_no)
-                VALUES (@date, @acc, @debit, '0', @id, @hum, 'Petty Cash', 'PettyCash',
+                VALUES (@date, @acc, @debit, '0', @id, @hum, 'Petty Cash', 'Petty Cash',
                         @desc, @user, NOW(), 0, @code)", conn, tx);
 
                     jCmd.Parameters.AddWithValue("@date", voucherDate);
