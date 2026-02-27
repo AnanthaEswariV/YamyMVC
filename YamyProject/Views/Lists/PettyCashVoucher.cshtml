@@ -973,7 +973,6 @@ function loadVendors() {
                    url: '@Url.Action("GetPettyCashVoucherJournal", "Lists")' + '?id=' + selectedId,
                 type: 'GET',
                 success: function (res) {
-                    console.log(res);
                     if (res.status && res.data) {
                         const header = res.data.header;
                         const details = res.data.details;
@@ -1147,7 +1146,7 @@ function loadVendors() {
                     Note: "",
                     VendorId: vendorId
                    });
-                           console.log('vendor-id:', $(this).attr('data-vendor-id'));
+                          
                     });
             if (!details.length) return toastr.warning("Enter at least one valid amount");
                  const cashAccountId = parseInt($(".bankAccountSelect").val()) || 0;
@@ -1166,7 +1165,6 @@ function loadVendors() {
                 VendorId: details[0]?.VendorId || null,
             };
 
-                    console.log(payload);
             $.ajax({
                url: '@Url.Action("SavePettyCashVoucherJournal", "Lists")',
                 type: "POST",

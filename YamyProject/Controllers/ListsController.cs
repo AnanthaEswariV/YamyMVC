@@ -1,4 +1,9 @@
-﻿namespace YamyProject.Controllers
+﻿using Microsoft.CodeAnalysis;
+using Mysqlx.Crud;
+using Org.BouncyCastle.Utilities;
+using static Umbraco.Core.Collections.TopoGraph;
+
+namespace YamyProject.Controllers
 {
     [Route("Lists/[action]")]
     public class ListsController : Controller
@@ -6853,18 +6858,22 @@ WHERE
                     // ----------------------------
                     var insertCmd = new MySqlCommand(@"
                 INSERT INTO tbl_petty_cash
-                (code, voucher_date, cash_account_id, employee_id, total, status)
-                VALUES (@code, @date, @cash, @emp, @total, 1)", conn, tx);
+                (code, voucher_date, cash_account_id, employee_id, notes, total, created_by,vendor_id, status)
+                VALUES (@code, @date, @cash  @emp, @notes, @total, @created_by, @vendor_id, 1)", conn, tx);
 
                     insertCmd.Parameters.AddWithValue("@code", code);
                     insertCmd.Parameters.AddWithValue("@date", voucherDate);
                     insertCmd.Parameters.AddWithValue("@cash", model.CashAccountId);
                     insertCmd.Parameters.AddWithValue("@emp", model.EmployeeId);
                     insertCmd.Parameters.AddWithValue("@total", total);
+                    insertCmd.Parameters.AddWithValue("@notes", model.Notes);
+                    insertCmd.Parameters.AddWithValue("@created_by", userId);
+                    insertCmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
 
                     await insertCmd.ExecuteNonQueryAsync();
                     pettyCashId = (int)insertCmd.LastInsertedId;
                 }
+
 
                 // ----------------------------
                 // 5️⃣ INSERT DETAIL ROWS + JOURNAL + COST CENTER + petty_cash_details
@@ -6878,6 +6887,12 @@ WHERE
                     string accountId = d.Category ?? "0";
                     string description = d.Description ?? "";
                     string humId = d.VendorId ?? "0";
+                    var humName = d.HumName ?? "";
+                    var refId = string.IsNullOrWhiteSpace(d.RefId) ? "0" : d.RefId;
+                    var category = string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category;
+                    var note = d.Note ?? "";
+                    var ProjectId = string.IsNullOrWhiteSpace(d.ProjectId) ? "0" : d.ProjectId;
+                    var VendorId = string.IsNullOrWhiteSpace(d.VendorId) ? "0" : d.VendorId;
 
                     // Cost Center Debit
                     var ccCmd = new MySqlCommand(@"
@@ -6911,18 +6926,25 @@ WHERE
 
                     var detailsCmd = new MySqlCommand(@"
 INSERT INTO tbl_petty_cash_details
-(petty_cash_id, description, amount, category, hum_id, cost_center_id, entry_date)
-VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
+(petty_cash_id, description, amount, category, hum_id, hum_name, ref_id,project_id,vendor_id, note, cost_center_id, entry_date)
+VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id, @note, @cc, @entryDate)", conn, tx);
 
                     detailsCmd.Parameters.AddWithValue("@id", pettyCashId);
                     detailsCmd.Parameters.AddWithValue("@desc", description);
                     detailsCmd.Parameters.AddWithValue("@amt", d.Amount);
-                    detailsCmd.Parameters.AddWithValue("@cat", accountId);
+                    detailsCmd.Parameters.AddWithValue("@cat", category);
                     detailsCmd.Parameters.AddWithValue("@hum", humId);
+                    detailsCmd.Parameters.AddWithValue("@hum_name", humName);
+                    detailsCmd.Parameters.AddWithValue("@ref_id", refId);
+                    detailsCmd.Parameters.AddWithValue("@project_id", ProjectId);
+                    detailsCmd.Parameters.AddWithValue("@vendor_id", VendorId);
+                    detailsCmd.Parameters.AddWithValue("@note", note);
                     detailsCmd.Parameters.AddWithValue("@cc", costCenter);
-                    detailsCmd.Parameters.AddWithValue("@entryDate", DateTime.Now); // add current date/time
+                    detailsCmd.Parameters.AddWithValue("@entryDate", DateTime.Now); 
                     await detailsCmd.ExecuteNonQueryAsync();
 
+
+ 
                 }
 
                 // ----------------------------
@@ -7040,7 +7062,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
         }
 
         #endregion
-
+            
         #region Petty Cash Log
 
         [HttpGet]
