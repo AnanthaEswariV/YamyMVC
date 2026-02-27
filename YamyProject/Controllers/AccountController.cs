@@ -1341,6 +1341,7 @@
                             created_by INT NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             project_id INT NOT NULL DEFAULT '0',
+                            vendor_id INT NOT NULL DEFAULT '0',
                             status INT NOT NULL DEFAULT '0',
                             PRIMARY KEY (`id`)
                         );

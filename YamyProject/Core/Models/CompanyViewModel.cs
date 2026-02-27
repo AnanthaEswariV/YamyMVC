@@ -431,6 +431,7 @@ namespace YamyProject.Core.Models
         public string? Notes { get; set; }
         public decimal Total { get; set; }
         public string? Code { get; set; }
+        public int? VendorId { get; set; }   
         public List<PettyCashDetail>? Details { get; set; }
     }
 

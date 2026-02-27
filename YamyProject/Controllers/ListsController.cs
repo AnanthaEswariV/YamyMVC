@@ -6177,11 +6177,12 @@ WHERE
                 // --- INSERT OR UPDATE MAIN PETTY CASH VOUCHER ---
                 if (model.Id == 0)
                 {
+                   
                     string insertQuery = @"
                 INSERT INTO tbl_petty_cash 
-                    (code, voucher_date, cash_account_id, employee_id, notes, total, created_by)
+                    (code, voucher_date, cash_account_id, employee_id, notes, total, created_by, vendor_id)
                 VALUES 
-                    (@code, @voucher_date, @cash_account_id, @employee_id, @notes, @total, @created_by);
+                    (@code, @voucher_date, @cash_account_id, @employee_id, @notes, @total, @created_by, @vendor_id);
                 SELECT LAST_INSERT_ID();";
 
                     using var cmdInsert = new MySqlCommand(insertQuery, conn);
@@ -6192,7 +6193,7 @@ WHERE
                     cmdInsert.Parameters.AddWithValue("@notes", model.Notes ?? "");
                     cmdInsert.Parameters.AddWithValue("@total", model.Total);
                     cmdInsert.Parameters.AddWithValue("@created_by", userId);
-
+                    cmdInsert.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
                     pettyCashId = Convert.ToInt32(await cmdInsert.ExecuteScalarAsync());
                 }
                 else
@@ -6201,7 +6202,7 @@ WHERE
                     string updateQuery = @"
                 UPDATE tbl_petty_cash 
                 SET  voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
-                    employee_id=@employee_id, total=@total, notes=@notes 
+                    employee_id=@employee_id, total=@total, notes=@notes , vendor_id=@vendor_id
                 WHERE id=@id;";
 
                     using var cmdUpdate = new MySqlCommand(updateQuery, conn);
@@ -6212,6 +6213,7 @@ WHERE
                     cmdUpdate.Parameters.AddWithValue("@employee_id", model.EmployeeId);
                     cmdUpdate.Parameters.AddWithValue("@total", model.Total);
                     cmdUpdate.Parameters.AddWithValue("@notes", model.Notes ?? "");
+                    cmdUpdate.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
                     await cmdUpdate.ExecuteNonQueryAsync();
 
                     // Delete old petty cash details
@@ -6583,7 +6585,7 @@ WHERE
             SELECT 
                 ROW_NUMBER() OVER (ORDER BY entry_date) AS SN,
                 dt.id, dt.petty_cash_id, dt.entry_date, dt.ref_id, dt.hum_id, dt.category,
-                dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.note
+                dt.cost_center_id, dt.description, dt.amount, dt.project_id, dt.vendor_id, dt.note
             FROM tbl_petty_cash_details dt
             WHERE dt.petty_cash_id = @id;";
 
@@ -6604,6 +6606,7 @@ WHERE
                     int Project_Id = Convert.ToInt32(detailsReader["project_id"]);
                     string costCenterId = detailsReader["cost_center_id"]?.ToString();
                     string humId = detailsReader["hum_id"]?.ToString();
+                    string vendor_id = detailsReader["vendor_id"]?.ToString();
                     string note = detailsReader["note"]?.ToString();
 
                     detailsList.Add(new
@@ -6613,6 +6616,7 @@ WHERE
                         description,
                         amount,
                         costCenterId,
+                        vendor_id,
                         humId,
                         note
                     });
@@ -6721,7 +6725,6 @@ WHERE
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         [HttpPost]
         public async Task<IActionResult> SavePettyCashVoucherJournal([FromBody] PettyCashVoucherRequest model)
@@ -6958,7 +6961,6 @@ VALUES (@id, @desc, @amt, @cat, @hum, @cc, @entryDate)", conn, tx);
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
 
         [HttpGet]
         public async Task<IActionResult> GetPettyCashTransactions(int pettyCashId, string description)

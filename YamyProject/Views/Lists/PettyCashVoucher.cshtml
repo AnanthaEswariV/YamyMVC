@@ -487,7 +487,7 @@
                     const tbody = $("#table1 tbody");
                     tbody.empty();
                     if (res.status && res.data && res.data.details.length > 0) {
-                        const voucher = res.data; // <-- Save the whole voucher object
+                        const voucher = res.data; 
 
                         $.each(voucher.details, function(i, row) {
                             const tr = `
@@ -548,7 +548,7 @@
             const pettyCashName = $('#pettyCashNameDropdown').val();
             const pettyCashDate = $('#pettyCashDate').val();
             const empId = parseInt($('#pettyCashEmployeeId').val()) || 0;
-
+                    const vendorId = parseInt($('.vendorName').val()) || 0;
             if (!pettyCashName) return toastr.warning('Select Petty Cash Name');
 
             const totalAmount = calculateTotalAmount();
@@ -563,20 +563,20 @@
                     const Category = row.find('select.pettyCashCategorySelect').val();
 
                     details.push({
-                        EntryDate: new Date(row.find('td:eq(1) input').val()).toISOString(), // ✅ proper DateTime
+                        EntryDate: new Date(row.find('td:eq(1) input').val()).toISOString(), 
                         RefId: row.find('td:eq(2) input').val(),
-                        ProjectId: $(this).find(".projectName").val(),
+                        ProjectId: $(this).find(".projectName").val(),  
                         VendorId: $(this).find(".vendorName").val(),
-                        Category: Category ? Category.toString() : null, // ✅ string for C# model
+                        Category: Category ? Category.toString() : null,
                         HumName: row.find('td:eq(4) input').val(),
-                        CostCenterId: row.find('td:eq(5) select').val() || null, // ✅ string
+                        CostCenterId: row.find('td:eq(5) select').val() || null, 
                         Description: row.find('td:eq(6) input').val(),
                         Amount: amount,
                         Note: row.find('td:eq(8) input').val()
                     });
                 }
             });
-
+         
 
             $.ajax({
                    url: '@Url.Action("SavePettyCashVoucher", "Lists")',
@@ -587,6 +587,7 @@
                     CashAccountId: parseInt(pettyCashName) || 0,
                     EmployeeId: empId,
                     Total: totalAmount,
+                    VendorId : vendorId,
                     Details: details
                 }),
                 success: function(res) {
@@ -972,6 +973,7 @@ function loadVendors() {
                    url: '@Url.Action("GetPettyCashVoucherJournal", "Lists")' + '?id=' + selectedId,
                 type: 'GET',
                 success: function (res) {
+                    console.log(res);
                     if (res.status && res.data) {
                         const header = res.data.header;
                         const details = res.data.details;
@@ -999,7 +1001,7 @@ function loadVendors() {
             const accountName = row.pettyCashAccountName ?? header.pettyCashAccountName ?? '-- Select --';
 
                                 const tr = `
-                                    <tr>
+                                                     <tr data-vendor-id="${row.vendor_id ?? ''}">
                                         <td>${i + 1}</td>
                      <td>
                         <select class="form-select bankAccountSelect" data-selected-id="${accountId}">
@@ -1132,8 +1134,8 @@ function loadVendors() {
                 if (amount <= 0) return;
 
                 totalAmount += amount;
-
-                details.push({
+                             const vendorId = row.attr('data-vendor-id') || null;
+                        details.push({
                     EntryDate: voucherDate,                               
                     HumId: "0",                                         
                     HumName: row.find('td:eq(1) select option:selected').text() || "", 
@@ -1142,10 +1144,11 @@ function loadVendors() {
                     Category: row.find('td:eq(1) select').val() || "0",
                     Description: row.find('td:eq(3) input').val() || "",
                     Amount: amount,
-                    Note: ""                                              
-                });
-            });
-            console.log(details);
+                    Note: "",
+                    VendorId: vendorId
+                   });
+                           console.log('vendor-id:', $(this).attr('data-vendor-id'));
+                    });
             if (!details.length) return toastr.warning("Enter at least one valid amount");
                  const cashAccountId = parseInt($(".bankAccountSelect").val()) || 0;
         if (cashAccountId === 0) {
@@ -1159,10 +1162,11 @@ function loadVendors() {
                 EmployeeId: parseInt($("#employeeId").val()) || 1,       
                 Notes: "",
                 Total: totalAmount,
-                Details: details
+                Details: details,
+                VendorId: details[0]?.VendorId || null,
             };
 
-
+                    console.log(payload);
             $.ajax({
                url: '@Url.Action("SavePettyCashVoucherJournal", "Lists")',
                 type: "POST",
