@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Mysqlx.Crud;
 using Org.BouncyCastle.Utilities;
+using YamyProject.Core.Models.DTOs;
 using static Umbraco.Core.Collections.TopoGraph;
 
 namespace YamyProject.Controllers
@@ -6183,7 +6184,6 @@ WHERE
                 // --- INSERT OR UPDATE MAIN PETTY CASH VOUCHER ---
                 if (model.Id == 0)
                 {
-                   
                     string insertQuery = @"
                 INSERT INTO tbl_petty_cash 
                     (code, voucher_date, cash_account_id, employee_id, notes, total, created_by, vendor_id)
@@ -6201,13 +6201,20 @@ WHERE
                     cmdInsert.Parameters.AddWithValue("@created_by", userId);
                     cmdInsert.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
                     pettyCashId = Convert.ToInt32(await cmdInsert.ExecuteScalarAsync());
+
+                    // --- Insert Petty Cash Request for new voucher ---
+                    bool isRequestInsertedOrUpdated = InsertOrUpdatePettyCashRequest(model, userId, pettyCashId);
+                    if (!isRequestInsertedOrUpdated)
+                    {
+                        return Json(new { status = false, message = "Error inserting/updating petty cash request" });
+                    }
                 }
                 else
                 {
-                    // --- UPDATE ---
+                    // --- UPDATE --- 
                     string updateQuery = @"
                 UPDATE tbl_petty_cash 
-                SET  voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
+                SET voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
                     employee_id=@employee_id, total=@total, notes=@notes , vendor_id=@vendor_id
                 WHERE id=@id;";
 
@@ -6222,27 +6229,13 @@ WHERE
                     cmdUpdate.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
                     await cmdUpdate.ExecuteNonQueryAsync();
 
-                    // Delete old petty cash details
-                    using (var cmdDel = new MySqlCommand("DELETE FROM tbl_petty_cash_details WHERE petty_cash_id=@id", conn))
+                    //// --- Delete and re-insert petty cash details (keeping original logic) ---
+                    //await DeleteAndReinsertPettyCashDetails(conn, model);
+                    // After updating or inserting the main petty cash voucher, update the petty cash request
+                    bool isRequestInsertedOrUpdated = InsertOrUpdatePettyCashRequest(model, userId, pettyCashId);
+                    if (!isRequestInsertedOrUpdated)
                     {
-                        cmdDel.Parameters.AddWithValue("@id", model.Id);
-                        await cmdDel.ExecuteNonQueryAsync();
-                    }
-
-                    // Delete old transaction entries
-                    using (var cmdDelTrx = new MySqlCommand("DELETE FROM tbl_transaction WHERE t_type=@tType AND transaction_id=@id", conn))
-                    {
-                        cmdDelTrx.Parameters.AddWithValue("@tType", "PettyCash");
-                        cmdDelTrx.Parameters.AddWithValue("@id", model.Id);
-                        await cmdDelTrx.ExecuteNonQueryAsync();
-                    }
-
-                    // Delete cost center transactions
-                    using (var cmdDelCC = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE type=@type AND ref_id=@id", conn))
-                    {
-                        cmdDelCC.Parameters.AddWithValue("@type", "PettyCash");
-                        cmdDelCC.Parameters.AddWithValue("@id", model.Id);
-                        await cmdDelCC.ExecuteNonQueryAsync();
+                        return Json(new { status = false, message = "Error inserting/updating petty cash request" });
                     }
                 }
 
@@ -6254,7 +6247,6 @@ WHERE
                         if (d.Amount == null || d.Amount <= 0)
                             continue;
 
-                        // Defensive null/empty handling
                         var entryDate = d.EntryDate == DateTime.MinValue ? DateTime.Now : d.EntryDate;
                         var humId = string.IsNullOrWhiteSpace(d.HumId) ? "0" : d.HumId;
                         var humName = d.HumName ?? "";
@@ -6266,11 +6258,12 @@ WHERE
                         var amount = d.Amount ?? 0;
                         var ProjectId = string.IsNullOrWhiteSpace(d.ProjectId) ? "0" : d.ProjectId;
                         var VendorId = string.IsNullOrWhiteSpace(d.VendorId) ? "0" : d.VendorId;
+
                         string insertDetailQuery = @"
                     INSERT INTO tbl_petty_cash_details  
-                        ( petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount,project_id, vendor_id, description, category, note)
+                        (petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount, project_id, vendor_id, description, category, note)
                     VALUES
-                        ( @petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount,@project_id, @vendor_id, @description, @category, @note);";
+                        (@petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount, @project_id, @vendor_id, @description, @category, @note);";
 
                         using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
                         cmdDetail.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
@@ -6307,6 +6300,127 @@ WHERE
             {
                 return Json(500, new { status = false, message = ex.Message });
             }
+        }
+
+        private bool InsertOrUpdatePettyCashRequest(PettyCashVoucherRequest model, int userId, int pettyCashId)
+        {
+            int debitAccountId = 0;
+            int pettyCashName = model.CashAccountId;  // Assuming the CashAccountId is used as the Petty Cash Name (id)
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            using (var conn = new MySqlConnection(connStrBuilder.ConnectionString))
+            {
+                conn.Open();
+
+                // Fetch debit account ID based on Petty Cash Name (CashAccountId)
+                using (var cmd = new MySqlCommand("SELECT account_id FROM tbl_petty_cash_card WHERE name=@name", conn))
+                {
+                    cmd.Parameters.AddWithValue("@name", pettyCashName);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            debitAccountId = Convert.ToInt32(reader["account_id"]);
+                        }
+                    }
+                }
+
+                // Check if the petty cash request exists or if it's a new one
+                string query;
+                if (model.Id == 0) // New request
+                {
+                    // Insert new petty cash request
+                    query = @"
+                INSERT INTO tbl_petty_cash_request
+                    (request_date,petty_cash_id, request_ref, Petty_cash_name, amount, description, debit_account_id, state, pay, `change`, created_by, created_date)
+                VALUES
+                    (@request_date,@petty_cash_id, @request_ref, @Petty_cash_name, @amount, @description, @debit_account_id, @state, @pay, @change, @created_by, @created_date);";
+                }
+                else // Update existing request
+                {
+                    // Update existing petty cash request
+                    query = @"
+                UPDATE tbl_petty_cash_request
+                SET
+                    request_date = @request_date, petty_cash_id= @petty_cash_id,
+                    request_ref = @request_ref,
+                    Petty_cash_name = @Petty_cash_name,
+                    amount = @amount,
+                    description = @description,
+                    debit_account_id = @debit_account_id,
+                    state = @state,
+                    pay = @pay,
+                    `change` = @change,
+                    created_by = @created_by,
+                    created_date = @created_date
+                WHERE id = @id;";
+                }
+
+                try
+                {
+                    using (var cmd = new MySqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@request_date", model.VoucherDate);
+                        cmd.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
+                        cmd.Parameters.AddWithValue("@request_ref", GenerateNextREFCode());  // Generate a new REF code or use model.Code for update
+                        cmd.Parameters.AddWithValue("@Petty_cash_name", pettyCashName);
+                        cmd.Parameters.AddWithValue("@amount", model.Total);
+                        cmd.Parameters.AddWithValue("@description", model.Notes ?? "");
+                        cmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
+                        cmd.Parameters.AddWithValue("@state", "New"); // Adjust the state if needed (e.g., "New", "Approved", "Paid")
+                        cmd.Parameters.AddWithValue("@pay", 0);  // Adjust as per your logic (whether it's paid or not)
+                        cmd.Parameters.AddWithValue("@change", model.Total); // Assuming change equals the total amount
+                        cmd.Parameters.AddWithValue("@created_by", userId);
+                        cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+
+                        if (model.Id != 0) // Add the Id parameter for updates
+                        {
+                            cmd.Parameters.AddWithValue("@id", model.Id);
+                        }
+
+                        // Execute the query (insert or update)
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error during insert/update: " + ex.Message);
+                    return false;
+                }
+            }
+        }
+
+        private string GenerateNextREFCode()
+        {
+            string newCode = "PR-0001"; 
+
+            string query = "SELECT MAX(CAST(SUBSTRING(request_ref, 4) AS UNSIGNED)) AS lastCode FROM tbl_petty_cash_request";
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            using (var conn = new MySqlConnection(connStrBuilder.ConnectionString))
+            {
+                conn.Open();
+                using (var cmd = new MySqlCommand(query, conn))
+                {
+                    var lastCode = cmd.ExecuteScalar();
+                    if (lastCode != DBNull.Value && lastCode != null)
+                    {
+                        int nextCode = Convert.ToInt32(lastCode) + 1; 
+                        newCode = "PR-" + nextCode.ToString("D4"); 
+                    }
+                }
+            }
+
+            return newCode;
         }
 
         [HttpGet]
@@ -6472,6 +6586,7 @@ WHERE
             "DELETE FROM tbl_transaction WHERE t_type=@type AND transaction_id=@id",
             "DELETE FROM tbl_cost_center_transaction WHERE type=@type AND ref_id=@id",
             "DELETE FROM tbl_petty_cash_details WHERE Petty_Cash_id=@id",
+            "DELETE FROM tbl_petty_cash_request WHERE petty_cash_id=@id",
             "DELETE FROM tbl_petty_cash WHERE id=@id"
         };
 
@@ -7062,7 +7177,6 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
             }
         }
 
-
         [HttpPost]
         public async Task<IActionResult> UpdatePettyCashStatus([FromBody] UpdatePettyCashStatusRequest model)
         {
@@ -7079,7 +7193,6 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
 
             try
             {
-
                 var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
                 {
                     Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
@@ -7088,20 +7201,22 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
                 using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
 
-                // ── Fetch request details ──────────────────────────────
+                // Fetch request details
                 string fetchQuery = @"
-                SELECT
-                    r.request_ref  AS requestRef,
-                    r.amount       AS amount,
-                    e.name         AS employeeName,
-                    e.id           AS empId,
-                    e.code         AS empCode,
-                    pc.account_id  AS cashAccountId
-                FROM tbl_petty_cash_request r
-                INNER JOIN tbl_petty_cash_card c ON c.name = r.petty_cash_name
-                INNER JOIN tbl_employee        e ON c.name = e.id
-                INNER JOIN tbl_petty_cash_card pc ON pc.name = r.petty_cash_name
-                WHERE r.id = @id";
+            SELECT
+                r.state AS currentState,
+                r.request_ref AS requestRef,
+                r.amount AS amount,
+                r.petty_cash_id AS pettyCashId,
+                e.name AS employeeName,
+                e.id AS empId,
+                e.code AS empCode,
+                pc.account_id AS cashAccountId
+            FROM tbl_petty_cash_request r
+            INNER JOIN tbl_petty_cash_card c ON c.name = r.petty_cash_name
+            INNER JOIN tbl_employee e ON c.name = e.id
+            INNER JOIN tbl_petty_cash_card pc ON pc.name = r.petty_cash_name
+            WHERE r.petty_cash_id = @id";
 
                 string requestRef = "";
                 string employeeName = "";
@@ -7109,6 +7224,7 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
                 int empId = 0;
                 int cashAccountId = 0;
                 decimal amount = 0;
+                string currentState = "";
 
                 using (var cmdFetch = new MySqlCommand(fetchQuery, conn))
                 {
@@ -7123,18 +7239,28 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
                     empId = Convert.ToInt32(reader["empId"]);
                     cashAccountId = Convert.ToInt32(reader["cashAccountId"]);
                     amount = Convert.ToDecimal(reader["amount"]);
+                    currentState = reader["currentState"].ToString();
                 }
-                
-                // ── Approve ────────────────────────────────────────
-                if (model.NewStatus == "Approved")
+
+                // If the current status is "Approved" and the user is trying to decline
+                if (currentState == "Approved" && model.NewStatus == "Declined")
+                {
+                    return Ok(new
+                    {
+                        status = false,
+                        message = "This request has already been approved. Declining is not allowed."
+                    });
+                }
+                // If the current status is "Declined" and the user wants to approve it
+                else if (currentState == "Declined" && model.NewStatus == "Approved")
                 {
                     string updateQuery = @"
-                    UPDATE tbl_petty_cash_request
-                    SET  state             = @state,
-                         debit_account_id  = @debitAccountId,
-                         credit_account_id = @creditAccountId,
-                         approved_date     = @approvedDate
-                    WHERE id = @id";
+                UPDATE tbl_petty_cash_request
+                SET state = @state,
+                    debit_account_id = @debitAccountId,
+                    credit_account_id = @creditAccountId,
+                    approved_date = @approvedDate
+                WHERE id = @id";
 
                     using var cmdUpdate = new MySqlCommand(updateQuery, conn);
                     cmdUpdate.Parameters.AddWithValue("@state", "Approved");
@@ -7147,30 +7273,38 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
                     return Ok(new
                     {
                         status = true,
-                        message = $"Request {model.RequestId} has been Approved.",
+                        message = $"Request {model.RequestId} has been approved, even though it was previously declined.",
                         requestId = model.RequestId,
                         requestRef,
                         employeeName,
                         amount
                     });
                 }
-                // ── Decline ───────────────────────────────────────────
-                else
+                // If the current status is "Approved" and trying to approve again
+                else if (currentState == "Approved" && model.NewStatus == "Approved")
+                {
+                    return Ok(new
+                    {
+                        status = false,
+                        message = "This request has already been approved. Further approval is not required."
+                    });
+                }
+                else // For Decline, if the request was neither approved nor declined
                 {
                     string updateQuery = @"
-                    UPDATE tbl_petty_cash_request
-                    SET state = @state
-                    WHERE id  = @id";
+                UPDATE tbl_petty_cash_request
+                SET state = @state
+                WHERE id = @id";
 
-                    using var cmdDecline = new MySqlCommand(updateQuery, conn);
-                    cmdDecline.Parameters.AddWithValue("@state", "Declined");
-                    cmdDecline.Parameters.AddWithValue("@id", model.RequestId);
-                    await cmdDecline.ExecuteNonQueryAsync();
+                    using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@state", model.NewStatus);
+                    cmd.Parameters.AddWithValue("@id", model.RequestId);
+                    await cmd.ExecuteNonQueryAsync();
 
                     return Ok(new
                     {
                         status = true,
-                        message = $"Request {model.RequestId} has been Declined.",
+                        message = $"Request {model.RequestId} has been {model.NewStatus}.",
                         requestId = model.RequestId
                     });
                 }

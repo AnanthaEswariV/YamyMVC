@@ -5,7 +5,6 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
-
 <div class="card">
     <div class="card-header text-center"><strong>Petty Cash</strong></div>
     <div class="card-body">
@@ -217,7 +216,6 @@
     </div>
 </div>
 
-
 <div class="modal fade" id="pettyCashSubmissionModal" tabindex="-1" aria-labelledby="pettyCashSubmissionLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content rounded-4 shadow-lg border-0">
@@ -316,7 +314,6 @@
         </div>
     </div>
 </div>
-
 
 <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -484,50 +481,54 @@
                   url: '@Url.Action("GetPettyCashVoucher", "Lists")' + '?id=' + selectedId,
                 type: "GET",
                 success: function(res) {
-                    const tbody = $("#table1 tbody");
+                            console.log("API Response:", res);
+                            const tbody = $("#table1 tbody");
                     tbody.empty();
                     if (res.status && res.data && res.data.details.length > 0) {
-                        const voucher = res.data; 
+                        const voucher = res.data;
+                           $.each(voucher.details, function(i, row) {
+                      console.log('Row:', row);  // Debugging line
+            console.log('PettyCashId:', row.pettyCashId);
+                    const tr = `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${row.entryDate ?? ''}</td>
+                    <td>${row.refId ?? ''}</td>
+                    <td>${row.category ?? ''}</td>
+                    <td>${row.humName ?? ''}</td>
+                    <td>${row.projectName ?? ''}</td>
+                    <td>${row.vendorName ?? ''}</td>
+                    <td>${row.description ?? ''}</td>
+                    <td>${row.amount ?? 0}</td>
+                    <td>${row.note ?? ''}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-primary editPettyCashBtn"
+                                data-voucher='${JSON.stringify(voucher).replace(/'/g, "&apos;")}'>
+                            <i class="fas fa-pen"></i>
+                        </button>
 
-                        $.each(voucher.details, function(i, row) {
-                            const tr = `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${row.entryDate ?? ''}</td>
-                                    <td>${row.refId ?? ''}</td>
-                                    <td>${row.category ?? ''}</td>
-                                    <td>${row.humName ?? ''}</td>
-                                    <td>${row.projectName ?? ''}</td>
-                                    <td>${row.vendorName ?? ''}</td>
-                                    <td>${row.description ?? ''}</td>
-                                    <td>${row.amount ?? 0}</td>
-                                    <td>${row.note ?? ''}</td>
-                                    <td>
-                     <button type="button" class="btn btn-sm btn-primary editPettyCashBtn"
-            data-voucher='${JSON.stringify(voucher).replace(/'/g, "&apos;")}'>
-            <i class="fas fa-pen"></i>
-        </button>
+                        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${voucher.voucher.id}'>
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
 
-        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${voucher.voucher.id}'>
-                 <i class="fas fa-trash-alt"></i>
-        </button>
+                        <button class="btn btn-sm btn-success approvePettyCashBtn"
+                                title="Approve Petty Cash"
+                                                data-pettyCashId="${row.pettyCashId}">
+                            <i class="fas fa-check"></i>
+                        </button>
 
-              <button class="btn btn-sm btn-success approvePettyCashBtn"
-                title="Approve Petty Cash"
-                data-id="${voucher.voucher.id}">
-            <i class="fas fa-check"></i>
-        </button>
+                        <button class="btn btn-sm btn-warning declinePettyCashBtn"
+                                title="Decline Petty Cash"
+                                                data-pettyCashId="${row.pettyCashId}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(tr);
+        });
 
-        <button class="btn btn-sm btn-warning declinePettyCashBtn"
-                title="Decline Petty Cash"
-                data-id="${voucher.voucher.id}">
-            <i class="fas fa-times"></i>
-        </button>
-                                    </td>
-                                </tr>
-                            `;
-                            tbody.append(tr);
-                        });
+                console.log($("#table1").html());
                     } else {
                         tbody.append(`<tr><td colspan="10" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
                     }
@@ -538,13 +539,14 @@
             });
         });
 
-                // Approve Petty Cash
+         // When "Approve" button is clicked
         $(document).on('click', '.approvePettyCashBtn', function() {
-            const requestId = $(this).data('id');
+                         const requestId = $(this).data('pettycashid');
+            console.log("Approve Button Clicked, PettyCashId from Button:", requestId);
             if (!requestId) return;
 
             $.ajax({
-                url: '@Url.Action("UpdatePettyCashStatus", "Lists")', 
+                url: '@Url.Action("UpdatePettyCashStatus", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
@@ -553,26 +555,27 @@
                 }),
                 success: function(res) {
                     if (res.status) {
-                        alert(res.message);
-                        // Optionally, refresh the table or row
-                        $('#pettyCashDropdown').trigger('change'); 
+                        toastr.success(res.message);
+                        $('#pettyCashDropdown').trigger('change');
+                        $(this).prop('disabled', true);
+                        $('.declinePettyCashBtn').prop('disabled', true);
                     } else {
-                        alert('Error: ' + res.message);
+                        toastr.error(res.message); 
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('Error updating status: ' + error);
+                    toastr.error('Error updating status: ' + error);
                 }
             });
         });
 
-        // Decline Petty Cash
+        // When "Decline" button is clicked
         $(document).on('click', '.declinePettyCashBtn', function() {
-            const requestId = $(this).data('id');
+                    const requestId = $(this).data('pettycashid');  
+                     console.log('Decline Button Clicked, PettyCashId:', requestId);  
             if (!requestId) return;
-
             $.ajax({
-                url: '@Url.Action("UpdatePettyCashStatus", "Lists")', 
+                url: '@Url.Action("UpdatePettyCashStatus", "Lists")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
@@ -581,15 +584,16 @@
                 }),
                 success: function(res) {
                     if (res.status) {
-                        alert(res.message);
-                        // Optionally, refresh the table or row
-                        $('#pettyCashDropdown').trigger('change'); // Reload table
+                        toastr.warning(res.message);
+                        $('#pettyCashDropdown').trigger('change');
+                        $(this).prop('disabled', true);
+                        $('.approvePettyCashBtn').prop('disabled', false);
                     } else {
-                        alert('Error: ' + res.message);
+                        toastr.error(res.message);  
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('Error updating status: ' + error);
+                    toastr.error('Error updating status: ' + error);
                 }
             });
         });

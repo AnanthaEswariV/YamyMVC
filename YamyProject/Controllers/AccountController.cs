@@ -1285,6 +1285,7 @@
 
                         CREATE TABLE IF NOT EXISTS `tbl_petty_cash_request` (
                           `id` int NOT NULL AUTO_INCREMENT,
+                          `petty_cash_id` int NOT NULL,
                           `request_date` date DEFAULT NULL,
                           `request_ref` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           `Petty_cash_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
