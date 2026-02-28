@@ -6125,6 +6125,7 @@ WHERE
         }
 
 
+
         #endregion
 
         #region Petty Cash Voucher
@@ -7061,8 +7062,127 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
             }
         }
 
+
+        [HttpPost]
+        public async Task<IActionResult> UpdatePettyCashStatus([FromBody] UpdatePettyCashStatusRequest model)
+        {
+            if (model == null || model.RequestId <= 0)
+                return BadRequest(new { status = false, message = "Invalid request." });
+
+            var allowedStatuses = new[] { "Approved", "Declined" };
+            if (!Array.Exists(allowedStatuses, s => s.Equals(model.NewStatus, StringComparison.OrdinalIgnoreCase)))
+                return BadRequest(new { status = false, message = "Invalid status value." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in." });
+
+            try
+            {
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ── Fetch request details ──────────────────────────────
+                string fetchQuery = @"
+                SELECT
+                    r.request_ref  AS requestRef,
+                    r.amount       AS amount,
+                    e.name         AS employeeName,
+                    e.id           AS empId,
+                    e.code         AS empCode,
+                    pc.account_id  AS cashAccountId
+                FROM tbl_petty_cash_request r
+                INNER JOIN tbl_petty_cash_card c ON c.name = r.petty_cash_name
+                INNER JOIN tbl_employee        e ON c.name = e.id
+                INNER JOIN tbl_petty_cash_card pc ON pc.name = r.petty_cash_name
+                WHERE r.id = @id";
+
+                string requestRef = "";
+                string employeeName = "";
+                string empCode = "";
+                int empId = 0;
+                int cashAccountId = 0;
+                decimal amount = 0;
+
+                using (var cmdFetch = new MySqlCommand(fetchQuery, conn))
+                {
+                    cmdFetch.Parameters.AddWithValue("@id", model.RequestId);
+                    using var reader = await cmdFetch.ExecuteReaderAsync();
+                    if (!await reader.ReadAsync())
+                        return NotFound(new { status = false, message = "Petty cash request not found." });
+
+                    requestRef = reader["requestRef"].ToString();
+                    employeeName = reader["employeeName"].ToString();
+                    empCode = reader["empCode"].ToString();
+                    empId = Convert.ToInt32(reader["empId"]);
+                    cashAccountId = Convert.ToInt32(reader["cashAccountId"]);
+                    amount = Convert.ToDecimal(reader["amount"]);
+                }
+                
+                // ── Approve ────────────────────────────────────────
+                if (model.NewStatus == "Approved")
+                {
+                    string updateQuery = @"
+                    UPDATE tbl_petty_cash_request
+                    SET  state             = @state,
+                         debit_account_id  = @debitAccountId,
+                         credit_account_id = @creditAccountId,
+                         approved_date     = @approvedDate
+                    WHERE id = @id";
+
+                    using var cmdUpdate = new MySqlCommand(updateQuery, conn);
+                    cmdUpdate.Parameters.AddWithValue("@state", "Approved");
+                    cmdUpdate.Parameters.AddWithValue("@debitAccountId", cashAccountId);
+                    cmdUpdate.Parameters.AddWithValue("@creditAccountId", empId);
+                    cmdUpdate.Parameters.AddWithValue("@approvedDate", DateTime.Now.Date);
+                    cmdUpdate.Parameters.AddWithValue("@id", model.RequestId);
+                    await cmdUpdate.ExecuteNonQueryAsync();
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = $"Request {model.RequestId} has been Approved.",
+                        requestId = model.RequestId,
+                        requestRef,
+                        employeeName,
+                        amount
+                    });
+                }
+                // ── Decline ───────────────────────────────────────────
+                else
+                {
+                    string updateQuery = @"
+                    UPDATE tbl_petty_cash_request
+                    SET state = @state
+                    WHERE id  = @id";
+
+                    using var cmdDecline = new MySqlCommand(updateQuery, conn);
+                    cmdDecline.Parameters.AddWithValue("@state", "Declined");
+                    cmdDecline.Parameters.AddWithValue("@id", model.RequestId);
+                    await cmdDecline.ExecuteNonQueryAsync();
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = $"Request {model.RequestId} has been Declined.",
+                        requestId = model.RequestId
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
-            
+
         #region Petty Cash Log
 
         [HttpGet]
@@ -7294,6 +7414,15 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
+        }
+
+        #endregion
+
+        #region Petty Cash Approval
+
+        public IActionResult PettyCashApproval()
+        {
+            return View();
         }
 
         #endregion

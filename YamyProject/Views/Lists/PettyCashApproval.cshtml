@@ -1,0 +1,52 @@
+﻿
+@{
+    ViewData["Title"] = "PettyCashApproval";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+</head>
+
+<body>
+    <section id="approval-radio-buttons">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Petty Cash Approval</h4>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-body">
+                            <p>Please select one option:</p>
+                            <ul class="list-unstyled mb-0 d-flex gap-3">
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="approvalStatus" id="declined" value="Declined">
+                                        <label class="form-check-label" for="declined">Declined</label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="approvalStatus" id="approved" value="Approved">
+                                        <label class="form-check-label" for="approved">Approved</label>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
+    <script src="~/assets/js/bootstrap.bundle.min.js"></script>
+
+    <script src="~/assets/js/main.js"></script>
+</body>
+
+</html>

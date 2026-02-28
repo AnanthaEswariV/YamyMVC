@@ -434,6 +434,11 @@ namespace YamyProject.Core.Models
         public int? VendorId { get; set; }   
         public List<PettyCashDetail>? Details { get; set; }
     }
+    public class UpdatePettyCashStatusRequest
+    {
+        public int RequestId { get; set; }
+        public string NewStatus { get; set; } = "";   // "Approved" | "Declined"
+    }
 
     public class PettyCashDetail
     {

@@ -512,7 +512,17 @@
                  <i class="fas fa-trash-alt"></i>
         </button>
 
+              <button class="btn btn-sm btn-success approvePettyCashBtn"
+                title="Approve Petty Cash"
+                data-id="${voucher.voucher.id}">
+            <i class="fas fa-check"></i>
+        </button>
 
+        <button class="btn btn-sm btn-warning declinePettyCashBtn"
+                title="Decline Petty Cash"
+                data-id="${voucher.voucher.id}">
+            <i class="fas fa-times"></i>
+        </button>
                                     </td>
                                 </tr>
                             `;
@@ -524,6 +534,62 @@
                 },
                 error: function() {
                     $("#table1 tbody").html(`<tr><td colspan="10" class="text-center" style="color:red; padding:40px;">Error loading data</td></tr>`);
+                }
+            });
+        });
+
+                // Approve Petty Cash
+        $(document).on('click', '.approvePettyCashBtn', function() {
+            const requestId = $(this).data('id');
+            if (!requestId) return;
+
+            $.ajax({
+                url: '@Url.Action("UpdatePettyCashStatus", "Lists")', 
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    RequestId: requestId,
+                    NewStatus: 'Approved'
+                }),
+                success: function(res) {
+                    if (res.status) {
+                        alert(res.message);
+                        // Optionally, refresh the table or row
+                        $('#pettyCashDropdown').trigger('change'); 
+                    } else {
+                        alert('Error: ' + res.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Error updating status: ' + error);
+                }
+            });
+        });
+
+        // Decline Petty Cash
+        $(document).on('click', '.declinePettyCashBtn', function() {
+            const requestId = $(this).data('id');
+            if (!requestId) return;
+
+            $.ajax({
+                url: '@Url.Action("UpdatePettyCashStatus", "Lists")', 
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    RequestId: requestId,
+                    NewStatus: 'Declined'
+                }),
+                success: function(res) {
+                    if (res.status) {
+                        alert(res.message);
+                        // Optionally, refresh the table or row
+                        $('#pettyCashDropdown').trigger('change'); // Reload table
+                    } else {
+                        alert('Error: ' + res.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Error updating status: ' + error);
                 }
             });
         });
@@ -652,7 +718,7 @@
             });
         }
 
-function loadVendors() {
+        function loadVendors() {
     $.ajax({
         url: '@Url.Action("GetVendor", "Vendor")',
         type: 'GET',
