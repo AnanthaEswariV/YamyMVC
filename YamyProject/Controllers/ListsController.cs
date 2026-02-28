@@ -6429,6 +6429,7 @@ WHERE
             try
             {
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                int roleId = HttpContext.Session.GetInt32("RoleId") ?? 0;
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
 
@@ -6527,7 +6528,8 @@ WHERE
                     {
                         voucher = voucherData,
                         details = detailsList,
-                        totalAmount
+                        totalAmount, 
+                        roleId
                     }
                 });
             }

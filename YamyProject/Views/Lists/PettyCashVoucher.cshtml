@@ -3,6 +3,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
@@ -473,62 +474,72 @@
             $('#pettyCashEmployeeId').val(selected.data('empid') || '');
         })
 
-        $(document).on('change', '#pettyCashDropdown', function() {
+         $(document).on('change', '#pettyCashDropdown', function() {
             const selectedId = $(this).val();
             if (!selectedId) return;
 
             $.ajax({
-                  url: '@Url.Action("GetPettyCashVoucher", "Lists")' + '?id=' + selectedId,
+                url: '@Url.Action("GetPettyCashVoucher", "Lists")' + '?id=' + selectedId,
                 type: "GET",
                 success: function(res) {
-                            console.log("API Response:", res);
-                            const tbody = $("#table1 tbody");
+                    const tbody = $("#table1 tbody");
                     tbody.empty();
+
                     if (res.status && res.data && res.data.details.length > 0) {
                         const voucher = res.data;
-                           $.each(voucher.details, function(i, row) {
-                      console.log('Row:', row);  // Debugging line
-            console.log('PettyCashId:', row.pettyCashId);
-                    const tr = `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${row.entryDate ?? ''}</td>
-                    <td>${row.refId ?? ''}</td>
-                    <td>${row.category ?? ''}</td>
-                    <td>${row.humName ?? ''}</td>
-                    <td>${row.projectName ?? ''}</td>
-                    <td>${row.vendorName ?? ''}</td>
-                    <td>${row.description ?? ''}</td>
-                    <td>${row.amount ?? 0}</td>
-                    <td>${row.note ?? ''}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-primary editPettyCashBtn"
-                                data-voucher='${JSON.stringify(voucher).replace(/'/g, "&apos;")}'>
-                            <i class="fas fa-pen"></i>
-                        </button>
 
-                        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${voucher.voucher.id}'>
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                        // Get the roleId from the API response
+                        const roleId = voucher.roleId; // roleId is passed in the API response
 
-                        <button class="btn btn-sm btn-success approvePettyCashBtn"
-                                title="Approve Petty Cash"
-                                                data-pettyCashId="${row.pettyCashId}">
-                            <i class="fas fa-check"></i>
-                        </button>
+                        console.log('RoleId from API:', roleId); // Debugging line to check the value of roleId
 
-                        <button class="btn btn-sm btn-warning declinePettyCashBtn"
-                                title="Decline Petty Cash"
-                                                data-pettyCashId="${row.pettyCashId}">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.append(tr);
-        });
+                        // Iterate over voucher details and append rows
+                        $.each(voucher.details, function(i, row) {
+                            console.log('Row:', row);  // Debugging line to check data structure
 
-                console.log($("#table1").html());
+                            // Conditionally render the "Approve" and "Decline" buttons
+                            const approveDeclineButtons = (roleId === 1 || roleId === 2) ? `
+                                <button class="btn btn-sm btn-success approvePettyCashBtn"
+                                        title="Approve Petty Cash"
+                                        data-pettyCashId="${row.pettyCashId}">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-warning declinePettyCashBtn"
+                                        title="Decline Petty Cash"
+                                        data-pettyCashId="${row.pettyCashId}">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''; // If roleId is 1 or 2, show buttons, else don't show them
+
+                            // Create the table row
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${row.entryDate ?? ''}</td>
+                                    <td>${row.refId ?? ''}</td>
+                                    <td>${row.category ?? ''}</td>
+                                    <td>${row.humName ?? ''}</td>
+                                    <td>${row.projectName ?? ''}</td>
+                                    <td>${row.vendorName ?? ''}</td>
+                                    <td>${row.description ?? ''}</td>
+                                    <td>${row.amount ?? 0}</td>
+                                    <td>${row.note ?? ''}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary editPettyCashBtn"
+                                                data-voucher='${JSON.stringify(voucher).replace(/'/g, "&apos;")}'>
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+
+                                        <button class="btn btn-sm btn-danger deletePettyCashBtn" data-id='${voucher.voucher.id}'>
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+
+                                        ${approveDeclineButtons} <!-- Conditionally render the buttons -->
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(tr);
+                        });
                     } else {
                         tbody.append(`<tr><td colspan="10" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
                     }
@@ -1326,10 +1337,6 @@
                 }
             });
         });
-
-
-
-
 
     </script>
 }

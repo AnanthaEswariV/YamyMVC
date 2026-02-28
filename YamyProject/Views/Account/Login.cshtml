@@ -74,7 +74,6 @@
     <script>
         $(document).ready(function () {
 
-               // Configure Toastr options
             toastr.options = {
                 "closeButton": true,
                 "debug": false,
@@ -96,7 +95,7 @@
             let selectedDb = sessionStorage.getItem("selectedDatabase");
             $("#database").val(selectedDb);
 
-                  $("#loginForm").submit(function (e) {
+            $("#loginForm").submit(function (e) {
             e.preventDefault();
 
             var data = {

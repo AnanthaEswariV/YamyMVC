@@ -3467,6 +3467,7 @@ VALUES
                         HttpContext.Session.SetString("DatabaseName", dbName);
                         HttpContext.Session.SetString("UserName", username);
                         HttpContext.Session.SetInt32("UserId", user.Id);
+                        HttpContext.Session.SetInt32("RoleId", user.RoleId);
                         return Json(new { status = true, user });
                     }
                 }
@@ -3516,6 +3517,7 @@ VALUES
                 HttpContext.Session.SetString("DatabaseName", dbName);
                 HttpContext.Session.SetString("UserName", username);
                 HttpContext.Session.SetInt32("UserId", userRes.Id);
+                HttpContext.Session.SetInt32("RoleId", userRes.RoleId);
 
                 return Json(new { status = true, user = userRes });
             }
