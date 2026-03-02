@@ -491,11 +491,9 @@
                         // Get the roleId from the API response
                         const roleId = voucher.roleId; // roleId is passed in the API response
 
-                        console.log('RoleId from API:', roleId); // Debugging line to check the value of roleId
 
                         // Iterate over voucher details and append rows
                         $.each(voucher.details, function(i, row) {
-                            console.log('Row:', row);  // Debugging line to check data structure
 
                             // Conditionally render the "Approve" and "Decline" buttons
                             const approveDeclineButtons = (roleId === 1 || roleId === 2) ? `
@@ -553,7 +551,6 @@
          // When "Approve" button is clicked
         $(document).on('click', '.approvePettyCashBtn', function() {
                          const requestId = $(this).data('pettycashid');
-            console.log("Approve Button Clicked, PettyCashId from Button:", requestId);
             if (!requestId) return;
 
             $.ajax({
@@ -583,7 +580,6 @@
         // When "Decline" button is clicked
         $(document).on('click', '.declinePettyCashBtn', function() {
                     const requestId = $(this).data('pettycashid');  
-                     console.log('Decline Button Clicked, PettyCashId:', requestId);  
             if (!requestId) return;
             $.ajax({
                 url: '@Url.Action("UpdatePettyCashStatus", "Lists")',
