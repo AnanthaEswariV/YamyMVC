@@ -34,7 +34,7 @@
                 <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPettyCashModal">
                     <i class="bi bi-plus-circle me-1"></i>Add Petty Cash
                 </button>
-                <button type="button" class="btn btn-success btn-sm recycleCardBtn" data-bs-toggle="modal" data-bs-target="#pettyCashSubmissionModal">
+                <button type="button" class="btn btn-success btn-sm recycleCardBtn" data-bs-toggle="modal" data-bs-target="#pettyCashSubmissionModal" style="display: none;>
                     <i class="fas fa-paper-plane me-1"></i>Submit
                 </button>
             </div>
@@ -541,6 +541,27 @@
                     } else {
                         tbody.append(`<tr><td colspan="10" class="text-center" style="padding:40px; color:#6c757d; font-style:italic;">No records found</td></tr>`);
                     }
+
+                            // ✅ Check voucher state after loading table data
+                            $.ajax({
+                                url: '@Url.Action("GetPettyCashRequestState", "Lists")' + '?id=' + selectedId,
+                                type: 'GET',
+                                success: function (statusRes) {
+                                    if (statusRes.status && statusRes.data) {
+                                        const voucherState = statusRes.data.state;
+                                        if (voucherState === 'Approved') {
+                                            $('.recycleCardBtn').show();
+                                        } else {
+                                            $('.recycleCardBtn').hide();
+                                        }
+                                    } else {
+                                        $('.recycleCardBtn').hide();
+                                    }
+                                },
+                                error: function () {
+                                    $('.recycleCardBtn').hide();
+                                }
+                            });
                 },
                 error: function() {
                     $("#table1 tbody").html(`<tr><td colspan="10" class="text-center" style="color:red; padding:40px;">Error loading data</td></tr>`);
@@ -815,7 +836,8 @@
             populateAndSelectCostCenter();
             loadProjects();
             loadEditProjects();
-                loadVendors();
+            loadVendors();
+
         });
 
         $(document).on("click", ".editPettyCashBtn", function () {

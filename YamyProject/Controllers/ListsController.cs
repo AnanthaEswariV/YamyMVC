@@ -6071,6 +6071,54 @@ WHERE
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashRequestState(int id)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                pr.petty_cash_id,
+                pr.state
+            FROM 
+                tbl_petty_cash_request pr
+            WHERE 
+                pr.petty_cash_id = @RequestId;
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@RequestId", id);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    string state = reader["state"]?.ToString() ?? "Approved";  // Default state is Pending
+                    return Ok(new { status = true, data = new { state = state } });
+                }
+                else
+                {
+                    return NotFound(new { status = false, message = "Petty cash request not found." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePettyCashCard(int id)
@@ -7262,14 +7310,14 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
                     debit_account_id = @debitAccountId,
                     credit_account_id = @creditAccountId,
                     approved_date = @approvedDate
-                WHERE id = @id";
+                WHERE petty_cash_id = @petty_cash_id";
 
                     using var cmdUpdate = new MySqlCommand(updateQuery, conn);
                     cmdUpdate.Parameters.AddWithValue("@state", "Approved");
                     cmdUpdate.Parameters.AddWithValue("@debitAccountId", cashAccountId);
                     cmdUpdate.Parameters.AddWithValue("@creditAccountId", empId);
                     cmdUpdate.Parameters.AddWithValue("@approvedDate", DateTime.Now.Date);
-                    cmdUpdate.Parameters.AddWithValue("@id", model.RequestId);
+                     cmdUpdate.Parameters.AddWithValue("@petty_cash_id", model.RequestId);
                     await cmdUpdate.ExecuteNonQueryAsync();
 
                     return Ok(new
@@ -7296,11 +7344,12 @@ VALUES (@id, @desc, @amt, @cat, @hum, @hum_name, @ref_id, @project_id,@vendor_id
                     string updateQuery = @"
                 UPDATE tbl_petty_cash_request
                 SET state = @state
-                WHERE id = @id";
+                WHERE petty_cash_id = @petty_cash_id";
 
                     using var cmd = new MySqlCommand(updateQuery, conn);
                     cmd.Parameters.AddWithValue("@state", model.NewStatus);
-                    cmd.Parameters.AddWithValue("@id", model.RequestId);
+                    cmd.Parameters.AddWithValue("@approvedDate", DateTime.Now.Date);
+                    cmd.Parameters.AddWithValue("@petty_cash_id", model.RequestId);
                     await cmd.ExecuteNonQueryAsync();
 
                     return Ok(new
