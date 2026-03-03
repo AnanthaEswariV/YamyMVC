@@ -39,22 +39,43 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 string query = @"
-         SELECT 
-    p.id,
-    p.code,
-    p.name,
-    c.name AS customer_name,
-    p.status AS Status,
-    p.end_date AS End_Date
-FROM tbl_projects p
-LEFT JOIN tbl_customer c ON p.customer = c.id
-ORDER BY p.id;";
+            SELECT 
+                p.id,
+                p.code,
+                p.name AS name_en,
+                p.name_ar,
+                p.category,
+                p.description,
+                p.emirate,
+                p.status,
+                p.type,
+                p.start_date,
+                p.end_date,
+                p.extend_delay,
+                p.execution_period_months,
+                p.customer,
+                p.contractor,
+                p.consultant,
+                p.location,
+                p.details,
+                p.contract_value,
+                p.additional_value,
+                p.deduction_value,
+                p.total_value,
+                p.billed_to_date,
+                p.expenses,
+                p.balance,
+                c.name AS customer_name
+            FROM tbl_projects p
+            LEFT JOIN tbl_customer c ON p.customer = c.id
+            ORDER BY p.id;";
 
                 await using var cmd = new MySqlCommand(query, conn);
                 await using var reader = await cmd.ExecuteReaderAsync();
 
                 var projectList = new List<object>();
                 int sn = 1;
+
                 while (await reader.ReadAsync())
                 {
                     projectList.Add(new
@@ -62,10 +83,30 @@ ORDER BY p.id;";
                         SN = sn++,
                         Id = reader.GetInt32("id"),
                         Code = reader["code"].ToString(),
-                        Name = reader["name"].ToString(),
-                        Customer = reader["customer_name"].ToString(),
-                        Status = reader["Status"].ToString(),
-                        EndDate = reader["End_Date"] != DBNull.Value ? Convert.ToDateTime(reader["End_Date"]).ToString("yyyy-MM-dd") : null,
+                        Name = reader["name_en"].ToString(),
+                        NameArabic = reader["name_ar"].ToString(),
+                        Category = reader["category"].ToString(),
+                        Description = reader["description"].ToString(),
+                        Emirate = reader["emirate"].ToString(),
+                        Status = reader["status"].ToString(),
+                        Type = reader["type"].ToString(),
+                        StartDate = reader["start_date"] != DBNull.Value ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd") : null,
+                        EndDate = reader["end_date"] != DBNull.Value ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd") : null,
+                        ExtendDelay = reader["extend_delay"] != DBNull.Value ? Convert.ToDateTime(reader["extend_delay"]).ToString("yyyy-MM-dd") : null,
+                        ExecutionPeriodMonths = reader["execution_period_months"] != DBNull.Value ? Convert.ToInt32(reader["execution_period_months"]) : (int?)null,
+                        Customer = reader["customer"].ToString(),
+                        CustomerName = reader["customer_name"].ToString(),
+                        Contractor = reader["contractor"].ToString(),
+                        Consultant = reader["consultant"].ToString(),
+                        Location = reader["location"].ToString(),
+                        Details = reader["details"].ToString(),
+                        ContractValue = reader["contract_value"] != DBNull.Value ? Convert.ToDecimal(reader["contract_value"]) : 0,
+                        AdditionalValue = reader["additional_value"] != DBNull.Value ? Convert.ToDecimal(reader["additional_value"]) : 0,
+                        DeductionValue = reader["deduction_value"] != DBNull.Value ? Convert.ToDecimal(reader["deduction_value"]) : 0,
+                        TotalValue = reader["total_value"] != DBNull.Value ? Convert.ToDecimal(reader["total_value"]) : 0,
+                        BilledToDate = reader["billed_to_date"] != DBNull.Value ? Convert.ToDecimal(reader["billed_to_date"]) : 0,
+                        Expenses = reader["expenses"] != DBNull.Value ? Convert.ToDecimal(reader["expenses"]) : 0,
+                        Balance = reader["balance"] != DBNull.Value ? Convert.ToDecimal(reader["balance"]) : 0
                     });
                 }
 
@@ -95,12 +136,12 @@ ORDER BY p.id;";
                 await conn.OpenAsync();
 
                 // Check duplicate name
-                string checkQuery = "SELECT id FROM tbl_projects WHERE name_en=@name_en";
+                string checkQuery = "SELECT id FROM tbl_projects WHERE name=@name";
                 try
                 {
                     await using (var checkCmd = new MySqlCommand(checkQuery, conn))
                     {
-                        checkCmd.Parameters.AddWithValue("@name_en", model.Name.Trim());
+                        checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
                         var existingId = await checkCmd.ExecuteScalarAsync();
                         if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
                             return BadRequest(new { status = false, message = "Project Name already in use" });

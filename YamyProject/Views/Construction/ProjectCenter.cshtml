@@ -16,7 +16,6 @@
         }
 </style>
 
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
@@ -50,8 +49,6 @@
         </table>
     </div>
 </div>
-
-
 
 <!-- Project Modal -->
 <div class="modal fade" id="projectModal" tabindex="-1" aria-labelledby="projectModalLabel" aria-hidden="true">
@@ -255,14 +252,11 @@
             });
         }
 
-        loadProjects();
+         loadProjects();
 
+         let countryCities = [];
 
-
-              let countryCities = []; // global storage for countries and cities
-
-            // Function to load country & city dropdowns
-            function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+         function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
                 const $country = $(countryIdSelector);
                 const $city = $(cityIdSelector);
 
@@ -287,11 +281,9 @@
                 });
             }
 
+         loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
 
-           loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
-
-                     // 🖊️ Edit Project Button Click
-           $(document).on("click", ".editProjectBtn", function () {
+         $(document).on("click", ".editProjectBtn", function () {
             const project = $(this).data("project");
             if (!project) return;
 
@@ -326,7 +318,6 @@
             $("#projectModal").modal("show");
         });
 
-                     // 💾 Save Project (Add / Edit)
         $('#projectForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -371,7 +362,7 @@
             });
         });
 
-                $(document).on("click", ".deleteCardBtn", function () {
+        $(document).on("click", ".deleteCardBtn", function () {
             const projectId = $(this).data("id");
             if (!projectId) return;
 
@@ -397,8 +388,7 @@
         });
 
 
-
-         });
+        });
 
 
 

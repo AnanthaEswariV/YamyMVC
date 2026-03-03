@@ -284,6 +284,56 @@
 
         $('#contractValue, #additionalValue, #deductionValue, #billedToDate, #expenses').on('input', calculateTotal);
 
+        $(document).on("click", ".editProjectBtn", function () {
+            const project = $(this).data("project");
+            if (!project) return;
+
+            console.log(project);
+
+            // 🔹 Fill hidden ID and code
+            $("#projectId").val(project.id ?? 0);
+            $("#projectCode").val(project.code ?? "");
+
+            // 🔹 Fill basic project info
+            $("#projectName").val(project.name ?? "");
+            $("#projectNameArabic").val(project.nameArabic ?? "");
+            $("#projectCategory").val(project.category ?? "");
+            $("#projectDescription").val(project.description ?? "");
+            $("#emirateDropdown").val(project.emirate ?? "");
+            $("#statusDropdown").val(project.status ?? "");
+            $("#typeDropdown").val(project.type ?? "");
+
+            // 🔹 Dates
+            $("#projectStart").val(project.startDate ?? "");
+            $("#projectEnd").val(project.endDate ?? "");
+            $("#extendDelay").val(project.extendDelay ?? "");
+            $("#executionPeriod").val(project.executionPeriodMonths ?? "");
+
+            // 🔹 Customer / Contractor / Consultant
+            $("#customer").val(project.customer ?? "");
+            $("#contractor").val(project.contractor ?? "");
+            $("#consultant").val(project.consultant ?? "");
+
+            // 🔹 Location & Details
+            $("#location").val(project.location ?? "");
+            $("#details").val(project.details ?? "");
+
+            // 🔹 Project values
+            $("#contractValue").val(project.contractValue ?? 0);
+            $("#additionalValue").val(project.additionalValue ?? 0);
+            $("#deductionValue").val(project.deductionValue ?? 0);
+            $("#totalValue").val(project.totalValue ?? 0);
+            $("#billedToDate").val(project.billedToDate ?? 0);
+            $("#expenses").val(project.expenses ?? 0);
+            $("#balance").val(project.balance ?? 0);
+
+            // 🔹 Update modal title
+            $("#projectModalLabel").text("Edit Project");
+
+            // 🔹 Show modal
+            $("#projectModal").modal("show");
+        });
+
         $('#projectForm').on('submit', function(e) {
             e.preventDefault();
             const form = this;
@@ -381,7 +431,6 @@
                         toastr.error("Failed to load projects");
                         return;
                     }
-                    console.log(res);
                     // Destroy existing DataTable if exists
                     if ($.fn.DataTable.isDataTable("#projectTable")) {
                         $("#projectTable").DataTable().destroy();
@@ -457,6 +506,32 @@
                 }
             });
         }
+
+        $(document).on("click", ".deleteCardBtn", function () {
+            const projectId = $(this).data("id");
+            if (!projectId) return;
+
+            if (!confirm("Are you sure you want to delete this project?")) return;
+
+            $.ajax({
+             url: `@Url.Action("DeleteProject", "Construction")?projectId=${projectId}`,
+        type: "DELETE",
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                         setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to delete project");
+                }
+            });
+        });
+
  
         $(document).ready(function() {
 
