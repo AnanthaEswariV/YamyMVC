@@ -52,7 +52,8 @@
 
                         <!-- Customers -->
                         <li class="sidebar-item">
-                            <a asp-controller="CustomerCenter" asp-action="Index" class="sidebar-link">
+                            <a href="@Url.Action("Customer", "Customer")" class="sidebar-link">
+                           @*  <a asp-controller="CustomerCenter" asp-action="Index" class="sidebar-link"> *@
                                 <i class="bi bi-people-fill"></i>
                                 <span>Customers</span>
                             </a>
@@ -60,7 +61,8 @@
 
                         <!-- Vendors -->
                         <li class="sidebar-item">
-                            <a asp-controller="Vendors" asp-action="Index" class="sidebar-link">
+                            <a href="@Url.Action("Vendor", "Vendor")" class="sidebar-link">
+                            @* <a asp-controller="Vendors" asp-action="Index" class="sidebar-link"> *@
                                 <i class="bi bi-person-lines-fill"></i>
                                 <span>Vendors</span>
                             </a>
