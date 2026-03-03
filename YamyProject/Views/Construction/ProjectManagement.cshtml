@@ -1,0 +1,468 @@
+﻿
+@{
+    ViewData["Title"] = "ProjectManagement";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+
+    .modal-xl {
+        max-width: 1200px;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .form-control-sm,
+    .form-select-sm {
+        font-size: 13px;
+    }
+</style>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Project Center</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <button type="button" class="btn btn-primary" id="addCategoryBtn" data-bs-toggle="modal" data-bs-target="#projectModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Project
+            </button>
+        </div>
+        <!-- Table -->
+        <table class="table table-striped" id="projectTable">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>EndDate</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be loaded dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Project Modal -->
+<div class="modal fade" id="projectModal" tabindex="-1" aria-labelledby="projectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <!-- Extra wide for ERP screen -->
+        <form id="projectForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+
+                <!-- Modal Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="projectModalLabel">Project</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body">
+                    <input type="hidden" id="projectId" value="0">
+
+                    <!-- TOP ROW -->
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-2">
+                            <label class="form-label">Code</label>
+                            <input type="text" id="projectCode" class="form-control form-control-sm" disabled>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Emirate</label>
+                            <select id="emirateDropdown" class="form-select form-select-sm">
+                                <option>Dubai</option>
+                                <option>Abu Dhabi</option>
+                                <option>Ajman</option>
+                                <option>Fujairah</option>
+                                <option>Ras Al Khaimah</option>
+                                <option>Sharjah</option>
+                                <option>Umm Al Quwain</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select id="statusDropdown" class="form-select form-select-sm">
+                                <option>Approved</option>
+                                <option>No-Action</option>
+                                <option>Closed</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Type</label>
+                            <select id="typeDropdown" class="form-select form-select-sm">
+                                <option>Project</option>
+                                <option>Cost Center (Job)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- PROJECT NAMES -->
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Project Name (English)</label>
+                            <input type="text" id="projectName" class="form-control form-control-sm" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Project Name (Arabic)</label>
+                            <input type="text" id="projectNameArabic" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <label class="form-label">Category</label>
+                            <input type="text" id="projectCategory" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-md-6">
+                            <label class="form-label">Description</label>
+                            <input type="text" id="projectDescription" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <!-- DATES -->
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" id="projectStart" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">End Date</label>
+                            <input type="date" id="projectEnd" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Extend / Delay</label>
+                            <input type="date" id="extendDelay" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Execution Period (Months)</label>
+                            <input type="number" id="executionPeriod" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <!-- CUSTOMER / CONTRACTOR / CONSULTANT -->
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Customer</label>
+                            <select class="form-select" id="customer">
+                                <option value="">-- Select Customer --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Contractor</label>
+                            <input type="text" id="contractor" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Consultant</label>
+                            <input type="text" id="consultant" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <!-- LOCATION & DETAILS -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Location</label>
+                            <textarea id="location" class="form-control form-control-sm" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Details</label>
+                            <textarea id="details" class="form-control form-control-sm" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- PROJECT VALUE SECTION -->
+                    <div class="border rounded p-3 mb-3 bg-light">
+                        <h6 class="fw-bold">Project Value</h6>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label>Contract Value</label>
+                                <input type="number" id="contractValue" class="form-control form-control-sm" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Additional Value</label>
+                                <input type="number" id="additionalValue" class="form-control form-control-sm" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Deduction Value</label>
+                                <input type="number" id="deductionValue" class="form-control form-control-sm" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Total Value</label>
+                                <input type="number" id="totalValue" class="form-control form-control-sm bg-white" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUMMARY SECTION -->
+                    <div class="border rounded p-3 bg-light">
+                        <h6 class="fw-bold">Summary</h6>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label>Billed To Date</label>
+                                <input type="number" id="billedToDate" class="form-control form-control-sm" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label>Expenses</label>
+                                <input type="number" id="expenses" class="form-control form-control-sm" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label>Balance</label>
+                                <input type="number" id="balance" class="form-control form-control-sm bg-white" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+
+        function calculateTotal() {
+            const contract = parseFloat($('#contractValue').val()) || 0;
+            const add = parseFloat($('#additionalValue').val()) || 0;
+            const deduct = parseFloat($('#deductionValue').val()) || 0;
+            const total = contract + add - deduct;
+            $('#totalValue').val(total);
+
+            const billed = parseFloat($('#billedToDate').val()) || 0;
+            const expenses = parseFloat($('#expenses').val()) || 0;
+            const balance = total - billed - expenses;
+            $('#balance').val(balance);
+        }
+
+        $('#contractValue, #additionalValue, #deductionValue, #billedToDate, #expenses').on('input', calculateTotal);
+
+        $('#projectForm').on('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+        const startDate = $('#projectStart').val();
+        const endDate = $('#projectEnd').val();
+        const extendDelay = $('#extendDelay').val();
+
+            if (extendDelay) {
+            const end = new Date(endDate);
+            const extend = new Date(extendDelay);
+
+            if (extend < end) {
+                toastr.error("'Extend/Delay Date' cannot be less than 'End Date'");
+                return;
+            }
+        }
+            const projectData = {
+                Id: parseInt($('#projectId').val()) || 0,
+                Code: $('#projectCode').val(),
+                Name: $('#projectName').val()?.trim() || '',
+                NameArabic: $('#projectNameArabic').val()?.trim() || '',
+                Category: $('#projectCategory').val()?.trim() || '',
+                Description: $('#projectDescription').val()?.trim() || '',
+                Emirate: $('#emirateDropdown').val(),
+                Status: $('#statusDropdown').val(),
+                Type: $('#typeDropdown').val(),
+                StartDate: $('#projectStart').val(),
+                EndDate: $('#projectEnd').val(),
+                ExtendDelay: $('#extendDelay').val(),
+                ExecutionPeriodMonths: parseInt($('#executionPeriod').val()) || null,
+                Customer: $('#customer').val(),
+                Contractor: $('#contractor').val(),
+                Consultant: $('#consultant').val(),
+                Location: $('#location').val(),
+                Details: $('#details').val(),
+                ContractValue: parseFloat($('#contractValue').val()) || 0,
+                AdditionalValue: parseFloat($('#additionalValue').val()) || 0,
+                DeductionValue: parseFloat($('#deductionValue').val()) || 0,
+                TotalValue: parseFloat($('#totalValue').val()) || 0,
+                BilledToDate: parseFloat($('#billedToDate').val()) || 0,
+                Expenses: parseFloat($('#expenses').val()) || 0,
+                Balance: parseFloat($('#balance').val()) || 0
+            };
+
+            $.ajax({
+                url: '/Construction/SaveProject', // Your controller action
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(projectData),
+                success: function(res) {
+                    if(res.status){
+                        toastr.success(projectData.Id>0 ? 'Project updated' : 'Project added');
+                        $('#projectModal').modal('hide');
+                        setTimeout(()=>location.reload(), 1500);
+                    } else toastr.error(res.message);
+                },
+                error: function(xhr){
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
+
+        function loadCustomers() {
+            $.ajax({
+                url: '@Url.Action("GetCustomers", "Customer")',
+                type: 'GET',
+                success: function (res) {
+                    if (res.status) {
+                        const customerDdl = $("#customer");
+
+                        customerDdl.empty().append('<option value="">-- Select Customer --</option>');
+
+                        res.data.forEach(c => {
+                            const option = `<option value="${c.id}">${c.name}</option>`;
+                            customerDdl.append(option);
+                        });
+                    } else {
+                        toastr.error('Failed to load customers.');
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading customers.');
+                }
+            });
+        }
+
+        function loadProjects() {
+            $.ajax({
+               url: '@Url.Action("GetProjectManagement", "Construction")',
+                type: "GET",
+                success: function(res) {
+                    if (!res.status) {
+                        toastr.error("Failed to load projects");
+                        return;
+                    }
+                    console.log(res);
+                    // Destroy existing DataTable if exists
+                    if ($.fn.DataTable.isDataTable("#projectTable")) {
+                        $("#projectTable").DataTable().destroy();
+                    }
+
+                    let tbody = $("#projectTable tbody");
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function(i, row) {
+                            const startDate = row.startDate ?? "";
+                            const endDate = row.endDate ?? "";
+                            let duration = 0;
+
+                            if (startDate && endDate) {
+                                const start = new Date(startDate);
+                                const end = new Date(endDate);
+                                duration = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            }
+
+                            const tr = `
+                                <tr>
+                                    <td>${row.sn}</td>
+                                    <td>${row.code ?? ""}</td>
+                                    <td>${row.name ?? ""}</td>
+                                    <td>${row.customer ?? ""}</td>
+                                    <td>${row.status}</td>
+                                    <td>${endDate}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary editProjectBtn" data-project='${JSON.stringify(row)}' title="Edit Project">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger deleteCardBtn"
+                    data-id='${row.id}'>
+                <i class="fas fa-prescription-bottle-alt"></i>
+            </button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(tr);
+                        });
+
+                        // Initialize DataTable
+                                $("#projectTable").DataTable({
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                    className: 'btn btn-primary btn-sm',
+                    exportOptions: {
+                        columns: ':not(:last-child)' // Exclude the last column (Actions)
+                    }
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                    className: 'btn btn-primary btn-sm',
+                    exportOptions: {
+                        columns: ':not(:last-child)' // Exclude the last column (Actions)
+                    }
+                }
+            ],
+            order: [[0, 'asc']],
+            pageLength: 25
+        });
+                    } else {
+                        tbody.append(`<tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function() {
+                    toastr.error("Failed to load projects");
+                }
+            });
+        }
+ 
+        $(document).ready(function() {
+
+            loadCustomers();
+            loadProjects();
+
+        });
+    </script>
+}

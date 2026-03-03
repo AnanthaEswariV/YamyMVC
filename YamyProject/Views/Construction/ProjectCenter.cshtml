@@ -168,8 +168,7 @@
 
         $(document).ready(function() {
 
-
-                    function loadProjects() {
+         function loadProjects() {
             $.ajax({
                url: '@Url.Action("GetProjects", "Construction")',
                 type: "GET",
@@ -256,7 +255,6 @@
             });
         }
 
-        // Call the function to load projects on page load
         loadProjects();
 
 
@@ -291,9 +289,6 @@
 
 
            loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
-
-
-
 
                      // 🖊️ Edit Project Button Click
            $(document).on("click", ".editProjectBtn", function () {
@@ -330,8 +325,6 @@
             // 🔹 Show modal
             $("#projectModal").modal("show");
         });
-
-
 
                      // 💾 Save Project (Add / Edit)
         $('#projectForm').on('submit', function (e) {

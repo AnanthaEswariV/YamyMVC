@@ -547,18 +547,57 @@ namespace YamyProject.Core.Models
         public int? CostCenter { get; set; }
     }
 
+    //public class ProjectRequest
+    //{
+    //    public int Id { get; set; }
+    //    public string Code { get; set; }
+    //    public string Name { get; set; }
+    //    public string Category { get; set; }
+    //    public string Description { get; set; }
+    //    public DateTime StartDate { get; set; }
+    //    public DateTime EndDate { get; set; }
+    //    public int? CountryId { get; set; }
+    //    public int? CityId { get; set; }
+    //    public bool IsProjectOption { get; set; }
+    //}
+
+
     public class ProjectRequest
     {
         public int Id { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
+        public string NameArabic { get; set; }
         public string Category { get; set; }
         public string Description { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+
+        public string Emirate { get; set; }
+        public string Status { get; set; }
+        public string Type { get; set; }
+
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public DateTime? ExtendDelay { get; set; }
+        public int? ExecutionPeriodMonths { get; set; }
+
+        public string Customer { get; set; }
+        public string Contractor { get; set; }
+        public string Consultant { get; set; }
+
+        public string Location { get; set; }
+        public string Details { get; set; }
+
+        public decimal ContractValue { get; set; }
+        public decimal AdditionalValue { get; set; }
+        public decimal DeductionValue { get; set; }
+        public decimal TotalValue { get; set; }
+
+        public decimal BilledToDate { get; set; }
+        public decimal Expenses { get; set; }
+        public decimal Balance { get; set; }
+
         public int? CountryId { get; set; }
         public int? CityId { get; set; }
-        public bool IsProjectOption { get; set; }
     }
     // TenderRequest DTO
     public class TenderRequest

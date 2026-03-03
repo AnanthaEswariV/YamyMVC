@@ -18,6 +18,215 @@ namespace YamyProject.Controllers
             _connection = new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
         }
 
+
+        #region ProjectManagement
+
+        public IActionResult ProjectManagement()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetProjectManagement()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+         SELECT 
+    p.id,
+    p.code,
+    p.name,
+    c.name AS customer_name,
+    p.status AS Status,
+    p.end_date AS End_Date
+FROM tbl_projects p
+LEFT JOIN tbl_customer c ON p.customer = c.id
+ORDER BY p.id;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var projectList = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    projectList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        Customer = reader["customer_name"].ToString(),
+                        Status = reader["Status"].ToString(),
+                        EndDate = reader["End_Date"] != DBNull.Value ? Convert.ToDateTime(reader["End_Date"]).ToString("yyyy-MM-dd") : null,
+                    });
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> SaveProject([FromBody] ProjectRequest model)
+        {
+            try
+            {
+                if (model == null) return BadRequest(new { status = false, message = "Invalid request" });
+                if (string.IsNullOrWhiteSpace(model.Name)) return BadRequest(new { status = false, message = "Please enter Project Name" });
+                if (model.StartDate >= model.EndDate) return BadRequest(new { status = false, message = "Start Date must be before End Date" });
+
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0) return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                { Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase") };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Check duplicate name
+                string checkQuery = "SELECT id FROM tbl_projects WHERE name_en=@name_en";
+                try
+                {
+                    await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@name_en", model.Name.Trim());
+                        var existingId = await checkCmd.ExecuteScalarAsync();
+                        if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                            return BadRequest(new { status = false, message = "Project Name already in use" });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+
+                // Generate code if new
+                string projectCode = model.Id == 0 ? await GenerateNextProjectCode(conn) : model.Code;
+
+                if (model.Id == 0)
+                {
+                    string insertQuery = @"
+        INSERT INTO tbl_projects
+        (code, name, name_ar, category, description, emirate, status, type,
+         start_date, end_date, extend_delay, execution_period_months,
+         customer, contractor, consultant, location, details,
+         contract_value, additional_value, deduction_value, total_value,
+         billed_to_date, expenses, balance)
+        VALUES
+        (@code, @name, @name_ar, @category, @description, @emirate, @status, @type,
+         @start_date, @end_date, @extend_delay, @execution_period_months,
+         @customer, @contractor, @consultant, @location, @details,
+         @contract_value, @additional_value, @deduction_value, @total_value,
+         @billed_to_date, @expenses, @balance);
+        SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@code", projectCode);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@name_ar", model.NameArabic?.Trim());
+                    cmd.Parameters.AddWithValue("@category", model.Category);
+                    cmd.Parameters.AddWithValue("@description", model.Description);
+                    cmd.Parameters.AddWithValue("@emirate", model.Emirate);
+                    cmd.Parameters.AddWithValue("@status", model.Status);
+                    cmd.Parameters.AddWithValue("@type", model.Type);
+                    cmd.Parameters.AddWithValue("@start_date", model.StartDate);
+                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+                    cmd.Parameters.AddWithValue("@extend_delay", model.ExtendDelay);
+                    cmd.Parameters.AddWithValue("@execution_period_months", model.ExecutionPeriodMonths);
+                    cmd.Parameters.AddWithValue("@customer", model.Customer);
+                    cmd.Parameters.AddWithValue("@contractor", model.Contractor);
+                    cmd.Parameters.AddWithValue("@consultant", model.Consultant);
+                    cmd.Parameters.AddWithValue("@location", model.Location);
+                    cmd.Parameters.AddWithValue("@details", model.Details);
+                    cmd.Parameters.AddWithValue("@contract_value", model.ContractValue);
+                    cmd.Parameters.AddWithValue("@additional_value", model.AdditionalValue);
+                    cmd.Parameters.AddWithValue("@deduction_value", model.DeductionValue);
+                    cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
+                    cmd.Parameters.AddWithValue("@billed_to_date", model.BilledToDate);
+                    cmd.Parameters.AddWithValue("@expenses", model.Expenses);
+                    cmd.Parameters.AddWithValue("@balance", model.Balance);
+
+                    int projectId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Ok(new { status = true, message = "Project created successfully", id = projectId, code = projectCode });
+                }
+                else
+                {
+                    // Update existing project
+                    string updateQuery = @"
+        UPDATE tbl_projects
+        SET code=@code, name=@name, name_ar=@name_ar, category=@category, description=@description,
+            emirate=@emirate, status=@status, type=@type,
+            start_date=@start_date, end_date=@end_date, extend_delay=@extend_delay,
+            execution_period_months=@execution_period_months,
+            customer=@customer, contractor=@contractor, consultant=@consultant,
+            location=@location, details=@details,
+            contract_value=@contract_value, additional_value=@additional_value,
+            deduction_value=@deduction_value, total_value=@total_value,
+            billed_to_date=@billed_to_date, expenses=@expenses, balance=@balance
+        WHERE id=@id;";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@code", projectCode);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@name_ar", model.NameArabic?.Trim());
+                    cmd.Parameters.AddWithValue("@category", model.Category);
+                    cmd.Parameters.AddWithValue("@description", model.Description);
+                    cmd.Parameters.AddWithValue("@emirate", model.Emirate);
+                    cmd.Parameters.AddWithValue("@status", model.Status);
+                    cmd.Parameters.AddWithValue("@type", model.Type);
+                    cmd.Parameters.AddWithValue("@start_date", model.StartDate);
+                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+                    cmd.Parameters.AddWithValue("@extend_delay", model.ExtendDelay);
+                    cmd.Parameters.AddWithValue("@execution_period_months", model.ExecutionPeriodMonths);
+                    cmd.Parameters.AddWithValue("@customer", model.Customer);
+                    cmd.Parameters.AddWithValue("@contractor", model.Contractor);
+                    cmd.Parameters.AddWithValue("@consultant", model.Consultant);
+                    cmd.Parameters.AddWithValue("@location", model.Location);
+                    cmd.Parameters.AddWithValue("@details", model.Details);
+                    cmd.Parameters.AddWithValue("@contract_value", model.ContractValue);
+                    cmd.Parameters.AddWithValue("@additional_value", model.AdditionalValue);
+                    cmd.Parameters.AddWithValue("@deduction_value", model.DeductionValue);
+                    cmd.Parameters.AddWithValue("@total_value", model.TotalValue);
+                    cmd.Parameters.AddWithValue("@billed_to_date", model.BilledToDate);
+                    cmd.Parameters.AddWithValue("@expenses", model.Expenses);
+                    cmd.Parameters.AddWithValue("@balance", model.Balance);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0) return NotFound(new { status = false, message = "Project not found" });
+                    return Ok(new { status = true, message = "Project updated successfully", id = model.Id, code = projectCode });
+                }
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        // Helper to generate next project code
+        private async Task<string> GenerateNextProjectCode(MySqlConnection conn)
+        {
+            string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_projects";
+            await using var cmd = new MySqlCommand(query, conn);
+            object result = await cmd.ExecuteScalarAsync();
+            int next = 1;
+            if (result != DBNull.Value && result != null) next = Convert.ToInt32(result) + 1;
+            return next.ToString("D3");
+        }
+
+        #endregion
+
         #region ProjectCenter
 
         public IActionResult ProjectCenter()
@@ -42,11 +251,10 @@ namespace YamyProject.Controllers
             SELECT 
                 id,
                 code,
-                name,
+                name_en,
                 category,
                 start_date AS StartDate,
-                country_id AS CountryId,
-                city_id AS CityId,
+                emirate AS CountryId,
                 end_date AS EndDate,
                 description As Description
             FROM tbl_projects
@@ -64,12 +272,11 @@ namespace YamyProject.Controllers
                         SN = sn++,
                         Id = reader.GetInt32("id"),
                         Code = reader["code"].ToString(),
-                        Name = reader["name"].ToString(),
+                        Name = reader["name_en"].ToString(),
                         Category = reader["category"].ToString(),
                         StartDate = reader["StartDate"] != DBNull.Value ? Convert.ToDateTime(reader["StartDate"]).ToString("yyyy-MM-dd") : null,
                         EndDate = reader["EndDate"] != DBNull.Value ? Convert.ToDateTime(reader["EndDate"]).ToString("yyyy-MM-dd") : null,
-                        CountryId = reader.GetInt32("CountryId"),
-                        CityId = reader.GetInt32("CityId"),
+                        CountryId = reader.GetInt32("emirate"),
                         Description = reader["Description"].ToString()
                     });
                 }
@@ -82,222 +289,222 @@ namespace YamyProject.Controllers
             }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> SaveProject([FromBody] ProjectRequest model)
-        {
-            if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
+       // [HttpPost]
+       // public async Task<IActionResult> SaveProject([FromBody] ProjectRequest model)
+       // {
+       //     if (model == null)
+       //         return BadRequest(new { status = false, message = "Invalid request" });
 
-            if (string.IsNullOrWhiteSpace(model.Name))
-                return BadRequest(new { status = false, message = "Please enter Project Name" });
+       //     if (string.IsNullOrWhiteSpace(model.Name))
+       //         return BadRequest(new { status = false, message = "Please enter Project Name" });
 
-            if (model.StartDate >= model.EndDate)
-                return BadRequest(new { status = false, message = "Start Date must be before End Date" });
-
-
-            try
-            {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // 1️⃣ Check if project name already exists
-                string checkQuery = "SELECT id FROM tbl_projects WHERE name=@name";
-                await using (var checkCmd = new MySqlCommand(checkQuery, conn))
-                {
-                    checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    var existingId = await checkCmd.ExecuteScalarAsync();
-                    if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
-                    {
-                        return BadRequest(new { status = false, message = "Project Name already in use" });
-                    }
-                }
-
-                // 2️⃣ Generate project code for new projects
-                string projectCode = model.Id == 0 ? await GenerateNextProjectCode(conn) : model.Code;
-
-                if (model.Id == 0)
-                {
-                    // Insert new project
-                    string insertQuery = @"
-                INSERT INTO tbl_projects
-                (code, name, category, description, start_date, end_date, country_id, city_id)
-                VALUES (@code, @name, @category, @description, @start_date, @end_date, @country_id, @city_id);
-                SELECT LAST_INSERT_ID();";
-
-                    await using var cmd = new MySqlCommand(insertQuery, conn);
-                    cmd.Parameters.AddWithValue("@code", projectCode);
-                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    cmd.Parameters.AddWithValue("@category", model.Category);
-                    cmd.Parameters.AddWithValue("@description", model.Description);
-                    cmd.Parameters.AddWithValue("@start_date", model.StartDate);
-                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
-                    cmd.Parameters.AddWithValue("@country_id", model.CountryId ?? 0);
-                    cmd.Parameters.AddWithValue("@city_id", model.CityId ?? 0);
-
-                    int projectId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-
-                    // Optional: Insert cost center if enabled
-                    //if (model.IsProjectOption)
-                    //{
+       //     if (model.StartDate >= model.EndDate)
+       //         return BadRequest(new { status = false, message = "Start Date must be before End Date" });
 
 
-                    // 🔹 Generate Cost Center Main Code
-                    int newMainCode = 101;
-                    string getMaxMainCode = "SELECT MAX(code) FROM tbl_cost_center";
-                    await using (var mainCodeCmd = new MySqlCommand(getMaxMainCode, conn))
-                    {
-                        var result = await mainCodeCmd.ExecuteScalarAsync();
-                        if (result != DBNull.Value && result != null)
-                            newMainCode = Convert.ToInt32(result) + 1;
-                    }
+       //     try
+       //     {
+       //         int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+       //         if (userId <= 0)
+       //             return Unauthorized(new { status = false, message = "User not logged in" });
 
-                    int mainId = 0;
-                        string mainInsert = @"
-                    INSERT INTO tbl_cost_center (name, code, project_id)
-                    VALUES (@name, @code, @project_id);
-                    SELECT LAST_INSERT_ID();";
+       //         var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+       //         {
+       //             Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+       //         };
 
-                        await using (var mainCmd = new MySqlCommand(mainInsert, conn))
-                        {
-                            mainCmd.Parameters.AddWithValue("@name", model.Name);
-                            mainCmd.Parameters.AddWithValue("@code", newMainCode);
-                            mainCmd.Parameters.AddWithValue("@project_id", projectId);
-                            mainId = Convert.ToInt32(await mainCmd.ExecuteScalarAsync());
-                        }
+       //         await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+       //         await conn.OpenAsync();
 
-                    // 🔹 Generate Sub Cost Center Code
-                    int newSubCode = 1001;
-                    string getMaxSubCode = "SELECT MAX(code) FROM tbl_sub_cost_center";
-                    await using (var subCodeCmd = new MySqlCommand(getMaxSubCode, conn))
-                    {
-                        var result = await subCodeCmd.ExecuteScalarAsync();
-                        if (result != DBNull.Value && result != null)
-                            newSubCode = Convert.ToInt32(result) + 1;
-                    }
+       //         // 1️⃣ Check if project name already exists
+       //         string checkQuery = "SELECT id FROM tbl_projects WHERE name=@name";
+       //         await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+       //         {
+       //             checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+       //             var existingId = await checkCmd.ExecuteScalarAsync();
+       //             if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+       //             {
+       //                 return BadRequest(new { status = false, message = "Project Name already in use" });
+       //             }
+       //         }
 
-                    string subInsert = @"
-                    INSERT INTO tbl_sub_cost_center (code, name, main_id, project_id)
-                    VALUES (@code, @name, @main_id, @project_id);";
+       //         // 2️⃣ Generate project code for new projects
+       //         string projectCode = model.Id == 0 ? await GenerateNextProjectCode(conn) : model.Code;
 
-                        await using (var subCmd = new MySqlCommand(subInsert, conn))
-                        {
-                            subCmd.Parameters.AddWithValue("@code", newSubCode);
-                            subCmd.Parameters.AddWithValue("@name", model.Name);
-                            subCmd.Parameters.AddWithValue("@main_id", mainId);
-                            subCmd.Parameters.AddWithValue("@project_id", projectId);
-                            await subCmd.ExecuteNonQueryAsync();
-                        }
-                    //}
+       //         if (model.Id == 0)
+       //         {
+       //             // Insert new project
+       //             string insertQuery = @"
+       //         INSERT INTO tbl_projects
+       //         (code, name, category, description, start_date, end_date, country_id, city_id)
+       //         VALUES (@code, @name, @category, @description, @start_date, @end_date, @country_id, @city_id);
+       //         SELECT LAST_INSERT_ID();";
 
-                    return Ok(new
-                    {
-                        status = true,
-                        message = "Project created successfully",
-                        id = projectId,
-                        code = projectCode
-                    });
-                }
-                else
-                {
+       //             await using var cmd = new MySqlCommand(insertQuery, conn);
+       //             cmd.Parameters.AddWithValue("@code", projectCode);
+       //             cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+       //             cmd.Parameters.AddWithValue("@category", model.Category);
+       //             cmd.Parameters.AddWithValue("@description", model.Description);
+       //             cmd.Parameters.AddWithValue("@start_date", model.StartDate);
+       //             cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+       //             cmd.Parameters.AddWithValue("@country_id", model.CountryId ?? 0);
+       //             cmd.Parameters.AddWithValue("@city_id", model.CityId ?? 0);
+
+       //             int projectId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+       //             // Optional: Insert cost center if enabled
+       //             //if (model.IsProjectOption)
+       //             //{
+
+
+       //             // 🔹 Generate Cost Center Main Code
+       //             int newMainCode = 101;
+       //             string getMaxMainCode = "SELECT MAX(code) FROM tbl_cost_center";
+       //             await using (var mainCodeCmd = new MySqlCommand(getMaxMainCode, conn))
+       //             {
+       //                 var result = await mainCodeCmd.ExecuteScalarAsync();
+       //                 if (result != DBNull.Value && result != null)
+       //                     newMainCode = Convert.ToInt32(result) + 1;
+       //             }
+
+       //             int mainId = 0;
+       //                 string mainInsert = @"
+       //             INSERT INTO tbl_cost_center (name, code, project_id)
+       //             VALUES (@name, @code, @project_id);
+       //             SELECT LAST_INSERT_ID();";
+
+       //                 await using (var mainCmd = new MySqlCommand(mainInsert, conn))
+       //                 {
+       //                     mainCmd.Parameters.AddWithValue("@name", model.Name);
+       //                     mainCmd.Parameters.AddWithValue("@code", newMainCode);
+       //                     mainCmd.Parameters.AddWithValue("@project_id", projectId);
+       //                     mainId = Convert.ToInt32(await mainCmd.ExecuteScalarAsync());
+       //                 }
+
+       //             // 🔹 Generate Sub Cost Center Code
+       //             int newSubCode = 1001;
+       //             string getMaxSubCode = "SELECT MAX(code) FROM tbl_sub_cost_center";
+       //             await using (var subCodeCmd = new MySqlCommand(getMaxSubCode, conn))
+       //             {
+       //                 var result = await subCodeCmd.ExecuteScalarAsync();
+       //                 if (result != DBNull.Value && result != null)
+       //                     newSubCode = Convert.ToInt32(result) + 1;
+       //             }
+
+       //             string subInsert = @"
+       //             INSERT INTO tbl_sub_cost_center (code, name, main_id, project_id)
+       //             VALUES (@code, @name, @main_id, @project_id);";
+
+       //                 await using (var subCmd = new MySqlCommand(subInsert, conn))
+       //                 {
+       //                     subCmd.Parameters.AddWithValue("@code", newSubCode);
+       //                     subCmd.Parameters.AddWithValue("@name", model.Name);
+       //                     subCmd.Parameters.AddWithValue("@main_id", mainId);
+       //                     subCmd.Parameters.AddWithValue("@project_id", projectId);
+       //                     await subCmd.ExecuteNonQueryAsync();
+       //                 }
+       //             //}
+
+       //             return Ok(new
+       //             {
+       //                 status = true,
+       //                 message = "Project created successfully",
+       //                 id = projectId,
+       //                 code = projectCode
+       //             });
+       //         }
+       //         else
+       //         {
                    
-                    // 🔹 Get existing project code (to avoid overwriting with null)
-                    string existingCodeQuery = "SELECT code FROM tbl_projects WHERE id=@id";
-                    string existingCode = "";
-                    await using (var codeCmd = new MySqlCommand(existingCodeQuery, conn))
-                    {
-                        codeCmd.Parameters.AddWithValue("@id", model.Id);
-                        var codeResult = await codeCmd.ExecuteScalarAsync();
-                        if (codeResult != DBNull.Value && codeResult != null)
-                            existingCode = codeResult.ToString();
-                    }
+       //             // 🔹 Get existing project code (to avoid overwriting with null)
+       //             string existingCodeQuery = "SELECT code FROM tbl_projects WHERE id=@id";
+       //             string existingCode = "";
+       //             await using (var codeCmd = new MySqlCommand(existingCodeQuery, conn))
+       //             {
+       //                 codeCmd.Parameters.AddWithValue("@id", model.Id);
+       //                 var codeResult = await codeCmd.ExecuteScalarAsync();
+       //                 if (codeResult != DBNull.Value && codeResult != null)
+       //                     existingCode = codeResult.ToString();
+       //             }
 
-                    string finalProjectCode = string.IsNullOrWhiteSpace(model.Code)
-       ? existingCode
-       : model.Code;
+       //             string finalProjectCode = string.IsNullOrWhiteSpace(model.Code)
+       //? existingCode
+       //: model.Code;
 
 
-                    // 🔹 Update existing project
-                    string updateQuery = @"
-        UPDATE tbl_projects
-        SET code=@code, name=@name, category=@category, description=@description,
-            start_date=@start_date, end_date=@end_date, country_id=@country_id, city_id=@city_id
-        WHERE id=@id;";
+       //             // 🔹 Update existing project
+       //             string updateQuery = @"
+       // UPDATE tbl_projects
+       // SET code=@code, name=@name, category=@category, description=@description,
+       //     start_date=@start_date, end_date=@end_date, country_id=@country_id, city_id=@city_id
+       // WHERE id=@id;";
 
-                    await using var cmd = new MySqlCommand(updateQuery, conn);
-                    cmd.Parameters.AddWithValue("@id", model.Id);
-                    cmd.Parameters.AddWithValue("@code", finalProjectCode);
-                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                    cmd.Parameters.AddWithValue("@category", model.Category);
-                    cmd.Parameters.AddWithValue("@description", model.Description);
-                    cmd.Parameters.AddWithValue("@start_date", model.StartDate);
-                    cmd.Parameters.AddWithValue("@end_date", model.EndDate);
-                    cmd.Parameters.AddWithValue("@country_id", model.CountryId ?? 0);
-                    cmd.Parameters.AddWithValue("@city_id", model.CityId ?? 0);
+       //             await using var cmd = new MySqlCommand(updateQuery, conn);
+       //             cmd.Parameters.AddWithValue("@id", model.Id);
+       //             cmd.Parameters.AddWithValue("@code", finalProjectCode);
+       //             cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+       //             cmd.Parameters.AddWithValue("@category", model.Category);
+       //             cmd.Parameters.AddWithValue("@description", model.Description);
+       //             cmd.Parameters.AddWithValue("@start_date", model.StartDate);
+       //             cmd.Parameters.AddWithValue("@end_date", model.EndDate);
+       //             cmd.Parameters.AddWithValue("@country_id", model.CountryId ?? 0);
+       //             cmd.Parameters.AddWithValue("@city_id", model.CityId ?? 0);
 
-                    int affected = await cmd.ExecuteNonQueryAsync();
-                    if (affected == 0)
-                        return NotFound(new { status = false, message = "Project not found" });
+       //             int affected = await cmd.ExecuteNonQueryAsync();
+       //             if (affected == 0)
+       //                 return NotFound(new { status = false, message = "Project not found" });
 
-                    // 🔹 Update cost center and sub cost center names
-                    string updateMain = @"
-        UPDATE tbl_cost_center 
-        SET name=@name 
-        WHERE project_id=@project_id;";
-                    await using (var mainCmd = new MySqlCommand(updateMain, conn))
-                    {
-                        mainCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                        mainCmd.Parameters.AddWithValue("@project_id", model.Id);
-                        await mainCmd.ExecuteNonQueryAsync();
-                    }
+       //             // 🔹 Update cost center and sub cost center names
+       //             string updateMain = @"
+       // UPDATE tbl_cost_center 
+       // SET name=@name 
+       // WHERE project_id=@project_id;";
+       //             await using (var mainCmd = new MySqlCommand(updateMain, conn))
+       //             {
+       //                 mainCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+       //                 mainCmd.Parameters.AddWithValue("@project_id", model.Id);
+       //                 await mainCmd.ExecuteNonQueryAsync();
+       //             }
 
-                    string updateSub = @"
-        UPDATE tbl_sub_cost_center 
-        SET name=@name 
-        WHERE project_id=@project_id;";
-                    await using (var subCmd = new MySqlCommand(updateSub, conn))
-                    {
-                        subCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                        subCmd.Parameters.AddWithValue("@project_id", model.Id);
-                        await subCmd.ExecuteNonQueryAsync();
-                    }
+       //             string updateSub = @"
+       // UPDATE tbl_sub_cost_center 
+       // SET name=@name 
+       // WHERE project_id=@project_id;";
+       //             await using (var subCmd = new MySqlCommand(updateSub, conn))
+       //             {
+       //                 subCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+       //                 subCmd.Parameters.AddWithValue("@project_id", model.Id);
+       //                 await subCmd.ExecuteNonQueryAsync();
+       //             }
 
-                    return Ok(new
-                    {
-                        status = true,
-                        message = "Project updated successfully",
-                        id = model.Id,
-                        code = projectCode
-                    });
-                }
+       //             return Ok(new
+       //             {
+       //                 status = true,
+       //                 message = "Project updated successfully",
+       //                 id = model.Id,
+       //                 code = projectCode
+       //             });
+       //         }
 
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
+       //     }
+       //     catch (Exception ex)
+       //     {
+       //         return StatusCode(500, new { status = false, message = ex.Message });
+       //     }
+       // }
 
-        private async Task<string> GenerateNextProjectCode(MySqlConnection conn)
-        {
-            string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_projects";
-            await using var cmd = new MySqlCommand(query, conn);
-            object result = await cmd.ExecuteScalarAsync();
+       // private async Task<string> GenerateNextProjectCode(MySqlConnection conn)
+       // {
+       //     string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_projects";
+       //     await using var cmd = new MySqlCommand(query, conn);
+       //     object result = await cmd.ExecuteScalarAsync();
 
-            int next = 1;
-            if (result != DBNull.Value && result != null)
-                next = Convert.ToInt32(result) + 1;
+       //     int next = 1;
+       //     if (result != DBNull.Value && result != null)
+       //         next = Convert.ToInt32(result) + 1;
 
-            return next.ToString("D3"); // Format: 001, 002, 003
-        }
+       //     return next.ToString("D3"); // Format: 001, 002, 003
+       // }
 
         [HttpDelete]
         public async Task<IActionResult> DeleteProject(int projectId)

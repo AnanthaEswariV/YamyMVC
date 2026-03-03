@@ -2339,19 +2339,49 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+                        //CREATE TABLE IF NOT EXISTS `tbl_projects` (
+                        //  `id` int NOT NULL AUTO_INCREMENT,
+                        //  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                        //  `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                        //  `category` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                        //  `description` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                        //  `start_date` date DEFAULT NULL,             
+                        //  `end_date` date DEFAULT NULL,
+                        //  `country_id` int NOT NULL DEFAULT '0',
+                        //  `city_id` int NOT NULL DEFAULT '0',
+                        //  `status` VARCHAR(50) DEFAULT 'Planned',
+                        //  PRIMARY KEY (`id`)
+                        //) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
                         CREATE TABLE IF NOT EXISTS `tbl_projects` (
-                          `id` int NOT NULL AUTO_INCREMENT,
-                          `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-                          `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
-                          `category` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
-                          `description` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
-                          `start_date` date DEFAULT NULL,             
-                          `end_date` date DEFAULT NULL,
-                          `country_id` int NOT NULL DEFAULT '0',
-                          `city_id` int NOT NULL DEFAULT '0',
-                          `status` VARCHAR(50) DEFAULT 'Planned',
-                          PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                       `id` int NOT NULL AUTO_INCREMENT,
+                       `code` varchar(50) DEFAULT NULL,
+                       `emirate` varchar(50) DEFAULT NULL,
+                       `status` varchar(50) DEFAULT 'Planned',
+                       `type` varchar(50) DEFAULT NULL,
+                       `name` varchar(250) NOT NULL DEFAULT '',
+                       `name_ar` varchar(250) DEFAULT NULL,
+                       `category` varchar(250) DEFAULT '',
+                       `description` varchar(350) DEFAULT '',
+                       `start_date` date DEFAULT NULL,
+                       `end_date` date DEFAULT NULL,
+                       `extend_delay` date DEFAULT NULL,
+                       `execution_period_months` int DEFAULT NULL,
+                       `customer` varchar(150) DEFAULT NULL,
+                       `contractor` varchar(150) DEFAULT NULL,
+                       `consultant` varchar(150) DEFAULT NULL,
+                       `location` varchar(350) DEFAULT NULL,
+                       `details` varchar(350) DEFAULT NULL,
+                       `contract_value` decimal(15,2) DEFAULT 0,
+                       `additional_value` decimal(15,2) DEFAULT 0,
+                       `deduction_value` decimal(15,2) DEFAULT 0,
+                       `total_value` decimal(15,2) DEFAULT 0,
+                       `billed_to_date` decimal(15,2) DEFAULT 0,
+                       `expenses` decimal(15,2) DEFAULT 0,
+                       `balance` decimal(15,2) DEFAULT 0,
+                       PRIMARY KEY (`id`)
+                    )  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
                         CREATE TABLE IF NOT EXISTS `tbl_project_estimate` (
                           `id` int NOT NULL AUTO_INCREMENT,
