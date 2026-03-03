@@ -94,10 +94,10 @@
                     <input type="hidden" id="level4Id" value="0">
 
                     <!-- LEVEL 1 -->
-                    <div class="mb-3">
+                    <div class="mb-3" id="rowLevel1">
                         <label class="form-label fw-semibold">LEVEL 1</label>
                         <div class="d-flex gap-2 align-items-center">
-                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel1" required disabled></select>
+                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel1" required ></select>
                             <a href="/Lists/ChartOfAccountL1" class="text-primary" title="Chart of Account L1">
                                 <i class="fas fa-plus-circle fs-6"></i>
                             </a>
@@ -105,10 +105,10 @@
                     </div>
 
                     <!-- LEVEL 2 -->
-                    <div class="mb-3">
+                    <div class="mb-3" id="rowLevel2">
                         <label class="form-label fw-semibold">LEVEL 2</label>
                         <div class="d-flex gap-2 align-items-center">
-                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel2" required disabled></select>
+                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel2" required ></select>
                             <a href="/Lists/ChartOfAccountL2" class="text-primary">
                                 <i class="fas fa-plus-circle fs-6"></i>
                             </a>
@@ -116,10 +116,10 @@
                     </div>
 
                     <!-- LEVEL 3 -->
-                    <div class="mb-3">
+                    <div class="mb-3" id="rowLevel3">
                         <label class="form-label fw-semibold">LEVEL 3</label>
                         <div class="d-flex gap-2 align-items-center">
-                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel3" required disabled></select>
+                            <select class="form-select form-select-sm flex-grow-1" id="ddlLevel3" required ></select>
                             <a href="/Lists/ChartOfAccountL3" class="text-primary">
                                 <i class="fas fa-plus-circle fs-6"></i>
                             </a>
@@ -924,6 +924,16 @@
                 });
             }
 
+                    function setLevelRowsVisible(visible) {
+            if (visible) {
+                $('#rowLevel1, #rowLevel2, #rowLevel3').show();
+                $('#ddlLevel1, #ddlLevel2, #ddlLevel3').attr('required', true);
+            } else {
+                $('#rowLevel1, #rowLevel2, #rowLevel3').hide();
+                $('#ddlLevel1, #ddlLevel2, #ddlLevel3').removeAttr('required');
+            }
+        }
+
             // ─── Modal Events ─────────────────────────────────────────────
             // Fires BEFORE animation starts
             $('#coaModal').on('show.bs.modal', function () {
@@ -937,11 +947,12 @@
             // Fires AFTER modal is fully visible
             $('#coaModal').on('shown.bs.modal', function () {
                 if (isEditMode) {
+                    setLevelRowsVisible(false);
                     // ✅ Edit mode: dropdowns already populated — just reset flag
                     isEditMode = false;
                     return;
                 }
-
+                setLevelRowsVisible(true);
                 // ─── ADD MODE: Reset & load Level 1 ───────────────────────
                 $('#coaForm')[0].reset();
                 $('#level4Id').val(0);
@@ -973,6 +984,7 @@
                 $('#level4Id').val(0);
                 $('#coaModalLabel').text('COA - New Account');
                 isEditMode = false;
+                setLevelRowsVisible(true);
             });
 
             // ─── Cascade Dropdowns (Add mode) ─────────────────────────────
