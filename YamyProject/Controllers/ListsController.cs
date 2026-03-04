@@ -3330,10 +3330,10 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@category", model.CategoryId);
                     cmd.Parameters.AddWithValue("@unit_id", model.UnitId == 0 ? (object)DBNull.Value : model.UnitId);
                     cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
-                    cmd.Parameters.AddWithValue("@cost_price", model.CostPrice == 0 ? null : model.CostPrice.ToString());
+                    cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
                     cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
                     cmd.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
-                    cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice == 0 ? null : model.SalesPrice.ToString());
+                    cmd.Parameters.AddWithValue("@sales_price", model.SalesPrice);
                     cmd.Parameters.AddWithValue("@income_account_id", model.IncomeAccountId);
                     cmd.Parameters.AddWithValue("@asset_account_id", model.AssetAccountId);
                     cmd.Parameters.AddWithValue("@min_amount", model.MinAmount);

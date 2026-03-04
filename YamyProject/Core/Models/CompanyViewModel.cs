@@ -314,7 +314,7 @@ namespace YamyProject.Core.Models
         public int CategoryId { get; set; }
         public int UnitId { get; set; }
         public string Barcode { get; set; }
-        public decimal CostPrice { get; set; }
+        public decimal CostPrice { get; set; } = 0;
         public decimal SalesPrice { get; set; }
         public int CogsAccountId { get; set; }
         public int IncomeAccountId { get; set; }

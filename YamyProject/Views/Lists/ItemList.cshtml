@@ -458,6 +458,31 @@
             });
         }
 
+
+                function getTodayDate() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+         document.getElementById('newItemModal').addEventListener('shown.bs.modal', function () {
+                const todayDate = getTodayDate();
+
+                // Fill all date fields
+                const dateFields = [
+                     'asOfDateInput'
+                ];
+
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
+            });
+
         function validateForm() {
             let itemName = $("#itemNameInput").val().trim();
             let warehouse = $("#warehouseDropdown").val();
@@ -486,16 +511,16 @@
                 $("#mainUnit").focus();
                 return false;
             }
-            if (onHand === "" || parseFloat(onHand) < 0) {
-                alert("Opening Qty must be 0 or more");
-                $("#onHandInput").focus();
-                return false;
-            }
-            if (costPrice === "" || parseFloat(costPrice) < 0) {
-                alert("Cost Price must be 0 or more");
-                $("#costPriceInput").focus();
-                return false;
-            }
+            // if (onHand === "" || parseFloat(onHand) < 0) {
+            //     alert("Opening Qty must be 0 or more");
+            //     $("#onHandInput").focus();
+            //     return false;
+            // }
+            // if (costPrice === "" || parseFloat(costPrice) < 0) {
+            //     alert("Cost Price must be 0 or more");
+            //     $("#costPriceInput").focus();
+            //     return false;
+            // }
                 if (!$("#asOfDateInput").val()) {
             toastr.error("As Of Date is required");
             return false;
@@ -713,7 +738,7 @@
                     function loadUnitsDropdown(selector = "#mainUnit", selectedId = null) {
                     $.get('/Lists/GetMainUnits', function (res) {
                       const dropdown = $(selector);
-                      dropdown.empty().append('<option value="">-- Select Unit --</option>');
+                      // dropdown.empty().append('<option value="">-- Select Unit --</option>');
 
                       if (res && res.status && res.data && res.data.length > 0) {
                           res.data.forEach(u => {
@@ -991,6 +1016,7 @@
             $("#itemNameInput").val(data.name);
             $("#warehouseDropdown").val(data.warehouseid);
             $("#typeSelect").val(data.type);
+             changeFormLayout();
             $("#categoryDropdowns").val(data.categoryid);
             $("#mainUnit").val(data.unitid);
             $("#barcodeInput").val(data.barcode);
