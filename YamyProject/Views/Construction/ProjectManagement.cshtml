@@ -772,7 +772,7 @@
             });
         });
 
-           function loadAllAccounts() {
+        function loadAllAccounts() {
             $.ajax({
                 url: '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
@@ -836,6 +836,20 @@
             });
         }
 
+        
+
+        $('#projectModal').on('show.bs.modal', function () {
+            const isEdit = parseInt($("#projectId").val()) > 0;
+            setOtherTabsState(!isEdit);  
+            $('#tab-projects').tab('show');
+        });
+
+        $('#projectModal').on('hidden.bs.modal', function () {
+            $("#projectId").val(0);
+            $("#projectForm")[0].reset();
+            $("#projectModalLabel").text("Add Project");
+            setOtherTabsState(true);
+        });
         // Call on document ready
         $(document).ready(function() {
             loadCustomers();
