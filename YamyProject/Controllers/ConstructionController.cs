@@ -266,6 +266,74 @@ namespace YamyProject.Controllers
             return next.ToString("D3");
         }
 
+        private async Task<int> GetDefaultAccountId(string category)
+        {
+            int accountId = 0;
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            var query = "SELECT account_id FROM tbl_coa_config WHERE category = @category LIMIT 1";
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@category", category);
+
+            var result = await cmd.ExecuteScalarAsync();
+            if (result != null && result != DBNull.Value)
+                accountId = Convert.ToInt32(result);
+
+            return accountId;
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentMethodInfo([FromQuery] string method)
+        {
+            try
+            {
+                int accountId = 0;
+                bool paymentTermsEnabled = false;
+
+                if (method == "IncomeAccount")
+                {
+                    // Get default Cash account from database
+                    accountId = await GetDefaultAccountId("Income");
+                    paymentTermsEnabled = false;
+                }
+                else if (method == "ExpensesAccount")
+                {
+                    // Get default Customer account from database
+                    accountId = await GetDefaultAccountId("Expenses");
+                    paymentTermsEnabled = true;
+                }
+                else if (method == "RetentionAccount")
+                {
+                    // Get default Customer account from database
+                    accountId = await GetDefaultAccountId("Retention");
+                    paymentTermsEnabled = true;
+                }
+                else if (method == "DownpaymentAccount")
+                {
+                    // Get default Customer account from database
+                    accountId = await GetDefaultAccountId("Downpayment");
+                    paymentTermsEnabled = true;
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    accountId,
+                    paymentTermsEnabled
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region ProjectCenter

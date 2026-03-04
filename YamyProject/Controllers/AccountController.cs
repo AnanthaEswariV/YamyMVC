@@ -566,7 +566,11 @@
                             (40, 'PDC Payable Cancel', 1111003, 34, 0.000, 0.000, NULL, 0),
 	                        (41, 'Sales Discount', 6101004, 25, 0.000, 0.000, NULL, 0),
 	                        (42, 'Cash On Hand', 1103006, 3, 0.000, 0.000, NULL, 0),
-	                        (43, 'Sales Return', 4101003, 19, 0.000, 0.000, NULL, 0);
+	                        (43, 'Sales Return', 4101003, 19, 0.000, 0.000, NULL, 0),
+	                        (44, 'Contracting Income/Cost Centers Income', 46502001, 35, 0.000, 0.000, NULL, 0),
+	                        (45, 'Contracting Expenses/Cost Centers Expenses', 6101005, 25, 0.000, 0.000, NULL, 0),
+	                        (46, 'Retention', 2103005, 11, 0.000, 0.000, NULL, 0),
+	                        (47, 'Downpayment', 2105002, 29, 0.000, 0.000, NULL, 0);
 
                         INSERT INTO `tbl_coa_config` (`id`, `account_id`, `category`) VALUES
 	                        (1, 23, 'Sales'),
@@ -607,7 +611,11 @@
 	                        (36, 43, 'SalesReturn'),
 	                        (37, 1, 'Default Account For Bank'),
                             (38, 1, 'Salaries'),
-                            (39, 31, 'Stock Settlement');
+                            (39, 31, 'Stock Settlement'),
+                            (40, 44, 'Income'),
+                            (41, 45, 'Expenses'),
+                            (42, 46, 'Retention'),
+                            (43, 47, 'Downpayment');
 
                         CREATE TABLE IF NOT EXISTS `tbl_company` (
                           `id` int NOT NULL AUTO_INCREMENT,
@@ -2339,20 +2347,20 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-                        //CREATE TABLE IF NOT EXISTS `tbl_projects` (
-                        //  `id` int NOT NULL AUTO_INCREMENT,
-                        //  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
-                        //  `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
-                        //  `category` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
-                        //  `description` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
-                        //  `start_date` date DEFAULT NULL,             
-                        //  `end_date` date DEFAULT NULL,
-                        //  `country_id` int NOT NULL DEFAULT '0',
-                        //  `city_id` int NOT NULL DEFAULT '0',
-                        //  `status` VARCHAR(50) DEFAULT 'Planned',
-                        //  PRIMARY KEY (`id`)
-                        //) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+                 --    //CREATE TABLE IF NOT EXISTS `tbl_projects` (
+                 --     //  `id` int NOT NULL AUTO_INCREMENT,
+                 --     //  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                 --      //  `name` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                 --      //  `category` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                 --      //  `description` varchar(350) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',
+                 --      //  `start_date` date DEFAULT NULL,             
+                 --      //  `end_date` date DEFAULT NULL,
+                 --      //  `country_id` int NOT NULL DEFAULT '0',
+                 --      //  `city_id` int NOT NULL DEFAULT '0',
+                 --      //  `status` VARCHAR(50) DEFAULT 'Planned',
+                 --      //  PRIMARY KEY (`id`)
+                 --      //) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                
 
                         CREATE TABLE IF NOT EXISTS `tbl_projects` (
                        `id` int NOT NULL AUTO_INCREMENT,
@@ -2382,6 +2390,26 @@
                        `balance` decimal(15,2) DEFAULT 0,
                        PRIMARY KEY (`id`)
                     )  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+                      CREATE TABLE IF NOT EXISTS `tbl_projects_accounts` (
+                        `id` int NOT NULL AUTO_INCREMENT,
+                        `name` VARCHAR(3250) NOT NULL DEFAULT '',
+                        `project_id` INT(10) NOT NULL DEFAULT '0',
+                        `account_id` INT(10) NOT NULL DEFAULT '0',
+                        PRIMARY KEY (`id`)
+                      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
+
+
+
+                        CREATE TABLE IF NOT EXISTS `tbl_projects_accounts` (
+                          `id` int NOT NULL AUTO_INCREMENT,
+                          `name` VARCHAR(3250) NOT NULL DEFAULT '',
+                          `project_id` INT(10) NOT NULL DEFAULT '0',
+                          `account_id` INT(10) NOT NULL DEFAULT '0',
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
                         CREATE TABLE IF NOT EXISTS `tbl_project_estimate` (
                           `id` int NOT NULL AUTO_INCREMENT,

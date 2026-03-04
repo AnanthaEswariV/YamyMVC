@@ -297,7 +297,6 @@
                                     <th>Main Account</th>
                                     <th>Code</th>
                                     <th>Name</th>
-                                    <th>Name (Arabic)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -305,73 +304,67 @@
                                     <td><input type="checkbox" class="accountCheck" checked></td>
                                     <td>IncomeAccount</td>
                                     <td>
-                                        <select class="form-select form-select-sm">
-                                            <option>Contracting Income/Cost Centres Income</option>
+                                        <select id="accountNameIncome" class="form-select form-select-sm" required>
+                                            <option value="">-- Select --</option>
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm accCode"></td>
                                     <td><input type="text" class="form-control form-control-sm accName"></td>
-                                    <td><input type="text" class="form-control form-control-sm accNameAr"></td>
                                 </tr>
                                 <tr>
                                     <td><input type="checkbox" class="accountCheck" checked></td>
                                     <td>ExpensesAccount</td>
                                     <td>
-                                        <select class="form-select form-select-sm">
-                                            <option>Contracting Expenses/CostCentres Expenses</option>
+                                        <select id="accountNameExpenses" class="form-select form-select-sm" required>
+                                            <option value="">-- Select --</option>
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm accCode"></td>
                                     <td><input type="text" class="form-control form-control-sm accName"></td>
-                                    <td><input type="text" class="form-control form-control-sm accNameAr"></td>
                                 </tr>
                                 <tr>
                                     <td><input type="checkbox" class="accountCheck" checked></td>
                                     <td>RetentionAccount</td>
                                     <td>
-                                        <select class="form-select form-select-sm">
-                                            <option>retentions</option>
+                                        <select id="accountNameretentions" class="form-select form-select-sm" required>
+                                            <option value="">-- Select --</option>
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm accCode"></td>
                                     <td><input type="text" class="form-control form-control-sm accName"></td>
-                                    <td><input type="text" class="form-control form-control-sm accNameAr"></td>
                                 </tr>
                                 <tr>
                                     <td><input type="checkbox" class="accountCheck" checked></td>
                                     <td>DownpaymentAccount</td>
                                     <td>
-                                        <select class="form-select form-select-sm">
-                                            <option>Downpayments</option>
+                                        <select id="accountNameDownpayments" class="form-select form-select-sm" required>
+                                            <option value="">-- Select --</option>
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm accCode"></td>
                                     <td><input type="text" class="form-control form-control-sm accName"></td>
-                                    <td><input type="text" class="form-control form-control-sm accNameAr"></td>
                                 </tr>
                                 <tr>
                                     <td><input type="checkbox" class="accountCheck"></td>
                                     <td>Other1</td>
                                     <td>
-                                        <select class="form-select form-select-sm">
+                                        <select id="other1" class="form-select form-select-sm">
                                             <option value="">Please select</option>
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm accCode"></td>
                                     <td><input type="text" class="form-control form-control-sm accName"></td>
-                                    <td><input type="text" class="form-control form-control-sm accNameAr"></td>
                                 </tr>
                                 <tr>
                                     <td><input type="checkbox" class="accountCheck"></td>
                                     <td>Other2</td>
                                     <td>
-                                        <select class="form-select form-select-sm">
+                                        <select id="other2" class="form-select form-select-sm">
                                             <option value="">Please select</option>
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm accCode"></td>
                                     <td><input type="text" class="form-control form-control-sm accName"></td>
-                                    <td><input type="text" class="form-control form-control-sm accNameAr"></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -512,7 +505,7 @@
 
     <script>
 
-          function setOtherTabsState(disabled) {
+         function setOtherTabsState(disabled) {
             $('#projectTabs button:not(#tab-projects)').prop('disabled', disabled);
         }
 
@@ -779,12 +772,75 @@
             });
         });
 
- 
-        $(document).ready(function() {
+           function loadAllAccounts() {
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
 
+                    // 1️⃣ Predefined account types with default selection
+                    const predefinedDropdowns = {
+                        "IncomeAccount": $("#accountNameIncome"),
+                        "ExpensesAccount": $("#accountNameExpenses"),
+                        "RetentionAccount": $("#accountNameretentions"),
+                        "DownpaymentAccount": $("#accountNameDownpayments")
+                    };
+
+                    $.each(predefinedDropdowns, function(type, $ddl) {
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+                        $.each(accounts, function(i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
+                        });
+
+                        // Fetch and set selected value
+                        $.ajax({
+                            url: '/Construction/GetPaymentMethodInfo',
+                            type: 'GET',
+                            data: { method: type },
+                            success: function(res) {
+                                if (res.status) {
+                                    $ddl.val(res.accountId);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("❌ Error fetching selected account ID for " + type + ":", error);
+                            }
+                        });
+                    });
+
+                    // 2️⃣ Other dropdowns (Other1, Other2) – just show accounts
+                    const otherDropdowns = ["#other1", "#other2"];
+                    $.each(otherDropdowns, function(index, selector) {
+                        const $ddl = $(selector);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+                        $.each(accounts, function(i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name
+                                })
+                            );
+                        });
+                    });
+
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Error loading accounts:", error);
+                }
+            });
+        }
+
+        // Call on document ready
+        $(document).ready(function() {
             loadCustomers();
             loadProjects();
-
+            loadAllAccounts();
         });
     </script>
 }
