@@ -30,7 +30,6 @@
     }
 </style>
 
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
@@ -301,48 +300,48 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="checkbox" class="accountCheck" checked></td>
+                                    <td><input type="checkbox" class="accountCheck" checked disabled></td>
                                     <td>IncomeAccount</td>
                                     <td>
-                                        <select id="accountNameIncome" class="form-select form-select-sm" required>
+                                        <select id="accountNameIncome" class="form-select form-select-sm" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </td>
-                                    <td><input type="text" class="form-control form-control-sm accCode"></td>
-                                    <td><input type="text" class="form-control form-control-sm accName"></td>
+                                    <td><input type="text" class="form-control form-control-sm accCode" disabled></td>
+                                    <td><input type="text" class="form-control form-control-sm accName" disabled></td>
                                 </tr>
                                 <tr>
-                                    <td><input type="checkbox" class="accountCheck" checked></td>
+                                    <td><input type="checkbox" class="accountCheck" checked disabled></td>
                                     <td>ExpensesAccount</td>
                                     <td>
-                                        <select id="accountNameExpenses" class="form-select form-select-sm" required>
+                                        <select id="accountNameExpenses" class="form-select form-select-sm" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </td>
-                                    <td><input type="text" class="form-control form-control-sm accCode"></td>
-                                    <td><input type="text" class="form-control form-control-sm accName"></td>
+                                    <td><input type="text" class="form-control form-control-sm accCode" disabled></td>
+                                    <td><input type="text" class="form-control form-control-sm accName" disabled></td>
                                 </tr>
                                 <tr>
-                                    <td><input type="checkbox" class="accountCheck" checked></td>
+                                    <td><input type="checkbox" class="accountCheck" checked disabled></td>
                                     <td>RetentionAccount</td>
                                     <td>
-                                        <select id="accountNameretentions" class="form-select form-select-sm" required>
+                                        <select id="accountNameretentions" class="form-select form-select-sm" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </td>
-                                    <td><input type="text" class="form-control form-control-sm accCode"></td>
-                                    <td><input type="text" class="form-control form-control-sm accName"></td>
+                                    <td><input type="text" class="form-control form-control-sm accCode" disabled></td>
+                                    <td><input type="text" class="form-control form-control-sm accName" disabled></td>
                                 </tr>
                                 <tr>
-                                    <td><input type="checkbox" class="accountCheck" checked></td>
+                                    <td><input type="checkbox" class="accountCheck" checked disabled></td>
                                     <td>DownpaymentAccount</td>
                                     <td>
-                                        <select id="accountNameDownpayments" class="form-select form-select-sm" required>
+                                        <select id="accountNameDownpayments" class="form-select form-select-sm" disabled>
                                             <option value="">-- Select --</option>
                                         </select>
                                     </td>
-                                    <td><input type="text" class="form-control form-control-sm accCode"></td>
-                                    <td><input type="text" class="form-control form-control-sm accName"></td>
+                                    <td><input type="text" class="form-control form-control-sm accCode" disabled></td>
+                                    <td><input type="text" class="form-control form-control-sm accName" disabled></td>
                                 </tr>
                                 <tr>
                                     <td><input type="checkbox" class="accountCheck"></td>
@@ -486,8 +485,6 @@
     </div>
 </div>
 
-
-
 @section Scripts {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -528,13 +525,8 @@
             const project = $(this).data("project");
             if (!project) return;
 
-            console.log(project);
-
-            // 🔹 Fill hidden ID and code
             $("#projectId").val(project.id ?? 0);
             $("#projectCode").val(project.code ?? "");
-
-            // 🔹 Fill basic project info
             $("#projectName").val(project.name ?? "");
             $("#projectNameArabic").val(project.nameArabic ?? "");
             $("#projectCategory").val(project.category ?? "");
@@ -542,23 +534,15 @@
             $("#emirateDropdown").val(project.emirate ?? "");
             $("#statusDropdown").val(project.status ?? "");
             $("#typeDropdown").val(project.type ?? "");
-
-            // 🔹 Dates
             $("#projectStart").val(project.startDate ?? "");
             $("#projectEnd").val(project.endDate ?? "");
             $("#extendDelay").val(project.extendDelay ?? "");
             $("#executionPeriod").val(project.executionPeriodMonths ?? "");
-
-            // 🔹 Customer / Contractor / Consultant
             $("#customer").val(project.customer ?? "");
             $("#contractor").val(project.contractor ?? "");
             $("#consultant").val(project.consultant ?? "");
-
-            // 🔹 Location & Details
             $("#location").val(project.location ?? "");
             $("#details").val(project.details ?? "");
-
-            // 🔹 Project values
             $("#contractValue").val(project.contractValue ?? 0);
             $("#additionalValue").val(project.additionalValue ?? 0);
             $("#deductionValue").val(project.deductionValue ?? 0);
@@ -567,11 +551,42 @@
             $("#expenses").val(project.expenses ?? 0);
             $("#balance").val(project.balance ?? 0);
 
-            // 🔹 Update modal title
-            $("#projectModalLabel").text("Edit Project");
+            // 🔹 Accounts Tab
+            const pName = project.name ?? "";
+            const pCode = project.code ?? "";
+            $("#accountProjectName").val(pName + (pCode ? " (" + pCode + ")" : ""));
 
-            // 🔹 Show modal
+            const accountTypes = ["Income", "Expenses", "Retention", "Downpayment", "Other1", "Other2"];
+
+            $("#accountsTable tbody tr").each(function (i) {
+                const $row = $(this);
+                const $ddl = $row.find('select');
+
+                const rowLabel = $row.find('td:eq(1)').text().trim();
+                const saved = (project.accounts ?? []).find(a => a.name === rowLabel);
+
+                if (saved) {
+                    $ddl.val(saved.accountId);
+                    const selectedCode = $ddl.find('option:selected').data('code') ?? "";
+                    $row.find('.accCode').val(selectedCode);
+                    $row.find('.accName').val(saved.accName ?? (i < 4 ? pName + " " + accountTypes[i] : ""));
+                    $row.find('.accountCheck').prop('checked', saved.checkboxId ?? false);
+                } else {
+                    const selectedCode = $ddl.find('option:selected').data('code') ?? "";
+                    $row.find('.accCode').val(selectedCode);
+                    if (i < 4) {
+                        $row.find('.accName').val(pName + " " + accountTypes[i]);
+                    }
+                }
+            });
+
+            $("#projectModalLabel").text("Edit Project");
             $("#projectModal").modal("show");
+        });
+
+        $(document).on('change', '#accountsTable tbody tr select', function () {
+            const selectedCode = $(this).find('option:selected').data('code') ?? "";
+            $(this).closest('tr').find('.accCode').val(selectedCode);
         });
 
         $('#projectForm').on('submit', function(e) {
@@ -621,7 +636,7 @@
             };
 
             $.ajax({
-                url: '/Construction/SaveProject', // Your controller action
+                url: '/Construction/SaveProject',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(projectData),
@@ -671,6 +686,7 @@
                         toastr.error("Failed to load projects");
                         return;
                     }
+                    console.log(res);
                     // Destroy existing DataTable if exists
                     if ($.fn.DataTable.isDataTable("#projectTable")) {
                         $("#projectTable").DataTable().destroy();
@@ -816,18 +832,19 @@
 
                     // 2️⃣ Other dropdowns (Other1, Other2) – just show accounts
                     const otherDropdowns = ["#other1", "#other2"];
-                    $.each(otherDropdowns, function(index, selector) {
-                        const $ddl = $(selector);
-                        $ddl.empty().append('<option value="">-- Select --</option>');
-                        $.each(accounts, function(i, item) {
-                            $ddl.append(
-                                $('<option>', {
-                                    value: item.id,
-                                    text: item.code + ' - ' + item.name
-                                })
-                            );
-                        });
-                    });
+                          $.each(otherDropdowns, function(index, selector) {
+            const $ddl = $(selector);
+            $ddl.empty().append('<option value="">-- Select --</option>');
+            $.each(accounts, function(i, item) {
+                $ddl.append(
+                    $('<option>', {
+                        value: item.id,
+                        text: item.code + ' - ' + item.name,
+                        'data-code': item.code  // ✅ Add this
+                    })
+                );
+            });
+        });
 
                 },
                 error: function(xhr, status, error) {
@@ -835,8 +852,6 @@
                 }
             });
         }
-
-        
 
         $('#projectModal').on('show.bs.modal', function () {
             const isEdit = parseInt($("#projectId").val()) > 0;
@@ -850,11 +865,69 @@
             $("#projectModalLabel").text("Add Project");
             setOtherTabsState(true);
         });
-        // Call on document ready
+
         $(document).ready(function() {
             loadCustomers();
             loadProjects();
             loadAllAccounts();
         });
+
+        $('#checkAllAccounts').on('change', function () {
+            $('.accountCheck:not(:disabled)').prop('checked', this.checked);
+        });
+
+        $('#createAccountsBtn').click(function () {
+
+            let projectId = parseInt($('#projectId').val()) || 0;
+
+            if (projectId === 0) {
+                toastr.error("Please save project first");
+                return;
+            }
+
+            let accounts = [];
+
+            $('#accountsTable tbody tr').each(function () {
+
+                let checkbox = $(this).find('.accountCheck').prop('checked');
+                let name = $(this).find('td:eq(1)').text().trim();
+                let accountId = $(this).find('select').val() || 0;
+                let code = $(this).find('.accCode').val();
+
+                accounts.push({
+                    Name: name,
+                    AccountId: parseInt(accountId),
+                    Code: code,
+                    CheckboxId: checkbox
+                });
+
+            });
+
+            let data = {
+                ProjectId: projectId,
+                Accounts: accounts
+            };
+
+            $.ajax({
+                url: '/Construction/SaveProjectAccounts',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+
+                    if (res.status) {
+                        toastr.success("Accounts saved successfully");
+                    } else {
+                        toastr.error(res.message);
+                    }
+
+                },
+                error: function () {
+                    toastr.error("Error saving accounts");
+                }
+            });
+
+        });
+
     </script>
 }

@@ -2398,6 +2398,7 @@
                         `name` VARCHAR(3250) NOT NULL DEFAULT '',
                         `project_id` INT(10) NOT NULL DEFAULT '0',
                         `account_id` INT(10) NOT NULL DEFAULT '0',
+                        `checkbox_id ` TINYINT(1)  NOT NULL DEFAULT '0',
                         PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
 

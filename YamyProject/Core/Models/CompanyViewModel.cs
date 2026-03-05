@@ -598,6 +598,54 @@ namespace YamyProject.Core.Models
 
         public int? CountryId { get; set; }
         public int? CityId { get; set; }
+
+        public List<ProjectAccountItem> Accounts { get; set; } = new();
+    }
+    public class ProjectResponse
+    {
+        public int SN { get; set; }
+        public int Id { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public string NameArabic { get; set; }
+        public string Category { get; set; }
+        public string Description { get; set; }
+        public string Emirate { get; set; }
+        public string Status { get; set; }
+        public string Type { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
+        public string ExtendDelay { get; set; }
+        public int? ExecutionPeriodMonths { get; set; }
+        public string Customer { get; set; }
+        public string CustomerName { get; set; }
+        public string Contractor { get; set; }
+        public string Consultant { get; set; }
+        public string Location { get; set; }
+        public string Details { get; set; }
+        public decimal ContractValue { get; set; }
+        public decimal AdditionalValue { get; set; }
+        public decimal DeductionValue { get; set; }
+        public decimal TotalValue { get; set; }
+        public decimal BilledToDate { get; set; }
+        public decimal Expenses { get; set; }
+        public decimal Balance { get; set; }
+
+        public List<ProjectAccountItem> Accounts { get; set; } = new();
+    }
+
+    public class ProjectAccountRequest
+    {
+        public int ProjectId { get; set; }
+        public List<ProjectAccountItem> Accounts { get; set; }
+    }
+
+    public class ProjectAccountItem
+    {
+        public string Name { get; set; }
+        public int AccountId { get; set; }
+        public string Code { get; set; }
+        public bool CheckboxId { get; set; }
     }
     // TenderRequest DTO
     public class TenderRequest

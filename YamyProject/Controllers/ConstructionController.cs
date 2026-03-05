@@ -39,46 +39,46 @@ namespace YamyProject.Controllers
                 await conn.OpenAsync();
 
                 string query = @"
-            SELECT 
-                p.id,
-                p.code,
-                p.name AS name_en,
-                p.name_ar,
-                p.category,
-                p.description,
-                p.emirate,
-                p.status,
-                p.type,
-                p.start_date,
-                p.end_date,
-                p.extend_delay,
-                p.execution_period_months,
-                p.customer,
-                p.contractor,
-                p.consultant,
-                p.location,
-                p.details,
-                p.contract_value,
-                p.additional_value,
-                p.deduction_value,
-                p.total_value,
-                p.billed_to_date,
-                p.expenses,
-                p.balance,
-                c.name AS customer_name
-            FROM tbl_projects p
-            LEFT JOIN tbl_customer c ON p.customer = c.id
-            ORDER BY p.id;";
+        SELECT 
+            p.id,
+            p.code,
+            p.name AS name_en,
+            p.name_ar,
+            p.category,
+            p.description,
+            p.emirate,
+            p.status,
+            p.type,
+            p.start_date,
+            p.end_date,
+            p.extend_delay,
+            p.execution_period_months,
+            p.customer,
+            p.contractor,
+            p.consultant,
+            p.location,
+            p.details,
+            p.contract_value,
+            p.additional_value,
+            p.deduction_value,
+            p.total_value,
+            p.billed_to_date,
+            p.expenses,
+            p.balance,
+            c.name AS customer_name
+        FROM tbl_projects p
+        LEFT JOIN tbl_customer c ON p.customer = c.id
+        ORDER BY p.id;";
 
                 await using var cmd = new MySqlCommand(query, conn);
                 await using var reader = await cmd.ExecuteReaderAsync();
 
-                var projectList = new List<object>();
+                var projectList = new List<ProjectResponse>();
                 int sn = 1;
 
-                while (await reader.ReadAsync())
+                while (await reader.ReadAsync()) 
                 {
-                    projectList.Add(new
+                    projectList.Add(new ProjectResponse
                     {
                         SN = sn++,
                         Id = reader.GetInt32("id"),
@@ -106,8 +106,47 @@ namespace YamyProject.Controllers
                         TotalValue = reader["total_value"] != DBNull.Value ? Convert.ToDecimal(reader["total_value"]) : 0,
                         BilledToDate = reader["billed_to_date"] != DBNull.Value ? Convert.ToDecimal(reader["billed_to_date"]) : 0,
                         Expenses = reader["expenses"] != DBNull.Value ? Convert.ToDecimal(reader["expenses"]) : 0,
-                        Balance = reader["balance"] != DBNull.Value ? Convert.ToDecimal(reader["balance"]) : 0
+                        Balance = reader["balance"] != DBNull.Value ? Convert.ToDecimal(reader["balance"]) : 0,
+                        Accounts = new List<ProjectAccountItem>() // initialize empty list
                     });
+                }
+
+                await reader.CloseAsync();
+
+                // 🔹 Get Accounts
+                string accQuery = @"SELECT project_id, name, account_id, checkbox_id 
+                            FROM tbl_projects_accounts";
+
+                await using var accCmd = new MySqlCommand(accQuery, conn);
+                await using var accReader = await accCmd.ExecuteReaderAsync();
+
+                var accountList = new List<dynamic>();
+
+                while (await accReader.ReadAsync())
+                {
+                    accountList.Add(new
+                    {
+                        ProjectId = Convert.ToInt32(accReader["project_id"]),
+                        Name = accReader["name"].ToString(),
+                        AccountId = Convert.ToInt32(accReader["account_id"]),
+                        CheckboxId = Convert.ToInt32(accReader["checkbox_id"]),
+                     //   Code = accReader["code"] != DBNull.Value ? accReader["code"].ToString() : ""
+                    });
+                }
+
+                // 🔹 Attach accounts to projects
+                foreach (var project in projectList)
+                {
+                    project.Accounts = accountList
+                        .Where(a => a.ProjectId == project.Id)
+                        .Select(a => new ProjectAccountItem
+                        {
+                            Name = a.Name,
+                            AccountId = a.AccountId,
+                         //   Code = a.Code,
+                            CheckboxId = a.CheckboxId != 0
+                        })
+                        .ToList();
                 }
 
                 return Ok(new { status = true, data = projectList });
@@ -331,6 +370,60 @@ namespace YamyProject.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveProjectAccounts([FromBody] ProjectAccountRequest model)
+        {
+            try
+            {
+                if (model == null || model.ProjectId <= 0)
+                    return BadRequest(new { status = false, message = "Invalid request" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                await using var transaction = await conn.BeginTransactionAsync();
+
+                // 🔹 Delete existing accounts for edit
+                string deleteQuery = "DELETE FROM tbl_projects_accounts WHERE project_id=@project_id";
+                await using (var deleteCmd = new MySqlCommand(deleteQuery, conn, (MySqlTransaction)transaction))
+                {
+                    deleteCmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
+                // 🔹 Insert accounts
+                string insertQuery = @"INSERT INTO tbl_projects_accounts 
+                               (name, project_id, account_id, checkbox_id)
+                               VALUES (@name, @project_id, @account_id, @checkbox_id)";
+
+                foreach (var acc in model.Accounts)
+                {
+                    await using var cmd = new MySqlCommand(insertQuery, conn, (MySqlTransaction)transaction);
+
+                    cmd.Parameters.AddWithValue("@name", acc.Name);
+                    cmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+                    cmd.Parameters.AddWithValue("@account_id", acc.AccountId);
+                    cmd.Parameters.AddWithValue("@checkbox_id", acc.CheckboxId ? 1 : 0);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Ok(new { status = true, message = "Accounts saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { status = false, message = ex.Message });
             }
         }
 
