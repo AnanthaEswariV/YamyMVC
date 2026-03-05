@@ -163,7 +163,10 @@ namespace YamyProject.Controllers
             {
                 if (model == null) return BadRequest(new { status = false, message = "Invalid request" });
                 if (string.IsNullOrWhiteSpace(model.Name)) return BadRequest(new { status = false, message = "Please enter Project Name" });
-                if (model.StartDate >= model.EndDate) return BadRequest(new { status = false, message = "Start Date must be before End Date" });
+                if (model.StartDate.HasValue && model.EndDate.HasValue && model.StartDate >= model.EndDate)
+                {
+                    return BadRequest(new { status = false, message = "Start Date must be before End Date" });
+                }
 
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0) return Unauthorized(new { status = false, message = "User not logged in" });

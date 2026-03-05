@@ -599,7 +599,6 @@ namespace YamyProject.Core.Models
         public int? CountryId { get; set; }
         public int? CityId { get; set; }
 
-        public List<ProjectAccountItem> Accounts { get; set; } = new();
     }
     public class ProjectResponse
     {

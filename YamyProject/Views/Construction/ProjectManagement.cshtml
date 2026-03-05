@@ -607,34 +607,33 @@
                 return;
             }
         }
-            const projectData = {
-                Id: parseInt($('#projectId').val()) || 0,
-                Code: $('#projectCode').val(),
-                Name: $('#projectName').val()?.trim() || '',
-                NameArabic: $('#projectNameArabic').val()?.trim() || '',
-                Category: $('#projectCategory').val()?.trim() || '',
-                Description: $('#projectDescription').val()?.trim() || '',
-                Emirate: $('#emirateDropdown').val(),
-                Status: $('#statusDropdown').val(),
-                Type: $('#typeDropdown').val(),
-                StartDate: $('#projectStart').val(),
-                EndDate: $('#projectEnd').val(),
-                ExtendDelay: $('#extendDelay').val(),
-                ExecutionPeriodMonths: parseInt($('#executionPeriod').val()) || null,
-                Customer: $('#customer').val(),
-                Contractor: $('#contractor').val(),
-                Consultant: $('#consultant').val(),
-                Location: $('#location').val(),
-                Details: $('#details').val(),
-                ContractValue: parseFloat($('#contractValue').val()) || 0,
-                AdditionalValue: parseFloat($('#additionalValue').val()) || 0,
-                DeductionValue: parseFloat($('#deductionValue').val()) || 0,
-                TotalValue: parseFloat($('#totalValue').val()) || 0,
-                BilledToDate: parseFloat($('#billedToDate').val()) || 0,
-                Expenses: parseFloat($('#expenses').val()) || 0,
-                Balance: parseFloat($('#balance').val()) || 0
-            };
-
+                  const projectData = {
+            Id: parseInt($('#projectId').val()) || 0,
+            Code: $('#projectCode').val() || '',
+            Name: $('#projectName').val()?.trim() || '',
+            NameArabic: $('#projectNameArabic').val()?.trim() || '',
+            Category: $('#projectCategory').val()?.trim() || '',
+            Description: $('#projectDescription').val()?.trim() || '',
+            Emirate: $('#emirateDropdown').val() || '',
+            Status: $('#statusDropdown').val() || '',
+            Type: $('#typeDropdown').val() || '',
+            StartDate: $('#projectStart').val() || null,
+            EndDate: $('#projectEnd').val() || null,
+            ExtendDelay: $('#extendDelay').val() || null,
+            ExecutionPeriodMonths: $('#executionPeriod').val() ? parseInt($('#executionPeriod').val()) : null,
+            Customer: $('#customer').val() || '',
+            Contractor: $('#contractor').val() || '',
+            Consultant: $('#consultant').val() || '',
+            Location: $('#location').val() || '',
+            Details: $('#details').val() || '',
+            ContractValue: parseFloat($('#contractValue').val()) || 0,
+            AdditionalValue: parseFloat($('#additionalValue').val()) || 0,
+            DeductionValue: parseFloat($('#deductionValue').val()) || 0,
+            TotalValue: parseFloat($('#totalValue').val()) || 0,
+            BilledToDate: parseFloat($('#billedToDate').val()) || 0,
+            Expenses: parseFloat($('#expenses').val()) || 0,
+            Balance: parseFloat($('#balance').val()) || 0
+        };           
             $.ajax({
                 url: '/Construction/SaveProject',
                 type: 'POST',
