@@ -374,27 +374,35 @@
                     <!-- END TAB 2 -->
                     <!-- ========== TAB 3: ATTACHMENTS ========== -->
                     <div class="tab-pane fade" id="pane-attachments" role="tabpanel">
+
                         <div class="mb-3 d-flex justify-content-end">
                             <button type="button" class="btn btn-primary btn-sm" id="addAttachmentBtn">
                                 <i class="fas fa-plus me-1"></i> Add Attachment
                             </button>
                         </div>
+
                         <table class="table table-bordered table-sm" id="attachmentsTable">
                             <thead class="table-primary">
                                 <tr>
-                                    <th>#</th>
-                                    <th>File Name</th>
+                                    <th>S.No</th>
+                                    <th>Project Name</th>
+                                    <th>Attachments</th>
                                     <th>Description</th>
-                                    <th>Uploaded By</th>
-                                    <th>Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
+
                             <tbody>
-                                <tr><td colspan="6" class="text-center text-muted py-3">No attachments found</td></tr>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        No attachments found
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
+
                         <input type="file" id="attachmentFileInput" class="d-none" multiple>
+
                     </div>
                     <!-- END TAB 3 -->
                     <!-- ========== TAB 4: SUB CONTRACTORS ========== -->
@@ -869,6 +877,7 @@
             loadCustomers();
             loadProjects();
             loadAllAccounts();
+            loadAttachments(projectId);
         });
 
         $('#checkAllAccounts').on('change', function () {
@@ -927,6 +936,139 @@
             });
 
         });
+
+        $('#addAttachmentBtn').on('click', function () {
+
+              let projectId = parseInt($('#projectId').val()) || 0;
+
+              if (projectId === 0) {
+                  toastr.error("Please save project first");
+                  return;
+              }
+
+              $('#attachmentFileInput').click();
+          });
+
+        $('#attachmentFileInput').on('change', function () {
+
+              let projectId = parseInt($('#projectId').val()) || 0;
+
+              if (projectId === 0) {
+                  toastr.error("Invalid project");
+                  return;
+              }
+
+              let files = this.files;
+
+              if (files.length === 0)
+                  return;
+
+              for (let i = 0; i < files.length; i++) {
+
+                  let formData = new FormData();
+
+                  formData.append("ProjectId", projectId);
+                  formData.append("File", files[i]);
+                  formData.append("Description", files[i].name);
+
+                  $.ajax({
+                      url: '/Construction/SaveProjectAttachment',
+                      type: 'POST',
+                      data: formData,
+                      processData: false,
+                      contentType: false,
+
+                      success: function (res) {
+
+                          if (res.status) {
+                              toastr.success(res.message);
+                              loadAttachments(projectId);
+                          } else {
+                              toastr.error(res.message);
+                          }
+
+                      },
+                      error: function () {
+                          toastr.error("Error uploading attachment");
+                      }
+
+                  });
+              }
+
+              // reset input so same file can be selected again
+              $(this).val('');
+
+          });
+
+
+        function loadAttachments(projectId) {
+
+            $.ajax({
+                url: '@Url.Action("GetProjectAttachmentsByProjectId", "Construction")',
+                type: "GET",
+                data: { projectId: projectId },
+
+                success: function (res) {
+
+                    if (!res.status) {
+                        toastr.error("Failed to load attachments");
+                        return;
+                    }
+
+                    let tbody = $("#attachmentsTable tbody");
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+
+                        $.each(res.data, function (i, row) {
+
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${row.projectName ?? ""}</td>
+                                    <td>
+                                        <a href="${row.filePath}" target="_blank">
+                                            ${row.fileName}
+                                        </a>
+                                    </td>
+                                    <td>${row.description ?? ""}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-success downloadAttachment"
+                                            data-file="${row.filePath}">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+
+                                        <button class="btn btn-sm btn-danger deleteAttachment"
+                                            data-id="${row.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+
+                            tbody.append(tr);
+                        });
+
+                    } else {
+
+                        tbody.append(`
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    No attachments found
+                                </td>
+                            </tr>
+                        `);
+                    }
+
+                },
+
+                error: function () {
+                    toastr.error("Failed to load attachments");
+                }
+
+            });
+
+        }
 
     </script>
 }

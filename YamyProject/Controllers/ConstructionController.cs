@@ -430,6 +430,184 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectAttachments(int? projectId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Fetch projects
+                string projectQuery = @"SELECT id, name FROM tbl_projects";
+                if (projectId.HasValue)
+                {
+                    projectQuery += " WHERE id = @projectId";
+                }
+                projectQuery += " ORDER BY id";
+
+                var projectList = new List<ProjectResponse>();
+                await using (var cmd = new MySqlCommand(projectQuery, conn))
+                {
+                    if (projectId.HasValue)
+                        cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        projectList.Add(new ProjectResponse
+                        {
+                            Id = reader.GetInt32("id"),
+                            Name = reader["name"].ToString(),
+                            Attachments = new List<ProjectAttachmentItem>()
+                        });
+                    }
+                }
+
+                // 🔹 Fetch attachments (only for selected project if id passed)
+                string attachQuery = @"SELECT id, project_id, file_name, file_path, description
+                               FROM tbl_project_attachments";
+                if (projectId.HasValue)
+                {
+                    attachQuery += " WHERE project_id = @projectId";
+                }
+
+                var attachmentList = new List<ProjectAttachmentItem>();
+                await using (var attachCmd = new MySqlCommand(attachQuery, conn))
+                {
+                    if (projectId.HasValue)
+                        attachCmd.Parameters.AddWithValue("@projectId", projectId.Value);
+
+                    await using var attachReader = await attachCmd.ExecuteReaderAsync();
+                    while (await attachReader.ReadAsync())
+                    {
+                        attachmentList.Add(new ProjectAttachmentItem
+                        {
+                            Id = attachReader.GetInt32("id"),
+                            ProjectId = attachReader.GetInt32("project_id"),
+                            FileName = attachReader["file_name"].ToString(),
+                            FilePath = attachReader["file_path"].ToString(),
+                            Description = attachReader["description"].ToString()
+                        });
+                    }
+                }
+
+                // 🔹 Map attachments to projects
+                foreach (var project in projectList)
+                {
+                    project.Attachments = attachmentList
+                        .Where(a => a.ProjectId == project.Id)
+                        .ToList();
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpPost]
+        public async Task<IActionResult> SaveProjectAttachment([FromForm] ProjectAttachmentRequest model)
+        {
+            try
+            {
+                if (model == null || model.ProjectId <= 0)
+                    return BadRequest(new { status = false, message = "Invalid request" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
+
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                string fileName = "";
+                string filePath = "";
+
+                if (model.File != null)
+                {
+                    fileName = Guid.NewGuid() + Path.GetExtension(model.File.FileName);
+                    filePath = Path.Combine(uploadsFolder, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await model.File.CopyToAsync(stream);
+                    }
+                }
+
+                if (model.Id == 0)
+                {
+                    // 🔹 INSERT
+                    string insertQuery = @"INSERT INTO tbl_project_attachments
+                          (project_id, file_name, file_path, description)
+                          VALUES (@project_id, @file_name, @file_path, @description)";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+
+                    cmd.Parameters.AddWithValue("@project_id", model.ProjectId);
+                    cmd.Parameters.AddWithValue("@file_name", model.File.FileName);
+                    cmd.Parameters.AddWithValue("@file_path", "/uploads/" + fileName);
+                    cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                else
+                {
+                    // 🔹 UPDATE
+                    string updateQuery;
+
+                    if (model.File != null)
+                    {
+                        updateQuery = @"UPDATE tbl_project_attachments 
+                        SET file_name=@file_name,
+                            file_path=@file_path,
+                            description=@description
+                        WHERE id=@id";
+                    }
+                    else
+                    {
+                        updateQuery = @"UPDATE tbl_project_attachments 
+                        SET description=@description
+                        WHERE id=@id";
+                    }
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                    if (model.File != null)
+                    {
+                        cmd.Parameters.AddWithValue("@file_name", model.File.FileName);
+                        cmd.Parameters.AddWithValue("@file_path", "/uploads/" + fileName);
+                    }
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new { status = true, message = "Attachment saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { status = false, message = ex.Message });
+            }
+        }
+
+
         #endregion
 
         #region ProjectCenter

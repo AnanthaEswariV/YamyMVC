@@ -600,6 +600,7 @@ namespace YamyProject.Core.Models
         public int? CityId { get; set; }
 
     }
+
     public class ProjectResponse
     {
         public int SN { get; set; }
@@ -631,6 +632,7 @@ namespace YamyProject.Core.Models
         public decimal Balance { get; set; }
 
         public List<ProjectAccountItem> Accounts { get; set; } = new();
+        public List<ProjectAttachmentItem> Attachments { get; set; }
     }
 
     public class ProjectAccountRequest
@@ -638,7 +640,22 @@ namespace YamyProject.Core.Models
         public int ProjectId { get; set; }
         public List<ProjectAccountItem> Accounts { get; set; }
     }
+    public class ProjectAttachmentRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public string Description { get; set; }
+        public IFormFile File { get; set; }
+    }
 
+    public class ProjectAttachmentItem
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public string FileName { get; set; }
+        public string FilePath { get; set; }
+        public string Description { get; set; }
+    }
     public class ProjectAccountItem
     {
         public string Name { get; set; }

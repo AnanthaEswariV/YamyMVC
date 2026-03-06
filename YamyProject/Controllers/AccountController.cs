@@ -56,6 +56,7 @@
             {
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
+
                 //catch (MySqlException mysqlEx)
                 //{
                 //    return StatusCode(500, new
@@ -2402,15 +2403,16 @@
                         PRIMARY KEY (`id`)
                       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
 
-
-
-                        CREATE TABLE IF NOT EXISTS `tbl_projects_accounts` (
-                          `id` int NOT NULL AUTO_INCREMENT,
-                          `name` VARCHAR(3250) NOT NULL DEFAULT '',
+                        
+                        CREATE TABLE IF NOT EXISTS `tbl_project_attachments` (
+                          `id` INT NOT NULL AUTO_INCREMENT,
                           `project_id` INT(10) NOT NULL DEFAULT '0',
-                          `account_id` INT(10) NOT NULL DEFAULT '0',
+                          `file_name` VARCHAR(255) NOT NULL DEFAULT '',
+                          `file_path` VARCHAR(500) NOT NULL DEFAULT '',
+                          `description` VARCHAR(1000) NOT NULL DEFAULT '',
+                          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           PRIMARY KEY (`id`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
 
                         CREATE TABLE IF NOT EXISTS `tbl_project_estimate` (
                           `id` int NOT NULL AUTO_INCREMENT,
