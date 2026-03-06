@@ -1,5 +1,4 @@
-﻿
-@{
+﻿@{
     ViewData["Title"] = "ProjectManagement";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -391,7 +390,6 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-
                             <tbody>
                                 <tr>
                                     <td colspan="5" class="text-center text-muted py-3">
@@ -504,157 +502,153 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
 
-         function setOtherTabsState(disabled) {
+        function setOtherTabsState(disabled) {
             $('#projectTabs button:not(#tab-projects)').prop('disabled', disabled);
         }
 
         function calculateTotal() {
             const contract = parseFloat($('#contractValue').val()) || 0;
-            const add = parseFloat($('#additionalValue').val()) || 0;
-            const deduct = parseFloat($('#deductionValue').val()) || 0;
-            const total = contract + add - deduct;
+            const add      = parseFloat($('#additionalValue').val()) || 0;
+            const deduct   = parseFloat($('#deductionValue').val()) || 0;
+            const total    = contract + add - deduct;
             $('#totalValue').val(total);
 
-            const billed = parseFloat($('#billedToDate').val()) || 0;
+            const billed   = parseFloat($('#billedToDate').val()) || 0;
             const expenses = parseFloat($('#expenses').val()) || 0;
-            const balance = total - billed - expenses;
-            $('#balance').val(balance);
+            $('#balance').val(total - billed - expenses);
         }
 
         $('#contractValue, #additionalValue, #deductionValue, #billedToDate, #expenses').on('input', calculateTotal);
 
-        $(document).on("click", ".editProjectBtn", function () {
-            const project = $(this).data("project");
-            if (!project) return;
-
-            $("#projectId").val(project.id ?? 0);
-            $("#projectCode").val(project.code ?? "");
-            $("#projectName").val(project.name ?? "");
-            $("#projectNameArabic").val(project.nameArabic ?? "");
-            $("#projectCategory").val(project.category ?? "");
-            $("#projectDescription").val(project.description ?? "");
-            $("#emirateDropdown").val(project.emirate ?? "");
-            $("#statusDropdown").val(project.status ?? "");
-            $("#typeDropdown").val(project.type ?? "");
-            $("#projectStart").val(project.startDate ?? "");
-            $("#projectEnd").val(project.endDate ?? "");
-            $("#extendDelay").val(project.extendDelay ?? "");
-            $("#executionPeriod").val(project.executionPeriodMonths ?? "");
-            $("#customer").val(project.customer ?? "");
-            $("#contractor").val(project.contractor ?? "");
-            $("#consultant").val(project.consultant ?? "");
-            $("#location").val(project.location ?? "");
-            $("#details").val(project.details ?? "");
-            $("#contractValue").val(project.contractValue ?? 0);
-            $("#additionalValue").val(project.additionalValue ?? 0);
-            $("#deductionValue").val(project.deductionValue ?? 0);
-            $("#totalValue").val(project.totalValue ?? 0);
-            $("#billedToDate").val(project.billedToDate ?? 0);
-            $("#expenses").val(project.expenses ?? 0);
-            $("#balance").val(project.balance ?? 0);
-
-            // 🔹 Accounts Tab
-            const pName = project.name ?? "";
-            const pCode = project.code ?? "";
-            $("#accountProjectName").val(pName + (pCode ? " (" + pCode + ")" : ""));
-
-            const accountTypes = ["Income", "Expenses", "Retention", "Downpayment", "Other1", "Other2"];
-
-            $("#accountsTable tbody tr").each(function (i) {
-                const $row = $(this);
-                const $ddl = $row.find('select');
-
-                const rowLabel = $row.find('td:eq(1)').text().trim();
-                const saved = (project.accounts ?? []).find(a => a.name === rowLabel);
-
-                if (saved) {
-                    $ddl.val(saved.accountId);
-                    const selectedCode = $ddl.find('option:selected').data('code') ?? "";
-                    $row.find('.accCode').val(selectedCode);
-                    $row.find('.accName').val(saved.accName ?? (i < 4 ? pName + " " + accountTypes[i] : ""));
-                    $row.find('.accountCheck').prop('checked', saved.checkboxId ?? false);
-                } else {
-                    const selectedCode = $ddl.find('option:selected').data('code') ?? "";
-                    $row.find('.accCode').val(selectedCode);
-                    if (i < 4) {
-                        $row.find('.accName').val(pName + " " + accountTypes[i]);
-                    }
-                }
-            });
-
-            $("#projectModalLabel").text("Edit Project");
-            $("#projectModal").modal("show");
-        });
-
         $(document).on('change', '#accountsTable tbody tr select', function () {
-            const selectedCode = $(this).find('option:selected').data('code') ?? "";
+            const selectedCode = $(this).find('option:selected').data('code') ?? '';
             $(this).closest('tr').find('.accCode').val(selectedCode);
         });
 
-        $('#projectForm').on('submit', function(e) {
+        $(document).on('click', '.editProjectBtn', function () {
+            const project = $(this).data('project');
+            if (!project) return;
+
+            // ── Tab 1: Projects ──
+            $('#projectId').val(project.id ?? 0);
+            $('#projectCode').val(project.code ?? '');
+            $('#projectName').val(project.name ?? '');
+            $('#projectNameArabic').val(project.nameArabic ?? '');
+            $('#projectCategory').val(project.category ?? '');
+            $('#projectDescription').val(project.description ?? '');
+            $('#emirateDropdown').val(project.emirate ?? '');
+            $('#statusDropdown').val(project.status ?? '');
+            $('#typeDropdown').val(project.type ?? '');
+            $('#projectStart').val(project.startDate ?? '');
+            $('#projectEnd').val(project.endDate ?? '');
+            $('#extendDelay').val(project.extendDelay ?? '');
+            $('#executionPeriod').val(project.executionPeriodMonths ?? '');
+            $('#customer').val(project.customer ?? '');
+            $('#contractor').val(project.contractor ?? '');
+            $('#consultant').val(project.consultant ?? '');
+            $('#location').val(project.location ?? '');
+            $('#details').val(project.details ?? '');
+            $('#contractValue').val(project.contractValue ?? 0);
+            $('#additionalValue').val(project.additionalValue ?? 0);
+            $('#deductionValue').val(project.deductionValue ?? 0);
+            $('#totalValue').val(project.totalValue ?? 0);
+            $('#billedToDate').val(project.billedToDate ?? 0);
+            $('#expenses').val(project.expenses ?? 0);
+            $('#balance').val(project.balance ?? 0);
+
+            // ── Tab 2: Accounts ──
+            const pName = project.name ?? '';
+            const pCode = project.code ?? '';
+            $('#accountProjectName').val(pName + (pCode ? ' (' + pCode + ')' : ''));
+
+            const accountTypes = ['Income', 'Expenses', 'Retention', 'Downpayment', 'Other1', 'Other2'];
+            $('#accountsTable tbody tr').each(function (i) {
+                const $row    = $(this);
+                const $ddl    = $row.find('select');
+                const rowLabel = $row.find('td:eq(1)').text().trim();
+                const saved   = (project.accounts ?? []).find(a => a.name === rowLabel);
+
+                if (saved) {
+                    $ddl.val(saved.accountId);
+                    const selectedCode = $ddl.find('option:selected').data('code') ?? '';
+                    $row.find('.accCode').val(selectedCode);
+                    $row.find('.accName').val(saved.accName ?? (i < 4 ? pName + ' ' + accountTypes[i] : ''));
+                    $row.find('.accountCheck').prop('checked', saved.checkboxId ?? false);
+                } else {
+                    $row.find('.accCode').val($ddl.find('option:selected').data('code') ?? '');
+                    if (i < 4) $row.find('.accName').val(pName + ' ' + accountTypes[i]);
+                }
+            });
+
+            loadAttachments(project.id);
+
+            $('#projectModalLabel').text('Edit Project');
+            $('#projectModal').modal('show');
+        });
+
+        $('#projectForm').on('submit', function (e) {
             e.preventDefault();
             const form = this;
             if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
 
-        const startDate = $('#projectStart').val();
-        const endDate = $('#projectEnd').val();
-        const extendDelay = $('#extendDelay').val();
+            const endDate    = $('#projectEnd').val();
+            const extendDelay = $('#extendDelay').val();
 
-            if (extendDelay) {
-            const end = new Date(endDate);
-            const extend = new Date(extendDelay);
-
-            if (extend < end) {
+            if (extendDelay && new Date(extendDelay) < new Date(endDate)) {
                 toastr.error("'Extend/Delay Date' cannot be less than 'End Date'");
                 return;
             }
-        }
-                  const projectData = {
-            Id: parseInt($('#projectId').val()) || 0,
-            Code: $('#projectCode').val() || '',
-            Name: $('#projectName').val()?.trim() || '',
-            NameArabic: $('#projectNameArabic').val()?.trim() || '',
-            Category: $('#projectCategory').val()?.trim() || '',
-            Description: $('#projectDescription').val()?.trim() || '',
-            Emirate: $('#emirateDropdown').val() || '',
-            Status: $('#statusDropdown').val() || '',
-            Type: $('#typeDropdown').val() || '',
-            StartDate: $('#projectStart').val() || null,
-            EndDate: $('#projectEnd').val() || null,
-            ExtendDelay: $('#extendDelay').val() || null,
-            ExecutionPeriodMonths: $('#executionPeriod').val() ? parseInt($('#executionPeriod').val()) : null,
-            Customer: $('#customer').val() || '',
-            Contractor: $('#contractor').val() || '',
-            Consultant: $('#consultant').val() || '',
-            Location: $('#location').val() || '',
-            Details: $('#details').val() || '',
-            ContractValue: parseFloat($('#contractValue').val()) || 0,
-            AdditionalValue: parseFloat($('#additionalValue').val()) || 0,
-            DeductionValue: parseFloat($('#deductionValue').val()) || 0,
-            TotalValue: parseFloat($('#totalValue').val()) || 0,
-            BilledToDate: parseFloat($('#billedToDate').val()) || 0,
-            Expenses: parseFloat($('#expenses').val()) || 0,
-            Balance: parseFloat($('#balance').val()) || 0
-        };           
+
+            const projectData = {
+                Id:                   parseInt($('#projectId').val()) || 0,
+                Code:                 $('#projectCode').val() || '',
+                Name:                 $('#projectName').val()?.trim() || '',
+                NameArabic:           $('#projectNameArabic').val()?.trim() || '',
+                Category:             $('#projectCategory').val()?.trim() || '',
+                Description:          $('#projectDescription').val()?.trim() || '',
+                Emirate:              $('#emirateDropdown').val() || '',
+                Status:               $('#statusDropdown').val() || '',
+                Type:                 $('#typeDropdown').val() || '',
+                StartDate:            $('#projectStart').val() || null,
+                EndDate:              $('#projectEnd').val() || null,
+                ExtendDelay:          $('#extendDelay').val() || null,
+                ExecutionPeriodMonths: $('#executionPeriod').val() ? parseInt($('#executionPeriod').val()) : null,
+                Customer:             $('#customer').val() || '',
+                Contractor:           $('#contractor').val() || '',
+                Consultant:           $('#consultant').val() || '',
+                Location:             $('#location').val() || '',
+                Details:              $('#details').val() || '',
+                ContractValue:        parseFloat($('#contractValue').val()) || 0,
+                AdditionalValue:      parseFloat($('#additionalValue').val()) || 0,
+                DeductionValue:       parseFloat($('#deductionValue').val()) || 0,
+                TotalValue:           parseFloat($('#totalValue').val()) || 0,
+                BilledToDate:         parseFloat($('#billedToDate').val()) || 0,
+                Expenses:             parseFloat($('#expenses').val()) || 0,
+                Balance:              parseFloat($('#balance').val()) || 0
+            };
+
             $.ajax({
-                url: '/Construction/SaveProject',
-                type: 'POST',
+                url:         '/Construction/SaveProject',
+                type:        'POST',
                 contentType: 'application/json',
-                data: JSON.stringify(projectData),
-                success: function(res) {
-                    if(res.status){
-                        toastr.success(projectData.Id>0 ? 'Project updated' : 'Project added');
+                data:        JSON.stringify(projectData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(projectData.Id > 0 ? 'Project updated' : 'Project added');
                         $('#projectModal').modal('hide');
-                        setTimeout(()=>location.reload(), 1500);
-                    } else toastr.error(res.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(res.message);
+                    }
                 },
-                error: function(xhr){
+                error: function (xhr) {
                     toastr.error(xhr.responseJSON?.message || xhr.statusText);
                 }
             });
@@ -662,413 +656,333 @@
 
         function loadCustomers() {
             $.ajax({
-                url: '@Url.Action("GetCustomers", "Customer")',
+                url:  '@Url.Action("GetCustomers", "Customer")',
                 type: 'GET',
                 success: function (res) {
                     if (res.status) {
-                        const customerDdl = $("#customer");
-
-                        customerDdl.empty().append('<option value="">-- Select Customer --</option>');
-
-                        res.data.forEach(c => {
-                            const option = `<option value="${c.id}">${c.name}</option>`;
-                            customerDdl.append(option);
-                        });
+                        const $ddl = $('#customer').empty().append('<option value="">-- Select Customer --</option>');
+                        res.data.forEach(c => $ddl.append(`<option value="${c.id}">${c.name}</option>`));
                     } else {
                         toastr.error('Failed to load customers.');
                     }
                 },
-                error: function () {
-                    toastr.error('Error loading customers.');
-                }
+                error: function () { toastr.error('Error loading customers.'); }
             });
         }
 
         function loadProjects() {
             $.ajax({
-               url: '@Url.Action("GetProjectManagement", "Construction")',
-                type: "GET",
-                success: function(res) {
-                    if (!res.status) {
-                        toastr.error("Failed to load projects");
-                        return;
-                    }
-                    console.log(res);
-                    // Destroy existing DataTable if exists
-                    if ($.fn.DataTable.isDataTable("#projectTable")) {
-                        $("#projectTable").DataTable().destroy();
+                url:  '@Url.Action("GetProjectManagement", "Construction")',
+                type: 'GET',
+                success: function (res) {
+                    if (!res.status) { toastr.error('Failed to load projects'); return; }
+
+                    if ($.fn.DataTable.isDataTable('#projectTable')) {
+                        $('#projectTable').DataTable().destroy();
                     }
 
-                    let tbody = $("#projectTable tbody");
-                    tbody.empty();
+                    const $tbody = $('#projectTable tbody').empty();
 
                     if (res.data && res.data.length > 0) {
-                        $.each(res.data, function(i, row) {
-                            const startDate = row.startDate ?? "";
-                            const endDate = row.endDate ?? "";
-                            let duration = 0;
-
-                            if (startDate && endDate) {
-                                const start = new Date(startDate);
-                                const end = new Date(endDate);
-                                duration = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-                            }
-
-                            const tr = `
+                        $.each(res.data, function (i, row) {
+                            $tbody.append(`
                                 <tr>
                                     <td>${row.sn}</td>
-                                    <td>${row.code ?? ""}</td>
-                                    <td>${row.name ?? ""}</td>
-                                    <td>${row.customer ?? ""}</td>
+                                    <td>${row.code ?? ''}</td>
+                                    <td>${row.name ?? ''}</td>
+                                    <td>${row.customer ?? ''}</td>
                                     <td>${row.status}</td>
-                                    <td>${endDate}</td>
+                                    <td>${row.endDate ?? ''}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary editProjectBtn" data-project='${JSON.stringify(row)}' title="Edit Project">
+                                        <button class="btn btn-sm btn-primary editProjectBtn"
+                                                data-project='${JSON.stringify(row)}' title="Edit Project">
                                             <i class="fas fa-pen"></i>
                                         </button>
                                         <button class="btn btn-sm btn-danger deleteCardBtn"
-                    data-id='${row.id}'>
-                <i class="fas fa-prescription-bottle-alt"></i>
-            </button>
+                                                data-id="${row.id}" title="Delete Project">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </td>
                                 </tr>
-                            `;
-                            tbody.append(tr);
+                            `);
                         });
 
-                        // Initialize DataTable
-                                $("#projectTable").DataTable({
-            dom: 'Bfrtip',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                    className: 'btn btn-primary btn-sm',
-                    exportOptions: {
-                        columns: ':not(:last-child)' // Exclude the last column (Actions)
-                    }
-                },
-                {
-                    extend: 'pdfHtml5',
-                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                    className: 'btn btn-primary btn-sm',
-                    exportOptions: {
-                        columns: ':not(:last-child)' // Exclude the last column (Actions)
-                    }
-                }
-            ],
-            order: [[0, 'asc']],
-            pageLength: 25
-        });
+                        $('#projectTable').DataTable({
+                            dom:     'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } },
+                                { extend: 'pdfHtml5',   text: '<i class="fas fa-file-pdf me-1"></i> PDF',   className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } }
+                            ],
+                            order:      [[0, 'asc']],
+                            pageLength: 25
+                        });
                     } else {
-                        tbody.append(`<tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>`);
+                        $tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
                     }
                 },
-                error: function() {
-                    toastr.error("Failed to load projects");
-                }
+                error: function () { toastr.error('Failed to load projects'); }
             });
         }
 
-        $(document).on("click", ".deleteCardBtn", function () {
-            const projectId = $(this).data("id");
-            if (!projectId) return;
-
-            if (!confirm("Are you sure you want to delete this project?")) return;
+        $(document).on('click', '.deleteCardBtn', function () {
+            const projectId = $(this).data('id');
+            if (!projectId || !confirm('Are you sure you want to delete this project?')) return;
 
             $.ajax({
-             url: `@Url.Action("DeleteProject", "Construction")?projectId=${projectId}`,
-        type: "DELETE",
-                success: function(res) {
+                url:  `@Url.Action("DeleteProject", "Construction")?projectId=${projectId}`,
+                type: 'DELETE',
+                success: function (res) {
                     if (res.status) {
                         toastr.success(res.message);
-                         setTimeout(function () {
-                            location.reload();
-                        }, 1500);
+                        setTimeout(() => location.reload(), 1500);
                     } else {
                         toastr.error(res.message);
                     }
                 },
-                error: function(xhr) {
-                    toastr.error(xhr.responseJSON?.message || "Failed to delete project");
-                }
+                error: function (xhr) { toastr.error(xhr.responseJSON?.message || 'Failed to delete project'); }
             });
         });
 
         function loadAllAccounts() {
             $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                url:  '@Url.Action("GetAccruedSalaries", "HR")',
                 type: 'GET',
-                success: function(accounts) {
-
-                    // 1️⃣ Predefined account types with default selection
+                success: function (accounts) {
                     const predefinedDropdowns = {
-                        "IncomeAccount": $("#accountNameIncome"),
-                        "ExpensesAccount": $("#accountNameExpenses"),
-                        "RetentionAccount": $("#accountNameretentions"),
-                        "DownpaymentAccount": $("#accountNameDownpayments")
+                        'IncomeAccount':      $('#accountNameIncome'),
+                        'ExpensesAccount':    $('#accountNameExpenses'),
+                        'RetentionAccount':   $('#accountNameretentions'),
+                        'DownpaymentAccount': $('#accountNameDownpayments')
                     };
 
-                    $.each(predefinedDropdowns, function(type, $ddl) {
+                    $.each(predefinedDropdowns, function (type, $ddl) {
                         $ddl.empty().append('<option value="">-- Select --</option>');
-                        $.each(accounts, function(i, item) {
-                            $ddl.append(
-                                $('<option>', {
-                                    value: item.id,
-                                    text: item.code + ' - ' + item.name,
-                                    'data-code': item.code
-                                })
-                            );
+                        $.each(accounts, function (i, item) {
+                            $ddl.append($('<option>', { value: item.id, text: item.code + ' - ' + item.name, 'data-code': item.code }));
                         });
 
-                        // Fetch and set selected value
                         $.ajax({
-                            url: '/Construction/GetPaymentMethodInfo',
+                            url:  '/Construction/GetPaymentMethodInfo',
                             type: 'GET',
                             data: { method: type },
-                            success: function(res) {
-                                if (res.status) {
-                                    $ddl.val(res.accountId);
-                                }
-                            },
-                            error: function(xhr, status, error) {
-                                console.error("❌ Error fetching selected account ID for " + type + ":", error);
-                            }
+                            success: function (res) { if (res.status) $ddl.val(res.accountId); },
+                            error:   function (xhr, s, err) { console.error('Error fetching account for ' + type + ':', err); }
                         });
                     });
 
-                    // 2️⃣ Other dropdowns (Other1, Other2) – just show accounts
-                    const otherDropdowns = ["#other1", "#other2"];
-                          $.each(otherDropdowns, function(index, selector) {
-            const $ddl = $(selector);
-            $ddl.empty().append('<option value="">-- Select --</option>');
-            $.each(accounts, function(i, item) {
-                $ddl.append(
-                    $('<option>', {
-                        value: item.id,
-                        text: item.code + ' - ' + item.name,
-                        'data-code': item.code  // ✅ Add this
-                    })
-                );
-            });
-        });
-
+                    ['#other1', '#other2'].forEach(function (sel) {
+                        const $ddl = $(sel).empty().append('<option value="">-- Select --</option>');
+                        $.each(accounts, function (i, item) {
+                            $ddl.append($('<option>', { value: item.id, text: item.code + ' - ' + item.name, 'data-code': item.code }));
+                        });
+                    });
                 },
-                error: function(xhr, status, error) {
-                    console.error("❌ Error loading accounts:", error);
-                }
+                error: function (xhr, s, err) { console.error('Error loading accounts:', err); }
             });
         }
 
         $('#projectModal').on('show.bs.modal', function () {
-            const isEdit = parseInt($("#projectId").val()) > 0;
-            setOtherTabsState(!isEdit);  
+            const isEdit = parseInt($('#projectId').val()) > 0;
+            setOtherTabsState(!isEdit);
             $('#tab-projects').tab('show');
         });
 
         $('#projectModal').on('hidden.bs.modal', function () {
-            $("#projectId").val(0);
-            $("#projectForm")[0].reset();
-            $("#projectModalLabel").text("Add Project");
+            $('#projectId').val(0);
+            $('#projectForm')[0].reset();
+            $('#projectModalLabel').text('Add Project');
             setOtherTabsState(true);
-        });
-
-        $(document).ready(function() {
-            loadCustomers();
-            loadProjects();
-            loadAllAccounts();
-            loadAttachments(projectId);
+            $('#attachmentsTable tbody').html('<tr><td colspan="5" class="text-center text-muted py-3">No attachments found</td></tr>');
         });
 
         $('#checkAllAccounts').on('change', function () {
             $('.accountCheck:not(:disabled)').prop('checked', this.checked);
         });
 
-        $('#createAccountsBtn').click(function () {
+        $('#createAccountsBtn').on('click', function () {
+            const projectId = parseInt($('#projectId').val()) || 0;
+            if (projectId === 0) { toastr.error('Please save project first'); return; }
 
-            let projectId = parseInt($('#projectId').val()) || 0;
+            const accounts = [];
+            $('#accountsTable tbody tr').each(function () {
+                accounts.push({
+                    Name:      $(this).find('td:eq(1)').text().trim(),
+                    AccountId: parseInt($(this).find('select').val()) || 0,
+                    Code:      $(this).find('.accCode').val(),
+                    CheckboxId: $(this).find('.accountCheck').prop('checked')
+                });
+            });
 
-            if (projectId === 0) {
-                toastr.error("Please save project first");
+            $.ajax({
+                url:         '/Construction/SaveProjectAccounts',
+                type:        'POST',
+                contentType: 'application/json',
+                data:        JSON.stringify({ ProjectId: projectId, Accounts: accounts }),
+                success: function (res) {
+                    if (res.status) toastr.success('Accounts saved successfully');
+                    else            toastr.error(res.message);
+                },
+                error: function () { toastr.error('Error saving accounts'); }
+            });
+        });
+
+
+        $('#addAttachmentBtn').on('click', function () {
+            const projectId = parseInt($('#projectId').val()) || 0;
+            if (projectId === 0) { toastr.error('Please save project first'); return; }
+            $('#attachmentFileInput').click();
+        });
+
+        $('#attachmentFileInput').on('change', function () {
+            const projectId = parseInt($('#projectId').val()) || 0;
+            if (projectId === 0) { toastr.error('Invalid project'); return; }
+
+            const files = this.files;
+            if (!files.length) return;
+
+            let uploaded = 0;
+            for (let i = 0; i < files.length; i++) {
+                const formData = new FormData();
+                formData.append('ProjectId',   projectId);
+                formData.append('File',        files[i]);
+                formData.append('Description', files[i].name);
+
+                $.ajax({
+                    url:         '/Construction/SaveProjectAttachment',
+                    type:        'POST',
+                    data:        formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        if (res.status) {
+                            toastr.success(res.message);
+                            uploaded++;
+                           loadAttachments(projectId);
+
+                        } else {
+                            toastr.error(res.message);
+                        }
+                    },
+                    error: function () { toastr.error('Error uploading attachment'); }
+                });
+            }
+
+            $(this).val(''); 
+        });
+
+        function loadAttachments(projectId) {
+            const $tbody = $('#attachmentsTable tbody');
+            $tbody.empty();
+
+            if (!projectId || projectId === 0) {
+                $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No attachments found</td></tr>');
                 return;
             }
 
-            let accounts = [];
-
-            $('#accountsTable tbody tr').each(function () {
-
-                let checkbox = $(this).find('.accountCheck').prop('checked');
-                let name = $(this).find('td:eq(1)').text().trim();
-                let accountId = $(this).find('select').val() || 0;
-                let code = $(this).find('.accCode').val();
-
-                accounts.push({
-                    Name: name,
-                    AccountId: parseInt(accountId),
-                    Code: code,
-                    CheckboxId: checkbox
-                });
-
-            });
-
-            let data = {
-                ProjectId: projectId,
-                Accounts: accounts
-            };
-
             $.ajax({
-                url: '/Construction/SaveProjectAccounts',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-                success: function (res) {
-
-                    if (res.status) {
-                        toastr.success("Accounts saved successfully");
-                    } else {
-                        toastr.error(res.message);
-                    }
-
-                },
-                error: function () {
-                    toastr.error("Error saving accounts");
-                }
-            });
-
-        });
-
-        $('#addAttachmentBtn').on('click', function () {
-
-              let projectId = parseInt($('#projectId').val()) || 0;
-
-              if (projectId === 0) {
-                  toastr.error("Please save project first");
-                  return;
-              }
-
-              $('#attachmentFileInput').click();
-          });
-
-        $('#attachmentFileInput').on('change', function () {
-
-              let projectId = parseInt($('#projectId').val()) || 0;
-
-              if (projectId === 0) {
-                  toastr.error("Invalid project");
-                  return;
-              }
-
-              let files = this.files;
-
-              if (files.length === 0)
-                  return;
-
-              for (let i = 0; i < files.length; i++) {
-
-                  let formData = new FormData();
-
-                  formData.append("ProjectId", projectId);
-                  formData.append("File", files[i]);
-                  formData.append("Description", files[i].name);
-
-                  $.ajax({
-                      url: '/Construction/SaveProjectAttachment',
-                      type: 'POST',
-                      data: formData,
-                      processData: false,
-                      contentType: false,
-
-                      success: function (res) {
-
-                          if (res.status) {
-                              toastr.success(res.message);
-                              loadAttachments(projectId);
-                          } else {
-                              toastr.error(res.message);
-                          }
-
-                      },
-                      error: function () {
-                          toastr.error("Error uploading attachment");
-                      }
-
-                  });
-              }
-
-              // reset input so same file can be selected again
-              $(this).val('');
-
-          });
-
-
-        function loadAttachments(projectId) {
-
-            $.ajax({
-                url: '@Url.Action("GetProjectAttachmentsByProjectId", "Construction")',
-                type: "GET",
+                url: '@Url.Action("GetProjectAttachments", "Construction")',
+                type: 'GET',
                 data: { projectId: projectId },
-
                 success: function (res) {
-
                     if (!res.status) {
-                        toastr.error("Failed to load attachments");
+                        toastr.error('Failed to load attachments');
                         return;
                     }
 
-                    let tbody = $("#attachmentsTable tbody");
-                    tbody.empty();
+                    const projects = res.data;
 
-                    if (res.data && res.data.length > 0) {
-
-                        $.each(res.data, function (i, row) {
-
-                            const tr = `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${row.projectName ?? ""}</td>
-                                    <td>
-                                        <a href="${row.filePath}" target="_blank">
-                                            ${row.fileName}
-                                        </a>
-                                    </td>
-                                    <td>${row.description ?? ""}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-success downloadAttachment"
-                                            data-file="${row.filePath}">
-                                            <i class="fas fa-download"></i>
-                                        </button>
-
-                                        <button class="btn btn-sm btn-danger deleteAttachment"
-                                            data-id="${row.id}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            `;
-
-                            tbody.append(tr);
-                        });
-
-                    } else {
-
-                        tbody.append(`
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-3">
-                                    No attachments found
-                                </td>
-                            </tr>
-                        `);
+                    if (!projects || projects.length === 0 || !projects[0].attachments || projects[0].attachments.length === 0) {
+                        $tbody.html('<tr><td colspan="5" class="text-center text-muted py-3">No attachments found</td></tr>');
+                        return;
                     }
 
+                    // Loop through attachments
+                    projects[0].attachments.forEach((att, i) => {
+                        const tr = `
+                            <tr data-id="${att.id}">
+                                <td>${i + 1}</td>
+                                <td>${projects[0].name ?? ''}</td>
+                                <td>
+                                    <a href="${att.filePath}" target="_blank">${att.fileName}</a>
+                                </td>
+                                <td>
+                                    <input type="text"
+                                           class="form-control form-control-sm attachmentDescription"
+                                           value="${att.description ?? ''}"
+                                           data-id="${att.id}" disabled>
+                                </td>
+                                <td>
+                                    <a href="${att.filePath}" download
+                                       class="btn btn-sm btn-success me-1" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-danger deleteAttachment"
+                                            data-id="${att.id}" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        $tbody.append(tr);
+                    });
                 },
-
                 error: function () {
-                    toastr.error("Failed to load attachments");
+                    toastr.error('Failed to load attachments');
                 }
-
             });
-
         }
+
+        $(document).on('click', '.saveAttachmentDesc', function () {
+            const $row = $(this).closest('tr');
+            const attachmentId  = $(this).data('id');
+            const description   = $row.find('.attachmentDescription').val();
+
+            $.ajax({
+                url:         '/Construction/UpdateAttachmentDescription',
+                type:        'POST',
+                contentType: 'application/json',
+                data:        JSON.stringify({ Id: attachmentId, Description: description }),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success('Description updated');
+                        // ✅ Update row immediately (optional visual feedback)
+                        $row.find('.attachmentDescription').val(description);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error updating description');
+                }
+            });
+        });
+        
+        $(document).on('click', '.deleteAttachment', function () {
+            const attachmentId = $(this).data('id');
+            if (!confirm('Are you sure you want to delete this attachment?')) return;
+
+            $.ajax({
+                url:  `/Construction/DeleteProjectAttachment?attachmentId=${attachmentId}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || 'Attachment deleted');
+                        const projectId = parseInt($('#projectId').val()) || 0;
+                        loadAttachments(projectId);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function () { toastr.error('Error deleting attachment'); }
+            });
+        });
+
+        $(document).ready(function () {
+            loadCustomers();
+            loadProjects();
+            loadAllAccounts();
+            
+        });
 
     </script>
 }

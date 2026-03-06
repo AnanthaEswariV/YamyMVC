@@ -607,6 +607,72 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpDelete]
+        public async Task<IActionResult> DeleteProjectAttachment(int attachmentId)
+        {
+            if (attachmentId <= 0)
+                return BadRequest(new { status = false, message = "Invalid attachment ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Get file path before deleting (so we can remove physical file)
+                string selectQuery = "SELECT file_path FROM tbl_project_attachments WHERE id=@id";
+                string filePath = null;
+                await using (var selectCmd = new MySqlCommand(selectQuery, conn))
+                {
+                    selectCmd.Parameters.AddWithValue("@id", attachmentId);
+                    var result = await selectCmd.ExecuteScalarAsync();
+                    filePath = result?.ToString();
+                }
+
+                if (filePath == null)
+                    return NotFound(new { status = false, message = "Attachment not found" });
+
+                // 🔹 Delete attachment from database
+                string deleteQuery = "DELETE FROM tbl_project_attachments WHERE id=@id";
+                await using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@id", attachmentId);
+                    int affected = await deleteCmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Attachment not found" });
+                }
+
+                // 🔹 Delete physical file if exists
+                try
+                {
+                    var physicalPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", filePath.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString()));
+                    if (System.IO.File.Exists(physicalPath))
+                    {
+                        System.IO.File.Delete(physicalPath);
+                    }
+                }
+                catch
+                {
+                    // ignore file deletion errors
+                }
+
+                return Ok(new { status = true, message = "Attachment deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 
