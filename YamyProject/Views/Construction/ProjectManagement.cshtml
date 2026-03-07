@@ -458,23 +458,30 @@
                     <!-- ========== TAB 5: PROJECT ENGINEERS ========== -->
                     <div class="tab-pane fade" id="pane-engineers" role="tabpanel">
                         <div class="mb-3 d-flex justify-content-end">
-                            <button type="button" class="btn btn-primary btn-sm" id="addEngineerBtn">
-                                <i class="fas fa-plus me-1"></i> Add Engineer
+                            <button type="button" class="btn btn-success btn-sm ms-2" id="saveEngineersBtn">
+                                <i class="fas fa-save me-1"></i> Save
                             </button>
                         </div>
                         <table class="table table-bordered table-sm" id="engineersTable">
                             <thead class="table-primary">
                                 <tr>
-                                    <th>#</th>
+                                    <th>S.No</th>
+                                    <th>Code</th>
                                     <th>Engineer Name</th>
-                                    <th>Role</th>
                                     <th>Phone</th>
-                                    <th>Email</th>
+                                    <th>Contract Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr><td colspan="6" class="text-center text-muted py-3">No engineers found</td></tr>
+                            <tbody id="engineersBody">
+                                <tr data-id="0">
+                                    <td>1</td>
+                                    <td><input type="text" class="form-control form-control-sm engineer-code" readonly></td>
+                                    <td><input type="text" class="form-control form-control-sm engineer-name" placeholder="Enter name"></td>
+                                    <td><input type="text" class="form-control form-control-sm engineer-phone" placeholder="Enter phone"></td>
+                                    <td><input type="date" class="form-control form-control-sm engineer-contract-date"></td>
+                                    <td><a href="#" class="text-danger deleteEngineerRow"><i class="fas fa-trash"></i></a></td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -618,6 +625,7 @@
 
             loadAttachments(project.id);
             loadSubcontractorss(project.id);
+            loadEngineers(project.id);
             $('#projectModalLabel').text('Edit Project');
             $('#projectModal').modal('show');
         });
@@ -1207,7 +1215,7 @@
 
         });
 
-         $(document).on('click', '.deleteRow', function (e) {
+        $(document).on('click', '.deleteRow', function (e) {
 
             e.preventDefault();
 
@@ -1242,6 +1250,160 @@
                 }
             });
 
+        });
+
+        $('#saveEngineersBtn').click(function() {
+            const projectId = parseInt($('#projectId').val()) || 0;
+            if (projectId === 0) {
+                toastr.error("Invalid project");
+                return;
+            }
+
+            const engineers = [];
+
+            $('#engineersBody tr').each(function() {
+                const row = $(this);
+                if (row.attr('id') === 'noEngineersRow') return;
+
+                const engineer = {
+                    Id: parseInt(row.data('id')) || 0,
+                    ProjectId: projectId,
+                    EngineerCode: row.find('.engineer-code').val() || "",
+                    EngineerName: row.find('.engineer-name').val().trim() || "",
+                    Phone: row.find('.engineer-phone').val().trim() || "",
+                    ContractDate: row.find('.engineer-contract-date').val() || null
+                };
+
+                if (engineer.EngineerName) engineers.push(engineer);
+            });
+
+            if (engineers.length === 0) {
+                toastr.warning("No engineer data to save");
+                return;
+            }
+
+            $.ajax({
+                url: '/Construction/SaveProjectEngineers',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(engineers),
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Engineers saved successfully");
+                        loadEngineers(projectId); // reload updated engineers
+                    } else {
+                        toastr.error(res.message || "Failed to save engineers");
+                    }
+                },
+                error: function() {
+                    toastr.error("Error saving engineers");
+                }
+            });
+        });
+
+        function addEmptyEngineerRow() {
+            const rowCount = $('#engineersBody tr').length + 1;
+            const newRow = `
+                <tr data-id="0">
+                    <td>${rowCount}</td>
+                    <td><input type="text" class="form-control form-control-sm engineer-code" readonly></td>
+                    <td><input type="text" class="form-control form-control-sm engineer-name" placeholder="Enter name"></td>
+                    <td><input type="text" class="form-control form-control-sm engineer-phone" placeholder="Enter phone"></td>
+                    <td><input type="date" class="form-control form-control-sm engineer-contract-date"></td>
+                    <td><a href="#" class="text-danger deleteEngineerRow"><i class="fas fa-trash"></i></a></td>
+                </tr>`;
+
+            $('#engineersBody').append(newRow);
+        }
+
+        $('#engineersBody').on('input', '.engineer-name', function() {
+            const lastRow = $('#engineersBody tr:last');
+            const lastEngineerName = lastRow.find('.engineer-name').val();
+
+            if ($(this).closest('tr').is(lastRow) && lastEngineerName.trim() !== '') {
+                if ($('#engineersBody tr').last().find('.engineer-name').val().trim() !== '') {
+                    addEmptyEngineerRow();
+                }
+            }
+        });
+
+        function loadEngineers(projectId) {
+            const $tbody = $('#engineersBody');
+            $tbody.empty();
+
+            if (!projectId || projectId === 0) {
+                addEmptyEngineerRow();
+                return;
+            }
+
+            $.ajax({
+                url: '/Construction/GetProjectEngineers',
+                type: 'GET',
+                data: { projectId: projectId },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error("Failed to load engineers");
+                        addEmptyEngineerRow();
+                        return;
+                    }
+
+                    const engineers = res.data;
+
+                    if (!engineers || engineers.length === 0) {
+                        addEmptyEngineerRow();
+                        return;
+                    }
+
+                    engineers.forEach(function (eng, i) {
+                        const row = `
+                            <tr data-id="${eng.id}">
+                                <td>${i + 1}</td>
+                                <td><input type="text" class="form-control form-control-sm engineer-code" value="${eng.engineerCode}" readonly></td>
+                                <td><input type="text" class="form-control form-control-sm engineer-name" value="${eng.engineerName}" placeholder="Enter name"></td>
+                                <td><input type="text" class="form-control form-control-sm engineer-phone" value="${eng.phone}" placeholder="Enter phone"></td>
+                                <td><input type="date" class="form-control form-control-sm engineer-contract-date" value="${formatDate(eng.contractDate)}"></td>
+                                <td><a href="#" class="text-danger deleteEngineerRow"><i class="fas fa-trash"></i></a></td>
+                            </tr>`;
+                        $tbody.append(row);
+                    });
+
+                    addEmptyEngineerRow();
+                },
+                error: function () {
+                    toastr.error("Error loading engineers");
+                    appendBlankEngineerRow();
+                }
+            });
+        }
+
+        $(document).on('click', '.deleteEngineerRow', function(e) {
+            e.preventDefault();
+
+            const row = $(this).closest('tr');
+            const id = row.data('id');
+
+            if (!confirm('Are you sure you want to delete this engineer?')) return;
+
+            if (!id || id === 0) {
+                row.remove();
+                return;
+            }
+
+            $.ajax({
+                url: `/Construction/DeleteProjectEngineer?engineerId=${id}`,
+                type: 'DELETE',
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success(res.message || 'Engineer deleted successfully');
+                        row.remove();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function() {
+                    toastr.error('Error deleting engineer');
+                }
+            });
         });
 
         $(document).ready(function () {

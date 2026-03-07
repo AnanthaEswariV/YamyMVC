@@ -297,7 +297,6 @@ namespace YamyProject.Controllers
             }
         }
 
-        // Helper to generate next project code
         private async Task<string> GenerateNextProjectCode(MySqlConnection conn)
         {
             string query = "SELECT MAX(CAST(code AS UNSIGNED)) FROM tbl_projects";
@@ -854,7 +853,6 @@ namespace YamyProject.Controllers
             }
         }
 
-
         [HttpDelete]
         public async Task<IActionResult> DeleteProjectSubcontractor(int subcontractorId)
         {
@@ -894,6 +892,194 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectEngineers(int? projectId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Fetch engineers
+                string query = @"SELECT id, project_id, engineer_code, engineer_name, phone, contract_date 
+                         FROM tbl_project_engineers";
+
+                if (projectId.HasValue)
+                    query += " WHERE project_id = @projectId";
+
+                var engineerList = new List<ProjectEngineerRequest>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                {
+                    if (projectId.HasValue)
+                        cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        engineerList.Add(new ProjectEngineerRequest
+                        {
+                            Id = reader.GetInt32("id"),
+                            ProjectId = reader.GetInt32("project_id"),
+                            EngineerCode = reader["engineer_code"].ToString(),
+                            EngineerName = reader["engineer_name"].ToString(),
+                            Phone = reader["phone"].ToString(),
+                            ContractDate = reader["contract_date"] != DBNull.Value
+                                            ? Convert.ToDateTime(reader["contract_date"])
+                                            : (DateTime?)null
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = engineerList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveProjectEngineers([FromBody] List<ProjectEngineerRequest> engineers)
+        {
+            if (engineers == null || engineers.Count == 0)
+                return BadRequest(new { status = false, message = "No engineer data received" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            using var transaction = await conn.BeginTransactionAsync();
+
+            try
+            {
+                foreach (var engineer in engineers)
+                {
+                    if (engineer.Id == 0)
+                    {
+                        if (string.IsNullOrWhiteSpace(engineer.EngineerCode))
+                        {
+                            engineer.EngineerCode = await GenerateNextEngineerCode(conn, transaction);
+                        }
+
+                        string insertQuery = @"
+                    INSERT INTO tbl_project_engineers
+                    (project_id, engineer_code, engineer_name, phone, contract_date)
+                    VALUES (@project_id, @engineer_code, @engineer_name, @phone, @contract_date)";
+
+                        await using var insertCmd = new MySqlCommand(insertQuery, conn, transaction);
+                        insertCmd.Parameters.AddWithValue("@project_id", engineer.ProjectId);
+                        insertCmd.Parameters.AddWithValue("@engineer_code", engineer.EngineerCode);
+                        insertCmd.Parameters.AddWithValue("@engineer_name", engineer.EngineerName ?? "");
+                        insertCmd.Parameters.AddWithValue("@phone", engineer.Phone ?? "");
+                        insertCmd.Parameters.AddWithValue("@contract_date", engineer.ContractDate.HasValue ? engineer.ContractDate.Value.Date : (object)DBNull.Value);
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+                    else
+                    {
+                        // Update existing engineer
+                        string updateQuery = @"
+                    UPDATE tbl_project_engineers
+                    SET engineer_code=@engineer_code,
+                        engineer_name=@engineer_name,
+                        phone=@phone,
+                        contract_date=@contract_date
+                    WHERE id=@id AND project_id=@project_id";
+
+                        await using var updateCmd = new MySqlCommand(updateQuery, conn, transaction);
+                        updateCmd.Parameters.AddWithValue("@id", engineer.Id);
+                        updateCmd.Parameters.AddWithValue("@project_id", engineer.ProjectId);
+                        updateCmd.Parameters.AddWithValue("@engineer_code", engineer.EngineerCode ?? "");
+                        updateCmd.Parameters.AddWithValue("@engineer_name", engineer.EngineerName ?? "");
+                        updateCmd.Parameters.AddWithValue("@phone", engineer.Phone ?? "");
+                        updateCmd.Parameters.AddWithValue("@contract_date", engineer.ContractDate.HasValue ? engineer.ContractDate.Value.Date : (object)DBNull.Value);
+
+                        int affected = await updateCmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                        {
+                            return NotFound(new { status = false, message = $"Engineer with ID {engineer.Id} not found" });
+                        }
+                    }
+                }
+
+                await transaction.CommitAsync();
+                return Ok(new { status = true, message = "Engineers saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextEngineerCode(MySqlConnection conn, MySqlTransaction transaction)
+        {
+            try
+            {
+                string query = "SELECT MAX(CAST(engineer_code AS UNSIGNED)) FROM tbl_project_engineers";
+                await using var cmd = new MySqlCommand(query, conn, transaction);  // Assign transaction here
+                object result = await cmd.ExecuteScalarAsync();
+
+                int next = 1;
+                if (result != DBNull.Value && result != null) next = Convert.ToInt32(result) + 1;
+
+                return next.ToString("D3");
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteProjectEngineer(int engineerId)
+        {
+            if (engineerId <= 0)
+                return BadRequest(new { status = false, message = "Invalid engineer ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string deleteQuery = "DELETE FROM tbl_project_engineers WHERE id=@id";
+
+                await using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", engineerId);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Engineer not found" });
+
+                return Ok(new { status = true, message = "Engineer deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 

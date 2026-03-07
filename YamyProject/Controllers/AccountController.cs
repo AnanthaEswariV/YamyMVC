@@ -2429,6 +2429,18 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
 
+
+                        CREATE TABLE IF NOT EXISTS `tbl_project_engineers` (
+                          `id` INT NOT NULL AUTO_INCREMENT,
+                          `project_id` INT(10) NOT NULL DEFAULT '0',
+                          `engineer_code` VARCHAR(50) NOT NULL DEFAULT '',
+                          `engineer_name` VARCHAR(150) NOT NULL DEFAULT '',
+                          `phone` VARCHAR(20) NOT NULL DEFAULT '',
+                          `contract_date` DATE NULL,
+                          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
+
                         CREATE TABLE IF NOT EXISTS `tbl_project_estimate` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,

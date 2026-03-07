@@ -692,6 +692,18 @@ namespace YamyProject.Core.Models
         public string Works { get; set; }
         public string WorksEn { get; set; }
     }
+
+    public class ProjectEngineerRequest
+    {
+        public int Id { get; set; }              
+        public int ProjectId { get; set; }
+        public string EngineerCode { get; set; }
+        public string EngineerName { get; set; }
+        public string Phone { get; set; }
+        public DateTime? ContractDate { get; set; }
+    }
+
+
     public class ProjectAccountItem
     {
         public string Name { get; set; }
