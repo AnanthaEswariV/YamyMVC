@@ -656,6 +656,42 @@ namespace YamyProject.Core.Models
         public string FilePath { get; set; }
         public string Description { get; set; }
     }
+
+
+    public class ProjectSubcontractorRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int CodeId { get; set; }
+        public int SubcontractorId { get; set; }
+        public string ContractNo { get; set; }
+        public decimal ContractValue { get; set; }
+        public DateTime? ContractDate { get; set; }
+        public string ContractPeriod { get; set; }
+        public string Works { get; set; }
+        public string WorksEn { get; set; }
+    }
+
+    public class ProjectSubcontractorResponse
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public List<ProjectSubcontractorItem> Subcontractors { get; set; }
+    }
+
+    public class ProjectSubcontractorItem
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int CodeId { get; set; }
+        public int SubcontractorId { get; set; }
+        public string ContractNo { get; set; }
+        public decimal ContractValue { get; set; }
+        public string ContractDate { get; set; }
+        public string ContractPeriod { get; set; }
+        public string Works { get; set; }
+        public string WorksEn { get; set; }
+    }
     public class ProjectAccountItem
     {
         public string Name { get; set; }

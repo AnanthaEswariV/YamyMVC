@@ -673,6 +673,227 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectSubcontractors(int? projectId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Fetch Projects
+                string projectQuery = @"SELECT id, name FROM tbl_projects";
+
+                if (projectId.HasValue)
+                    projectQuery += " WHERE id = @projectId";
+
+                projectQuery += " ORDER BY id";
+
+                var projectList = new List<ProjectSubcontractorResponse>();
+
+                await using (var cmd = new MySqlCommand(projectQuery, conn))
+                {
+                    if (projectId.HasValue)
+                        cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        projectList.Add(new ProjectSubcontractorResponse
+                        {
+                            Id = reader.GetInt32("id"),
+                            Name = reader["name"].ToString(),
+                            Subcontractors = new List<ProjectSubcontractorItem>()
+                        });
+                    }
+                }
+
+                // 🔹 Fetch Subcontractors
+                string subQuery = @"SELECT 
+                            id,
+                            project_id,
+                            code_id,
+                            subcontractor_id,
+                            contract_no,
+                            contract_value,
+                            contract_date,
+                            contract_period,
+                            works,
+                            works_en
+                        FROM tbl_project_subcontractors";
+
+                if (projectId.HasValue)
+                    subQuery += " WHERE project_id = @projectId";
+
+                var subcontractorList = new List<ProjectSubcontractorItem>();
+
+                await using (var cmd = new MySqlCommand(subQuery, conn))
+                {
+                    if (projectId.HasValue)
+                        cmd.Parameters.AddWithValue("@projectId", projectId.Value);
+
+                    await using var reader = await cmd.ExecuteReaderAsync();
+
+                    while (await reader.ReadAsync())
+                    {
+                        subcontractorList.Add(new ProjectSubcontractorItem
+                        {
+                            Id = reader.GetInt32("id"),
+                            ProjectId = reader.GetInt32("project_id"),
+                            CodeId = reader.GetInt32("code_id"),
+                            SubcontractorId = reader.GetInt32("subcontractor_id"),
+                            ContractNo = reader["contract_no"].ToString(),
+                            ContractValue = Convert.ToDecimal(reader["contract_value"]),
+                            ContractDate = reader["contract_date"]?.ToString(),
+                            ContractPeriod = reader["contract_period"].ToString(),
+                            Works = reader["works"].ToString(),
+                            WorksEn = reader["works_en"].ToString()
+                        });
+                    }
+                }
+
+                // 🔹 Map Subcontractors to Projects
+                foreach (var project in projectList)
+                {
+                    project.Subcontractors = subcontractorList
+                        .Where(a => a.ProjectId == project.Id)
+                        .ToList();
+                }
+
+                return Ok(new { status = true, data = projectList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveProjectSubcontractors([FromBody] List<ProjectSubcontractorRequest> model)
+        {
+            try
+            {
+                if (model == null || !model.Any())
+                    return BadRequest(new { status = false, message = "No data found" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                foreach (var item in model)
+                {
+                    if (item.Id == 0)
+                    {
+                        string insertQuery = @"INSERT INTO tbl_project_subcontractors
+                    (project_id, code_id, subcontractor_id, contract_no, contract_value,
+                     contract_date, contract_period, works, works_en)
+                    VALUES
+                    (@project_id, @code_id, @subcontractor_id, @contract_no, @contract_value,
+                     @contract_date, @contract_period, @works, @works_en)";
+
+                        await using var cmd = new MySqlCommand(insertQuery, conn);
+
+                        cmd.Parameters.AddWithValue("@project_id", item.ProjectId);
+                        cmd.Parameters.AddWithValue("@code_id", item.CodeId);
+                        cmd.Parameters.AddWithValue("@subcontractor_id", item.SubcontractorId);
+                        cmd.Parameters.AddWithValue("@contract_no", item.ContractNo ?? "");
+                        cmd.Parameters.AddWithValue("@contract_value", item.ContractValue);
+                        cmd.Parameters.AddWithValue("@contract_date", item.ContractDate);
+                        cmd.Parameters.AddWithValue("@contract_period", item.ContractPeriod ?? "");
+                        cmd.Parameters.AddWithValue("@works", item.Works ?? "");
+                        cmd.Parameters.AddWithValue("@works_en", item.WorksEn ?? "");
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                    else
+                    {
+                        string updateQuery = @"UPDATE tbl_project_subcontractors SET
+                        code_id=@code_id,
+                        subcontractor_id=@subcontractor_id,
+                        contract_no=@contract_no,
+                        contract_value=@contract_value,
+                        contract_date=@contract_date,
+                        contract_period=@contract_period,
+                        works=@works,
+                        works_en=@works_en
+                        WHERE id=@id";
+
+                        await using var cmd = new MySqlCommand(updateQuery, conn);
+
+                        cmd.Parameters.AddWithValue("@id", item.Id);
+                        cmd.Parameters.AddWithValue("@code_id", item.CodeId);
+                        cmd.Parameters.AddWithValue("@subcontractor_id", item.SubcontractorId);
+                        cmd.Parameters.AddWithValue("@contract_no", item.ContractNo ?? "");
+                        cmd.Parameters.AddWithValue("@contract_value", item.ContractValue);
+                        cmd.Parameters.AddWithValue("@contract_date", item.ContractDate);
+                        cmd.Parameters.AddWithValue("@contract_period", item.ContractPeriod ?? "");
+                        cmd.Parameters.AddWithValue("@works", item.Works ?? "");
+                        cmd.Parameters.AddWithValue("@works_en", item.WorksEn ?? "");
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                return Ok(new { status = true, message = "Subcontractors saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteProjectSubcontractor(int subcontractorId)
+        {
+            if (subcontractorId <= 0)
+                return BadRequest(new { status = false, message = "Invalid subcontractor ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ??
+                               _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string deleteQuery = "DELETE FROM tbl_project_subcontractors WHERE id=@id";
+
+                await using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", subcontractorId);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Subcontractor not found" });
+
+                return Ok(new { status = true, message = "Subcontractor deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
         #endregion
 

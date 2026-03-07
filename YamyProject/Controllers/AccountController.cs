@@ -2414,6 +2414,21 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
 
+                        CREATE TABLE IF NOT EXISTS `tbl_project_subcontractors` (
+                          `id` INT NOT NULL AUTO_INCREMENT,
+                          `project_id` INT(10) NOT NULL DEFAULT '0',
+                          `code_id` INT(10) NOT NULL DEFAULT '0',
+                          `subcontractor_id` INT(10) NOT NULL DEFAULT '0',
+                          `contract_no` VARCHAR(100) NOT NULL DEFAULT '',
+                          `contract_value` DECIMAL(18,2) NOT NULL DEFAULT '0.00',
+                          `contract_date` DATE NULL,
+                          `contract_period` VARCHAR(100) NOT NULL DEFAULT '',
+                          `works` VARCHAR(500) NOT NULL DEFAULT '',
+                          `works_en` VARCHAR(500) NOT NULL DEFAULT '',
+                          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=UTF8MB4_UNICODE_CI;
+
                         CREATE TABLE IF NOT EXISTS `tbl_project_estimate` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `date` date DEFAULT NULL,
