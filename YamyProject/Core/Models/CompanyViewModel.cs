@@ -720,6 +720,7 @@ namespace YamyProject.Core.Models
     public class SiteRequest
     {
         public int Id { get; set; }
+        public int ProjectId { get; set; }
         public string Name { get; set; }
         public int? LocationId { get; set; }
         public string PlotNumber { get; set; }

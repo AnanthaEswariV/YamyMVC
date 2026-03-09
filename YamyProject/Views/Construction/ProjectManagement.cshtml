@@ -489,31 +489,43 @@
                     <!-- ========== TAB 6: LOCATION ========== -->
                     <div class="tab-pane fade" id="pane-location" role="tabpanel">
                         <div class="row g-3">
+                            <input type="hidden" id="siteId" value="0">
+                            <!-- Site Name -->
                             <div class="col-md-6">
-                                <label class="form-label">Address</label>
-                                <textarea id="locAddress" class="form-control form-control-sm" rows="3"></textarea>
+                                <label class="form-label fw-bold">Site Name</label>
+                                <input type="text" id="siteName" class="form-control" placeholder="Enter site name" required>
+                                <div class="invalid-feedback">Site name is required.</div>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Latitude</label>
-                                <input type="text" id="locLatitude" class="form-control form-control-sm" placeholder="e.g. 25.2048">
+
+                            <!-- Project Location -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Project Location</label>
+                                <select id="projectLocation" class="form-select" required>
+                                    <option value="">Select project location</option>
+                                </select>
+                                <div class="invalid-feedback">Please select a project location.</div>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Longitude</label>
-                                <input type="text" id="locLongitude" class="form-control form-control-sm" placeholder="e.g. 55.2708">
+
+                            <!-- Plot Number -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Plot Number</label>
+                                <input type="text" id="plotNumber" class="form-control" placeholder="Enter plot number" required>
+                                <div class="invalid-feedback">Plot number is required.</div>
                             </div>
-                            <div class="col-12">
-                                <label class="form-label">Map Link</label>
-                                <input type="text" id="locMapLink" class="form-control form-control-sm" placeholder="https://maps.google.com/...">
+
+                            <!-- Address -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Address</label>
+                                <textarea id="address" class="form-control" rows="2"></textarea>
                             </div>
-                            <div class="col-12">
-                                <label class="form-label">Notes</label>
-                                <textarea id="locNotes" class="form-control form-control-sm" rows="2"></textarea>
-                            </div>
-                            <div class="col-12 d-flex justify-content-end">
-                                <button type="button" class="btn btn-primary btn-sm" id="saveLocationBtn">Save Location</button>
-                            </div>
+
                         </div>
                     </div>
+
+                    <div class="modal-footer">
+                        <button type="button" id="saveSiteBtn" class="btn btn-primary">Save</button>
+                    </div>
+
                     <!-- END TAB 6 -->
 
                 </div>
@@ -626,6 +638,7 @@
             loadAttachments(project.id);
             loadSubcontractorss(project.id);
             loadEngineers(project.id);
+            loadProjectSites(project.id);
             $('#projectModalLabel').text('Edit Project');
             $('#projectModal').modal('show');
         });
@@ -1406,11 +1419,119 @@
             });
         });
 
+        function loadCityDropdown() {
+            $.ajax({
+               url: '@Url.Action("GetCities", "Construction")',
+                type: 'GET',
+                success: function (res) {
+
+                    if (res.status && res.data.length > 0) {
+                        let options = '<option value="">Select location</option>';
+                        $.each(res.data, function (i, city) {
+                            options += `<option value="${city.id}">${city.name}</option>`;
+                        });
+                        $('#projectLocation').html(options);
+                    } else {
+                        toastr.warning('No cities found');
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error('Error loading city list');
+                }
+            });
+        }
+
+        $("#saveSiteBtn").click(function () {
+
+            const projectId = parseInt($("#projectId").val()) || 0;
+
+            if (projectId === 0) {
+                toastr.error("Invalid project");
+                return;
+            }
+
+            const siteData = {
+                Id: Number($("#siteId").val()) || 0,
+                ProjectId: projectId,   // ADD THIS
+                Name: $("#siteName").val().trim(),
+                LocationId: $("#projectLocation").val() ? Number($("#projectLocation").val()) : null,
+                PlotNumber: $("#plotNumber").val().trim(),
+                Address: $("#address").val().trim()
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveSite", "Construction")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(siteData),
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(
+                            siteData.Id > 0
+                                ? "Site updated successfully"
+                                : "Site added successfully"
+                        );
+
+                        $("#siteModal").modal("hide");
+
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1200);
+
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+
+                error: function () {
+                    toastr.error("Failed to save site");
+                }
+            });
+
+        });
+
+         function loadProjectSites(projectId) {
+
+            // Clear fields first
+            $('#siteId').val(0);
+            $('#siteName').val('');
+            $('#projectLocation').val('');
+            $('#plotNumber').val('');
+            $('#address').val('');
+
+            if (!projectId || projectId === 0) return;
+
+            $.ajax({
+                url: '@Url.Action("GetProjectSites", "Construction")',
+                type: 'GET',
+                data: { projectId: projectId },
+
+                success: function (res) {
+                    if (!res.status || !res.data || res.data.length === 0) return;
+
+                    // Populate form with the first site record
+                    const site = res.data[0];
+                    $('#siteId').val(site.id ?? 0);
+                    $('#siteName').val(site.name ?? '');
+                    $('#projectLocation').val(site.locationId ?? '');
+                    $('#plotNumber').val(site.plotNumber ?? '');
+                    $('#address').val(site.address ?? '');
+                },
+                error: function () {
+                    toastr.error('Failed to load site data');
+                }
+            });
+        }
+
         $(document).ready(function () {
             loadCustomers();
             loadProjects();
             loadAllAccounts();
             loadSubcontractors();
+            loadCityDropdown();
         });
 
     </script>
