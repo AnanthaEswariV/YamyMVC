@@ -1307,7 +1307,7 @@ namespace YamyProject.Controllers
             SELECT 
                 id,
                 code,
-                name_en,
+                name,
                 category,
                 start_date AS StartDate,
                 emirate AS CountryId,
@@ -1328,7 +1328,7 @@ namespace YamyProject.Controllers
                         SN = sn++,
                         Id = reader.GetInt32("id"),
                         Code = reader["code"].ToString(),
-                        Name = reader["name_en"].ToString(),
+                        Name = reader["name"].ToString(),
                         Category = reader["category"].ToString(),
                         StartDate = reader["StartDate"] != DBNull.Value ? Convert.ToDateTime(reader["StartDate"]).ToString("yyyy-MM-dd") : null,
                         EndDate = reader["EndDate"] != DBNull.Value ? Convert.ToDateTime(reader["EndDate"]).ToString("yyyy-MM-dd") : null,
