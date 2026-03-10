@@ -207,4 +207,67 @@
   <data name="Btn_Excel" xml:space="preserve">
     <value>إكسل</value>
   </data>
+  <data name="Add_Account" xml:space="preserve">
+    <value>إضافة حساب</value>
+  </data>
+  <data name="Search_accounts" xml:space="preserve">
+    <value>ابحث عن الحسابات</value>
+  </data>
+  <data name="Loading_accounts" xml:space="preserve">
+    <value>جارٍ تحميل الحسابات</value>
+  </data>
+  <data name="Edit_Account" xml:space="preserve">
+    <value>تعديل الحساب</value>
+  </data>
+  <data name="Account_Name" xml:space="preserve">
+    <value>اسم الحساب</value>
+  </data>
+  <data name="Debit" xml:space="preserve">
+    <value>مدين</value>
+  </data>
+  <data name="Credit" xml:space="preserve">
+    <value>دائن</value>
+  </data>
+  <data name="Due_Date" xml:space="preserve">
+    <value>تاريخ الاستحقاق</value>
+  </data>
+  <data name="Cost_Center" xml:space="preserve">
+    <value>مركز التكلفة</value>
+  </data>
+  <data name="COA_Account" xml:space="preserve">
+    <value>دليل الحسابات</value>
+  </data>
+  <data name="Chart_of_Account _L1" xml:space="preserve">
+    <value>دليل الحسابات</value>
+  </data>
+  <data name="LEVEL_1" xml:space="preserve">
+    <value>المستوى 1</value>
+  </data>
+  <data name="LEVEL_2" xml:space="preserve">
+    <value>المستوى 2</value>
+  </data>
+  <data name="LEVEL_3" xml:space="preserve">
+    <value>المستوى 3</value>
+  </data>
+  <data name="LEVEL_4" xml:space="preserve">
+    <value>المستوى 4</value>
+  </data>
+  <data name="Select_Level_1" xml:space="preserve">
+    <value>اختر المستوى 1</value>
+  </data>
+  <data name="Select_Level_2" xml:space="preserve">
+    <value>اختر المستوى 2</value>
+  </data>
+  <data name="Select_Level_3" xml:space="preserve">
+    <value>اختر المستوى 3</value>
+  </data>
+  <data name="Enter_Level_4" xml:space="preserve">
+    <value>أدخل المستوى 4</value>
+  </data>
+  <data name="Edit_Level_4_Account" xml:space="preserve">
+    <value>تعديل حساب المستوى 4</value>
+  </data>
+  <data name="Select" xml:space="preserve">
+    <value>اختر</value>
+  </data>
 </root>

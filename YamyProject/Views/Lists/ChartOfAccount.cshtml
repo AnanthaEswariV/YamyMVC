@@ -1,4 +1,8 @@
-﻿@{
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<YamyProject.SharedResource> Localizer
+
+@{
     ViewData["Title"] = "ChartOfAccount";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -12,13 +16,13 @@
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <!-- Search box -->
             <div class="search-box position-relative flex-grow-1" style="max-width: 400px;">
-                <input type="text" class="form-control ps-5" placeholder="Search accounts..." id="searchInput">
+                <input type="text" class="form-control ps-5" placeholder="@Localizer["Search_accounts"]" id="searchInput">
                 <span class="position-absolute top-50 start-0 translate-middle-y ps-3 text-secondary">🔍</span>
             </div>
 
             <!-- Add button -->
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#coaModal">
-                <i class="bi bi-plus-lg"></i> Add Account
+                <i class="bi bi-plus-lg"></i> @Localizer["Add_Account"]
             </button>
         </div>
 
@@ -26,7 +30,7 @@
         <div class="tree border rounded-3 p-3 bg-light" id="coaTree" style="min-height: 300px;">
             <div class="loading text-center py-5">
                 <div class="spinner-border text-primary mb-3" role="status"></div>
-                <div>Loading accounts...</div>
+                <div>@Localizer["Loading_accounts"]</div>
             </div>
         </div>
 
@@ -37,42 +41,42 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Edit Account</h5>
+                <h5 class="modal-title">@Localizer["Edit_Account"]</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">
                 <input type="hidden" id="editAccountId" />
                 <div class="mb-3">
-                    <label class="form-label">Account Name</label>
+                    <label class="form-label">@Localizer["Account_Name"]</label>
                     <input type="text" id="editAccountName" class="form-control" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Debit</label>
+                    <label class="form-label">@Localizer["Debit"]</label>
                     <input type="number" id="editDebit" class="form-control" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Credit</label>
+                    <label class="form-label">@Localizer["Credit"]</label>
                     <input type="number" id="editCredit" class="form-control" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Due Date</label>
+                    <label class="form-label">@Localizer["Due_Date"]</label>
                     <input type="date" id="editDate" class="form-control" />
                 </div>
                 <div class="col-3">
-                    <label class="form-label fw-semibold">Cost Center</label>
+                    <label class="form-label fw-semibold">@Localizer["Cost_Center"]</label>
                     <select class="form-select form-select-sm editcostCenterSelect" data-selected-id="5">
-                        <option value="">-- Select --</option>
+                        <option value="">-- @Localizer["Select"] --</option>
                     </select>
                 </div>
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="saveEditAccount" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Btn_Cancel"]</button>
+                <button type="button" id="saveEditAccount" class="btn btn-primary">@Localizer["Btn_Save"]</button>
             </div>
         </div>
     </div>
@@ -84,7 +88,7 @@
         <div class="modal-content rounded-4 shadow-lg border-0">
             <!-- Header -->
             <div class="modal-header bg-primary text-white rounded-top-4">
-                <h5 class="modal-title fw-semibold" id="coaModalLabel">COA - New Account</h5>
+                <h5 class="modal-title fw-semibold" id="coaModalLabel">@Localizer["COA_Account"]</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
@@ -95,10 +99,10 @@
 
                     <!-- LEVEL 1 -->
                     <div class="mb-3" id="rowLevel1">
-                        <label class="form-label fw-semibold">LEVEL 1</label>
+                        <label class="form-label fw-semibold">@Localizer["LEVEL_1"]</label>
                         <div class="d-flex gap-2 align-items-center">
                             <select class="form-select form-select-sm flex-grow-1" id="ddlLevel1" required ></select>
-                            <a href="/Lists/ChartOfAccountL1" class="text-primary" title="Chart of Account L1">
+                            <a href="/Lists/ChartOfAccountL1" class="text-primary" title="@Localizer["Chart_of_Account _L1"]">
                                 <i class="fas fa-plus-circle fs-6"></i>
                             </a>
                         </div>
@@ -106,7 +110,7 @@
 
                     <!-- LEVEL 2 -->
                     <div class="mb-3" id="rowLevel2">
-                        <label class="form-label fw-semibold">LEVEL 2</label>
+                        <label class="form-label fw-semibold">@Localizer["LEVEL_2"]</label>
                         <div class="d-flex gap-2 align-items-center">
                             <select class="form-select form-select-sm flex-grow-1" id="ddlLevel2" required ></select>
                             <a href="/Lists/ChartOfAccountL2" class="text-primary">
@@ -117,7 +121,7 @@
 
                     <!-- LEVEL 3 -->
                     <div class="mb-3" id="rowLevel3">
-                        <label class="form-label fw-semibold">LEVEL 3</label>
+                        <label class="form-label fw-semibold">@Localizer["LEVEL_3"]</label>
                         <div class="d-flex gap-2 align-items-center">
                             <select class="form-select form-select-sm flex-grow-1" id="ddlLevel3" required ></select>
                             <a href="/Lists/ChartOfAccountL3" class="text-primary">
@@ -128,29 +132,29 @@
 
                     <!-- LEVEL 4 -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">LEVEL 4</label>
-                        <input type="text" id="txtLevel4" class="form-control form-control-sm" placeholder="Enter Level 4" required>
+                        <label class="form-label fw-semibold">@Localizer["LEVEL_4"]</label>
+                        <input type="text" id="txtLevel4" class="form-control form-control-sm" placeholder="@Localizer["Enter_Level_4"]" required>
                     </div>
                     <div class="row g-3 align-items-end">
                         <div class="col-3">
-                            <label class="form-label fw-semibold">Debit</label>
-                            <input type="number" id="txtDebit" class="form-control form-control-sm" placeholder="Debit" value="0">
+                            <label class="form-label fw-semibold">@Localizer["Debit"]</label>
+                            <input type="number" id="txtDebit" class="form-control form-control-sm" placeholder="@Localizer["Debit"]" value="0">
                         </div>
 
                         <div class="col-3">
-                            <label class="form-label fw-semibold">Credit</label>
-                            <input type="number" id="txtCredit" class="form-control form-control-sm" placeholder="Credit" value="0">
+                            <label class="form-label fw-semibold">@Localizer["Credit"]</label>
+                            <input type="number" id="txtCredit" class="form-control form-control-sm" placeholder="@Localizer["Credit"]" value="0">
                         </div>
 
                         <div class="col-3">
-                            <label class="form-label fw-semibold">Due Date</label>
+                            <label class="form-label fw-semibold">@Localizer["Due_Date"]</label>
                             <input type="date" id="txtDate" class="form-control form-control-sm">
                         </div>
 
                         <div class="col-3">
-                            <label class="form-label fw-semibold">Cost Center</label>
+                            <label class="form-label fw-semibold">@Localizer["Cost_Center"]</label>
                             <select class="form-select form-select-sm costCenterSelect" data-selected-id="5">
-                                <option value="">-- Select --</option>
+                                <option value="">-- @Localizer["Select"] --</option>
                             </select>
                         </div>
                     </div>
@@ -159,8 +163,8 @@
 
                 <!-- Footer -->
                 <div class="modal-footer justify-content-between">
-                    <button type="submit" class="btn btn-primary px-4 rounded-3">Save</button>
-                    <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-3">@Localizer["Btn_Save"]</button>
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-3" data-bs-dismiss="modal">@Localizer["Btn_Close"]</button>
                 </div>
             </form>
         </div>
@@ -173,6 +177,7 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
 
     <style>
         * {
@@ -705,7 +710,7 @@
                         url: '@Url.Action("GetLevel1Accounts", "Lists")',
                         type: 'GET',
                         success: function (r1) {
-                            $ddl1.empty().append('<option value="">Select Level 1</option>');
+                            $ddl1.empty().append('<option value="">@Localizer["Select_Level_1"]</option>');
                             if (r1.status && Array.isArray(r1.data)) {
                                 r1.data.forEach(row => $ddl1.append(`<option value="${row.id}">${row.name}</option>`));
                             }
@@ -732,7 +737,7 @@
                         url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
                         type: 'GET',
                         success: function (r2) {
-                            $ddl2.empty().append('<option value="">Select Level 2</option>');
+                            $ddl2.empty().append('<option value="">@Localizer["Select_Level_2"]</option>');
                             if (r2.status && Array.isArray(r2.data)) {
                                 r2.data.forEach(row => $ddl2.append(`<option value="${row.id}">${row.name}</option>`));
                             }
@@ -775,7 +780,7 @@
                 }
 
                 function loadLevel3Options(level2Id, d) {
-                    $ddl3.empty().append('<option value="">Select Level 3</option>');
+                    $ddl3.empty().append('<option value="">@Localizer["Select_Level_3"]</option>');
                     if (!level2Id || level2Id <= 0) {
                         if (d.level3Id) {
                             $ddl3.append(`<option value="${d.level3Id}">${d.level3Name || 'Level 3'}</option>`);
@@ -818,8 +823,9 @@
                     $modal.find('#txtDebit').val(debit);
                     $modal.find('#txtCredit').val(credit);
                     $modal.find('#txtDate').val(dateVal);
-                    $modal.find('#coaModalLabel').text('Edit Level 4 Account');
-
+                    // $modal.find('#coaModalLabel').text('Edit Level 4 Account');
+                     $modal.find('#coaModalLabel').text('@Html.Raw(Localizer["Edit_Level_4_Account"])');
+                    
                     // ✅ Set BEFORE showing so shown.bs.modal knows to skip reset
                     isEditMode = true;
 
@@ -872,8 +878,8 @@
             function loadLevel2(level1Id) {
                 const $ddl2 = $('#ddlLevel2');
                 const $ddl3 = $('#ddlLevel3');
-                $ddl2.empty().append('<option value="">Select Level 2</option>');
-                $ddl3.empty().append('<option value="">Select Level 3</option>');
+                $ddl2.empty().append('<option value="">@Localizer["Select_Level_2"]</option>');
+                $ddl3.empty().append('<option value="">@Localizer["Select_Level_3"]</option>');
                 if (!level1Id) return;
                 $.ajax({
                     url: '@Url.Action("GetLevel2AccountsByLevel1", "Lists")' + '?level1Id=' + level1Id,
@@ -889,7 +895,7 @@
 
             function loadLevel3(level2Id) {
                 const $ddl3 = $('#ddlLevel3');
-                $ddl3.empty().append('<option value="">Select Level 3</option>');
+                $ddl3.empty().append('<option value="">@Localizer["Select_Level_3"]</option>');
                 if (!level2Id) return;
                 $.ajax({
                     url: '@Url.Action("GetLevel3AccountsByLevel2", "Lists")' + '?id=' + level2Id,
@@ -913,7 +919,7 @@
                         $('.costCenterSelect, .editcostCenterSelect').each(function () {
                             const $select    = $(this);
                             const selectedId = $select.data('selected-id');
-                            $select.empty().append('<option value="">-- Select --</option>');
+                            $select.empty().append('<option value="">-- @Localizer["Select"] --</option>');
                             $.each(data, function (i, item) {
                                 const isSelected = String(item.id) === String(selectedId);
                                 $select.append(`<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.code} - ${item.name}</option>`);
@@ -939,7 +945,7 @@
             $('#coaModal').on('show.bs.modal', function () {
                 if (!isEditMode) {
                     // ADD mode: reset title & id immediately
-                    $('#coaModalLabel').text('COA - New Account');
+                    $('#coaModalLabel').text('@Html.Raw(Localizer["COA_Account"])');
                     $('#level4Id').val(0);
                 }
             });
@@ -958,15 +964,15 @@
                 $('#level4Id').val(0);
                 $('#txtDebit').val(0);
                 $('#txtCredit').val(0);
-                $('#ddlLevel2').empty().append('<option value="">Select Level 2</option>');
-                $('#ddlLevel3').empty().append('<option value="">Select Level 3</option>');
+                $('#ddlLevel2').empty().append('<option value="">@Localizer["Select_Level_2"]</option>');
+                $('#ddlLevel3').empty().append('<option value="">@Localizer["Select_Level_3"]</option>');
 
                 $.ajax({
                     url: '@Url.Action("GetLevel1Accounts", "Lists")',
                     type: 'GET',
                     success: function (res) {
                         const $ddl1 = $('#ddlLevel1');
-                        $ddl1.empty().append('<option value="">Select Level 1</option>');
+                        $ddl1.empty().append('<option value="">@Localizer["Select_Level_1"]</option>');
                         if (res.status && Array.isArray(res.data) && res.data.length > 0) {
                             res.data.forEach(row => $ddl1.append(`<option value="${row.id}">${row.name}</option>`));
                         } else {
@@ -979,13 +985,12 @@
                 });
             });
 
-            // Reset hidden id and title when modal fully closes
-            $('#coaModal').on('hidden.bs.modal', function () {
-                $('#level4Id').val(0);
-                $('#coaModalLabel').text('COA - New Account');
-                isEditMode = false;
-                setLevelRowsVisible(true);
-            });
+        $('#coaModal').on('hidden.bs.modal', function () {
+            $('#level4Id').val(0);
+            $('#coaModalLabel').text('@Html.Raw(Localizer["COA_Account"])');
+            isEditMode = false;
+            setLevelRowsVisible(true);
+        });
 
             // ─── Cascade Dropdowns (Add mode) ─────────────────────────────
             $('#ddlLevel1').on('change', function () { loadLevel2($(this).val()); });
@@ -1025,7 +1030,8 @@
                             $('#coaModal').modal('hide');
                             $('#coaForm')[0].reset();
                             $('#level4Id').val(0);
-                            $('#coaModalLabel').text('COA - New Account');
+                            $('#coaModalLabel').text('@Html.Raw(Localizer["COA_Account"])');
+                            // $('#coaModalLabel').text('COA - New Account');
                             form.classList.remove('was-validated');
                             setTimeout(() => location.reload(), 1000);
                         } else {

@@ -207,4 +207,67 @@
   <data name="Btn_Excel" xml:space="preserve">
     <value>Excel</value>
   </data>
+  <data name="Add_Account" xml:space="preserve">
+    <value>Add Account</value>
+  </data>
+  <data name="Search_accounts" xml:space="preserve">
+    <value>Search accounts</value>
+  </data>
+  <data name="Loading_accounts" xml:space="preserve">
+    <value>Loading accounts</value>
+  </data>
+  <data name="Edit_Account" xml:space="preserve">
+    <value>Edit Account</value>
+  </data>
+  <data name="Account_Name" xml:space="preserve">
+    <value>Account Name</value>
+  </data>
+  <data name="Debit" xml:space="preserve">
+    <value>Debit</value>
+  </data>
+  <data name="Credit" xml:space="preserve">
+    <value>Credit</value>
+  </data>
+  <data name="Due_Date" xml:space="preserve">
+    <value>Due Date</value>
+  </data>
+  <data name="Cost_Center" xml:space="preserve">
+    <value>Cost Center</value>
+  </data>
+  <data name="COA_Account" xml:space="preserve">
+    <value>COA - New Account</value>
+  </data>
+  <data name="Chart_of_Account _L1" xml:space="preserve">
+    <value>Chart of Account L1</value>
+  </data>
+  <data name="LEVEL_1" xml:space="preserve">
+    <value>LEVEL 1</value>
+  </data>
+  <data name="LEVEL_2" xml:space="preserve">
+    <value>LEVEL 2</value>
+  </data>
+  <data name="LEVEL_3" xml:space="preserve">
+    <value>LEVEL 3</value>
+  </data>
+  <data name="LEVEL_4" xml:space="preserve">
+    <value>LEVEL 4</value>
+  </data>
+  <data name="Select_Level_1" xml:space="preserve">
+    <value>Select Level 1</value>
+  </data>
+  <data name="Select_Level_2" xml:space="preserve">
+    <value>Select Level 2</value>
+  </data>
+  <data name="Select_Level_3" xml:space="preserve">
+    <value>Select Level 3</value>
+  </data>
+  <data name="Enter_Level_4" xml:space="preserve">
+    <value>Enter Level 4</value>
+  </data>
+  <data name="Edit_Level_4_Account" xml:space="preserve">
+    <value>Edit Level 4 Account</value>
+  </data>
+  <data name="Select" xml:space="preserve">
+    <value>Select</value>
+  </data>
 </root>
