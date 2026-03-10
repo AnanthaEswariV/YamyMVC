@@ -2,6 +2,9 @@ using QuestPDF.Infrastructure;
 using YamyProject.Core.Consts.Mapping;
 using YamyProject.Services;
 using YamyProject.Services.Implementations;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
+using YamyProject.Core.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -69,25 +72,32 @@ builder.Services.AddHttpClient("ApiClient", client =>
     client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 });
 
+builder.Services.AddLocalization(options => options.ResourcesPath = "");
+builder.Services.AddMvc().AddViewLocalization();
 
+var cultures = new[] { new CultureInfo("en"), new CultureInfo("ar") };
+builder.Services.Configure<RequestLocalizationOptions>(o => {
+    o.DefaultRequestCulture = new RequestCulture("en");
+    o.SupportedCultures = cultures;
+    o.SupportedUICultures = cultures;
+});
 
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromHours(24);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    //options.Cookie.Path = "/YamyProject"; // Virtual folder
-    //options.Cookie.SecurePolicy = CookieSecurePolicy.None; // If using HTTP
-    //options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+
 });
 
+builder.Services.AddMvc()
+    .AddViewLocalization()
+    .AddDataAnnotationsLocalization(options => {
+        options.DataAnnotationLocalizerProvider = (type, factory) =>
+            factory.Create(typeof(YamyProject.SharedResource)); 
+    });
 
-// Add DbContext with SQL Server
-//builder.Services.AddDbContext<YamyDbContext>(options =>
-//    options.UseMySql(ConnectionString,
-//        ServerVersion.AutoDetect(ConnectionString)
-//    )WWW
-//);
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddDbContext<YamyDbContext>((serviceProvider, options) =>
@@ -132,7 +142,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-
+app.UseRequestLocalization();
 app.UseSession();
 
 app.UseAuthorization();

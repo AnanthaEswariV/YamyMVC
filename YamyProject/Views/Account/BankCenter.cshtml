@@ -1,4 +1,8 @@
-﻿
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<YamyProject.SharedResource> Localizer
+
+
 @{
     ViewData["Title"] = "BankCenter";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -16,29 +20,28 @@
         }
 </style>
 
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Bank Center</strong>
+        <strong>@Localizer["Nav_BankCenter"]</strong>
     </div>
 
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <!-- Left side - Filter -->
             <div style="min-width: 300px;">
-                <h6 class="fw-bold mb-2">Selection Method</h6>
+                <h6 class="fw-bold mb-2">@Localizer["Lbl_SelectionMethod"]</h6>
                 <select class="form-select" id="bankSelect">
-                    <option>Register Bank</option>
-                    <option>UnRegister Bank</option>
+                    <option value="Register Bank">@Localizer["Bank_RegisterBank"]</option>
+                    <option value="UnRegister Bank">@Localizer["Bank_UnRegisterBank"]</option>
                 </select>
             </div>
 
             <!-- Right side - Add Bank Button -->
             <div>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankModal">
-                    <i class="bi bi-plus-circle me-2"></i>Add Bank
+                    <i class="bi bi-plus-circle me-2"></i>@Localizer["Bank_AddBank"]
                 </button>
             </div>
         </div>
@@ -46,13 +49,13 @@
         <table class="table table-striped" id="table1">
             <thead>
                 <tr>
-                    <th>S.No</th>
-                    <th>Code</th>
-                    <th>Bank Name</th>
-                    <th>Abbreviation Name</th>
-                    <th>End Id</th>
-                    <th>Route No</th>
-                    <th>Actions</th>
+                    <th>@Localizer["Lbl_No"]</th>
+                    <th>@Localizer["Lbl_Code"]</th>
+                    <th>@Localizer["Bank_BankName"]</th>
+                    <th>@Localizer["Bank_AbbName"]</th>
+                    <th>@Localizer["Bank_EntId"]</th>
+                    <th>@Localizer["Bank_RouteNo"]</th>
+                    <th>@Localizer["Lbl_Actions"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,14 +65,13 @@
     </div>
 </div>
 
-
 <!-- Add/Edit Bank Modal -->
 <div class="modal fade" id="bankModal" tabindex="-1" aria-labelledby="bankModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form id="bankForm" class="needs-validation" novalidate>
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title w-100 text-center" id="bankModalLabel">Register Bank</h5>
+                    <h5 class="modal-title">@Localizer["Bank_RegisterBank"]</h5>
                     <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
                 </div>
                 <div class="modal-body p-4">
@@ -77,43 +79,43 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="bankCode" class="form-label text-muted">Bank Code</label>
-                            <input type="text" class="form-control" id="bankCode" placeholder="Bank Code" disabled>
+                            <label class="form-label">@Localizer["Lbl_Code"]</label>
+                            <input type="text" class="form-control" id="bankCode" placeholder="@Localizer["Lbl_Code"]" disabled>
                         </div>
                         <div class="col-md-6">
-                            <label for="bankName" class="form-label text-muted">Bank Name</label>
-                            <input type="text" class="form-control" id="bankName" name="BankName" placeholder="Bank Name" required>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="abbreviationName" class="form-label text-muted">Abbreviation Name</label>
-                            <input type="text" class="form-control" id="abbreviationName" name="AbbName" placeholder="Abbreviation Name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="entId" class="form-label text-muted">Ent Id</label>
-                            <input type="text" class="form-control" id="entId" name="EntId" placeholder="Ent Id" required>
+                            <label class="form-label">@Localizer["Bank_BankName"]</label>
+                            <input type="text" class="form-control" id="bankName" name="BankName" placeholder="@Localizer["Bank_BankName"]" required>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="routeNo" class="form-label text-muted">Route No.</label>
-                            <input type="text" class="form-control" id="routeNo" name="RouteNum" placeholder="Route No." required>
+                            <label class="form-label">@Localizer["Bank_AbbName"]</label>
+                            <input type="text" class="form-control" id="abbreviationName" name="AbbName" placeholder="@Localizer["Bank_AbbName"]" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="country" class="form-label text-muted">Country</label>
+                            <label class="form-label">@Localizer["Bank_EntId"]</label>x
+                            <input type="text" class="form-control" id="entId" name="EntId" placeholder="@Localizer["Bank_EntId"]" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["Bank_RouteNo"]</label>
+                            <input type="text" class="form-control" id="routeNo" name="RouteNum" placeholder="@Localizer["Bank_RouteNo"]" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">@Localizer["Lbl_Country"]</label>
                             <select class="form-select" id="country" name="CountryId" required>
-                                <option value="">-- Select Country --</option>
+                                <option value="">-- @Localizer["Lbl_Country"] --</option>
                             </select>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary px-4">Save</button>
-                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Btn_Save"]</button>
+                    <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">@Localizer["Btn_Close"]</button>
                 </div>
             </div>
         </form>
@@ -140,6 +142,9 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
+
+            var btnExcel = "@Localizer["Btn_Excel"]";
+        var btnPdf   = "@Localizer["Btn_PDF"]";
         // ===== Load Banks Table =====
            function loadBanks(selectionMethod) {
             $.ajax({
@@ -155,8 +160,8 @@
                         let tbody = $("#table1 tbody");
                         tbody.empty();
 
-                               let isRegister = (selectionMethod?.trim().toLowerCase() === "register bank");
-                                let isUnregister = (selectionMethod?.trim().toLowerCase() === "unregister bank");
+                                   let isRegister = (selectionMethod === "Register Bank");
+                                    let isUnregister = (selectionMethod === "UnRegister Bank");
 
 
                         if (res.data && res.data.length > 0) {
@@ -191,8 +196,8 @@
                             $("#table1").DataTable({
                                 dom: 'Bfrtip',
                                 buttons: [
-                                    { extend: 'excelHtml5', className: 'btn btn-primary btn-sm',text: '<i class="fas fa-file-excel me-1"></i> Excel', exportOptions: { columns: ':not(:last-child)' } },
-                                    { extend: 'pdfHtml5',className: 'btn btn-primary btn-sm',text: '<i class="fas fa-file-pdf me-1"></i> PDF', exportOptions: { columns: ':not(:last-child)' } }
+                                    { extend: 'excelHtml5', className: 'btn btn-primary btn-sm',text: '<i class="fas fa-file-excel me-1"></i> ' +btnExcel , exportOptions: { columns: ':not(:last-child)' } },
+                                    { extend: 'pdfHtml5',className: 'btn btn-primary btn-sm',text: '<i class="fas fa-file-pdf me-1"></i> ' +btnPdf, exportOptions: { columns: ':not(:last-child)' } }
                                 ],
                                 order: [[0, 'asc']],
                                 pageLength: 15
@@ -366,7 +371,7 @@
                 success: function (countries) {
                     let $country = $("#country");
                     $country.empty();
-                    $country.append(`<option value="">-- Select Country --</option>`);
+                    $country.append(`<option value="">-- @Localizer["Lbl_Country"] --</option>`);
 
                     $.each(countries, function (i, country) {
                         $country.append(`<option value="${country.id}">${country.name}</option>`);
@@ -382,7 +387,8 @@
     </script>
 
 
-
+    <button>@Localizer["Btn_Save"]</button>
+    <h3>@Localizer["Nav_Customers"]</h3>
 
 
 
