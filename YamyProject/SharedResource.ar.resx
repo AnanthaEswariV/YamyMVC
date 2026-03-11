@@ -237,9 +237,6 @@
   <data name="COA_Account" xml:space="preserve">
     <value>دليل الحسابات</value>
   </data>
-  <data name="Chart_of_Account _L1" xml:space="preserve">
-    <value>دليل الحسابات</value>
-  </data>
   <data name="LEVEL_1" xml:space="preserve">
     <value>المستوى 1</value>
   </data>
@@ -269,5 +266,41 @@
   </data>
   <data name="Select" xml:space="preserve">
     <value>اختر</value>
+  </data>
+  <data name="Chart_Of_Account_L1" xml:space="preserve">
+    <value>دليل الحسابات (المستوى 1)</value>
+  </data>
+  <data name="Level_1_Name" xml:space="preserve">
+    <value>اسم المستوى 1</value>
+  </data>
+  <data name="Category_Code" xml:space="preserve">
+    <value>رمز الفئة</value>
+  </data>
+  <data name="Add_L1" xml:space="preserve">
+    <value>إضافة المستوى 1</value>
+  </data>
+  <data name="New_Level_1" xml:space="preserve">
+    <value>مستوى 1 جديد</value>
+  </data>
+  <data name="Enter_Level_1_Name" xml:space="preserve">
+    <value>أدخل اسم المستوى 1</value>
+  </data>
+  <data name="Please_provide_a_level_name." xml:space="preserve">
+    <value>يرجى إدخال اسم المستوى.</value>
+  </data>
+  <data name="Account_Under" xml:space="preserve">
+    <value>الحساب التابع ل</value>
+  </data>
+  <data name="Select_Account_Type" xml:space="preserve">
+    <value>اختر نوع الحساب</value>
+  </data>
+  <data name="Please_select_an_account_type." xml:space="preserve">
+    <value>يرجى اختيار نوع الحساب.</value>
+  </data>
+  <data name="New_Level_1_Account" xml:space="preserve">
+    <value>حساب المستوى 1 جديد</value>
+  </data>
+  <data name="Edit_Level_1_Account" xml:space="preserve">
+    <value>تعديل حساب المستوى 1</value>
   </data>
 </root>

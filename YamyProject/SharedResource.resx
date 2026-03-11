@@ -237,9 +237,6 @@
   <data name="COA_Account" xml:space="preserve">
     <value>COA - New Account</value>
   </data>
-  <data name="Chart_of_Account _L1" xml:space="preserve">
-    <value>Chart of Account L1</value>
-  </data>
   <data name="LEVEL_1" xml:space="preserve">
     <value>LEVEL 1</value>
   </data>
@@ -269,5 +266,41 @@
   </data>
   <data name="Select" xml:space="preserve">
     <value>Select</value>
+  </data>
+  <data name="Chart_Of_Account_L1" xml:space="preserve">
+    <value>Chart Of Account (L1)</value>
+  </data>
+  <data name="Level_1_Name" xml:space="preserve">
+    <value>Level 1 Name</value>
+  </data>
+  <data name="Category_Code" xml:space="preserve">
+    <value>Category Code</value>
+  </data>
+  <data name="Add_L1" xml:space="preserve">
+    <value>Add L1</value>
+  </data>
+  <data name="New_Level_1" xml:space="preserve">
+    <value>New Level 1</value>
+  </data>
+  <data name="Enter_Level_1_Name" xml:space="preserve">
+    <value>Enter Level 1 Name</value>
+  </data>
+  <data name="Please_provide_a_level_name." xml:space="preserve">
+    <value>Please provide a level name.</value>
+  </data>
+  <data name="Account_Under" xml:space="preserve">
+    <value>Account Under</value>
+  </data>
+  <data name="Select_Account_Type" xml:space="preserve">
+    <value>Select Account Type</value>
+  </data>
+  <data name="Please_select_an_account_type." xml:space="preserve">
+    <value>Please select an account type.</value>
+  </data>
+  <data name="New_Level_1_Account" xml:space="preserve">
+    <value>New Level 1 Account</value>
+  </data>
+  <data name="Edit_Level_1_Account" xml:space="preserve">
+    <value>Edit Level 1 Account</value>
   </data>
 </root>
