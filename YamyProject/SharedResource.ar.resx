@@ -303,4 +303,28 @@
   <data name="Edit_Level_1_Account" xml:space="preserve">
     <value>تعديل حساب المستوى 1</value>
   </data>
+  <data name="Chart_of_Accounts_L2" xml:space="preserve">
+    <value>دليل الحسابات (المستوى الثاني)</value>
+  </data>
+  <data name="Add_Level_2" xml:space="preserve">
+    <value>إضافة المستوى الثاني</value>
+  </data>
+  <data name="Level_2_Name" xml:space="preserve">
+    <value>اسم المستوى الثاني</value>
+  </data>
+  <data name="New_Level_2" xml:space="preserve">
+    <value>مستوى ثاني جديد</value>
+  </data>
+  <data name="Please_select_Level_1" xml:space="preserve">
+    <value>يرجى اختيار المستوى الأول</value>
+  </data>
+  <data name="Enter_Level_2_Name" xml:space="preserve">
+    <value>أدخل اسم المستوى الثاني</value>
+  </data>
+  <data name="Please_enter_Level_2_name" xml:space="preserve">
+    <value>يرجى إدخال اسم المستوى الثاني</value>
+  </data>
+  <data name="Edit_Level_2" xml:space="preserve">
+    <value>تعديل المستوى الثاني</value>
+  </data>
 </root>
