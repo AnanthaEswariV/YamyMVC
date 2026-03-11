@@ -1,4 +1,6 @@
-﻿
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<YamyProject.SharedResource> Localizer
 @{
     ViewData["Title"] = "ChartOfAccountL3";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -22,24 +24,24 @@
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>Chart Of Account (L3)</strong>
+        <strong>@Localizer["Chart_Of_Account_L3"]</strong>
     </div>
 
     <div class="card-body">
         <div class="d-flex justify-content-end align-items-center mb-4">
             <button type="button" id="addLevel3Btn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#level3Modal">
-                <i class="bi bi-plus-circle me-2"></i>Add Level 3
+                <i class="bi bi-plus-circle me-2"></i>@Localizer["Add_Level_3"]
             </button>
         </div>
         <!-- Table -->
         <table class="table table-striped" id="tableLevel3">
             <thead>
                 <tr>
-                    <th>S.No</th>
-                    <th>Level 1 Name</th>
-                    <th>Level 2 Name</th>
-                    <th>Level 3 Name</th>
-                    <th>Actions</th>
+                    <th>@Localizer["Lbl_No"]</th>
+                    <th>@Localizer["Level_1_Name"]</th>
+                    <th>@Localizer["Level_2_Name"]</th>
+                    <th>@Localizer["Level_3_Name"]</th>
+                    <th>@Localizer["Lbl_Actions"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,7 +57,7 @@
         <form id="level3Form" class="needs-validation" novalidate>
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title w-100 text-center" id="level3ModalLabel">Add New Level 3</h5>
+                    <h5 class="modal-title w-100 text-center" id="level3ModalLabel">@Localizer["Add_New_Level_3"]</h5>
                     <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
                 </div>
 
@@ -65,37 +67,37 @@
                     <!-- Level 1 Dropdown -->
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <label for="comboLevel1" class="form-label text-muted">Level 1</label>
+                            <label for="comboLevel1" class="form-label text-muted">@Localizer["LEVEL_1"]</label>
                             <select class="form-select" id="comboLevel1" required>
-                                <option value="">Select Level 1</option>
+                                <option value="">@Localizer["Select_Level_1"]</option>
                             </select>
-                            <div class="invalid-feedback">Please select Level 1.</div>
+                            <div class="invalid-feedback">@Localizer["Please_select_Level_1"]</div>
                         </div>
                     </div>
 
                     <!-- Level 2 Dropdown -->
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <label for="comboLevel2" class="form-label text-muted">Level 2</label>
+                            <label for="comboLevel2" class="form-label text-muted">@Localizer["LEVEL_2"]</label>
                             <select class="form-select" id="comboLevel2" required>
-                                <option value="">Select Level 2</option>
+                                <option value="">@Localizer["Select_Level_2"]</option>
                             </select>
-                            <div class="invalid-feedback">Please select Level 2.</div>
+                            <div class="invalid-feedback">@Localizer["Please_select_Level_2"]</div>
                         </div>
                     </div>
 
                     <!-- Level 3 Name Input -->
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <input type="text" class="form-control" id="txtLevel3" placeholder="Add New Level 3" required>
-                            <div class="invalid-feedback">Please enter Level 3 name.</div>
+                            <input type="text" class="form-control" id="txtLevel3" placeholder="@Localizer["Add_New_Level_3"]" required>
+                            <div class="invalid-feedback">@Localizer["Please_enter_Level_3_name"]</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary px-4">Save</button>
-                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary px-4">@Localizer["Btn_Save"]</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">"@Localizer["Btn_Close"]</button>
                 </div>
             </div>
         </form>
@@ -117,6 +119,9 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
+
+         var btnExcel = "@Localizer["Btn_Excel"]";
+        var btnPdf   = "@Localizer["Btn_PDF"]";
         $(document).ready(function () {
 
             // Load Level 1 dropdown when modal opens
@@ -130,12 +135,12 @@
                     type: 'GET',
                     success: function (res) {
                         if (res.status) {
-                            let html = '<option value="">Select Level 1</option>';
+                            let html = '<option value="">@Localizer["Select_Level_1"]</option>';
                             res.data.forEach(l1 => {
                                 html += `<option value="${l1.id}">${l1.name}</option>`;
                             });
                             $('#comboLevel1').html(html);
-                            $('#comboLevel2').html('<option value="">Select Level 2</option>'); // reset Level 2
+                            $('#comboLevel2').html('<option value="">@Localizer["Select_Level_2"]</option>'); 
                         } else {
                             alert(res.message);
                         }
@@ -159,7 +164,7 @@
                 type: 'GET',
                 success: function(res) {
                     if (res.status) {
-                        let html = '<option value="">Select Level 1</option>';
+                        let html = '<option value="">@Localizer["Select_Level_1"]<option>';
                         res.data.forEach(l1 => {
                             html += `<option value="${l1.id}">${l1.name}</option>`;
                         });
@@ -238,12 +243,12 @@
                                 buttons: [
                                     {
                                         extend: 'excelHtml5',
-                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        text: '<i class="fas fa-file-excel me-1"></i>' +btnExcel,
                                         className: 'btn btn-primary btn-sm'
                                     },
                                     {
                                         extend: 'pdfHtml5',
-                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                        text: '<i class="fas fa-file-pdf me-1"></i>' +btnPdf,
                                         className: 'btn btn-primary btn-sm'
                                     }
                                 ],
@@ -278,7 +283,7 @@
                 data: { level1Id },
                 success: function(res) {
                     if(res.status) {
-                        let html = '<option value="">Select Level 2</option>';
+                        let html = '<option value="">@Localizer["Select_Level_2"]</option>';
                         res.data.forEach(l2 => {
                             html += `<option value="${l2.id}">${l2.name}</option>`;
                         });
@@ -308,7 +313,7 @@
                         data: { level1Id: level1Id },
                         success: function (res) {
                             if (res.status) {
-                                let html = '<option value="">Select Level 2</option>';
+                                let html = '<option value="">@Localizer["Select_Level_2"]</option>';
                                 res.data.forEach(l2 => {
                                     html += `<option value="${l2.id}">${l2.name}</option>`;
                                 });
@@ -322,7 +327,7 @@
                         }
                     });
                 } else {
-                    $('#comboLevel2').html('<option value="">Select Level 2</option>');
+                    $('#comboLevel2').html('<option value="">@Localizer["Select_Level_2"]</option>');
                 }
             });
 
@@ -374,7 +379,7 @@
             });
         });
 
-                $(document).on('click', '.deleteLevel3Btn', function () {
+             $(document).on('click', '.deleteLevel3Btn', function () {
             const id = $(this).data('id');
 
             if (!id) {

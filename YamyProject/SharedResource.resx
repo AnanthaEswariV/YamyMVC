@@ -327,4 +327,22 @@
   <data name="Edit_Level_2" xml:space="preserve">
     <value>Edit Level 2</value>
   </data>
+  <data name="Chart_Of_Account_L3" xml:space="preserve">
+    <value>Chart Of Account (L3)</value>
+  </data>
+  <data name="Add_Level_3" xml:space="preserve">
+    <value>Add Level 3</value>
+  </data>
+  <data name="Level_3_Name" xml:space="preserve">
+    <value>Level 3 Name</value>
+  </data>
+  <data name="Add_New_Level_3" xml:space="preserve">
+    <value>Add New Level 3</value>
+  </data>
+  <data name="Please_select_Level_2" xml:space="preserve">
+    <value>Please select Level 2.</value>
+  </data>
+  <data name="Please_enter_Level_3_name" xml:space="preserve">
+    <value>Please enter Level 3 name.</value>
+  </data>
 </root>
