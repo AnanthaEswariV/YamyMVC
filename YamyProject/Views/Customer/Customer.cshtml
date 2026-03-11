@@ -1,4 +1,7 @@
-﻿@{
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<YamyProject.SharedResource> Localizer
+@{
     ViewData["Title"] = "Customer";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -53,7 +56,7 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <div class="warehouse-header">
-    <center> Customer Center</center>
+    <center>@Localizer["Customer_Center"]</center>
 </div>
 <div class="employee-toolbar">
     <div class="container">
@@ -64,12 +67,12 @@
                 <ul class="nav nav-pills">
                     <li class="nav-item dropdown me-2">
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-                            <i class="bi bi-gear-fill me-1"></i> Customer Operations
+                            <i class="bi bi-gear-fill me-1"></i> @Localizer["Customer_Operations"]
                         </a>
                         <ul class="dropdown-menu">
                             <li>
                                 <a class="dropdown-item" href="#" id="btnNew" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
-                                    <i class="bi bi-plus-circle me-2"></i> New Customer
+                                    <i class="bi bi-plus-circle me-2"></i>@Localizer["New_Customer"]
                                 </a>
                             </li>
                         </ul>
@@ -87,9 +90,9 @@
                             <table class="table table-striped custom-table mb-0" id="customerTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Amount</th>
-                                        <th>Actions</th>
+                                        <th>@Localizer["Lbl_Name"]</th>
+                                        <th>@Localizer["Amount"]</th>
+                                        <th>@Localizer["Lbl_Actions"]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -103,23 +106,23 @@
             <div class="col-12 col-md-8">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title">Customer Informations</h5>
+                        <h5 class="card-title">@Localizer["Customer_Operations"]</h5>
                     </div>
                     <div class="card-body">
 
                         <!-- Date Filter -->
                         <div class="row mb-3 align-items-end">
                             <div class="col-auto">
-                                <label for="startDate" class="form-label mb-1">Start Date</label>
+                                <label for="startDate" class="form-label mb-1">@Localizer["Start_Date"]</label>
                                 <input type="date" id="startDate" class="form-control form-control-sm">
                             </div>
                             <div class="col-auto">
-                                <label for="endDate" class="form-label mb-1">End Date</label>
+                                <label for="endDate" class="form-label mb-1">@Localizer["End_Date"]</label>
                                 <input type="date" id="endDate" class="form-control form-control-sm">
                             </div>
                             <div class="col-auto">
                                 <button type="button" id="btnFilterDate" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-funnel-fill me-1"></i> Set
+                                    <i class="bi bi-funnel-fill me-1"></i>@Localizer["Set"]
                                 </button>
                             </div>
                             <div class="col-auto ms-auto">
@@ -130,25 +133,25 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Customer Name:</strong>
+                                    <strong>@Localizer["Customer_Name"]</strong>
                                     <span id="customerNames"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Customer Code:</strong>
+                                    <strong>@Localizer["Customer_Code"]</strong>
                                     <span id="customerCodes"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Email:</strong>
+                                    <strong>@Localizer["Email"]</strong>
                                     <span id="customerEmails"></span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <strong>Phone Number:</strong>
+                                    <strong>@Localizer["Phone_Number"]</strong>
                                     <span id="customerPhones"></span>
                                 </div>
                             </div>
@@ -157,11 +160,11 @@
                         <ul class="nav nav-tabs" id="myTab" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home"
-                                   role="tab" aria-controls="home" aria-selected="true">Transactions</a>
+                                   role="tab" aria-controls="home" aria-selected="true">@Localizer["Transactions"]</a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" id="profile-tab" data-bs-toggle="tab" href="#profile"
-                                   role="tab" aria-controls="profile" aria-selected="false">Cash Invoice</a>
+                                   role="tab" aria-controls="profile" aria-selected="false">@Localizer["Cash_Invoice"]</a>
                             </li>
                         </ul>
 
@@ -171,14 +174,14 @@
                                     <table class="table table-striped custom-table mb-0" id="pettyCashVoucherTable">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>S.No</th>
-                                                <th>Date</th>
-                                                <th>Voucher No</th>
-                                                <th>Voucher Type</th>
-                                                <th>Description</th>
-                                                <th>Debit</th>
-                                                <th>Credit</th>
-                                                <th>Balance</th>
+                                                <th>@Localizer["Lbl_No"]</th>
+                                                <th>@Localizer["Lbl_Date"]</th>
+                                                <th>@Localizer["Voucher_No"]</th>
+                                                <th>@Localizer["Voucher_Type"]</th>
+                                                <th>@Localizer["Description"]</th>
+                                                <th>@Localizer["Debit"]</th>
+                                                <th>@Localizer["Credit"]</th>
+                                                <th>@Localizer["Balance"]</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -191,12 +194,12 @@
                                     <table class="table table-striped custom-table mb-0" id="pettyCashTransactionsTable">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>S.No</th>
-                                                <th>V - No</th>
-                                                <th>Date</th>
-                                                <th>Account Name</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
+                                                <th>@Localizer["Lbl_No"]</th>
+                                                <th>@Localizer["Voucher_No"]</th>
+                                                <th>@Localizer["Lbl_Date"]</th>
+                                                <th>@Localizer["Account_Name"]</th>
+                                                <th>@Localizer["Type"]</th>
+                                                <th>@Localizer["Amount"]</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -220,41 +223,41 @@
                 <input type="hidden" id="customerId" value="0" />
                 <div class="modal-header">
                     <h5 class="modal-title" id="newCustomerModalLabel">
-                        Customers - New Customer
+                        @Localizer["Customers_New_Customer"]
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
-                    <h6 class="mb-3">Customer Information</h6>
+                    <h6 class="mb-3">@Localizer["Customer_Information"]</h6>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="customerName" class="form-label">Customer Name</label>
+                            <label for="customerName" class="form-label">@Localizer["Customer_Name"]</label>
                             <input type="text" class="form-control" id="customerName"
-                                   placeholder="Customer Name" required>
+                                   placeholder="@Localizer["Customer_Name"]" required>
                         </div>
                         <div class="col-md-4">
-                            <label for="customerCode" class="form-label">Customer Code</label>
+                            <label for="customerCode" class="form-label">@Localizer["Customer_Code"]</label>
                             <input type="text" class="form-control" id="customerCode"
-                                   placeholder="Customer Code" readonly>
+                                   placeholder="@Localizer["Customer_Code"]" readonly>
                         </div>
                         <div class="col-md-4">
-                            <label for="customerCategory" class="form-label">Customer Category</label>
+                            <label for="customerCategory" class="form-label">@Localizer["Customer_Category"]</label>
                             <select id="customerCategory" class="form-select" required>
-                                <option value="">-- Select Category --</option>
+                                <option value="">-- @Localizer["Select_Category"] --</option>
                             </select>
-                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="Add new category" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                            <button class="btn btn-outline-secondary" type="button" id="btnAddCategory" title="@Localizer["Add_new_category"]" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                                 <i class="bi bi-plus-lg"></i>
                             </button>
                         </div>
 
                         <div class="row align-items-center g-2 mt-3">
-                            <label for="debitAmount" class="col-auto col-form-label fw-bold">Opening Balance</label>
+                            <label for="debitAmount" class="col-auto col-form-label fw-bold">@Localizer["Opening_Balance"]</label>
                             <div class="col-auto">
-                                <input type="number" class="form-control form-control-sm" id="debitAmount" placeholder="Debit" style="width: 80px;">
+                                <input type="number" class="form-control form-control-sm" id="debitAmount" placeholder="@Localizer["Debit"]" style="width: 80px;">
                             </div>
                             <div class="col-auto">
-                                <input type="number" class="form-control form-control-sm" id="creditAmount" placeholder="Credit" style="width: 80px;">
+                                <input type="number" class="form-control form-control-sm" id="creditAmount" placeholder="@Localizer["Credit"]" style="width: 80px;">
                             </div>
                             <div class="col-auto">
                                 <input type="date" class="form-control form-control-sm" id="balanceDate" style="width: 130px;" required>
@@ -265,80 +268,80 @@
                     <hr>
                  
 
-                    <h6 class="mb-3">Contact & Address Data</h6>
+                    <h6 class="mb-3">@Localizer["Contact_Address_Data"]</h6>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="mainPhone" class="form-label">Main Phone</label>
-                            <input type="text" id="mainPhone" class="form-control" placeholder="Main Phone">
+                            <label for="mainPhone" class="form-label">@Localizer["Main_Phone"]</label>
+                            <input type="text" id="mainPhone" class="form-control" placeholder="@Localizer["Main_Phone"]">
                         </div>
                         <div class="col-md-4">
-                            <label for="workPhone" class="form-label">Work Phone</label>
-                            <input type="text" id="workPhone" class="form-control" placeholder="Work Phone">
+                            <label for="workPhone" class="form-label">@Localizer["Work_Phone"]</label>
+                            <input type="text" id="workPhone" class="form-control" placeholder="@Localizer["Work_Phone"]">
                         </div>
                         <div class="col-md-4">
-                            <label for="mobileFax" class="form-label">Mobile / Fax</label>
-                            <input type="text" id="mobileFax" class="form-control" placeholder="Mobile / Fax">
+                            <label for="mobileFax" class="form-label">@Localizer["Mobile_Fax"]</label>
+                            <input type="text" id="mobileFax" class="form-control" placeholder="@Localizer["Mobile_Fax"]">
                         </div>
                         <div class="col-md-6">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" id="email" class="form-control" placeholder="Email">
+                            <label for="email" class="form-label">@Localizer["Email"]</label>
+                            <input type="email" id="email" class="form-control" placeholder="@Localizer["Email"]">
                         </div>
                         <div class="col-md-6">
-                            <label for="ccEmail" class="form-label">CC Email</label>
-                            <input type="email" id="ccEmail" class="form-control" placeholder="CC Email">
+                            <label for="ccEmail" class="form-label">@Localizer["CC_Email"]</label>
+                            <input type="email" id="ccEmail" class="form-control" placeholder="@Localizer["CC_Email"]">
                         </div>
                         <div class="col-md-6">
-                            <label for="website" class="form-label">Website</label>
-                            <input type="text" id="website" class="form-control" placeholder="Website">
+                            <label for="website" class="form-label">@Localizer["Website"]</label>
+                            <input type="text" id="website" class="form-control" placeholder="@Localizer["Website"]">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold small">Country</label>
+                            <label class="form-label fw-bold small">@Localizer["Country"]</label>
                             <select id="countryDropdown" class="form-select form-select-sm" required>
-                                <option value="">-- Select --</option>
+                                <option value="">-- @Localizer["Select"] --</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold small">City</label>
+                            <label class="form-label fw-bold small">@Localizer["City"]</label>
                             <select id="cityDropdown" class="form-select form-select-sm" required>
-                                <option value="">-- Select --</option>
+                                <option value="">-- @Localizer["Select"] --</option>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label for="region" class="form-label">Region</label>
-                            <input type="text" id="region" class="form-control" placeholder="Region">
+                            <label for="region" class="form-label">@Localizer["Region"]</label>
+                            <input type="text" id="region" class="form-control" placeholder="@Localizer["Region"]">
                         </div>
                         <div class="col-md-6">
-                            <label for="buildingName" class="form-label">Building Name</label>
-                            <input type="text" id="buildingName" class="form-control" placeholder="Building Name">
+                            <label for="buildingName" class="form-label">@Localizer["Building_Name"]</label>
+                            <input type="text" id="buildingName" class="form-control" placeholder="@Localizer["Building_Name"]">
                         </div>
                     </div>
 
                     <hr>
 
-                    <h6 class="mb-3">Account Settings & Other</h6>
+                    <h6 class="mb-3">@Localizer["Account_Settings_Other"]</h6>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="accountReceivable" class="form-label">Account Receivable</label>
+                            <label for="accountReceivable" class="form-label">@Localizer["Account_Receivable"]</label>
                             <select id="accruedSalaries" class="form-select form-select-sm" required>
-                                <option value="">-- Select --</option>
+                                <option value="">-- @Localizer["Select"] --</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="trn" class="form-label">TRN</label>
-                            <input type="text" id="trn" class="form-control" placeholder="TRN">
+                            <label for="trn" class="form-label">@Localizer["TRN"]</label>
+                            <input type="text" id="trn" class="form-control" placeholder="@Localizer["TRN"]">
                         </div>
                         <div class="col-md-3">
-                            <label for="facilityName" class="form-label">Facility Name</label>
-                            <input type="text" id="facilityName" class="form-control" placeholder="Facility Name">
+                            <label for="facilityName" class="form-label">@Localizer["Facility_Name"]</label>
+                            <input type="text" id="facilityName" class="form-control" placeholder="@Localizer["Facility_Name"]">
                         </div>
                         <div class="col-md-6 d-flex align-items-center">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="activeCheckbox" checked>
-                                <label class="form-check-label" for="activeCheckbox">Active</label>
+                                <label class="form-check-label" for="activeCheckbox">@Localizer["Active"]</label>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Project</label>
+                            <label class="form-label">@Localizer["Project"]</label>
                             <div id="projectContainer" class="form-control" style="height:120px; overflow-y:auto;">
                             </div>
                         </div>
@@ -346,8 +349,8 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Btn_Close"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Btn_Save"]</button>
                 </div>
             </form>
         </div>
@@ -359,16 +362,16 @@
         <form id="addCategoryForm" novalidate>
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addCategoryModalLabel">Add New Category</h5>
+                    <h5 class="modal-title" id="addCategoryModalLabel">@Localizer["Add_new_category"]</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="text" id="newCategoryName" class="form-control" placeholder="Category Name" required />
+                    <input type="text" id="newCategoryName" class="form-control" placeholder="@Localizer["Category_Name"]" required />
                     <div class="invalid-feedback">Please enter a category name.</div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Btn_Close"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Btn_Save"]</button>
                 </div>
             </div>
         </form>
@@ -391,6 +394,9 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
+
+             var btnExcel = "@Localizer["Btn_Excel"]";
+            var Print   = "@Localizer["Print"]";
         var currentCustomerId = 0;
 
         $(document).ready(function () {
@@ -409,7 +415,7 @@
 
                 $country.on('change', function () {
                     const selectedCountryId = $(this).val();
-                    $city.html('<option value="">-- Select --</option>');
+                    $city.html('<option value="">-- @Localizer["Select"] --</option>');
 
                     if (selectedCountryId) {
                         const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
@@ -425,7 +431,7 @@
                 type: 'GET',
                 success: function (data) {
                     let $ddl = $('#countryOfIssue');
-                    $ddl.empty().append('<option value="">-- Select --</option>');
+                    $ddl.empty().append('<option value="">-- @Localizer["Select"] --</option>');
                     $.each(data, function (i, country) {
                         $ddl.append('<option value="' + country.id + '">' + country.name + '</option>');
                     });
@@ -445,7 +451,7 @@
 
                     dropdowns.forEach(set => {
                         let $ddl = $(set.ddl);
-                        $ddl.empty().append('<option value="">-- Select --</option>');
+                        $ddl.empty().append('<option value="">-- @Localizer["Select"] --</option>');
 
                         $.each(data, function (i, item) {
                             $ddl.append(
@@ -577,7 +583,8 @@
                     }
                 });
 
-                $("#newCustomerModalLabel").text("Edit Customer");
+                //$("#newCustomerModalLabel").text("Edit Customer");
+                $("#newCustomerModalLabel").text('@Html.Raw(Localizer["Edit_Customer"])');
                 $("#newCustomerModal").modal("show");
             });
 
@@ -681,7 +688,7 @@
                     type: 'GET',
                     success: function (res) {
                         const $ddl = $('#customerCategory');
-                        $ddl.empty().append('<option value="">-- Select Category --</option>');
+                        $ddl.empty().append('<option value="">-- @Localizer["Select_Category"] --</option>');
 
                         if (res && res.length > 0) {
                             res.forEach(cat => {
@@ -857,13 +864,13 @@
                             buttons: [
                                 {
                                     extend: 'excelHtml5',
-                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    text: '<i class="fas fa-file-excel me-1"></i>' +btnExcel,
                                       className: 'btn btn-primary btn-sm',
                                     title: 'Customer Transactions'
                                 },
                                 {
                                     extend: 'print',
-                                    text: '<i class="fas fa-print me-1"></i> Print',
+                                    text: '<i class="fas fa-print me-1"></i> ' +Print,
                                      className: 'btn btn-primary btn-sm',
                                     title: 'Customer Transactions'
                                 }

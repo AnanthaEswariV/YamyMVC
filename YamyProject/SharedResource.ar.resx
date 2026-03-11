@@ -345,4 +345,134 @@
   <data name="Please_enter_Level_3_name" xml:space="preserve">
     <value>يرجى إدخال اسم المستوى الثالث</value>
   </data>
+  <data name="Customer_Center" xml:space="preserve">
+    <value>مركز العملاء</value>
+  </data>
+  <data name="Customer_Operations" xml:space="preserve">
+    <value>عمليات العملاء</value>
+  </data>
+  <data name="New_Customer" xml:space="preserve">
+    <value>عميل جديد</value>
+  </data>
+  <data name="Amount" xml:space="preserve">
+    <value>المبلغ</value>
+  </data>
+  <data name="Customer_Information" xml:space="preserve">
+    <value>معلومات العميل</value>
+  </data>
+  <data name="Start_Date" xml:space="preserve">
+    <value>تاريخ البدء</value>
+  </data>
+  <data name="End_Date" xml:space="preserve">
+    <value>تاريخ الانتهاء</value>
+  </data>
+  <data name="Set" xml:space="preserve">
+    <value>مجموعة</value>
+  </data>
+  <data name="Customer_Name" xml:space="preserve">
+    <value>اسم العميل:
+</value>
+  </data>
+  <data name="Customer_Code" xml:space="preserve">
+    <value>رمز العميل:</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>البريد</value>
+  </data>
+  <data name="Phone_Number" xml:space="preserve">
+    <value>رقم الهاتف:</value>
+  </data>
+  <data name="Transactions" xml:space="preserve">
+    <value>المعاملات</value>
+  </data>
+  <data name="Cash_Invoice" xml:space="preserve">
+    <value>فاتورة نقدية</value>
+  </data>
+  <data name="Voucher_No" xml:space="preserve">
+    <value>رقم القسيمة:</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>الوصف:</value>
+  </data>
+  <data name="Balance" xml:space="preserve">
+    <value>الرصيد:</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>النوع:</value>
+  </data>
+  <data name="Customers_New_Customer" xml:space="preserve">
+    <value>العملاء - عميل جديد</value>
+  </data>
+  <data name="Customer_Category" xml:space="preserve">
+    <value>فئة العميل:</value>
+  </data>
+  <data name="Select_Category" xml:space="preserve">
+    <value>اختر الفئة</value>
+  </data>
+  <data name="Add_new_category" xml:space="preserve">
+    <value>إضافة فئة جديدة</value>
+  </data>
+  <data name="Opening_Balance" xml:space="preserve">
+    <value>الرصيد الافتتاحي</value>
+  </data>
+  <data name="Contact_Address_Data" xml:space="preserve">
+    <value>بيانات الاتصال والعنوان</value>
+  </data>
+  <data name="Main_Phone" xml:space="preserve">
+    <value>الهاتف الرئيسي</value>
+  </data>
+  <data name="Work_Phone" xml:space="preserve">
+    <value>هاتف العمل</value>
+  </data>
+  <data name="Mobile_Fax" xml:space="preserve">
+    <value>الهاتف المحمول / الفاكس</value>
+  </data>
+  <data name="CC_Email" xml:space="preserve">
+    <value>نسخة إلى البريد الإلكتروني</value>
+  </data>
+  <data name="Website" xml:space="preserve">
+    <value>الموقع الإلكتروني</value>
+  </data>
+  <data name="Country" xml:space="preserve">
+    <value>البلد</value>
+  </data>
+  <data name="City" xml:space="preserve">
+    <value>المدينة</value>
+  </data>
+  <data name="Region" xml:space="preserve">
+    <value>المنطقة</value>
+  </data>
+  <data name="Building_Name" xml:space="preserve">
+    <value>اسم المبنى</value>
+  </data>
+  <data name="Account_Settings_Other" xml:space="preserve">
+    <value>إعدادات الحساب وأخرى</value>
+  </data>
+  <data name="Account_Receivable" xml:space="preserve">
+    <value>الحسابات المدينة</value>
+  </data>
+  <data name="TRN" xml:space="preserve">
+    <value>ترن</value>
+  </data>
+  <data name="Facility_Name" xml:space="preserve">
+    <value>اسم_المنشأة</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>نشط</value>
+  </data>
+  <data name="Project" xml:space="preserve">
+    <value>مشروع</value>
+  </data>
+  <data name="Category_Name" xml:space="preserve">
+    <value>اسم الفئة</value>
+  </data>
+  <data name="Voucher_Type" xml:space="preserve">
+    <value>نوع القسيمة</value>
+  </data>
+  <data name="Edit_Customer" xml:space="preserve">
+    <value>تعديل العميل</value>
+  </data>
+  <data name="Print" xml:space="preserve">
+    <value>طباعة</value>
+  </data>
 </root>

@@ -345,4 +345,133 @@
   <data name="Please_enter_Level_3_name" xml:space="preserve">
     <value>Please enter Level 3 name.</value>
   </data>
+  <data name="Customer_Center" xml:space="preserve">
+    <value>Customer Center</value>
+  </data>
+  <data name="Customer_Operations" xml:space="preserve">
+    <value>Customer Operations</value>
+  </data>
+  <data name="New_Customer" xml:space="preserve">
+    <value>New Customer</value>
+  </data>
+  <data name="Amount" xml:space="preserve">
+    <value>Amount</value>
+  </data>
+  <data name="Customer_Information" xml:space="preserve">
+    <value>Customer Information</value>
+  </data>
+  <data name="Start_Date" xml:space="preserve">
+    <value>Start Date</value>
+  </data>
+  <data name="End_Date" xml:space="preserve">
+    <value>End Date</value>
+  </data>
+  <data name="Set" xml:space="preserve">
+    <value>Set</value>
+  </data>
+  <data name="Customer_Name" xml:space="preserve">
+    <value>Customer Name:</value>
+  </data>
+  <data name="Customer_Code" xml:space="preserve">
+    <value>Customer Code:</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>Email:</value>
+  </data>
+  <data name="Phone_Number" xml:space="preserve">
+    <value>Phone Number:</value>
+  </data>
+  <data name="Transactions" xml:space="preserve">
+    <value>Transactions</value>
+  </data>
+  <data name="Cash_Invoice" xml:space="preserve">
+    <value>Cash Invoice</value>
+  </data>
+  <data name="Voucher_No" xml:space="preserve">
+    <value>Voucher No</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Balance" xml:space="preserve">
+    <value>Balance</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Customers_New_Customer" xml:space="preserve">
+    <value>Customers - New Customer</value>
+  </data>
+  <data name="Customer_Category" xml:space="preserve">
+    <value>Customer Category</value>
+  </data>
+  <data name="Select_Category" xml:space="preserve">
+    <value>Select Category</value>
+  </data>
+  <data name="Add_new_category" xml:space="preserve">
+    <value>Add new category</value>
+  </data>
+  <data name="Opening_Balance" xml:space="preserve">
+    <value>Opening Balance</value>
+  </data>
+  <data name="Contact_Address_Data" xml:space="preserve">
+    <value>Contact &amp; Address Data</value>
+  </data>
+  <data name="Main_Phone" xml:space="preserve">
+    <value>Main Phone</value>
+  </data>
+  <data name="Work_Phone" xml:space="preserve">
+    <value>Work Phone</value>
+  </data>
+  <data name="Mobile_Fax" xml:space="preserve">
+    <value>Mobile / Fax</value>
+  </data>
+  <data name="CC_Email" xml:space="preserve">
+    <value>CC Email</value>
+  </data>
+  <data name="Website" xml:space="preserve">
+    <value>Website</value>
+  </data>
+  <data name="Country" xml:space="preserve">
+    <value>Country</value>
+  </data>
+  <data name="City" xml:space="preserve">
+    <value>City</value>
+  </data>
+  <data name="Region" xml:space="preserve">
+    <value>Region</value>
+  </data>
+  <data name="Building_Name" xml:space="preserve">
+    <value>Building Name</value>
+  </data>
+  <data name="Account_Settings_Other" xml:space="preserve">
+    <value>Account Settings &amp; Other</value>
+  </data>
+  <data name="Account_Receivable" xml:space="preserve">
+    <value>Account Receivable</value>
+  </data>
+  <data name="TRN" xml:space="preserve">
+    <value>TRN</value>
+  </data>
+  <data name="Facility_Name" xml:space="preserve">
+    <value>Facility Name</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Project" xml:space="preserve">
+    <value>Project</value>
+  </data>
+  <data name="Category_Name" xml:space="preserve">
+    <value>Category Name</value>
+  </data>
+  <data name="Voucher_Type" xml:space="preserve">
+    <value>Voucher Type</value>
+  </data>
+  <data name="Edit_Customer" xml:space="preserve">
+    <value>Edit Customer</value>
+  </data>
+  <data name="Print" xml:space="preserve">
+    <value>Print</value>
+  </data>
 </root>
