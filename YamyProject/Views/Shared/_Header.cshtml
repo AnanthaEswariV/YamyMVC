@@ -1,4 +1,41 @@
-﻿<div class="top-navbar">
+﻿<style>
+    /* ✅ RTL Submenu Fix */
+    [dir="rtl"] .navbar-links .submenu {
+        left: auto !important;
+        right: 0 !important;
+    }
+
+    [dir="rtl"] .navbar-links .dropdown:hover > .submenu {
+        left: auto !important;
+        right: 0 !important;
+    }
+
+    /* Fix nested submenus in RTL */
+    [dir="rtl"] .navbar-links .has-submenu > .submenu {
+        left: auto !important;
+        right: 100% !important;
+        top: 0 !important;
+    }
+
+    /* Fix navbar direction in RTL */
+    [dir="rtl"] .navbar-links {
+        direction: rtl;
+    }
+
+    [dir="rtl"] .top-navbar .d-flex {
+        flex-direction: row-reverse;
+    }
+
+    /* LTR default — nested submenus open to right */
+    [dir="ltr"] .navbar-links .has-submenu > .submenu {
+        left: 100% !important;
+        right: auto !important;
+        top: 0 !important;
+    }
+</style>
+
+
+<div class="top-navbar">
     <div class="d-flex align-items-center  w-100">
         <ul class="navbar-links">
             <li class="dropdown">

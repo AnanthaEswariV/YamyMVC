@@ -62,6 +62,25 @@
             display: none !important;
         }
 
+        .navbar-links .submenu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0; /* ← LTR: opens left side */
+            z-index: 9999;
+            background: white;
+            min-width: 200px;
+        }
+
+        .navbar-links .dropdown:hover > .submenu {
+            display: block;
+        }
+
+        /* Nested submenu */
+        .navbar-links .has-submenu > .submenu {
+            top: 0;
+            left: 100%; /* ← LTR: opens to right */
+        }   
     </style>
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap">
@@ -286,9 +305,14 @@
             }, 100); // Try every 100ms
         }
 
-        // ✅ Auto-apply saved language on EVERY page load
+            // ✅ Auto-apply saved language on EVERY page load
         window.addEventListener('load', function () {
-            var savedLang = localStorage.getItem('siteLang') || 'en';
+            // Default to English if nothing is saved yet
+            if (!localStorage.getItem('siteLang')) {
+                localStorage.setItem('siteLang', 'en');
+            }
+
+            var savedLang = localStorage.getItem('siteLang');
 
             // Apply direction immediately
             if (savedLang === 'ar') {
@@ -297,9 +321,10 @@
             } else {
                 document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
                 document.getElementById('htmlRoot').setAttribute('lang', 'en');
+                return; // ✅ Page is already in English — skip Google Translate
             }
 
-            // Apply Google Translate with retry
+            // Apply Google Translate only for Arabic
             var tries = 0;
             var interval = setInterval(function () {
                 var select = document.querySelector('.goog-te-combo');
