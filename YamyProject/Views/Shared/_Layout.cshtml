@@ -278,53 +278,87 @@
             }, 'google_translate_element');
         }
 
-              function translateTo(lang) {
-            // Save language choice
+             function clearTranslateCookie() {
+            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + location.hostname;
+            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + location.hostname;
+        }
+
+
+            function translateTo(lang) {
+            var previousLang = localStorage.getItem('siteLang') || 'en';
             localStorage.setItem('siteLang', lang);
 
-            // Set page direction immediately
-            if (lang === 'ar') {
-                document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
-                document.getElementById('htmlRoot').setAttribute('lang', 'ar');
-            } else {
+            // Update active button state
+            document.getElementById('btn-en').classList.remove('active');
+            document.getElementById('btn-ar').classList.remove('active');
+            document.getElementById('btn-' + lang).classList.add('active');
+
+            if (lang === 'en') {
+                // ✅ Restore to English: clear cookie and reload
+                clearTranslateCookie();
                 document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
                 document.getElementById('htmlRoot').setAttribute('lang', 'en');
+                if (previousLang !== 'en') {
+                    location.reload(); // Reload to remove translation
+                }
+                return;
             }
 
-            // ✅ Keep trying until Google Translate is ready
+            // Switch to Arabic
+            document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
+            document.getElementById('htmlRoot').setAttribute('lang', 'ar');
+
             var tries = 0;
             var interval = setInterval(function () {
                 var select = document.querySelector('.goog-te-combo');
                 if (select) {
                     select.value = lang;
                     select.dispatchEvent(new Event('change'));
-                    clearInterval(interval); // ✅ Stop trying once it works
+                    clearInterval(interval);
                 }
                 tries++;
-                if (tries > 30) clearInterval(interval); // Stop after 3 seconds
-            }, 100); // Try every 100ms
+                if (tries > 30) clearInterval(interval);
+            }, 100);
         }
 
-            // ✅ Auto-apply saved language on EVERY page load
+
+        // ✅ On every page load
         window.addEventListener('load', function () {
-            // Default to English if nothing is saved yet
+            // Set English as default if nothing saved
             if (!localStorage.getItem('siteLang')) {
                 localStorage.setItem('siteLang', 'en');
             }
 
             var savedLang = localStorage.getItem('siteLang');
 
-            // Apply direction immediately
-            if (savedLang === 'ar') {
-                document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
-                document.getElementById('htmlRoot').setAttribute('lang', 'ar');
-            } else {
+            if (savedLang === 'en') {
+                // Check if a stale Arabic googtrans cookie exists
+                var hasArabicCookie = document.cookie.indexOf('googtrans') !== -1 &&
+                                      document.cookie.indexOf('/ar') !== -1;
+
+                if (hasArabicCookie) {
+                    // Clear cookie on ALL possible paths/domains
+                    clearTranslateCookie();
+                    // Reload ONCE to remove translation (use flag to avoid infinite loop)
+                    if (!sessionStorage.getItem('langReloaded')) {
+                        sessionStorage.setItem('langReloaded', '1');
+                        location.reload();
+                    }
+                } else {
+                    sessionStorage.removeItem('langReloaded'); // Reset flag
+                }
+
                 document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
                 document.getElementById('htmlRoot').setAttribute('lang', 'en');
-                return; // ✅ Page is already in English — skip Google Translate
+                return;
             }
 
-            // Apply Google Translate only for Arabic
+            // Arabic: apply direction and trigger Google Translate
+            sessionStorage.removeItem('langReloaded');
+            document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
+            document.getElementById('htmlRoot').setAttribute('lang', 'ar');
+
             var tries = 0;
             var interval = setInterval(function () {
                 var select = document.querySelector('.goog-te-combo');
@@ -337,6 +371,7 @@
                 if (tries > 30) clearInterval(interval);
             }, 100);
         });
+
 
 
         $(document).ready(function() {
@@ -419,6 +454,10 @@
 
         });
     </script>
+
+
+
+
 
     <script>
         function openCompanyProfileModal() {
