@@ -10,26 +10,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YamyProject | @ViewData["Title"] </title>
-   @*  <style>
-        /* Hide Google bar at top */
-        .goog-te-banner-frame {
-            display: none !important;
-        }
 
-        body {
-            top: 0 !important;
-        }
-
-        .goog-te-gadget {
-            display: none !important;
-        }
-
-        .skiptranslate {
-            display: none !important;
-        } *@
 
         <style >
-        /* Highlight active language button */
         #btn-en, #btn-ar {
             background: #667eea;
             color: white;
@@ -66,7 +49,7 @@
             display: none;
             position: absolute;
             top: 100%;
-            left: 0; /* ← LTR: opens left side */
+            left: 0; 
             z-index: 9999;
             background: white;
             min-width: 200px;
@@ -76,10 +59,9 @@
             display: block;
         }
 
-        /* Nested submenu */
         .navbar-links .has-submenu > .submenu {
             top: 0;
-            left: 100%; /* ← LTR: opens to right */
+            left: 100%; 
         }   
     </style>
     <link rel="preconnect" href="https://fonts.gstatic.com">
@@ -244,7 +226,6 @@
             <div class="modal fade" id="companyProfileModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-centered">
                     <div class="modal-content" id="companyProfileModalContent">
-                        @* content (the partial) will be loaded here *@
                     </div>
                 </div>
             </div>
@@ -256,7 +237,6 @@
         </div>
     </div>
 
-    <!-- ✅ Scripts: Load jQuery FIRST, then dependencies, then your scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="~/assets/js/bootstrap.bundle.min.js"></script>
     <script src="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
@@ -289,23 +269,20 @@
             var previousLang = localStorage.getItem('siteLang') || 'en';
             localStorage.setItem('siteLang', lang);
 
-            // Update active button state
             document.getElementById('btn-en').classList.remove('active');
             document.getElementById('btn-ar').classList.remove('active');
             document.getElementById('btn-' + lang).classList.add('active');
 
             if (lang === 'en') {
-                // ✅ Restore to English: clear cookie and reload
                 clearTranslateCookie();
                 document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
                 document.getElementById('htmlRoot').setAttribute('lang', 'en');
                 if (previousLang !== 'en') {
-                    location.reload(); // Reload to remove translation
+                    location.reload();
                 }
                 return;
             }
 
-            // Switch to Arabic
             document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
             document.getElementById('htmlRoot').setAttribute('lang', 'ar');
 
@@ -323,9 +300,7 @@
         }
 
 
-        // ✅ On every page load
         window.addEventListener('load', function () {
-            // Set English as default if nothing saved
             if (!localStorage.getItem('siteLang')) {
                 localStorage.setItem('siteLang', 'en');
             }
@@ -333,20 +308,17 @@
             var savedLang = localStorage.getItem('siteLang');
 
             if (savedLang === 'en') {
-                // Check if a stale Arabic googtrans cookie exists
                 var hasArabicCookie = document.cookie.indexOf('googtrans') !== -1 &&
                                       document.cookie.indexOf('/ar') !== -1;
 
                 if (hasArabicCookie) {
-                    // Clear cookie on ALL possible paths/domains
                     clearTranslateCookie();
-                    // Reload ONCE to remove translation (use flag to avoid infinite loop)
                     if (!sessionStorage.getItem('langReloaded')) {
                         sessionStorage.setItem('langReloaded', '1');
                         location.reload();
                     }
                 } else {
-                    sessionStorage.removeItem('langReloaded'); // Reset flag
+                    sessionStorage.removeItem('langReloaded');
                 }
 
                 document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
@@ -354,7 +326,6 @@
                 return;
             }
 
-            // Arabic: apply direction and trigger Google Translate
             sessionStorage.removeItem('langReloaded');
             document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
             document.getElementById('htmlRoot').setAttribute('lang', 'ar');
@@ -375,22 +346,18 @@
 
 
         $(document).ready(function() {
-             // Submenu toggle
         $('.sidebar-item.has-sub > .sidebar-link').on('click', function(e) {
             e.preventDefault();
 
             var $parent = $(this).parent('.sidebar-item.has-sub');
 
-            // Toggle current submenu
             $parent.toggleClass('active');
             $parent.find('.submenu').first().slideToggle(300);
 
-            // Close other submenus
             $('.sidebar-item.has-sub').not($parent).removeClass('active');
             $('.sidebar-item.has-sub').not($parent).find('.submenu').slideUp(300);
         });
 
-        // Highlight active submenu item based on current URL
         var currentPath = window.location.pathname;
         $('.submenu-item a').each(function() {
             var linkPath = $(this).attr('href');
@@ -401,7 +368,6 @@
             }
         });
 
-        // Mobile sidebar toggle
         $('.sidebar-hide, .sidebar-toggler').on('click', function(e) {
             e.preventDefault();
             $('#sidebar').toggleClass('active');
@@ -450,14 +416,8 @@
 
             });
 
-
-
         });
     </script>
-
-
-
-
 
     <script>
         function openCompanyProfileModal() {
@@ -469,7 +429,6 @@
     </script>
 
     <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-
 
     @await RenderSectionAsync("Scripts", required: false)
     <script src="~/js/site.js"></script>
