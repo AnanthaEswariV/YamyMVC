@@ -1,7 +1,4 @@
-﻿@using Microsoft.AspNetCore.Mvc.Localization
-@using Microsoft.Extensions.Localization
-@inject IStringLocalizer<YamyProject.SharedResource> Localizer
-@{
+﻿@{
     ViewData["Title"] = "ChartOfAccountL2";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -23,23 +20,23 @@
 
 <div class="card">
     <div class="card-header text-center">
-        <strong>@Localizer["Chart_of_Accounts_L2"]</strong>
+        <strong>Chart Of Account(L2)</strong>
     </div>
 
     <div class="card-body">
         <div class="d-flex justify-content-end align-items-center mb-4">
             <button type="button" id="addLevel2Btn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#level2Modal">
-                <i class="bi bi-plus-circle me-2"></i>@Localizer["Add_Level_2"]
+                <i class="bi bi-plus-circle me-2"></i>Add Level 2
             </button>
         </div>
         <!-- Table -->
         <table class="table table-striped" id="tableLevel2">
             <thead>
                 <tr>
-                    <th>@Localizer["Lbl_No"]</th>
-                    <th>@Localizer["Level_1_Name"]</th>
-                    <th>@Localizer["Level_2_Name"]</th>
-                    <th>@Localizer["Lbl_Actions"]</th>
+                    <th>S.No</th>
+                    <th>Level 1 Name</th>
+                    <th>Level 2 Name</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,7 +52,7 @@
         <form id="level2Form" class="needs-validation" novalidate>
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title w-100 text-center" id="level2ModalLabel">@Localizer["New_Level_2"]</h5>
+                    <h5 class="modal-title w-100 text-center" id="level2ModalLabel">New Level 2</h5>
                     <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
                 </div>
 
@@ -65,26 +62,26 @@
                     <!-- Level 1 Dropdown -->
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <label for="comboLevel1" class="form-label text-muted">@Localizer["LEVEL_1"]</label>
+                            <label for="comboLevel1" class="form-label text-muted">Level 1</label>
                             <select class="form-select" id="comboLevel1" required disabled>
-                                <option value="">@Localizer["Select_Level_1"]</option>
+                                <option value="">Select Level 1</option>
                             </select>
-                            <div class="invalid-feedback">@Localizer["Please_select_Level_1"]</div>
+                            <div class="invalid-feedback">Please select Level 1.</div>
                         </div>
                     </div>
 
                     <!-- Level 2 Name -->
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <input type="text" class="form-control" id="txtLevel2" placeholder="@Localizer["Enter_Level_2_Name"]" required>
-                            <div class="invalid-feedback">@Localizer["Please_enter_Level_2_name"]</div>
+                            <input type="text" class="form-control" id="txtLevel2" placeholder="Enter Level 2 Name" required>
+                            <div class="invalid-feedback">Please enter Level 2 name.</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary px-4">@Localizer["Btn_Save"]</button>
-                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">@Localizer["Btn_Close"]</button>
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </form>
@@ -106,8 +103,6 @@
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
-        var btnExcel = "@Localizer["Btn_Excel"]";
-        var btnPdf   = "@Localizer["Btn_PDF"]";
 
         $(document).ready(function () {
 
@@ -119,7 +114,7 @@
                 success: function(res) {
                     if(res.status && res.data) {
                         let $ddl = $('#comboLevel1');
-                        $ddl.empty().append('<option value="">@Localizer["Select_Level_1"]</option>');
+                           $ddl.empty().append('<option value="">Select Level 1</option>');
                         res.data.forEach(lvl => {
                             $ddl.append(`<option value="${lvl.id}">${lvl.name}</option>`);
                         });
@@ -168,12 +163,12 @@
                                 buttons: [
                                     {
                                         extend: 'excelHtml5',
-                                        text: '<i class="fas fa-file-excel me-1"></i>' +btnExcel,
+                                          text: '<i class="fas fa-file-excel me-1"></i> Excel',
                                         className: 'btn btn-primary btn-sm'
                                     },
                                     {
                                         extend: 'pdfHtml5',
-                                        text: '<i class="fas fa-file-pdf me-1"></i>' +btnPdf,
+                                          text: '<i class="fas fa-file-pdf me-1"></i> PDF',
                                         className: 'btn btn-primary btn-sm'
                                     }
                                 ],
@@ -204,7 +199,7 @@
             $('#level2Form')[0].reset();
             $('#level2Id').val(0);
            // $('#level2ModalLabel').text('New Level 2');
-            $('#level2ModalLabel').text('@Html.Raw(Localizer["New_Level_2"])');
+           $('#level2ModalLabel').text('New Level 2');
             // Enable dropdown for adding
             $('#comboLevel1').prop('disabled', false);
 
@@ -229,7 +224,7 @@
             }, 100);
 
            // $('#level2ModalLabel').text('Edit Level 2');
-            $('#level2ModalLabel').text('@Html.Raw(Localizer["Edit_Level_2"])');
+           $('#level2ModalLabel').text('Edit Level 2');
             $('#level2Modal').modal('show');
         });
         // Submit Add/Edit Level 2
