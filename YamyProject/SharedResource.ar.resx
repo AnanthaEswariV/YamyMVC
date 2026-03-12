@@ -475,4 +475,43 @@
   <data name="Print" xml:space="preserve">
     <value>طباعة</value>
   </data>
+  <data name="Vendor_Center" xml:space="preserve">
+    <value>مركز الموردين</value>
+  </data>
+  <data name="Vendor_Operations" xml:space="preserve">
+    <value>عمليات الموردين</value>
+  </data>
+  <data name="New_Vendor" xml:space="preserve">
+    <value>مورد جديد</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>الاسم</value>
+  </data>
+  <data name="Vendor_Information" xml:space="preserve">
+    <value>معلومات المورد</value>
+  </data>
+  <data name="Vendor_Name" xml:space="preserve">
+    <value>اسم المورد</value>
+  </data>
+  <data name="Vendor_Code" xml:space="preserve">
+    <value>رمز المورد</value>
+  </data>
+  <data name="V_No" xml:space="preserve">
+    <value>رقم المورد</value>
+  </data>
+  <data name="Vendor_New_Vendor" xml:space="preserve">
+    <value>المورد - مورد جديد</value>
+  </data>
+  <data name="Vendor_Category" xml:space="preserve">
+    <value>فئة الموردين</value>
+  </data>
+  <data name="Add_Vendor_category" xml:space="preserve">
+    <value>إضافة فئة موردين</value>
+  </data>
+  <data name="Add_New_Vendor Category" xml:space="preserve">
+    <value>إضافة فئة مورد جديد</value>
+  </data>
+  <data name="Please_enter_a_vendor_category_name" xml:space="preserve">
+    <value>الرجاء إدخال اسم فئة المورد</value>
+  </data>
 </root>

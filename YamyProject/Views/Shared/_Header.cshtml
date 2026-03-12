@@ -371,6 +371,15 @@
                 </ul>
             </li>
         </ul>
+        <div style="margin-left:auto; margin-right:10px; display:flex; gap:6px;">
+            <button onclick="translateTo('en')" id="btn-en">
+                🇺🇸 EN
+            </button>
+            <button onclick="translateTo('ar')" id="btn-ar">
+                🇸🇦 عربي
+            </button>
+        </div>
+        <div id="google_translate_element" style="display:none;"></div>
 
         <div style="position:relative;display:inline-block;margin-left:auto">
             <button onclick="document.getElementById('menu').style.display=document.getElementById('menu').style.display=='block'?'none':'block'"
@@ -445,4 +454,9 @@
 
     });
 </script>
-
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var lang = localStorage.getItem('siteLang') || 'en';
+        document.getElementById('btn-' + lang).classList.add('active');
+    });
+</script>

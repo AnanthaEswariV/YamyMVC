@@ -474,4 +474,43 @@
   <data name="Print" xml:space="preserve">
     <value>Print</value>
   </data>
+  <data name="Vendor_Center" xml:space="preserve">
+    <value>Vendor Center</value>
+  </data>
+  <data name="Vendor_Operations" xml:space="preserve">
+    <value>Vendor Operations</value>
+  </data>
+  <data name="New_Vendor" xml:space="preserve">
+    <value>New Vendor</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Vendor_Information" xml:space="preserve">
+    <value>Vendor Information</value>
+  </data>
+  <data name="Vendor_Name" xml:space="preserve">
+    <value>Vendor Name:</value>
+  </data>
+  <data name="Vendor_Code" xml:space="preserve">
+    <value>Vendor Code:</value>
+  </data>
+  <data name="V_No" xml:space="preserve">
+    <value>V - No</value>
+  </data>
+  <data name="Vendor_New_Vendor" xml:space="preserve">
+    <value>Vendor - New Vendor</value>
+  </data>
+  <data name="Vendor_Category" xml:space="preserve">
+    <value>Vendor Category</value>
+  </data>
+  <data name="Add_Vendor_category" xml:space="preserve">
+    <value>Add Vendor category</value>
+  </data>
+  <data name="Add_New_Vendor Category" xml:space="preserve">
+    <value>Add New Vendor Category</value>
+  </data>
+  <data name="Please_enter_a_vendor_category_name" xml:space="preserve">
+    <value>Please enter a vendor category name.</value>
+  </data>
 </root>

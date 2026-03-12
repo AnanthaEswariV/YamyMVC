@@ -5,11 +5,64 @@
 
 
 <!DOCTYPE html>
-<html lang="@(isAr ? "ar" : "en")" dir="@(isAr ? "rtl" : "ltr")">
+<html lang="en" dir="ltr" id="htmlRoot">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YamyProject | @ViewData["Title"] </title>
+   @*  <style>
+        /* Hide Google bar at top */
+        .goog-te-banner-frame {
+            display: none !important;
+        }
+
+        body {
+            top: 0 !important;
+        }
+
+        .goog-te-gadget {
+            display: none !important;
+        }
+
+        .skiptranslate {
+            display: none !important;
+        } *@
+
+        <style >
+        /* Highlight active language button */
+        #btn-en, #btn-ar {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 4px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            opacity: 0.6;
+        }
+
+            #btn-en.active, #btn-ar.active {
+                opacity: 1;
+                outline: 2px solid white;
+            }
+
+        .goog-te-banner-frame {
+            display: none !important;
+        }
+
+        body {
+            top: 0 !important;
+        }
+
+        .goog-te-gadget {
+            display: none !important;
+        }
+
+        .skiptranslate {
+            display: none !important;
+        }
+
+    </style>
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap">
     <link rel="stylesheet" href="~/assets/css/bootstrap.css" />
@@ -48,7 +101,7 @@
                             </a>
                         </li>
 
-                        <li class="sidebar-item active">
+                        @* <li class="sidebar-item active">
                             <a href="/Language/Set?culture=ar&returnUrl=@Context.Request.Path"
                                class="btn btn-sm btn-outline-primary">
                                 🇸🇦 العربية
@@ -59,7 +112,7 @@
                                 🇺🇸 English
                             </a>
                         </li>
-
+ *@
 
                         <!-- Accountant -->
                         <li class="sidebar-item">
@@ -197,8 +250,70 @@
     <script src="~/assets/js/pages/dashboard.js"></script>
     <script src="~/assets/js/main.js"></script>
 
-    <!-- Submenu Toggle Script -->
-    <script>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'ar,en',
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+
+              function translateTo(lang) {
+            // Save language choice
+            localStorage.setItem('siteLang', lang);
+
+            // Set page direction immediately
+            if (lang === 'ar') {
+                document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
+                document.getElementById('htmlRoot').setAttribute('lang', 'ar');
+            } else {
+                document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
+                document.getElementById('htmlRoot').setAttribute('lang', 'en');
+            }
+
+            // ✅ Keep trying until Google Translate is ready
+            var tries = 0;
+            var interval = setInterval(function () {
+                var select = document.querySelector('.goog-te-combo');
+                if (select) {
+                    select.value = lang;
+                    select.dispatchEvent(new Event('change'));
+                    clearInterval(interval); // ✅ Stop trying once it works
+                }
+                tries++;
+                if (tries > 30) clearInterval(interval); // Stop after 3 seconds
+            }, 100); // Try every 100ms
+        }
+
+        // ✅ Auto-apply saved language on EVERY page load
+        window.addEventListener('load', function () {
+            var savedLang = localStorage.getItem('siteLang') || 'en';
+
+            // Apply direction immediately
+            if (savedLang === 'ar') {
+                document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
+                document.getElementById('htmlRoot').setAttribute('lang', 'ar');
+            } else {
+                document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
+                document.getElementById('htmlRoot').setAttribute('lang', 'en');
+            }
+
+            // Apply Google Translate with retry
+            var tries = 0;
+            var interval = setInterval(function () {
+                var select = document.querySelector('.goog-te-combo');
+                if (select) {
+                    select.value = savedLang;
+                    select.dispatchEvent(new Event('change'));
+                    clearInterval(interval);
+                }
+                tries++;
+                if (tries > 30) clearInterval(interval);
+            }, 100);
+        });
+
+
         $(document).ready(function() {
              // Submenu toggle
         $('.sidebar-item.has-sub > .sidebar-link').on('click', function(e) {
@@ -288,6 +403,9 @@
             });
         }
     </script>
+
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 
     @await RenderSectionAsync("Scripts", required: false)
     <script src="~/js/site.js"></script>
