@@ -1,5 +1,5 @@
 ﻿<style>
-    /* ✅ RTL Submenu Fix */
+    /* ── RTL Submenu Fix ─────────────────────────────────────────────── */
     [dir="rtl"] .navbar-links .submenu {
         left: auto !important;
         right: 0 !important;
@@ -10,14 +10,13 @@
         right: 0 !important;
     }
 
-    /* Fix nested submenus in RTL */
+    /* Nested submenus open to the LEFT in RTL */
     [dir="rtl"] .navbar-links .has-submenu > .submenu {
         left: auto !important;
         right: 100% !important;
         top: 0 !important;
     }
 
-    /* Fix navbar direction in RTL */
     [dir="rtl"] .navbar-links {
         direction: rtl;
     }
@@ -26,7 +25,7 @@
         flex-direction: row-reverse;
     }
 
-    /* LTR default — nested submenus open to right */
+    /* Nested submenus open to the RIGHT in LTR */
     [dir="ltr"] .navbar-links .has-submenu > .submenu {
         left: 100% !important;
         right: auto !important;
@@ -34,9 +33,21 @@
     }
 </style>
 
+<!--
+    ✅ Set dir/lang on <html> IMMEDIATELY from localStorage so the header
+       renders with the correct direction before any script runs.
+-->
+<script>
+    (function () {
+        if ((localStorage.getItem('siteLang') || 'en') === 'ar') {
+            document.documentElement.setAttribute('dir', 'rtl');
+            document.documentElement.setAttribute('lang', 'ar');
+        }
+    })();
+</script>
 
 <div class="top-navbar">
-    <div class="d-flex align-items-center  w-100">
+    <div class="d-flex align-items-center w-100">
         <ul class="navbar-links">
             <li class="dropdown">
                 File
@@ -49,11 +60,7 @@
             <li class="dropdown" data-mainmenu="Accountant">
                 Lists
                 <ul class="submenu">
-                    <li>
-                        <a href="@Url.Action("ChartOfAccount", "Lists")" data-submenu="Chart Of Account">
-                            Chart of Account
-                        </a>
-                    </li>
+                    <li><a href="@Url.Action("ChartOfAccount", "Lists")" data-submenu="Chart Of Account">Chart of Account</a></li>
                     <li><a href="@Url.Action("ItemList", "Lists")" data-submenu="Inventory Items">Item List</a></li>
                     <li><a href="@Url.Action("ItemCategory", "Lists")" data-submenu="Inventory Items">Item Category List</a></li>
                     <li><a href="@Url.Action("Tax", "Lists")" data-submenu="Inventory Items">Item Tax Code List</a></li>
@@ -82,16 +89,12 @@
                     <li class="dropdown has-submenu">
                         <a href="">Voucher</a>
                         <ul class="submenu">
-                            @* <li><a asp-controller="ReceiveVoucher" asp-action="Index">Payment Voucher</a></li> *@
-                            @* <li><a asp-controller="GeneralJournalVouchers" asp-action="Index">General Journal Voucher</a></li> 
-                                 <li><a asp-controller="ReceiptVouchers" asp-action="Index">Receipt Voucher</a></li>
-                                 <li><a asp-controller="AdvancePayments" asp-action="Index">Advance Payment</a></li>*@
                             <li><a href="@Url.Action("PaymentVoucher", "Account")" data-submenu="Payment Voucher">Payment Voucher</a></li>
                             <li><a href="@Url.Action("ReceiptVoucher", "Account")" data-submenu="Receipt Voucher">Receipt Voucher</a></li>
                             <li><a href="@Url.Action("AdvancePayment", "Account")" data-submenu="Vouchers">Advance Payment Voucher</a></li>
                             <li><a href="@Url.Action("GJVoucher", "Account")" data-submenu="Vouchers">General Journal Voucher</a></li>
                         </ul>
-                        </li>
+                    </li>
                     <li class="dropdown has-submenu">
                         <a href="">Prepaid Expense List</a>
                         <ul class="submenu">
@@ -131,10 +134,9 @@
                     </li>
                     <li><a href="@Url.Action("ItemList", "Lists")" data-submenu="Inventory Center">Add New Item</a></li>
                     <li><a href="@Url.Action("StockManagement", "Inventory")" data-submenu="Stock Management">Stock Management</a></li>
-                   @*  <li><a asp-controller="ItemStockSettlement" asp-action="Index">Stock Management</a></li> *@
                     <li><a href="@Url.Action("ItemList", "Lists")" data-submenu="Inventory Center">Inventory Center</a></li>
                     <li><a href="@Url.Action("WareHouse", "Inventory")" data-submenu="Warehouse Center">Warehouse Center</a></li>
-                    <li><a href="@Url.Action("WarehouseTransfer", "Inventory")" data-submenu="Warehouse Center">Item Warehouse Transfter</a></li>
+                    <li><a href="@Url.Action("WarehouseTransfer", "Inventory")" data-submenu="Warehouse Center">Item Warehouse Transfer</a></li>
                 </ul>
             </li>
 
@@ -148,15 +150,6 @@
                     <li><a href="@Url.Action("SalesPerforma", "Customer")" data-submenu="Sales Proforma">Sales Performa</a></li>
                     <li><a href="@Url.Action("SalesReturn", "Customer")" data-submenu="Sales Return">Sales Return</a></li>
                     <li><a href="@Url.Action("CreditNote", "Customer")" data-submenu="Credit Note">Credit Note</a></li>
-                   @*  <li><a asp-controller="CustomerCenter" asp-action="Index">Customer Center</a></li> *@
-                @*     <li><a asp-controller="MasterCreditNote" asp-action="Index">Sales Center</a></li>
-                    <li><a asp-controller="CustmerSalesQuotation" asp-action="Index">Sales Quotation</a></li> 
-                     <li><a asp-controller="CustomerSalesOrders" asp-action="Index">Sales Order</a></li>
-                      <li><a asp-controller="CustmerSalesProformas" asp-action="Index">Sales Proforma</a></li>
-                          <li><a asp-controller="SalesReturns" asp-action="Index">Sales Return</a></li>
-                          <li><a asp-controller="MasterCreditNote" asp-action="Create">Create Invoice</a></li>
-                                <li><a asp-controller="ReceiptVouchers" asp-action="Create">Receive Voucher</a></li>
-                    <li><a asp-controller="CreditNotes" asp-action="Index">Credit Note</a></li>*@
                 </ul>
             </li>
 
@@ -168,25 +161,14 @@
                     <li><a href="@Url.Action("PurchaseOrder", "Vendor")" data-submenu="Purchase Order">Purchase Order</a></li>
                     <li><a href="@Url.Action("PurchaseReturn", "Vendor")" data-submenu="Purchase Return">Purchase Return</a></li>
                     <li><a href="@Url.Action("DebitNote", "Vendor")" data-submenu="Debit Note">Debit Note</a></li>
-                    @* <li><a asp-controller="Vendors" asp-action="Index">Vendor Center</a></li> 
-                    <li><a asp-controller="PurchasesCenter" asp-action="Index">Purchases Center</a></li>
-                    <li><a asp-controller="PurchaseOrders" asp-action="Index">Purchase Order</a></li>
-                    <li><a asp-controller="PurchasesReturn" asp-action="Index">Purchase Return</a></li>*@
-                @*     <li><a asp-controller="PurchasesCenter" asp-action="Create">Create Purchase</a></li> 
-                    <li><a asp-controller="ReceiveVoucher" asp-action="Create">Payment Voucher</a></li>
-                    <li><a asp-controller="DebitNotes" asp-action="Index">Debit Note</a></li>*@
                 </ul>
             </li>
 
             <li class="dropdown" data-mainmenu="Customer">
                 Subcontractor
-                <ul class="submenu">    
+                <ul class="submenu">
                     <li><a href="@Url.Action("Subcontractor", "Subcontractor")">Subcontractor Center</a></li>
                     <li><a href="@Url.Action("PurchaseCenter", "Vendor")">Purchase Center</a></li>
-                    @* <li><a asp-controller="Subcontractors" asp-action="Index">Subcontractor Center</a></li>
-                    <li><a asp-controller="SubcontractorPurchasesCenter" asp-action="Index">Purchases Center</a></li>
-                <li><a asp-controller="SubcontractorPurchasesCenter" asp-action="Create">Create Purchase</a></li>
-                    <li><a asp-controller="SubcontractorReceiveVoucher" asp-action="Create">Payment Voucher</a></li> *@
                 </ul>
             </li>
 
@@ -205,12 +187,11 @@
                         <ul class="submenu">
                             <li><a href="@Url.Action("ProjectManagement", "Construction")">Project Center</a></li>
                             <li><a href="@Url.Action("TenderCenter", "Construction")">Tender Center</a></li>
-                       @*      <li><a href="@Url.Action("SiteCenter", "Construction")">Site Center</a></li> *@
                         </ul>
-                      </li>
+                    </li>
                     <li><a href="@Url.Action("ProjectTender", "Construction")">Project Tender</a></li>
                     <li><a href="@Url.Action("ProjectEstimation", "Construction")">Project Estimate</a></li>
-                    <li><a href="@Url.Action("ProjectPlanning", "Construction")">Project planning</a></li>
+                    <li><a href="@Url.Action("ProjectPlanning", "Construction")">Project Planning</a></li>
                     <li><a href="@Url.Action("ProjectWorkDone", "Construction")">Project Work Done</a></li>
                     <li class="dropdown has-submenu">
                         <a href="">Project Management</a>
@@ -223,13 +204,6 @@
                             <li><a href="@Url.Action("ProjectWorkProgressSummary", "Construction")">Project Work Progress Summary</a></li>
                         </ul>
                     </li>
-                    @* <li class="dropdown has-submenu">
-                        <a href="">Project Dashboard & Reports</a>
-                        <ul class="submenu">
-                            <li><a href="@Url.Action("ProjectDashboard", "Construction")">Project Dashboard</a></li>
-                            <li><a href="@Url.Action("ProjectTimeLine", "Construction")">Timeline</a></li>
-                        </ul>
-                    </li> *@
                     <li><a href="@Url.Action("ProjectTimeLineChart", "Construction")">Project Time Line</a></li>
                 </ul>
             </li>
@@ -244,26 +218,17 @@
                             <li><a href="@Url.Action("IncomeByCustomerSummary", "Reports")" data-submenu="Company">Income By Customer Summary</a></li>
                             <li><a href="@Url.Action("IncomeByVendorSummary", "Reports")" data-submenu="Company">Expense From Vendor Summary</a></li>
                             <li><a href="@Url.Action("StatementOfCashFlow", "Reports")" data-submenu="Company">Statement Of Cash Flow</a></li>
-                            <li><a href="@Url.Action("ProfitLoss", "Reports")" data-submenu="Company">Profit & Loss</a></li>
+                            <li><a href="@Url.Action("ProfitLoss", "Reports")" data-submenu="Company">Profit &amp; Loss</a></li>
                             <li><a href="@Url.Action("IncomeExpenseStatement", "Reports")" data-submenu="Company">Income Expenses Statement</a></li>
-                       @*      <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Expense From Vendor Summary</a></li> 
-                            <li><a asp-controller="IncomeSummary" asp-action="CashFlowStatement">Statement of Cash Flow</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeExpenseStatement">Income Expense Statement</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="UserActivity">User Activity Report</a></li>*@
                         </ul>
-                        </li>
+                    </li>
                     <li class="dropdown has-submenu">
-                        <a href="">Customer & Receivable</a>
+                        <a href="">Customer &amp; Receivable</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("CustomerSummary", "Reports")" data-submenu="Customer">Customer Summary</a></li>
                             <li><a href="@Url.Action("CustomerAgingSummary", "Reports")" data-submenu="Customer">Customer Aging Summary</a></li>
                             <li><a href="@Url.Action("CustomerBalanceSummary", "Reports")" data-submenu="Customer">Customer Balance Summary</a></li>
                             <li><a href="@Url.Action("IncomeByCustomer", "Reports")" data-submenu="Customer">Income By Customer</a></li>
-                            @* <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerSummary">Customer Summary</a></li> 
-                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerAgingSummary">Customer Aging Summary</a></li>
-                            <li><a asp-controller="CustomerAndReceivable" asp-action="CustomerBalanceSummary">Customer Balance Summary</a></li>
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByCustomerSummary">Income By Customer Summary</a></li>*@
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
@@ -271,33 +236,23 @@
                         <ul class="submenu">
                             <li><a href="@Url.Action("SalesByCustomerSummary", "Reports")" data-submenu="Sales">Sales By Customer Summary</a></li>
                             <li><a href="@Url.Action("SalesByItemSummary", "Reports")" data-submenu="Sales">Sales By Item Summary</a></li>
-                           @*  <li><a asp-controller="SalesSummary" asp-action="SalesByCustomerSummary">Sales By Customer Summary</a></li> 
-                            <li><a asp-controller="SalesSummary" asp-action="ItemSummary">Sales By Item Summary</a></li>*@
                         </ul>
                     </li>
-                     <li class="dropdown has-submenu">
-                        <a href="">Vendor & Payable</a>
+                    <li class="dropdown has-submenu">
+                        <a href="">Vendor &amp; Payable</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("VendorSummary", "Reports")" data-submenu="Vendor">Vendor Summary</a></li>
                             <li><a href="@Url.Action("VendorAgingSummary", "Reports")" data-submenu="Vendor">Vendor Aging Summary</a></li>
                             <li><a href="@Url.Action("VendorBalanceSummary", "Reports")" data-submenu="Vendor">Vendor Balance Summary</a></li>
                             <li><a href="@Url.Action("IncomeByVendorSummary", "Reports")" data-submenu="Vendor">Vendor Income Summary</a></li>
-                           @*  <li><a asp-controller="VendorAndPayable" asp-action="VendorSummary">Vendor Summary</a></li>
-                            <li><a asp-controller="VendorAndPayable" asp-action="VendorAgingSummary">Vendor Aging Summary</a></li>
-                            <li><a asp-controller="VendorAndPayable" asp-action="VendorBalanceSummary">Vendor Balance Summary</a></li> 
-                            <li><a asp-controller="IncomeSummary" asp-action="IncomeByVendorSummary">Income By Vendor Summary</a></li>*@
-                            
                         </ul>
                     </li>
-                       <li class="dropdown has-submenu">
+                    <li class="dropdown has-submenu">
                         <a href="">Purchases</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("PurchaseByVendorSummary", "Reports")" data-submenu="Purchases">Purchase By Vendor Summary</a></li>
                             <li><a href="@Url.Action("PurchaseByItemSummary", "Reports")" data-submenu="Purchases">Purchase By Item Summary</a></li>
                             <li><a href="@Url.Action("PurchaseByVendorSummary", "Reports")" data-submenu="Purchases">Purchase By Subcontractor Summary</a></li>
-                          @*   <li><a asp-controller="PurchasesReport" asp-action="PurchaseByVendorSummary">Purchase By Vendor Summary</a></li>
-                            <li><a asp-controller="PurchasesReport" asp-action="ItemSummary">Purchase By Items Summary</a></li> 
-                            <li><a asp-controller="PurchasesReport" asp-action="PurchaseBySubcontractorSummary">Purchase By Subcontractor Summary</a></li>*@
                         </ul>
                     </li>
                     <li class="dropdown has-submenu">
@@ -310,17 +265,6 @@
                         <a href="">Account</a>
                         <ul class="submenu">
                             <li><a href="@Url.Action("TrialBalance", "Reports")" data-submenu="Accountant">Trial Balance</a></li>
-                           @*  <li class="submenu-item has-sub">
-                                <a href="#" class="submenu-link">Petty Cash</a>
-                                <ul class="submenu">
-                                    <li class="submenu-item">
-                                        <a href="/Reports/PettyCashSummary">Summary</a>
-                                    </li>
-                                    <li class="submenu-item">
-                                        <a href="/Reports/PettyCashDetails">Details</a>
-                                    </li>
-                                </ul>
-                            </li> *@
                             <li><a href="@Url.Action("PettyCashSummary", "Reports")" data-submenu="Accountant">Petty Cash Summary</a></li>
                             <li><a href="@Url.Action("PettyCashDetails", "Reports")" data-submenu="Accountant">Petty Cash Details</a></li>
                             <li><a href="@Url.Action("TransacationJournal", "Lists")" data-submenu="Transactions Journal">Transactions Journal</a></li>
@@ -341,11 +285,9 @@
                             <li><a href="@Url.Action("WareHouseSummary", "Reports")" data-submenu="Inventory Items">Warehouse Summary</a></li>
                         </ul>
                     </li>
-                    @* <li><a href="">Corporate Tax</a></li> *@
                     <li class="dropdown has-submenu">
                         <a href="">Bank</a>
                         <ul class="submenu">
-
                             <li><a href="@Url.Action("ChequeReport", "Reports")" data-submenu="Bank Center">Cheque Inquiry</a></li>
                             <li><a href="@Url.Action("BankBalanceSummary", "Reports")" data-submenu="Bank Center">Bank Balance Summary</a></li>
                             <li><a href="@Url.Action("PDCOutstandingSummary", "Reports")" data-submenu="Bank Center">PDC Outstanding</a></li>
@@ -360,27 +302,21 @@
                             <li><a href="@Url.Action("ChartOfAccount", "Lists")" data-submenu="List">Account List</a></li>
                             <li><a href="@Url.Action("BankCenter", "Account")" data-submenu="List">Bank List</a></li>
                             <li><a href="@Url.Action("BankCardCenter", "Account")" data-submenu="List">Bank Card List</a></li>
-                            <li><a href="@Url.Action("ChartOfAccountL1", "Lists")" data-submenu="List">Chart of Account(L1)</a></li>
-                            <li><a href="@Url.Action("ChartOfAccountL2", "Lists")" data-submenu="List">Chart of Account(L2)</a></li>
-                            <li><a href="@Url.Action("ChartOfAccountL3", "Lists")" data-submenu="List">Chart of Account(L3)</a></li>
+                            <li><a href="@Url.Action("ChartOfAccountL1", "Lists")" data-submenu="List">Chart of Account (L1)</a></li>
+                            <li><a href="@Url.Action("ChartOfAccountL2", "Lists")" data-submenu="List">Chart of Account (L2)</a></li>
+                            <li><a href="@Url.Action("ChartOfAccountL3", "Lists")" data-submenu="List">Chart of Account (L3)</a></li>
                             <li><a href="@Url.Action("BankCheque", "Account")" data-submenu="List">Cheque List</a></li>
                             <li><a href="@Url.Action("CityList", "Reports")" data-submenu="List">City List</a></li>
                             <li><a href="@Url.Action("CountryList", "Reports")" data-submenu="List">Country List</a></li>
                             <li><a href="@Url.Action("CostCenter", "Lists")" data-submenu="List">Cost Center List</a></li>
-
                             <li><a href="@Url.Action("CustomerList", "Lists")" data-submenu="List">Customer List</a></li>
                             <li><a href="@Url.Action("CustomerCategoryList", "Lists")" data-submenu="List">Customer Category List</a></li>
-                          @*   <li><a asp-controller="CustomerList" asp-action="CustomerList">Customer List</a></li> 
-                            <li><a asp-controller="CustomerList" asp-action="CustomerCategoryList">Customer Category List</a></li>*@
-
                             <li><a href="@Url.Action("Department", "Lists")" data-submenu="List">Department List</a></li>
                             <li><a href="@Url.Action("EmployeeList", "Reports")" data-submenu="List">Employee List</a></li>
                             <li><a href="@Url.Action("FixedAssetList", "Reports")" data-submenu="List">Fixed Asset List</a></li>
                             <li><a href="@Url.Action("FixedAssetsCategory", "Lists")" data-submenu="List">Fixed Asset Category List</a></li>
                             <li><a href="@Url.Action("FixedAssetItem", "Lists")" data-submenu="List">Fixed Asset Item List</a></li>
                             <li><a href="@Url.Action("ItemList", "Reports")" data-submenu="List">Item List</a></li>
-
-
                             <li><a href="@Url.Action("ItemCategory", "Lists")" data-submenu="List">Item Category List</a></li>
                             <li><a href="@Url.Action("Tax", "Lists")" data-submenu="List">Item Tax Code List</a></li>
                             <li><a href="@Url.Action("Unit", "Lists")" data-submenu="List">Item Unit List</a></li>
@@ -391,8 +327,6 @@
                             <li><a href="@Url.Action("PrepaidExpenseCategory", "Lists")" data-submenu="List">Prepaid Expense Category List</a></li>
                             <li><a href="@Url.Action("VendorList", "Lists")" data-submenu="List">Vendor List</a></li>
                             <li><a href="@Url.Action("VendorCategoryList", "Lists")" data-submenu="List">Vendor Category List</a></li>
-                            @* <li><a asp-controller="VendorList" asp-action="VendorList">Vendor List</a></li> 
-                            <li><a asp-controller="VendorList" asp-action="VendorCategoryList">Vendor Category List</a></li>*@
                         </ul>
                     </li>
                 </ul>
@@ -401,48 +335,52 @@
             <li class="dropdown" data-mainmenu="Setting">
                 Settings
                 <ul class="submenu">
-                   @*  <li><a asp-controller="MasterSettings" asp-action="Index">Settings</a></li> *@
                     <li><a href="@Url.Action("MasterSettings", "Settings")" data-submenu="Setting">Settings</a></li>
                     <li><a href="@Url.Action("ChangePassword", "Settings")" data-submenu="Change Current Password">Change Current Password</a></li>
                     <li><a href="@Url.Action("User", "Account")" data-submenu="Users">User</a></li>
                 </ul>
             </li>
         </ul>
+
+        <!-- Language buttons -->
         <div style="margin-left:auto; margin-right:10px; display:flex; gap:6px;">
-            <button onclick="translateTo('en')" id="btn-en">
-                🇺🇸 EN
-            </button>
-            <button onclick="translateTo('ar')" id="btn-ar">
-                🇸🇦 عربي
-            </button>
+            <button onclick="translateTo('en')" id="btn-en">🇺🇸 EN</button>
+            <button onclick="translateTo('ar')" id="btn-ar">🇸🇦 عربي</button>
         </div>
         <div id="google_translate_element" style="display:none;"></div>
 
+        <!-- User menu -->
         <div style="position:relative;display:inline-block;margin-left:auto">
-            <button onclick="document.getElementById('menu').style.display=document.getElementById('menu').style.display=='block'?'none':'block'"
+            <button onclick="document.getElementById('userMenu').style.display=document.getElementById('userMenu').style.display=='block'?'none':'block'"
                     style="background:#667eea;color:white;border:none;padding:1px 20px;border-radius:8px;cursor:pointer">
                 👤 <span id="navUsername">@((Context.Session.GetString("UserName") ?? "User"))</span>▼
             </button>
-            <div id="menu" style="display:none;position:absolute;right:0;background:white;box-shadow:0 4px 12px rgba(0,0,0,0.15);border-radius:8px;margin-top:8px;min-width:150px">
-                <a href="/Account/Logout" style="display:block;background:#f5576c;color:white;padding:12px 20px;text-decoration:none;border-radius:8px">
-                    🔐Logout
+            <div id="userMenu" style="display:none;position:absolute;right:0;background:white;box-shadow:0 4px 12px rgba(0,0,0,0.15);border-radius:8px;margin-top:8px;min-width:150px">
+                <a href="/Account/Logout"
+                   style="display:block;background:#f5576c;color:white;padding:12px 20px;text-decoration:none;border-radius:8px">
+                    🔐 Logout
                 </a>
             </div>
         </div>
     </div>
 </div>
 
-
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    // ── Mark the active language button immediately from localStorage ────────
+    (function () {
+        var lang = localStorage.getItem('siteLang') || 'en';
+        var btn = document.getElementById('btn-' + lang);
+        if (btn) btn.classList.add('active');
+    })();
 
-        const permissions = JSON.parse(localStorage.getItem("userPermissions") || "[]");
+    // ── Permission-based menu filtering ─────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+        var permissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
 
-        // ---------- BUILD PERMISSION MAPS ----------
-        const mainMenuMap = {};
-        const subMenuMap  = {};
+        var mainMenuMap = {};
+        var subMenuMap  = {};
 
-        permissions.forEach(p => {
+        permissions.forEach(function (p) {
             if (p.mainMenuName && p.canView === true) {
                 mainMenuMap[p.mainMenuName.trim().toLowerCase()] = true;
             }
@@ -451,49 +389,28 @@
             }
         });
 
-        // ---------- APPLY SUB MENU PERMISSIONS ----------
-        document.querySelectorAll("[data-submenu]").forEach(el => {
-            const key = el.getAttribute("data-submenu").trim().toLowerCase();
-
+        // Hide sub-menu items the user cannot see
+        document.querySelectorAll('[data-submenu]').forEach(function (el) {
+            var key = el.getAttribute('data-submenu').trim().toLowerCase();
             if (!subMenuMap[key]) {
-                const li = el.closest("li");
-                if (li) li.style.display = "none";
+                var li = el.closest('li');
+                if (li) li.style.display = 'none';
             }
         });
 
-        // ---------- HIDE EMPTY SUB DROPDOWNS ----------
-        document.querySelectorAll(".has-submenu").forEach(menu => {
-            const visibleItems = menu.querySelectorAll("li:not([style*='display: none'])");
-            if (visibleItems.length === 0) {
-                menu.style.display = "none";
-            }
+        // Hide sub-dropdowns that are now completely empty
+        document.querySelectorAll('.has-submenu').forEach(function (menu) {
+            var visible = menu.querySelectorAll('li:not([style*="display: none"])');
+            if (visible.length === 0) menu.style.display = 'none';
         });
 
-        // ---------- APPLY MAIN MENU PERMISSIONS ----------
-        document.querySelectorAll(".navbar-links > li.dropdown").forEach(menu => {
-
-            // 1️⃣ Prefer explicit data-mainmenu
-            let key = menu.getAttribute("data-mainmenu");
-
-            // 2️⃣ Otherwise fallback to menu text
-            if (!key) {
-                key = menu.firstChild.textContent;
-            }
-
+        // Hide top-level menu items the user cannot see
+        document.querySelectorAll('.navbar-links > li.dropdown').forEach(function (menu) {
+            var key = menu.getAttribute('data-mainmenu');
+            if (!key) key = menu.firstChild.textContent;
             if (!key) return;
-
             key = key.trim().toLowerCase();
-
-            if (!mainMenuMap[key]) {
-                menu.style.display = "none";
-            }
+            if (!mainMenuMap[key]) menu.style.display = 'none';
         });
-
-    });
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var lang = localStorage.getItem('siteLang') || 'en';
-        document.getElementById('btn-' + lang).classList.add('active');
     });
 </script>

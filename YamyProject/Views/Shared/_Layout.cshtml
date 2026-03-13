@@ -1,18 +1,312 @@
 ﻿@using System.Globalization
 @{
-    var isAr = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
+    // Prefer cookie (set by client) so server can render initial HTML correctly on next navigation.
+    var cookieLang = Context.Request.Cookies["siteLang"];
+    var isAr = string.Equals(cookieLang, "ar", StringComparison.OrdinalIgnoreCase)
+               || CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ar";
 }
 
-
 <!DOCTYPE html>
-<html lang="en" dir="ltr" id="htmlRoot">
+<!-- set lang/dir and initial visibility on server to avoid first-paint flash -->
+<html lang="@(isAr ? "ar" : "en")" dir="@(isAr ? "rtl" : "ltr")" id="htmlRoot" style="@(isAr ? "visibility:hidden;" : "")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YamyProject | @ViewData["Title"] </title>
+    <title>YamyProject | @ViewData["Title"]</title>
+
+    <!-- Loader styles (early) -->
+    <style>
+        /* Full-screen translate loader */
+        #gt-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.92);
+            z-index: 99999;
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+        }
+
+        #gt-loader .spinner {
+            width: 70px;
+            height: 70px;
+            border: 8px solid #e6e9ef;
+            border-top-color: #4f46e5;
+            border-radius: 50%;
+            animation: gt-spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        #gt-loader .msg {
+            font-family: Nunito, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+            color: #374151;
+            font-weight: 600;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        keyframes gt-spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 
 
-        <style >
+    <!--
+        Translation guard:
+        - Read cookie or localStorage for preferred language.
+        - Set googtrans cookie before GT script loads.
+        - Show loader until translation ready (or until fallback).
+    -->
+    <script>
+        (function () {
+            function getCookie(name) {
+                var m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()[]\/+^])/g, '\\$1') + '=([^;]*)');
+                return m ? decodeURIComponent(m[1]) : null;
+            }
+            var lang = getCookie('siteLang') || (function () {
+                try { return localStorage.getItem('siteLang'); } catch (e) { return null; }
+            })() || 'en';
+
+            function setTranslateCookie(value) {
+                var domains = [
+                    '; path=/',
+                    '; path=/; domain=' + location.hostname,
+                    '; path=/; domain=.' + location.hostname
+                ];
+                domains.forEach(function (d) {
+                    document.cookie = 'googtrans=' + value + d;
+                });
+            }
+
+            // create loader element immediately and attach to document.body
+            var loader = document.createElement('div');
+            loader.id = 'gt-loader';
+            loader.innerHTML = '<div style="text-align:center"><div class="spinner"></div><div class="msg">Applying language…</div></div>';
+            try {
+                if (document.body) document.body.appendChild(loader);
+                else document.documentElement.appendChild(loader);
+            } catch (e) { /* ignore */ }
+
+            var loaderShownAt = 0;
+            var minVisibleMs = 800; // ensure loader is visible at least this long
+
+            function showLoader() {
+                try {
+                    loader.style.display = 'flex';
+                    // force reflow so browser paints loader immediately
+                    // eslint-disable-next-line no-unused-expressions
+                    loader.offsetHeight;
+                    loaderShownAt = Date.now();
+                } catch (e) {}
+            }
+            function hideLoaderDelayed() {
+                try {
+                    var elapsed = Date.now() - (loaderShownAt || 0);
+                    var remain = minVisibleMs - elapsed;
+                    if (remain > 0) {
+                        setTimeout(hideLoaderImmediate, remain);
+                    } else {
+                        hideLoaderImmediate();
+                    }
+                } catch (e) { hideLoaderImmediate(); }
+            }
+            function hideLoaderImmediate() {
+                try {
+                    loader.style.display = 'none';
+                    if (loader.parentNode) loader.parentNode.removeChild(loader);
+                } catch (e) {}
+            }
+
+            if (lang === 'ar') {
+                try {
+                    document.documentElement.setAttribute('dir', 'rtl');
+                    document.documentElement.setAttribute('lang', 'ar');
+                } catch (e) { /* ignore */ }
+
+                // set googtrans cookie before GT script loads
+                setTranslateCookie('/en/ar');
+
+                // ensure page visible (server may have hidden it), show loader
+                try { document.documentElement.style.visibility = 'visible'; } catch (e) {}
+                showLoader();
+
+                var shown = false;
+                function showPage() {
+                    if (shown) return;
+                    shown = true;
+                    hideLoaderDelayed();
+                }
+
+                // Increase fallback to 30s to avoid early hide on slow networks
+                var fallbackTimer = setTimeout(showPage, 30000);
+
+                function checkTranslated() {
+                    var cls = document.documentElement.className || '';
+                    if (cls.indexOf('translated') !== -1) return true;
+                    if (document.querySelector('.goog-te-combo')) return true;
+                    if (document.querySelector('iframe.goog-te-banner-frame')) return true;
+                    return false;
+                }
+
+                if (checkTranslated()) {
+                    clearTimeout(fallbackTimer);
+                    setTimeout(showPage, 300); // small buffer before hiding
+                } else {
+                    var obs = new MutationObserver(function () {
+                        if (checkTranslated()) {
+                            clearTimeout(fallbackTimer);
+                            setTimeout(showPage, 300);
+                            obs.disconnect();
+                        }
+                    });
+                    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'dir', 'lang'] });
+
+                    var bodyObs = new MutationObserver(function () {
+                        if (checkTranslated()) {
+                            clearTimeout(fallbackTimer);
+                            setTimeout(showPage, 300);
+                            bodyObs.disconnect();
+                            obs.disconnect();
+                        }
+                    });
+                    bodyObs.observe(document.documentElement, { childList: true, subtree: true });
+                }
+            } else {
+                try {
+                    var expiry = '; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+                    document.cookie = 'googtrans=' + expiry;
+                    document.cookie = 'googtrans=' + expiry + '; domain=' + location.hostname;
+                    document.cookie = 'googtrans=' + expiry + '; domain=.' + location.hostname;
+                } catch (e) { /* ignore */ }
+                try { document.documentElement.style.visibility = 'visible'; } catch (e) {}
+                try { hideLoaderImmediate(); } catch (e) {}
+            }
+        })();
+    </script>
+
+
+    <script>
+        (function () {
+          // helper cookie writer for translateTo
+          function setCookie(name, value, days) {
+            var expires = '';
+            if (typeof days === 'number') {
+              expires = '; max-age=' + (days * 24 * 60 * 60);
+            }
+            document.cookie = name + '=' + encodeURIComponent(value) + '; path=/' + expires;
+          }
+
+          // Intercept internal navigations and show loader immediately if Arabic selected.
+          function isInternalLink(a) {
+            if (!a || !a.getAttribute) return false;
+            var href = a.getAttribute('href');
+            if (!href) return false;
+            if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return false;
+            try {
+              var url = new URL(href, location.href);
+              return url.origin === location.origin;
+            } catch (e) {
+              return false;
+            }
+          }
+
+          // small helper to show loader (element should already be present from head)
+          function showLoaderIfArabic() {
+            try {
+              var cookieLang = (function () {
+                var m = document.cookie.match('(?:^|; )' + 'siteLang'.replace(/([.$?*|{}()[]\/+^])/g, '\\$1') + '=([^;]*)');
+                return m ? decodeURIComponent(m[1]) : null;
+              })();
+              var ls = null;
+              try { ls = localStorage.getItem('siteLang'); } catch (e) { ls = null; }
+              var lang = cookieLang || ls;
+              if (lang === 'ar') {
+                  var loader = document.getElementById('gt-loader');
+                  if (loader) loader.style.display = 'flex';
+              }
+            } catch (e) { /* ignore */ }
+          }
+
+          document.addEventListener('click', function (ev) {
+            var a = ev.target.closest('a');
+            if (!a) return;
+            if (a.target && a.target.toLowerCase() !== '_self') return;
+            if (a.hasAttribute('download') || a.hasAttribute('data-no-pjax')) return;
+            if (!isInternalLink(a)) return;
+
+            showLoaderIfArabic();
+            // allow the navigation to proceed normally
+          }, true);
+
+          // Show loader on form submit as well when Arabic chosen
+          document.addEventListener('submit', function (ev) {
+            showLoaderIfArabic();
+          }, true);
+
+          // Expose cookie helper to translateTo below
+          window.__setSiteLangCookie = setCookie;
+        })();
+    </script>
+
+    <!-- Google Translate initialiser — must load BEFORE the page renders -->
+    <script>
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'ar,en'
+            }, 'google_translate_element');
+        }
+    </script>
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <script>
+    (function () {
+        function getCookie(name) {
+            var m = document.cookie.match('(?:^|; )' + name.replace(/([.$?*|{}()[]\/+^])/g, '\\$1') + '=([^;]*)');
+            return m ? decodeURIComponent(m[1]) : null;
+        }
+
+        // If siteLang cookie requests Arabic, ensure googtrans is set and re-init GT when ready.
+        var desired = getCookie('siteLang') || (function () { try { return localStorage.getItem('siteLang'); } catch (e) { return null; } })();
+        if (desired === 'ar') {
+            try {
+                document.cookie = 'googtrans=/en/ar; path=/';
+                document.cookie = 'googtrans=/en/ar; path=/; domain=' + location.hostname;
+                document.cookie = 'googtrans=/en/ar; path=/; domain=.' + location.hostname;
+            } catch (e) { console.warn('Unable to set googtrans cookie', e); }
+        }
+
+        // Retry init: some environments load GT slower — re-create TranslateElement if needed.
+        var tries = 0;
+        var maxTries = 60; // 60 * 200ms = 12s max
+        var retry = setInterval(function () {
+            tries++;
+            if (window.google && google.translate && google.translate.TranslateElement) {
+                clearInterval(retry);
+                try {
+                    // If GT was not initialized or cookie changed, re-create widget to pick up cookie
+                    new google.translate.TranslateElement({ pageLanguage: 'en', includedLanguages: 'ar,en' }, 'google_translate_element');
+                    console.debug('Google Translate re-initialized');
+                } catch (e) {
+                    console.warn('GT init error', e);
+                }
+                return;
+            }
+            if (tries >= maxTries) {
+                clearInterval(retry);
+                console.warn('Google Translate not available after retries');
+            }
+        }, 200);
+    })();
+    </script>
+
+    <style>
+        /* Language toggle buttons */
         #btn-en, #btn-ar {
             background: #667eea;
             color: white;
@@ -29,6 +323,7 @@
                 outline: 2px solid white;
             }
 
+        /* Hide Google Translate toolbar / gadget */
         .goog-te-banner-frame {
             display: none !important;
         }
@@ -45,11 +340,12 @@
             display: none !important;
         }
 
+        /* Sidebar submenu positioning */
         .navbar-links .submenu {
             display: none;
             position: absolute;
             top: 100%;
-            left: 0; 
+            left: 0;
             z-index: 9999;
             background: white;
             min-width: 200px;
@@ -61,25 +357,26 @@
 
         .navbar-links .has-submenu > .submenu {
             top: 0;
-            left: 100%; 
-        }   
+            left: 100%;
+        }
     </style>
+
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap">
     <link rel="stylesheet" href="~/assets/css/bootstrap.css" />
-
     <link rel="stylesheet" href="~/assets/vendors/iconly/bold.css" />
     <link rel="stylesheet" href="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.css" />
     <link rel="stylesheet" href="~/assets/css/app.css" asp-append-version="true" />
     <link rel="icon" href="~/assets/images/logo/yamy.png" type="image/png" />
     <link rel="stylesheet" href="~/css/MainLayout.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  
+
     @RenderSection("Styles", required: false)
 </head>
+
 <body>
+
     <div id="app">
-        <!-- ✅ Top Navbar -->
         <partial name="_Header" />
 
         <div id="sidebar" class="active">
@@ -91,57 +388,33 @@
                         </div>
                     </div>
                 </div>
-               
+
                 <div class="sidebar-menu">
                     <ul class="menu">
-                        <!-- Dashboard -->
                         <li class="sidebar-item active">
                             <a href="/" class='sidebar-link'>
                                 <i class="bi bi-grid-fill"></i>
                                 <span>Dashboard</span>
                             </a>
                         </li>
-
-                        @* <li class="sidebar-item active">
-                            <a href="/Language/Set?culture=ar&returnUrl=@Context.Request.Path"
-                               class="btn btn-sm btn-outline-primary">
-                                🇸🇦 العربية
-                            </a>
-
-                            <a href="/Language/Set?culture=en&returnUrl=@Context.Request.Path"
-                               class="btn btn-sm btn-outline-primary">
-                                🇺🇸 English
-                            </a>
-                        </li>
- *@
-
-                        <!-- Accountant -->
                         <li class="sidebar-item">
                             <a href="@Url.Action("ChartOfAccount", "Lists")" class="sidebar-link">
                                 <i class="bi bi-calculator-fill"></i>
                                 <span>Chart Of Account</span>
                             </a>
                         </li>
-
-                        <!-- Customers -->
                         <li class="sidebar-item">
                             <a href="@Url.Action("Customer", "Customer")" class="sidebar-link">
-                           @*  <a asp-controller="CustomerCenter" asp-action="Index" class="sidebar-link"> *@
                                 <i class="bi bi-people-fill"></i>
                                 <span>Customers</span>
                             </a>
                         </li>
-
-                        <!-- Vendors -->
                         <li class="sidebar-item">
                             <a href="@Url.Action("Vendor", "Vendor")" class="sidebar-link">
-                            @* <a asp-controller="Vendors" asp-action="Index" class="sidebar-link"> *@
                                 <i class="bi bi-person-lines-fill"></i>
                                 <span>Vendors</span>
                             </a>
                         </li>
-
-                        <!-- HR with Submenu -->
                         <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
                                 <i class="bi bi-person-badge-fill"></i>
@@ -153,8 +426,6 @@
                                 </li>
                             </ul>
                         </li>
-
-                        <!-- Inventory with Submenu -->
                         <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
                                 <i class="bi bi-box-seam-fill"></i>
@@ -172,8 +443,6 @@
                                 </li>
                             </ul>
                         </li>
-
-                        <!-- Banking with Submenu -->
                         <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
                                 <i class="bi bi-bank"></i>
@@ -194,8 +463,6 @@
                                 </li>
                             </ul>
                         </li>
-
-                        <!-- Settings with Submenu -->
                         <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
                                 <i class="bi bi-gear-fill"></i>
@@ -207,14 +474,12 @@
                                 </li>
                             </ul>
                         </li>
-
                     </ul>
                 </div>
                 <button class="sidebar-toggler btn x"><i class="bi bi-x"></i></button>
             </div>
         </div>
 
-        <!-- ✅ Main Content -->
         <div id="main">
             <div>
                 <div class="content" id="kt_content">
@@ -222,215 +487,118 @@
                 </div>
             </div>
 
-            <!-- Company Profile Modal -->
             <div class="modal fade" id="companyProfileModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-centered">
-                    <div class="modal-content" id="companyProfileModalContent">
-                    </div>
+                    <div class="modal-content" id="companyProfileModalContent"></div>
                 </div>
             </div>
 
-            <!-- ✅ Footer -->
+
             <footer>
                 <partial name="_footer" />
             </footer>
         </div>
     </div>
 
+    <!-- Body scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="~/assets/js/bootstrap.bundle.min.js"></script>
     <script src="~/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js"></script>
-
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
-
     <script src="~/assets/vendors/simple-datatables/simple-datatables.js"></script>
     <script src="~/assets/js/pages/dashboard.js"></script>
     <script src="~/assets/js/main.js"></script>
 
-    <script type="text/javascript">
-        function googleTranslateElementInit() {
-            new google.translate.TranslateElement({
-                pageLanguage: 'en',
-                includedLanguages: 'ar,en',
-                autoDisplay: false
-            }, 'google_translate_element');
+    <script>
+        // Save preference → set cookie + localStorage → set googtrans cookie → reload.
+        function translateTo(lang) {
+            var previous = null;
+            try { previous = localStorage.getItem('siteLang') || null; } catch (e) { previous = null; }
+            if (lang === previous) return;
+
+            try { localStorage.setItem('siteLang', lang); } catch (e) {}
+            try { window.__setSiteLangCookie && window.__setSiteLangCookie('siteLang', lang, 365); } catch (e) {}
+
+            if (lang === 'ar') {
+                document.cookie = 'googtrans=/en/ar; path=/';
+                document.cookie = 'googtrans=/en/ar; path=/; domain=' + location.hostname;
+                document.cookie = 'googtrans=/en/ar; path=/; domain=.' + location.hostname;
+            } else {
+                var exp = '; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+                document.cookie = 'googtrans=' + exp;
+                document.cookie = 'googtrans=' + exp + '; domain=' + location.hostname;
+                document.cookie = 'googtrans=' + exp + '; domain=.' + location.hostname;
+            }
+
+            // reload so server reads cookie and can render initial hidden state when needed
+            location.reload();
         }
 
-             function clearTranslateCookie() {
-            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + location.hostname;
-            document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + location.hostname;
-        }
+        // ─── Sidebar Logic ───────────────────────────────────────────────────────
+        $(document).ready(function () {
+            $('.sidebar-item.has-sub > .sidebar-link').on('click', function (e) {
+                e.preventDefault();
+                var $parent = $(this).parent('.sidebar-item.has-sub');
+                $parent.toggleClass('active');
+                $parent.find('.submenu').first().slideToggle(300);
+                $('.sidebar-item.has-sub').not($parent).removeClass('active');
+                $('.sidebar-item.has-sub').not($parent).find('.submenu').slideUp(300);
+            });
 
-
-            function translateTo(lang) {
-            var previousLang = localStorage.getItem('siteLang') || 'en';
-            localStorage.setItem('siteLang', lang);
-
-            document.getElementById('btn-en').classList.remove('active');
-            document.getElementById('btn-ar').classList.remove('active');
-            document.getElementById('btn-' + lang).classList.add('active');
-
-            if (lang === 'en') {
-                clearTranslateCookie();
-                document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
-                document.getElementById('htmlRoot').setAttribute('lang', 'en');
-                if (previousLang !== 'en') {
-                    location.reload();
+            var currentPath = window.location.pathname;
+            $('.submenu-item a').each(function () {
+                var linkPath = $(this).attr('href');
+                if (linkPath && currentPath.indexOf(linkPath) !== -1 && linkPath !== '/') {
+                    $(this).parent('.submenu-item').addClass('active');
+                    $(this).closest('.sidebar-item.has-sub').addClass('active');
+                    $(this).closest('.submenu').show();
                 }
-                return;
-            }
+            });
 
-            document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
-            document.getElementById('htmlRoot').setAttribute('lang', 'ar');
+            $('.sidebar-hide, .sidebar-toggler').on('click', function (e) {
+                e.preventDefault();
+                $('#sidebar').toggleClass('active');
+            });
 
-            var tries = 0;
-            var interval = setInterval(function () {
-                var select = document.querySelector('.goog-te-combo');
-                if (select) {
-                    select.value = lang;
-                    select.dispatchEvent(new Event('change'));
-                    clearInterval(interval);
-                }
-                tries++;
-                if (tries > 30) clearInterval(interval);
-            }, 100);
-        }
+            $('.burger-btn').on('click', function (e) {
+                e.preventDefault();
+                $('#sidebar').addClass('active');
+            });
 
-
-        window.addEventListener('load', function () {
-            if (!localStorage.getItem('siteLang')) {
-                localStorage.setItem('siteLang', 'en');
-            }
-
-            var savedLang = localStorage.getItem('siteLang');
-
-            if (savedLang === 'en') {
-                var hasArabicCookie = document.cookie.indexOf('googtrans') !== -1 &&
-                                      document.cookie.indexOf('/ar') !== -1;
-
-                if (hasArabicCookie) {
-                    clearTranslateCookie();
-                    if (!sessionStorage.getItem('langReloaded')) {
-                        sessionStorage.setItem('langReloaded', '1');
-                        location.reload();
-                    }
-                } else {
-                    sessionStorage.removeItem('langReloaded');
-                }
-
-                document.getElementById('htmlRoot').setAttribute('dir', 'ltr');
-                document.getElementById('htmlRoot').setAttribute('lang', 'en');
-                return;
-            }
-
-            sessionStorage.removeItem('langReloaded');
-            document.getElementById('htmlRoot').setAttribute('dir', 'rtl');
-            document.getElementById('htmlRoot').setAttribute('lang', 'ar');
-
-            var tries = 0;
-            var interval = setInterval(function () {
-                var select = document.querySelector('.goog-te-combo');
-                if (select) {
-                    select.value = savedLang;
-                    select.dispatchEvent(new Event('change'));
-                    clearInterval(interval);
-                }
-                tries++;
-                if (tries > 30) clearInterval(interval);
-            }, 100);
-        });
-
-
-
-        $(document).ready(function() {
-        $('.sidebar-item.has-sub > .sidebar-link').on('click', function(e) {
-            e.preventDefault();
-
-            var $parent = $(this).parent('.sidebar-item.has-sub');
-
-            $parent.toggleClass('active');
-            $parent.find('.submenu').first().slideToggle(300);
-
-            $('.sidebar-item.has-sub').not($parent).removeClass('active');
-            $('.sidebar-item.has-sub').not($parent).find('.submenu').slideUp(300);
-        });
-
-        var currentPath = window.location.pathname;
-        $('.submenu-item a').each(function() {
-            var linkPath = $(this).attr('href');
-            if (linkPath && currentPath.indexOf(linkPath) !== -1 && linkPath !== '/') {
-                $(this).parent('.submenu-item').addClass('active');
-                $(this).closest('.sidebar-item.has-sub').addClass('active');
-                $(this).closest('.submenu').show();
-            }
-        });
-
-        $('.sidebar-hide, .sidebar-toggler').on('click', function(e) {
-            e.preventDefault();
-            $('#sidebar').toggleClass('active');
-        });
-
-        $('.burger-btn').on('click', function(e) {
-            e.preventDefault();
-            $('#sidebar').addClass('active');
-        });
-
-
-
-            // Step 1: Hide everything first
             $("#dynamicMenu li[data-item]").hide();
             $("#dynamicMenu li[data-sub]").hide();
             $("#dynamicMenu li[data-main]").hide();
 
-            // Step 2: Fetch allowed menus
             $.get("/Account/GetUserMenu", function (res) {
-
                 if (!res.status) return;
-
                 res.data.forEach(main => {
                     main.subMenus.forEach(sub => {
-
                         const itemName = sub.name.trim();
-
-                        // Show matching final menu item
                         const item = $(`[data-item="${itemName}"]`);
                         item.show();
-
-                        // Show its parent sub group
                         item.closest("li[data-sub]").show();
-
-                        // Show its main menu parent
                         item.closest("li[data-main]").show();
                     });
                 });
-
-                // Optional: hide empty parents
-                $("#dynamicMenu li[data-main]").each(function() {
-                    if ($(this).find("li:visible").length === 0) {
-                        $(this).hide();
-                    }
+                $("#dynamicMenu li[data-main]").each(function () {
+                    if ($(this).find("li:visible").length === 0) $(this).hide();
                 });
-
             });
-
         });
-    </script>
 
-    <script>
+        // ─── Company Modal ───────────────────────────────────────────────────────
         function openCompanyProfileModal() {
-            $("#companyProfileModalContent").load("/CompanyCenter/Edit", function() {
+            $("#companyProfileModalContent").load("/CompanyCenter/Edit", function () {
                 const modal = new bootstrap.Modal(document.getElementById("companyProfileModal"));
                 modal.show();
             });
         }
-    </script>
 
-    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
     <script src="~/js/site.js"></script>
 </body>
-</html>
+</html> 
