@@ -6,7 +6,7 @@
 }
 
 <!DOCTYPE html>
-<html lang="@(isAr ? "ar" : "en")" dir="@(isAr ? "rtl" : "ltr")" id="htmlRoot" style="visibility:hidden;">
+<html lang="en" dir="ltr" id="htmlRoot" style="visibility:hidden;">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,6 +27,7 @@
             align-items: center;
             justify-content: center;
             visibility: visible !important;
+
         }
 
             #gt-overlay .gt-spinner {
@@ -95,7 +96,7 @@
             overlay.innerHTML =
                 '<div style="text-align:center">' +
                 '<div class="gt-spinner"></div>' +
-                '<div class="gt-msg">Applying language\u2026</div>' +
+                 '<div class="gt-msg">Applying language\u2026</div>' +
                 '</div>';
             document.documentElement.appendChild(overlay);
 
