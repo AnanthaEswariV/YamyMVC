@@ -199,6 +199,25 @@
                                 </div>
                             </div>
 
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-3">
+                                    <label class="form-label">Contracting Date</label>
+                                    <input type="date" id="projectContractingDate" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Building Licensing Date</label>
+                                    <input type="date" id="projectBuildingLicensingDate" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Contact Person</label>
+                                    <input type="number" id="contactPerson" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Contact Person Number</label>
+                                    <input type="number" id="contactPersonNo" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
                             <!-- CUSTOMER / CONTRACTOR / CONSULTANT -->
                             <div class="row g-2 mb-2">
                                 <div class="col-md-4">
@@ -219,11 +238,39 @@
 
                             <!-- LOCATION & DETAILS -->
                             <div class="row g-2 mb-3">
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <label class="form-label">Location</label>
-                                    <textarea id="location" class="form-control form-control-sm" rows="2"></textarea>
+                                    <input type="text" id="location" class="form-control form-control-sm">
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-3">
+                                    <label class="form-label">Area</label>
+                                    <input type="text" id="area" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Plot Number</label>
+                                    <input type="text" id="plotNumber" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Block</label>
+                                    <input type="text" id="block" class="form-control form-control-sm">
+                                </div>
+                              
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">Country</label>
+                                    <select id="countryDropdown" class="form-select form-select-sm" required>
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold small">City</label>
+                                    <select id="cityDropdown" class="form-select form-select-sm" required>
+                                        <option value="">-- Select --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">Details</label>
                                     <textarea id="details" class="form-control form-control-sm" rows="2"></textarea>
                                 </div>
@@ -260,15 +307,29 @@
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label">Billed To Date</label>
-                                        <input type="number" id="billedToDate" class="form-control form-control-sm" value="0">
+                                        <input type="number" id="billedToDate" class="form-control form-control-sm" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Expenses</label>
-                                        <input type="number" id="expenses" class="form-control form-control-sm" value="0">
+                                        <input type="number" id="expenses" class="form-control form-control-sm" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Balance</label>
                                         <input type="number" id="balance" class="form-control form-control-sm" readonly>
+                                    </div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Total Value</label>
+                                        <input type="number" id="totalValue" class="form-control form-control-sm" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Billed To Date</label>
+                                        <input type="number" id="billedToDate1" class="form-control form-control-sm" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Balance</label>
+                                        <input type="number" id="balance1" class="form-control form-control-sm" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -1494,7 +1555,7 @@
 
         });
 
-         function loadProjectSites(projectId) {
+        function loadProjectSites(projectId) {
 
             // Clear fields first
             $('#siteId').val(0);
@@ -1527,12 +1588,36 @@
             });
         }
 
+        let countryCities = [];
+
+        function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
+                const $country = $(countryIdSelector);
+                const $city = $(cityIdSelector);
+
+                $.getJSON(apiUrl, function (data) {
+                    countryCities = data;
+                    $country.append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
+                });
+
+                $country.on('change', function () {
+                    const selectedCountryId = $(this).val();
+                        $city.html('<option value="">-- Select --</option>');
+
+                    if (selectedCountryId) {
+                        const cities = countryCities.find(c => c.id == selectedCountryId)?.cities || [];
+                        $city.append(cities.map(city => `<option value="${city.id}">${city.name}</option>`));
+                    }
+                });
+            }
+
         $(document).ready(function () {
             loadCustomers();
             loadProjects();
             loadAllAccounts();
             loadSubcontractors();
             loadCityDropdown();
+
+            loadCountryCityDropdowns('@Url.Action("GetCountryCities", "HR")', '#countryDropdown', '#cityDropdown');
         });
 
     </script>
