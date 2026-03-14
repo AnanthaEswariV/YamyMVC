@@ -1083,7 +1083,7 @@
             const description   = $row.find('.attachmentDescription').val();
 
             $.ajax({
-                url:         '/Construction/UpdateAttachmentDescription',
+                url: '@Url.Action("UpdateAttachmentDescription", "Construction")',
                 type:        'POST',
                 contentType: 'application/json',
                 data:        JSON.stringify({ Id: attachmentId, Description: description }),
@@ -1107,7 +1107,8 @@
             if (!confirm('Are you sure you want to delete this attachment?')) return;
 
             $.ajax({
-                url:  `/Construction/DeleteProjectAttachment?attachmentId=${attachmentId}`,
+                 
+               url: '@Url.Action("DeleteProjectAttachment", "Construction")?attachmentId=' + attachmentId,
                 type: 'DELETE',
                 success: function (res) {
                     if (res.status) {
@@ -1303,7 +1304,7 @@
             }
 
             $.ajax({
-                url: '/Construction/SaveProjectSubcontractors',
+                 url: '@Url.Action("SaveProjectSubcontractors", "Construction")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(rows),
@@ -1340,7 +1341,7 @@
             }
 
             $.ajax({
-                url: `/Construction/DeleteProjectSubcontractor?subcontractorId=${id}`,
+                url: '@Url.Action("DeleteProjectSubcontractor", "Construction")?subcontractorId=' + id,
                 type: 'DELETE',
 
                 success: function (res) {
@@ -1392,7 +1393,7 @@
             }
 
             $.ajax({
-                url: '/Construction/SaveProjectEngineers',
+                 url: '@Url.Action("SaveProjectEngineers", "Construction")',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(engineers),
@@ -1446,7 +1447,7 @@
             }
 
             $.ajax({
-                url: '/Construction/GetProjectEngineers',
+                 url: '@Url.Action("GetProjectEngineers", "Construction")',
                 type: 'GET',
                 data: { projectId: projectId },
                 success: function (res) {
@@ -1499,7 +1500,7 @@
             }
 
             $.ajax({
-                url: `/Construction/DeleteProjectEngineer?engineerId=${id}`,
+                url: '@Url.Action("DeleteProjectEngineer", "Construction")?engineerId=' + id,
                 type: 'DELETE',
                 success: function(res) {
                     if (res.status) {
