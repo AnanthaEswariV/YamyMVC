@@ -65,6 +65,18 @@ namespace YamyProject.Controllers
             p.billed_to_date,
             p.expenses,
             p.balance,
+            p.contracting_date,
+            p.building_licensing_date,
+            p.contact_person,
+            p.contact_person_number,
+            p.area,
+            p.plot_number,
+            p.block,
+            p.total_values,
+            p.billed_to_dates,
+            p.balances,
+            p.country,
+            p.city,
             c.name AS customer_name
         FROM tbl_projects p
         LEFT JOIN tbl_customer c ON p.customer = c.id
@@ -107,7 +119,30 @@ namespace YamyProject.Controllers
                         BilledToDate = reader["billed_to_date"] != DBNull.Value ? Convert.ToDecimal(reader["billed_to_date"]) : 0,
                         Expenses = reader["expenses"] != DBNull.Value ? Convert.ToDecimal(reader["expenses"]) : 0,
                         Balance = reader["balance"] != DBNull.Value ? Convert.ToDecimal(reader["balance"]) : 0,
+
+
+                        ContractingDate = reader["contracting_date"] != DBNull.Value
+    ? Convert.ToDateTime(reader["contracting_date"]).ToString("yyyy-MM-dd") : null,
+                        BuildingLicensingDate = reader["building_licensing_date"] != DBNull.Value
+    ? Convert.ToDateTime(reader["building_licensing_date"]).ToString("yyyy-MM-dd") : null,
+                        ContactPerson = reader["contact_person"].ToString(),
+                        ContactPersonNumber = reader["contact_person_number"].ToString(),
+                        Area = reader["area"].ToString(),
+                        PlotNumber = reader["plot_number"].ToString(),
+                        Block = reader["block"].ToString(),
+                        TotalValues = reader["total_values"] != DBNull.Value
+    ? Convert.ToDecimal(reader["total_values"]) : 0,
+                        BilledToDates = reader["billed_to_dates"] != DBNull.Value
+    ? Convert.ToDecimal(reader["billed_to_dates"]) : 0,
+                        Balances = reader["balances"] != DBNull.Value
+    ? Convert.ToDecimal(reader["balances"]) : 0,
+                        Country = reader["country"].ToString(),
+                        City = reader["city"].ToString(),
+
+
                         Accounts = new List<ProjectAccountItem>() // initialize empty list
+
+
                     });
                 }
 
@@ -205,13 +240,19 @@ namespace YamyProject.Controllers
          start_date, end_date, extend_delay, execution_period_months,
          customer, contractor, consultant, location, details,
          contract_value, additional_value, deduction_value, total_value,
-         billed_to_date, expenses, balance)
+         billed_to_date, expenses, balance, contracting_date, building_licensing_date,
+contact_person, contact_person_number,
+area, plot_number, block, country, city,
+total_values, billed_to_dates, balances)
         VALUES
         (@code, @name, @name_ar, @category, @description, @emirate, @status, @type,
          @start_date, @end_date, @extend_delay, @execution_period_months,
          @customer, @contractor, @consultant, @location, @details,
          @contract_value, @additional_value, @deduction_value, @total_value,
-         @billed_to_date, @expenses, @balance);
+         @billed_to_date, @expenses, @balance,@contracting_date, @building_licensing_date,
+@contact_person, @contact_person_number,
+@area, @plot_number, @block, @country, @city,
+@total_values, @billed_to_dates, @balances);
         SELECT LAST_INSERT_ID();";
 
                     await using var cmd = new MySqlCommand(insertQuery, conn);
@@ -240,6 +281,20 @@ namespace YamyProject.Controllers
                     cmd.Parameters.AddWithValue("@expenses", model.Expenses);
                     cmd.Parameters.AddWithValue("@balance", model.Balance);
 
+
+                    cmd.Parameters.AddWithValue("@contracting_date", model.ContractingDate);
+                    cmd.Parameters.AddWithValue("@building_licensing_date", model.BuildingLicensingDate);
+                    cmd.Parameters.AddWithValue("@contact_person", model.ContactPerson);
+                    cmd.Parameters.AddWithValue("@contact_person_number", model.ContactPersonNumber);
+                    cmd.Parameters.AddWithValue("@area", model.Area);
+                    cmd.Parameters.AddWithValue("@plot_number", model.PlotNumber);
+                    cmd.Parameters.AddWithValue("@block", model.Block);
+                    cmd.Parameters.AddWithValue("@country", model.Country);
+                    cmd.Parameters.AddWithValue("@city", model.City);
+                    cmd.Parameters.AddWithValue("@total_values", model.TotalValues);
+                    cmd.Parameters.AddWithValue("@billed_to_dates", model.BilledToDates);
+                    cmd.Parameters.AddWithValue("@balances", model.Balances);
+
                     int projectId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                     return Ok(new { status = true, message = "Project created successfully", id = projectId, code = projectCode });
                 }
@@ -256,7 +311,19 @@ namespace YamyProject.Controllers
             location=@location, details=@details,
             contract_value=@contract_value, additional_value=@additional_value,
             deduction_value=@deduction_value, total_value=@total_value,
-            billed_to_date=@billed_to_date, expenses=@expenses, balance=@balance
+            billed_to_date=@billed_to_date, expenses=@expenses, balance=@balance,
+            contracting_date=@contracting_date,
+            building_licensing_date=@building_licensing_date,
+            contact_person=@contact_person,
+            contact_person_number=@contact_person_number,
+            area=@area,
+            plot_number=@plot_number,
+            block=@block,
+            country=@country,
+            city=@city,
+            total_values=@total_values,
+            billed_to_dates=@billed_to_dates,
+            balances=@balances
         WHERE id=@id;";
 
                     await using var cmd = new MySqlCommand(updateQuery, conn);
@@ -285,6 +352,19 @@ namespace YamyProject.Controllers
                     cmd.Parameters.AddWithValue("@billed_to_date", model.BilledToDate);
                     cmd.Parameters.AddWithValue("@expenses", model.Expenses);
                     cmd.Parameters.AddWithValue("@balance", model.Balance);
+
+                    cmd.Parameters.AddWithValue("@contracting_date", model.ContractingDate);
+                    cmd.Parameters.AddWithValue("@building_licensing_date", model.BuildingLicensingDate);
+                    cmd.Parameters.AddWithValue("@contact_person", model.ContactPerson);
+                    cmd.Parameters.AddWithValue("@contact_person_number", model.ContactPersonNumber);
+                    cmd.Parameters.AddWithValue("@area", model.Area);
+                    cmd.Parameters.AddWithValue("@plot_number", model.PlotNumber);
+                    cmd.Parameters.AddWithValue("@block", model.Block);
+                    cmd.Parameters.AddWithValue("@country", model.Country);
+                    cmd.Parameters.AddWithValue("@city", model.City);
+                    cmd.Parameters.AddWithValue("@total_values", model.TotalValues);
+                    cmd.Parameters.AddWithValue("@billed_to_dates", model.BilledToDates);
+                    cmd.Parameters.AddWithValue("@balances", model.Balances);
 
                     int affected = await cmd.ExecuteNonQueryAsync();
                     if (affected == 0) return NotFound(new { status = false, message = "Project not found" });

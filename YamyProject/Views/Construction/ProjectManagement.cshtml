@@ -210,7 +210,7 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Contact Person</label>
-                                    <input type="number" id="contactPerson" class="form-control form-control-sm">
+                                    <input type="text" id="contactPerson" class="form-control form-control-sm">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Contact Person Number</label>
@@ -321,15 +321,15 @@
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label">Total Value</label>
-                                        <input type="number" id="totalValue" class="form-control form-control-sm" readonly>
+                                        <input type="number" id="summaryTotalValue" class="form-control form-control-sm" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Billed To Date</label>
-                                        <input type="number" id="billedToDate1" class="form-control form-control-sm" readonly>
+                                        <input type="number" id="summaryBilledToDate" class="form-control form-control-sm" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Balance</label>
-                                        <input type="number" id="balance1" class="form-control form-control-sm" readonly>
+                                        <input type="number" id="summaryBalance" class="form-control form-control-sm" readonly>
                                     </div>
                                 </div>
                             </div>
@@ -570,7 +570,7 @@
                             <!-- Plot Number -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Plot Number</label>
-                                <input type="text" id="plotNumber" class="form-control" placeholder="Enter plot number" required>
+                                <input type="text" id="sitePlotNumber" class="form-control" placeholder="Enter plot number" required>
                                 <div class="invalid-feedback">Plot number is required.</div>
                             </div>
 
@@ -673,6 +673,16 @@
             $('#expenses').val(project.expenses ?? 0);
             $('#balance').val(project.balance ?? 0);
 
+             $('#projectContractingDate').val(project.contractingDate ?? '');
+             $('#projectBuildingLicensingDate').val(project.buildingLicensingDate ?? '');
+             $('#contactPerson').val(project.contactPerson ?? '');
+             $('#contactPersonNo').val(project.contactPersonNumber ?? '');
+             $('#area').val(project.area ?? '');
+             $('#plotNumber').val(project.plotNumber ?? '');
+             $('#block').val(project.block ?? '');
+             $('#countryDropdown').val(project.country ?? '').trigger('change');
+             $('#cityDropdown').val(project.city ?? '');
+
             // ── Tab 2: Accounts ──
             const pName = project.name ?? '';
             const pCode = project.code ?? '';
@@ -719,32 +729,56 @@
             }
 
             const projectData = {
-                Id:                   parseInt($('#projectId').val()) || 0,
-                Code:                 $('#projectCode').val() || '',
-                Name:                 $('#projectName').val()?.trim() || '',
-                NameArabic:           $('#projectNameArabic').val()?.trim() || '',
-                Category:             $('#projectCategory').val()?.trim() || '',
-                Description:          $('#projectDescription').val()?.trim() || '',
-                Emirate:              $('#emirateDropdown').val() || '',
-                Status:               $('#statusDropdown').val() || '',
-                Type:                 $('#typeDropdown').val() || '',
-                StartDate:            $('#projectStart').val() || null,
-                EndDate:              $('#projectEnd').val() || null,
-                ExtendDelay:          $('#extendDelay').val() || null,
-                ExecutionPeriodMonths: $('#executionPeriod').val() ? parseInt($('#executionPeriod').val()) : null,
-                Customer:             $('#customer').val() || '',
-                Contractor:           $('#contractor').val() || '',
-                Consultant:           $('#consultant').val() || '',
-                Location:             $('#location').val() || '',
-                Details:              $('#details').val() || '',
-                ContractValue:        parseFloat($('#contractValue').val()) || 0,
-                AdditionalValue:      parseFloat($('#additionalValue').val()) || 0,
-                DeductionValue:       parseFloat($('#deductionValue').val()) || 0,
-                TotalValue:           parseFloat($('#totalValue').val()) || 0,
-                BilledToDate:         parseFloat($('#billedToDate').val()) || 0,
-                Expenses:             parseFloat($('#expenses').val()) || 0,
-                Balance:              parseFloat($('#balance').val()) || 0
-            };
+            Id: parseInt($('#projectId').val()) || 0,
+            Code: $('#projectCode').val() || '',
+            Name: $('#projectName').val()?.trim() || '',
+            NameArabic: $('#projectNameArabic').val()?.trim() || '',
+            Category: $('#projectCategory').val()?.trim() || '',
+            Description: $('#projectDescription').val()?.trim() || '',
+            Emirate: $('#emirateDropdown').val() || '',
+            Status: $('#statusDropdown').val() || '',
+            Type: $('#typeDropdown').val() || '',
+
+            StartDate: $('#projectStart').val() || null,
+            EndDate: $('#projectEnd').val() || null,
+            ExtendDelay: $('#extendDelay').val() || null,
+
+            ContractingDate: $('#projectContractingDate').val() || null,
+            BuildingLicensingDate: $('#projectBuildingLicensingDate').val() || null,
+
+            ContactPerson: $('#contactPerson').val() || '',
+            ContactPersonNumber: $('#contactPersonNo').val() || '',
+
+            ExecutionPeriodMonths: $('#executionPeriod').val()
+                ? parseInt($('#executionPeriod').val()) : null,
+
+            Customer: $('#customer').val() || '',
+            Contractor: $('#contractor').val() || '',
+            Consultant: $('#consultant').val() || '',
+
+            Location: $('#location').val() || '',
+            Area: $('#area').val() || '',
+            PlotNumber: $('#plotNumber').val() || '',
+            Block: $('#block').val() || '',
+
+            Country: $('#countryDropdown').val() || '',
+            City: $('#cityDropdown').val() || '',
+
+            Details: $('#details').val() || '',
+
+            ContractValue: parseFloat($('#contractValue').val()) || 0,
+            AdditionalValue: parseFloat($('#additionalValue').val()) || 0,
+            DeductionValue: parseFloat($('#deductionValue').val()) || 0,
+            TotalValue: parseFloat($('#totalValue').val()) || 0,
+
+            BilledToDate: parseFloat($('#billedToDate').val()) || 0,
+            Expenses: parseFloat($('#expenses').val()) || 0,
+            Balance: parseFloat($('#balance').val()) || 0,
+
+            TotalValues: parseFloat($('#summaryTotalValue').val()) || 0,
+            BilledToDates: parseFloat($('#summaryBilledToDate').val()) || 0,
+            Balances: parseFloat($('#summaryBalance').val()) || 0
+        };
 
             $.ajax({
                 url:         '/Construction/SaveProject',
@@ -792,7 +826,7 @@
                     if ($.fn.DataTable.isDataTable('#projectTable')) {
                         $('#projectTable').DataTable().destroy();
                     }
-
+                    console.log(res);
                     const $tbody = $('#projectTable tbody').empty();
 
                     if (res.data && res.data.length > 0) {

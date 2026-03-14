@@ -599,6 +599,23 @@ namespace YamyProject.Core.Models
         public int? CountryId { get; set; }
         public int? CityId { get; set; }
 
+        public DateTime? ContractingDate { get; set; }
+        public DateTime? BuildingLicensingDate { get; set; }
+
+        public string ContactPerson { get; set; }
+        public string ContactPersonNumber { get; set; }
+
+        public string Area { get; set; }
+        public string PlotNumber { get; set; }
+        public string Block { get; set; }
+
+        public string Country { get; set; }
+        public string City { get; set; }
+
+        public decimal TotalValues { get; set; }
+        public decimal BilledToDates { get; set; }
+        public decimal Balances { get; set; }
+
     }
 
     public class ProjectResponse
@@ -630,6 +647,19 @@ namespace YamyProject.Core.Models
         public decimal BilledToDate { get; set; }
         public decimal Expenses { get; set; }
         public decimal Balance { get; set; }
+
+        public string ContractingDate { get; set; }
+        public string BuildingLicensingDate { get; set; }
+        public string ContactPerson { get; set; }
+        public string ContactPersonNumber { get; set; }
+        public string Area { get; set; }
+        public string PlotNumber { get; set; }
+        public string Block { get; set; }
+        public decimal TotalValues { get; set; }
+        public decimal BilledToDates { get; set; }
+        public decimal Balances { get; set; }
+        public string Country { get; set; }
+        public string City { get; set; }
 
         public List<ProjectAccountItem> Accounts { get; set; } = new();
         public List<ProjectAttachmentItem> Attachments { get; set; }

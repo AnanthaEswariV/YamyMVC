@@ -2389,6 +2389,18 @@
                        `billed_to_date` decimal(15,2) DEFAULT 0,
                        `expenses` decimal(15,2) DEFAULT 0,
                        `balance` decimal(15,2) DEFAULT 0,
+                       `contracting_date` DATE DEFAULT NULL,
+                       `building_licensing_date` DATE DEFAULT NULL,
+                       `contact_person` VARCHAR(150) DEFAULT NULL,
+                       `contact_person_number` VARCHAR(50) DEFAULT NULL,
+                       `area` VARCHAR(150) DEFAULT NULL,
+                       `plot_number` VARCHAR(100) DEFAULT NULL,
+                       `block` VARCHAR(100) DEFAULT NULL,
+                       `country` VARCHAR(100) DEFAULT NULL,
+                       `city` VARCHAR(100) DEFAULT NULL,
+                       `total_values` decimal(15,2) DEFAULT 0,
+                       `billed_to_dates` decimal(15,2) DEFAULT 0,
+                       `balances` decimal(15,2) DEFAULT 0,
                        PRIMARY KEY (`id`)
                     )  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
