@@ -129,7 +129,9 @@
                 });
             }
 
-                   function loadBalanceSheetReport() {
+
+
+           function loadBalanceSheetReport() {
             const reportDate = $('#reportDate').val();
             if (!reportDate) {
                 toastr.warning('Please select a date.');
@@ -152,7 +154,6 @@
                         return;
                     }
 
-                    // Check if ALL top-level balances are zero = no transactions for this date
                     const hasAnyData = res.data.some(acc => acc.balance !== 0);
                     if (!hasAnyData) {
                         tbody.html('<tr><td colspan="3" class="text-center py-4 text-muted">No transactions found for the selected date.</td></tr>');
@@ -182,7 +183,7 @@
                             const indent = '&nbsp;'.repeat((level - 1) * 6);
                             const hasChildren = acc.children && acc.children.length > 0;
                             const toggleIcon = hasChildren
-                                ? '<span class="toggle-icon" style="cursor:pointer;user-select:none;font-weight:bold;margin-right:4px;">►</span>'
+                                ? `<span class="toggle-icon" data-row-id="${currentRowId}" style="cursor:pointer;user-select:none;font-weight:bold;margin-right:4px;">►</span>`
                                 : '';
 
                             const parentAttr = parentRowId ? ` data-parent-row="${parentRowId}"` : '';
@@ -210,39 +211,7 @@
 
                     renderRows(res.data);
 
-                    // Toggle expand/collapse on click
-                    tbody.off('click', '.toggle-icon').on('click', '.toggle-icon', function () {
-                        const icon = $(this);
-                        const parentRow = icon.closest('tr');
-                        const parentRowId = parentRow.data('row-id');
-                        const isExpanded = icon.text() === '▼';
-
-                        function toggleChildren(rowId, show) {
-                            $(`tr[data-parent-row="${rowId}"]`).each(function () {
-                                const childRow = $(this);
-                                if (show) {
-                                    childRow.show();
-                                } else {
-                                    childRow.hide();
-                                    const childIcon = childRow.find('.toggle-icon');
-                                    if (childIcon.text() === '▼') {
-                                        childIcon.text('►');
-                                        toggleChildren(childRow.data('row-id'), false);
-                                    }
-                                }
-                            });
-                        }
-
-                        if (isExpanded) {
-                            icon.text('►');
-                            toggleChildren(parentRowId, false);
-                        } else {
-                            icon.text('▼');
-                            toggleChildren(parentRowId, true);
-                        }
-                    });
-
-                    // Destroy and reinitialize DataTable
+                    // Destroy and reinitialize DataTable FIRST
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().destroy();
                     }
@@ -253,11 +222,42 @@
                             { extend: 'excelHtml5', text: 'Excel', className: 'btn btn-primary btn-sm' },
                             { extend: 'pdfHtml5', text: 'PDF', className: 'btn btn-primary btn-sm', orientation: 'portrait', pageSize: 'A4' }
                         ],
-                        order: [[0, 'asc']],
                         pageLength: 1000,
                         ordering: false,
                         searching: true,
                         paging: true
+                    });
+
+                    // ✅ Attach toggle AFTER DataTable init using document-level delegation
+                    $(document).off('click', '.toggle-icon').on('click', '.toggle-icon', function () {
+                        const icon = $(this);
+                        const rowId = icon.data('row-id'); // get from icon's own data attribute
+                        const isExpanded = icon.text() === '▼';
+
+                        function toggleChildren(parentRowId, show) {
+                            $(`tr[data-parent-row="${parentRowId}"]`).each(function () {
+                                const childRow = $(this);
+                                if (show) {
+                                    childRow.show();
+                                } else {
+                                    childRow.hide();
+                                    // Collapse nested children too
+                                    const childIcon = childRow.find('.toggle-icon');
+                                    if (childIcon.length && childIcon.text() === '▼') {
+                                        childIcon.text('►');
+                                        toggleChildren(childRow.data('row-id'), false);
+                                    }
+                                }
+                            });
+                        }
+
+                        if (isExpanded) {
+                            icon.text('►');
+                            toggleChildren(rowId, false);
+                        } else {
+                            icon.text('▼');
+                            toggleChildren(rowId, true);
+                        }
                     });
                 },
                 error: function (xhr, status, error) {
@@ -267,7 +267,9 @@
             });
         }
 
-                    // Handle row click for level 4 accounts
+                 
+        
+        // Handle row click for level 4 accounts
         $('#table1 tbody').on('click', 'tr', function () {
             const accountId = $(this).data('id');      // Get account id
             const level = $(this).data('level');       // Get row level
