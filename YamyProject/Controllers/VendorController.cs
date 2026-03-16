@@ -14,6 +14,7 @@ namespace YamyProject.Controllers
             _config = config;
         }
 
+
         #region Vendor CRUD Operation
 
         public IActionResult Vendor()
@@ -170,8 +171,8 @@ namespace YamyProject.Controllers
             if (string.IsNullOrWhiteSpace(model.Name))
                 return Json(new { status = false, message = "Enter Vendor Name First." });
 
-            if (model.AccountId == null || model.AccountId <= 0)
-                return Json(new { status = false, message = "Account must be set for the Vendor." });
+            //if (model.AccountId == null || model.AccountId <= 0)
+            //    return Json(new { status = false, message = "Account must be set for the Vendor." });
 
             if (model.OpeningBalanceDate.HasValue && model.OpeningBalanceDate.Value.Date > DateTime.Now.Date)
                 return Json(new { status = false, message = "Date value must be less or equal to today." });

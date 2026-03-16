@@ -592,7 +592,7 @@
             }, 100);
             $("#region").val(customer.region || '');
             $("#buildingName").val(customer.buildingName || '');
-            $("#accruedSalaries").val(customer.accountId || '');
+            $("#accountPayable").val(customer.accountId || '');
             $("#trn").val(customer.trn || '');
             $("#facilityName").val(customer.facilityName || '');
 
@@ -687,7 +687,7 @@
             CityId: $('#cityDropdown').val() ? parseInt($('#cityDropdown').val()) : null,
             Region: $('#region').val().trim(),
             BuildingName: $('#buildingName').val().trim(),
-            AccountId: $('#accruedSalaries').val() ? parseInt($('#accruedSalaries').val()) : null,
+            AccountId: $('#accountPayable').val() ? parseInt($('#accountPayable').val()) : null,
             TRN: $('#trn').val().trim(),
             FacilityName: $('#facilityName').val().trim(),
            Active: $('#activeCheckbox').is(':checked'),
