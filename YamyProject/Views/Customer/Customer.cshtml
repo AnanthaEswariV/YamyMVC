@@ -320,7 +320,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="accountReceivable" class="form-label">Account Receivable</label>
-                            <select id="accruedSalaries" class="form-select form-select-sm" required>
+                            <select id="accountReceivable" class="form-select form-select-sm" required>
                                 <option value="">-- Select --</option>
                             </select>
                         </div>
@@ -399,6 +399,11 @@
         $(document).ready(function () {
             loadCustomerCategories();
             loadCustomers();
+            $('#newCustomerModal').on('shown.bs.modal', function () {
+            const invoiceType = 'Customer'; 
+            loadCustomerAccounts(invoiceType);
+        });
+
             let countryCities = [];
 
             function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
@@ -438,39 +443,39 @@
                 }
             });
 
-            $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
-                type: 'GET',
-                success: function (data) {
-                    const dropdowns = [
-                        { ddl: '#accruedSalaries', codeBox: '#code1' },
-                    ];
+            // $.ajax({
+            //     url: '@Url.Action("GetAccruedSalaries", "HR")',
+            //     type: 'GET',
+            //     success: function (data) {
+            //         const dropdowns = [
+            //             { ddl: '#accruedSalaries', codeBox: '#code1' },
+            //         ];
 
-                    dropdowns.forEach(set => {
-                        let $ddl = $(set.ddl);
-                               $ddl.empty().append('<option value="">-- Select --</option>');
+            //         dropdowns.forEach(set => {
+            //             let $ddl = $(set.ddl);
+            //                    $ddl.empty().append('<option value="">-- Select --</option>');
 
-                        $.each(data, function (i, item) {
-                            $ddl.append(
-                                $('<option>', {
-                                    value: item.id,
-                                    text: item.code + ' - ' + item.name,
-                                    'data-code': item.code
-                                })
-                            );
-                        });
+            //             $.each(data, function (i, item) {
+            //                 $ddl.append(
+            //                     $('<option>', {
+            //                         value: item.id,
+            //                         text: item.code + ' - ' + item.name,
+            //                         'data-code': item.code
+            //                     })
+            //                 );
+            //             });
 
-                        $ddl.on('change', function () {
-                            let selected = $(this).find(':selected');
-                            let code = selected.data('code');
-                            $(set.codeBox).val(code || "");
-                        });
-                    });
-                },
-                error: function (xhr, status, error) {
-                    console.error("❌ Error loading accounts:", status, error);
-                }
-            });
+            //             $ddl.on('change', function () {
+            //                 let selected = $(this).find(':selected');
+            //                 let code = selected.data('code');
+            //                 $(set.codeBox).val(code || "");
+            //             });
+            //         });
+            //     },
+            //     error: function (xhr, status, error) {
+            //         console.error("❌ Error loading accounts:", status, error);
+            //     }
+            // });
 
             $.ajax({
                 url: '@Url.Action("GetProjects", "Construction")',
@@ -980,5 +985,53 @@
             $('#customerId').val(0);
             $('#projectContainer').empty();
         }
+
+        function loadCustomerAccounts(invoiceType) {
+            const dropdowns = [
+                { ddlId: "#accountReceivable", category: "Customer" } // Account Receivable
+            ];
+
+            // Fetch all accounts
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
+                    dropdowns.forEach(drop => {
+                        const $ddl = $(drop.ddlId);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        $.each(accounts, function(i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
+                        });
+
+                        $.ajax({
+                            url: '/Vendor/GetPaymentMethodInfos',
+                            type: 'GET',
+                            data: { method: invoiceType, category: drop.category },
+                            success: function(res) {
+                                if (res.status) {
+                                    $ddl.val(res.accountId);
+                                } else {
+                                    console.error(`❌ Failed to get account ID for ${drop.category}`);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error(`❌ Error fetching default account for ${drop.category}:`, error);
+                            }
+                        });
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Error loading accounts:", error);
+                }
+            });
+        }
+
     </script>
 }

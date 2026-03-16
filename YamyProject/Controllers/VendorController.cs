@@ -804,6 +804,38 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetPaymentMethodInfos([FromQuery] string method, [FromQuery] string category)
+        {
+            try
+            {
+                int accountId = 0;
+                bool paymentTermsEnabled = false;
+
+                if (category == "Customer")
+                {
+                    accountId = await GetDefaultAccountId("Customer");
+                    paymentTermsEnabled = true;
+                }
+                else if (category == "Vendor")
+                {
+                    accountId = await GetDefaultAccountId("Vendor"); 
+                    paymentTermsEnabled = true;
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    accountId,
+                    paymentTermsEnabled
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Purchase Center

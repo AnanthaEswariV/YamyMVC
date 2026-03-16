@@ -338,8 +338,8 @@
                     <h6 class="mb-3">Account Settings & Other</h6>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="accountReceivable" class="form-label">Account Receivable</label>
-                            <select id="accruedSalaries" class="form-select form-select-sm" required>
+                            <label for="accountPayable" class="form-label">Account Payable</label>
+                            <select id="accountPayable" class="form-select form-select-sm" required>
                                 <option value="">-- Select --</option>
                             </select>
                         </div>
@@ -427,6 +427,11 @@
         $(document).ready(function () {
             loadCustomerCategories();
             loadCustomers();
+                   // When Vendor modal is shown
+        $('#newCustomerModal').on('shown.bs.modal', function () {
+            const invoiceType = 'Vendor'; 
+            loadAccounts(invoiceType);
+        });
             let countryCities = [];
 
             function loadCountryCityDropdowns(apiUrl, countryIdSelector, cityIdSelector) {
@@ -472,51 +477,51 @@
                        }
                    });
 
+            // $.ajax({
+            //          url: '@Url.Action("GetAccruedSalaries", "HR")',
+            //          type: 'GET',
+            //          success: function (data) {
+
+            //              // List of dropdowns with their matching code textbox
+            //              const dropdowns = [
+            //                  { ddl: '#accruedSalaries', codeBox: '#code1' },
+            //              ];
+
+            //              dropdowns.forEach(set => {
+            //                  let $ddl = $(set.ddl);
+
+
+            //                  $ddl.empty().append('<option value="">-- Select --</option>');
+
+            //                  $.each(data, function (i, item) {
+            //                      $ddl.append(
+            //                          $('<option>', {
+            //                              value: item.id,
+            //                              text: item.code + ' - ' + item.name,
+            //                              'data-code': item.code
+            //                          })
+            //                      );
+            //                  });
+
+
+
+            //                  // On change, update the code textbox
+            //                  $ddl.on('change', function () {
+            //                      let selected = $(this).find(':selected');
+            //                      let code = selected.data('code');
+
+
+            //                      $(set.codeBox).val(code || "");
+            //                  });
+            //              });
+            //          },
+            //          error: function (xhr, status, error) {
+            //              console.error("❌ Error loading accounts:", status, error);
+            //          }
+            //      });
+
             $.ajax({
-                     url: '@Url.Action("GetAccruedSalaries", "HR")',
-                     type: 'GET',
-                     success: function (data) {
-
-                         // List of dropdowns with their matching code textbox
-                         const dropdowns = [
-                             { ddl: '#accruedSalaries', codeBox: '#code1' },
-                         ];
-
-                         dropdowns.forEach(set => {
-                             let $ddl = $(set.ddl);
-
-
-                             $ddl.empty().append('<option value="">-- Select --</option>');
-
-                             $.each(data, function (i, item) {
-                                 $ddl.append(
-                                     $('<option>', {
-                                         value: item.id,
-                                         text: item.code + ' - ' + item.name,
-                                         'data-code': item.code
-                                     })
-                                 );
-                             });
-
-
-
-                             // On change, update the code textbox
-                             $ddl.on('change', function () {
-                                 let selected = $(this).find(':selected');
-                                 let code = selected.data('code');
-
-
-                                 $(set.codeBox).val(code || "");
-                             });
-                         });
-                     },
-                     error: function (xhr, status, error) {
-                         console.error("❌ Error loading accounts:", status, error);
-                     }
-                 });
-
-            $.ajax({
-                url: '@Url.Action("GetProjects", "Construction")',
+                url: '@Url.Action("GetProjectManagement", "Construction")',
                 type: 'GET',
                 success: function(res) {
                     if (!res.status || !res.data) return;
@@ -1091,6 +1096,55 @@
             $('#newCustomerForm')[0].reset();
             $('#customerId').val(0);
             $('#projectContainer').empty();
+        }
+
+               function loadAccounts(invoiceType) {
+            const dropdowns = [
+                { ddlId: "#accountPayable", category: "Vendor" } // Vendor account
+            ];
+
+            // Fetch all accounts
+            $.ajax({
+                url: '@Url.Action("GetAccruedSalaries", "HR")',
+                type: 'GET',
+                success: function(accounts) {
+                    dropdowns.forEach(drop => {
+                        const $ddl = $(drop.ddlId);
+                        $ddl.empty().append('<option value="">-- Select --</option>');
+
+                        // Populate all accounts
+                        $.each(accounts, function(i, item) {
+                            $ddl.append(
+                                $('<option>', {
+                                    value: item.id,
+                                    text: item.code + ' - ' + item.name,
+                                    'data-code': item.code
+                                })
+                            );
+                        });
+
+                        // Fetch the default account for this category (Vendor)
+                        $.ajax({
+                            url: '/Vendor/GetPaymentMethodInfos',
+                            type: 'GET',
+                            data: { method: invoiceType, category: drop.category },
+                            success: function(res) {
+                                if (res.status) {
+                                    $ddl.val(res.accountId); // select default account
+                                } else {
+                                    console.error(`❌ Failed to get account ID for ${drop.category}`);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error(`❌ Error fetching default account for ${drop.category}:`, error);
+                            }
+                        });
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error("❌ Error loading accounts:", error);
+                }
+            });
         }
 
     </script>

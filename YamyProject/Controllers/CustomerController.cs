@@ -3661,7 +3661,6 @@ VALUES (@sales_id, @item_id, @qty, @cost_price, @price, @vatp, @vat, @total, @co
                     accountId = await GetDefaultAccountId("Customer");
                     paymentTermsEnabled = true;
                 }
-
                 return Ok(new
                 {
                     status = true,
