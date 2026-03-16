@@ -3257,7 +3257,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                 }
 
                 // Insert Item Transaction and Journal
-                if (model.OnHand != 0 && model.Type != "12 - Service")
+                if (model.OnHand != 0)
                 {
                     await InsertItemTransactionAsync(conn, itemId, model, itemCode);
                     await InsertItemJournalAsync(conn, itemId, model, itemCode);
@@ -3389,9 +3389,14 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     await cmdDeleteTrans.ExecuteNonQueryAsync();
                 }
 
-                // Re-insert transactions and journal
-                await InsertItemTransactionAsync(conn, model.Id, model, model.Code);
-                await InsertItemJournalAsync(conn, model.Id, model, model.Code);
+
+                if (model.OnHand != 0)
+                {
+                    // Re-insert transactions and journal
+                    await InsertItemTransactionAsync(conn, model.Id, model, model.Code);
+                    await InsertItemJournalAsync(conn, model.Id, model, model.Code);
+                }
+
 
                 return Ok(new { status = true, message = "Item updated successfully", itemId = model.Id });
             }
