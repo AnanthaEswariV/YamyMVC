@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using YamyProject.Core.Models;
-using YamyProject.Core.Models.DTOs;
+﻿using System.Globalization;  
 
 namespace YamyProject.Controllers
 {
@@ -25,7 +23,7 @@ namespace YamyProject.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetBalanceSheetReport(DateTime date)
+        public async Task<IActionResult> GetBalanceSheetReport(string date)
         {
             try
             {
@@ -37,6 +35,9 @@ namespace YamyProject.Controllers
 
                 await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
                 await conn.OpenAsync();
+
+                if (!DateTime.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+                    return BadRequest(new { status = false, message = "Date must be in yyyy-MM-dd format." });
 
                 // Step 1: Load top-level accounts with balances
                 string queryTop = @"
@@ -50,38 +51,41 @@ SELECT
              + (
                 SELECT 
                     COALESCE(
-                        (SELECT SUM(t.debit - t.credit) FROM tbl_coa_level_1 l1i
+                        (SELECT SUM(t.debit - t.credit) 
+                         FROM tbl_coa_level_1 l1i
                          LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
                          LEFT JOIN tbl_coa_level_3 l3i ON l3i.main_id = l2i.id
                          LEFT JOIN tbl_coa_level_4 l4i ON l4i.main_id = l3i.id
-                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND t.date <= @dated
+                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND DATE(t.date) <= @dated
                          WHERE l1i.category_code='INCOME'
                         ),0)
                     - COALESCE(
-                        (SELECT SUM(t.debit - t.credit) FROM tbl_coa_level_1 l1i
+                        (SELECT SUM(t.debit - t.credit) 
+                         FROM tbl_coa_level_1 l1i
                          LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
                          LEFT JOIN tbl_coa_level_3 l3i ON l3i.main_id = l2i.id
                          LEFT JOIN tbl_coa_level_4 l4i ON l4i.main_id = l3i.id
-                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND t.date <= @dated
+                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND DATE(t.date) <= @dated
                          WHERE l1i.category_code='COST'
                         ),0)
                     - COALESCE(
-                        (SELECT SUM(t.debit - t.credit) FROM tbl_coa_level_1 l1i
+                        (SELECT SUM(t.debit - t.credit) 
+                         FROM tbl_coa_level_1 l1i
                          LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
                          LEFT JOIN tbl_coa_level_3 l3i ON l3i.main_id = l2i.id
                          LEFT JOIN tbl_coa_level_4 l4i ON l4i.main_id = l3i.id
-                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND t.date <= @dated
+                         LEFT JOIN tbl_transaction t ON t.account_id = l4i.id AND t.state = 0 AND DATE(t.date) <= @dated
                          WHERE l1i.category_code='EXPENSE'
                         ),0)
              )
-            )
+        )
         ELSE COALESCE(SUM(t.debit) - SUM(t.credit), 0)
     END AS Balance
 FROM tbl_coa_level_1 l1
 LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
 LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
 LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
-LEFT JOIN tbl_transaction t ON t.account_id = l4.id AND t.state=0 AND t.date <= @dated
+LEFT JOIN tbl_transaction t ON t.account_id = l4.id AND t.state=0 AND DATE(t.date) <= @dated
 WHERE l1.category_code IN ('ASSET','LIABILITY','EQUITY')
 GROUP BY l1.id, l1.name, l1.category_code
 ORDER BY l1.id;
@@ -90,8 +94,7 @@ ORDER BY l1.id;
                 var topAccounts = new List<AccountNode>();
                 await using (var cmd = new MySqlCommand(queryTop, conn))
                 {
-                    cmd.Parameters.AddWithValue("@dated", date.Date);
-
+                    cmd.Parameters.Add(new MySqlParameter("@dated", MySqlDbType.Date) { Value = parsedDate.Date });
                     await using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {
@@ -109,10 +112,10 @@ ORDER BY l1.id;
                 // Step 2: Recursively load children for each account
                 foreach (var account in topAccounts)
                 {
-                    await LoadChildAccountsOptimizedAsync(conn, account, date, 1);
+                    await LoadChildAccountsOptimizedAsync(conn, account, parsedDate, 1);
                 }
 
-                return Ok(new { status = true, data = topAccounts });
+                return Ok(new { status = true, selectedDate = parsedDate.ToString("yyyy-MM-dd"), data = topAccounts });
             }
             catch (Exception ex)
             {
@@ -129,7 +132,7 @@ SELECT l.id,
        CONCAT(l.code,' - ',l.name) AS name,
        COALESCE(SUM(t.debit)-SUM(t.credit),0) AS Balance
 FROM tbl_coa_level_{currLvl + 1} l
-LEFT JOIN tbl_transaction t ON t.account_id=l.id AND t.state=0 AND t.date<=@dated
+LEFT JOIN tbl_transaction t ON t.account_id=l.id AND t.state=0 AND DATE(t.date) <= @dated
 WHERE l.main_id=@parentId
 GROUP BY l.id, l.code, l.name
 ORDER BY l.code;
@@ -138,7 +141,7 @@ ORDER BY l.code;
             var children = new List<AccountNode>();
             await using (var cmd = new MySqlCommand(queryChild, conn))
             {
-                cmd.Parameters.AddWithValue("@dated", date.Date);
+                cmd.Parameters.Add(new MySqlParameter("@dated", MySqlDbType.Date) { Value = date.Date });
                 cmd.Parameters.AddWithValue("@parentId", parent.Id);
 
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -156,7 +159,6 @@ ORDER BY l.code;
                 }
             }
 
-            // Add children and recursively load their children
             foreach (var child in children)
             {
                 parent.Children.Add(child);
