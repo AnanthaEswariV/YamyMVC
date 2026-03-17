@@ -190,15 +190,15 @@
 
                const dropdowns = [
           { ddl: '#fixedAssetsAccount', codeBox: '#code2', category: "Fixed Asset Credit Account" },
-          { ddl: '#accumulatedDepreciation', codeBox: '#code3', category: "Fixed Asset Credit Account" },
+          { ddl: '#accumulatedDepreciation', codeBox: '#code3', category: "Opening Balance Equity" },
           { ddl: '#depreciationExpense', codeBox: '#code4', category: "Fixed Asset Credit Account" },
 
           { ddl: '#editFixedAssetsAccount', codeBox: '#editCode2', category: "Fixed Asset Credit Account" },
-          { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3', category: "Fixed Asset Credit Account" },
+          { ddl: '#editAccumulatedDepreciation', codeBox: '#editCode3', category: "Opening Balance Equity" },
           { ddl: '#editDepreciationExpense', codeBox: '#editCode4', category: "Fixed Asset Credit Account" },
 
           { ddl: '#fixedAssetsAccount1', codeBox: '#code5', category: "Fixed Asset Credit Account" },
-          { ddl: '#accumulatedDepreciation1', codeBox: '#code6', category: "Fixed Asset Credit Account" },
+          { ddl: '#accumulatedDepreciation1', codeBox: '#code6', category: "Opening Balance Equity" },
           { ddl: '#depreciationExpense1', codeBox: '#code7', category: "Fixed Asset Credit Account" }
         ];
 
@@ -239,27 +239,27 @@
                 });
             }
 
-            function bindCategoryChangeHandlers() {
-                // Add form
-                $('#assetCategory').on('change', function () {
-                    const selected = $(this).find(':selected');
-                    if (!selected.val()) return;
+            // function bindCategoryChangeHandlers() {
+            //     // Add form
+            //     $('#assetCategory').on('change', function () {
+            //         const selected = $(this).find(':selected');
+            //         if (!selected.val()) return;
 
-                    $('#fixedAssetsAccount').val(selected.data('assets-account')).trigger("change");
-                    $('#accumulatedDepreciation').val(selected.data('depreciation-account')).trigger("change");
-                    $('#depreciationExpense').val(selected.data('expense-account')).trigger("change");
-                });
+            //         $('#fixedAssetsAccount').val(selected.data('assets-account')).trigger("change");
+            //         $('#accumulatedDepreciation').val(selected.data('depreciation-account')).trigger("change");
+            //         $('#depreciationExpense').val(selected.data('expense-account')).trigger("change");
+            //     });
 
-                // Edit form
-                $('#editAssetCategory').on('change', function () {
-                    const selected = $(this).find(':selected');
-                    if (!selected.val()) return;
+            //     // Edit form
+            //     $('#editAssetCategory').on('change', function () {
+            //         const selected = $(this).find(':selected');
+            //         if (!selected.val()) return;
 
-                    $('#editFixedAssetsAccount').val(selected.data('assets-account')).trigger("change");
-                    $('#editAccumulatedDepreciation').val(selected.data('depreciation-account')).trigger("change");
-                    $('#editDepreciationExpense').val(selected.data('expense-account')).trigger("change");
-                });
-            }
+            //         $('#editFixedAssetsAccount').val(selected.data('assets-account')).trigger("change");
+            //         $('#editAccumulatedDepreciation').val(selected.data('depreciation-account')).trigger("change");
+            //         $('#editDepreciationExpense').val(selected.data('expense-account')).trigger("change");
+            //     });
+            // }
 
             // function loadAccounts() {
             //     $.ajax({
@@ -402,7 +402,7 @@
             loadFixedAssetCategories();
             // loadAccounts();
             populateAndSelectCostCenter();
-            bindCategoryChangeHandlers();
+            // bindCategoryChangeHandlers();
             
 
         });
