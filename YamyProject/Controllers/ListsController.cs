@@ -3219,7 +3219,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@type", model.Type);
                     cmd.Parameters.AddWithValue("@category", model.CategoryId);
                     cmd.Parameters.AddWithValue("@name", model.Name);
-                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId == 0 ? (object)DBNull.Value : model.UnitId);
+                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId ?? 0);
                     cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
                     cmd.Parameters.AddWithValue("@cost_price", model.CostPrice == 0 ? "0" : model.CostPrice.ToString());
                     cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);
@@ -3328,7 +3328,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
                     cmd.Parameters.AddWithValue("@type", model.Type);
                     cmd.Parameters.AddWithValue("@name", model.Name);
                     cmd.Parameters.AddWithValue("@category", model.CategoryId);
-                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId == 0 ? (object)DBNull.Value : model.UnitId);
+                    cmd.Parameters.AddWithValue("@unit_id", model.UnitId ?? 0);
                     cmd.Parameters.AddWithValue("@barcode", model.Barcode ?? "");
                     cmd.Parameters.AddWithValue("@cost_price", model.CostPrice);
                     cmd.Parameters.AddWithValue("@cogs_account_id", model.CogsAccountId);

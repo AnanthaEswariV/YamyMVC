@@ -312,7 +312,7 @@ namespace YamyProject.Core.Models
         public int WarehouseId { get; set; }
         public string Type { get; set; }
         public int CategoryId { get; set; }
-        public int UnitId { get; set; }
+        public int? UnitId { get; set; }
         public string Barcode { get; set; }
         public decimal CostPrice { get; set; } = 0;
         public decimal SalesPrice { get; set; }

@@ -243,7 +243,7 @@
                     <div id="unitCostingSection" class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-muted">Main Unit</label>
-                            <select class="form-select" id="mainUnit" required></select>
+                            <select class="form-select" id="mainUnit"></select>
                             <button type="button" class="btn btn-outline-primary mt-4" data-bs-toggle="modal" data-bs-target="#addUnitModal">Add More Unit</button>
                         </div>
                         <div class="col-md-6">
@@ -506,11 +506,7 @@
                 $("#categoryDropdowns").focus();
                 return false;
             }
-            if (!mainUnit) {
-                alert("Please select a Main Unit");
-                $("#mainUnit").focus();
-                return false;
-            }
+        
             // if (onHand === "" || parseFloat(onHand) < 0) {
             //     alert("Opening Qty must be 0 or more");
             //     $("#onHandInput").focus();
