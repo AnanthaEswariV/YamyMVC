@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System.Text.RegularExpressions;
-using YamyProject.Core.Models;
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     public class VendorController : Controller
     {

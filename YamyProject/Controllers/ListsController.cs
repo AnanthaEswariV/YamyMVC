@@ -1,9 +1,4 @@
 ﻿using Microsoft.CodeAnalysis;
-using Mysqlx.Crud;
-using Org.BouncyCastle.Utilities;
-using YamyProject.Core.Models.DTOs;
-using static Umbraco.Core.Collections.TopoGraph;
-
 namespace YamyProject.Controllers
 {
     [Route("Lists/[action]")]
@@ -2698,7 +2693,7 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, @ty
 
 
         #endregion
-
+        
         #region Department
 
         public IActionResult Department()

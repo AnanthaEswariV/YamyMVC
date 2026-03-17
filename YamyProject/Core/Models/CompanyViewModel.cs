@@ -1,7 +1,4 @@
 ﻿
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
-
 namespace YamyProject.Core.Models
 {
     public class CompanyViewModel
