@@ -1,9 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using YamyProject.Core.Models;
-using Newtonsoft.Json;
-
-
-namespace YamyProject.Controllers
+﻿namespace YamyProject.Controllers
 {
     [Route("Construction/[action]")]
     public class ConstructionController : Controller
@@ -2118,6 +2113,14 @@ total_values, billed_to_dates, balances)
         }
 
 
+        #endregion
+
+        #region Project Site Work
+
+        public IActionResult ProjectSiteWork()
+        {
+            return View();
+        }
         #endregion
 
         #region Project Tender

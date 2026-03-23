@@ -1,0 +1,307 @@
+﻿
+@{
+    ViewData["Title"] = "ProjectSiteWork";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="card shadow-sm">
+    <div class="card-header text-center">
+        <strong>Project Site Work</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-3">
+            <button type="button" class="btn btn-primary" id="addSiteBtn" data-bs-toggle="modal" data-bs-target="#siteModal">
+                <i class="bi bi-plus-circle me-2"></i>Add Site
+            </button>
+        </div>
+
+        <!-- Site Table -->
+        <table id="projectSiteTable" class="table table-striped table-bordered align-middle">
+            <thead class="table-primary text-center">
+                <tr>
+                    <th>SN</th>
+                    <th>Code</th>
+                    <th>Site Name</th>
+                    <th>Location</th>
+                    <th>Plot Number</th>
+                    <th>Address</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+</div>
+
+<!-- Site Modal -->
+<div class="modal fade" id="siteModal" tabindex="-1" aria-labelledby="siteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="siteForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="siteModalLabel">Site Setup</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="siteId" value="0" />
+
+                    <!-- Project Details Section -->
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Date</label>
+                            <input type="date" id="date" class="form-control" required />
+                            <div class="invalid-feedback">date is required.</div>
+                        </div>
+                        <!-- Project Name -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Project Name</label>
+                            <select class="form-select" id="projectName">
+                                <option value="">-- Select Project --</option>
+                            </select>
+                            <div class="invalid-feedback">Project name is required.</div>
+                        </div>
+
+                        <!-- Estimated Budget -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Estimated Budget</label>
+                            <input type="number" id="estimatedBudget" class="form-control" placeholder="Enter estimated budget" required />
+                            <div class="invalid-feedback">Estimated budget is required.</div>
+                        </div>
+
+                        <!-- Start Date -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Start Date</label>
+                            <input type="date" id="startDate" class="form-control" required />
+                            <div class="invalid-feedback">Start date is required.</div>
+                        </div>
+
+                        <!-- End Date -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">End Date</label>
+                            <input type="date" id="endDate" class="form-control" required />
+                            <div class="invalid-feedback">End date is required.</div>
+                        </div>
+
+                        <!-- Tender Name -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tender Name</label>
+                            <select class="form-select" id="tenderDropdown">
+                                <option value="">-- Select Tender --</option>
+                            </select>
+                            <div class="invalid-feedback">Tender name is required.</div>
+                        </div>
+
+                        <!-- Subcontractor -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Subcontractor</label>
+                            <select id="subcontractor" class="form-select" required>
+                                <option value="">Select subcontractor</option>
+                                <!-- Dynamically populated -->
+                            </select>
+                            <div class="invalid-feedback">Subcontractor is required.</div>
+                        </div>
+
+                        <!-- Project Location -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Project Site</label>
+                            <select id="projectSite" class="form-select" required>
+                                <option value="">-- Select Site --</option>
+                                <!-- Dynamically populated -->
+                            </select>
+                            <div class="invalid-feedback">Please select a project site.</div>
+                        </div>
+
+                        <!-- Plot Number -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Plot Number</label>
+                            <input type="text" id="plotNumber" class="form-control" placeholder="Enter plot number" required />
+                            <div class="invalid-feedback">Plot number is required.</div>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Address</label>
+                            <textarea id="address" class="form-control" rows="2" placeholder="Enter address"></textarea>
+                        </div>
+                    </div>
+
+                   @*  <!-- Activities Table Section -->
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Activity</th>
+                                    <th>Request Material</th>
+                                    <th>Issue Material</th>
+                                    <th>Received Material</th>
+                                    <th>Resource</th>
+                                    <th>Description</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activitiesTableBody">
+                                <!-- Dynamically populated activities go here -->
+                                <tr>
+                                    <td>1</td>
+                                    <td><input type="text" class="form-control" placeholder="Enter activity" required /></td>
+                                    <td><input type="number" class="form-control" placeholder="Request material" required /></td>
+                                    <td><input type="number" class="form-control" placeholder="Issue material" required /></td>
+                                    <td><input type="number" class="form-control" placeholder="Received material" required /></td>
+                                    <td><input type="text" class="form-control" placeholder="Enter resource" required /></td>
+                                    <td><textarea class="form-control" placeholder="Enter description" required></textarea></td>
+                                    <td><input type="date" class="form-control" required /></td>
+                                    <td><input type="date" class="form-control" required /></td>
+                                    <td><input type="number" class="form-control" placeholder="Enter progress %" required /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div> *@
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+
+        $(document).ready(function () {
+
+            loadProjects();
+            loadSubcontractors();
+
+            $.ajax({
+                url: '@Url.Action("GetTenders", "Construction")',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        var dropdown = $('#tenderDropdown');
+                        response.data.forEach(function(tender) {
+                            dropdown.append(
+                                $('<option>', {
+                                    value: tender.id,
+                                    text: tender.name
+                                })
+                            );
+                        });
+                    } else {
+                        console.error('Failed to load tenders:', response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching tenders:', error);
+                }
+            });
+
+            $.ajax({
+                 url: '@Url.Action("GetProjectSites", "Construction")',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status) {
+                            var dropdown = $('#projectSite');
+                            response.data.forEach(function(site) {
+                                dropdown.append(
+                                    $('<option>', {
+                                        value: site.id,
+                                        text: site.name
+                                    })
+                                );
+                            });
+                        } else {
+                            console.error('Failed to load tenders:', response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching tenders:', error);
+                    }
+                });
+
+        });
+
+          function loadProjects() {
+                $.ajax({
+                    url: '@Url.Action("GetProjectManagement", "Construction")',
+                    type: 'GET',
+                    success: function (result) {
+                        if (result.status) {
+                            const $dropdown = $('#projectName');
+                            $dropdown.empty();
+                            $dropdown.append('<option value="">-- Select Project --</option>');
+
+                            $.each(result.data, function (index, project) {
+                                $dropdown.append('<option value="' + project.id + '">' + project.name + '</option>');
+                            });
+                        } else {
+                            toastr.error('Failed to load projects');
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error loading projects');
+                    }
+                });
+            }
+
+          function loadSubcontractors() {
+            $.ajax({
+                url: '@Url.Action("GetSubContractors", "Subcontractor")', 
+                type: 'GET',
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load Vendors.');
+                        return;
+                    }
+
+                    console.log(res); 
+
+                    subcontractorList = res.data;
+
+                    if (!subcontractorList || subcontractorList.length === 0) {
+                        toastr.warning('No subcontractors available.');
+                        return;
+                    }
+
+                    const subDdl = $('#subcontractor');  
+
+                    subDdl.empty().append('<option value="">-- Select subcontractor --</option>'); 
+
+                    subcontractorList.forEach(function(sub) {
+                        subDdl.append(`<option value="${sub.id}" data-code="${sub.code}">${sub.name}</option>`);
+                    });
+                },
+                error: function () {
+                    toastr.error('Error loading Vendors.');
+                }
+            });
+        }
+
+    </script>
+}

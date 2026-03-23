@@ -1179,8 +1179,8 @@
 
         });
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '';
+             function formatDate(dateStr) {
+            if (!dateStr || isNaN(new Date(dateStr))) return '';
 
             const d = new Date(dateStr);
             return d.toISOString().split('T')[0];

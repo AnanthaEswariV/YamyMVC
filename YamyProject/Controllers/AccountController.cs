@@ -2501,7 +2501,7 @@
                           `fund_period` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `assigned_team` varchar(250) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '',
                           `progress` float DEFAULT '0',
-                          `tender_id` int DEFAULT '0',
+                          `tender_id` int DEFAULT '0',  
                           `tender_name_id` int DEFAULT '0',
                           `created_by` int DEFAULT '0',
                           `created_date` date DEFAULT NULL,
