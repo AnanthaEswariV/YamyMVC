@@ -6234,9 +6234,9 @@ WHERE
                 {
                     string insertQuery = @"
                 INSERT INTO tbl_petty_cash 
-                    (code, voucher_date, cash_account_id, employee_id, notes, total, created_by, vendor_id)
+                    (code, voucher_date, cash_account_id, employee_id, notes, total,tax, totalAmount, created_by, vendor_id)
                 VALUES 
-                    (@code, @voucher_date, @cash_account_id, @employee_id, @notes, @total, @created_by, @vendor_id);
+                    (@code, @voucher_date, @cash_account_id, @employee_id, @notes, @total, @tax, @totalAmount, @created_by, @vendor_id);
                 SELECT LAST_INSERT_ID();";
 
                     using var cmdInsert = new MySqlCommand(insertQuery, conn);
@@ -6246,6 +6246,8 @@ WHERE
                     cmdInsert.Parameters.AddWithValue("@employee_id", model.EmployeeId);
                     cmdInsert.Parameters.AddWithValue("@notes", model.Notes ?? "");
                     cmdInsert.Parameters.AddWithValue("@total", model.Total);
+                    cmdInsert.Parameters.AddWithValue("@tax", model.Tax);
+                    cmdInsert.Parameters.AddWithValue("@totalAmount", model.TotalAmount);
                     cmdInsert.Parameters.AddWithValue("@created_by", userId);
                     cmdInsert.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
                     pettyCashId = Convert.ToInt32(await cmdInsert.ExecuteScalarAsync());
@@ -6263,7 +6265,7 @@ WHERE
                     string updateQuery = @"
                 UPDATE tbl_petty_cash 
                 SET voucher_date=@voucher_date, cash_account_id=@cash_account_id, 
-                    employee_id=@employee_id, total=@total, notes=@notes , vendor_id=@vendor_id
+                    employee_id=@employee_id, total=@total, tax=@tax, totalAmount=@totalAmount, notes=@notes , vendor_id=@vendor_id
                 WHERE id=@id;";
 
                     using var cmdUpdate = new MySqlCommand(updateQuery, conn);
@@ -6273,6 +6275,8 @@ WHERE
                     cmdUpdate.Parameters.AddWithValue("@cash_account_id", model.CashAccountId);
                     cmdUpdate.Parameters.AddWithValue("@employee_id", model.EmployeeId);
                     cmdUpdate.Parameters.AddWithValue("@total", model.Total);
+                    cmdUpdate.Parameters.AddWithValue("@tax", model.Tax);
+                    cmdUpdate.Parameters.AddWithValue("@totalAmount", model.TotalAmount);
                     cmdUpdate.Parameters.AddWithValue("@notes", model.Notes ?? "");
                     cmdUpdate.Parameters.AddWithValue("@vendor_id", model.VendorId ?? 0);
                     await cmdUpdate.ExecuteNonQueryAsync();
@@ -6304,14 +6308,16 @@ WHERE
                         var category = string.IsNullOrWhiteSpace(d.Category) ? "0" : d.Category;
                         var note = d.Note ?? "";
                         var amount = d.Amount ?? 0;
+                        var tax = d.Tax ?? 0;
+                        var totalAmount = d.TotalAmount ?? 0;
                         var ProjectId = string.IsNullOrWhiteSpace(d.ProjectId) ? "0" : d.ProjectId;
                         var VendorId = string.IsNullOrWhiteSpace(d.VendorId) ? "0" : d.VendorId;
 
                         string insertDetailQuery = @"
                     INSERT INTO tbl_petty_cash_details  
-                        (petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount, project_id, vendor_id, description, category, note)
+                        (petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount, tax, project_id, vendor_id, description, category, note)
                     VALUES
-                        (@petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount, @project_id, @vendor_id, @description, @category, @note);";
+                        (@petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount, @tax, @project_id, @vendor_id, @description, @category, @note);";
 
                         using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
                         cmdDetail.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
@@ -6321,6 +6327,8 @@ WHERE
                         cmdDetail.Parameters.AddWithValue("@ref_id", refId);
                         cmdDetail.Parameters.AddWithValue("@cost_center_id", costCenterId);
                         cmdDetail.Parameters.AddWithValue("@amount", amount);
+                        cmdDetail.Parameters.AddWithValue("@tax", tax);
+                        cmdDetail.Parameters.AddWithValue("@totalAmount", totalAmount);
                         cmdDetail.Parameters.AddWithValue("@description", description);
                         cmdDetail.Parameters.AddWithValue("@category", category);
                         cmdDetail.Parameters.AddWithValue("@project_id", ProjectId);

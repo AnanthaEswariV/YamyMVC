@@ -54,8 +54,9 @@
                     <th>Vendor</th>
                     <th>Description</th>
                     <th>Amount</th>
+                    <th>VAT</th>
+                    <th>Total</th>
                     <th>Note</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -118,8 +119,9 @@
                                 <th>Vendor</th>
                                 <th>Description</th>
                                 <th>Amount</th>
+                                <th style="width:120px;">VAT</th>
+                                <th style="width:120px;">Total</th>
                                 <th>Note</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="pettyCashTableBody">
@@ -133,6 +135,9 @@
                                 <td><select class="form-select form-select-sm vendorName"></select></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
                                 <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
+                                <td>
+                                <td><select class="form-select form-select-sm tax"></select></td>
+                                <td><input type="number" class="form-control form-control-sm rowTotal" step="0.01" placeholder="0.00" readonly></td>
                                 <td><input type="text" class="form-control form-control-sm"></td>
                             </tr>
                         </tbody>
@@ -199,6 +204,8 @@
                                 <th>Vendor</th>
                                 <th>Description</th>
                                 <th>Amount</th>
+                                <th>VAT</th>
+                                <th>Total</th>
                                 <th>Note</th>
                             </tr>
                         </thead>
@@ -442,14 +449,22 @@
                 <td><input type="text" class="form-control form-control-sm"></td>
                 <td><select class="form-select form-select-sm pettyCashCategorySelect"></select></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
-                    <td><select class="form-select form-select-sm projectName"></select></td>
-                    <td><select class="form-select form-select-sm vendorName"></select></td>
+                <td><select class="form-select form-select-sm projectName"></select></td>
+                <td><select class="form-select form-select-sm vendorName"></select></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
-                <td><input type="number" class="form-control form-control-sm" step="0.01"></td>
+                <td><input type="number" class="form-control form-control-sm rowAmount" step="0.01" placeholder="0.00"></td>
+                <td><select class="form-select form-select-sm tax"></select></td>
+                <td><input type="number" class="form-control form-control-sm rowTotal" step="0.01" placeholder="0.00" readonly></td>
                 <td><input type="text" class="form-control form-control-sm"></td>
             </tr>`;
             $('#pettyCashTableBody').append(newRow);
-            fillCategoryDropdown($('#pettyCashTableBody tr:last select.pettyCashCategorySelect'));
+
+            const $lastRow = $('#pettyCashTableBody tr:last');
+            fillCategoryDropdown($lastRow.find('select.pettyCashCategorySelect'));
+                          loadProjects();
+                     loadVendors();
+            // ✅ Load tax into the new row's tax dropdown
+            loadTax($lastRow.find('select.tax'));
         }
 
         $(document).on('change', '.pettyCashCategorySelect', function() {
@@ -459,6 +474,7 @@
         $('#addPettyCashModal').on('shown.bs.modal', function() {
                     loadPettyCashCards();
                     loadPettyCashCategories();
+                             loadTax('#addPettyCashModal .tax');
                     $('#pettyCashDate').val(new Date().toISOString().split('T')[0]);
                     $('#pettyCashCode').val('');
                     $('#pettyCashNo').val('');
@@ -506,7 +522,7 @@
                                         data-pettyCashId="${row.pettyCashId}">
                                     <i class="fas fa-times"></i>
                                 </button>
-                            ` : ''; // If roleId is 1 or 2, show buttons, else don't show them
+                            ` : ''; 
 
                             // Create the table row
                             const tr = `
@@ -520,6 +536,8 @@
                                     <td>${row.vendorName ?? ''}</td>
                                     <td>${row.description ?? ''}</td>
                                     <td>${row.amount ?? 0}</td>
+                                    <td>${row.tax ?? 0}</td>
+                                    <td>${row.totalAmount ?? 0}</td>
                                     <td>${row.note ?? ''}</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-primary editPettyCashBtn"
@@ -650,30 +668,42 @@
 
             const totalAmount = calculateTotalAmount();
             if (!totalAmount) return toastr.warning('Enter at least one valid amount');
-            
-            const details = [];
-            $('#pettyCashTableBody tr').each(function() {
-                const row = $(this);
-                const amount = parseFloat(row.find('td:eq(8) input').val()) || 0;
+                const details = [];
+           let totalTax = 0;
+        let grandTotal = 0;
+        $('#pettyCashTableBody tr').each(function() {
+            const row = $(this);
 
-                if (amount > 0) {
-                    const Category = row.find('select.pettyCashCategorySelect').val();
+            const amount = parseFloat(row.find('td:eq(8) input').val()) || 0;
+            const total = parseFloat(row.find('.rowTotal').val()) || amount;
 
-                    details.push({
-                        EntryDate: new Date(row.find('td:eq(1) input').val()).toISOString(), 
-                        RefId: row.find('td:eq(2) input').val(),
-                        ProjectId: $(this).find(".projectName").val(),  
-                        VendorId: $(this).find(".vendorName").val(),
-                        Category: Category ? Category.toString() : null,
-                        HumName: row.find('td:eq(4) input').val(),
-                        CostCenterId: row.find('td:eq(5) select').val() || null, 
-                        Description: row.find('td:eq(6) input').val(),
-                        Amount: amount,
-                        Note: row.find('td:eq(8) input').val()
-                    });
-                }
-            });
-         
+            if (amount > 0) {
+                const Category = row.find('select.pettyCashCategorySelect').val();
+                const dateVal = row.find('td:eq(1) input').val();
+                                let entryDate = null;
+        if (dateVal) {
+            const parsedDate = new Date(dateVal);
+            if (!isNaN(parsedDate)) {
+                entryDate = parsedDate.toISOString();
+            }
+        }
+                details.push({
+                            EntryDate: entryDate,
+                    RefId: row.find('td:eq(2) input').val(),
+                    ProjectId: row.find(".projectName").val(),
+                    VendorId: row.find(".vendorName").val(),
+                    Category: Category ? Category.toString() : null,
+                    HumName: row.find('td:eq(4) input').val(),
+                    CostCenterId: row.find('td:eq(5) select').val() || null,
+                    Description: row.find('td:eq(6) input').val(),
+                    Amount: amount,
+                    Tax: row.find('.tax').val() || null,
+                    TotalAmount: total,
+                    Note: row.find('td:eq(11) input').val()
+                });
+            }
+        });
+         console.log(details);
 
             $.ajax({
                    url: '@Url.Action("SavePettyCashVoucher", "Lists")',
@@ -708,7 +738,7 @@
         });
 
         $('#addPettyCashBtn').on('click', function() {
-            $('#pettyCashForm')[0].reset();  // reset all inputs
+            $('#pettyCashForm')[0].reset();  
             $('#pettyCashTableBody').empty();
             $('#pettyCashDate').val(new Date().toISOString().split('T')[0]);
             $('#pettyCashCode').val('');
@@ -790,7 +820,7 @@
 
         function loadEditProjects() {
             $.ajax({
-                 url: '@Url.Action("GetProjects", "Construction")',
+                         url: '@Url.Action("GetProjectManagement", "Construction")',
                 type: 'GET',
                 success: function (result) {
                     if (result.status) {
@@ -888,6 +918,12 @@
 </td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.description ?? ''}"></td>
                         <td><input type="number" class="form-control form-control-sm" step="0.01" value="${row.amount ?? 0}"></td>
+                                        <td>
+            <select class="form-select form-select-sm tax" data-selected-tax="${row.tax ?? ''}">
+                <option value="">-- Select Tax --</option>
+            </select>
+        </td>
+                        <td><input type="number" class="form-control form-control-sm" step="0.01" value="${row.totalAmount ?? 0}"></td>
                         <td><input type="text" class="form-control form-control-sm" value="${row.note ?? ''}"></td>
                     </tr>`;
                 tbody.append(tr);
@@ -895,6 +931,7 @@
             loadVendors();
             loadPettyCashCategoriesToTable("#editPettyCashTableBody");
             $modal.modal("show");
+        loadTax('#editPettyCashTableBody .tax');
         });
 
         function loadPettyCashCardsTo(selector, selectedId = null) {
@@ -981,7 +1018,9 @@
                         VendorId: row.find('td:eq(6) select').val(),
                         Description: row.find('td:eq(7) input').val() || null,
                         Amount: amount,
-                        Note: row.find('td:eq(9) input').val() || ""
+                                   VatId: row.find('.tax').val() || null,          // ✅ Tax ID
+            Total: parseFloat(row.find('.rowTotal').val()) || amount, // ✅ Total
+                        Note: row.find('td:eq(11) input').val() || ""
                     });
                 }
             });
@@ -1354,6 +1393,58 @@
                 }
             });
         });
+
+                let taxesList = []; // ✅ declare globally so it can be reused
+
+        function loadTax(target) {
+            return new Promise((resolve, reject) => {
+                $.ajax({
+                    url: '@Url.Action("GetTaxes", "Lists")',
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status && res.data?.length > 0) {
+                            taxesList = res.data;
+
+                            // ✅ Accept both jQuery object and selector string
+                            const $dropdowns = (target instanceof $) ? target : $(target || '.tax');
+
+                            $dropdowns.each(function () {
+                                const $select = $(this);
+                                const selectedVal = $select.data('selected-tax') || '';
+                                $select.empty().append('<option value="">-- Select Tax --</option>');
+                                res.data.forEach(item => {
+                                    $select.append(
+                                        `<option value="${item.id}"
+                                            data-value="${item.value}"
+                                            ${String(item.id) === String(selectedVal) ? 'selected' : ''}>
+                                            ${item.name} - ${item.value}%
+                                        </option>`
+                                    );
+                                });
+                            });
+                            resolve();
+                        } else {
+                            reject('No tax data found');
+                        }
+                    },
+                    error: function (err) {
+                        toastr.error('Error loading taxes');
+                        reject(err);
+                    }
+                });
+            });
+        }
+
+               // ✅ Auto-calculate Total = Amount + (Amount * VAT%)
+        $(document).on('input change', '.rowAmount, .tax', function () {
+            const $row = $(this).closest('tr');
+            const amount = parseFloat($row.find('.rowAmount').val()) || 0;
+            const $taxSelect = $row.find('.tax');
+            const vatPct = parseFloat($taxSelect.find(':selected').data('value')) || 0;
+            const total = amount + (amount * vatPct / 100);
+            $row.find('.rowTotal').val(total.toFixed(2));
+        });
+
 
     </script>
 }

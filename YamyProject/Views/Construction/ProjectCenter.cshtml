@@ -167,7 +167,7 @@
 
          function loadProjects() {
             $.ajax({
-               url: '@Url.Action("GetProjects", "Construction")',
+               url: '@Url.Action("GetProjectManagement", "Construction")',
                 type: "GET",
                 success: function(res) {
                     if (!res.status) {

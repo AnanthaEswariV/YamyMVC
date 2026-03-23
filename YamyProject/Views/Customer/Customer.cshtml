@@ -478,7 +478,7 @@
             // });
 
             $.ajax({
-                url: '@Url.Action("GetProjects", "Construction")',
+                url: '@Url.Action("GetProjectManagement", "Construction")',
                 type: 'GET',
                 success: function(res) {
                     if (!res.status || !res.data) return;
@@ -545,7 +545,7 @@
                 $("#activeCheckbox").prop("checked", customer.active === 0);
 
                 $.ajax({
-                    url: '@Url.Action("GetProjects", "Construction")',
+                    url: '@Url.Action("GetProjectManagement", "Construction")',
                     type: 'GET',
                     success: function (res) {
                         if (!res.status || !res.data) return;

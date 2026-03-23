@@ -427,6 +427,8 @@ namespace YamyProject.Core.Models
         public int EmployeeId { get; set; }
         public string? Notes { get; set; }
         public decimal Total { get; set; }
+        public decimal Tax { get; set; }
+        public decimal TotalAmount { get; set; }
         public string? Code { get; set; }
         public int? VendorId { get; set; }   
         public List<PettyCashDetail>? Details { get; set; }
@@ -439,7 +441,7 @@ namespace YamyProject.Core.Models
 
     public class PettyCashDetail
     {
-        public DateTime EntryDate { get; set; }
+        public DateTime? EntryDate { get; set; }
         public string? HumId { get; set; }
         public string? HumName { get; set; }
         public string? RefId { get; set; }
@@ -449,6 +451,8 @@ namespace YamyProject.Core.Models
         public string? VendorId { get; set; }
         public string? Description { get; set; }
         public decimal? Amount { get; set; }
+        public decimal? Tax { get; set; }
+        public decimal? TotalAmount { get; set; }
         public string? Note { get; set; }
     }
 

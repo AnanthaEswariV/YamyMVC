@@ -601,7 +601,7 @@
 
             // Populate Project Sites
             $.ajax({
-                url: '@Url.Action("GetProjects", "Construction")', // Make sure this URL is correct
+                url: '@Url.Action("GetProjectManagement", "Construction")', // Make sure this URL is correct
                 type: 'GET',
                 success: function (res) {
                     if (!res.status || !res.data) return;
