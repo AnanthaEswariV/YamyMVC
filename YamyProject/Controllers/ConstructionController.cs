@@ -2115,6 +2115,16 @@ total_values, billed_to_dates, balances)
 
         #endregion
 
+
+        #region Project Site Management
+
+        public IActionResult ProjectSiteManagement()
+        {
+            return View();
+        }
+
+        #endregion
+
         #region Project Site Work
 
         public IActionResult ProjectSiteWork()
@@ -2217,7 +2227,6 @@ total_values, billed_to_dates, balances)
             }
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetTenderItems(int tenderId)
         {
@@ -2255,7 +2264,8 @@ total_values, billed_to_dates, balances)
                        ti.thickness As Thickness,
                        ts.margin_percentage As Margin_Percentage,
                        ts.margin_amount As Margin_Amount,
-                       ts.total As Total
+                       ts.total As Total,
+                       SUM(ts.amount) OVER() AS TotalAmount
                 FROM tbl_project_tender_details ts
                 INNER JOIN tbl_items_boq ti ON ts.item_id = ti.id AND ts.tender_id = ti.ref_id
                 WHERE ts.tender_id = @id";
@@ -2295,7 +2305,8 @@ total_values, billed_to_dates, balances)
                         Thickness = reader["Thickness"] != DBNull.Value ? Convert.ToDecimal(reader["Thickness"]) : 0,
                         Margin_Percentage = reader["Margin_Percentage"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Percentage"]) : 0,
                         Margin_Amount = reader["Margin_Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Margin_Amount"]) : 0,
-                        Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0
+                        Total = reader["Total"] != DBNull.Value ? Convert.ToDecimal(reader["Total"]) : 0,
+                        TotalAmount = reader["TotalAmount"] != DBNull.Value ? Convert.ToDecimal(reader["TotalAmount"]) : 0
                     });
                 }
 
