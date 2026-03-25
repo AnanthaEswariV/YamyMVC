@@ -2538,6 +2538,29 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+                         CREATE TABLE IF NOT EXISTS `tbl_projects_site_setup` (
+                            `id` int NOT NULL AUTO_INCREMENT,
+                            `date` date DEFAULT NULL,
+                            `project_id` INT NOT NULL DEFAULT 0,
+                            `site` varchar(350) DEFAULT '',
+                            `tender_id` INT NOT NULL DEFAULT 0,
+                            `tender_name_id` INT NOT NULL DEFAULT 0,
+                            `start_date` date DEFAULT NULL,
+                            `end_date` date DEFAULT NULL,
+                            `budget` decimal(20, 2) DEFAULT '0.00',
+                            `subcontractor_id` INT NOT NULL DEFAULT 0,
+                            `retention_percentage` decimal(20, 2) DEFAULT '0.00',
+                            `retention` decimal(20, 2) DEFAULT '0.00',
+                            `status` varchar(50) DEFAULT '',
+                            `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+                            `created_by` int DEFAULT NULL,
+                            `modified_by` int DEFAULT NULL,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            PRIMARY KEY(`id`)
+                        ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
                         CREATE TABLE IF NOT EXISTS `tbl_project_sites` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',

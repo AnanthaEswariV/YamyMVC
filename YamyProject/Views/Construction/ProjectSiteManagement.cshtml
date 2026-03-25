@@ -36,26 +36,6 @@
                 </select>
             </div>
 
-            <!-- Project Type -->
-            <div style="min-width: 250px;">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0">Project Type</h6>
-                    <input type="checkbox" class="form-check-input autoLock" id="chkProjectType" checked>
-                </div>
-                <select class="form-select" id="projectType" disabled>
-                    <option value="">-- Select Project Type --</option>
-                    <option value="Residential">Residential</option>
-                    <option value="Commercial">Commercial</option>
-                    <option value="Industrial">Industrial</option>
-                    <option value="Infrastructure">Infrastructure</option>
-                    <option value="Institutional">Institutional</option>
-                    <option value="Renovation/Refurbishment">Renovation / Refurbishment</option>
-                    <option value="Landscaping">Landscaping</option>
-                    <option value="Specialized">Specialized</option>
-                    <option value="Government">Government</option>
-                </select>
-            </div>
-
 
             <!-- Project Status -->
             <div style="min-width: 250px;">
@@ -99,9 +79,9 @@
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Status</th>
-                    <th>Project Type</th>
                     <th>Est Budget</th>
-                    <th>Progress</th>
+                    <th>Retention %</th>
+                    <th>Retention</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -204,7 +184,7 @@
 
                         <div class="col-md-4">
                             <label for="retentionPercent" class="form-label">Retention %</label>
-                            <input type="text" class="form-control" id="retentionPercent" placeholder="Enter Retention %" />
+                            <input type="text" class="form-control" id="retentionPercent" placeholder="Enter Retention %" min="0" max="100" step="0.01"/>
                         </div>
                     </div>
 
@@ -1284,235 +1264,281 @@
                     });
                 }
 
-                function loadProjectPlanning() {
-                    const reportedBy = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
-                    const projectType = $('#chkProjectType').is(':checked') ? null : $('#projectType').val();
-                    const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
+                       function loadProjectPlanning() {
 
-                    $.ajax({
-                        url: '@Url.Action("GetProjectPlanning", "Construction")',
-                        type: 'GET',
-                        data: {
-                            projectId: reportedBy,
-                            projectType: projectType,
-                            projectStatus: projectStatus
-                        },
-                        beforeSend: function () {
-                            $('#table1 tbody').html(
-                                `<tr><td colspan="10" class="text-center text-muted py-4">
-                                    <div class="spinner-border text-primary me-2"></div>Loading...
-                                </td></tr>`
-                            );
-                        },
-                        success: function (res) {
-                            if (!res.status) {
-                                toastr.error('Failed to load project planning');
-                                return;
-                            }
-                            // Destroy the existing DataTable if it is initialized
-                            if ($.fn.DataTable.isDataTable('#table1')) {
-                                $('#table1').DataTable().clear().destroy();
-                            }
+            const projectId = $('#chkReportedBy').is(':checked') ? null : $('#projectName').val();
+            const projectStatus = $('#chkProjectStatus').is(':checked') ? null : $('#projectStatus').val();
 
-                            const tbody = $('#table1 tbody');
-                            tbody.empty();
+            $.ajax({
+                url: '@Url.Action("GetProjectPlanning", "Construction")',
+                type: 'GET',
+                data: {
+                    projectId: projectId,
+                    projectStatus: projectStatus
+                },
 
-                            if (res.data && res.data.length > 0) {
-                                $.each(res.data, function (i, row) {
-                                     const progress = row.progress != null ? parseFloat(row.progress).toFixed(2) : '0.00';
-                                    const tr = `
-                                        <tr data-id="${row.projectNo}" style="cursor:pointer;">
-                                            <td>${i + 1}</td>
-                                            <td>${row.date ?? ''}</td>
-                                            <td>${row.projectName ?? ''}</td>
-                                            <td>${row.startDate ?? ''}</td>
-                                            <td>${row.endDate ?? ''}</td>
-                                            <td>${row.status ?? ''}</td>
-                                            <td>${row.projectType ?? ''}</td>
-                                            <td>${row.estBudget ?? 0}</td>
-                                            <td>${progress ?? ''}</td>
-                                            <td>
-                                                <button class="btn btn-sm btn-primary editPlanningBtn"
-                                                        data-planning='${JSON.stringify(row)}'
-                                                        title="Edit Planning">
-                                                    <i class="fas fa-pen"></i>
-                                                </button>
-                                            </td>
-                                        </tr>`;
-                                    tbody.append(tr);
-                                });
+                beforeSend: function () {
+                    $('#table1 tbody').html(`
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-4">
+                                <div class="spinner-border text-primary me-2"></div>Loading...
+                            </td>
+                        </tr>
+                    `);
+                },
 
-                                // Initialize DataTable with export buttons
-                                $('#table1').DataTable({
-                                    dom: 'Bfrtip',
-                                    buttons: [
-                                        {
-                                            extend: 'excelHtml5',
-                                            text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                            className: 'btn btn-primary btn-sm',
-                                            exportOptions: {
-                                                columns: ':not(:last-child)'
-                                            }
-                                        },
-                                        {
-                                            extend: 'pdfHtml5',
-                                            text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                            className: 'btn btn-primary btn-sm',
-                                            exportOptions: {
-                                                columns: ':not(:last-child)'
-                                            },
-                                            orientation: 'landscape',
-                                            pageSize: 'A4'
-                                        }
-                                    ],
-                                    order: [[0, 'asc']],
-                                    pageLength: 25
-                                });
-                            } else {
-                                tbody.append(`<tr><td colspan="10" class="text-center text-muted py-4">No records found</td></tr>`);
-                            }
-                        },
-                        error: function () {
-                            toastr.error('Error loading project planning');
-                        }
-                    });
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load project planning');
+                        return;
+                    }
+
+                    // Destroy DataTable
+                    if ($.fn.DataTable.isDataTable('#table1')) {
+                        $('#table1').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table1 tbody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+
+                        $.each(res.data, function (i, row) {
+
+                            const progress = row.progress != null
+                                ? parseFloat(row.progress).toFixed(2)
+                                : '0.00';
+
+                            const tr = `
+                                <tr data-id="${row.id}" style="cursor:pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.date ?? ''}</td>
+                                    <td>${row.projectName ?? ''}</td>
+                                    <td>${row.startDate ?? ''}</td>
+                                    <td>${row.endDate ?? ''}</td>
+                                    <td>${row.status ?? ''}</td>
+                                    <td>${row.estBudget ?? 0}</td>
+                                    <td>${row.retentionPercentage ?? 0} %</td>
+                                    <td>${row.retention ?? 0} </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary editPlanningBtn"
+                                            data-planning='${JSON.stringify(row)}'
+                                            title="Edit Planning">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+
+                            tbody.append(tr);
+                        });
+
+                        // ✅ DataTable Init
+                        $('#table1').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'
+                                    }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: {
+                                        columns: ':not(:last-child)'
+                                    },
+                                    orientation: 'landscape',
+                                    pageSize: 'A4'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="11" class="text-center text-muted py-4">
+                                    No records found
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+
+                error: function () {
+                    toastr.error('Error loading project planning');
                 }
+            });
+        }
 
                 $("#addPlanningBtn").on("click", () => $("#pettyCashSection").hide());
 
                 $(document).on("click", ".editPlanningBtn", () => $("#pettyCashSection").slideDown());
 
-                $("#btnSavePlanning").on("click", function () {
+                $("#btnSavePlanning").on("click", function (e) {
+            e.preventDefault();
 
-                    // Collect form values
-                    const model = {
-                        Id: parseInt($("#planningId").val()) || 0,
-                        Date: $("#date").val(),
-                        ProjectId: parseInt($("#projectNames").val()) || 0,
-                        SiteId: parseInt($("#projectSite").val()) || 0,
-                        TenderId: parseInt($("#tenderDropdown").val()) || 0,
-                        TenderNameId: parseInt($("#tenderDropdown").val()) || 0,
-                        // AccountId: parseInt($("#debitAccount").val()) || 0,
-                        CashAccountId: parseInt($("#cashAccount").val()) || 0,
-                        EstimatedBudget: parseFloat($("#estimatedBudget").val()) || 0,
-                        Status: $("#projectStatuss").val(),
-                        ProjectType: $("#projectTypee").val(),
-                        StartDate: $("#startDate").val(),
-                        EndDate: $("#endDate").val()
-                    };
+            const model = {
+                Id: parseInt($("#planningId").val()) || 0,
+                Date: $("#date").val(),
+                ProjectId: parseInt($("#projectNames").val()) || 0,
+                SiteId: parseInt($("#projectSite").val()) || 0,
+                TenderId: parseInt($("#tenderDropdown").val()) || 0,
 
-                    // --- Validation ---
-                    if (!model.ProjectId) {
-                        toastr.warning("Please select a Project.");
-                        return;
-                    }
-                    if (!model.SiteId) {
-                        toastr.warning("Please select a Site.");
-                        return;
-                    }
-                    if (!model.TenderId || !model.TenderNameId) {
-                        toastr.warning("Please select a Tender and Tender Name.");
-                        return;
-                    }
-                    if (!model.AccountId) {
-                        toastr.warning("Please select a Fund Management Account.");
-                        return;
-                    }
-                    if (model.EstimatedBudget <= 0) {
-                        toastr.warning("Estimated Budget must be greater than zero.");
-                        return;
-                    }
-                    if (!model.Status) {
-                        toastr.warning("Please select Project Status.");
-                        return;
-                    }
-                    if (!model.ProjectType) {
-                        toastr.warning("Please select Project Type.");
-                        return;
-                    }
-                    if (!model.Date) {
-                        toastr.warning("Please select a Date.");
-                        return;
-                    }
-                    if (!model.StartDate) {
-                        toastr.warning("Please select a Start Date.");
-                        return;
-                    }
-                    if (!model.EndDate) {
-                        toastr.warning("Please select an End Date.");
-                        return;
-                    }
+                CashAccountId: parseInt($("#cashAccount").val()) || 0,
 
-                    if (new Date(model.EndDate) < new Date(model.StartDate)) {
-                        toastr.warning("End Date cannot be earlier than Start Date.");
-                        return;
-                    }
+                EstimatedBudget: parseFloat($("#boqTotal").val()) || 0, 
+                Status: $("#projectStatuss").val(),
 
-                    $.ajax({
-                       url: '@Url.Action("SaveOrUpdateProjectPlanning", "Construction")',
-                        type: 'POST',
-                        contentType: 'application/json; charset=utf-8',
-                        data: JSON.stringify(model),
-                        beforeSend: function () {
-                            $("#btnSavePlanning").prop("disabled", true).text("Saving...");
-                        },
-                        success: function (response) {
-                            if (response.status) {
-                                toastr.success(response.message || "Saved successfully!");
-                                $("#planningModal").modal("hide");
-                                loadProjectPlanning();
-                                    setTimeout(function () {
+                StartDate: $("#startDate").val(),
+                EndDate: $("#endDate").val(),
+
+                SubcontractorId: $("#subcontractor").val(), 
+                RetentionPercent: parseFloat($("#retentionPercent").val()) || 0
+            };
+
+            // --- Validation ---
+            if (!model.ProjectId) {
+                toastr.warning("Please select a Project.");
+                return;
+            }
+
+            if (!model.SiteId) {
+                toastr.warning("Please select a Site.");
+                return;
+            }
+
+            if (!model.TenderId) {
+                toastr.warning("Please select a Tender.");
+                return;
+            }
+
+            if (!model.SubcontractorId) {
+                toastr.warning("Please select a Subcontractor.");
+                return;
+            }
+
+            if (model.RetentionPercent < 0 || model.RetentionPercent > 100) {
+                toastr.warning("Retention % must be between 0 and 100.");
+                return;
+            }
+
+            if (model.EstimatedBudget <= 0) {
+                toastr.warning("Estimated Budget must be greater than zero.");
+                return;
+            }
+
+            if (!model.Status) {
+                toastr.warning("Please select Project Status.");
+                return;
+            }
+
+            if (!model.Date) {
+                toastr.warning("Please select a Date.");
+                return;
+            }
+
+            if (!model.StartDate) {
+                toastr.warning("Please select Start Date.");
+                return;
+            }
+
+            if (!model.EndDate) {
+                toastr.warning("Please select End Date.");
+                return;
+            }
+
+            if (new Date(model.EndDate) < new Date(model.StartDate)) {
+                toastr.warning("End Date cannot be earlier than Start Date.");
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("SaveOrUpdateProjectPlanning", "Construction")',
+                type: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify(model),
+
+                beforeSend: function () {
+                    $("#btnSavePlanning").prop("disabled", true).text("Saving...");
+                },
+
+                success: function (response) {
+                    if (response.status) {
+                        toastr.success(response.message || "Saved successfully!");
+                        $("#planningModal").modal("hide");
+                        loadProjectPlanning();
+
+                        setTimeout(function () {
                             location.reload();
                         }, 1500);
-                            } else {
-                                toastr.warning(response.message || "Save failed!");
-                            }
-                        },
-                        error: function (xhr) {
-                            toastr.error("Error: " + (xhr.responseText || "Unexpected error"));
-                        },
-                        complete: function () {
-                            $("#btnSavePlanning").prop("disabled", false).text("Save");
-                        }
-                    });
-                });
+                    } else {
+                        toastr.warning(response.message || "Save failed!");
+                    }
+                },
 
-                $(document).on("click", ".editPlanningBtn", function () {
-                    const planning = $(this).data("planning");
-                    if (!planning) return;
+                error: function (xhr) {
+                    toastr.error("Error: " + (xhr.responseText || "Unexpected error"));
+                },
 
-                    // Save tender ID globally
-                    currentTenderId = planning.tender_Name_Id;
-                    currentPlanningId = planning.id;
-                    // Fill modal fields
-                    $("#planningId").val(planning.id ?? 0);
-                    $("#date").val(planning.date ? planning.date.split('T')[0] : "");
-                    $("#projectNames").val(planning.project_Id ?? 0).trigger("change");
-                    $("#projectSite").val(planning.site ?? 0).trigger("change");
-                    $("#tenderDropdown").val(planning.tender_Name_Id ?? 0).trigger("change");
-                    // $("#debitAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
-                    $("#cashAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
-                    $("#estimatedBudget").val(planning.estBudget ?? 0);
-                    $("#projectStatuss").val(planning.status ?? "").trigger("change");
-                    $("#projectTypee").val(planning.projectType ?? "").trigger("change");
-                    $("#startDate").val(planning.startDate ? planning.startDate.split('T')[0] : "");
-                    $("#endDate").val(planning.endDate ? planning.endDate.split('T')[0] : "");
+                complete: function () {
+                    $("#btnSavePlanning").prop("disabled", false).text("Save");
+                }
+            });
+        });
 
-                    $("#planningModalLabel").text("Edit Project Planning");
-                    $("#btnSavePlanning").text("Update Planning");
+                      $(document).on("click", ".editPlanningBtn", function () {
+            const planning = $(this).data("planning");
+            if (!planning) return;
 
-                    $("#planningModal").modal("show");
+            console.log("Planning Data:", planning);
 
-                    // Show petty cash section & activity tab
-                    $('#pettyCashSection').slideDown();
-                    $('#activity-tab').tab('show');
-                                     // ✅ Load activity planning for the same tenderId
-                    loadActivityPlanning(currentTenderId);
-                   loadRequestMaterial(currentPlanningId);
-                   loadIssuedMaterial(currentPlanningId);
-                   loadReceivedMaterial(currentPlanningId);
-                    loadResourceList(currentPlanningId);
-                });
+            currentTenderId = planning.tender_Id;
+            currentPlanningId = planning.id;
+
+            $("#planningId").val(planning.id ?? 0);
+            $("#date").val(planning.date ?? "");
+
+                    $("#projectNames").val(planning.project_Id ?? 0);
+
+        $("#projectSite").val(planning.site ?? "").trigger("change");
+
+        $("#tenderDropdown").val(planning.tender_Id ?? 0).trigger("change");
+
+                   if (currentTenderId) {
+            loadTenderItems(currentTenderId);
+        } else {
+            $("#boqTotal").val(planning.estBudget ?? 0); 
+        }
+
+            $("#projectStatuss").val(planning.status ?? "").trigger("change");
+
+            $("#startDate").val(planning.startDate ?? "");
+            $("#endDate").val(planning.endDate ?? "");
+
+            $("#subcontractor").val(planning.subcontractorId ?? "").trigger("change");
+
+            $("#retentionPercent").val(planning.retentionPercentage ?? 0);
+
+            $("#planningModalLabel").text("Edit Project Planning");
+            $("#btnSavePlanning").text("Update Planning");
+
+            $("#planningModal").modal("show");
+
+            $('#pettyCashSection').slideDown();
+            $('#activity-tab').tab('show');
+
+            loadActivityPlanning(currentTenderId);
+            loadRequestMaterial(currentPlanningId);
+            loadIssuedMaterial(currentPlanningId);
+            loadReceivedMaterial(currentPlanningId);
+            loadResourceList(currentPlanningId);
+        });
 
                 $("#addPlanningBtn").on("click", function () {
                     $("#planningModalLabel").text("Project Site Management - New");
@@ -2609,7 +2635,6 @@
                         return;
                     }
 
-                    console.log(res);
 
                     subcontractorList = res.data;
 
@@ -2632,7 +2657,85 @@
             });
         }
 
+                function loadTenderItems(tenderId) {
+            $.ajax({
+                url: '@Url.Action("GetTenderItems", "Construction")',
+                type: 'GET',
+                data: { tenderId: tenderId },
+                success: function (res) {
 
+                    if ($.fn.DataTable.isDataTable('#table3')) {
+                        $('#table3').DataTable().clear().destroy();
+                    }
+
+                    const tbody = $('#table3 tbody');
+                    tbody.empty();
+
+                    if (res.status && res.data && res.data.length > 0) {
+
+                        $.each(res.data, function (i, item) {
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${item.itemName ?? ''}</td>
+                                    <td>${item.qty ?? 0}</td>
+                                    <td>${item.rate ?? 0}</td>
+                                    <td>${item.unit ?? ''}</td>
+                                    <td>${item.amount ?? 0}</td>
+                                    <td>${item.margin_Percentage ?? 0}</td>
+                                    <td>${item.margin_Amount ?? 0}</td>
+                                    <td>${item.total ?? 0}</td>
+                                    <td style="display:none">${item.totalAmount ?? 0}</td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        $('#table3').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm'
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm'
+                                }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 10
+                        });
+
+                        // ✅ Correct call (NO extra assignment)
+                        calculateBoqTotal(res.data);
+
+                    } else {
+                        tbody.append(`<tr><td colspan="10" class="text-center text-muted py-3">No items found</td></tr>`);
+                        $("#boqTotal").val(0);
+                    }
+                },
+                error: function () {
+                    toastr.error('Failed to load tender items');
+                }
+            });
+                }
+
+
+                    function calculateBoqTotal(data) {
+
+            if (!Array.isArray(data) || data.length === 0) {
+                $("#boqTotal").val(0);
+                return 0;
+            }
+
+            const boqTotal = parseFloat(data[0].totalAmount) || 0;
+
+            $("#boqTotal").val(boqTotal.toFixed(2));
+
+            return boqTotal;
+        }
 
     </script>
 

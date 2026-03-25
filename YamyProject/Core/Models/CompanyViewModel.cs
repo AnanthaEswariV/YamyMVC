@@ -858,21 +858,43 @@ namespace YamyProject.Core.Models
         public decimal Total { get; set; }
     }
 
+    //public class ProjectPlanningRequest
+    //{
+    //    public int Id { get; set; }
+    //    public DateTime Date { get; set; }
+    //    public int ProjectId { get; set; }
+    //    public int SiteId { get; set; }
+    //    public int TenderId { get; set; }
+    //    public int TenderNameId { get; set; }
+    //    public int AccountId { get; set; }
+    //    public int CashAccountId { get; set; }
+    //    public decimal EstimatedBudget { get; set; }
+    //    public string Status { get; set; }
+    //    public string ProjectType { get; set; }
+    //    public DateTime StartDate { get; set; }
+    //    public DateTime EndDate { get; set; }
+    //}
+
     public class ProjectPlanningRequest
     {
         public int Id { get; set; }
         public DateTime Date { get; set; }
         public int ProjectId { get; set; }
         public int SiteId { get; set; }
+        public string SiteName { get; set; } 
+
         public int TenderId { get; set; }
         public int TenderNameId { get; set; }
-        public int AccountId { get; set; }
-        public int CashAccountId { get; set; }
-        public decimal EstimatedBudget { get; set; }
-        public string Status { get; set; }
-        public string ProjectType { get; set; }
+
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
+
+        public decimal EstimatedBudget { get; set; }
+
+        public int SubcontractorId { get; set; }
+        public decimal RetentionPercent { get; set; }
+
+        public string Status { get; set; }
     }
 
     public class MaterialRequest

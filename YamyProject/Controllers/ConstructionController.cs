@@ -2123,6 +2123,1778 @@ total_values, billed_to_dates, balances)
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectPlanning(
+       int? projectId = null,
+       string? projectStatus = null)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+   SELECT 
+    ROW_NUMBER() OVER (ORDER BY p.date) AS SN,
+    p.date AS Date,
+    p.id,
+    p.id AS `P NO`,
+    CONCAT(pr.code, ' - ', pr.name) AS `Project Name`,
+    p.start_date AS `Start Date`,
+    p.end_date AS `End Date`,
+    p.status AS `Status`,
+    p.budget AS `Est Budget`,
+
+    IFNULL((
+        SELECT AVG(a.progress)
+        FROM tbl_project_activity a
+        WHERE a.planning_id = p.id
+    ), 0) AS `Progress`,
+
+    p.subcontractor_id,
+    IFNULL(sc.name, '') AS subcontractor_name,
+
+    p.retention_percentage,
+    p.retention AS retention, 
+
+    p.tender_id AS Tender_Id,
+    IFNULL(t.name, '') AS tender_name,
+
+  p.project_id AS Project_Id,
+    p.site AS Site,
+    IFNULL(ts.name, '') AS site_name
+
+FROM tbl_projects_site_setup p
+
+INNER JOIN tbl_projects pr 
+    ON p.project_id = pr.id
+
+LEFT JOIN tbl_tender_names t 
+    ON p.tender_id = t.id
+
+LEFT JOIN tbl_vendor sc 
+    ON p.subcontractor_id = sc.id 
+    AND sc.type = 'subcontractor'
+
+ LEFT JOIN tbl_project_sites ts 
+    ON p.site = ts.id 
+
+ ";
+
+                var parameters = new List<MySqlParameter>();
+
+                // ✅ Filters
+                if (projectId.HasValue)
+                {
+                    query += " AND p.project_id = @projectId";
+                    parameters.Add(new MySqlParameter("@projectId", projectId.Value));
+                }
+
+                if (!string.IsNullOrEmpty(projectStatus))
+                {
+                    query += " AND p.status = @status";
+                    parameters.Add(new MySqlParameter("@status", projectStatus));
+                }
+
+                query += " ORDER BY p.date DESC;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddRange(parameters.ToArray());
+
+                var projects = new List<object>();
+                int sn = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    projects.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+
+                        Date = reader["Date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd")
+                            : null,
+
+                        ProjectNo = reader["P NO"]?.ToString(),
+                        ProjectName = reader["Project Name"]?.ToString(),
+
+                        // ✅ SAFE NULL HANDLING
+                        SubcontractorName = reader["subcontractor_name"]?.ToString(),
+                        TenderName = reader["tender_name"]?.ToString(),
+
+                        StartDate = reader["Start Date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["Start Date"]).ToString("yyyy-MM-dd")
+                            : null,
+
+                        EndDate = reader["End Date"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["End Date"]).ToString("yyyy-MM-dd")
+                            : null,
+
+                        Status = reader["Status"]?.ToString(),
+
+                        EstBudget = reader["Est Budget"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["Est Budget"])
+                            : 0,
+
+                        Progress = reader["Progress"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["Progress"])
+                            : 0,
+
+                        SubcontractorId = reader["subcontractor_id"] != DBNull.Value
+                            ? Convert.ToInt32(reader["subcontractor_id"])
+                            : 0,
+
+                        RetentionPercentage = reader["retention_percentage"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["retention_percentage"])
+                            : 0,
+
+                        // ✅ FIXED alias
+                        Retention = reader["retention"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["retention"])
+                            : 0,
+
+                        Project_Id = reader.GetInt32("Project_Id"),
+
+                        Site = reader["Site"]?.ToString(),
+                        SiteName = reader["site_name"]?.ToString(),
+
+                        Tender_Id = reader["Tender_Id"] != DBNull.Value
+                            ? Convert.ToInt32(reader["Tender_Id"])
+                            : 0
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = projects });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectPlanning([FromBody] ProjectPlanningRequest model)
+        {
+            if (model == null)
+                return Json(new { status = false, message = "Invalid request" });
+
+            if (model.ProjectId <= 0)
+                return Json(new { status = false, message = "Select Project First." });
+
+            if (model.SiteId <= 0)
+                return Json(new { status = false, message = "Select Site First." });
+
+            if (model.TenderId <= 0)
+                return Json(new { status = false, message = "Select Tender First." });
+
+            if (model.SubcontractorId <= 0)
+                return Json(new { status = false, message = "Select Subcontractor." });
+
+            if (model.EstimatedBudget <= 0)
+                return Json(new { status = false, message = "Budget must be greater than zero." });
+
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Json(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                await using var transaction = await conn.BeginTransactionAsync();
+
+                try
+                {
+                    int recordId = 0;
+
+                    decimal retentionAmount = (model.EstimatedBudget * model.RetentionPercent) / 100;
+
+                    if (model.Id > 0)
+                    {
+                        // ✅ UPDATE
+                        string updateSql = @"
+                UPDATE tbl_projects_site_setup
+                SET 
+                    date=@date,
+                    project_id=@projectId,
+                    site=@site,
+                    tender_id=@tenderId,
+                    tender_name_id=@tenderNameId,
+                    start_date=@startDate,
+                    end_date=@endDate,
+                    budget=@budget,
+                    subcontractor_id=@subcontractorId,
+                    retention_percentage=@retentionPercentage,
+                    retention=@retention,
+                    status=@status,
+                    modified_by=@modifiedBy,
+                    updated_at=NOW()
+                WHERE id=@id;";
+
+                        await using var cmd = new MySqlCommand(updateSql, conn, (MySqlTransaction)transaction);
+
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@date", model.Date);
+                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                        cmd.Parameters.AddWithValue("@site", model.SiteId ); 
+                        cmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                        cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+                        cmd.Parameters.AddWithValue("@startDate", model.StartDate);
+                        cmd.Parameters.AddWithValue("@endDate", model.EndDate);
+                        cmd.Parameters.AddWithValue("@budget", model.EstimatedBudget);
+                        cmd.Parameters.AddWithValue("@subcontractorId", model.SubcontractorId);
+                        cmd.Parameters.AddWithValue("@retentionPercentage", model.RetentionPercent);
+                        cmd.Parameters.AddWithValue("@retention", retentionAmount);
+                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
+                        cmd.Parameters.AddWithValue("@modifiedBy", userId);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                        {
+                            await transaction.RollbackAsync();
+                            return NotFound(new { status = false, message = "Record not found" });
+                        }
+
+                        recordId = model.Id;
+                    }
+                    else
+                    {
+                        // ✅ INSERT
+                        string insertSql = @"
+                INSERT INTO tbl_projects_site_setup
+                (date, project_id, site, tender_id, tender_name_id,
+                 start_date, end_date, budget,
+                 subcontractor_id, retention_percentage, retention,
+                 status, created_by)
+                VALUES
+                (@date, @projectId, @site, @tenderId, @tenderNameId,
+                 @startDate, @endDate, @budget,
+                 @subcontractorId, @retentionPercentage, @retention,
+                 @status, @createdBy);
+                SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertSql, conn, (MySqlTransaction)transaction);
+
+                        cmd.Parameters.AddWithValue("@date", model.Date);
+                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                        cmd.Parameters.AddWithValue("@site", model.SiteId ); 
+                        cmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                        cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+                        cmd.Parameters.AddWithValue("@startDate", model.StartDate);
+                        cmd.Parameters.AddWithValue("@endDate", model.EndDate);
+                        cmd.Parameters.AddWithValue("@budget", model.EstimatedBudget);
+                        cmd.Parameters.AddWithValue("@subcontractorId", model.SubcontractorId);
+                        cmd.Parameters.AddWithValue("@retentionPercentage", model.RetentionPercent);
+                        cmd.Parameters.AddWithValue("@retention", retentionAmount);
+                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
+                        cmd.Parameters.AddWithValue("@createdBy", userId);
+
+                        var result = await cmd.ExecuteScalarAsync();
+                        recordId = result != null ? Convert.ToInt32(result) : 0;
+
+                    }
+
+
+                    //    if (model.EstimatedBudget > 0)
+                    //{
+                    //    await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), model.EstimatedBudget, 0, recordId);
+                    //    await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), 0, model.EstimatedBudget, recordId);
+                    //}
+
+
+                    await transaction.CommitAsync();
+
+                    return Ok(new { status = true, message = model.Id > 0 ? "Project Planning updated successfully" : "Project Planning created successfully", id = recordId });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return StatusCode(500, new { status = false, message = "Error: " + ex.Message });
+                }
+            }
+            catch (Exception exOuter)
+            {
+                return StatusCode(500, new { status = false, message = "Error: " + exOuter.Message });
+            }
+        }
+
+        private async Task InsertTransaction(MySqlConnection conn, MySqlTransaction trx, DateTime date, string accountId, decimal debit, decimal credit, int transactionId)
+        {
+            string insert = @"
+        INSERT INTO tbl_transaction (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state)
+        VALUES (@date, @accountId, @debit, @credit, @transactionId, 0, 'Project Planning', 'PROJECT PLANNING', 'Project Planning Invoice NO.', @createdBy, @createdDate, 0);";
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+            await using var cmd = new MySqlCommand(insert, conn, trx);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@accountId", accountId);
+            cmd.Parameters.AddWithValue("@debit", debit);
+            cmd.Parameters.AddWithValue("@credit", credit);
+            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+            cmd.Parameters.AddWithValue("@createdBy", userId);
+            cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectTenderDetails(int tenderId)
+        {
+            try
+            {
+                if (tenderId == 0)
+                    return BadRequest(new { status = false, message = "Tender ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ptd.id,
+                ptd.sr,
+                ib.name,
+                ib.id AS item_id,
+                ib.type,
+                ib.unit_name,
+                ptd.start_date,
+                ptd.end_date,
+                ptd.progress,
+                ptd.assigned,
+                ptd.tender_id
+            FROM tbl_project_tender_details ptd
+            INNER JOIN tbl_items_boq ib 
+                ON ptd.tender_id = @tenderId 
+                AND ptd.item_id = ib.id";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+
+                var items = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    // Format dates
+                    string startDate = reader["start_date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd")
+                        : DateTime.Now.ToString("yyyy-MM-dd");
+
+                    string endDate = reader["end_date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd")
+                        : DateTime.Now.ToString("yyyy-MM-dd");
+
+                    // Assigned employee
+                    string empId = reader["assigned"] != DBNull.Value ? reader["assigned"].ToString() : "0";
+
+                    // Progress
+                    string progress = reader["progress"] != DBNull.Value
+                        ? decimal.Parse(reader["progress"].ToString()).ToString("#.##")
+                        : "0";
+
+                    items.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        SR = reader["sr"].ToString(),
+                        Name = reader["name"].ToString(),
+                        StartDate = startDate,
+                        EndDate = endDate,
+                        Progress = progress,
+                        Assigned = empId,
+                        ItemId = reader["item_id"].ToString(),
+                        Type = reader["type"].ToString(),
+                        UnitName = reader["unit_name"].ToString(),
+                        Tender_Id = reader.GetInt32("tender_id")
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #region Tab Get API
+
+        [HttpGet]
+        public async Task<IActionResult> GetRequestedMaterial(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                rm.id,
+                rm.RequestedQty AS qty,
+                rm.RequestedDate AS date,
+                rm.unit,
+                boq.sr,
+                boq.name,
+                CASE 
+                    WHEN rm.ReceivedQty > 0 THEN 'Received' 
+                    WHEN rm.IssuedQty > 0 THEN 'Issued' 
+                    ELSE 'Requested' 
+                END AS status
+            FROM tbl_project_material_requests rm
+            INNER JOIN tbl_items_boq boq 
+                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+            WHERE rm.planning_id = @planningId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var materialRequests = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string requestedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    materialRequests.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = requestedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = materialRequests
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetIssuedMaterial(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            rm.id,
+            rm.IssuedQty AS qty,
+            rm.IssuedDate AS date,
+            rm.unit,
+            boq.sr,
+            boq.name,
+            CASE 
+                WHEN rm.ReceivedQty > 0 THEN 'Received' 
+                WHEN rm.IssuedQty > 0 THEN 'Issued' 
+                ELSE 'Requested' 
+            END AS status
+        FROM tbl_project_material_requests rm
+        INNER JOIN tbl_items_boq boq 
+            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+        WHERE rm.IssuedQty > 0 AND rm.planning_id = @planningId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var issuedItems = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string issuedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    issuedItems.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = issuedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = issuedItems });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetReceivedMaterial(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            rm.id,
+            rm.ReceivedQty AS qty,
+            rm.IssuedDate AS date,
+            rm.unit,
+            boq.sr,
+            boq.name,
+            CASE 
+                WHEN rm.ReceivedQty > 0 THEN 'Received' 
+                WHEN rm.IssuedQty > 0 THEN 'Issued' 
+                ELSE 'Requested' 
+            END AS status
+        FROM tbl_project_material_requests rm
+        INNER JOIN tbl_items_boq boq 
+            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+        WHERE rm.ReceivedQty > 0 AND rm.planning_id = @planningId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var receivedItems = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string receivedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    receivedItems.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = receivedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = receivedItems });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetResourceData(int planningId)
+        {
+            try
+            {
+                if (planningId == 0)
+                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+   SELECT 
+    pr.id,
+    pr.code,
+    pr.name,
+    r.name AS roleName,
+    pr.type,
+    pr.price_unit,
+    pr.unit_time,
+    pr.max_unit_time,
+    p.id AS PlanningId
+FROM tbl_project_resource pr
+INNER JOIN tbl_project_role r ON r.id = pr.role
+INNER JOIN tbl_project_planning p 
+    ON p.id = @planningId
+    AND FIND_IN_SET(pr.id, p.assigned_team) > 0;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var resources = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    resources.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        Code = reader["code"].ToString(),
+                        PlanningId = reader.GetInt32("PlanningId"),
+                        ResourceName = reader["name"].ToString(),
+                        ResourceType = reader["type"].ToString(),
+                        PrimaryRole = reader["roleName"].ToString(),
+                        DefaultUnitsTime = reader["price_unit"] != DBNull.Value ? Convert.ToDecimal(reader["price_unit"]).ToString("N2") : "0.00"
+                    });
+                }
+
+                return Ok(new { status = true, message = "Success", data = resources });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateMaterialRequest([FromBody] MaterialRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.TenderId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Tender" });
+
+            if (model.PlanningId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Planning ID" });
+
+            if (model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Please add at least one item" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 If Id == 0 => INSERT all
+                if (model.Id == 0)
+                {
+                    foreach (var item in model.Items)
+                    {
+                        if (item.ItemId == null || item.ItemId <= 0)
+                            continue;
+
+                        string insertQuery = @"
+                    INSERT INTO tbl_project_material_requests
+                        (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
+                    VALUES
+                        (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
+
+                        await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                        insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                        insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                        insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                        insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                        insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                        insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new { status = true, message = "Material requests inserted successfully" });
+                }
+                else
+                {
+                    // 🔹 If Id > 0 => UPDATE all
+                    foreach (var item in model.Items)
+                    {
+                        if (item.ItemId == null || item.ItemId <= 0)
+                            continue;
+
+                        // Get the record ID if passed in (optional per item)
+                        int rowId = item.Id ?? 0;
+
+                        if (rowId > 0)
+                        {
+                            // Update by row ID
+                            string updateQuery = @"
+                        UPDATE tbl_project_material_requests 
+                        SET RequestedDate = @requestedDate,
+                            itemId = @itemId,
+                            unit = @unit,
+                            RequestedQty = @qty
+                        WHERE id = @id;";
+
+                            await using var updateCmd = new MySqlCommand(updateQuery, conn);
+                            updateCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                            updateCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                            updateCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                            updateCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+                            updateCmd.Parameters.AddWithValue("@id", rowId);
+
+                            await updateCmd.ExecuteNonQueryAsync();
+                        }
+                        else
+                        {
+                            // If no ID for this row, insert as new
+                            string insertQuery = @"
+                        INSERT INTO tbl_project_material_requests
+                            (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
+                        VALUES
+                            (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
+
+                            await using var insertCmd = new MySqlCommand(insertQuery, conn);
+                            insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                            insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                            insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+                            insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+                            insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+                            insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+
+                            await insertCmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    return Ok(new { status = true, message = "Material requests updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetItemsByTenderId(int tenderId)
+        {
+            if (tenderId <= 0)
+            {
+                return BadRequest(new { status = false, message = "Invalid Tender ID" });
+            }
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Query to fetch items associated with the tenderId
+                string query = @"
+            SELECT 
+                CONCAT(tbl_items_boq.sr, ' - ', tbl_items_boq.name) AS name,
+                tbl_items_boq.id,
+                tbl_items_boq.qty,
+                tbl_items_boq.unit_name 
+            FROM tbl_project_tender_details 
+            INNER JOIN tbl_items_boq 
+                ON tbl_project_tender_details.tender_id = ref_id 
+                AND tbl_project_tender_details.item_id = tbl_items_boq.id
+            WHERE tbl_project_tender_details.tender_id = @tenderId";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+
+                var dt = new DataTable();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    dt.Load(reader);
+                }
+
+                var items = dt.AsEnumerable()
+                    .Select(row => new
+                    {
+                        Name = row["name"].ToString(),
+                        Id = Convert.ToInt32(row["id"]),
+                        Qty = Convert.ToDecimal(row["qty"]).ToString("F2"),
+                        Unit = row["unit_name"].ToString()
+                    })
+                    .ToList();
+
+                return Ok(new { status = true, data = items });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+        }
+
+        #region Add Dropdown API
+
+        [HttpGet]
+        public async Task<IActionResult> GetRequestedData(int planningId)
+        {
+            if (planningId <= 0)
+                return BadRequest(new { status = false, message = "Planning ID is required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                rm.id,
+                rm.RequestedQty AS qty,
+                rm.RequestedDate AS date,
+                rm.unit,
+                rm.itemId As ItemId,
+                boq.sr,
+                boq.name,
+                'Requested' AS status
+            FROM tbl_project_material_requests rm
+            INNER JOIN tbl_items_boq boq 
+                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+            WHERE rm.planning_id = @planningId
+              AND rm.RequestedDate IS NOT NULL
+              AND rm.IssuedDate IS NULL
+              AND rm.ReceivedDate IS NULL;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var materialRequests = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string requestedDate = reader["date"] != DBNull.Value
+                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+                        : "";
+
+                    materialRequests.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        Date = requestedDate,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = "Requested",
+                        ItemId = reader.GetInt32("ItemId")
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = materialRequests
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateIssueMaterial([FromBody] IssueMaterialModel model)
+        {
+            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Invalid data provided" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            UPDATE tbl_project_material_requests 
+            SET IssuedDate = @IssuedDate, IssuedQty = @IssuedQty
+            WHERE planning_id = @PlanningId 
+              AND tender_id = @TenderId 
+              AND itemId = @ItemId;";
+
+                foreach (var item in model.Items)
+                {
+                    await using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
+                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
+                    cmd.Parameters.AddWithValue("@IssuedDate", model.IssueDate);
+                    cmd.Parameters.AddWithValue("@IssuedQty", item.IssuedQty);
+                    await cmd.ExecuteNonQueryAsync();
+
+                }
+
+                return Ok(new { status = true, message = "Issue Material updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPendingReceivedMaterials(int planningId)
+        {
+            if (planningId <= 0)
+                return BadRequest(new { status = false, message = "Planning ID is required" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                rm.id,
+                rm.RequestedQty AS qty,
+                rm.RequestedDate,
+                rm.IssuedDate,
+                rm.ReceivedDate,
+                rm.unit,
+                rm.itemId AS ItemId,
+                boq.sr,
+                boq.name,
+                'Issued' AS status
+            FROM tbl_project_material_requests rm
+            INNER JOIN tbl_items_boq boq 
+                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+            WHERE rm.planning_id = @planningId
+              AND rm.ReceivedDate IS NULL;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                var materialRequests = new List<object>();
+                int count = 1;
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    materialRequests.Add(new
+                    {
+                        SNo = count++,
+                        Id = reader["id"].ToString(),
+                        PlanningId = planningId,
+                        RequestedDate = reader["RequestedDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["RequestedDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        IssuedDate = reader["IssuedDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["IssuedDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        ReceivedDate = reader["ReceivedDate"] != DBNull.Value
+                            ? Convert.ToDateTime(reader["ReceivedDate"]).ToString("yyyy-MM-dd")
+                            : null,
+                        Name = $"{reader["sr"]} - {reader["name"]}",
+                        Unit = reader["unit"].ToString(),
+                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+                        Status = reader["status"].ToString(),
+                        ItemId = reader.GetInt32("ItemId")
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = materialRequests
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateReceiveMaterial([FromBody] ReceiveMaterialModel model)
+        {
+            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
+                return BadRequest(new { status = false, message = "Invalid data provided" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Ensure we always use today if no date provided
+                var receiveDate = model.ReceiveDate == default ? DateTime.Today : model.ReceiveDate;
+
+                string query = @"
+            UPDATE tbl_project_material_requests 
+            SET ReceivedDate = @ReceivedDate, ReceivedQty = @ReceivedQty
+            WHERE planning_id = @PlanningId 
+              AND tender_id = @TenderId 
+              AND itemId = @ItemId;";
+
+                foreach (var item in model.Items)
+                {
+                    await using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
+                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
+                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
+                    cmd.Parameters.AddWithValue("@ReceivedDate", receiveDate);
+                    cmd.Parameters.AddWithValue("@ReceivedQty", item.ReceivedQty);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+
+                    if (affected == 0)
+                    {
+                        Console.WriteLine($"No rows updated for ItemId={item.ItemId}, PlanningId={model.PlanningId}, TenderId={model.TenderId}");
+                    }
+                }
+
+                return Ok(new { status = true, message = "Received material updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectResources(int? planningId = null)
+        {
+            try
+            {
+                // Validate session
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // Build connection dynamically
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Base query to load all resources
+                string query = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY pr.id) AS SN,
+                pr.id,
+                pr.code,
+                pr.date,
+                pr.name,
+                r.name AS roleName,
+                pr.phone,
+                pr.type,
+                pr.price_unit,
+                pr.unit_time,
+                pr.max_unit_time
+            FROM tbl_project_resource pr
+            INNER JOIN tbl_project_role r ON r.id = pr.role;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var resources = new List<dynamic>();
+                while (await reader.ReadAsync())
+                {
+                    resources.Add(new
+                    {
+                        sn = reader.GetInt32("SN"),
+                        id = reader.GetInt32("id"),
+                        code = reader["code"].ToString(),
+                        name = reader["name"].ToString(),
+                        type = reader["type"].ToString(),
+                        roleName = reader["roleName"].ToString(),
+                        unitTime = reader["unit_time"].ToString(),
+                        priceUnit = reader["price_unit"].ToString(),
+                        maxUnitTime = reader["max_unit_time"].ToString(),
+                        phone = reader["phone"].ToString(),
+                        date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
+                        selected = false // will be updated later if planningId is provided
+                    });
+                }
+
+                await reader.CloseAsync();
+
+                // If planningId is provided, mark assigned resources as selected
+                if (planningId.HasValue)
+                {
+                    string assignedQuery = @"
+                SELECT id 
+                FROM tbl_project_resource 
+                WHERE EXISTS (
+                    SELECT 1 FROM tbl_project_planning p 
+                    WHERE p.id = @planningId 
+                    AND FIND_IN_SET(tbl_project_resource.id, p.assigned_team) > 0
+                );
+            ";
+
+                    await using var assignedCmd = new MySqlCommand(assignedQuery, conn);
+                    assignedCmd.Parameters.AddWithValue("@planningId", planningId.Value);
+
+                    var assignedIds = new List<int>();
+                    await using var assignedReader = await assignedCmd.ExecuteReaderAsync();
+                    while (await assignedReader.ReadAsync())
+                        assignedIds.Add(assignedReader.GetInt32("id"));
+
+                    foreach (var res in resources)
+                    {
+                        if (assignedIds.Contains((int)res.id))
+                            res.selected = true;
+                    }
+                }
+
+                return Ok(new { status = true, data = resources });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateRole([FromBody] ProjectRoleRequest model)
+        {
+
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request" });
+
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return Json(new { status = false, message = "Please enter Role Name" });
+
+                try
+                {
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Unauthorized(new { status = false, message = "User not logged in" });
+
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+
+                    // 1️⃣ Check if role name already exists
+                    string checkQuery = "SELECT id FROM tbl_project_role WHERE name=@name";
+                    await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        var existingId = await checkCmd.ExecuteScalarAsync();
+
+                        if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+                        {
+                            return Json(new { status = false, message = "Role name already in use" });
+                        }
+                    }
+
+                    // 2️⃣ Generate role code automatically (R1, R2, R3...)
+                    string roleCode = model.Id == 0 ? await GenerateNextRoleCode(conn) : model.Code;
+
+                    if (model.Id == 0)
+                    {
+                        // 3️⃣ Insert new role
+                        string insertQuery = @"
+                INSERT INTO tbl_project_role (code, name)
+                VALUES (@code, @name);
+                SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertQuery, conn);
+                        cmd.Parameters.AddWithValue("@code", roleCode);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Role inserted successfully",
+                            id = newId,
+                            code = roleCode
+                        });
+                    }
+                    else
+                    {
+                        // 4️⃣ Update existing role
+                        string updateQuery = "UPDATE tbl_project_role SET name=@name, code=@code WHERE id=@id";
+                        await using var cmd = new MySqlCommand(updateQuery, conn);
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                        cmd.Parameters.AddWithValue("@code", roleCode);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                            return NotFound(new { status = false, message = "Role not found" });
+
+                        // Optional: Audit log
+                        string audit = "INSERT INTO tbl_audit_log (user_id, action, module, ref_id, description) VALUES (@user_id, @action, @module, @ref_id, @desc)";
+                        await using (var auditCmd = new MySqlCommand(audit, conn))
+                        {
+                            auditCmd.Parameters.AddWithValue("@user_id", userId);
+                            auditCmd.Parameters.AddWithValue("@action", "Update Project Role");
+                            auditCmd.Parameters.AddWithValue("@module", "Project Role");
+                            auditCmd.Parameters.AddWithValue("@ref_id", model.Id);
+                            auditCmd.Parameters.AddWithValue("@desc", "Updated Project Role: " + model.Name);
+                            await auditCmd.ExecuteNonQueryAsync();
+                        }
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Role updated successfully",
+                            id = model.Id,
+                            code = roleCode
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextRoleCode(MySqlConnection conn)
+        {
+            try
+            {
+                string query = "SELECT code FROM tbl_project_role ORDER BY id DESC LIMIT 1";
+                await using var cmd = new MySqlCommand(query, conn);
+                var lastCodeObj = await cmd.ExecuteScalarAsync();
+
+                if (lastCodeObj == null || string.IsNullOrWhiteSpace(lastCodeObj.ToString()))
+                    return "R1";
+
+                string lastCode = lastCodeObj.ToString();
+                if (int.TryParse(lastCode.Replace("R", ""), out int num))
+                    return $"R{num + 1}";
+
+                return "R1";
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetRoles()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = "SELECT id, code, name FROM tbl_project_role ORDER BY id ASC";
+                var roles = new List<object>();
+
+                await using (var cmd = new MySqlCommand(query, conn))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        roles.Add(new
+                        {
+                            id = reader.GetInt32("id"),
+                            code = reader.GetString("code"),
+                            name = reader.GetString("name")
+                        });
+                    }
+                }
+
+                return Ok(new { status = true, data = roles });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectResource([FromBody] ProjectResourceRequest model)
+        {
+
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request" });
+
+                if (string.IsNullOrWhiteSpace(model.Role))
+                    return Json(new { status = false, message = "Role can't be empty" });
+
+                if (string.IsNullOrWhiteSpace(model.Name))
+                    return Json(new { status = false, message = "Name can't be empty" });
+
+                if (model.Type == "Labour" && (model.EmployeeId == null || model.EmployeeId <= 0))
+                    return Json(new { status = false, message = "Employee name can't be empty" });
+
+                try
+                {
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Json(new { status = false, message = "User not logged in" });
+
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+
+                    // 🔹 Auto-generate code if empty
+                    string resourceCode = string.IsNullOrEmpty(model.Code)
+                        ? await GenerateNextResourceCode(conn)
+                        : model.Code;
+
+                    if (model.Id == 0)
+                    {
+                        // 🟩 INSERT new resource
+                        string insertQuery = @"
+                INSERT INTO tbl_project_resource
+                (code, date, name, role, phone, type, price_unit, unit_time, max_unit_time, employee_id)
+                VALUES (@code, @date, @name, @role, @phone, @type, @priceUnit, @unitTime, @maxUnitTime, @empId);
+                SELECT LAST_INSERT_ID();";
+
+                        await using var cmd = new MySqlCommand(insertQuery, conn);
+                        cmd.Parameters.AddWithValue("@code", resourceCode);
+                        cmd.Parameters.AddWithValue("@date", model.Date);
+                        cmd.Parameters.AddWithValue("@name", model.Name);
+                        cmd.Parameters.AddWithValue("@role", model.Role);
+                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
+                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
+                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
+
+                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Resource inserted successfully",
+                            id = newId,
+                            code = resourceCode
+                        });
+                    }
+                    else
+                    {
+                        // 🟦 UPDATE existing resource
+                        string updateQuery = @"
+                UPDATE tbl_project_resource
+                SET date = @date, name = @name, role = @role, phone = @phone, type = @type,
+                    code = @code, price_unit = @priceUnit, unit_time = @unitTime,
+                    max_unit_time = @maxUnitTime, employee_id = @empId
+                WHERE id = @id";
+
+                        await using var cmd = new MySqlCommand(updateQuery, conn);
+                        cmd.Parameters.AddWithValue("@id", model.Id);
+                        cmd.Parameters.AddWithValue("@code", resourceCode);
+                        cmd.Parameters.AddWithValue("@date", model.Date);
+                        cmd.Parameters.AddWithValue("@name", model.Name);
+                        cmd.Parameters.AddWithValue("@role", model.Role);
+                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
+                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
+                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
+                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
+
+                        int affected = await cmd.ExecuteNonQueryAsync();
+                        if (affected == 0)
+                            return NotFound(new { status = false, message = "Resource not found" });
+
+                        return Ok(new
+                        {
+                            status = true,
+                            message = "Resource updated successfully",
+                            id = model.Id,
+                            code = resourceCode
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Json(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+
+        }
+
+        private async Task<string> GenerateNextResourceCode(MySqlConnection conn)
+        {
+            try
+            {
+                string query = "SELECT code FROM tbl_project_resource ORDER BY id DESC LIMIT 1";
+                await using var cmd = new MySqlCommand(query, conn);
+                var lastCodeObj = await cmd.ExecuteScalarAsync();
+
+                if (lastCodeObj == null)
+                    return "RS1";
+
+                string lastCode = lastCodeObj.ToString();
+                if (int.TryParse(lastCode.Replace("RS", ""), out int num))
+                    return $"RS{num + 1}";
+                return "RS1";
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AssignResources([FromBody] AssignResourcesRequest model)
+        {
+            try
+            {
+                if (model == null || model.PlanningId <= 0)
+                    return Json(new { status = false, message = "Invalid request" });
+
+                try
+                {
+                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    if (userId <= 0)
+                        return Json(new { status = false, message = "User not logged in" });
+
+                    // Convert list of ResourceIds to comma-separated string
+                    string assignedTeam = model.ResourceIds != null && model.ResourceIds.Count > 0
+                        ? string.Join(",", model.ResourceIds)
+                        : "";
+
+                    // Build connection string
+                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                    {
+                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                    };
+
+                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                    await conn.OpenAsync();
+
+                    // Update assigned_team
+                    string updateQuery = "UPDATE tbl_project_planning SET assigned_team=@assignedTeam WHERE id=@id";
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@assignedTeam", assignedTeam);
+                    cmd.Parameters.AddWithValue("@id", model.PlanningId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+
+                    if (affected > 0)
+                    {
+                        return Ok(new { status = true, message = "Resources assigned successfully", assignedTeam });
+                    }
+                    else
+                    {
+                        return Json(new { status = false, message = "Planning record not found" });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Json(500, new { status = false, message = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+            }
+
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetAssignedResources(int planningId)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                pr.id, 
+                pr.code, 
+                pr.date, 
+                pr.name, 
+                r.name AS roleName, 
+                pr.phone, 
+                pr.type, 
+                pr.price_unit, 
+                pr.unit_time, 
+                pr.max_unit_time
+            FROM tbl_project_resource pr
+            JOIN tbl_project_role r ON r.id = pr.role
+            WHERE EXISTS (
+                SELECT 1 
+                FROM tbl_project_planning p 
+                WHERE p.id = @planningId 
+                  AND FIND_IN_SET(pr.id, p.assigned_team) > 0
+            );";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var resourceList = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    resourceList.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"]?.ToString(),
+                        Name = reader["name"]?.ToString(),
+                    });
+                }
+
+                return Ok(new { status = true, data = resourceList });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrUpdateProjectActivity([FromBody] ProjectActivityRequest model)
+        {
+            try
+            {
+                if (model == null)
+                    return Json(new { status = false, message = "Invalid request data." });
+
+                if (model.PlanningId <= 0)
+                    return Json(new { status = false, message = "Planning ID is required." });
+
+                if (model.TenderId <= 0)
+                    return Json(new { status = false, message = "Tender ID is required." });
+
+                if (model.ItemId <= 0)
+                    return Json(new { status = false, message = "Item ID is required." });
+
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Json(new { status = false, message = "User not logged in." });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                int progress = model.Progress ?? 0;
+                DateTime startDate = model.StartDate ?? DateTime.Today;
+                DateTime endDate = model.EndDate ?? DateTime.Today;
+                string status = progress == 100 ? "Completed" :
+                                (DateTime.Today >= startDate ? "In Progress" : "Not Started");
+
+
+                int activityId = 0;
+
+                //if (model.Id <= 0)
+                //{
+                // INSERT
+                string insertQuery = @"
+        INSERT INTO tbl_project_activity 
+            (planning_id, code, name, start_date, end_date, progress, status)
+        VALUES (@planningId, @code, @name, @startDate, @endDate, @progress, @status);
+        SELECT LAST_INSERT_ID();";
+
+                await using var cmd = new MySqlCommand(insertQuery, conn);
+                cmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                cmd.Parameters.AddWithValue("@code", model.ItemId);
+                cmd.Parameters.AddWithValue("@name", model.ItemId);
+                cmd.Parameters.AddWithValue("@startDate", startDate);
+                cmd.Parameters.AddWithValue("@endDate", endDate);
+                cmd.Parameters.AddWithValue("@progress", progress);
+                cmd.Parameters.AddWithValue("@status", status);
+
+                activityId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                //}
+
+
+                // -------------------------
+                // Assign Resources
+                // -------------------------
+                if (model.AssignedResources != null && model.AssignedResources.Any())
+                {
+                    foreach (var resId in model.AssignedResources)
+                    {
+                        string insertAssignment = @"
+                    INSERT INTO tbl_project_activity_assignment (activity_id, resource_id)
+                    VALUES (@activityId, @resourceId);";
+
+                        await using var assignCmd = new MySqlCommand(insertAssignment, conn);
+                        assignCmd.Parameters.AddWithValue("@activityId", activityId);
+                        assignCmd.Parameters.AddWithValue("@resourceId", resId);
+                        await assignCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                // -------------------------
+                // Update Tender Details
+                // -------------------------
+                string updateTender = @"
+            UPDATE tbl_project_tender_details 
+            SET start_date=@startDate, end_date=@endDate, progress=@progress
+            WHERE item_id=@itemId AND tender_id=@tenderId;";
+
+                await using (var tenderCmd = new MySqlCommand(updateTender, conn))
+                {
+                    tenderCmd.Parameters.AddWithValue("@itemId", model.ItemId);
+                    tenderCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+                    tenderCmd.Parameters.AddWithValue("@startDate", startDate);
+                    tenderCmd.Parameters.AddWithValue("@endDate", endDate);
+                    tenderCmd.Parameters.AddWithValue("@progress", progress);
+                    await tenderCmd.ExecuteNonQueryAsync();
+
+                    var affectedRows = await tenderCmd.ExecuteNonQueryAsync();
+                    if (affectedRows == 0)
+                        Console.WriteLine("No tender row updated! Check ItemId/TenderId combination.");
+
+                }
+
+                // -------------------------
+                // Update Project Planning
+                // -------------------------
+                string updatePlanning = @"
+            UPDATE tbl_project_planning
+            SET modified_by = @modifiedBy,
+                modified_date = @modifiedDate,
+                progress = @progress
+            WHERE id = @planningId;";
+
+                await using (var planningCmd = new MySqlCommand(updatePlanning, conn))
+                {
+                    planningCmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    planningCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+                    planningCmd.Parameters.AddWithValue("@progress", 0); // default progress
+                    planningCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+                    await planningCmd.ExecuteNonQueryAsync();
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = model.Id == 0 ? "Activity inserted successfully" : "Activity updated successfully",
+                    id = activityId,
+                    progress = progress,
+                    statusText = status
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Project Site Work
@@ -3383,1740 +5155,1740 @@ total_values, billed_to_dates, balances)
 
         //#endregion
 
-        #region Project Planning
+//        #region Project Planning
 
-        public IActionResult ProjectPlanning()
-        {
-            return View();
-        }
+//        public IActionResult ProjectPlanning()
+//        {
+//            return View();
+//        }
 
-        [HttpGet]
-        public async Task<IActionResult> GetProjectPlanning(
-           int? projectId = null,
-           string? projectStatus = null,
-           string? projectType = null)
-        {
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
+//        [HttpGet]
+//        public async Task<IActionResult> GetProjectPlanning(
+//           int? projectId = null,
+//           string? projectStatus = null,
+//           string? projectType = null)
+//        {
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
 
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
 
-                string query = @"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY p.date) AS SN,
-                p.date AS Date,
-                p.id,
-                p.id AS `P NO`,
-                CONCAT(pr.code, ' - ', pr.name) AS `Project Name`,
-                p.start_date AS `Start Date`,
-                p.end_date AS `End Date`,
-                p.status AS `Status`,
-                p.project_type AS `Project Type`,
-                p.estimated_budget AS `Est Budget`,
-                IFNULL((
-    SELECT AVG(a.progress)
-    FROM tbl_project_activity a
-    WHERE a.planning_id = p.id
-), 0) AS `Progress`,
-                p.fund_account_id As `Fund_Account_Id`,
-                p.project_id As `Project_Id`,
-                p.site As `Site`,
-                p.tender_name_id As `Tender_Name_Id` 
-            FROM tbl_project_planning p
-            INNER JOIN tbl_projects pr ON p.project_id = pr.id
-            WHERE p.state = 0";
+//                string query = @"
+//            SELECT 
+//                ROW_NUMBER() OVER (ORDER BY p.date) AS SN,
+//                p.date AS Date,
+//                p.id,
+//                p.id AS `P NO`,
+//                CONCAT(pr.code, ' - ', pr.name) AS `Project Name`,
+//                p.start_date AS `Start Date`,
+//                p.end_date AS `End Date`,
+//                p.status AS `Status`,
+//                p.project_type AS `Project Type`,
+//                p.estimated_budget AS `Est Budget`,
+//                IFNULL((
+//    SELECT AVG(a.progress)
+//    FROM tbl_project_activity a
+//    WHERE a.planning_id = p.id
+//), 0) AS `Progress`,
+//                p.fund_account_id As `Fund_Account_Id`,
+//                p.project_id As `Project_Id`,
+//                p.site As `Site`,
+//                p.tender_name_id As `Tender_Name_Id` 
+//            FROM tbl_project_planning p
+//            INNER JOIN tbl_projects pr ON p.project_id = pr.id
+//            WHERE p.state = 0";
 
-                var parameters = new List<MySqlParameter>();
+//                var parameters = new List<MySqlParameter>();
 
-                // --- Apply filters only if values are provided ---
-                if (projectId.HasValue)
-                {
-                    query += " AND p.project_id = @projectId";
-                    parameters.Add(new MySqlParameter("@projectId", projectId.Value));
-                }
+//                // --- Apply filters only if values are provided ---
+//                if (projectId.HasValue)
+//                {
+//                    query += " AND p.project_id = @projectId";
+//                    parameters.Add(new MySqlParameter("@projectId", projectId.Value));
+//                }
 
-                if (!string.IsNullOrEmpty(projectStatus))
-                {
-                    query += " AND p.status = @status";
-                    parameters.Add(new MySqlParameter("@status", projectStatus));
-                }
+//                if (!string.IsNullOrEmpty(projectStatus))
+//                {
+//                    query += " AND p.status = @status";
+//                    parameters.Add(new MySqlParameter("@status", projectStatus));
+//                }
 
-                if (!string.IsNullOrEmpty(projectType))
-                {
-                    query += " AND p.project_type = @type";
-                    parameters.Add(new MySqlParameter("@type", projectType));
-                }
+//                if (!string.IsNullOrEmpty(projectType))
+//                {
+//                    query += " AND p.project_type = @type";
+//                    parameters.Add(new MySqlParameter("@type", projectType));
+//                }
 
-                query += " GROUP BY p.id, p.date, p.estimated_budget;";
+//                query += " GROUP BY p.id, p.date, p.estimated_budget;";
 
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddRange(parameters.ToArray());
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddRange(parameters.ToArray());
 
-                var projects = new List<object>();
-                int sn = 1;
+//                var projects = new List<object>();
+//                int sn = 1;
 
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    projects.Add(new
-                    {
-                        SN = sn++,
-                        Id = reader.GetInt32("Id"),
-                        Date = reader["Date"] != DBNull.Value
-                            ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd")
-                            : null,
-                        ProjectNo = reader["P NO"].ToString(),
-                        ProjectName = reader["Project Name"].ToString(),
-                        StartDate = reader["Start Date"] != DBNull.Value
-                            ? Convert.ToDateTime(reader["Start Date"]).ToString("yyyy-MM-dd")
-                            : null,
-                        EndDate = reader["End Date"] != DBNull.Value
-                            ? Convert.ToDateTime(reader["End Date"]).ToString("yyyy-MM-dd")
-                            : null,
-                        Status = reader["Status"].ToString(),
-                        ProjectType = reader["Project Type"].ToString(),
-                        EstBudget = reader["Est Budget"] != DBNull.Value
-                            ? Convert.ToDecimal(reader["Est Budget"])
-                            : 0,
-                        Progress = reader["Progress"].ToString(),
-                        Fund_Account_Id = reader.GetInt32("Fund_Account_Id"),
-                        Project_Id = reader.GetInt32("Project_Id"),
-                        Site = reader.GetInt32("Site"),
-                        Tender_Name_Id = reader.GetInt32("Tender_Name_Id"),
-                    });
-                }
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    projects.Add(new
+//                    {
+//                        SN = sn++,
+//                        Id = reader.GetInt32("Id"),
+//                        Date = reader["Date"] != DBNull.Value
+//                            ? Convert.ToDateTime(reader["Date"]).ToString("yyyy-MM-dd")
+//                            : null,
+//                        ProjectNo = reader["P NO"].ToString(),
+//                        ProjectName = reader["Project Name"].ToString(),
+//                        StartDate = reader["Start Date"] != DBNull.Value
+//                            ? Convert.ToDateTime(reader["Start Date"]).ToString("yyyy-MM-dd")
+//                            : null,
+//                        EndDate = reader["End Date"] != DBNull.Value
+//                            ? Convert.ToDateTime(reader["End Date"]).ToString("yyyy-MM-dd")
+//                            : null,
+//                        Status = reader["Status"].ToString(),
+//                        ProjectType = reader["Project Type"].ToString(),
+//                        EstBudget = reader["Est Budget"] != DBNull.Value
+//                            ? Convert.ToDecimal(reader["Est Budget"])
+//                            : 0,
+//                        Progress = reader["Progress"].ToString(),
+//                        Fund_Account_Id = reader.GetInt32("Fund_Account_Id"),
+//                        Project_Id = reader.GetInt32("Project_Id"),
+//                        Site = reader.GetInt32("Site"),
+//                        Tender_Name_Id = reader.GetInt32("Tender_Name_Id"),
+//                    });
+//                }
 
-                return Ok(new { status = true, message = "Success", data = projects });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
+//                return Ok(new { status = true, message = "Success", data = projects });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
 
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateProjectPlanning([FromBody] ProjectPlanningRequest model)
-        {
-            if (model == null)
-                return Json(new { status = false, message = "Invalid request" });
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateProjectPlanning([FromBody] ProjectPlanningRequest model)
+//        {
+//            if (model == null)
+//                return Json(new { status = false, message = "Invalid request" });
 
-            if (model.ProjectId <= 0)
-                return Json(new { status = false, message = "Select Project First." });
+//            if (model.ProjectId <= 0)
+//                return Json(new { status = false, message = "Select Project First." });
 
-            if (model.EstimatedBudget <= 0)
-                return Json(new { status = false, message = "Budget Must Be Bigger Than Zero" });
+//            if (model.EstimatedBudget <= 0)
+//                return Json(new { status = false, message = "Budget Must Be Bigger Than Zero" });
 
-            if (model.TenderId <= 0)
-                return Json(new { status = false, message = "Tender is not initiated for this project" });
+//            if (model.TenderId <= 0)
+//                return Json(new { status = false, message = "Tender is not initiated for this project" });
 
-            if (model.TenderNameId <= 0)
-                return Json(new { status = false, message = "Select Tender Name First." });
+//            if (model.TenderNameId <= 0)
+//                return Json(new { status = false, message = "Select Tender Name First." });
 
-            if (model.SiteId <= 0)
-                return Json(new { status = false, message = "Select Site Name First." });
+//            if (model.SiteId <= 0)
+//                return Json(new { status = false, message = "Select Site Name First." });
 
-            try
-            {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Json(new { status = false, message = "User not logged in" });
+//            try
+//            {
+//                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                if (userId <= 0)
+//                    return Json(new { status = false, message = "User not logged in" });
 
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
 
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-                await using var transaction = await conn.BeginTransactionAsync();
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+//                await using var transaction = await conn.BeginTransactionAsync();
 
-                try
-                {
-                    int recordId = 0;
+//                try
+//                {
+//                    int recordId = 0;
 
-                    if (model.Id > 0)
-                    {
-                        // Update existing project planning
-                        string updateSql = @"
-                    UPDATE tbl_project_planning
-                    SET modified_by=@modifiedBy, modified_date=@modifiedDate,
-                        date=@date, project_id=@projectId, location=@location,
-                        site=@site, plot_number=@plotNumber, start_date=@startDate,
-                        end_date=@endDate, status=@status, estimated_budget=@estimatedBudget,
-                        project_type=@projectType, description=@description,
-                        fund_account_id=@accountId, fund_period=@fundPeriod,
-                        assigned_team=@assignedTeam, progress=@progress
-                    WHERE id=@id;";
+//                    if (model.Id > 0)
+//                    {
+//                        // Update existing project planning
+//                        string updateSql = @"
+//                    UPDATE tbl_project_planning
+//                    SET modified_by=@modifiedBy, modified_date=@modifiedDate,
+//                        date=@date, project_id=@projectId, location=@location,
+//                        site=@site, plot_number=@plotNumber, start_date=@startDate,
+//                        end_date=@endDate, status=@status, estimated_budget=@estimatedBudget,
+//                        project_type=@projectType, description=@description,
+//                        fund_account_id=@accountId, fund_period=@fundPeriod,
+//                        assigned_team=@assignedTeam, progress=@progress
+//                    WHERE id=@id;";
 
-                        await using var cmd = new MySqlCommand(updateSql, conn, (MySqlTransaction)transaction);
-                        cmd.Parameters.AddWithValue("@id", model.Id);
-                        cmd.Parameters.AddWithValue("@modifiedBy", userId);
-                        cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
-                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
-                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
-                        cmd.Parameters.AddWithValue("@location", "0");
-                        cmd.Parameters.AddWithValue("@site", model.SiteId);
-                        cmd.Parameters.AddWithValue("@plotNumber", "");
-                        cmd.Parameters.AddWithValue("@startDate", model.StartDate.Date);
-                        cmd.Parameters.AddWithValue("@endDate", model.EndDate.Date);
-                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
-                        cmd.Parameters.AddWithValue("@projectType", model.ProjectType ?? "");
-                        cmd.Parameters.AddWithValue("@estimatedBudget", model.EstimatedBudget);
-                        cmd.Parameters.AddWithValue("@description", "");
-                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
-                        cmd.Parameters.AddWithValue("@fundPeriod", "");
-                        cmd.Parameters.AddWithValue("@assignedTeam", "");
-                        cmd.Parameters.AddWithValue("@progress", 0);
+//                        await using var cmd = new MySqlCommand(updateSql, conn, (MySqlTransaction)transaction);
+//                        cmd.Parameters.AddWithValue("@id", model.Id);
+//                        cmd.Parameters.AddWithValue("@modifiedBy", userId);
+//                        cmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+//                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+//                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+//                        cmd.Parameters.AddWithValue("@location", "0");
+//                        cmd.Parameters.AddWithValue("@site", model.SiteId);
+//                        cmd.Parameters.AddWithValue("@plotNumber", "");
+//                        cmd.Parameters.AddWithValue("@startDate", model.StartDate.Date);
+//                        cmd.Parameters.AddWithValue("@endDate", model.EndDate.Date);
+//                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
+//                        cmd.Parameters.AddWithValue("@projectType", model.ProjectType ?? "");
+//                        cmd.Parameters.AddWithValue("@estimatedBudget", model.EstimatedBudget);
+//                        cmd.Parameters.AddWithValue("@description", "");
+//                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
+//                        cmd.Parameters.AddWithValue("@fundPeriod", "");
+//                        cmd.Parameters.AddWithValue("@assignedTeam", "");
+//                        cmd.Parameters.AddWithValue("@progress", 0);
 
-                        int affected = await cmd.ExecuteNonQueryAsync();
-                        if (affected == 0)
-                        {
-                            await transaction.RollbackAsync();
-                            return NotFound(new { status = false, message = "Project Planning not found" });
-                        }
+//                        int affected = await cmd.ExecuteNonQueryAsync();
+//                        if (affected == 0)
+//                        {
+//                            await transaction.RollbackAsync();
+//                            return NotFound(new { status = false, message = "Project Planning not found" });
+//                        }
 
-                        recordId = model.Id;
+//                        recordId = model.Id;
 
-                        // Delete previous transactions
-                        string deleteTransactions = @"DELETE FROM tbl_transaction WHERE t_type='Project Planning' AND transaction_id=@id;";
-                        await using var delCmd = new MySqlCommand(deleteTransactions, conn, (MySqlTransaction)transaction);
-                        delCmd.Parameters.AddWithValue("@id", recordId);
-                        await delCmd.ExecuteNonQueryAsync();
-                    }
-                    else
-                    {
-                        // Insert new project planning
-                        string insertSql = @"
-                    INSERT INTO tbl_project_planning
-                    (date, project_id, location, site, plot_number, start_date, end_date, status, estimated_budget, project_type,
-                     description, fund_account_id, fund_period, assigned_team, progress, tender_id, created_by, created_date, tender_name_id)
-                    VALUES
-                    (@date, @projectId, @location, @site, @plotNumber, @startDate, @endDate, @status, @estimatedBudget, @projectType,
-                     @description, @accountId, @fundPeriod, @assignedTeam, @progress, @tenderId, @created_by, @created_date, @tenderNameId);
-                    SELECT LAST_INSERT_ID();";
+//                        // Delete previous transactions
+//                        string deleteTransactions = @"DELETE FROM tbl_transaction WHERE t_type='Project Planning' AND transaction_id=@id;";
+//                        await using var delCmd = new MySqlCommand(deleteTransactions, conn, (MySqlTransaction)transaction);
+//                        delCmd.Parameters.AddWithValue("@id", recordId);
+//                        await delCmd.ExecuteNonQueryAsync();
+//                    }
+//                    else
+//                    {
+//                        // Insert new project planning
+//                        string insertSql = @"
+//                    INSERT INTO tbl_project_planning
+//                    (date, project_id, location, site, plot_number, start_date, end_date, status, estimated_budget, project_type,
+//                     description, fund_account_id, fund_period, assigned_team, progress, tender_id, created_by, created_date, tender_name_id)
+//                    VALUES
+//                    (@date, @projectId, @location, @site, @plotNumber, @startDate, @endDate, @status, @estimatedBudget, @projectType,
+//                     @description, @accountId, @fundPeriod, @assignedTeam, @progress, @tenderId, @created_by, @created_date, @tenderNameId);
+//                    SELECT LAST_INSERT_ID();";
 
-                        await using var cmd = new MySqlCommand(insertSql, conn, (MySqlTransaction)transaction);
-                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
-                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
-                        cmd.Parameters.AddWithValue("@location", "0");
-                        cmd.Parameters.AddWithValue("@site", model.SiteId);
-                        cmd.Parameters.AddWithValue("@plotNumber", "");
-                        cmd.Parameters.AddWithValue("@startDate", DateTime.Now.Date);
-                        cmd.Parameters.AddWithValue("@endDate", DateTime.Now.Date);
-                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
-                        cmd.Parameters.AddWithValue("@projectType", model.ProjectType ?? "");
-                        cmd.Parameters.AddWithValue("@estimatedBudget", model.EstimatedBudget);
-                        cmd.Parameters.AddWithValue("@description", "");
-                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
-                        cmd.Parameters.AddWithValue("@fundPeriod", "");
-                        cmd.Parameters.AddWithValue("@assignedTeam", "");
-                        cmd.Parameters.AddWithValue("@progress", 0);
-                        cmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                        cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
-                        cmd.Parameters.AddWithValue("@created_by", userId);
-                        cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+//                        await using var cmd = new MySqlCommand(insertSql, conn, (MySqlTransaction)transaction);
+//                        cmd.Parameters.AddWithValue("@date", model.Date.Date);
+//                        cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+//                        cmd.Parameters.AddWithValue("@location", "0");
+//                        cmd.Parameters.AddWithValue("@site", model.SiteId);
+//                        cmd.Parameters.AddWithValue("@plotNumber", "");
+//                        cmd.Parameters.AddWithValue("@startDate", DateTime.Now.Date);
+//                        cmd.Parameters.AddWithValue("@endDate", DateTime.Now.Date);
+//                        cmd.Parameters.AddWithValue("@status", model.Status ?? "");
+//                        cmd.Parameters.AddWithValue("@projectType", model.ProjectType ?? "");
+//                        cmd.Parameters.AddWithValue("@estimatedBudget", model.EstimatedBudget);
+//                        cmd.Parameters.AddWithValue("@description", "");
+//                        cmd.Parameters.AddWithValue("@accountId", model.AccountId);
+//                        cmd.Parameters.AddWithValue("@fundPeriod", "");
+//                        cmd.Parameters.AddWithValue("@assignedTeam", "");
+//                        cmd.Parameters.AddWithValue("@progress", 0);
+//                        cmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+//                        cmd.Parameters.AddWithValue("@tenderNameId", model.TenderNameId);
+//                        cmd.Parameters.AddWithValue("@created_by", userId);
+//                        cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
 
-                        var resultObj = await cmd.ExecuteScalarAsync();
-                        recordId = resultObj != null ? Convert.ToInt32(resultObj) : 0;
-                    }
+//                        var resultObj = await cmd.ExecuteScalarAsync();
+//                        recordId = resultObj != null ? Convert.ToInt32(resultObj) : 0;
+//                    }
 
-                    // Add transactions (mirroring WinForms transactions method)
-                    if (model.EstimatedBudget > 0)
-                    {
-                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), model.EstimatedBudget, 0, recordId);
-                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), 0, model.EstimatedBudget, recordId);
-                    }
+//                    // Add transactions (mirroring WinForms transactions method)
+//                    if (model.EstimatedBudget > 0)
+//                    {
+//                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), model.EstimatedBudget, 0, recordId);
+//                        await InsertTransaction(conn, (MySqlTransaction)transaction, model.Date, model.AccountId.ToString(), 0, model.EstimatedBudget, recordId);
+//                    }
 
                   
-                    await transaction.CommitAsync();
-
-                    return Ok(new { status = true, message = model.Id > 0 ? "Project Planning updated successfully" : "Project Planning created successfully", id = recordId });
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    return StatusCode(500, new { status = false, message = "Error: " + ex.Message });
-                }
-            }
-            catch (Exception exOuter)
-            {
-                return StatusCode(500, new { status = false, message = "Error: " + exOuter.Message });
-            }
-        }
-
-        private async Task InsertTransaction(MySqlConnection conn, MySqlTransaction trx, DateTime date, string accountId, decimal debit, decimal credit, int transactionId)
-        {
-            string insert = @"
-        INSERT INTO tbl_transaction (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state)
-        VALUES (@date, @accountId, @debit, @credit, @transactionId, 0, 'Project Planning', 'PROJECT PLANNING', 'Project Planning Invoice NO.', @createdBy, @createdDate, 0);";
-
-            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-
-            await using var cmd = new MySqlCommand(insert, conn, trx);
-            cmd.Parameters.AddWithValue("@date", date);
-            cmd.Parameters.AddWithValue("@accountId", accountId);
-            cmd.Parameters.AddWithValue("@debit", debit);
-            cmd.Parameters.AddWithValue("@credit", credit);
-            cmd.Parameters.AddWithValue("@transactionId", transactionId);
-            cmd.Parameters.AddWithValue("@createdBy", userId);
-            cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
-            await cmd.ExecuteNonQueryAsync();
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetProjectTenderDetails(int tenderId)
-        {
-            try
-            {
-                if (tenderId == 0)
-                    return BadRequest(new { status = false, message = "Tender ID is required" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-            SELECT 
-                ptd.id,
-                ptd.sr,
-                ib.name,
-                ib.id AS item_id,
-                ib.type,
-                ib.unit_name,
-                ptd.start_date,
-                ptd.end_date,
-                ptd.progress,
-                ptd.assigned,
-                ptd.tender_id
-            FROM tbl_project_tender_details ptd
-            INNER JOIN tbl_items_boq ib 
-                ON ptd.tender_id = @tenderId 
-                AND ptd.item_id = ib.id";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@tenderId", tenderId);
-
-                var items = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    // Format dates
-                    string startDate = reader["start_date"] != DBNull.Value
-                        ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd")
-                        : DateTime.Now.ToString("yyyy-MM-dd");
-
-                    string endDate = reader["end_date"] != DBNull.Value
-                        ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd")
-                        : DateTime.Now.ToString("yyyy-MM-dd");
-
-                    // Assigned employee
-                    string empId = reader["assigned"] != DBNull.Value ? reader["assigned"].ToString() : "0";
-
-                    // Progress
-                    string progress = reader["progress"] != DBNull.Value
-                        ? decimal.Parse(reader["progress"].ToString()).ToString("#.##")
-                        : "0";
-
-                    items.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        SR = reader["sr"].ToString(),
-                        Name = reader["name"].ToString(),
-                        StartDate = startDate,
-                        EndDate = endDate,
-                        Progress = progress,
-                        Assigned = empId,
-                        ItemId = reader["item_id"].ToString(),
-                        Type = reader["type"].ToString(),
-                        UnitName = reader["unit_name"].ToString(),
-                        Tender_Id = reader.GetInt32("tender_id")
-                    });
-                }
-
-                return Ok(new { status = true, message = "Success", data = items });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        #region Tab Get API
-
-        [HttpGet]
-        public async Task<IActionResult> GetRequestedMaterial(int planningId)
-        {
-            try
-            {
-                if (planningId == 0)
-                    return BadRequest(new { status = false, message = "Planning ID is required" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-            SELECT 
-                rm.id,
-                rm.RequestedQty AS qty,
-                rm.RequestedDate AS date,
-                rm.unit,
-                boq.sr,
-                boq.name,
-                CASE 
-                    WHEN rm.ReceivedQty > 0 THEN 'Received' 
-                    WHEN rm.IssuedQty > 0 THEN 'Issued' 
-                    ELSE 'Requested' 
-                END AS status
-            FROM tbl_project_material_requests rm
-            INNER JOIN tbl_items_boq boq 
-                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
-            WHERE rm.planning_id = @planningId";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
-
-                var materialRequests = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    string requestedDate = reader["date"] != DBNull.Value
-                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
-                        : "";
-
-                    materialRequests.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        PlanningId = planningId,
-                        Date = requestedDate,
-                        Name = $"{reader["sr"]} - {reader["name"]}",
-                        Unit = reader["unit"].ToString(),
-                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
-                        Status = reader["status"].ToString()
-                    });
-                }
-
-                return Ok(new
-                {
-                    status = true,
-                    message = "Success",
-                    data = materialRequests
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetIssuedMaterial(int planningId)
-        {
-            try
-            {
-                if (planningId == 0)
-                    return BadRequest(new { status = false, message = "Planning ID is required" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-        SELECT 
-            rm.id,
-            rm.IssuedQty AS qty,
-            rm.IssuedDate AS date,
-            rm.unit,
-            boq.sr,
-            boq.name,
-            CASE 
-                WHEN rm.ReceivedQty > 0 THEN 'Received' 
-                WHEN rm.IssuedQty > 0 THEN 'Issued' 
-                ELSE 'Requested' 
-            END AS status
-        FROM tbl_project_material_requests rm
-        INNER JOIN tbl_items_boq boq 
-            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
-        WHERE rm.IssuedQty > 0 AND rm.planning_id = @planningId";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
-
-                var issuedItems = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    string issuedDate = reader["date"] != DBNull.Value
-                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
-                        : "";
-
-                    issuedItems.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        PlanningId = planningId,
-                        Date = issuedDate,
-                        Name = $"{reader["sr"]} - {reader["name"]}",
-                        Unit = reader["unit"].ToString(),
-                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
-                        Status = reader["status"].ToString()
-                    });
-                }
-
-                return Ok(new { status = true, message = "Success", data = issuedItems });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetReceivedMaterial(int planningId)
-        {
-            try
-            {
-                if (planningId == 0)
-                    return BadRequest(new { status = false, message = "Planning ID is required" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-        SELECT 
-            rm.id,
-            rm.ReceivedQty AS qty,
-            rm.IssuedDate AS date,
-            rm.unit,
-            boq.sr,
-            boq.name,
-            CASE 
-                WHEN rm.ReceivedQty > 0 THEN 'Received' 
-                WHEN rm.IssuedQty > 0 THEN 'Issued' 
-                ELSE 'Requested' 
-            END AS status
-        FROM tbl_project_material_requests rm
-        INNER JOIN tbl_items_boq boq 
-            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
-        WHERE rm.ReceivedQty > 0 AND rm.planning_id = @planningId";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
-
-                var receivedItems = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    string receivedDate = reader["date"] != DBNull.Value
-                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
-                        : "";
-
-                    receivedItems.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        PlanningId = planningId,
-                        Date = receivedDate,
-                        Name = $"{reader["sr"]} - {reader["name"]}",
-                        Unit = reader["unit"].ToString(),
-                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
-                        Status = reader["status"].ToString()
-                    });
-                }
-
-                return Ok(new { status = true, message = "Success", data = receivedItems });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetResourceData(int planningId)
-        {
-            try
-            {
-                if (planningId == 0)
-                    return BadRequest(new { status = false, message = "Planning ID is required" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-   SELECT 
-    pr.id,
-    pr.code,
-    pr.name,
-    r.name AS roleName,
-    pr.type,
-    pr.price_unit,
-    pr.unit_time,
-    pr.max_unit_time,
-    p.id AS PlanningId
-FROM tbl_project_resource pr
-INNER JOIN tbl_project_role r ON r.id = pr.role
-INNER JOIN tbl_project_planning p 
-    ON p.id = @planningId
-    AND FIND_IN_SET(pr.id, p.assigned_team) > 0;";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
-
-                var resources = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    resources.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        Code = reader["code"].ToString(),
-                        PlanningId = reader.GetInt32("PlanningId"),
-                        ResourceName = reader["name"].ToString(),
-                        ResourceType = reader["type"].ToString(),
-                        PrimaryRole = reader["roleName"].ToString(),
-                        DefaultUnitsTime = reader["price_unit"] != DBNull.Value ? Convert.ToDecimal(reader["price_unit"]).ToString("N2") : "0.00"
-                    });
-                }
-
-                return Ok(new { status = true, message = "Success", data = resources });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        #endregion
-
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateMaterialRequest([FromBody] MaterialRequest model)
-        {
-            if (model == null)
-                return BadRequest(new { status = false, message = "Invalid request" });
-
-            if (model.TenderId <= 0)
-                return BadRequest(new { status = false, message = "Please select a Tender" });
-
-            if (model.PlanningId <= 0)
-                return BadRequest(new { status = false, message = "Please select a Planning ID" });
-
-            if (model.Items == null || model.Items.Count == 0)
-                return BadRequest(new { status = false, message = "Please add at least one item" });
-
-            try
-            {
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
-
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // 🔹 If Id == 0 => INSERT all
-                if (model.Id == 0)
-                {
-                    foreach (var item in model.Items)
-                    {
-                        if (item.ItemId == null || item.ItemId <= 0)
-                            continue;
-
-                        string insertQuery = @"
-                    INSERT INTO tbl_project_material_requests
-                        (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
-                    VALUES
-                        (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
-
-                        await using var insertCmd = new MySqlCommand(insertQuery, conn);
-                        insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                        insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                        insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
-                        insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-                        insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
-                        insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
-
-                        await insertCmd.ExecuteNonQueryAsync();
-                    }
-
-                    return Ok(new { status = true, message = "Material requests inserted successfully" });
-                }
-                else
-                {
-                    // 🔹 If Id > 0 => UPDATE all
-                    foreach (var item in model.Items)
-                    {
-                        if (item.ItemId == null || item.ItemId <= 0)
-                            continue;
-
-                        // Get the record ID if passed in (optional per item)
-                        int rowId = item.Id ?? 0;
-
-                        if (rowId > 0)
-                        {
-                            // Update by row ID
-                            string updateQuery = @"
-                        UPDATE tbl_project_material_requests 
-                        SET RequestedDate = @requestedDate,
-                            itemId = @itemId,
-                            unit = @unit,
-                            RequestedQty = @qty
-                        WHERE id = @id;";
-
-                            await using var updateCmd = new MySqlCommand(updateQuery, conn);
-                            updateCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
-                            updateCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-                            updateCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
-                            updateCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
-                            updateCmd.Parameters.AddWithValue("@id", rowId);
-
-                            await updateCmd.ExecuteNonQueryAsync();
-                        }
-                        else
-                        {
-                            // If no ID for this row, insert as new
-                            string insertQuery = @"
-                        INSERT INTO tbl_project_material_requests
-                            (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
-                        VALUES
-                            (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
-
-                            await using var insertCmd = new MySqlCommand(insertQuery, conn);
-                            insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                            insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                            insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
-                            insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-                            insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
-                            insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
-
-                            await insertCmd.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    return Ok(new { status = true, message = "Material requests updated successfully" });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetItemsByTenderId(int tenderId)
-        {
-            if (tenderId <= 0)
-            {
-                return BadRequest(new { status = false, message = "Invalid Tender ID" });
-            }
-
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // Query to fetch items associated with the tenderId
-                string query = @"
-            SELECT 
-                CONCAT(tbl_items_boq.sr, ' - ', tbl_items_boq.name) AS name,
-                tbl_items_boq.id,
-                tbl_items_boq.qty,
-                tbl_items_boq.unit_name 
-            FROM tbl_project_tender_details 
-            INNER JOIN tbl_items_boq 
-                ON tbl_project_tender_details.tender_id = ref_id 
-                AND tbl_project_tender_details.item_id = tbl_items_boq.id
-            WHERE tbl_project_tender_details.tender_id = @tenderId";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@tenderId", tenderId);
-
-                var dt = new DataTable();
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    dt.Load(reader);
-                }
-
-                var items = dt.AsEnumerable()
-                    .Select(row => new
-                    {
-                        Name = row["name"].ToString(),
-                        Id = Convert.ToInt32(row["id"]),
-                        Qty = Convert.ToDecimal(row["qty"]).ToString("F2"),
-                        Unit = row["unit_name"].ToString()
-                    })
-                    .ToList();
-
-                return Ok(new { status = true, data = items });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
-            }
-        }
-
-        #region Add Dropdown API
-
-        [HttpGet]
-        public async Task<IActionResult> GetRequestedData(int planningId)
-        {
-            if (planningId <= 0)
-                return BadRequest(new { status = false, message = "Planning ID is required" });
-
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-            SELECT 
-                rm.id,
-                rm.RequestedQty AS qty,
-                rm.RequestedDate AS date,
-                rm.unit,
-                rm.itemId As ItemId,
-                boq.sr,
-                boq.name,
-                'Requested' AS status
-            FROM tbl_project_material_requests rm
-            INNER JOIN tbl_items_boq boq 
-                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
-            WHERE rm.planning_id = @planningId
-              AND rm.RequestedDate IS NOT NULL
-              AND rm.IssuedDate IS NULL
-              AND rm.ReceivedDate IS NULL;";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
-
-                var materialRequests = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    string requestedDate = reader["date"] != DBNull.Value
-                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
-                        : "";
-
-                    materialRequests.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        PlanningId = planningId,
-                        Date = requestedDate,
-                        Name = $"{reader["sr"]} - {reader["name"]}",
-                        Unit = reader["unit"].ToString(),
-                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
-                        Status = "Requested",
-                        ItemId = reader.GetInt32("ItemId")
-                    });
-                }
-
-                return Ok(new
-                {
-                    status = true,
-                    message = "Success",
-                    data = materialRequests
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateIssueMaterial([FromBody] IssueMaterialModel model)
-        {
-            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
-                return BadRequest(new { status = false, message = "Invalid data provided" });
-
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-            UPDATE tbl_project_material_requests 
-            SET IssuedDate = @IssuedDate, IssuedQty = @IssuedQty
-            WHERE planning_id = @PlanningId 
-              AND tender_id = @TenderId 
-              AND itemId = @ItemId;";
-
-                foreach (var item in model.Items)
-                {
-                    await using var cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
-                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
-                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
-                    cmd.Parameters.AddWithValue("@IssuedDate", model.IssueDate);
-                    cmd.Parameters.AddWithValue("@IssuedQty", item.IssuedQty);
-                    await cmd.ExecuteNonQueryAsync();
-
-                }
-
-                return Ok(new { status = true, message = "Issue Material updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetPendingReceivedMaterials(int planningId)
-        {
-            if (planningId <= 0)
-                return BadRequest(new { status = false, message = "Planning ID is required" });
-
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                string query = @"
-            SELECT 
-                rm.id,
-                rm.RequestedQty AS qty,
-                rm.RequestedDate,
-                rm.IssuedDate,
-                rm.ReceivedDate,
-                rm.unit,
-                rm.itemId AS ItemId,
-                boq.sr,
-                boq.name,
-                'Issued' AS status
-            FROM tbl_project_material_requests rm
-            INNER JOIN tbl_items_boq boq 
-                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
-            WHERE rm.planning_id = @planningId
-              AND rm.ReceivedDate IS NULL;";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
-
-                var materialRequests = new List<object>();
-                int count = 1;
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    materialRequests.Add(new
-                    {
-                        SNo = count++,
-                        Id = reader["id"].ToString(),
-                        PlanningId = planningId,
-                        RequestedDate = reader["RequestedDate"] != DBNull.Value
-                            ? Convert.ToDateTime(reader["RequestedDate"]).ToString("yyyy-MM-dd")
-                            : null,
-                        IssuedDate = reader["IssuedDate"] != DBNull.Value
-                            ? Convert.ToDateTime(reader["IssuedDate"]).ToString("yyyy-MM-dd")
-                            : null,
-                        ReceivedDate = reader["ReceivedDate"] != DBNull.Value
-                            ? Convert.ToDateTime(reader["ReceivedDate"]).ToString("yyyy-MM-dd")
-                            : null,
-                        Name = $"{reader["sr"]} - {reader["name"]}",
-                        Unit = reader["unit"].ToString(),
-                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
-                        Status = reader["status"].ToString(),
-                        ItemId = reader.GetInt32("ItemId")
-                    });
-                }
-
-                return Ok(new
-                {
-                    status = true,
-                    message = "Success",
-                    data = materialRequests
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateReceiveMaterial([FromBody] ReceiveMaterialModel model)
-        {
-            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
-                return BadRequest(new { status = false, message = "Invalid data provided" });
-
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // Ensure we always use today if no date provided
-                var receiveDate = model.ReceiveDate == default ? DateTime.Today : model.ReceiveDate;
-
-                string query = @"
-            UPDATE tbl_project_material_requests 
-            SET ReceivedDate = @ReceivedDate, ReceivedQty = @ReceivedQty
-            WHERE planning_id = @PlanningId 
-              AND tender_id = @TenderId 
-              AND itemId = @ItemId;";
-
-                foreach (var item in model.Items)
-                {
-                    await using var cmd = new MySqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
-                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
-                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
-                    cmd.Parameters.AddWithValue("@ReceivedDate", receiveDate);
-                    cmd.Parameters.AddWithValue("@ReceivedQty", item.ReceivedQty);
-
-                    int affected = await cmd.ExecuteNonQueryAsync();
-
-                    if (affected == 0)
-                    {
-                        Console.WriteLine($"No rows updated for ItemId={item.ItemId}, PlanningId={model.PlanningId}, TenderId={model.TenderId}");
-                    }
-                }
-
-                return Ok(new { status = true, message = "Received material updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-
-        #endregion
-
-        [HttpGet]
-        public async Task<IActionResult> GetProjectResources(int? planningId = null)
-        {
-            try
-            {
-                // Validate session
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Unauthorized(new { status = false, message = "User not logged in" });
-
-                // Build connection dynamically
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
-
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
-
-                // Base query to load all resources
-                string query = @"
-            SELECT 
-                ROW_NUMBER() OVER (ORDER BY pr.id) AS SN,
-                pr.id,
-                pr.code,
-                pr.date,
-                pr.name,
-                r.name AS roleName,
-                pr.phone,
-                pr.type,
-                pr.price_unit,
-                pr.unit_time,
-                pr.max_unit_time
-            FROM tbl_project_resource pr
-            INNER JOIN tbl_project_role r ON r.id = pr.role;
-        ";
-
-                await using var cmd = new MySqlCommand(query, conn);
-                await using var reader = await cmd.ExecuteReaderAsync();
-
-                var resources = new List<dynamic>();
-                while (await reader.ReadAsync())
-                {
-                    resources.Add(new
-                    {
-                        sn = reader.GetInt32("SN"),
-                        id = reader.GetInt32("id"),
-                        code = reader["code"].ToString(),
-                        name = reader["name"].ToString(),
-                        type = reader["type"].ToString(),
-                        roleName = reader["roleName"].ToString(),
-                        unitTime = reader["unit_time"].ToString(),
-                        priceUnit = reader["price_unit"].ToString(),
-                        maxUnitTime = reader["max_unit_time"].ToString(),
-                        phone = reader["phone"].ToString(),
-                        date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
-                        selected = false // will be updated later if planningId is provided
-                    });
-                }
-
-                await reader.CloseAsync();
-
-                // If planningId is provided, mark assigned resources as selected
-                if (planningId.HasValue)
-                {
-                    string assignedQuery = @"
-                SELECT id 
-                FROM tbl_project_resource 
-                WHERE EXISTS (
-                    SELECT 1 FROM tbl_project_planning p 
-                    WHERE p.id = @planningId 
-                    AND FIND_IN_SET(tbl_project_resource.id, p.assigned_team) > 0
-                );
-            ";
-
-                    await using var assignedCmd = new MySqlCommand(assignedQuery, conn);
-                    assignedCmd.Parameters.AddWithValue("@planningId", planningId.Value);
-
-                    var assignedIds = new List<int>();
-                    await using var assignedReader = await assignedCmd.ExecuteReaderAsync();
-                    while (await assignedReader.ReadAsync())
-                        assignedIds.Add(assignedReader.GetInt32("id"));
-
-                    foreach (var res in resources)
-                    {
-                        if (assignedIds.Contains((int)res.id))
-                            res.selected = true;
-                    }
-                }
-
-                return Ok(new { status = true, data = resources });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateRole([FromBody] ProjectRoleRequest model)
-        {
-
-            try
-            {
-                if (model == null)
-                    return Json(new { status = false, message = "Invalid request" });
-
-                if (string.IsNullOrWhiteSpace(model.Name))
-                    return Json(new { status = false, message = "Please enter Role Name" });
-
-                try
-                {
-                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    if (userId <= 0)
-                        return Unauthorized(new { status = false, message = "User not logged in" });
-
-                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                    {
-                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                    };
-
-                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                    await conn.OpenAsync();
-
-                    // 1️⃣ Check if role name already exists
-                    string checkQuery = "SELECT id FROM tbl_project_role WHERE name=@name";
-                    await using (var checkCmd = new MySqlCommand(checkQuery, conn))
-                    {
-                        checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                        var existingId = await checkCmd.ExecuteScalarAsync();
-
-                        if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
-                        {
-                            return Json(new { status = false, message = "Role name already in use" });
-                        }
-                    }
-
-                    // 2️⃣ Generate role code automatically (R1, R2, R3...)
-                    string roleCode = model.Id == 0 ? await GenerateNextRoleCode(conn) : model.Code;
-
-                    if (model.Id == 0)
-                    {
-                        // 3️⃣ Insert new role
-                        string insertQuery = @"
-                INSERT INTO tbl_project_role (code, name)
-                VALUES (@code, @name);
-                SELECT LAST_INSERT_ID();";
-
-                        await using var cmd = new MySqlCommand(insertQuery, conn);
-                        cmd.Parameters.AddWithValue("@code", roleCode);
-                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
-
-                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+//                    await transaction.CommitAsync();
+
+//                    return Ok(new { status = true, message = model.Id > 0 ? "Project Planning updated successfully" : "Project Planning created successfully", id = recordId });
+//                }
+//                catch (Exception ex)
+//                {
+//                    await transaction.RollbackAsync();
+//                    return StatusCode(500, new { status = false, message = "Error: " + ex.Message });
+//                }
+//            }
+//            catch (Exception exOuter)
+//            {
+//                return StatusCode(500, new { status = false, message = "Error: " + exOuter.Message });
+//            }
+//        }
+
+//        private async Task InsertTransaction(MySqlConnection conn, MySqlTransaction trx, DateTime date, string accountId, decimal debit, decimal credit, int transactionId)
+//        {
+//            string insert = @"
+//        INSERT INTO tbl_transaction (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, description, created_by, created_date, state)
+//        VALUES (@date, @accountId, @debit, @credit, @transactionId, 0, 'Project Planning', 'PROJECT PLANNING', 'Project Planning Invoice NO.', @createdBy, @createdDate, 0);";
+
+//            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+//            await using var cmd = new MySqlCommand(insert, conn, trx);
+//            cmd.Parameters.AddWithValue("@date", date);
+//            cmd.Parameters.AddWithValue("@accountId", accountId);
+//            cmd.Parameters.AddWithValue("@debit", debit);
+//            cmd.Parameters.AddWithValue("@credit", credit);
+//            cmd.Parameters.AddWithValue("@transactionId", transactionId);
+//            cmd.Parameters.AddWithValue("@createdBy", userId);
+//            cmd.Parameters.AddWithValue("@createdDate", DateTime.Now.Date);
+//            await cmd.ExecuteNonQueryAsync();
+//        }
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetProjectTenderDetails(int tenderId)
+//        {
+//            try
+//            {
+//                if (tenderId == 0)
+//                    return BadRequest(new { status = false, message = "Tender ID is required" });
+
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//            SELECT 
+//                ptd.id,
+//                ptd.sr,
+//                ib.name,
+//                ib.id AS item_id,
+//                ib.type,
+//                ib.unit_name,
+//                ptd.start_date,
+//                ptd.end_date,
+//                ptd.progress,
+//                ptd.assigned,
+//                ptd.tender_id
+//            FROM tbl_project_tender_details ptd
+//            INNER JOIN tbl_items_boq ib 
+//                ON ptd.tender_id = @tenderId 
+//                AND ptd.item_id = ib.id";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+
+//                var items = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    // Format dates
+//                    string startDate = reader["start_date"] != DBNull.Value
+//                        ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd")
+//                        : DateTime.Now.ToString("yyyy-MM-dd");
+
+//                    string endDate = reader["end_date"] != DBNull.Value
+//                        ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd")
+//                        : DateTime.Now.ToString("yyyy-MM-dd");
+
+//                    // Assigned employee
+//                    string empId = reader["assigned"] != DBNull.Value ? reader["assigned"].ToString() : "0";
+
+//                    // Progress
+//                    string progress = reader["progress"] != DBNull.Value
+//                        ? decimal.Parse(reader["progress"].ToString()).ToString("#.##")
+//                        : "0";
+
+//                    items.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        SR = reader["sr"].ToString(),
+//                        Name = reader["name"].ToString(),
+//                        StartDate = startDate,
+//                        EndDate = endDate,
+//                        Progress = progress,
+//                        Assigned = empId,
+//                        ItemId = reader["item_id"].ToString(),
+//                        Type = reader["type"].ToString(),
+//                        UnitName = reader["unit_name"].ToString(),
+//                        Tender_Id = reader.GetInt32("tender_id")
+//                    });
+//                }
+
+//                return Ok(new { status = true, message = "Success", data = items });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        #region Tab Get API
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetRequestedMaterial(int planningId)
+//        {
+//            try
+//            {
+//                if (planningId == 0)
+//                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//            SELECT 
+//                rm.id,
+//                rm.RequestedQty AS qty,
+//                rm.RequestedDate AS date,
+//                rm.unit,
+//                boq.sr,
+//                boq.name,
+//                CASE 
+//                    WHEN rm.ReceivedQty > 0 THEN 'Received' 
+//                    WHEN rm.IssuedQty > 0 THEN 'Issued' 
+//                    ELSE 'Requested' 
+//                END AS status
+//            FROM tbl_project_material_requests rm
+//            INNER JOIN tbl_items_boq boq 
+//                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+//            WHERE rm.planning_id = @planningId";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+//                var materialRequests = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    string requestedDate = reader["date"] != DBNull.Value
+//                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+//                        : "";
+
+//                    materialRequests.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        PlanningId = planningId,
+//                        Date = requestedDate,
+//                        Name = $"{reader["sr"]} - {reader["name"]}",
+//                        Unit = reader["unit"].ToString(),
+//                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+//                        Status = reader["status"].ToString()
+//                    });
+//                }
+
+//                return Ok(new
+//                {
+//                    status = true,
+//                    message = "Success",
+//                    data = materialRequests
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetIssuedMaterial(int planningId)
+//        {
+//            try
+//            {
+//                if (planningId == 0)
+//                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//        SELECT 
+//            rm.id,
+//            rm.IssuedQty AS qty,
+//            rm.IssuedDate AS date,
+//            rm.unit,
+//            boq.sr,
+//            boq.name,
+//            CASE 
+//                WHEN rm.ReceivedQty > 0 THEN 'Received' 
+//                WHEN rm.IssuedQty > 0 THEN 'Issued' 
+//                ELSE 'Requested' 
+//            END AS status
+//        FROM tbl_project_material_requests rm
+//        INNER JOIN tbl_items_boq boq 
+//            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+//        WHERE rm.IssuedQty > 0 AND rm.planning_id = @planningId";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+//                var issuedItems = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    string issuedDate = reader["date"] != DBNull.Value
+//                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+//                        : "";
+
+//                    issuedItems.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        PlanningId = planningId,
+//                        Date = issuedDate,
+//                        Name = $"{reader["sr"]} - {reader["name"]}",
+//                        Unit = reader["unit"].ToString(),
+//                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+//                        Status = reader["status"].ToString()
+//                    });
+//                }
+
+//                return Ok(new { status = true, message = "Success", data = issuedItems });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetReceivedMaterial(int planningId)
+//        {
+//            try
+//            {
+//                if (planningId == 0)
+//                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//        SELECT 
+//            rm.id,
+//            rm.ReceivedQty AS qty,
+//            rm.IssuedDate AS date,
+//            rm.unit,
+//            boq.sr,
+//            boq.name,
+//            CASE 
+//                WHEN rm.ReceivedQty > 0 THEN 'Received' 
+//                WHEN rm.IssuedQty > 0 THEN 'Issued' 
+//                ELSE 'Requested' 
+//            END AS status
+//        FROM tbl_project_material_requests rm
+//        INNER JOIN tbl_items_boq boq 
+//            ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+//        WHERE rm.ReceivedQty > 0 AND rm.planning_id = @planningId";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+//                var receivedItems = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    string receivedDate = reader["date"] != DBNull.Value
+//                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+//                        : "";
+
+//                    receivedItems.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        PlanningId = planningId,
+//                        Date = receivedDate,
+//                        Name = $"{reader["sr"]} - {reader["name"]}",
+//                        Unit = reader["unit"].ToString(),
+//                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+//                        Status = reader["status"].ToString()
+//                    });
+//                }
+
+//                return Ok(new { status = true, message = "Success", data = receivedItems });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetResourceData(int planningId)
+//        {
+//            try
+//            {
+//                if (planningId == 0)
+//                    return BadRequest(new { status = false, message = "Planning ID is required" });
+
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//   SELECT 
+//    pr.id,
+//    pr.code,
+//    pr.name,
+//    r.name AS roleName,
+//    pr.type,
+//    pr.price_unit,
+//    pr.unit_time,
+//    pr.max_unit_time,
+//    p.id AS PlanningId
+//FROM tbl_project_resource pr
+//INNER JOIN tbl_project_role r ON r.id = pr.role
+//INNER JOIN tbl_project_planning p 
+//    ON p.id = @planningId
+//    AND FIND_IN_SET(pr.id, p.assigned_team) > 0;";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+//                var resources = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    resources.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        Code = reader["code"].ToString(),
+//                        PlanningId = reader.GetInt32("PlanningId"),
+//                        ResourceName = reader["name"].ToString(),
+//                        ResourceType = reader["type"].ToString(),
+//                        PrimaryRole = reader["roleName"].ToString(),
+//                        DefaultUnitsTime = reader["price_unit"] != DBNull.Value ? Convert.ToDecimal(reader["price_unit"]).ToString("N2") : "0.00"
+//                    });
+//                }
+
+//                return Ok(new { status = true, message = "Success", data = resources });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        #endregion
+
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateMaterialRequest([FromBody] MaterialRequest model)
+//        {
+//            if (model == null)
+//                return BadRequest(new { status = false, message = "Invalid request" });
+
+//            if (model.TenderId <= 0)
+//                return BadRequest(new { status = false, message = "Please select a Tender" });
+
+//            if (model.PlanningId <= 0)
+//                return BadRequest(new { status = false, message = "Please select a Planning ID" });
+
+//            if (model.Items == null || model.Items.Count == 0)
+//                return BadRequest(new { status = false, message = "Please add at least one item" });
+
+//            try
+//            {
+//                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                if (userId <= 0)
+//                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                // 🔹 If Id == 0 => INSERT all
+//                if (model.Id == 0)
+//                {
+//                    foreach (var item in model.Items)
+//                    {
+//                        if (item.ItemId == null || item.ItemId <= 0)
+//                            continue;
+
+//                        string insertQuery = @"
+//                    INSERT INTO tbl_project_material_requests
+//                        (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
+//                    VALUES
+//                        (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
+
+//                        await using var insertCmd = new MySqlCommand(insertQuery, conn);
+//                        insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+//                        insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+//                        insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+//                        insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+//                        insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+//                        insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+
+//                        await insertCmd.ExecuteNonQueryAsync();
+//                    }
+
+//                    return Ok(new { status = true, message = "Material requests inserted successfully" });
+//                }
+//                else
+//                {
+//                    // 🔹 If Id > 0 => UPDATE all
+//                    foreach (var item in model.Items)
+//                    {
+//                        if (item.ItemId == null || item.ItemId <= 0)
+//                            continue;
+
+//                        // Get the record ID if passed in (optional per item)
+//                        int rowId = item.Id ?? 0;
+
+//                        if (rowId > 0)
+//                        {
+//                            // Update by row ID
+//                            string updateQuery = @"
+//                        UPDATE tbl_project_material_requests 
+//                        SET RequestedDate = @requestedDate,
+//                            itemId = @itemId,
+//                            unit = @unit,
+//                            RequestedQty = @qty
+//                        WHERE id = @id;";
+
+//                            await using var updateCmd = new MySqlCommand(updateQuery, conn);
+//                            updateCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+//                            updateCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+//                            updateCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+//                            updateCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+//                            updateCmd.Parameters.AddWithValue("@id", rowId);
+
+//                            await updateCmd.ExecuteNonQueryAsync();
+//                        }
+//                        else
+//                        {
+//                            // If no ID for this row, insert as new
+//                            string insertQuery = @"
+//                        INSERT INTO tbl_project_material_requests
+//                            (tender_id, planning_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty)
+//                        VALUES
+//                            (@tenderId, @planningId, @requestedDate, @itemId, @unit, @qty, 0, 0);";
+
+//                            await using var insertCmd = new MySqlCommand(insertQuery, conn);
+//                            insertCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+//                            insertCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+//                            insertCmd.Parameters.AddWithValue("@requestedDate", model.RequestedDate);
+//                            insertCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+//                            insertCmd.Parameters.AddWithValue("@unit", item.Unit ?? "");
+//                            insertCmd.Parameters.AddWithValue("@qty", item.RequestedQty);
+
+//                            await insertCmd.ExecuteNonQueryAsync();
+//                        }
+//                    }
+
+//                    return Ok(new { status = true, message = "Material requests updated successfully" });
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
+//            }
+//        }
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetItemsByTenderId(int tenderId)
+//        {
+//            if (tenderId <= 0)
+//            {
+//                return BadRequest(new { status = false, message = "Invalid Tender ID" });
+//            }
+
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                // Query to fetch items associated with the tenderId
+//                string query = @"
+//            SELECT 
+//                CONCAT(tbl_items_boq.sr, ' - ', tbl_items_boq.name) AS name,
+//                tbl_items_boq.id,
+//                tbl_items_boq.qty,
+//                tbl_items_boq.unit_name 
+//            FROM tbl_project_tender_details 
+//            INNER JOIN tbl_items_boq 
+//                ON tbl_project_tender_details.tender_id = ref_id 
+//                AND tbl_project_tender_details.item_id = tbl_items_boq.id
+//            WHERE tbl_project_tender_details.tender_id = @tenderId";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+
+//                var dt = new DataTable();
+//                using (var reader = await cmd.ExecuteReaderAsync())
+//                {
+//                    dt.Load(reader);
+//                }
+
+//                var items = dt.AsEnumerable()
+//                    .Select(row => new
+//                    {
+//                        Name = row["name"].ToString(),
+//                        Id = Convert.ToInt32(row["id"]),
+//                        Qty = Convert.ToDecimal(row["qty"]).ToString("F2"),
+//                        Unit = row["unit_name"].ToString()
+//                    })
+//                    .ToList();
+
+//                return Ok(new { status = true, data = items });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = "An unexpected error occurred: " + ex.Message });
+//            }
+//        }
+
+//        #region Add Dropdown API
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetRequestedData(int planningId)
+//        {
+//            if (planningId <= 0)
+//                return BadRequest(new { status = false, message = "Planning ID is required" });
+
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//            SELECT 
+//                rm.id,
+//                rm.RequestedQty AS qty,
+//                rm.RequestedDate AS date,
+//                rm.unit,
+//                rm.itemId As ItemId,
+//                boq.sr,
+//                boq.name,
+//                'Requested' AS status
+//            FROM tbl_project_material_requests rm
+//            INNER JOIN tbl_items_boq boq 
+//                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+//            WHERE rm.planning_id = @planningId
+//              AND rm.RequestedDate IS NOT NULL
+//              AND rm.IssuedDate IS NULL
+//              AND rm.ReceivedDate IS NULL;";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+//                var materialRequests = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    string requestedDate = reader["date"] != DBNull.Value
+//                        ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd")
+//                        : "";
+
+//                    materialRequests.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        PlanningId = planningId,
+//                        Date = requestedDate,
+//                        Name = $"{reader["sr"]} - {reader["name"]}",
+//                        Unit = reader["unit"].ToString(),
+//                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+//                        Status = "Requested",
+//                        ItemId = reader.GetInt32("ItemId")
+//                    });
+//                }
+
+//                return Ok(new
+//                {
+//                    status = true,
+//                    message = "Success",
+//                    data = materialRequests
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateIssueMaterial([FromBody] IssueMaterialModel model)
+//        {
+//            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
+//                return BadRequest(new { status = false, message = "Invalid data provided" });
+
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//            UPDATE tbl_project_material_requests 
+//            SET IssuedDate = @IssuedDate, IssuedQty = @IssuedQty
+//            WHERE planning_id = @PlanningId 
+//              AND tender_id = @TenderId 
+//              AND itemId = @ItemId;";
+
+//                foreach (var item in model.Items)
+//                {
+//                    await using var cmd = new MySqlCommand(query, conn);
+//                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
+//                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
+//                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
+//                    cmd.Parameters.AddWithValue("@IssuedDate", model.IssueDate);
+//                    cmd.Parameters.AddWithValue("@IssuedQty", item.IssuedQty);
+//                    await cmd.ExecuteNonQueryAsync();
+
+//                }
+
+//                return Ok(new { status = true, message = "Issue Material updated successfully" });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetPendingReceivedMaterials(int planningId)
+//        {
+//            if (planningId <= 0)
+//                return BadRequest(new { status = false, message = "Planning ID is required" });
+
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                string query = @"
+//            SELECT 
+//                rm.id,
+//                rm.RequestedQty AS qty,
+//                rm.RequestedDate,
+//                rm.IssuedDate,
+//                rm.ReceivedDate,
+//                rm.unit,
+//                rm.itemId AS ItemId,
+//                boq.sr,
+//                boq.name,
+//                'Issued' AS status
+//            FROM tbl_project_material_requests rm
+//            INNER JOIN tbl_items_boq boq 
+//                ON rm.tender_id = boq.ref_id AND rm.itemId = boq.id
+//            WHERE rm.planning_id = @planningId
+//              AND rm.ReceivedDate IS NULL;";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
+
+//                var materialRequests = new List<object>();
+//                int count = 1;
+
+//                await using var reader = await cmd.ExecuteReaderAsync();
+//                while (await reader.ReadAsync())
+//                {
+//                    materialRequests.Add(new
+//                    {
+//                        SNo = count++,
+//                        Id = reader["id"].ToString(),
+//                        PlanningId = planningId,
+//                        RequestedDate = reader["RequestedDate"] != DBNull.Value
+//                            ? Convert.ToDateTime(reader["RequestedDate"]).ToString("yyyy-MM-dd")
+//                            : null,
+//                        IssuedDate = reader["IssuedDate"] != DBNull.Value
+//                            ? Convert.ToDateTime(reader["IssuedDate"]).ToString("yyyy-MM-dd")
+//                            : null,
+//                        ReceivedDate = reader["ReceivedDate"] != DBNull.Value
+//                            ? Convert.ToDateTime(reader["ReceivedDate"]).ToString("yyyy-MM-dd")
+//                            : null,
+//                        Name = $"{reader["sr"]} - {reader["name"]}",
+//                        Unit = reader["unit"].ToString(),
+//                        Qty = reader["qty"] != DBNull.Value ? Convert.ToDecimal(reader["qty"]).ToString("N2") : "0.00",
+//                        Status = reader["status"].ToString(),
+//                        ItemId = reader.GetInt32("ItemId")
+//                    });
+//                }
+
+//                return Ok(new
+//                {
+//                    status = true,
+//                    message = "Success",
+//                    data = materialRequests
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateReceiveMaterial([FromBody] ReceiveMaterialModel model)
+//        {
+//            if (model == null || model.PlanningId <= 0 || model.TenderId <= 0 || model.Items == null || model.Items.Count == 0)
+//                return BadRequest(new { status = false, message = "Invalid data provided" });
+
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                // Ensure we always use today if no date provided
+//                var receiveDate = model.ReceiveDate == default ? DateTime.Today : model.ReceiveDate;
+
+//                string query = @"
+//            UPDATE tbl_project_material_requests 
+//            SET ReceivedDate = @ReceivedDate, ReceivedQty = @ReceivedQty
+//            WHERE planning_id = @PlanningId 
+//              AND tender_id = @TenderId 
+//              AND itemId = @ItemId;";
+
+//                foreach (var item in model.Items)
+//                {
+//                    await using var cmd = new MySqlCommand(query, conn);
+//                    cmd.Parameters.AddWithValue("@ItemId", item.ItemId);
+//                    cmd.Parameters.AddWithValue("@PlanningId", model.PlanningId);
+//                    cmd.Parameters.AddWithValue("@TenderId", model.TenderId);
+//                    cmd.Parameters.AddWithValue("@ReceivedDate", receiveDate);
+//                    cmd.Parameters.AddWithValue("@ReceivedQty", item.ReceivedQty);
+
+//                    int affected = await cmd.ExecuteNonQueryAsync();
+
+//                    if (affected == 0)
+//                    {
+//                        Console.WriteLine($"No rows updated for ItemId={item.ItemId}, PlanningId={model.PlanningId}, TenderId={model.TenderId}");
+//                    }
+//                }
+
+//                return Ok(new { status = true, message = "Received material updated successfully" });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+
+//        #endregion
+
+//        [HttpGet]
+//        public async Task<IActionResult> GetProjectResources(int? planningId = null)
+//        {
+//            try
+//            {
+//                // Validate session
+//                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                if (userId <= 0)
+//                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+//                // Build connection dynamically
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
+
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
+
+//                // Base query to load all resources
+//                string query = @"
+//            SELECT 
+//                ROW_NUMBER() OVER (ORDER BY pr.id) AS SN,
+//                pr.id,
+//                pr.code,
+//                pr.date,
+//                pr.name,
+//                r.name AS roleName,
+//                pr.phone,
+//                pr.type,
+//                pr.price_unit,
+//                pr.unit_time,
+//                pr.max_unit_time
+//            FROM tbl_project_resource pr
+//            INNER JOIN tbl_project_role r ON r.id = pr.role;
+//        ";
+
+//                await using var cmd = new MySqlCommand(query, conn);
+//                await using var reader = await cmd.ExecuteReaderAsync();
+
+//                var resources = new List<dynamic>();
+//                while (await reader.ReadAsync())
+//                {
+//                    resources.Add(new
+//                    {
+//                        sn = reader.GetInt32("SN"),
+//                        id = reader.GetInt32("id"),
+//                        code = reader["code"].ToString(),
+//                        name = reader["name"].ToString(),
+//                        type = reader["type"].ToString(),
+//                        roleName = reader["roleName"].ToString(),
+//                        unitTime = reader["unit_time"].ToString(),
+//                        priceUnit = reader["price_unit"].ToString(),
+//                        maxUnitTime = reader["max_unit_time"].ToString(),
+//                        phone = reader["phone"].ToString(),
+//                        date = Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd"),
+//                        selected = false // will be updated later if planningId is provided
+//                    });
+//                }
+
+//                await reader.CloseAsync();
+
+//                // If planningId is provided, mark assigned resources as selected
+//                if (planningId.HasValue)
+//                {
+//                    string assignedQuery = @"
+//                SELECT id 
+//                FROM tbl_project_resource 
+//                WHERE EXISTS (
+//                    SELECT 1 FROM tbl_project_planning p 
+//                    WHERE p.id = @planningId 
+//                    AND FIND_IN_SET(tbl_project_resource.id, p.assigned_team) > 0
+//                );
+//            ";
+
+//                    await using var assignedCmd = new MySqlCommand(assignedQuery, conn);
+//                    assignedCmd.Parameters.AddWithValue("@planningId", planningId.Value);
+
+//                    var assignedIds = new List<int>();
+//                    await using var assignedReader = await assignedCmd.ExecuteReaderAsync();
+//                    while (await assignedReader.ReadAsync())
+//                        assignedIds.Add(assignedReader.GetInt32("id"));
+
+//                    foreach (var res in resources)
+//                    {
+//                        if (assignedIds.Contains((int)res.id))
+//                            res.selected = true;
+//                    }
+//                }
+
+//                return Ok(new { status = true, data = resources });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateRole([FromBody] ProjectRoleRequest model)
+//        {
+
+//            try
+//            {
+//                if (model == null)
+//                    return Json(new { status = false, message = "Invalid request" });
+
+//                if (string.IsNullOrWhiteSpace(model.Name))
+//                    return Json(new { status = false, message = "Please enter Role Name" });
+
+//                try
+//                {
+//                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                    if (userId <= 0)
+//                        return Unauthorized(new { status = false, message = "User not logged in" });
+
+//                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                    {
+//                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                    };
+
+//                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                    await conn.OpenAsync();
+
+//                    // 1️⃣ Check if role name already exists
+//                    string checkQuery = "SELECT id FROM tbl_project_role WHERE name=@name";
+//                    await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+//                    {
+//                        checkCmd.Parameters.AddWithValue("@name", model.Name.Trim());
+//                        var existingId = await checkCmd.ExecuteScalarAsync();
+
+//                        if (existingId != null && (model.Id == 0 || model.Id != Convert.ToInt32(existingId)))
+//                        {
+//                            return Json(new { status = false, message = "Role name already in use" });
+//                        }
+//                    }
+
+//                    // 2️⃣ Generate role code automatically (R1, R2, R3...)
+//                    string roleCode = model.Id == 0 ? await GenerateNextRoleCode(conn) : model.Code;
+
+//                    if (model.Id == 0)
+//                    {
+//                        // 3️⃣ Insert new role
+//                        string insertQuery = @"
+//                INSERT INTO tbl_project_role (code, name)
+//                VALUES (@code, @name);
+//                SELECT LAST_INSERT_ID();";
+
+//                        await using var cmd = new MySqlCommand(insertQuery, conn);
+//                        cmd.Parameters.AddWithValue("@code", roleCode);
+//                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+
+//                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
                       
 
-                        return Ok(new
-                        {
-                            status = true,
-                            message = "Role inserted successfully",
-                            id = newId,
-                            code = roleCode
-                        });
-                    }
-                    else
-                    {
-                        // 4️⃣ Update existing role
-                        string updateQuery = "UPDATE tbl_project_role SET name=@name, code=@code WHERE id=@id";
-                        await using var cmd = new MySqlCommand(updateQuery, conn);
-                        cmd.Parameters.AddWithValue("@id", model.Id);
-                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
-                        cmd.Parameters.AddWithValue("@code", roleCode);
+//                        return Ok(new
+//                        {
+//                            status = true,
+//                            message = "Role inserted successfully",
+//                            id = newId,
+//                            code = roleCode
+//                        });
+//                    }
+//                    else
+//                    {
+//                        // 4️⃣ Update existing role
+//                        string updateQuery = "UPDATE tbl_project_role SET name=@name, code=@code WHERE id=@id";
+//                        await using var cmd = new MySqlCommand(updateQuery, conn);
+//                        cmd.Parameters.AddWithValue("@id", model.Id);
+//                        cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+//                        cmd.Parameters.AddWithValue("@code", roleCode);
 
-                        int affected = await cmd.ExecuteNonQueryAsync();
-                        if (affected == 0)
-                            return NotFound(new { status = false, message = "Role not found" });
+//                        int affected = await cmd.ExecuteNonQueryAsync();
+//                        if (affected == 0)
+//                            return NotFound(new { status = false, message = "Role not found" });
 
-                        // Optional: Audit log
-                        string audit = "INSERT INTO tbl_audit_log (user_id, action, module, ref_id, description) VALUES (@user_id, @action, @module, @ref_id, @desc)";
-                        await using (var auditCmd = new MySqlCommand(audit, conn))
-                        {
-                            auditCmd.Parameters.AddWithValue("@user_id", userId);
-                            auditCmd.Parameters.AddWithValue("@action", "Update Project Role");
-                            auditCmd.Parameters.AddWithValue("@module", "Project Role");
-                            auditCmd.Parameters.AddWithValue("@ref_id", model.Id);
-                            auditCmd.Parameters.AddWithValue("@desc", "Updated Project Role: " + model.Name);
-                            await auditCmd.ExecuteNonQueryAsync();
-                        }
+//                        // Optional: Audit log
+//                        string audit = "INSERT INTO tbl_audit_log (user_id, action, module, ref_id, description) VALUES (@user_id, @action, @module, @ref_id, @desc)";
+//                        await using (var auditCmd = new MySqlCommand(audit, conn))
+//                        {
+//                            auditCmd.Parameters.AddWithValue("@user_id", userId);
+//                            auditCmd.Parameters.AddWithValue("@action", "Update Project Role");
+//                            auditCmd.Parameters.AddWithValue("@module", "Project Role");
+//                            auditCmd.Parameters.AddWithValue("@ref_id", model.Id);
+//                            auditCmd.Parameters.AddWithValue("@desc", "Updated Project Role: " + model.Name);
+//                            await auditCmd.ExecuteNonQueryAsync();
+//                        }
 
-                        return Ok(new
-                        {
-                            status = true,
-                            message = "Role updated successfully",
-                            id = model.Id,
-                            code = roleCode
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, new { status = false, message = ex.Message });
-                }
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
-            }
-        }
+//                        return Ok(new
+//                        {
+//                            status = true,
+//                            message = "Role updated successfully",
+//                            id = model.Id,
+//                            code = roleCode
+//                        });
+//                    }
+//                }
+//                catch (Exception ex)
+//                {
+//                    return StatusCode(500, new { status = false, message = ex.Message });
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+//            }
+//        }
 
-        private async Task<string> GenerateNextRoleCode(MySqlConnection conn)
-        {
-            try
-            {
-                string query = "SELECT code FROM tbl_project_role ORDER BY id DESC LIMIT 1";
-                await using var cmd = new MySqlCommand(query, conn);
-                var lastCodeObj = await cmd.ExecuteScalarAsync();
+//        private async Task<string> GenerateNextRoleCode(MySqlConnection conn)
+//        {
+//            try
+//            {
+//                string query = "SELECT code FROM tbl_project_role ORDER BY id DESC LIMIT 1";
+//                await using var cmd = new MySqlCommand(query, conn);
+//                var lastCodeObj = await cmd.ExecuteScalarAsync();
 
-                if (lastCodeObj == null || string.IsNullOrWhiteSpace(lastCodeObj.ToString()))
-                    return "R1";
+//                if (lastCodeObj == null || string.IsNullOrWhiteSpace(lastCodeObj.ToString()))
+//                    return "R1";
 
-                string lastCode = lastCodeObj.ToString();
-                if (int.TryParse(lastCode.Replace("R", ""), out int num))
-                    return $"R{num + 1}";
+//                string lastCode = lastCodeObj.ToString();
+//                if (int.TryParse(lastCode.Replace("R", ""), out int num))
+//                    return $"R{num + 1}";
 
-                return "R1";
-            }
-            catch(Exception ex)
-            {
-                throw ex;
-            }
+//                return "R1";
+//            }
+//            catch(Exception ex)
+//            {
+//                throw ex;
+//            }
           
-        }
-        [HttpGet]
-        public async Task<IActionResult> GetRoles()
-        {
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
+//        }
+//        [HttpGet]
+//        public async Task<IActionResult> GetRoles()
+//        {
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
 
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
 
-                string query = "SELECT id, code, name FROM tbl_project_role ORDER BY id ASC";
-                var roles = new List<object>();
+//                string query = "SELECT id, code, name FROM tbl_project_role ORDER BY id ASC";
+//                var roles = new List<object>();
 
-                await using (var cmd = new MySqlCommand(query, conn))
-                await using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        roles.Add(new
-                        {
-                            id = reader.GetInt32("id"),
-                            code = reader.GetString("code"),
-                            name = reader.GetString("name")
-                        });
-                    }
-                }
+//                await using (var cmd = new MySqlCommand(query, conn))
+//                await using (var reader = await cmd.ExecuteReaderAsync())
+//                {
+//                    while (await reader.ReadAsync())
+//                    {
+//                        roles.Add(new
+//                        {
+//                            id = reader.GetInt32("id"),
+//                            code = reader.GetString("code"),
+//                            name = reader.GetString("name")
+//                        });
+//                    }
+//                }
 
-                return Ok(new { status = true, data = roles });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
+//                return Ok(new { status = true, data = roles });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
 
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateProjectResource([FromBody] ProjectResourceRequest model)
-        {
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateProjectResource([FromBody] ProjectResourceRequest model)
+//        {
 
-            try
-            {
-                if (model == null)
-                    return Json(new { status = false, message = "Invalid request" });
+//            try
+//            {
+//                if (model == null)
+//                    return Json(new { status = false, message = "Invalid request" });
 
-                if (string.IsNullOrWhiteSpace(model.Role))
-                    return Json(new { status = false, message = "Role can't be empty" });
+//                if (string.IsNullOrWhiteSpace(model.Role))
+//                    return Json(new { status = false, message = "Role can't be empty" });
 
-                if (string.IsNullOrWhiteSpace(model.Name))
-                    return Json(new { status = false, message = "Name can't be empty" });
+//                if (string.IsNullOrWhiteSpace(model.Name))
+//                    return Json(new { status = false, message = "Name can't be empty" });
 
-                if (model.Type == "Labour" && (model.EmployeeId == null || model.EmployeeId <= 0))
-                    return Json(new { status = false, message = "Employee name can't be empty" });
+//                if (model.Type == "Labour" && (model.EmployeeId == null || model.EmployeeId <= 0))
+//                    return Json(new { status = false, message = "Employee name can't be empty" });
 
-                try
-                {
-                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    if (userId <= 0)
-                        return Json(new { status = false, message = "User not logged in" });
+//                try
+//                {
+//                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                    if (userId <= 0)
+//                        return Json(new { status = false, message = "User not logged in" });
 
-                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                    {
-                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                    };
+//                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                    {
+//                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                    };
 
-                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                    await conn.OpenAsync();
+//                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                    await conn.OpenAsync();
 
-                    // 🔹 Auto-generate code if empty
-                    string resourceCode = string.IsNullOrEmpty(model.Code)
-                        ? await GenerateNextResourceCode(conn)
-                        : model.Code;
+//                    // 🔹 Auto-generate code if empty
+//                    string resourceCode = string.IsNullOrEmpty(model.Code)
+//                        ? await GenerateNextResourceCode(conn)
+//                        : model.Code;
 
-                    if (model.Id == 0)
-                    {
-                        // 🟩 INSERT new resource
-                        string insertQuery = @"
-                INSERT INTO tbl_project_resource
-                (code, date, name, role, phone, type, price_unit, unit_time, max_unit_time, employee_id)
-                VALUES (@code, @date, @name, @role, @phone, @type, @priceUnit, @unitTime, @maxUnitTime, @empId);
-                SELECT LAST_INSERT_ID();";
+//                    if (model.Id == 0)
+//                    {
+//                        // 🟩 INSERT new resource
+//                        string insertQuery = @"
+//                INSERT INTO tbl_project_resource
+//                (code, date, name, role, phone, type, price_unit, unit_time, max_unit_time, employee_id)
+//                VALUES (@code, @date, @name, @role, @phone, @type, @priceUnit, @unitTime, @maxUnitTime, @empId);
+//                SELECT LAST_INSERT_ID();";
 
-                        await using var cmd = new MySqlCommand(insertQuery, conn);
-                        cmd.Parameters.AddWithValue("@code", resourceCode);
-                        cmd.Parameters.AddWithValue("@date", model.Date);
-                        cmd.Parameters.AddWithValue("@name", model.Name);
-                        cmd.Parameters.AddWithValue("@role", model.Role);
-                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
-                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
-                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
-                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
-                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
-                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
+//                        await using var cmd = new MySqlCommand(insertQuery, conn);
+//                        cmd.Parameters.AddWithValue("@code", resourceCode);
+//                        cmd.Parameters.AddWithValue("@date", model.Date);
+//                        cmd.Parameters.AddWithValue("@name", model.Name);
+//                        cmd.Parameters.AddWithValue("@role", model.Role);
+//                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+//                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
+//                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
+//                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
+//                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
+//                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
 
-                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+//                        int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-                        return Ok(new
-                        {
-                            status = true,
-                            message = "Resource inserted successfully",
-                            id = newId,
-                            code = resourceCode
-                        });
-                    }
-                    else
-                    {
-                        // 🟦 UPDATE existing resource
-                        string updateQuery = @"
-                UPDATE tbl_project_resource
-                SET date = @date, name = @name, role = @role, phone = @phone, type = @type,
-                    code = @code, price_unit = @priceUnit, unit_time = @unitTime,
-                    max_unit_time = @maxUnitTime, employee_id = @empId
-                WHERE id = @id";
+//                        return Ok(new
+//                        {
+//                            status = true,
+//                            message = "Resource inserted successfully",
+//                            id = newId,
+//                            code = resourceCode
+//                        });
+//                    }
+//                    else
+//                    {
+//                        // 🟦 UPDATE existing resource
+//                        string updateQuery = @"
+//                UPDATE tbl_project_resource
+//                SET date = @date, name = @name, role = @role, phone = @phone, type = @type,
+//                    code = @code, price_unit = @priceUnit, unit_time = @unitTime,
+//                    max_unit_time = @maxUnitTime, employee_id = @empId
+//                WHERE id = @id";
 
-                        await using var cmd = new MySqlCommand(updateQuery, conn);
-                        cmd.Parameters.AddWithValue("@id", model.Id);
-                        cmd.Parameters.AddWithValue("@code", resourceCode);
-                        cmd.Parameters.AddWithValue("@date", model.Date);
-                        cmd.Parameters.AddWithValue("@name", model.Name);
-                        cmd.Parameters.AddWithValue("@role", model.Role);
-                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
-                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
-                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
-                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
-                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
-                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
+//                        await using var cmd = new MySqlCommand(updateQuery, conn);
+//                        cmd.Parameters.AddWithValue("@id", model.Id);
+//                        cmd.Parameters.AddWithValue("@code", resourceCode);
+//                        cmd.Parameters.AddWithValue("@date", model.Date);
+//                        cmd.Parameters.AddWithValue("@name", model.Name);
+//                        cmd.Parameters.AddWithValue("@role", model.Role);
+//                        cmd.Parameters.AddWithValue("@phone", model.Phone ?? "");
+//                        cmd.Parameters.AddWithValue("@type", model.Type ?? "Non");
+//                        cmd.Parameters.AddWithValue("@priceUnit", model.PriceUnit ?? 0);
+//                        cmd.Parameters.AddWithValue("@unitTime", model.UnitTime ?? 8);
+//                        cmd.Parameters.AddWithValue("@maxUnitTime", model.MaxUnitTime ?? 8);
+//                        cmd.Parameters.AddWithValue("@empId", model.EmployeeId ?? 0);
 
-                        int affected = await cmd.ExecuteNonQueryAsync();
-                        if (affected == 0)
-                            return NotFound(new { status = false, message = "Resource not found" });
+//                        int affected = await cmd.ExecuteNonQueryAsync();
+//                        if (affected == 0)
+//                            return NotFound(new { status = false, message = "Resource not found" });
 
-                        return Ok(new
-                        {
-                            status = true,
-                            message = "Resource updated successfully",
-                            id = model.Id,
-                            code = resourceCode
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return Json(500, new { status = false, message = ex.Message });
-                }
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
-            }
+//                        return Ok(new
+//                        {
+//                            status = true,
+//                            message = "Resource updated successfully",
+//                            id = model.Id,
+//                            code = resourceCode
+//                        });
+//                    }
+//                }
+//                catch (Exception ex)
+//                {
+//                    return Json(500, new { status = false, message = ex.Message });
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+//            }
 
-        }
+//        }
 
-        private async Task<string> GenerateNextResourceCode(MySqlConnection conn)
-        {
-            try
-            {
-                string query = "SELECT code FROM tbl_project_resource ORDER BY id DESC LIMIT 1";
-                await using var cmd = new MySqlCommand(query, conn);
-                var lastCodeObj = await cmd.ExecuteScalarAsync();
+//        private async Task<string> GenerateNextResourceCode(MySqlConnection conn)
+//        {
+//            try
+//            {
+//                string query = "SELECT code FROM tbl_project_resource ORDER BY id DESC LIMIT 1";
+//                await using var cmd = new MySqlCommand(query, conn);
+//                var lastCodeObj = await cmd.ExecuteScalarAsync();
 
-                if (lastCodeObj == null)
-                    return "RS1";
+//                if (lastCodeObj == null)
+//                    return "RS1";
 
-                string lastCode = lastCodeObj.ToString();
-                if (int.TryParse(lastCode.Replace("RS", ""), out int num))
-                    return $"RS{num + 1}";
-                return "RS1";
-            }
-            catch(Exception ex)
-            {
-                throw ex;
-            }
-        }
+//                string lastCode = lastCodeObj.ToString();
+//                if (int.TryParse(lastCode.Replace("RS", ""), out int num))
+//                    return $"RS{num + 1}";
+//                return "RS1";
+//            }
+//            catch(Exception ex)
+//            {
+//                throw ex;
+//            }
+//        }
 
-        [HttpPost]
-        public async Task<IActionResult> AssignResources([FromBody] AssignResourcesRequest model)
-        {
-            try
-            {
-                if (model == null || model.PlanningId <= 0)
-                    return Json(new { status = false, message = "Invalid request" });
+//        [HttpPost]
+//        public async Task<IActionResult> AssignResources([FromBody] AssignResourcesRequest model)
+//        {
+//            try
+//            {
+//                if (model == null || model.PlanningId <= 0)
+//                    return Json(new { status = false, message = "Invalid request" });
 
-                try
-                {
-                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                    if (userId <= 0)
-                        return Json(new { status = false, message = "User not logged in" });
+//                try
+//                {
+//                    int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                    if (userId <= 0)
+//                        return Json(new { status = false, message = "User not logged in" });
 
-                    // Convert list of ResourceIds to comma-separated string
-                    string assignedTeam = model.ResourceIds != null && model.ResourceIds.Count > 0
-                        ? string.Join(",", model.ResourceIds)
-                        : "";
+//                    // Convert list of ResourceIds to comma-separated string
+//                    string assignedTeam = model.ResourceIds != null && model.ResourceIds.Count > 0
+//                        ? string.Join(",", model.ResourceIds)
+//                        : "";
 
-                    // Build connection string
-                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                    {
-                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                    };
+//                    // Build connection string
+//                    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                    {
+//                        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                    };
 
-                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                    await conn.OpenAsync();
+//                    await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                    await conn.OpenAsync();
 
-                    // Update assigned_team
-                    string updateQuery = "UPDATE tbl_project_planning SET assigned_team=@assignedTeam WHERE id=@id";
-                    await using var cmd = new MySqlCommand(updateQuery, conn);
-                    cmd.Parameters.AddWithValue("@assignedTeam", assignedTeam);
-                    cmd.Parameters.AddWithValue("@id", model.PlanningId);
+//                    // Update assigned_team
+//                    string updateQuery = "UPDATE tbl_project_planning SET assigned_team=@assignedTeam WHERE id=@id";
+//                    await using var cmd = new MySqlCommand(updateQuery, conn);
+//                    cmd.Parameters.AddWithValue("@assignedTeam", assignedTeam);
+//                    cmd.Parameters.AddWithValue("@id", model.PlanningId);
 
-                    int affected = await cmd.ExecuteNonQueryAsync();
+//                    int affected = await cmd.ExecuteNonQueryAsync();
 
-                    if (affected > 0)
-                    {
-                        return Ok(new { status = true, message = "Resources assigned successfully", assignedTeam });
-                    }
-                    else
-                    {
-                        return Json(new { status = false, message = "Planning record not found" });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return Json(500, new { status = false, message = ex.Message });
-                }
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
-            }
+//                    if (affected > 0)
+//                    {
+//                        return Ok(new { status = true, message = "Resources assigned successfully", assignedTeam });
+//                    }
+//                    else
+//                    {
+//                        return Json(new { status = false, message = "Planning record not found" });
+//                    }
+//                }
+//                catch (Exception ex)
+//                {
+//                    return Json(500, new { status = false, message = ex.Message });
+//                }
+//            }
+//            catch (Exception ex)
+//            {
+//                return Json(new { status = false, message = "An unexpected error occurred: " + ex.Message });
+//            }
 
-        }
-        [HttpGet]
-        public async Task<IActionResult> GetAssignedResources(int planningId)
-        {
-            try
-            {
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
+//        }
+//        [HttpGet]
+//        public async Task<IActionResult> GetAssignedResources(int planningId)
+//        {
+//            try
+//            {
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
 
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
 
-                string query = @"
-            SELECT 
-                pr.id, 
-                pr.code, 
-                pr.date, 
-                pr.name, 
-                r.name AS roleName, 
-                pr.phone, 
-                pr.type, 
-                pr.price_unit, 
-                pr.unit_time, 
-                pr.max_unit_time
-            FROM tbl_project_resource pr
-            JOIN tbl_project_role r ON r.id = pr.role
-            WHERE EXISTS (
-                SELECT 1 
-                FROM tbl_project_planning p 
-                WHERE p.id = @planningId 
-                  AND FIND_IN_SET(pr.id, p.assigned_team) > 0
-            );";
+//                string query = @"
+//            SELECT 
+//                pr.id, 
+//                pr.code, 
+//                pr.date, 
+//                pr.name, 
+//                r.name AS roleName, 
+//                pr.phone, 
+//                pr.type, 
+//                pr.price_unit, 
+//                pr.unit_time, 
+//                pr.max_unit_time
+//            FROM tbl_project_resource pr
+//            JOIN tbl_project_role r ON r.id = pr.role
+//            WHERE EXISTS (
+//                SELECT 1 
+//                FROM tbl_project_planning p 
+//                WHERE p.id = @planningId 
+//                  AND FIND_IN_SET(pr.id, p.assigned_team) > 0
+//            );";
 
-                await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@planningId", planningId);
+//                await using var cmd = new MySqlCommand(query, conn);
+//                cmd.Parameters.AddWithValue("@planningId", planningId);
 
-                await using var reader = await cmd.ExecuteReaderAsync();
+//                await using var reader = await cmd.ExecuteReaderAsync();
 
-                var resourceList = new List<object>();
-                int sn = 1;
+//                var resourceList = new List<object>();
+//                int sn = 1;
 
-                while (await reader.ReadAsync())
-                {
-                    resourceList.Add(new
-                    {
-                        SN = sn++,
-                        Id = reader.GetInt32("id"),
-                        Code = reader["code"]?.ToString(),
-                        Name = reader["name"]?.ToString(),
-                    });
-                }
+//                while (await reader.ReadAsync())
+//                {
+//                    resourceList.Add(new
+//                    {
+//                        SN = sn++,
+//                        Id = reader.GetInt32("id"),
+//                        Code = reader["code"]?.ToString(),
+//                        Name = reader["name"]?.ToString(),
+//                    });
+//                }
 
-                return Ok(new { status = true, data = resourceList });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = ex.Message });
-            }
-        }
+//                return Ok(new { status = true, data = resourceList });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { status = false, message = ex.Message });
+//            }
+//        }
 
-        [HttpPost]
-        public async Task<IActionResult> SaveOrUpdateProjectActivity([FromBody] ProjectActivityRequest model)
-        {
-            try
-            {
-                if (model == null)
-                    return Json(new { status = false, message = "Invalid request data." });
+//        [HttpPost]
+//        public async Task<IActionResult> SaveOrUpdateProjectActivity([FromBody] ProjectActivityRequest model)
+//        {
+//            try
+//            {
+//                if (model == null)
+//                    return Json(new { status = false, message = "Invalid request data." });
 
-                if (model.PlanningId <= 0)
-                    return Json(new { status = false, message = "Planning ID is required." });
+//                if (model.PlanningId <= 0)
+//                    return Json(new { status = false, message = "Planning ID is required." });
 
-                if (model.TenderId <= 0)
-                    return Json(new { status = false, message = "Tender ID is required." });
+//                if (model.TenderId <= 0)
+//                    return Json(new { status = false, message = "Tender ID is required." });
 
-                if (model.ItemId <= 0)
-                    return Json(new { status = false, message = "Item ID is required." });
+//                if (model.ItemId <= 0)
+//                    return Json(new { status = false, message = "Item ID is required." });
 
-                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-                if (userId <= 0)
-                    return Json(new { status = false, message = "User not logged in." });
+//                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+//                if (userId <= 0)
+//                    return Json(new { status = false, message = "User not logged in." });
 
-                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-                {
-                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-                };
+//                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+//                {
+//                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+//                };
 
-                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-                await conn.OpenAsync();
+//                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+//                await conn.OpenAsync();
 
-                int progress = model.Progress ?? 0;
-                DateTime startDate = model.StartDate ?? DateTime.Today;
-                DateTime endDate = model.EndDate ?? DateTime.Today;
-                string status = progress == 100 ? "Completed" :
-                                (DateTime.Today >= startDate ? "In Progress" : "Not Started");
+//                int progress = model.Progress ?? 0;
+//                DateTime startDate = model.StartDate ?? DateTime.Today;
+//                DateTime endDate = model.EndDate ?? DateTime.Today;
+//                string status = progress == 100 ? "Completed" :
+//                                (DateTime.Today >= startDate ? "In Progress" : "Not Started");
 
                 
-                int activityId = 0; 
+//                int activityId = 0; 
 
-                //if (model.Id <= 0)
-                //{
-                    // INSERT
-                    string insertQuery = @"
-        INSERT INTO tbl_project_activity 
-            (planning_id, code, name, start_date, end_date, progress, status)
-        VALUES (@planningId, @code, @name, @startDate, @endDate, @progress, @status);
-        SELECT LAST_INSERT_ID();";
+//                //if (model.Id <= 0)
+//                //{
+//                    // INSERT
+//                    string insertQuery = @"
+//        INSERT INTO tbl_project_activity 
+//            (planning_id, code, name, start_date, end_date, progress, status)
+//        VALUES (@planningId, @code, @name, @startDate, @endDate, @progress, @status);
+//        SELECT LAST_INSERT_ID();";
 
-                    await using var cmd = new MySqlCommand(insertQuery, conn);
-                    cmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                    cmd.Parameters.AddWithValue("@code", model.ItemId);
-                    cmd.Parameters.AddWithValue("@name", model.ItemId);
-                    cmd.Parameters.AddWithValue("@startDate", startDate);
-                    cmd.Parameters.AddWithValue("@endDate", endDate);
-                    cmd.Parameters.AddWithValue("@progress", progress);
-                    cmd.Parameters.AddWithValue("@status", status);
+//                    await using var cmd = new MySqlCommand(insertQuery, conn);
+//                    cmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+//                    cmd.Parameters.AddWithValue("@code", model.ItemId);
+//                    cmd.Parameters.AddWithValue("@name", model.ItemId);
+//                    cmd.Parameters.AddWithValue("@startDate", startDate);
+//                    cmd.Parameters.AddWithValue("@endDate", endDate);
+//                    cmd.Parameters.AddWithValue("@progress", progress);
+//                    cmd.Parameters.AddWithValue("@status", status);
 
-                    activityId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-                //}
-
-
-                // -------------------------
-                // Assign Resources
-                // -------------------------
-                if (model.AssignedResources != null && model.AssignedResources.Any())
-                {
-                    foreach (var resId in model.AssignedResources)
-                    {
-                        string insertAssignment = @"
-                    INSERT INTO tbl_project_activity_assignment (activity_id, resource_id)
-                    VALUES (@activityId, @resourceId);";
-
-                        await using var assignCmd = new MySqlCommand(insertAssignment, conn);
-                        assignCmd.Parameters.AddWithValue("@activityId", activityId);
-                        assignCmd.Parameters.AddWithValue("@resourceId", resId);
-                        await assignCmd.ExecuteNonQueryAsync();
-                    }
-                }
-
-                // -------------------------
-                // Update Tender Details
-                // -------------------------
-                string updateTender = @"
-            UPDATE tbl_project_tender_details 
-            SET start_date=@startDate, end_date=@endDate, progress=@progress
-            WHERE item_id=@itemId AND tender_id=@tenderId;";
-
-                await using (var tenderCmd = new MySqlCommand(updateTender, conn))
-                {
-                    tenderCmd.Parameters.AddWithValue("@itemId", model.ItemId);
-                    tenderCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
-                    tenderCmd.Parameters.AddWithValue("@startDate", startDate);
-                    tenderCmd.Parameters.AddWithValue("@endDate", endDate);
-                    tenderCmd.Parameters.AddWithValue("@progress", progress);
-                    await tenderCmd.ExecuteNonQueryAsync();
-
-                    var affectedRows = await tenderCmd.ExecuteNonQueryAsync();
-                    if (affectedRows == 0)
-                        Console.WriteLine("No tender row updated! Check ItemId/TenderId combination.");
-
-                }
-
-                // -------------------------
-                // Update Project Planning
-                // -------------------------
-                string updatePlanning = @"
-            UPDATE tbl_project_planning
-            SET modified_by = @modifiedBy,
-                modified_date = @modifiedDate,
-                progress = @progress
-            WHERE id = @planningId;";
-
-                await using (var planningCmd = new MySqlCommand(updatePlanning, conn))
-                {
-                    planningCmd.Parameters.AddWithValue("@modifiedBy", userId);
-                    planningCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
-                    planningCmd.Parameters.AddWithValue("@progress", 0); // default progress
-                    planningCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
-                    await planningCmd.ExecuteNonQueryAsync();
-                }
-
-                return Ok(new
-                {
-                    status = true,
-                    message = model.Id == 0 ? "Activity inserted successfully" : "Activity updated successfully",
-                    id = activityId,
-                    progress = progress,
-                    statusText = status
-                });
-            }
-            catch (Exception ex)
-            {
-                return Json(500, new { status = false, message = ex.Message });
-            }
-        }
+//                    activityId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+//                //}
 
 
-        #endregion
+//                // -------------------------
+//                // Assign Resources
+//                // -------------------------
+//                if (model.AssignedResources != null && model.AssignedResources.Any())
+//                {
+//                    foreach (var resId in model.AssignedResources)
+//                    {
+//                        string insertAssignment = @"
+//                    INSERT INTO tbl_project_activity_assignment (activity_id, resource_id)
+//                    VALUES (@activityId, @resourceId);";
+
+//                        await using var assignCmd = new MySqlCommand(insertAssignment, conn);
+//                        assignCmd.Parameters.AddWithValue("@activityId", activityId);
+//                        assignCmd.Parameters.AddWithValue("@resourceId", resId);
+//                        await assignCmd.ExecuteNonQueryAsync();
+//                    }
+//                }
+
+//                // -------------------------
+//                // Update Tender Details
+//                // -------------------------
+//                string updateTender = @"
+//            UPDATE tbl_project_tender_details 
+//            SET start_date=@startDate, end_date=@endDate, progress=@progress
+//            WHERE item_id=@itemId AND tender_id=@tenderId;";
+
+//                await using (var tenderCmd = new MySqlCommand(updateTender, conn))
+//                {
+//                    tenderCmd.Parameters.AddWithValue("@itemId", model.ItemId);
+//                    tenderCmd.Parameters.AddWithValue("@tenderId", model.TenderId);
+//                    tenderCmd.Parameters.AddWithValue("@startDate", startDate);
+//                    tenderCmd.Parameters.AddWithValue("@endDate", endDate);
+//                    tenderCmd.Parameters.AddWithValue("@progress", progress);
+//                    await tenderCmd.ExecuteNonQueryAsync();
+
+//                    var affectedRows = await tenderCmd.ExecuteNonQueryAsync();
+//                    if (affectedRows == 0)
+//                        Console.WriteLine("No tender row updated! Check ItemId/TenderId combination.");
+
+//                }
+
+//                // -------------------------
+//                // Update Project Planning
+//                // -------------------------
+//                string updatePlanning = @"
+//            UPDATE tbl_project_planning
+//            SET modified_by = @modifiedBy,
+//                modified_date = @modifiedDate,
+//                progress = @progress
+//            WHERE id = @planningId;";
+
+//                await using (var planningCmd = new MySqlCommand(updatePlanning, conn))
+//                {
+//                    planningCmd.Parameters.AddWithValue("@modifiedBy", userId);
+//                    planningCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
+//                    planningCmd.Parameters.AddWithValue("@progress", 0); // default progress
+//                    planningCmd.Parameters.AddWithValue("@planningId", model.PlanningId);
+//                    await planningCmd.ExecuteNonQueryAsync();
+//                }
+
+//                return Ok(new
+//                {
+//                    status = true,
+//                    message = model.Id == 0 ? "Activity inserted successfully" : "Activity updated successfully",
+//                    id = activityId,
+//                    progress = progress,
+//                    statusText = status
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                return Json(500, new { status = false, message = ex.Message });
+//            }
+//        }
+
+
+//        #endregion
 
         #region Project Work Done
 
