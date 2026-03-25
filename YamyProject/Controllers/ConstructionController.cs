@@ -3902,6 +3902,128 @@ INNER JOIN tbl_project_planning p
         {
             return View();
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTenderByProjectSite(int projectId, string site)
+        {
+            try
+            {
+                if (projectId <= 0 || string.IsNullOrEmpty(site))
+                    return BadRequest(new { status = false, message = "Project and Site are required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                p.tender_id,
+                IFNULL(t.name, '') AS tender_name
+            FROM tbl_projects_site_setup p
+            LEFT JOIN tbl_tender_names t 
+                ON p.tender_id = t.id
+            WHERE p.project_id = @projectId 
+              AND p.site = @site
+            LIMIT 1;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                cmd.Parameters.AddWithValue("@site", site);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                // ✅ Call Read() before accessing data
+                if (await reader.ReadAsync())
+                {
+                    return Ok(new
+                    {
+                        status = true,
+                        data = new
+                        {
+                            TenderId = reader["tender_id"] != DBNull.Value ? Convert.ToInt32(reader["tender_id"]) : 0,
+                            TenderName = reader["tender_name"].ToString()
+                        }
+                    });
+                }
+
+                // No row found
+                return Ok(new { status = false, message = "No Tender Found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetBOQItemsByTender(int tenderId)
+        {
+            try
+            {
+                if (tenderId <= 0)
+                    return BadRequest(new { status = false, message = "Tender ID is required" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                ib.id,
+                ib.name,
+                ib.unit_name,
+                IFNULL(ptd.qty, 0) AS boq_qty,
+                0 AS prev_done_qty
+            FROM tbl_project_tender_details ptd
+            INNER JOIN tbl_items_boq ib 
+                ON ptd.item_id = ib.id
+            WHERE ptd.tender_id = @tenderId
+            GROUP BY ib.id, ib.name, ib.unit_name, ptd.qty
+            ORDER BY ib.name;
+        ";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+
+                var items = new List<object>();
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    items.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Name = reader["name"].ToString(),
+                        Unit = reader["unit_name"].ToString(),
+                        BoqQty = reader["boq_qty"] != DBNull.Value ? Convert.ToDecimal(reader["boq_qty"]) : 0,
+                        PrevDoneQty = reader["prev_done_qty"] != DBNull.Value ? Convert.ToDecimal(reader["prev_done_qty"]) : 0
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Success",
+                    data = items
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
         #endregion
 
         #region Project Tender
