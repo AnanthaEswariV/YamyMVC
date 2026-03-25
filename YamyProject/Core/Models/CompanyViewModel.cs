@@ -882,18 +882,13 @@ namespace YamyProject.Core.Models
         public int ProjectId { get; set; }
         public int SiteId { get; set; }
         public string SiteName { get; set; } 
-
         public int TenderId { get; set; }
         public int TenderNameId { get; set; }
-
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-
         public decimal EstimatedBudget { get; set; }
-
         public int SubcontractorId { get; set; }
         public decimal RetentionPercent { get; set; }
-
         public string Status { get; set; }
     }
 

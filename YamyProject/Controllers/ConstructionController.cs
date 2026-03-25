@@ -2115,7 +2115,6 @@ total_values, billed_to_dates, balances)
 
         #endregion
 
-
         #region Project Site Management
 
         public IActionResult ProjectSiteManagement()
