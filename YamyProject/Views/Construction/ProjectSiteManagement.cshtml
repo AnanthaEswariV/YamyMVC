@@ -130,21 +130,14 @@
                         </div>
 
                         <!-- Fund Management Account -->
-                        <div class="col-md-4">
+                      @*   <div class="col-md-4">
                             <label for="fundAccount" class="form-label">Fund Management Account</label>
                             <select class="form-select" id="debitAccount">
                                 <option value="">-- Select Account --</option>
                             </select>
-                        </div>
+                        </div> *@
 
-                        <!-- Estimated Budget -->
-                        <div class="col-md-4">
-                            <label for="estimatedBudget" class="form-label">Estimated Budget</label>
-                            <input type="text" class="form-control" id="estimatedBudget">
-                        </div>
-                    </div>
 
-                    <div class="row mt-3">
                         <!-- Project Name -->
                         <div class="col-md-4">
                             <label for="projectNames" class="form-label">Project Name</label>
@@ -153,7 +146,12 @@
                             </select>
                         </div>
 
-                        <!-- Project Site -->
+                  @*       <!-- Estimated Budget -->
+                        <div class="col-md-4">
+                            <label for="estimatedBudget" class="form-label">Estimated Budget</label>
+                            <input type="text" class="form-control" id="estimatedBudget">
+                        </div> *@
+
                         <div class="col-md-4">
                             <label for="projectSite" class="form-label">Project Site</label>
                             <div class="d-flex align-items-center">
@@ -167,6 +165,19 @@
                                 </a>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <!-- Project Name -->
+                       @*  <div class="col-md-4">
+                            <label for="projectNames" class="form-label">Project Name</label>
+                            <select class="form-select" id="projectNames">
+                                <option value="">-- Select Project --</option>
+                            </select>
+                        </div>
+ *@
+                        <!-- Project Site -->
+                     
 
                         <!-- Tender Name -->
                         <div class="col-md-4">
@@ -181,6 +192,19 @@
                                 <!-- Show Button -->
                                 <button type="button" class="btn btn-secondary ms-2" id="showTendersBtn">Show</button>
                             </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="subcontractor" class="form-label">Subcontractor</label>
+                            <select id="subcontractor" class="form-select" required>
+                                <option value="">Select subcontractor</option>
+                                <!-- Dynamically populated -->
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="retentionPercent" class="form-label">Retention %</label>
+                            <input type="text" class="form-control" id="retentionPercent" placeholder="Enter Retention %" />
                         </div>
                     </div>
 
@@ -204,7 +228,7 @@
                             </select>
                         </div>
 
-                        <!-- Project Type -->
+                @*         <!-- Project Type -->
                         <div class="col-md-4">
                             <label for="projectTypee" class="form-label">Project Type</label>
                             <select class="form-select" id="projectTypee">
@@ -219,24 +243,26 @@
                                 <option value="Specialized">Specialized</option>
                                 <option value="Government">Government</option>
                             </select>
-                        </div>
+                        </div> *@
 
                         <!-- Start Date -->
                         <div class="col-md-4">
                             <label for="startDate" class="form-label">Start Date</label>
                             <input type="date" class="form-control" id="startDate">
                         </div>
-                    </div>
 
-                    <div class="row mt-3">
-                        <!-- End Date -->
                         <div class="col-md-4">
                             <label for="endDate" class="form-label">End Date</label>
                             <input type="date" class="form-control" id="endDate">
                         </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <!-- End Date -->
+                        
 
                         <div class="col-md-4">
-                            <label for="boqTotal" class="form-label">BOQ Total</label>
+                            <label for="boqTotal" class="form-label">Estimated Budget</label>
                             <input type="text" class="form-control" id="boqTotal" value="0" readonly>
                         </div>
                     </div>
@@ -919,6 +945,7 @@
                         loadProjectPlanning();
                     });
 
+                    loadSubcontractors();
                     loadProjects();
                     loadProjectPlanning();
 
@@ -974,41 +1001,41 @@
                     }
                 });
 
-                    function populateBankAccounts() {
-                    $.ajax({
-                       url: '@Url.Action("GetAccruedSalaries", "HR")',
-                        type: 'GET',
-                        success: function(res) {
-                            const data = Array.isArray(res) ? res : res.data || [];
+                //     function populateBankAccounts() {
+                //     $.ajax({
+                //        url: '@Url.Action("GetAccruedSalaries", "HR")',
+                //         type: 'GET',
+                //         success: function(res) {
+                //             const data = Array.isArray(res) ? res : res.data || [];
 
-                            if (!data.length) return;
+                //             if (!data.length) return;
 
-                            const accountSelectors = ['#debitAccount'];
+                //             const accountSelectors = ['#debitAccount'];
 
-                            accountSelectors.forEach(function(selector) {
-                                const $select = $(selector);
-                                const selectedId = $select.data('selected-id');
+                //             accountSelectors.forEach(function(selector) {
+                //                 const $select = $(selector);
+                //                 const selectedId = $select.data('selected-id');
 
-                                $select.empty().append('<option value="">-- Select --</option>');
+                //                 $select.empty().append('<option value="">-- Select --</option>');
 
-                                $.each(data, function(i, item) {
-                                    const $option = $('<option>', {
-                                        value: item.id,
-                                        text: `${item.code} - ${item.name}`,
-                                        selected: String(item.id) === String(selectedId)
-                                    });
+                //                 $.each(data, function(i, item) {
+                //                     const $option = $('<option>', {
+                //                         value: item.id,
+                //                         text: `${item.code} - ${item.name}`,
+                //                         selected: String(item.id) === String(selectedId)
+                //                     });
 
-                                    $select.append($option);
-                                });
-                            });
-                        },
-                        error: function(err) {
-                            console.error('Failed to fetch bank accounts:', err);
-                        }
-                    });
-                }
+                //                     $select.append($option);
+                //                 });
+                //             });
+                //         },
+                //         error: function(err) {
+                //             console.error('Failed to fetch bank accounts:', err);
+                //         }
+                //     });
+                // }
 
-                    populateBankAccounts();
+                //     populateBankAccounts();
 
                     $('#showTendersBtn').on('click', function () {
                     // Get the selected project ID
@@ -1096,7 +1123,7 @@
                     loadTenderItems(tenderId);
                 });
 
-                          function loadTenderItems(tenderId) {
+                    function loadTenderItems(tenderId) {
             $.ajax({
                 url: '@Url.Action("GetTenderItems", "Construction")',
                 type: 'GET',
@@ -1162,7 +1189,7 @@
                 }
 
 
-             function calculateBoqTotal(data) {
+                    function calculateBoqTotal(data) {
 
             if (!Array.isArray(data) || data.length === 0) {
                 $("#boqTotal").val(0);
@@ -1176,7 +1203,7 @@
             return boqTotal;
         }
 
-        $("#projectNames").on("change", function () {
+                    $("#projectNames").on("change", function () {
                     const projectId = $(this).val();
                     if (projectId) {
                         // Reload tender items for the selected project
@@ -1191,6 +1218,32 @@
                      $('#planningForm').on('submit', function (e) {
                     e.preventDefault();
                 });
+
+                     function getTodayDate() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+                      document.getElementById('planningModal').addEventListener('shown.bs.modal', function () {
+                const todayDate = getTodayDate();
+
+                // Fill all date fields
+                const dateFields = [
+                    'date',
+                    'startDate',
+                    'endDate'
+                ];
+
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
+            });
 
                 });
 
@@ -1339,7 +1392,7 @@
                         SiteId: parseInt($("#projectSite").val()) || 0,
                         TenderId: parseInt($("#tenderDropdown").val()) || 0,
                         TenderNameId: parseInt($("#tenderDropdown").val()) || 0,
-                        AccountId: parseInt($("#debitAccount").val()) || 0,
+                        // AccountId: parseInt($("#debitAccount").val()) || 0,
                         CashAccountId: parseInt($("#cashAccount").val()) || 0,
                         EstimatedBudget: parseFloat($("#estimatedBudget").val()) || 0,
                         Status: $("#projectStatuss").val(),
@@ -1437,7 +1490,7 @@
                     $("#projectNames").val(planning.project_Id ?? 0).trigger("change");
                     $("#projectSite").val(planning.site ?? 0).trigger("change");
                     $("#tenderDropdown").val(planning.tender_Name_Id ?? 0).trigger("change");
-                    $("#debitAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
+                    // $("#debitAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
                     $("#cashAccount").val(planning.fund_Account_Id ?? 0).trigger("change");
                     $("#estimatedBudget").val(planning.estBudget ?? 0);
                     $("#projectStatuss").val(planning.status ?? "").trigger("change");
@@ -2544,6 +2597,40 @@
 
 
                 });
+
+
+                 function loadSubcontractors() {
+            $.ajax({
+                url: '@Url.Action("GetSubContractors", "Subcontractor")',
+                type: 'GET',
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load Vendors.');
+                        return;
+                    }
+
+                    console.log(res);
+
+                    subcontractorList = res.data;
+
+                    if (!subcontractorList || subcontractorList.length === 0) {
+                        toastr.warning('No subcontractors available.');
+                        return;
+                    }
+
+                    const subDdl = $('#subcontractor');
+
+                    subDdl.empty().append('<option value="">-- Select subcontractor --</option>');
+
+                    subcontractorList.forEach(function(sub) {
+                        subDdl.append(`<option value="${sub.id}" data-code="${sub.code}">${sub.name}</option>`);
+                    });
+                },
+                error: function () {
+                    toastr.error('Error loading Vendors.');
+                }
+            });
+        }
 
 
 
