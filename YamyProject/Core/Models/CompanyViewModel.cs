@@ -901,6 +901,26 @@ namespace YamyProject.Core.Models
         public List<MaterialItem> Items { get; set; }
     }
 
+    public class DailyWorkRow
+    {
+        public int BoqItemId { get; set; }
+        public decimal BoqQty { get; set; }
+        public decimal PrevDoneQty { get; set; }
+        public decimal TodayQty { get; set; }
+        public decimal CumQty { get; set; }
+        public decimal Progress { get; set; }
+        public string Remarks { get; set; }
+    }
+
+    public class SaveDailyWorkRequest
+    {
+        public int ProjectId { get; set; }
+        public int SiteId { get; set; }
+        public int TenderId { get; set; }
+        public DateTime WorkDate { get; set; }
+        public List<DailyWorkRow> DailyWorks { get; set; }
+    }
+
     public class MaterialItem
     {
         public int? Id { get; set; }    

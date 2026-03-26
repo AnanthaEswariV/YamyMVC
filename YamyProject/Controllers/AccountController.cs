@@ -2561,6 +2561,26 @@
                             PRIMARY KEY(`id`)
                         ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+
+                          CREATE TABLE IF NOT EXISTS tbl_project_daily_work (
+                            id INT NOT NULL AUTO_INCREMENT,
+                            planning_id INT NOT NULL DEFAULT 0,
+                            project_id INT NOT NULL DEFAULT 0,
+                            site_id INT NOT NULL DEFAULT 0,
+                            tender_id INT NOT NULL DEFAULT 0,
+                            boq_item_id INT NOT NULL DEFAULT 0,
+                            work_date DATE,
+                            today_qty DECIMAL(18,3) NOT NULL DEFAULT 0,
+                            cumulative_qty DECIMAL(18,3) NOT NULL DEFAULT 0,
+                            progress DECIMAL(10,2) NOT NULL DEFAULT 0,
+                            remarks VARCHAR(500) DEFAULT '',
+                            created_by INT NOT NULL DEFAULT 0,
+                            created_date DATETIME,
+                            modified_by INT NOT NULL DEFAULT 0,
+                            modified_date DATETIME,
+                            PRIMARY KEY (id)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
                         CREATE TABLE IF NOT EXISTS `tbl_project_sites` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '',

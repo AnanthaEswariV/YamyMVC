@@ -3959,6 +3959,7 @@ INNER JOIN tbl_project_planning p
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpGet]
         public async Task<IActionResult> GetBOQItemsByTender(int tenderId)
         {
@@ -4022,6 +4023,192 @@ INNER JOIN tbl_project_planning p
                     status = false,
                     message = ex.Message
                 });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveDailyWork([FromBody] SaveDailyWorkRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Select Project First." });
+
+            if (model.SiteId <= 0)
+                return BadRequest(new { status = false, message = "Select Site First." });
+
+            if (model.TenderId <= 0)
+                return BadRequest(new { status = false, message = "Select Tender First." });
+
+            if (model.DailyWorks == null || !model.DailyWorks.Any(d => d.TodayQty > 0))
+                return BadRequest(new { status = false, message = "Enter at least one row with Today Qty greater than zero." });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            if (userId <= 0)
+                return Unauthorized(new { status = false, message = "User not logged in" });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+            await using var transaction = await conn.BeginTransactionAsync();
+
+            try
+            {
+                string deleteQuery = @"
+            DELETE FROM tbl_project_daily_work 
+            WHERE project_id = @projectId 
+              AND site_id = @siteId 
+              AND work_date = @workDate";
+
+                await using (var cmdDelete = new MySqlCommand(deleteQuery, conn, (MySqlTransaction)transaction))
+                {
+                    cmdDelete.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    cmdDelete.Parameters.AddWithValue("@siteId", model.SiteId);
+                    cmdDelete.Parameters.AddWithValue("@workDate", model.WorkDate.Date);
+                    await cmdDelete.ExecuteNonQueryAsync();
+                }
+
+                string insertQuery = @"
+            INSERT INTO tbl_project_daily_work
+            (
+                planning_id,
+                project_id,
+                site_id,
+                tender_id,
+                boq_item_id,
+                work_date,
+                today_qty,
+                cumulative_qty,
+                progress,
+                remarks,
+                created_by,
+                created_date,
+                modified_by,
+                modified_date
+            )
+            VALUES
+            (
+                @planningId,
+                @projectId,
+                @siteId,
+                @tenderId,
+                @boqItemId,
+                @workDate,
+                @todayQty,
+                @cumulativeQty,
+                @progress,
+                @remarks,
+                @createdBy,
+                NOW(),
+                @modifiedBy,
+                NOW()
+            )";
+
+                foreach (var row in model.DailyWorks.Where(r => r.TodayQty > 0))
+                {
+                    if (row.TodayQty < 0)
+                        return BadRequest(new { status = false, message = "Today Qty cannot be negative." });
+
+                    if (row.CumQty > row.BoqQty)
+                        return BadRequest(new { status = false, message = "Cumulative Qty cannot exceed BOQ Qty." });
+
+                    if (row.BoqItemId <= 0)
+                        return BadRequest(new { status = false, message = "BOQ Item is missing in one or more rows." });
+
+                    await using var cmdInsert = new MySqlCommand(insertQuery, conn, (MySqlTransaction)transaction);
+                    cmdInsert.Parameters.AddWithValue("@planningId", 0); 
+                    cmdInsert.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    cmdInsert.Parameters.AddWithValue("@siteId", model.SiteId);
+                    cmdInsert.Parameters.AddWithValue("@tenderId", model.TenderId);
+                    cmdInsert.Parameters.AddWithValue("@boqItemId", row.BoqItemId);
+                    cmdInsert.Parameters.AddWithValue("@workDate", model.WorkDate.Date);
+                    cmdInsert.Parameters.AddWithValue("@todayQty", row.BoqQty);
+                    cmdInsert.Parameters.AddWithValue("@cumulativeQty", row.CumQty);
+                    cmdInsert.Parameters.AddWithValue("@progress", row.Progress);
+                    cmdInsert.Parameters.AddWithValue("@remarks", row.Remarks ?? "");
+                    cmdInsert.Parameters.AddWithValue("@createdBy", userId);
+                    cmdInsert.Parameters.AddWithValue("@modifiedBy", userId);
+
+                    await cmdInsert.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Ok(new { status = true, message = "Daily site work saved successfully." });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = false, message = "Error: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDailyWorks()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            dw.id,
+            dw.work_date,
+            ps.name AS site_name,
+            pm.name AS project_name,
+            bi.name AS boq_item_name,
+            dw.today_qty,
+            dw.cumulative_qty AS cum_qty,
+            (dw.today_qty - dw.cumulative_qty) AS balance_qty,
+            dw.progress
+        FROM tbl_project_daily_work dw
+        LEFT JOIN tbl_projects pm ON pm.id = dw.project_id
+        LEFT JOIN tbl_project_sites ps ON ps.id = dw.site_id
+        LEFT JOIN tbl_items_boq bi ON bi.id = dw.boq_item_id
+        ORDER BY dw.work_date DESC;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader.GetInt32("id"),
+                        workDate = reader["work_date"] != DBNull.Value
+            ? Convert.ToDateTime(reader["work_date"])
+            : (DateTime?)null,
+                        projectName = reader["project_name"]?.ToString(),
+                        siteName = reader["site_name"]?.ToString(),
+                        boqItemName = reader["boq_item_name"]?.ToString(),
+                        todayQty = reader["today_qty"] != DBNull.Value ? Convert.ToDecimal(reader["today_qty"]) : 0,
+                        cumQty = reader["cum_qty"] != DBNull.Value ? Convert.ToDecimal(reader["cum_qty"]) : 0,
+                        balanceQty = reader["balance_qty"] != DBNull.Value ? Convert.ToDecimal(reader["balance_qty"]) : 0,
+                        progress = reader["progress"] != DBNull.Value ? Convert.ToDecimal(reader["progress"]) : 0
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
         #endregion

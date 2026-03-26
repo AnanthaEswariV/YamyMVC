@@ -16,17 +16,17 @@
             </button>
         </div>
 
-        <!-- Site Table -->
         <table id="projectSiteTable" class="table table-striped table-bordered align-middle">
             <thead class="table-primary text-center">
                 <tr>
                     <th>SN</th>
-                    <th>Code</th>
+                    <th>Work Date</th>
+                    <th>Project Name</th>
                     <th>Site Name</th>
-                    <th>Location</th>
-                    <th>Plot Number</th>
-                    <th>Address</th>
-                    <th class="text-center">Actions</th>
+                    <th>BOQ Item</th>
+                    <th>Today Qty</th>
+                    <th>Cum Qty</th>
+                    <th>Progress %</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -34,6 +34,7 @@
 
     </div>
 </div>
+
 
 <div class="modal fade" id="siteModal" tabindex="-1" aria-labelledby="siteModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
@@ -46,7 +47,7 @@
 
                 <div class="modal-body">
                     <input type="hidden" id="siteId" value="0" />
-
+                    <input type="hidden" id="tenderId" value="0" />
                     <!-- Form Inputs -->
                     <div class="row g-3 align-items-center">
                         <!-- Date -->
@@ -136,7 +137,7 @@
         $(document).ready(function () {
 
             loadProjects();
-
+            loadDailyWorks();
             $.ajax({
                  url: '@Url.Action("GetProjectSites", "Construction")',
                     type: 'GET',
@@ -210,44 +211,47 @@
                 });
             }
 
+
+
+
           function addNewRow() {
-          const rowCount = $('#boqTableBody tr').length + 1;
-          const newRow = `
-            <tr>
-              <td>${rowCount}</td>
-              <td>
-                <select class="form-select form-select-sm boqItemSelect" required>
-                  <option value="">-- Select BOQ Item --</option>
-                  <!-- Add options dynamically -->
-                </select>
-              </td>
-              <td><input type="text" class="form-control form-control-sm unit" readonly></td>
-              <td><input type="number" class="form-control form-control-sm boqQty" readonly></td>
-              <td><input type="number" class="form-control form-control-sm prevDoneQty" readonly></td>
-              <td><input type="number" class="form-control form-control-sm todayQty" step="0.01" min="0" required></td>
-              <td><input type="number" class="form-control form-control-sm cumQty" readonly></td>
-              <td><input type="number" class="form-control form-control-sm balanceQty" readonly></td>
-              <td><input type="number" class="form-control form-control-sm progressPercent" readonly></td>
-            </tr>
-          `;
-          $('#boqTableBody').append(newRow);
+            const rowCount = $('#boqTableBody tr').length + 1;
+            const newRow = `
+                <tr>
+                    <td>${rowCount}</td>
+                    <td>
+                        <select class="form-select form-select-sm boqItemSelect">
+                            <option value="">-- Select BOQ Item --</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm unit" readonly></td>
+                    <td><input type="number" class="form-control form-control-sm boqQty" readonly></td>
+                    <td><input type="number" class="form-control form-control-sm prevDoneQty" readonly></td>
+                    <td><input type="number" class="form-control form-control-sm todayQty" step="0.01" min="0"></td>
+                    <td><input type="number" class="form-control form-control-sm cumQty" readonly></td>
+                    <td><input type="number" class="form-control form-control-sm balanceQty" readonly></td>
+                    <td><input type="number" class="form-control form-control-sm progressPercent" readonly></td>
+                </tr>
+            `;
+            $('#boqTableBody').append(newRow);
 
-          const $lastRow = $('#boqTableBody tr:last');
-
-          fillBoqItems($lastRow.find('select.boqItemSelect'));
-
-          setupRowListeners($lastRow);
+            const $lastRow = $('#boqTableBody tr:last');
+            fillBoqItems($lastRow.find('select.boqItemSelect')); 
+            setupRowListeners($lastRow);
         }
 
           function fillBoqItems($select) {
-           const boqItems = [
-             { id: 1, name: 'Fior Di Bosco marble(SA2-ST01); walls', unit: 'm²', boqQty: 36, prevDoneQty: 0 },
-             { id: 2, name: 'Concrete slab', unit: 'm³', boqQty: 50, prevDoneQty: 10 },
-           ];
-           boqItems.forEach(item => {
-             $select.append(`<option value="${item.id}" data-unit="${item.unit}" data-boqqty="${item.boqQty}" data-prevdoneqty="${item.prevDoneQty}">${item.name}</option>`);
-           });
-         }
+            $select.empty().append('<option value="">-- Select BOQ Item --</option>');
+            allBoqItems.forEach(item => {
+                $select.append(`<option value="${item.id}"
+                    data-unit="${item.unit}"
+                    data-boqqty="${item.boqQty}"
+                    data-prevdoneqty="${item.prevDoneQty}">
+                    ${item.name}
+                </option>`);
+            });
+        }
+
 
           function setupRowListeners($row) {
            const $boqSelect = $row.find('select.boqItemSelect');
@@ -317,24 +321,13 @@
            addNewRow();
          });
 
+          let allBoqItems = [];
 
-              function fillBoqItems($select) {
-            $select.empty().append('<option value="">-- Select BOQ Item --</option>');
-            allBoqItems.forEach(item => {
-                $select.append(`<option value="${item.id}"
-                    data-unit="${item.unit}"
-                    data-boqqty="${item.boqQty}"
-                    data-prevdoneqty="${item.prevDoneQty}">
-                    ${item.name}
-                </option>`);
-            });
-        }
-
-            let allBoqItems = []; // global store
-
-        $('#projectName, #projectSite').on('change', async function () {
+          $('#projectName, #projectSite').on('change', async function () {
             const projectId = $('#projectName').val();
             const site = $('#projectSite').val();
+
+            $('#tenderId').val(0); 
 
             if (!projectId || !site) {
                 $('#boqTableBody').empty();
@@ -347,37 +340,35 @@
                 const tenderData = await tenderResponse.json();
 
                 if (!tenderData.status || tenderData.data.tenderId === 0) {
-                    alert("No Tender found for this Project + Site");
+                    toastr.warning("No Tender found for this Project + Site");
                     $('#boqTableBody').empty();
                     return;
                 }
 
                 const tenderId = tenderData.data.tenderId;
+                $('#tenderId').val(tenderId); // ✅ store tender ID here
 
                 const boqUrl = '@Url.Action("GetBOQItemsByTender", "Construction")';
                 const boqResponse = await fetch(`${boqUrl}?tenderId=${tenderId}`);
                 const boqData = await boqResponse.json();
 
                 if (!boqData.status || !boqData.data.length) {
-                    alert("No BOQ items found for this Tender");
+                    toastr.warning("No BOQ items found for this Tender");
                     $('#boqTableBody').empty();
                     return;
                 }
 
-                // Store globally
                 allBoqItems = boqData.data;
-
-                // Reset table and add one empty row
                 $('#boqTableBody').empty();
                 addNewRow();
 
             } catch (error) {
                 console.error("Error:", error);
-                alert("Failed to load BOQ data.");
+                toastr.error("Failed to load BOQ data.");
             }
         });
 
-             function updateBoqTotals() {
+          function updateBoqTotals() {
             let totalToday = 0, totalCum = 0, totalBoq = 0;
             $('#boqTableBody tr').each(function () {
                 totalBoq   += parseFloat($(this).find('.boqQty').val()) || 0;
@@ -386,6 +377,153 @@
             });
             $('#totalTodayQty').text(totalToday.toFixed(2));
             $('#overallProgress').text(totalBoq > 0 ? ((totalCum / totalBoq) * 100).toFixed(2) + '%' : '0%');
+        }
+
+          $("#siteForm").on("submit", function (e) {
+            e.preventDefault();
+
+            // ✅ Remove empty rows before validation
+            $('#boqTableBody tr').each(function () {
+                const boqVal = $(this).find('.boqItemSelect').val();
+                const todayVal = $(this).find('.todayQty').val();
+                if (!boqVal && (!todayVal || parseFloat(todayVal) === 0)) {
+                    $(this).remove();
+                }
+            });
+
+            if (!this.checkValidity()) {
+                e.stopPropagation();
+                $(this).addClass('was-validated');
+                return;
+            }
+
+            const model = {
+                ProjectId: parseInt($("#projectName").val()) || 0,
+                SiteId:    parseInt($("#projectSite").val()) || 0,
+                TenderId:  parseInt($("#tenderId").val()) || 0,
+                WorkDate:  $("#date").val(),
+                DailyWorks: []
+            };
+
+            if (!model.ProjectId) { toastr.warning("Please select a Project."); return; }
+            if (!model.SiteId)    { toastr.warning("Please select a Site.");    return; }
+            if (!model.TenderId)  { toastr.warning("Tender not found.");        return; }
+            if (!model.WorkDate)  { toastr.warning("Please select a Date.");    return; }
+
+            let hasError = false;
+
+            $("#boqTableBody tr").each(function () {
+                const $row      = $(this);
+                const boqItemId = parseInt($row.find(".boqItemSelect").val()) || 0;
+                const boqQty    = parseFloat($row.find(".boqQty").val()) || 0;
+                const prevDone  = parseFloat($row.find(".prevDoneQty").val()) || 0;
+                const todayQty  = parseFloat($row.find(".todayQty").val()) || 0;
+                const cumQty    = parseFloat($row.find(".cumQty").val()) || 0;
+                const progress  = parseFloat($row.find(".progressPercent").val()) || 0;
+
+                if (todayQty <= 0) return; // skip empty rows
+
+                if (!boqItemId) {
+                    toastr.warning("BOQ Item is missing in one or more rows.");
+                    hasError = true;
+                    return false;
+                }
+                if (cumQty > boqQty) {
+                    toastr.warning("Cumulative Qty cannot exceed BOQ Qty.");
+                    hasError = true;
+                    return false;
+                }
+
+                model.DailyWorks.push({
+                    BoqItemId:   boqItemId,
+                    BoqQty:      boqQty,
+                    PrevDoneQty: prevDone,
+                    TodayQty:    todayQty,
+                    CumQty:      cumQty,
+                    Progress:    progress,
+                    Remarks:     ""
+                });
+            });
+
+            if (hasError) return;
+
+            if (model.DailyWorks.length === 0) {
+                toastr.warning("Please enter at least one row with Today Qty greater than zero.");
+                return;
+            }
+
+            const $btnSave = $("#siteForm button[type='submit']");
+            $btnSave.prop("disabled", true).text("Saving...");
+
+            $.ajax({
+                url: '@Url.Action("SaveDailyWork", "Construction")',
+                type: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify(model),
+                success: function (response) {
+                    if (response.status) {
+                        toastr.success(response.message || "Saved successfully!");
+                        $("#siteModal").modal("hide");
+                         setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        toastr.warning(response.message || "Save failed!");
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error("Error: " + (xhr.responseText || "Unexpected error"));
+                },
+                complete: function () {
+                    $btnSave.prop("disabled", false).text("Save");
+                }
+            });
+        });
+
+          function loadDailyWorks() {
+            $.ajax({
+                url: '@Url.Action("GetDailyWorks", "Construction")',
+                type: 'GET',
+                success: function (result) {
+                    const $tbody = $('#projectSiteTable tbody');
+                    $tbody.empty();
+
+                    if (result.status && result.data.length > 0) {
+
+                        $.each(result.data, function (index, item) {
+                            let row = `
+                                <tr class="text-center">
+                                    <td>${item.sn}</td>
+                                    <td style="direction:ltr;">${item.workDate}</td>
+                                    <td>${item.projectName || ''}</td>
+                                    <td>${item.siteName || ''}</td>
+                                    <td>${item.boqItemName || ''}</td>
+                                    <td>${parseFloat(item.todayQty).toFixed(2)}</td>
+                                    <td>${parseFloat(item.cumQty).toFixed(2)}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            ${parseFloat(item.progress).toFixed(2)}%
+                                        </span>
+                                    </td>
+                                </tr>
+                            `;
+                            $tbody.append(row);
+                        });
+
+                    } else {
+                        $tbody.append(`
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">
+                                    No data found
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading daily works');
+                }
+            });
         }
 
     </script>
