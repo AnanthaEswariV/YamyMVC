@@ -1,0 +1,162 @@
+﻿
+@{
+    ViewData["Title"] = "WBS";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3a4eb0 !important;
+            color: #fff !important;
+        }
+
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card shadow-sm">
+    <div class="card-header text-center">
+        <strong>WBS Center</strong>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-end align-items-center mb-3">
+            <button type="button" class="btn btn-primary" id="addSiteBtn" data-bs-toggle="modal" data-bs-target="#wbsModal">
+                <i class="bi bi-plus-circle me-2"></i>Add WBS
+            </button>
+        </div>
+
+        <!-- Site Table -->
+        <table class="table table-striped" id="projectWBS">
+            <thead>
+                <tr>
+                    <th>SN</th>
+                    <th>Code</th>
+                    <th>Site Name</th>
+                    <th>Location</th>
+                    <th>Plot Number</th>
+                    <th>Address</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+</div>
+
+<!-- Project WBS Modal -->
+<div class="modal fade" id="wbsModal" tabindex="-1" aria-labelledby="wbsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="wbsForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <!-- Modal Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="wbsModalLabel">Project WBS</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body">
+                    <input type="hidden" id="wbsId" value="0" />
+
+                    <div class="row g-3">
+                        <!-- WBS Code -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">WBS Code</label>
+                            <input type="text" id="wbsCode" class="form-control" placeholder="Enter WBS code" readonly />
+                            <div class="invalid-feedback">WBS code is required.</div>
+                        </div>
+
+                        <!-- WBS Name -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">WBS Name</label>
+                            <input type="text" id="wbsName" class="form-control" placeholder="Enter WBS name" required />
+                            <div class="invalid-feedback">WBS name is required.</div>
+                        </div>
+
+                        <!-- Parent WBS Dropdown + Create Button -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Parent WBS</label>
+                            <div class="input-group">
+                                <select id="parentWbs" class="form-select">
+                                    <option value="">-- Select Parent WBS --</option>
+                                    <!-- Dynamically populated -->
+                                </select>
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#parentWbsModal">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- WBS Level -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">WBS Level</label>
+                            <input type="number" id="wbsLevel" class="form-control" placeholder="Enter WBS level" min="1" required />
+                            <div class="invalid-feedback">WBS level is required.</div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Description</label>
+                            <textarea id="wbsDescription" class="form-control" rows="3" placeholder="Enter WBS description"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save WBS</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Parent WBS Modal -->
+<div class="modal fade" id="parentWbsModal" tabindex="-1" aria-labelledby="parentWbsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <form id="parentWbsForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="parentWbsModalLabel">Add Parent WBS</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="parentWbsId" value="0" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">WBS Code</label>
+                        <input type="text" id="parentWbsCode" class="form-control" placeholder="Enter WBS code" readonly/>
+                        <div class="invalid-feedback">WBS code is required.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">WBS Name</label>
+                        <input type="text" id="parentWbsName" class="form-control" placeholder="Enter WBS name" required />
+                        <div class="invalid-feedback">WBS name is required.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea id="parentWbsDescription" class="form-control" rows="2" placeholder="Enter description"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Parent WBS</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

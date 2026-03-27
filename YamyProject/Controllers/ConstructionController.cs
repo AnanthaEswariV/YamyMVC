@@ -186,6 +186,7 @@
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
         [HttpPost]
         public async Task<IActionResult> SaveProject([FromBody] ProjectRequest model)
         {
@@ -404,6 +405,7 @@ total_values, billed_to_dates, balances)
 
             return accountId;
         }
+
         [HttpGet]
         public async Task<IActionResult> GetPaymentMethodInfo([FromQuery] string method)
         {
@@ -449,6 +451,8 @@ total_values, billed_to_dates, balances)
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
+
 
         #region Project Accounts
 
@@ -2112,6 +2116,15 @@ total_values, billed_to_dates, balances)
             }
         }
 
+
+        #endregion
+
+        #region Project WBS(Work BreakDown Structure)
+
+        public IActionResult WBS()
+        {
+            return View();
+        }
 
         #endregion
 
