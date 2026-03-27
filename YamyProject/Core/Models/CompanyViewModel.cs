@@ -772,7 +772,16 @@ namespace YamyProject.Core.Models
         public List<ProjectTenderItem> Items { get; set; } = new();
         public string AssemblyJson { get; set; }
     }
-
+    public class WbsRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int ParentWbsId { get; set; }
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public int IsActive { get; set; } = 1;
+    }
     public class ProjectTenderItem
     {
         public string? Sr { get; set; }

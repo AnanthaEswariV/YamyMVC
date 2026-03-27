@@ -2126,6 +2126,367 @@ total_values, billed_to_dates, balances)
             return View();
         }
 
+
+        public IActionResult ProjectWBS()
+        {
+            return View();
+        }
+
+        // ── GET ALL WBS FOR A PROJECT ─────────────────────────────────
+
+        [HttpGet]
+        public async Task<IActionResult> GetWBSList(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                w.id,
+                w.project_id,
+                w.parent_wbs_id,
+                w.code,
+                w.name,
+                w.wbs_level,
+                w.description,
+                w.is_active,
+                IFNULL(p.name, '') AS parent_name,
+                IFNULL(p.code, '') AS parent_code,
+                (SELECT COUNT(*) FROM tbl_project_wbs c WHERE c.parent_wbs_id = w.id) AS child_count
+            FROM tbl_project_wbs w
+            LEFT JOIN tbl_project_wbs p ON p.id = w.parent_wbs_id
+            WHERE w.project_id = @projectId
+            ORDER BY w.wbs_level ASC, w.code ASC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        ProjectId = reader.GetInt32("project_id"),
+                        ParentWbsId = reader.GetInt32("parent_wbs_id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        WbsLevel = reader.GetInt32("wbs_level"),
+                        Description = reader["description"].ToString(),
+                        IsActive = reader.GetInt32("is_active"),
+                        ParentName = reader["parent_name"].ToString(),
+                        ParentCode = reader["parent_code"].ToString(),
+                        ChildCount = reader.GetInt32("child_count")
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // ── GET PARENT DROPDOWN (all WBS of a project for parent select) ──
+
+        [HttpGet]
+        public async Task<IActionResult> GetWBSDropdown(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT id, code, name, wbs_level
+            FROM tbl_project_wbs
+            WHERE project_id = @projectId AND is_active = 1
+            ORDER BY wbs_level ASC, code ASC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        WbsLevel = reader.GetInt32("wbs_level"),
+                        Display = $"{reader["code"]} — {reader["name"]} (L{reader.GetInt32("wbs_level")})"
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // ── GET PROJECTS DROPDOWN ─────────────────────────────────────
+
+        [HttpGet]
+        public async Task<IActionResult> GetProjectsForWBS()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"SELECT id, code, name FROM tbl_projects WHERE status != 'Closed' ORDER BY name";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveWBS([FromBody] WbsRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Project" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Please enter WBS Name" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Calculate WBS level from parent
+                int wbsLevel = 1;
+                if (model.ParentWbsId > 0)
+                {
+                    string levelQuery = "SELECT wbs_level FROM tbl_project_wbs WHERE id = @parentId";
+                    await using var levelCmd = new MySqlCommand(levelQuery, conn);
+                    levelCmd.Parameters.AddWithValue("@parentId", model.ParentWbsId);
+                    var parentLevel = await levelCmd.ExecuteScalarAsync();
+                    if (parentLevel == null || parentLevel == DBNull.Value)
+                        return BadRequest(new { status = false, message = "Selected parent WBS not found" });
+                    wbsLevel = Convert.ToInt32(parentLevel) + 1;
+                }
+
+                if (model.Id == 0)
+                {
+                    // Auto-generate code exactly like GenerateNextProjectCode
+                    string wbsCode = await GenerateNextWBSCode(conn, model.ProjectId, model.ParentWbsId);
+
+                    string insertQuery = @"
+                INSERT INTO tbl_project_wbs
+                    (project_id, parent_wbs_id, code, name, wbs_level, description, is_active, created_by)
+                VALUES
+                    (@projectId, @parentWbsId, @code, @name, @wbsLevel, @description, @isActive, @createdBy);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    cmd.Parameters.AddWithValue("@parentWbsId", model.ParentWbsId);
+                    cmd.Parameters.AddWithValue("@code", wbsCode);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@wbsLevel", wbsLevel);
+                    cmd.Parameters.AddWithValue("@description", model.Description?.Trim() ?? "");
+                    cmd.Parameters.AddWithValue("@isActive", model.IsActive);
+                    cmd.Parameters.AddWithValue("@createdBy", userId);
+
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Ok(new { status = true, message = "WBS item added successfully", id = newId, code = wbsCode, wbsLevel });
+                }
+                else
+                {
+                    // Prevent assigning itself as its own parent
+                    if (model.ParentWbsId == model.Id)
+                        return BadRequest(new { status = false, message = "A WBS item cannot be its own parent" });
+
+                    // On edit — keep existing code, do NOT regenerate
+                    string getCodeQuery = "SELECT code FROM tbl_project_wbs WHERE id = @id";
+                    await using var getCodeCmd = new MySqlCommand(getCodeQuery, conn);
+                    getCodeCmd.Parameters.AddWithValue("@id", model.Id);
+                    string existingCode = (await getCodeCmd.ExecuteScalarAsync())?.ToString() ?? "";
+
+                    string updateQuery = @"
+                UPDATE tbl_project_wbs
+                SET parent_wbs_id = @parentWbsId,
+                    code          = @code,
+                    name          = @name,
+                    wbs_level     = @wbsLevel,
+                    description   = @description,
+                    is_active     = @isActive
+                WHERE id = @id AND project_id = @projectId";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@parentWbsId", model.ParentWbsId);
+                    cmd.Parameters.AddWithValue("@code", existingCode);
+                    cmd.Parameters.AddWithValue("@name", model.Name.Trim());
+                    cmd.Parameters.AddWithValue("@wbsLevel", wbsLevel);
+                    cmd.Parameters.AddWithValue("@description", model.Description?.Trim() ?? "");
+                    cmd.Parameters.AddWithValue("@isActive", model.IsActive);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "WBS item not found" });
+
+                    return Ok(new { status = true, message = "WBS item updated successfully", id = model.Id, code = existingCode, wbsLevel });
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        // ── Exactly like GenerateNextProjectCode ─────────────────────
+        private async Task<string> GenerateNextWBSCode(MySqlConnection conn, int projectId, int parentWbsId)
+        {
+            if (parentWbsId == 0)
+            {
+                // Root level → 1.0, 2.0, 3.0 ...
+                string query = @"SELECT IFNULL(MAX(CAST(SUBSTRING_INDEX(code, '.', 1) AS UNSIGNED)), 0)
+                         FROM tbl_project_wbs
+                         WHERE project_id = @projectId AND parent_wbs_id = 0";
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                int max = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                return $"{max + 1}.0";
+            }
+            else
+            {
+                // Get parent code first
+                string parentQuery = "SELECT code FROM tbl_project_wbs WHERE id = @parentId";
+                await using var parentCmd = new MySqlCommand(parentQuery, conn);
+                parentCmd.Parameters.AddWithValue("@parentId", parentWbsId);
+                string parentCode = (await parentCmd.ExecuteScalarAsync())?.ToString() ?? "";
+
+                // Find max sibling last segment
+                string sibQuery = @"SELECT IFNULL(MAX(CAST(SUBSTRING_INDEX(code, '.', -1) AS UNSIGNED)), 0)
+                            FROM tbl_project_wbs
+                            WHERE project_id = @projectId AND parent_wbs_id = @parentWbsId";
+                await using var sibCmd = new MySqlCommand(sibQuery, conn);
+                sibCmd.Parameters.AddWithValue("@projectId", projectId);
+                sibCmd.Parameters.AddWithValue("@parentWbsId", parentWbsId);
+                int maxSib = Convert.ToInt32(await sibCmd.ExecuteScalarAsync());
+
+                return $"{parentCode}.{maxSib + 1}";
+            }
+        }
+
+        // ── DELETE ────────────────────────────────────────────────────
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteWBS(int wbsId)
+        {
+            if (wbsId <= 0)
+                return BadRequest(new { status = false, message = "Invalid WBS ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Block delete if child WBS items exist
+                string checkChildQuery = "SELECT COUNT(1) FROM tbl_project_wbs WHERE parent_wbs_id = @id";
+                await using (var checkCmd = new MySqlCommand(checkChildQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", wbsId);
+                    int childCount = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                    if (childCount > 0)
+                        return BadRequest(new { status = false, message = $"Cannot delete — {childCount} child WBS item(s) exist under this item" });
+                }
+
+                // Block delete if activities are linked to this WBS
+                string checkActQuery = "SELECT COUNT(1) FROM tbl_project_activity WHERE planning_id IN (SELECT id FROM tbl_project_planning WHERE project_id = (SELECT project_id FROM tbl_project_wbs WHERE id = @id))";
+                // Simpler: direct check if your activities table has wbs_id column
+                // string checkActQuery = "SELECT COUNT(1) FROM tbl_project_activity WHERE wbs_id = @id";
+
+                string deleteQuery = "DELETE FROM tbl_project_wbs WHERE id = @id";
+                await using (var cmd = new MySqlCommand(deleteQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", wbsId);
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "WBS item not found" });
+                }
+
+                return Ok(new { status = true, message = "WBS item deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Project Site Management

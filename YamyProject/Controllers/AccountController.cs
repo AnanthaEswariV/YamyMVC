@@ -2733,6 +2733,23 @@
                             resource_id INT NOT NULL
                         ); 
 
+
+                        CREATE TABLE IF NOT EXISTS `tbl_project_wbs` (
+                          `id`           INT NOT NULL AUTO_INCREMENT,
+                          `project_id`   INT NOT NULL DEFAULT 0,
+                          `parent_wbs_id`INT NOT NULL DEFAULT 0,   -- 0 = root level
+                          `code`         VARCHAR(50)  NOT NULL DEFAULT '',
+                          `name`         VARCHAR(300) NOT NULL DEFAULT '',
+                          `wbs_level`    INT NOT NULL DEFAULT 1,
+                          `description`  VARCHAR(500) DEFAULT '',
+                          `is_active`    TINYINT(1)   NOT NULL DEFAULT 1,
+                          `created_by`   INT NOT NULL DEFAULT 0,
+                          `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uq_wbs_code` (`project_id`, `code`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
 	                        `batchname` VARCHAR(100) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',

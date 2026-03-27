@@ -1,9 +1,7 @@
-﻿
-@{
-    ViewData["Title"] = "WBS";
+﻿@{
+    ViewData["Title"] = "Project WBS";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-
 
 <style>
     .dt-buttons .btn-primary {
@@ -13,107 +11,217 @@
     }
 
         .dt-buttons .btn-primary:hover {
-            background-color: #3a4eb0 !important;
+            background-color: #435EBE !important;
             color: #fff !important;
         }
 
+    .level-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+
+    .level-1 {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .level-2 {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .level-3 {
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .level-4 {
+        background: #fef9c3;
+        color: #92400e;
+    }
+
+    .wbs-code {
+        font-family: monospace;
+        font-size: 12px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .level-indicator {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 14px;
+        font-size: 12px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .level-indicator span {
+            background: #435EBE;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+    .parent-cell {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .indent-l2 {
+        padding-left: 20px !important;
+    }
+
+    .indent-l3 {
+        padding-left: 40px !important;
+    }
+
+    .indent-l4 {
+        padding-left: 60px !important;
+    }
 </style>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
-<div class="card shadow-sm">
+<div class="card">
     <div class="card-header text-center">
-        <strong>WBS Center</strong>
+        <strong>Project WBS — Work Breakdown Structure</strong>
     </div>
 
     <div class="card-body">
-        <div class="d-flex justify-content-end align-items-center mb-3">
-            <button type="button" class="btn btn-primary" id="addSiteBtn" data-bs-toggle="modal" data-bs-target="#wbsModal">
-                <i class="bi bi-plus-circle me-2"></i>Add WBS
+        <div class="row mb-4">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Select Project</label>
+                <select id="projectSelect" class="form-select">
+                    <option value="">— Select Project —</option>
+                </select>
+            </div>
+            <div class="col-md-7 d-flex align-items-end" id="projectInfo" ></div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3" id="wbsToolbar" >
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" id="expandAllBtn">
+                    <i class="fas fa-expand-alt me-1"></i> Expand All
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="collapseAllBtn">
+                    <i class="fas fa-compress-alt me-1"></i> Collapse All
+                </button>
+            </div>
+            <button type="button" class="btn btn-primary" id="addWbsBtn" data-bs-toggle="modal" data-bs-target="#wbsModal">
+                <i class="bi bi-plus-circle me-2"></i>Add WBS Item
             </button>
         </div>
 
-        <!-- Site Table -->
-        <table class="table table-striped" id="projectWBS">
-            <thead>
-                <tr>
-                    <th>SN</th>
-                    <th>Code</th>
-                    <th>Site Name</th>
-                    <th>Location</th>
-                    <th>Plot Number</th>
-                    <th>Address</th>
-                    <th class="text-center">Actions</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div id="wbsTableWrapper" >
+            <table class="table table-bordered table-hover" id="wbsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:50px">S.No</th>
+                        <th style="width:110px">Code</th>
+                        <th>WBS Name</th>
+                        <th style="width:80px">Level</th>
+                        <th style="width:160px">Parent WBS</th>
+                        <th style="width:80px">Children</th>
+                        <th style="width:70px">Active</th>
+                        <th style="width:100px">Description</th>
+                        <th style="width:100px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="wbsTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="noProjectMsg" class="text-center text-muted py-5">
+            <i class="fas fa-sitemap fa-3x mb-3 opacity-25"></i>
+            <p>Select a project above to view and manage its WBS structure.</p>
+        </div>
 
     </div>
 </div>
 
-<!-- Project WBS Modal -->
 <div class="modal fade" id="wbsModal" tabindex="-1" aria-labelledby="wbsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form id="wbsForm" class="needs-validation" novalidate>
             <div class="modal-content">
-                <!-- Modal Header -->
+
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title w-100 text-center" id="wbsModalLabel">Project WBS</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title w-100 text-center" id="wbsModalLabel">Add WBS Item</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <!-- Modal Body -->
                 <div class="modal-body">
                     <input type="hidden" id="wbsId" value="0" />
+                    <input type="hidden" id="wbsProjectId" value="0" />
 
-                    <div class="row g-3">
-                        <!-- WBS Code -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">WBS Code</label>
-                            <input type="text" id="wbsCode" class="form-control" placeholder="Enter WBS code" readonly />
-                            <div class="invalid-feedback">WBS code is required.</div>
+                    <div class="level-indicator" id="levelIndicator">
+                        <i class="fas fa-info-circle"></i>
+                        Level will be: <span id="levelDisplay">L1 (Root)</span>
+                        — select a parent below to change
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Parent WBS</label>
+                        <div class="col-sm-9">
+                            <select id="parentWbsId" class="form-select" onchange="updateLevelIndicator()">
+                                <option value="0">— Root Level (no parent) —</option>
+                            </select>
+                            <div class="form-text">Leave as Root Level to create a top-level item (Phase/Category)</div>
                         </div>
+                    </div>
 
-                        <!-- WBS Name -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">WBS Name</label>
-                            <input type="text" id="wbsName" class="form-control" placeholder="Enter WBS name" required />
-                            <div class="invalid-feedback">WBS name is required.</div>
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">WBS Code <span class="text-danger">*</span></label>
+                        <div class="col-sm-9">
+                            <input type="text" id="wbsCode" class="form-control" placeholder="e.g. 1.0 or 1.1 or 1.1.1"  maxlength="50" readonly />
                         </div>
+                    </div>
 
-                        <!-- Parent WBS Dropdown + Create Button -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Parent WBS</label>
-                            <div class="input-group">
-                                <select id="parentWbs" class="form-select">
-                                    <option value="">-- Select Parent WBS --</option>
-                                    <!-- Dynamically populated -->
-                                </select>
-                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#parentWbsModal">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">WBS Name <span class="text-danger">*</span></label>
+                        <div class="col-sm-9">
+                            <input type="text" id="wbsName" class="form-control" placeholder="e.g. Substructure Works" required maxlength="300" />
+                            <div class="invalid-feedback">WBS Name is required</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Description</label>
+                        <div class="col-sm-9">
+                            <textarea id="wbsDescription" class="form-control" rows="2" maxlength="500"
+                                      placeholder="Optional — describe the scope of this WBS item"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Active</label>
+                        <div class="col-sm-9 d-flex align-items-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="wbsIsActive" checked />
+                                <label class="form-check-label" for="wbsIsActive">Active</label>
                             </div>
                         </div>
-
-                        <!-- WBS Level -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">WBS Level</label>
-                            <input type="number" id="wbsLevel" class="form-control" placeholder="Enter WBS level" min="1" required />
-                            <div class="invalid-feedback">WBS level is required.</div>
-                        </div>
-
-                        <!-- Description -->
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Description</label>
-                            <textarea id="wbsDescription" class="form-control" rows="3" placeholder="Enter WBS description"></textarea>
-                        </div>
                     </div>
                 </div>
 
-                <!-- Modal Footer -->
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save WBS</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save
+                    </button>
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -121,42 +229,330 @@
     </div>
 </div>
 
-<!-- Parent WBS Modal -->
-<div class="modal fade" id="parentWbsModal" tabindex="-1" aria-labelledby="parentWbsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-md">
-        <form id="parentWbsForm" class="needs-validation" novalidate>
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title w-100 text-center" id="parentWbsModalLabel">Add Parent WBS</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 
-                <div class="modal-body">
-                    <input type="hidden" id="parentWbsId" value="0" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">WBS Code</label>
-                        <input type="text" id="parentWbsCode" class="form-control" placeholder="Enter WBS code" readonly/>
-                        <div class="invalid-feedback">WBS code is required.</div>
-                    </div>
+    <script>
+        let currentProjectId = 0;
+        let wbsDropdownData = [];  
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">WBS Name</label>
-                        <input type="text" id="parentWbsName" class="form-control" placeholder="Enter WBS name" required />
-                        <div class="invalid-feedback">WBS name is required.</div>
-                    </div>
+        function loadProjects() {
+            $.ajax({
+                url: '@Url.Action("GetProjectsForWBS", "Construction")',
+                type: 'GET',
+                success: function (res) {
+                    if (!res.status) return;
+                    const sel = $('#projectSelect');
+                    sel.find('option:not(:first)').remove();
+                    $.each(res.data, function (i, p) {
+                        sel.append(`<option value="${p.id}">[${p.code}] ${p.name}</option>`);
+                    });
+                }
+            });
+        }
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Description</label>
-                        <textarea id="parentWbsDescription" class="form-control" rows="2" placeholder="Enter description"></textarea>
-                    </div>
-                </div>
+        // ── PROJECT CHANGE ──────────────────────────────────────
+        $('#projectSelect').on('change', function () {
+            currentProjectId = parseInt($(this).val()) || 0;
+            if (!currentProjectId) {
+                $('#wbsTableWrapper,#wbsToolbar').hide();
+                $('#noProjectMsg').show();
+                return;
+            }
+            $('#noProjectMsg').hide();
+            $('#wbsTableWrapper,#wbsToolbar').show();
+            $('#wbsProjectId').val(currentProjectId);
+            loadWBSList();
+            loadWBSDropdown();
+        });
 
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Save Parent WBS</button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+        // ── LOAD WBS TABLE ──────────────────────────────────────
+        function loadWBSList() {
+            if (!currentProjectId) return;
+
+            $.ajax({
+                url: '@Url.Action("GetWBSList", "Construction")',
+                type: 'GET',
+                data: { projectId: currentProjectId },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error("Failed to load WBS data");
+                        return;
+                    }
+
+                    if ($.fn.DataTable.isDataTable('#wbsTable')) {
+                        $('#wbsTable').DataTable().destroy();
+                    }
+
+                    const tbody = $('#wbsTableBody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, w) {
+                            const levelClass = `level-${w.wbsLevel}`;
+                            const indentClass = w.wbsLevel > 1 ? `indent-l${w.wbsLevel}` : '';
+                            const connector = w.wbsLevel > 1 ? '<span class="text-muted me-1">└─</span>' : '';
+                            const activeIcon = w.isActive
+                                ? '<i class="fas fa-check-circle text-success"></i>'
+                                : '<i class="fas fa-times-circle text-danger"></i>';
+                            const parentCell = w.parentWbsId > 0
+                                ? `<span class="wbs-code">${w.parentCode}</span> ${w.parentName}`
+                                : '<span class="text-muted">Root</span>';
+                            const childBadge = w.childCount > 0
+                                ? `<span class="badge bg-secondary">${w.childCount}</span>`
+                                : '<span class="text-muted">—</span>';
+
+                            const tr = `
+                                <tr data-level="${w.wbsLevel}" data-parent="${w.parentWbsId}">
+                                    <td>${i + 1}</td>
+                                    <td><span class="wbs-code">${w.code}</span></td>
+                                    <td class="${indentClass}">${connector}<strong>${w.name}</strong></td>
+                                    <td><span class="level-badge ${levelClass}">L${w.wbsLevel}</span></td>
+                                    <td class="parent-cell">${parentCell}</td>
+                                    <td class="text-center">${childBadge}</td>
+                                    <td class="text-center">${activeIcon}</td>
+                                    <td class="text-muted" style="font-size:12px">${w.description || '—'}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary editWbsBtn"
+                                            data-wbs='${JSON.stringify(w)}' title="Edit">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger deleteWbsBtn"
+                                            data-id="${w.id}" data-children="${w.childCount}" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        $('#wbsTable').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':not(:last-child)' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':not(:last-child)' }
+                                }
+                            ],
+                            order: [[3, 'asc'], [1, 'asc']],
+                            pageLength: 25,
+                            columnDefs: [
+                                { orderable: false, targets: [8] }
+                            ]
+                        });
+
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    <i class="fas fa-sitemap me-2"></i>No WBS items found.
+                                    Click "Add WBS Item" to start building the hierarchy.
+                                </td>
+                            </tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error("Failed to load WBS data");
+                }
+            });
+        }
+
+        // ── LOAD PARENT DROPDOWN ────────────────────────────────
+        function loadWBSDropdown(excludeId = 0) {
+            if (!currentProjectId) return;
+
+            $.ajax({
+                url: '@Url.Action("GetWBSDropdown", "Construction")',
+                type: 'GET',
+                data: { projectId: currentProjectId },
+                success: function (res) {
+                    if (!res.status) return;
+
+                    wbsDropdownData = res.data;
+
+                    const sel = $('#parentWbsId');
+                    sel.html('<option value="0">— Root Level (no parent) —</option>');
+
+                    $.each(res.data, function (i, w) {
+                        // Don't allow selecting itself as parent
+                        if (w.id === excludeId) return;
+
+                        const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(w.wbsLevel - 1);
+                        sel.append(`<option value="${w.id}">${indent}${w.display}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ── LEVEL INDICATOR (auto-shows what level will be set) ──
+        function updateLevelIndicator() {
+            const parentId = parseInt($('#parentWbsId').val()) || 0;
+
+            if (parentId === 0) {
+                $('#levelDisplay').text('L1 (Root — Phase/Category)');
+                return;
+            }
+
+            const parent = wbsDropdownData.find(w => w.id === parentId);
+            if (parent) {
+                const newLevel = parent.wbsLevel + 1;
+                const labels = { 1: 'Phase', 2: 'Discipline', 3: 'Activity Group', 4: 'Detail' };
+                $('#levelDisplay').text(`L${newLevel} (${labels[newLevel] || 'Detail'})`);
+            }
+        }
+
+        // ── RESET MODAL ─────────────────────────────────────────
+        function resetModal() {
+            $('#wbsId').val(0);
+            $('#wbsProjectId').val(currentProjectId);
+            $('#wbsCode,#wbsName,#wbsDescription').val('');
+            $('#parentWbsId').val(0);
+            $('#wbsIsActive').prop('checked', true);
+            $('#wbsForm').removeClass('was-validated');
+            $('#wbsModalLabel').text('Add WBS Item');
+            $('#levelDisplay').text('L1 (Root — Phase/Category)');
+        }
+
+        // ── OPEN ADD MODAL ──────────────────────────────────────
+        $('#addWbsBtn').on('click', function () {
+            if (!currentProjectId) {
+                toastr.warning('Please select a project first');
+                return false;
+            }
+            resetModal();
+            loadWBSDropdown();
+        });
+
+        // ── EDIT BUTTON ─────────────────────────────────────────
+        $(document).on('click', '.editWbsBtn', function () {
+            const w = $(this).data('wbs');
+            if (!w) return;
+
+            resetModal();
+            loadWBSDropdown(w.id);  // exclude self from parent options
+
+            $('#wbsId').val(w.id);
+            $('#wbsProjectId').val(w.projectId);
+            $('#wbsCode').val(w.code);
+            $('#wbsName').val(w.name);
+            $('#wbsDescription').val(w.description);
+            $('#wbsIsActive').prop('checked', w.isActive === 1);
+            $('#wbsModalLabel').text(`Edit WBS — ${w.code} ${w.name}`);
+
+            // Set parent after dropdown loads
+            setTimeout(function () {
+                $('#parentWbsId').val(w.parentWbsId || 0);
+                updateLevelIndicator();
+            }, 350);
+
+        new bootstrap.Modal(document.getElementById('wbsModal')).show();
+        });
+
+        // ── DELETE BUTTON ───────────────────────────────────────
+        $(document).on('click', '.deleteWbsBtn', function () {
+            const wbsId = $(this).data('id');
+            const children = parseInt($(this).data('children')) || 0;
+
+            if (!wbsId) return;
+
+            if (children > 0) {
+                toastr.warning(`Cannot delete — this WBS has ${children} child item(s). Delete children first.`);
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this WBS item?')) return;
+
+            $.ajax({
+                url: `@Url.Action("DeleteWBS", "Construction")?wbsId=${wbsId}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        loadWBSList();
+                        loadWBSDropdown();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to delete WBS item");
+                }
+            });
+        });
+
+        // ── SAVE FORM ───────────────────────────────────────────
+             $('#wbsForm').on('submit', function (e) {
+            e.preventDefault();
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            // Code is now handled entirely by the server
+            const payload = {
+                Id:          parseInt($('#wbsId').val()) || 0,
+                ProjectId:   parseInt($('#wbsProjectId').val()) || currentProjectId,
+                ParentWbsId: parseInt($('#parentWbsId').val()) || 0,
+                Name:        $('#wbsName').val().trim(),
+                Description: $('#wbsDescription').val().trim(),
+                IsActive:    $('#wbsIsActive').is(':checked') ? 1 : 0
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveWBS", "Construction")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(payload.Id > 0 ? 'WBS item updated successfully' : 'WBS item added successfully');
+                        bootstrap.Modal.getInstance(document.getElementById('wbsModal')).hide();
+                        loadWBSList();
+                        loadWBSDropdown();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to save WBS item");
+                }
+            });
+        });
+        // ── EXPAND / COLLAPSE HELPERS ───────────────────────────
+        $('#expandAllBtn').on('click', function () {
+            if ($.fn.DataTable.isDataTable('#wbsTable')) {
+                $('#wbsTable').DataTable().page.len(-1).draw();
+            }
+        });
+
+        $('#collapseAllBtn').on('click', function () {
+            if ($.fn.DataTable.isDataTable('#wbsTable')) {
+                $('#wbsTable').DataTable().page.len(25).draw();
+            }
+        });
+
+        // ── INIT ────────────────────────────────────────────────
+        loadProjects();
+    </script>
+}
