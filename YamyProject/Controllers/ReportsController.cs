@@ -8,6 +8,7 @@ namespace YamyProject.Controllers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _config;
         private readonly MySqlConnection _connection;
+        private const int RetainedEarningsId = 17;
         public ReportsController(IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _httpClientFactory = httpClientFactory;
@@ -23,7 +24,7 @@ namespace YamyProject.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetBalanceSheetReport(string date)
+        public async Task<IActionResult> GetBalanceSheetReports(string date)
         {
             try
             {
@@ -50,7 +51,7 @@ SELECT
             (COALESCE(SUM(t.debit) - SUM(t.credit), 0) 
              + (
                 SELECT 
-                    COALESCE(
+                    COALESCE(mµ  m             n
                         (SELECT SUM(t.debit - t.credit) 
                          FROM tbl_coa_level_1 l1i
                          LEFT JOIN tbl_coa_level_2 l2i ON l2i.main_id = l1i.id
@@ -112,7 +113,7 @@ ORDER BY l1.id;
                 // Step 2: Recursively load children for each account
                 foreach (var account in topAccounts)
                 {
-                    await LoadChildAccountsOptimizedAsync(conn, account, parsedDate, 1);
+                    await LoadChildAccountsOptimizedAsyncs(conn, account, parsedDate, 1);
                 }
 
                 return Ok(new { status = true, selectedDate = parsedDate.ToString("yyyy-MM-dd"), data = topAccounts });
@@ -123,7 +124,7 @@ ORDER BY l1.id;
             }
         }
 
-        private async Task LoadChildAccountsOptimizedAsync(MySqlConnection conn, AccountNode parent, DateTime date, int currLvl)
+        private async Task LoadChildAccountsOptimizedAsyncs(MySqlConnection conn, AccountNode parent, DateTime date, int currLvl)
         {
             if (currLvl >= 4) return;
 
@@ -162,9 +163,314 @@ ORDER BY l.code;
             foreach (var child in children)
             {
                 parent.Children.Add(child);
-                await LoadChildAccountsOptimizedAsync(conn, child, date, currLvl + 1);
+                await LoadChildAccountsOptimizedAsyncs(conn, child, date, currLvl + 1);
             }
         }
+
+       
+
+        [HttpGet]
+        public async Task<IActionResult> GetBalanceSheetReport([FromQuery] string date = "")
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                // ── Parse date ────────────────────────────────────────
+                if (!DateTime.TryParseExact(date, "yyyy-MM-dd",
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+                    parsedDate = DateTime.Today;
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // ── Net profit added into equity balances ─────────────
+                decimal retainedEarningsBalance = await GetNetProfitAsync(conn, parsedDate);
+
+                // ── Load top-level accounts ───────────────────────────
+                List<AccountNode> topAccounts =
+                    await LoadTopLevelAsync(conn, parsedDate, retainedEarningsBalance);
+
+                // ── Recursively load children ─────────────────────────
+                foreach (var account in topAccounts)
+                    await LoadChildrenAsync(conn, account, parsedDate, retainedEarningsBalance);
+
+                // ── Build totals ──────────────────────────────────────
+                var totals = BuildTotals(topAccounts);
+
+                return Ok(new
+                {
+                    status = true,
+                    selectedDate = parsedDate.ToString("yyyy-MM-dd"),
+                    data = topAccounts,
+                    totals
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        // ════════════════════════════════════════════════════════════
+        //  TOP-LEVEL LOADER  (level 1 — ASSET / LIABILITY / EQUITY)
+        // ════════════════════════════════════════════════════════════
+
+        private async Task<List<AccountNode>> LoadTopLevelAsync(
+            MySqlConnection conn, DateTime asOfDate, decimal retainedEarningsBalance)
+        {
+            string query = @"
+            WITH AccountBalances AS (
+                -- Net profit from P&L accounts
+                SELECT
+                    l1.category_code AS Category,
+                    CASE
+                        WHEN l1.category_code = 'ASSET'
+                            THEN COALESCE(SUM(t.debit) - SUM(t.credit), 0)
+                        WHEN l1.category_code IN ('LIABILITY','EQUITY','INCOME')
+                            THEN COALESCE(SUM(t.credit) - SUM(t.debit), 0)
+                        WHEN l1.category_code IN ('COST','EXPENSE')
+                            THEN COALESCE(SUM(t.debit) - SUM(t.credit), 0)
+                    END AS Balance
+                FROM tbl_coa_level_1 l1
+                LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
+                LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
+                LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
+                LEFT JOIN tbl_transaction t  ON t.account_id = l4.id
+                WHERE l1.category_code IN ('INCOME','COST','EXPENSE')
+                  AND t.state = 0
+                  AND DATE(t.date) <= @asOfDate
+                GROUP BY l1.category_code
+            ),
+            FinalBalance AS (
+                -- Retained earnings = Income - Cost - Expenses
+                SELECT
+                    COALESCE((SELECT Balance FROM AccountBalances WHERE Category = 'INCOME'),  0)
+                  - COALESCE((SELECT Balance FROM AccountBalances WHERE Category = 'COST'),     0)
+                  - COALESCE((SELECT Balance FROM AccountBalances WHERE Category = 'EXPENSE'),  0)
+                    AS Balance
+            ),
+            EquityBalances AS (
+                SELECT
+                    l1.name, l1.id, l1.category_code,
+                    CASE
+                        WHEN l1.category_code = 'ASSET'
+                            THEN COALESCE(SUM(t.debit) - SUM(t.credit), 0)
+                        WHEN l1.category_code IN ('LIABILITY','EQUITY','INCOME')
+                            THEN COALESCE(SUM(t.credit) - SUM(t.debit), 0)
+                        WHEN l1.category_code IN ('COST','EXPENSE')
+                            THEN COALESCE(SUM(t.debit) - SUM(t.credit), 0)
+                    END AS Balance
+                FROM tbl_coa_level_1 l1
+                LEFT JOIN tbl_coa_level_2 l2 ON l2.main_id = l1.id
+                LEFT JOIN tbl_coa_level_3 l3 ON l3.main_id = l2.id
+                LEFT JOIN tbl_coa_level_4 l4 ON l4.main_id = l3.id
+                LEFT JOIN tbl_transaction t  ON t.account_id = l4.id
+                WHERE t.state = 0
+                  AND l1.category_code IN ('ASSET','LIABILITY','EQUITY')
+                  AND DATE(t.date) <= @asOfDate
+                GROUP BY l1.id, l1.name, l1.category_code
+            )
+            SELECT
+                eb.name,
+                eb.id,
+                eb.category_code,
+                CASE
+                    WHEN eb.category_code = 'EQUITY'
+                        THEN eb.Balance + COALESCE((SELECT Balance FROM FinalBalance), 0)
+                    ELSE eb.Balance
+                END AS Balance
+            FROM EquityBalances eb
+            ORDER BY eb.id;";
+
+            var accounts = new List<AccountNode>();
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@asOfDate", asOfDate.Date);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                accounts.Add(new AccountNode
+                {
+                    Id = reader.GetInt32("id"),
+                    Name = reader["name"]?.ToString() ?? "",
+                    CategoryCode = reader["category_code"]?.ToString() ?? "",
+                    Balance = reader.IsDBNull(reader.GetOrdinal("Balance"))
+                                   ? 0 : reader.GetDecimal("Balance"),
+                    CurrLvl = 1,
+                    Children = new List<AccountNode>()
+                });
+            }
+            return accounts;
+        }
+
+
+        // ════════════════════════════════════════════════════════════
+        //  RECURSIVE CHILDREN LOADER
+        // ════════════════════════════════════════════════════════════
+
+        private async Task LoadChildrenAsync(
+            MySqlConnection conn, AccountNode parent,
+            DateTime asOfDate, decimal retainedEarningsBalance)
+        {
+            if (parent.CurrLvl >= 4) return;
+
+            int nextLevel = parent.CurrLvl + 1;
+            string lvlTable = $"tbl_coa_level_{nextLevel}";
+
+            // ── Fetch child account names ─────────────────────────────
+            string childQuery = $@"
+            SELECT id, name, CONCAT(code,' - ',name) AS displayName
+            FROM {lvlTable}
+            WHERE main_id = @parentId
+            ORDER BY code;";
+
+            var children = new List<AccountNode>();
+
+            await using (var cmd = new MySqlCommand(childQuery, conn))
+            {
+                cmd.Parameters.AddWithValue("@parentId", parent.Id);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    children.Add(new AccountNode
+                    {
+                        Id = reader.GetInt32("id"),
+                        Name = reader["displayName"]?.ToString() ?? "",
+                        CurrLvl = nextLevel,
+                        Children = new List<AccountNode>()
+                    });
+                }
+            }
+
+            // ── Fetch balance for each child ──────────────────────────
+            foreach (var child in children)
+            {
+                child.Balance = await GetBalanceAsync(
+                    conn, nextLevel, child.Id, asOfDate, retainedEarningsBalance);
+
+                // Recurse into grandchildren
+                await LoadChildrenAsync(conn, child, asOfDate, retainedEarningsBalance);
+            }
+
+            parent.Children = children;
+        }
+
+
+        // ════════════════════════════════════════════════════════════
+        //  BALANCE HELPER  (works for levels 2 – 4)
+        // ════════════════════════════════════════════════════════════
+
+        private async Task<decimal> GetBalanceAsync(
+            MySqlConnection conn, int level, int id,
+            DateTime asOfDate, decimal retainedEarningsBalance)
+        {
+            string query = $@"
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN l1.category_code = 'ASSET'
+                        THEN tt.debit - tt.credit
+                    WHEN l1.category_code IN ('LIABILITY','EQUITY','INCOME')
+                        THEN tt.credit - tt.debit
+                    WHEN l1.category_code IN ('COST','EXPENSE')
+                        THEN tt.debit - tt.credit
+                END
+            ), 0) AS Balance
+            FROM tbl_transaction tt
+            JOIN tbl_coa_level_4 l4 ON l4.id = tt.account_id
+            JOIN tbl_coa_level_3 l3 ON l3.id = l4.main_id
+            JOIN tbl_coa_level_2 l2 ON l2.id = l3.main_id
+            JOIN tbl_coa_level_1 l1 ON l1.id = l2.main_id
+            WHERE tt.state = 0
+              AND DATE(tt.date) <= @asOfDate
+              AND (
+                CASE {level}
+                    WHEN 2 THEN l2.id = @id
+                    WHEN 3 THEN l3.id = @id
+                    WHEN 4 THEN l4.id = @id
+                END
+              );";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@asOfDate", asOfDate.Date);
+
+            var result = await cmd.ExecuteScalarAsync();
+            decimal bal = result == null || result == DBNull.Value
+                          ? 0 : Convert.ToDecimal(result);
+
+            // ── Special case: Retained Earnings account (level 3) ────
+            if (level == 3 && id == RetainedEarningsId)
+                bal = await GetNetProfitAsync(conn, asOfDate);
+
+            // ── Add net profit to level-2 equity sub-accounts ────────
+            if (level == 2 && retainedEarningsBalance != 0)
+            {
+                string equityCheck = @"
+                SELECT l1.id FROM tbl_coa_level_1 l1
+                INNER JOIN tbl_coa_level_2 l2 ON l1.id = l2.main_id
+                WHERE l1.category_code = 'EQUITY' AND l2.id = @id
+                LIMIT 1;";
+
+                await using var chkCmd = new MySqlCommand(equityCheck, conn);
+                chkCmd.Parameters.AddWithValue("@id", id);
+                var chkResult = await chkCmd.ExecuteScalarAsync();
+                if (chkResult != null)
+                    bal += retainedEarningsBalance;
+            }
+
+            return bal;
+        }
+
+
+        // ════════════════════════════════════════════════════════════
+        //  NET PROFIT  (Income − Cost − Expense, cumulative ≤ date)
+        // ════════════════════════════════════════════════════════════
+
+        private async Task<decimal> GetNetProfitAsync(MySqlConnection conn, DateTime asOfDate)
+        {
+            string query = @"
+            SELECT
+                COALESCE(SUM(CASE WHEN l1.category_code = 'INCOME'
+                                  THEN t.credit - t.debit ELSE 0 END), 0)
+              - COALESCE(SUM(CASE WHEN l1.category_code IN ('COST','EXPENSE')
+                                  THEN t.debit - t.credit ELSE 0 END), 0)
+            FROM tbl_transaction t
+            JOIN tbl_coa_level_4 l4 ON l4.id = t.account_id
+            JOIN tbl_coa_level_3 l3 ON l3.id = l4.main_id
+            JOIN tbl_coa_level_2 l2 ON l2.id = l3.main_id
+            JOIN tbl_coa_level_1 l1 ON l1.id = l2.main_id
+            WHERE t.state = 0
+              AND DATE(t.date) <= @asOfDate;";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@asOfDate", asOfDate.Date);
+
+            var result = await cmd.ExecuteScalarAsync();
+            return result == null || result == DBNull.Value ? 0 : Convert.ToDecimal(result);
+        }
+
+
+        // ════════════════════════════════════════════════════════════
+        //  TOTALS  (Liabilities + Equity only)
+        // ════════════════════════════════════════════════════════════
+
+        private object BuildTotals(List<AccountNode> accounts)
+        {
+            decimal total = accounts
+                .Where(a => string.Equals(a.CategoryCode, "LIABILITY", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(a.CategoryCode, "EQUITY", StringComparison.OrdinalIgnoreCase))
+                .Sum(a => a.Balance);
+
+            return new { label = "Total Liabilities & Equity", balance = total };
+        }
+
 
         #endregion
 

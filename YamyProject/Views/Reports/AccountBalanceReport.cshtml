@@ -1,9 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Balance Sheet Summary";
-  //  Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<!-- ================== CSS LINKS ================== -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -27,7 +25,6 @@
     }
 </style>
 
-<!-- ================== PAGE CONTENT ================== -->
 <div class="card">
     <div class="card-header text-center">
         <strong>Balance Sheet Summary</strong>
@@ -69,14 +66,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
     <script>
-                      $(document).ready(function () {
+
+          $(document).ready(function () {
             const today = new Date().toISOString().split('T')[0];
             $('#reportDate').val(today);
             loadBalanceSheetReport();
 
             $('#btnLoadReport').on('click', loadBalanceSheetReport);
 
-            // Use event delegation on table body for better DataTables compatibility
             $('#table1').on('click', '.toggle-icon', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -98,7 +95,6 @@
                 }
             });
 
-            // Collapse children with recursion guard
             function collapseChildren(rowId, seen) {
                 if (seen.has(rowId)) return;
                 seen.add(rowId);
@@ -120,7 +116,6 @@
                 });
             }
 
-            // Expand direct children only
             function expandChildren(rowId) {
                 const children = $(`#table1 tbody tr[data-parent-row='${rowId}']`);
            
@@ -211,7 +206,6 @@
 
                     renderRows(res.data);
 
-                    // Destroy and reinitialize DataTable FIRST
                     if ($.fn.DataTable.isDataTable('#table1')) {
                         $('#table1').DataTable().destroy();
                     }
@@ -228,10 +222,9 @@
                         paging: true
                     });
 
-                    // ✅ Attach toggle AFTER DataTable init using document-level delegation
                     $(document).off('click', '.toggle-icon').on('click', '.toggle-icon', function () {
                         const icon = $(this);
-                        const rowId = icon.data('row-id'); // get from icon's own data attribute
+                        const rowId = icon.data('row-id'); 
                         const isExpanded = icon.text() === '▼';
 
                         function toggleChildren(parentRowId, show) {
@@ -241,7 +234,6 @@
                                     childRow.show();
                                 } else {
                                     childRow.hide();
-                                    // Collapse nested children too
                                     const childIcon = childRow.find('.toggle-icon');
                                     if (childIcon.length && childIcon.text() === '▼') {
                                         childIcon.text('►');
@@ -269,23 +261,21 @@
 
                  
         
-        // Handle row click for level 4 accounts
         $('#table1 tbody').on('click', 'tr', function () {
-            const accountId = $(this).data('id');      // Get account id
-            const level = $(this).data('level');       // Get row level
+            const accountId = $(this).data('id');      
+            const level = $(this).data('level');      
 
-            // Only proceed if level is 4
             if (level === 4) {
                 if (!accountId) {
                     toastr.warning('No account ID found for this row.');
                     return;
                 }
 
-                // Redirect to TransactionByAccount page with accountId
                 window.location.href = `/Reports/TransactionByAccount?accountId=${accountId}`;
             }
         });
 
         });
+
     </script>
 }

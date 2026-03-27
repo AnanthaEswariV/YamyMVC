@@ -1041,16 +1041,53 @@ namespace YamyProject.Core.Models
         public double RemainingBudget { get; set; }
         public double Progress { get; set; }
     }
+    //public class AccountNode
+    //{
+    //    public int Id { get; set; }
+    //    public string Name { get; set; }
+    //    public decimal Balance { get; set; }
+    //    public int CurrLvl { get; set; }
+    //    public string State { get; set; } = "e";
+    //    public string LoadState { get; set; } = "u";
+    //    public List<AccountNode> Children { get; set; } = new List<AccountNode>();
+    //}
+
     public class AccountNode
     {
         public int Id { get; set; }
-        public string Name { get; set; }
-        public decimal Balance { get; set; }
+        public string Name { get; set; } = "";
+        public string CategoryCode { get; set; } = "";
         public int CurrLvl { get; set; }
+
+        // Standard / detail / by Class
+        public decimal Balance { get; set; }
+
+        // Prev Year Comparison
+        public decimal Balance1 { get; set; }
+        public decimal Balance2 { get; set; }
+        public decimal Change { get; set; }
+        public decimal ChangePercent { get; set; }
         public string State { get; set; } = "e";
         public string LoadState { get; set; } = "u";
-        public List<AccountNode> Children { get; set; } = new List<AccountNode>();
+        // Detail transactions (only for level-4 nodes when type == "detail")
+        public List<TransactionDetail>? Transactions { get; set; }
+
+        public List<AccountNode> Children { get; set; } = new();
     }
+
+    public class TransactionDetail
+    {
+        public int Id { get; set; }
+        public string? Type { get; set; }
+        public string? Date { get; set; }
+        public string? Num { get; set; }
+        public string? Memo { get; set; }
+        public string? Split { get; set; }
+        public decimal Debit { get; set; }
+        public decimal Credit { get; set; }
+        public decimal Balance { get; set; }
+    }
+
 
     public class AccountReport
     {
