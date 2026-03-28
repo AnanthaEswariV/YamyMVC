@@ -2749,6 +2749,22 @@
                           UNIQUE KEY `uq_wbs_code` (`project_id`, `code`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+                        CREATE TABLE IF NOT EXISTS `tbl_project_zones` (
+                          `id`             INT NOT NULL AUTO_INCREMENT,
+                          `project_id`     INT NOT NULL DEFAULT 0,
+                          `site_id`        INT NOT NULL DEFAULT 0,   -- FK → tbl_project_sites.id
+                          `parent_zone_id` INT NOT NULL DEFAULT 0,   -- 0 = top-level zone
+                          `code`           VARCHAR(50)  NOT NULL DEFAULT '',
+                          `name`           VARCHAR(200) NOT NULL DEFAULT '',
+                          `zone_type`      VARCHAR(100) NOT NULL DEFAULT '',  -- Block, Floor, Area, Grid, Unit
+                          `is_active`      TINYINT(1)   NOT NULL DEFAULT 1,
+                          `created_by`     INT NOT NULL DEFAULT 0,
+                          `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uq_zone_code` (`site_id`, `code`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,

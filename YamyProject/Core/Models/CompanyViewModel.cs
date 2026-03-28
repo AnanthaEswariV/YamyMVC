@@ -782,6 +782,17 @@ namespace YamyProject.Core.Models
         public string Description { get; set; }
         public int IsActive { get; set; } = 1;
     }
+
+    public class ZoneRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int SiteId { get; set; }
+        public int ParentZoneId { get; set; }
+        public string Name { get; set; }
+        public string ZoneType { get; set; }
+        public int IsActive { get; set; }
+    }
     public class ProjectTenderItem
     {
         public string? Sr { get; set; }

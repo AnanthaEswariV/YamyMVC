@@ -1,0 +1,356 @@
+﻿@{
+    ViewData["Title"] = "ProjectZone";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Project Zones — Hierarchy Management</strong>
+    </div>
+
+    <div class="card-body">
+
+        <!-- PROJECT + SITE -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Project</label>
+                <select id="projectSelect" class="form-select"></select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Site</label>
+                <select id="siteSelect" class="form-select"></select>
+            </div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="d-flex justify-content-between mb-3">
+            <div></div>
+            <button class="btn btn-primary" id="addZoneBtn" data-bs-toggle="modal" data-bs-target="#zoneModal">
+                <i class="bi bi-plus-circle"></i> Add Zone
+            </button>
+        </div>
+
+        <!-- TABLE -->
+        <table class="table table-bordered table-hover" id="zoneTable">
+            <thead class="table-light">
+                <tr>
+                    <th>S.No</th>
+                    <th>Code</th>
+                    <th>Zone Name</th>
+                    <th>Type</th>
+                    <th>Parent</th>
+                    <th>Children</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="zoneTableBody"></tbody>
+        </table>
+    </div>
+
+
+</div>
+
+<!-- MODAL -->
+
+<div class="modal fade" id="zoneModal">
+    <div class="modal-dialog">
+        <form id="zoneForm" class="modal-content needs-validation" novalidate>
+
+        
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Zone</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <input type="hidden" id="zoneId" />
+                <input type="hidden" id="zoneProjectId" />
+                <input type="hidden" id="zoneSiteId" />
+
+                <div class="mb-3">
+                    <label>Parent Zone</label>
+                    <select id="parentZoneId" class="form-select">
+                        <option value="0">Root</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label>Zone Code</label>
+                    <input type="text" id="zoneCode" class="form-control" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label>Zone Name *</label>
+                    <input type="text" id="zoneName" class="form-control" required />
+                </div>
+
+                <div class="mb-3">
+                    <label>Zone Type *</label>
+                    <select id="zoneType" class="form-select" required>
+                        <option value="">Select</option>
+                        <option>Block</option>
+                        <option>Floor</option>
+                        <option>Area</option>
+                        <option>Unit</option>
+                        <option>Grid</option>
+                    </select>
+                </div>
+
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="zoneActive" checked />
+                    <label class="form-check-label">Active</label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary">Save</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+        </form>
+    </div>
+
+
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+
+        let projectId = 0;
+        let siteId = 0;
+
+        // LOAD PROJECTS
+        function loadProjects() {
+            $.get('/Construction/GetProjectsForWBS', res => {
+                const sel = $('#projectSelect');
+                sel.append('<option value="">Select</option>');
+                res.data.forEach(p => {
+                    sel.append(`<option value="${p.id}">${p.name}</option>`);
+                });
+            });
+        }
+
+                function loadSites(pid) {
+            $.get('/Construction/GetProjectSites', { projectId: pid }, res => {
+                const sel = $('#siteSelect');
+                sel.empty();
+
+                if (!res.data || res.data.length === 0) {
+                    sel.append('<option value="">No Sites</option>');
+                    return;
+                }
+
+                res.data.forEach(s => {
+                    sel.append(`<option value="${s.id}">${s.name}</option>`);
+                });
+
+                // ✅ AUTO SELECT FIRST SITE
+                siteId = res.data[0].id;
+                sel.val(siteId);
+
+                // ✅ FORCE LOAD
+                loadZones();
+                loadZoneDropdown();
+            });
+        }
+
+        // LOAD ZONES
+              function loadZones() {
+
+            const projectIdVal = parseInt($('#projectSelect').val()) || 0;
+            const siteIdVal = parseInt($('#siteSelect').val()) || 0;
+
+            if (!projectIdVal || !siteIdVal) return;
+
+            $.get('/Construction/GetZoneList', { projectId: projectIdVal, siteId: siteIdVal }, res => {
+
+                const tbody = $('#zoneTableBody');
+                tbody.empty();
+
+                // ✅ DESTROY DATATABLE BEFORE RELOAD
+                if ($.fn.DataTable.isDataTable('#zoneTable')) {
+                    $('#zoneTable').DataTable().destroy();
+                }
+
+                if (!res.data || res.data.length === 0) {
+                    tbody.append(`<tr><td colspan="8" class="text-center text-muted">No zones found</td></tr>`);
+                    return;
+                }
+
+                res.data.forEach((z, i) => {
+
+                    const active = z.isActive
+                        ? '<i class="text-success fas fa-check"></i>'
+                        : '<i class="text-danger fas fa-times"></i>';
+
+                    tbody.append(`
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${z.code}</td>
+                            <td>${z.name}</td>
+                            <td>${z.zoneType}</td>
+                            <td>${z.parentName || 'Root'}</td>
+                            <td>${z.childCount}</td>
+                            <td>${active}</td>
+                   
+                                       <td>
+            <button class="btn btn-sm btn-primary editBtn"
+                data-id="${z.id}"
+                data-name="${z.name}"
+                data-code="${z.code}"
+                data-zonetype="${z.zoneType}"
+                data-parent="${z.parentZoneId}"
+                data-active="${z.isActive}">
+                <i class="fas fa-pen"></i>
+            </button>
+
+            <button class="btn btn-sm btn-danger delBtn"
+                data-id="${z.id}"
+                data-child="${z.childCount}">
+                 <i class="fas fa-trash"></i>
+            </button>
+        </td>
+                        </tr>
+                    `);
+                });
+
+                // ✅ INIT DATATABLE AFTER DATA
+                $('#zoneTable').DataTable({
+                    destroy: true,
+                    pageLength: 25
+                });
+            });
+        }
+
+        // DROPDOWN
+        function loadZoneDropdown() {
+            $.get('/Construction/GetZoneDropdown', { projectId, siteId }, res => {
+                const sel = $('#parentZoneId');
+                sel.html('<option value="0">Root</option>');
+                res.data.forEach(z => {
+                    sel.append(`<option value="${z.id}">${z.display}</option>`);
+                });
+            });
+        }
+
+        // SAVE
+        $('#zoneForm').submit(function(e){
+            e.preventDefault();
+
+            const payload = {
+                Id: $('#zoneId').val() || 0,
+                ProjectId: projectId,
+                SiteId: parseInt($('#siteSelect').val()) || 0,
+                ParentZoneId: $('#parentZoneId').val(),
+                Name: $('#zoneName').val(),
+                ZoneType: $('#zoneType').val(),
+                IsActive: $('#zoneActive').is(':checked') ? 1 : 0
+            };
+            console.log(payload);
+            $.ajax({
+                url: '/Construction/SaveZone',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: res => {
+                    toastr.success("Saved");
+                    $('#zoneModal').modal('hide');
+                   setTimeout(() => location.reload(), 1500);
+                }
+            });
+        });
+
+                $(document).on('click', '.editBtn', function () {
+
+            const btn = $(this);
+
+            const id = btn.data('id');
+            const name = btn.data('name');
+            const code = btn.data('code');
+            const zoneType = btn.data('zonetype');
+            const parentId = btn.data('parent');
+            const isActive = btn.data('active');
+
+            $('#zoneId').val(id);
+            $('#zoneName').val(name);
+            $('#zoneCode').val(code);
+            $('#zoneType').val(zoneType);
+            $('#zoneActive').prop('checked', isActive === 1);
+
+            loadZoneDropdown();
+
+            setTimeout(() => {
+                $('#parentZoneId').val(parentId || 0);
+            }, 300);
+
+            $('.modal-title').text(`Edit Zone — ${code}`);
+
+            new bootstrap.Modal(document.getElementById('zoneModal')).show();
+        });
+
+        // DELETE
+        $(document).on('click','.delBtn',function(){
+            const id = $(this).data('id');
+            const child = $(this).data('child');
+
+            if(child > 0){
+                toastr.warning("Has children");
+                return;
+            }
+
+            $.ajax({
+                url: '/Construction/DeleteZone?id='+id,
+                type: 'DELETE',
+                 success: function (res) {
+
+                    if (res.status) {
+                        toastr.success(res.message || 'Deleted successfully');
+                        row.remove();
+                         setTimeout(() => location.reload(), 1500);
+                    }
+                    else {
+                        toastr.error(res.message);
+                    }
+
+                },
+                error: function () {
+                    toastr.error('Error deleting');
+                }
+            });
+        });
+
+        // EVENTS
+        $('#projectSelect').change(function(){
+            projectId = $(this).val();
+            loadSites(projectId);
+        });
+        $('#siteSelect').change(function(){
+            loadZones();
+            loadZoneDropdown();
+        });
+
+        // INIT
+        loadProjects();
+    </script>
+
+}

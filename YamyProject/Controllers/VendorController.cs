@@ -4555,6 +4555,17 @@ VALUES (@date, @accountId, @debit, @credit, @transactionId, @humId, @tType, 'Deb
         }
         #endregion
 
+        #region Material Request
+
+
+        public IActionResult MaterialRequest()
+        {
+            return View();
+        }
+
+
+        #endregion
+
 
     }
 }

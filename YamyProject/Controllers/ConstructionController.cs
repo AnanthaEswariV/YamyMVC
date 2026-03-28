@@ -2489,6 +2489,266 @@ total_values, billed_to_dates, balances)
 
         #endregion
 
+        #region Project Zone
+
+        public IActionResult ProjectZone()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetZoneList(int projectId, int siteId)
+        {
+            if (projectId <= 0 || siteId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project/Site" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+        SELECT 
+            z.id,
+            z.project_id,
+            z.site_id,
+            z.parent_zone_id,
+            z.code,
+            z.name,
+            z.zone_type,
+            z.is_active,
+            IFNULL(p.name,'') parent_name,
+            IFNULL(p.code,'') parent_code,
+            (SELECT COUNT(*) FROM tbl_project_zones c WHERE c.parent_zone_id = z.id) child_count
+        FROM tbl_project_zones z
+        LEFT JOIN tbl_project_zones p ON p.id = z.parent_zone_id
+        WHERE z.project_id = @projectId AND z.site_id = @siteId
+        ORDER BY z.code ASC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                cmd.Parameters.AddWithValue("@siteId", siteId);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        ProjectId = reader.GetInt32("project_id"),
+                        SiteId = reader.GetInt32("site_id"),
+                        ParentZoneId = reader.GetInt32("parent_zone_id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        ZoneType = reader["zone_type"].ToString(),
+                        IsActive = reader.GetInt32("is_active"),
+                        ParentName = reader["parent_name"].ToString(),
+                        ParentCode = reader["parent_code"].ToString(),
+                        ChildCount = reader.GetInt32("child_count")
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetZoneDropdown(int projectId, int siteId)
+        {
+            if (projectId <= 0 || siteId <= 0)
+                return BadRequest(new { status = false });
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            string query = @"
+    SELECT id, code, name, zone_type
+    FROM tbl_project_zones
+    WHERE project_id = @projectId AND site_id = @siteId AND is_active = 1
+    ORDER BY code";
+
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@projectId", projectId);
+            cmd.Parameters.AddWithValue("@siteId", siteId);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            var list = new List<object>();
+            while (await reader.ReadAsync())
+            {
+                list.Add(new
+                {
+                    Id = reader.GetInt32("id"),
+                    Code = reader["code"].ToString(),
+                    Name = reader["name"].ToString(),
+                    ZoneType = reader["zone_type"].ToString(),
+                    Display = $"{reader["code"]} - {reader["name"]} ({reader["zone_type"]})"
+                });
+            }
+
+            return Ok(new { status = true, data = list });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveZone([FromBody] ZoneRequest model)
+        {
+            if (model == null || model.ProjectId <= 0 || model.SiteId <= 0)
+                return BadRequest(new { status = false, message = "Invalid data" });
+
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest(new { status = false, message = "Zone name required" });
+
+            int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            {
+                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+            };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            if (model.Id == 0)
+            {
+                string code = await GenerateZoneCode(conn, model.ProjectId, model.SiteId, model.ParentZoneId);
+
+                string query = @"
+        INSERT INTO tbl_project_zones
+        (project_id, site_id, parent_zone_id, code, name, zone_type, is_active, created_by)
+        VALUES
+        (@projectId,@siteId,@parentId,@code,@name,@zoneType,@isActive,@userId);
+        SELECT LAST_INSERT_ID();";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                cmd.Parameters.AddWithValue("@siteId", model.SiteId);
+                cmd.Parameters.AddWithValue("@parentId", model.ParentZoneId);
+                cmd.Parameters.AddWithValue("@code", code);
+                cmd.Parameters.AddWithValue("@name", model.Name);
+                cmd.Parameters.AddWithValue("@zoneType", model.ZoneType);
+                cmd.Parameters.AddWithValue("@isActive", model.IsActive);
+                cmd.Parameters.AddWithValue("@userId", userId);
+
+                int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                return Ok(new { status = true, id = newId, code });
+            }
+            else
+            {
+                string query = @"UPDATE tbl_project_zones
+        SET parent_zone_id=@parentId,
+            name=@name,
+            zone_type=@zoneType,
+            is_active=@isActive
+        WHERE id=@id";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@parentId", model.ParentZoneId);
+                cmd.Parameters.AddWithValue("@name", model.Name);
+                cmd.Parameters.AddWithValue("@zoneType", model.ZoneType);
+                cmd.Parameters.AddWithValue("@isActive", model.IsActive);
+                cmd.Parameters.AddWithValue("@id", model.Id);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true, message = "Updated" });
+            }
+        }
+
+        private async Task<string> GenerateZoneCode(MySqlConnection conn, int projectId, int siteId, int parentId)
+        {
+            try
+            {
+                if (parentId == 0)
+                {
+                    string query = @"SELECT IFNULL(MAX(code),0) FROM tbl_project_zones
+                         WHERE project_id=@projectId AND site_id=@siteId AND parent_zone_id=0";
+
+                    await using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@projectId", projectId);
+                    cmd.Parameters.AddWithValue("@siteId", siteId);
+
+                    int max = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return (max + 1).ToString();
+                }
+                else
+                {
+                    string parentCodeQuery = "SELECT code FROM tbl_project_zones WHERE id=@id";
+                    await using var pCmd = new MySqlCommand(parentCodeQuery, conn);
+                    pCmd.Parameters.AddWithValue("@id", parentId);
+                    string parentCode = (await pCmd.ExecuteScalarAsync())?.ToString();
+
+                    string query = @"SELECT COUNT(*) FROM tbl_project_zones WHERE parent_zone_id=@parentId";
+                    await using var cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@parentId", parentId);
+
+                    int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
+                    return $"{parentCode}.{count + 1}";
+                }
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+          
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteZone(int id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string check = "SELECT COUNT(*) FROM tbl_project_zones WHERE parent_zone_id=@id";
+                var cmdCheck = new MySqlCommand(check, conn);
+                cmdCheck.Parameters.AddWithValue("@id", id);
+
+                int children = Convert.ToInt32(await cmdCheck.ExecuteScalarAsync());
+                if (children > 0)
+                    return BadRequest(new { status = false, message = "Has child zones" });
+
+                string del = "DELETE FROM tbl_project_zones WHERE id=@id";
+                var cmd = new MySqlCommand(del, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { status = true });
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        #endregion
+
         #region Project Site Management
 
         public IActionResult ProjectSiteManagement()
