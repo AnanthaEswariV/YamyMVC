@@ -1028,6 +1028,33 @@ namespace YamyProject.Core.Models
         public int WarehouseId { get; set; }
         public List<ProjectItem> Items { get; set; }
     }
+    public class LookaheadRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int SiteId { get; set; }
+        public string PeriodStart { get; set; }
+        public string PeriodEnd { get; set; }
+        public int WeekNumber { get; set; }
+        public string PreparedBy { get; set; }
+        public string ApprovedBy { get; set; }
+        public string Status { get; set; }
+        public string Notes { get; set; }
+    }
+
+    public class LookaheadItemRequest
+    {
+        public int Id { get; set; }
+        public int LookaheadId { get; set; }
+        public int ActivityId { get; set; }
+        public int ZoneId { get; set; }
+        public decimal PlannedQty { get; set; }
+        public string PlannedStart { get; set; }
+        public string PlannedEnd { get; set; }
+        public int RequiredLabor { get; set; }
+        public string RequiredEquip { get; set; }
+        public string Notes { get; set; }
+    }
 
     public class ProjectItem
     {

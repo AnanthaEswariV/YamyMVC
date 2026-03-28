@@ -1,0 +1,833 @@
+﻿
+@{
+    ViewData["Title"] = "LookAhead";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #435EBE !important;
+            color: #fff !important;
+        }
+
+    .status-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+
+    .status-Draft {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .status-Released {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-Closed {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .period-range {
+        font-size: 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .items-panel {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+        margin-top: 6px;
+        display: none;
+    }
+
+        .items-panel.active {
+            display: block;
+        }
+
+    .selected-row {
+        background: #eff6ff !important;
+    }
+
+    .week-badge {
+        background: #435EBE;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center">
+        <strong>Lookahead Planning</strong>
+    </div>
+
+    <div class="card-body">
+
+        <div class="row mb-4">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Select Project</label>
+                <select id="projectSelect" class="form-select">
+                    <option value="">— Select Project —</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mb-3" id="laToolbar" style="display:none">
+            <button type="button" class="btn btn-primary" id="addLaBtn"
+                    data-bs-toggle="modal" data-bs-target="#laModal">
+                <i class="bi bi-plus-circle me-2"></i>New Lookahead Plan
+            </button>
+        </div>
+
+        <div id="laTableWrapper" style="display:none">
+            <table class="table table-bordered table-hover" id="laTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:50px">S.No</th>
+                        <th style="width:80px">Week</th>
+                        <th>Period</th>
+                        <th>Site</th>
+                        <th style="width:80px">Activities</th>
+                        <th style="width:120px">Prepared By</th>
+                        <th style="width:90px">Status</th>
+                        <th style="width:130px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="laTableBody"></tbody>
+            </table>
+
+            <div class="items-panel" id="itemsPanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0 fw-semibold" id="itemsPanelTitle">Activities</h6>
+                    <button class="btn btn-sm btn-primary" id="addItemBtn"
+                            data-bs-toggle="modal" data-bs-target="#itemModal">
+                        <i class="fas fa-plus me-1"></i> Add Activity
+                    </button>
+                </div>
+                <table class="table table-sm table-bordered" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Activity</th>
+                            <th>Zone</th>
+                            <th>Planned Start</th>
+                            <th>Planned End</th>
+                            <th>Qty</th>
+                            <th>Labor</th>
+                            <th>Equipment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                        <tr><td colspan="9" class="text-center text-muted py-3">Select a lookahead plan above to view activities</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="noProjectMsg" class="text-center text-muted py-5">
+            <i class="fas fa-calendar-alt fa-3x mb-3 opacity-25"></i>
+            <p>Select a project above to manage its lookahead plans.</p>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="laModal" tabindex="-1" aria-labelledby="laModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="laForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="laModalLabel">New Lookahead Plan</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="laId" value="0" />
+                    <input type="hidden" id="laProjectId" value="0" />
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Site</label>
+                        <div class="col-sm-9">
+                            <select id="laSiteId" class="form-select">
+                                <option value="0">— All Sites —</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Period Start <span class="text-danger">*</span></label>
+                        <div class="col-sm-4">
+                            <input type="date" id="laPeriodStart" class="form-control" required
+                                   onchange="autoSetPeriodEnd()" />
+                            <div class="invalid-feedback">Period Start is required</div>
+                        </div>
+                        <label class="col-sm-1 col-form-label text-center">to</label>
+                        <div class="col-sm-4">
+                            <input type="date" id="laPeriodEnd" class="form-control" required />
+                            <div class="invalid-feedback">Period End is required</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Week Number</label>
+                        <div class="col-sm-3">
+                            <input type="number" id="laWeekNumber" class="form-control"
+                                   placeholder="e.g. 12" min="1" max="53" />
+                            <div class="form-text">Auto-calculated from start date</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Prepared By</label>
+                        <div class="col-sm-9">
+                            <input type="text" id="laPreparedBy" class="form-control"
+                                   placeholder="Engineer name" maxlength="200" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Approved By</label>
+                        <div class="col-sm-9">
+                            <input type="text" id="laApprovedBy" class="form-control"
+                                   placeholder="Manager name" maxlength="200" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Status</label>
+                        <div class="col-sm-4">
+                            <select id="laStatus" class="form-select">
+                                <option value="Draft">Draft</option>
+                                <option value="Released">Released</option>
+                                <option value="Closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Notes</label>
+                        <div class="col-sm-9">
+                            <textarea id="laNotes" class="form-control" rows="2"
+                                      maxlength="500" placeholder="Optional notes"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="itemForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="itemModalLabel">Add Activity to Lookahead</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="itemId" value="0" />
+                    <input type="hidden" id="itemLookaheadId" value="0" />
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Activity <span class="text-danger">*</span></label>
+                        <div class="col-sm-9">
+                            <select id="itemActivityId" class="form-select" required>
+                                <option value="">— Select Activity —</option>
+                            </select>
+                            <div class="invalid-feedback">Please select an Activity</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Zone</label>
+                        <div class="col-sm-9">
+                            <select id="itemZoneId" class="form-select">
+                                <option value="0">— No Zone —</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Planned Start <span class="text-danger">*</span></label>
+                        <div class="col-sm-4">
+                            <input type="date" id="itemPlannedStart" class="form-control" required />
+                            <div class="invalid-feedback">Required</div>
+                        </div>
+                        <label class="col-sm-1 col-form-label text-center">to</label>
+                        <div class="col-sm-4">
+                            <input type="date" id="itemPlannedEnd" class="form-control" required />
+                            <div class="invalid-feedback">Required</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Planned Qty</label>
+                        <div class="col-sm-4">
+                            <input type="number" id="itemPlannedQty" class="form-control"
+                                   placeholder="0.00" step="0.01" min="0" value="0" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Required Labor</label>
+                        <div class="col-sm-4">
+                            <input type="number" id="itemRequiredLabor" class="form-control"
+                                   placeholder="No. of workers" min="0" value="0" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Equipment</label>
+                        <div class="col-sm-9">
+                            <input type="text" id="itemRequiredEquip" class="form-control"
+                                   placeholder="e.g. Excavator x1, Crane x1" maxlength="300" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label">Notes</label>
+                        <div class="col-sm-9">
+                            <textarea id="itemNotes" class="form-control" rows="2" maxlength="300"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        let currentProjectId  = 0;
+        let currentLookaheadId = 0;
+
+        // ── LOAD PROJECTS ───────────────────────────────────────
+        function loadProjects() {
+            $.ajax({
+                url: '@Url.Action("GetProjectsForWBS", "Construction")',
+                type: 'GET',
+                success: function (res) {
+                    if (!res.status) return;
+                    const sel = $('#projectSelect');
+                    sel.find('option:not(:first)').remove();
+                    $.each(res.data, function (i, p) {
+                        sel.append(`<option value="${p.id}">[${p.code}] ${p.name}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ── PROJECT CHANGE ──────────────────────────────────────
+        $('#projectSelect').on('change', function () {
+            currentProjectId = parseInt($(this).val()) || 0;
+            $('#itemsPanel').removeClass('active');
+            currentLookaheadId = 0;
+
+            if (!currentProjectId) {
+                $('#laTableWrapper,#laToolbar').hide();
+                $('#noProjectMsg').show();
+                return;
+            }
+
+            $('#noProjectMsg').hide();
+            $('#laTableWrapper').show();
+            $('#laToolbar').css('display','flex');
+            $('#laProjectId').val(currentProjectId);
+            loadLookaheadList();
+            loadSitesDropdown();
+            loadActivitiesDropdown();
+            loadZonesDropdown();
+        });
+
+        // ── LOAD SITES INTO MODAL DROPDOWN ─────────────────────
+        function loadSitesDropdown() {
+            $.ajax({
+                url: '@Url.Action("GetProjectSites", "Construction")',
+                type: 'GET',
+                data: { projectId: currentProjectId },
+                success: function (res) {
+                    if (!res.status) return;
+                    const sel = $('#laSiteId');
+                    sel.html('<option value="0">— All Sites —</option>');
+                    $.each(res.data, function (i, s) {
+                        sel.append(`<option value="${s.id}">${s.name}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ── LOAD ACTIVITIES DROPDOWN ────────────────────────────
+        function loadActivitiesDropdown() {
+            $.ajax({
+                url: '@Url.Action("GetActivitiesDropdown", "Construction")',
+                type: 'GET',
+                data: { projectId: currentProjectId },
+                success: function (res) {
+                    if (!res.status) return;
+                    const sel = $('#itemActivityId');
+                    sel.html('<option value="">— Select Activity —</option>');
+                    $.each(res.data, function (i, a) {
+                        sel.append(`<option value="${a.id}">${a.display}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ── LOAD ZONES DROPDOWN ─────────────────────────────────
+        function loadZonesDropdown() {
+            $.ajax({
+                url: '@Url.Action("GetZonesDropdown", "Construction")',
+                type: 'GET',
+                data: { projectId: currentProjectId },
+                success: function (res) {
+                    if (!res.status) return;
+                    const sel = $('#itemZoneId');
+                    sel.html('<option value="0">— No Zone —</option>');
+                    $.each(res.data, function (i, z) {
+                        sel.append(`<option value="${z.id}">${z.display}</option>`);
+                    });
+                }
+            });
+        }
+
+        // ── LOAD LOOKAHEAD HEADER TABLE ─────────────────────────
+        function loadLookaheadList() {
+            if (!currentProjectId) return;
+
+            $.ajax({
+                url: '@Url.Action("GetLookaheadList", "Construction")',
+                type: 'GET',
+                data: { projectId: currentProjectId },
+                success: function (res) {
+                    if (!res.status) { toastr.error("Failed to load lookahead plans"); return; }
+
+                    if ($.fn.DataTable.isDataTable('#laTable')) {
+                        $('#laTable').DataTable().destroy();
+                    }
+                    console.log(res);
+                    const tbody = $('#laTableBody');
+                    tbody.empty();
+                    $('#itemsPanel').removeClass('active');
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, la) {
+                            const statusClass = `status-${la.status}`;
+                            const tr = `
+                                <tr data-id="${la.id}" style="cursor:pointer">
+                                    <td>${i + 1}</td>
+                                    <td class="text-center">
+                                        ${la.weekNumber > 0 ? `<span class="week-badge">W${la.weekNumber}</span>` : '—'}
+                                    </td>
+                                    <td>
+                                        <span class="period-range">
+                                            ${la.periodStart} &nbsp;→&nbsp; ${la.periodEnd}
+                                        </span>
+                                    </td>
+                                    <td>${la.siteName || '<span class="text-muted">All sites</span>'}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">${la.itemCount}</span>
+                                    </td>
+                                    <td>${la.preparedBy || '—'}</td>
+                                    <td><span class="status-badge ${statusClass}">${la.status}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info text-white viewItemsBtn"
+                                            data-id="${la.id}" data-period="${la.periodStart} → ${la.periodEnd}"
+                                            title="View Activities">
+                                            <i class="fas fa-list"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-primary editLaBtn"
+                                            data-la='${JSON.stringify(la)}' title="Edit">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger deleteLaBtn"
+                                            data-id="${la.id}" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        $('#laTable').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                {
+                                    extend: 'excelHtml5',
+                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':not(:last-child)' }
+                                },
+                                {
+                                    extend: 'pdfHtml5',
+                                    text: '<i class="fas fa-file-pdf me-1"></i> PDF',
+                                    className: 'btn btn-primary btn-sm',
+                                    exportOptions: { columns: ':not(:last-child)' }
+                                }
+                            ],
+                            order: [[2, 'desc']],
+                            pageLength: 25,
+                            columnDefs: [{ orderable: false, targets: [7] }]
+                        });
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    No lookahead plans found. Click "New Lookahead Plan" to create one.
+                                </td>
+                            </tr>`);
+                    }
+                },
+                error: function () { toastr.error("Failed to load lookahead plans"); }
+            });
+        }
+
+        // ── VIEW ACTIVITIES (expand items panel) ────────────────
+        $(document).on('click', '.viewItemsBtn', function (e) {
+            e.stopPropagation();
+            const id     = $(this).data('id');
+            const period = $(this).data('period');
+
+            // Highlight selected row
+            $('#laTableBody tr').removeClass('selected-row');
+            $(this).closest('tr').addClass('selected-row');
+
+            currentLookaheadId = id;
+            $('#itemLookaheadId').val(id);
+            $('#itemsPanelTitle').text(`Activities — ${period}`);
+            $('#itemsPanel').addClass('active');
+
+            loadLookaheadItems(id);
+        });
+
+        // ── LOAD ITEMS TABLE ────────────────────────────────────
+        function loadLookaheadItems(lookaheadId) {
+            $.ajax({
+                url: '@Url.Action("GetLookaheadItems", "Construction")',
+                type: 'GET',
+                data: { lookaheadId },
+                success: function (res) {
+                    if (!res.status) { toastr.error("Failed to load activities"); return; }
+
+                    const tbody = $('#itemsTableBody');
+                    tbody.empty();
+
+                    if (res.data && res.data.length > 0) {
+                        $.each(res.data, function (i, item) {
+                            const tr = `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>
+                                        <strong>[${item.activityCode}]</strong> ${item.activityName}
+                                    </td>
+                                    <td>${item.zoneName || '<span class="text-muted">—</span>'}</td>
+                                    <td>${item.plannedStart}</td>
+                                    <td>${item.plannedEnd}</td>
+                                    <td class="text-end">${item.plannedQty > 0 ? item.plannedQty : '—'}</td>
+                                    <td class="text-center">${item.requiredLabor > 0 ? item.requiredLabor : '—'}</td>
+                                    <td>${item.requiredEquip || '—'}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary editItemBtn"
+                                            data-item='${JSON.stringify(item)}' title="Edit">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger deleteItemBtn"
+                                            data-id="${item.id}" title="Remove">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+                    } else {
+                        tbody.append(`
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-3">
+                                    No activities added yet. Click "Add Activity" to add one.
+                                </td>
+                            </tr>`);
+                    }
+                },
+                error: function () { toastr.error("Failed to load activities"); }
+            });
+        }
+
+        // ── AUTO SET PERIOD END (+3 weeks) & WEEK NUMBER ────────
+        function autoSetPeriodEnd() {
+            const start = $('#laPeriodStart').val();
+            if (!start) return;
+
+            const d = new Date(start);
+
+            // Auto set end = start + 20 days (approx 3 weeks)
+            if (!$('#laPeriodEnd').val()) {
+                const end = new Date(d);
+                end.setDate(end.getDate() + 20);
+                $('#laPeriodEnd').val(end.toISOString().split('T')[0]);
+            }
+
+            // Auto calculate ISO week number
+            const jan1  = new Date(d.getFullYear(), 0, 1);
+            const week  = Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
+            $('#laWeekNumber').val(week);
+        }
+
+        // ── RESET HEADER MODAL ──────────────────────────────────
+        function resetLaModal() {
+            $('#laId').val(0);
+            $('#laProjectId').val(currentProjectId);
+            $('#laSiteId').val(0);
+            $('#laPeriodStart,#laPeriodEnd').val('');
+            $('#laWeekNumber').val('');
+            $('#laPreparedBy,#laApprovedBy,#laNotes').val('');
+            $('#laStatus').val('Draft');
+            $('#laForm').removeClass('was-validated');
+            $('#laModalLabel').text('New Lookahead Plan');
+        }
+
+        // ── OPEN ADD HEADER MODAL ───────────────────────────────
+        $('#addLaBtn').on('click', function () {
+            if (!currentProjectId) { toastr.warning('Please select a project first'); return false; }
+            resetLaModal();
+        });
+
+        // ── EDIT HEADER BUTTON ──────────────────────────────────
+        $(document).on('click', '.editLaBtn', function () {
+            const la = $(this).data('la');
+            if (!la) return;
+
+            resetLaModal();
+            $('#laId').val(la.id);
+            $('#laProjectId').val(la.projectId);
+            $('#laSiteId').val(la.siteId);
+            $('#laPeriodStart').val(la.periodStart ? new Date(la.periodStart).toISOString().split('T')[0] : '');
+            $('#laPeriodEnd').val(la.periodEnd     ? new Date(la.periodEnd).toISOString().split('T')[0]   : '');
+            $('#laWeekNumber').val(la.weekNumber > 0 ? la.weekNumber : '');
+            $('#laPreparedBy').val(la.preparedBy);
+            $('#laApprovedBy').val(la.approvedBy);
+            $('#laStatus').val(la.status);
+            $('#laNotes').val(la.notes);
+            $('#laModalLabel').text(`Edit Lookahead — ${la.periodStart} → ${la.periodEnd}`);
+
+            new bootstrap.Modal(document.getElementById('laModal')).show();
+        });
+
+        // ── DELETE HEADER ───────────────────────────────────────
+        $(document).on('click', '.deleteLaBtn', function () {
+            const id = $(this).data('id');
+            if (!id) return;
+            if (!confirm('Delete this lookahead plan and all its activities?')) return;
+
+            $.ajax({
+                url: `@Url.Action("DeleteLookahead", "Construction")?lookaheadId=${id}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        $('#itemsPanel').removeClass('active');
+                        loadLookaheadList();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to delete");
+                }
+            });
+        });
+
+        // ── SAVE HEADER FORM ────────────────────────────────────
+        $('#laForm').on('submit', function (e) {
+            e.preventDefault();
+            const form = this;
+            if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+            const payload = {
+                Id:          parseInt($('#laId').val()) || 0,
+                ProjectId:   parseInt($('#laProjectId').val()) || currentProjectId,
+                SiteId:      parseInt($('#laSiteId').val()) || 0,
+                PeriodStart: $('#laPeriodStart').val(),
+                PeriodEnd:   $('#laPeriodEnd').val(),
+                WeekNumber:  parseInt($('#laWeekNumber').val()) || 0,
+                PreparedBy:  $('#laPreparedBy').val().trim(),
+                ApprovedBy:  $('#laApprovedBy').val().trim(),
+                Status:      $('#laStatus').val(),
+                Notes:       $('#laNotes').val().trim()
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveLookahead", "Construction")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(payload.Id > 0 ? 'Plan updated successfully' : 'Plan created successfully');
+                        bootstrap.Modal.getInstance(document.getElementById('laModal')).hide();
+                        loadLookaheadList();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to save");
+                }
+            });
+        });
+
+        // ── RESET ITEM MODAL ────────────────────────────────────
+        function resetItemModal() {
+            $('#itemId').val(0);
+            $('#itemLookaheadId').val(currentLookaheadId);
+            $('#itemActivityId').val('');
+            $('#itemZoneId').val(0);
+            $('#itemPlannedStart,#itemPlannedEnd').val('');
+            $('#itemPlannedQty,#itemRequiredLabor').val(0);
+            $('#itemRequiredEquip,#itemNotes').val('');
+            $('#itemForm').removeClass('was-validated');
+            $('#itemModalLabel').text('Add Activity to Lookahead');
+        }
+
+        // ── OPEN ADD ITEM MODAL ─────────────────────────────────
+        $('#addItemBtn').on('click', function () {
+            if (!currentLookaheadId) { toastr.warning('Please select a lookahead plan first'); return false; }
+            resetItemModal();
+        });
+
+        // ── EDIT ITEM BUTTON ────────────────────────────────────
+        $(document).on('click', '.editItemBtn', function () {
+            const item = $(this).data('item');
+            if (!item) return;
+
+            resetItemModal();
+            $('#itemId').val(item.id);
+            $('#itemLookaheadId').val(item.lookaheadId);
+            $('#itemActivityId').val(item.activityId);
+            $('#itemZoneId').val(item.zoneId || 0);
+            $('#itemPlannedStart').val(item.plannedStart);
+            $('#itemPlannedEnd').val(item.plannedEnd);
+            $('#itemPlannedQty').val(item.plannedQty);
+            $('#itemRequiredLabor').val(item.requiredLabor);
+            $('#itemRequiredEquip').val(item.requiredEquip);
+            $('#itemNotes').val(item.notes);
+            $('#itemModalLabel').text(`Edit Activity — ${item.activityCode}`);
+
+            new bootstrap.Modal(document.getElementById('itemModal')).show();
+        });
+
+        // ── DELETE ITEM ─────────────────────────────────────────
+        $(document).on('click', '.deleteItemBtn', function () {
+            const id = $(this).data('id');
+            if (!id) return;
+            if (!confirm('Remove this activity from the lookahead?')) return;
+
+            $.ajax({
+                url: `@Url.Action("DeleteLookaheadItem", "Construction")?itemId=${id}`,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        loadLookaheadItems(currentLookaheadId);
+                        loadLookaheadList();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to remove");
+                }
+            });
+        });
+
+        // ── SAVE ITEM FORM ──────────────────────────────────────
+        $('#itemForm').on('submit', function (e) {
+            e.preventDefault();
+            const form = this;
+            if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+            const payload = {
+                Id:            parseInt($('#itemId').val()) || 0,
+                LookaheadId:   parseInt($('#itemLookaheadId').val()) || currentLookaheadId,
+                ActivityId:    parseInt($('#itemActivityId').val()) || 0,
+                ZoneId:        parseInt($('#itemZoneId').val()) || 0,
+                PlannedQty:    parseFloat($('#itemPlannedQty').val()) || 0,
+                PlannedStart:  $('#itemPlannedStart').val(),
+                PlannedEnd:    $('#itemPlannedEnd').val(),
+                RequiredLabor: parseInt($('#itemRequiredLabor').val()) || 0,
+                RequiredEquip: $('#itemRequiredEquip').val().trim(),
+                Notes:         $('#itemNotes').val().trim()
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveLookaheadItem", "Construction")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(payload.Id > 0 ? 'Activity updated' : 'Activity added');
+                        bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide();
+                        loadLookaheadItems(currentLookaheadId);
+                        loadLookaheadList();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to save");
+                }
+            });
+        });
+
+        // ── INIT ────────────────────────────────────────────────
+        loadProjects();
+    </script>
+}
+

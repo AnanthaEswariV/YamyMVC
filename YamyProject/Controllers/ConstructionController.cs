@@ -4847,6 +4847,537 @@ INNER JOIN tbl_project_planning p
         }
         #endregion
 
+        #region Project LOOKAHEAD
+
+        public IActionResult LookAhead()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetLookaheadList(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                l.id,
+                l.project_id,
+                l.site_id,
+                l.period_start,
+                l.period_end,
+                l.week_number,
+                l.prepared_by,
+                l.approved_by,
+                l.status,
+                l.notes,
+                l.created_at,
+                IFNULL(s.name, '') AS site_name
+                -- (SELECT COUNT(*) FROM tbl_project_lookahead_items i WHERE i.lookahead_id = l.id) AS item_count
+            FROM tbl_project_lookahead l
+            LEFT JOIN tbl_project_sites s ON s.id = l.site_id
+            WHERE l.project_id = @projectId
+            ORDER BY l.period_start DESC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        ProjectId = reader.GetInt32("project_id"),
+                        SiteId = reader.GetInt32("site_id"),
+                        SiteName = reader["site_name"].ToString(),
+                        PeriodStart = reader["period_start"] == DBNull.Value ? "" : Convert.ToDateTime(reader["period_start"]).ToString("dd MMM yyyy"),
+                        PeriodEnd = reader["period_end"] == DBNull.Value ? "" : Convert.ToDateTime(reader["period_end"]).ToString("dd MMM yyyy"),
+                        WeekNumber = reader["week_number"] == DBNull.Value ? 0 : reader.GetInt32("week_number"),
+                        PreparedBy = reader["prepared_by"].ToString(),
+                        ApprovedBy = reader["approved_by"].ToString(),
+                        Status = reader["status"].ToString(),
+                        Notes = reader["notes"].ToString(),
+                        CreatedAt = reader["created_at"] == DBNull.Value ? "" : Convert.ToDateTime(reader["created_at"]).ToString("dd MMM yyyy"),
+                        //ItemCount = reader.GetInt32("item_count")
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetLookaheadItems(int lookaheadId)
+        {
+            if (lookaheadId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Lookahead ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                i.id,
+                i.lookahead_id,
+                i.activity_id,
+                i.zone_id,
+                i.planned_qty,
+                i.planned_start,
+                i.planned_end,
+                i.required_labor,
+                i.required_equip,
+                i.notes,
+                IFNULL(a.name,  '') AS activity_name,
+                IFNULL(a.code,  '') AS activity_code,
+                IFNULL(a.status,'') AS activity_status,
+                IFNULL(z.name,  '') AS zone_name,
+                IFNULL(z.code,  '') AS zone_code
+            FROM tbl_project_lookahead_items i
+            LEFT JOIN tbl_project_activity   a ON a.id = i.activity_id
+            LEFT JOIN tbl_project_zones      z ON z.id = i.zone_id
+            WHERE i.lookahead_id = @lookaheadId
+            ORDER BY i.planned_start ASC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@lookaheadId", lookaheadId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        LookaheadId = reader.GetInt32("lookahead_id"),
+                        ActivityId = reader.GetInt32("activity_id"),
+                        ActivityName = reader["activity_name"].ToString(),
+                        ActivityCode = reader["activity_code"].ToString(),
+                        ActivityStatus = reader["activity_status"].ToString(),
+                        ZoneId = reader.GetInt32("zone_id"),
+                        ZoneName = reader["zone_name"].ToString(),
+                        ZoneCode = reader["zone_code"].ToString(),
+                        PlannedQty = reader["planned_qty"] == DBNull.Value ? 0 : reader.GetDecimal("planned_qty"),
+                        PlannedStart = reader["planned_start"] == DBNull.Value ? "" : Convert.ToDateTime(reader["planned_start"]).ToString("yyyy-MM-dd"),
+                        PlannedEnd = reader["planned_end"] == DBNull.Value ? "" : Convert.ToDateTime(reader["planned_end"]).ToString("yyyy-MM-dd"),
+                        RequiredLabor = reader["required_labor"] == DBNull.Value ? 0 : reader.GetInt32("required_labor"),
+                        RequiredEquip = reader["required_equip"].ToString(),
+                        Notes = reader["notes"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetActivitiesDropdown(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Join tbl_project_activity with tbl_project_planning to filter by project
+                string query = @"
+            SELECT a.id, a.code, a.name, a.status,
+                   IFNULL(a.start_date,'') AS start_date,
+                   IFNULL(a.end_date,'')   AS end_date
+            FROM tbl_project_activity a
+            JOIN tbl_project_planning p ON p.id = a.planning_id
+            WHERE p.project_id = @projectId
+            ORDER BY a.code ASC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        Status = reader["status"].ToString(),
+                        Display = $"[{reader["code"]}] {reader["name"]}"
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetZonesDropdown(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT z.id, z.code, z.name, z.zone_type,
+                   IFNULL(s.name,'') AS site_name
+            FROM tbl_project_zones z
+            LEFT JOIN tbl_project_sites s ON s.id = z.site_id
+            WHERE z.project_id = @projectId AND z.is_active = 1
+            ORDER BY s.name, z.code";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name"].ToString(),
+                        ZoneType = reader["zone_type"].ToString(),
+                        SiteName = reader["site_name"].ToString(),
+                        Display = $"{reader["site_name"]} › {reader["code"]} — {reader["name"]}"
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveLookahead([FromBody] LookaheadRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Project" });
+            if (string.IsNullOrWhiteSpace(model.PeriodStart) || string.IsNullOrWhiteSpace(model.PeriodEnd))
+                return BadRequest(new { status = false, message = "Please enter Period Start and End dates" });
+            if (DateTime.Parse(model.PeriodStart) >= DateTime.Parse(model.PeriodEnd))
+                return BadRequest(new { status = false, message = "Period Start must be before Period End" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                if (model.Id == 0)
+                {
+                    string insertQuery = @"
+                INSERT INTO tbl_project_lookahead
+                    (project_id, site_id, period_start, period_end, week_number,
+                     prepared_by, approved_by, status, notes, created_by, modified_by)
+                VALUES
+                    (@projectId, @siteId, @periodStart, @periodEnd, @weekNumber,
+                     @preparedBy, @approvedBy, @status, @notes, @createdBy, @createdBy);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+                    cmd.Parameters.AddWithValue("@siteId", model.SiteId);
+                    cmd.Parameters.AddWithValue("@periodStart", model.PeriodStart);
+                    cmd.Parameters.AddWithValue("@periodEnd", model.PeriodEnd);
+                    cmd.Parameters.AddWithValue("@weekNumber", model.WeekNumber);
+                    cmd.Parameters.AddWithValue("@preparedBy", model.PreparedBy ?? "");
+                    cmd.Parameters.AddWithValue("@approvedBy", model.ApprovedBy ?? "");
+                    cmd.Parameters.AddWithValue("@status", model.Status ?? "Draft");
+                    cmd.Parameters.AddWithValue("@notes", model.Notes ?? "");
+                    cmd.Parameters.AddWithValue("@createdBy", userId);
+
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Ok(new { status = true, message = "Lookahead plan created successfully", id = newId });
+                }
+                else
+                {
+                    string updateQuery = @"
+                UPDATE tbl_project_lookahead
+                SET site_id      = @siteId,
+                    period_start = @periodStart,
+                    period_end   = @periodEnd,
+                    week_number  = @weekNumber,
+                    prepared_by  = @preparedBy,
+                    approved_by  = @approvedBy,
+                    status       = @status,
+                    notes        = @notes,
+                    modified_by  = @modifiedBy
+                WHERE id = @id AND project_id = @projectId";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@siteId", model.SiteId);
+                    cmd.Parameters.AddWithValue("@periodStart", model.PeriodStart);
+                    cmd.Parameters.AddWithValue("@periodEnd", model.PeriodEnd);
+                    cmd.Parameters.AddWithValue("@weekNumber", model.WeekNumber);
+                    cmd.Parameters.AddWithValue("@preparedBy", model.PreparedBy ?? "");
+                    cmd.Parameters.AddWithValue("@approvedBy", model.ApprovedBy ?? "");
+                    cmd.Parameters.AddWithValue("@status", model.Status ?? "Draft");
+                    cmd.Parameters.AddWithValue("@notes", model.Notes ?? "");
+                    cmd.Parameters.AddWithValue("@modifiedBy", userId);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@projectId", model.ProjectId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Lookahead plan not found" });
+
+                    return Ok(new { status = true, message = "Lookahead plan updated successfully", id = model.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveLookaheadItem([FromBody] LookaheadItemRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+            if (model.LookaheadId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Lookahead ID" });
+            if (model.ActivityId <= 0)
+                return BadRequest(new { status = false, message = "Please select an Activity" });
+            if (string.IsNullOrWhiteSpace(model.PlannedStart) || string.IsNullOrWhiteSpace(model.PlannedEnd))
+                return BadRequest(new { status = false, message = "Please enter Planned Start and End dates" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                if (model.Id == 0)
+                {
+                    // Check duplicate activity in same lookahead
+                    string checkQuery = "SELECT COUNT(1) FROM tbl_project_lookahead_items WHERE lookahead_id = @lid AND activity_id = @aid";
+                    await using (var checkCmd = new MySqlCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@lid", model.LookaheadId);
+                        checkCmd.Parameters.AddWithValue("@aid", model.ActivityId);
+                        int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                        if (exists > 0)
+                            return BadRequest(new { status = false, message = "This activity is already added to this lookahead plan" });
+                    }
+
+                    string insertQuery = @"
+                INSERT INTO tbl_project_lookahead_items
+                    (lookahead_id, activity_id, zone_id, planned_qty,
+                     planned_start, planned_end, required_labor, required_equip, notes)
+                VALUES
+                    (@lookaheadId, @activityId, @zoneId, @plannedQty,
+                     @plannedStart, @plannedEnd, @requiredLabor, @requiredEquip, @notes);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(insertQuery, conn);
+                    cmd.Parameters.AddWithValue("@lookaheadId", model.LookaheadId);
+                    cmd.Parameters.AddWithValue("@activityId", model.ActivityId);
+                    cmd.Parameters.AddWithValue("@zoneId", model.ZoneId);
+                    cmd.Parameters.AddWithValue("@plannedQty", model.PlannedQty);
+                    cmd.Parameters.AddWithValue("@plannedStart", model.PlannedStart);
+                    cmd.Parameters.AddWithValue("@plannedEnd", model.PlannedEnd);
+                    cmd.Parameters.AddWithValue("@requiredLabor", model.RequiredLabor);
+                    cmd.Parameters.AddWithValue("@requiredEquip", model.RequiredEquip ?? "");
+                    cmd.Parameters.AddWithValue("@notes", model.Notes ?? "");
+
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Ok(new { status = true, message = "Activity added to lookahead", id = newId });
+                }
+                else
+                {
+                    string updateQuery = @"
+                UPDATE tbl_project_lookahead_items
+                SET activity_id    = @activityId,
+                    zone_id        = @zoneId,
+                    planned_qty    = @plannedQty,
+                    planned_start  = @plannedStart,
+                    planned_end    = @plannedEnd,
+                    required_labor = @requiredLabor,
+                    required_equip = @requiredEquip,
+                    notes          = @notes
+                WHERE id = @id AND lookahead_id = @lookaheadId";
+
+                    await using var cmd = new MySqlCommand(updateQuery, conn);
+                    cmd.Parameters.AddWithValue("@activityId", model.ActivityId);
+                    cmd.Parameters.AddWithValue("@zoneId", model.ZoneId);
+                    cmd.Parameters.AddWithValue("@plannedQty", model.PlannedQty);
+                    cmd.Parameters.AddWithValue("@plannedStart", model.PlannedStart);
+                    cmd.Parameters.AddWithValue("@plannedEnd", model.PlannedEnd);
+                    cmd.Parameters.AddWithValue("@requiredLabor", model.RequiredLabor);
+                    cmd.Parameters.AddWithValue("@requiredEquip", model.RequiredEquip ?? "");
+                    cmd.Parameters.AddWithValue("@notes", model.Notes ?? "");
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@lookaheadId", model.LookaheadId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Lookahead item not found" });
+
+                    return Ok(new { status = true, message = "Activity updated successfully", id = model.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteLookahead(int lookaheadId)
+        {
+            if (lookaheadId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Lookahead ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // Delete items first, then header
+                string deleteItems = "DELETE FROM tbl_project_lookahead_items WHERE lookahead_id = @id";
+                await using (var cmd = new MySqlCommand(deleteItems, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", lookaheadId);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                string deleteHeader = "DELETE FROM tbl_project_lookahead WHERE id = @id";
+                await using (var cmd = new MySqlCommand(deleteHeader, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", lookaheadId);
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Lookahead plan not found" });
+                }
+
+                return Ok(new { status = true, message = "Lookahead plan deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteLookaheadItem(int itemId)
+        {
+            if (itemId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Item ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string deleteQuery = "DELETE FROM tbl_project_lookahead_items WHERE id = @id";
+                await using var cmd = new MySqlCommand(deleteQuery, conn);
+                cmd.Parameters.AddWithValue("@id", itemId);
+                int affected = await cmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Item not found" });
+
+                return Ok(new { status = true, message = "Activity removed from lookahead" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
         #region Project Tender
 
         public IActionResult ProjectTender()

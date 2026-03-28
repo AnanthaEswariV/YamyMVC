@@ -2765,6 +2765,24 @@
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+                        CREATE TABLE IF NOT EXISTS `tbl_project_lookahead` (
+                          `id`               INT NOT NULL AUTO_INCREMENT,
+                          `project_id`       INT NOT NULL DEFAULT 0,
+                          `site_id`          INT NOT NULL DEFAULT 0,
+                          `period_start`     DATE         NOT NULL,
+                          `period_end`       DATE         NOT NULL,
+                          `week_number`      INT          DEFAULT NULL,
+                          `prepared_by`      VARCHAR(200) DEFAULT '',
+                          `approved_by`      VARCHAR(200) DEFAULT '',
+                          `status`           VARCHAR(50)  NOT NULL DEFAULT 'Draft',  -- Draft, Released, Closed
+                          `notes`            VARCHAR(500) DEFAULT '',
+                          `created_by`       INT NOT NULL DEFAULT 0,
+                          `modified_by`      INT NOT NULL DEFAULT 0,
+                          `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,
