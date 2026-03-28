@@ -150,7 +150,7 @@
             });
         }
 
-                function loadSites(pid) {
+        function loadSites(pid) {
             $.get('/Construction/GetProjectSites', { projectId: pid }, res => {
                 const sel = $('#siteSelect');
                 sel.empty();
@@ -175,7 +175,7 @@
         }
 
         // LOAD ZONES
-              function loadZones() {
+        function loadZones() {
 
             const projectIdVal = parseInt($('#projectSelect').val()) || 0;
             const siteIdVal = parseInt($('#siteSelect').val()) || 0;
@@ -280,7 +280,7 @@
             });
         });
 
-                $(document).on('click', '.editBtn', function () {
+        $(document).on('click', '.editBtn', function () {
 
             const btn = $(this);
 
