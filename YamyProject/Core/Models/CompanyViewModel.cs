@@ -132,7 +132,7 @@ namespace YamyProject.Core.Models
         public int UserId { get; set; } 
     }
     public class WarehouseRequest
-    {
+    { 
         public int Id { get; set; }
         public string Name { get; set; }
         public string City { get; set; }

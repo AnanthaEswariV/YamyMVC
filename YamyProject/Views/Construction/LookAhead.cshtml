@@ -349,7 +349,6 @@
         let currentProjectId  = 0;
         let currentLookaheadId = 0;
 
-        // ── LOAD PROJECTS ───────────────────────────────────────
         function loadProjects() {
             $.ajax({
                 url: '@Url.Action("GetProjectsForWBS", "Construction")',
@@ -365,7 +364,6 @@
             });
         }
 
-        // ── PROJECT CHANGE ──────────────────────────────────────
         $('#projectSelect').on('change', function () {
             currentProjectId = parseInt($(this).val()) || 0;
             $('#itemsPanel').removeClass('active');
@@ -379,7 +377,7 @@
 
             $('#noProjectMsg').hide();
             $('#laTableWrapper').show();
-            $('#laToolbar').css('display','flex');
+            $('#laToolbar').css('display', 'flex');
             $('#laProjectId').val(currentProjectId);
             loadLookaheadList();
             loadSitesDropdown();
@@ -387,7 +385,6 @@
             loadZonesDropdown();
         });
 
-        // ── LOAD SITES INTO MODAL DROPDOWN ─────────────────────
         function loadSitesDropdown() {
             $.ajax({
                 url: '@Url.Action("GetProjectSites", "Construction")',
@@ -404,7 +401,6 @@
             });
         }
 
-        // ── LOAD ACTIVITIES DROPDOWN ────────────────────────────
         function loadActivitiesDropdown() {
             $.ajax({
                 url: '@Url.Action("GetActivitiesDropdown", "Construction")',
@@ -421,7 +417,6 @@
             });
         }
 
-        // ── LOAD ZONES DROPDOWN ─────────────────────────────────
         function loadZonesDropdown() {
             $.ajax({
                 url: '@Url.Action("GetZonesDropdown", "Construction")',
@@ -438,7 +433,6 @@
             });
         }
 
-        // ── LOAD LOOKAHEAD HEADER TABLE ─────────────────────────
         function loadLookaheadList() {
             if (!currentProjectId) return;
 
@@ -452,7 +446,7 @@
                     if ($.fn.DataTable.isDataTable('#laTable')) {
                         $('#laTable').DataTable().destroy();
                     }
-                    console.log(res);
+
                     const tbody = $('#laTableBody');
                     tbody.empty();
                     $('#itemsPanel').removeClass('active');
@@ -461,7 +455,7 @@
                         $.each(res.data, function (i, la) {
                             const statusClass = `status-${la.status}`;
                             const tr = `
-                                <tr data-id="${la.id}" style="cursor:pointer">
+                                <tr data-id="${la.Id}" style="cursor:pointer">
                                     <td>${i + 1}</td>
                                     <td class="text-center">
                                         ${la.weekNumber > 0 ? `<span class="week-badge">W${la.weekNumber}</span>` : '—'}
@@ -529,13 +523,11 @@
             });
         }
 
-        // ── VIEW ACTIVITIES (expand items panel) ────────────────
         $(document).on('click', '.viewItemsBtn', function (e) {
             e.stopPropagation();
             const id     = $(this).data('id');
             const period = $(this).data('period');
 
-            // Highlight selected row
             $('#laTableBody tr').removeClass('selected-row');
             $(this).closest('tr').addClass('selected-row');
 
@@ -547,7 +539,6 @@
             loadLookaheadItems(id);
         });
 
-        // ── LOAD ITEMS TABLE ────────────────────────────────────
         function loadLookaheadItems(lookaheadId) {
             $.ajax({
                 url: '@Url.Action("GetLookaheadItems", "Construction")',
@@ -564,22 +555,20 @@
                             const tr = `
                                 <tr>
                                     <td>${i + 1}</td>
-                                    <td>
-                                        <strong>[${item.activityCode}]</strong> ${item.activityName}
-                                    </td>
-                                    <td>${item.zoneName || '<span class="text-muted">—</span>'}</td>
-                                    <td>${item.plannedStart}</td>
-                                    <td>${item.plannedEnd}</td>
-                                    <td class="text-end">${item.plannedQty > 0 ? item.plannedQty : '—'}</td>
-                                    <td class="text-center">${item.requiredLabor > 0 ? item.requiredLabor : '—'}</td>
-                                    <td>${item.requiredEquip || '—'}</td>
+                                    <td><strong>[${item.ActivityCode}]</strong> ${item.ActivityName}</td>
+                                    <td>${item.ZoneName || '<span class="text-muted">—</span>'}</td>
+                                    <td>${item.PlannedStart}</td>
+                                    <td>${item.PlannedEnd}</td>
+                                    <td class="text-end">${item.PlannedQty > 0 ? item.PlannedQty : '—'}</td>
+                                    <td class="text-center">${item.RequiredLabor > 0 ? item.RequiredLabor : '—'}</td>
+                                    <td>${item.RequiredEquip || '—'}</td>
                                     <td>
                                         <button class="btn btn-sm btn-primary editItemBtn"
                                             data-item='${JSON.stringify(item)}' title="Edit">
                                             <i class="fas fa-pen"></i>
                                         </button>
                                         <button class="btn btn-sm btn-danger deleteItemBtn"
-                                            data-id="${item.id}" title="Remove">
+                                            data-id="${item.Id}" title="Remove">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -599,27 +588,20 @@
             });
         }
 
-        // ── AUTO SET PERIOD END (+3 weeks) & WEEK NUMBER ────────
         function autoSetPeriodEnd() {
             const start = $('#laPeriodStart').val();
             if (!start) return;
-
             const d = new Date(start);
-
-            // Auto set end = start + 20 days (approx 3 weeks)
             if (!$('#laPeriodEnd').val()) {
                 const end = new Date(d);
                 end.setDate(end.getDate() + 20);
                 $('#laPeriodEnd').val(end.toISOString().split('T')[0]);
             }
-
-            // Auto calculate ISO week number
-            const jan1  = new Date(d.getFullYear(), 0, 1);
-            const week  = Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
+            const jan1 = new Date(d.getFullYear(), 0, 1);
+            const week = Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
             $('#laWeekNumber').val(week);
         }
 
-        // ── RESET HEADER MODAL ──────────────────────────────────
         function resetLaModal() {
             $('#laId').val(0);
             $('#laProjectId').val(currentProjectId);
@@ -632,17 +614,14 @@
             $('#laModalLabel').text('New Lookahead Plan');
         }
 
-        // ── OPEN ADD HEADER MODAL ───────────────────────────────
         $('#addLaBtn').on('click', function () {
             if (!currentProjectId) { toastr.warning('Please select a project first'); return false; }
             resetLaModal();
         });
 
-        // ── EDIT HEADER BUTTON ──────────────────────────────────
         $(document).on('click', '.editLaBtn', function () {
             const la = $(this).data('la');
             if (!la) return;
-
             resetLaModal();
             $('#laId').val(la.id);
             $('#laProjectId').val(la.projectId);
@@ -659,7 +638,6 @@
             new bootstrap.Modal(document.getElementById('laModal')).show();
         });
 
-        // ── DELETE HEADER ───────────────────────────────────────
         $(document).on('click', '.deleteLaBtn', function () {
             const id = $(this).data('id');
             if (!id) return;
@@ -683,7 +661,6 @@
             });
         });
 
-        // ── SAVE HEADER FORM ────────────────────────────────────
         $('#laForm').on('submit', function (e) {
             e.preventDefault();
             const form = this;
@@ -722,7 +699,6 @@
             });
         });
 
-        // ── RESET ITEM MODAL ────────────────────────────────────
         function resetItemModal() {
             $('#itemId').val(0);
             $('#itemLookaheadId').val(currentLookaheadId);
@@ -735,34 +711,31 @@
             $('#itemModalLabel').text('Add Activity to Lookahead');
         }
 
-        // ── OPEN ADD ITEM MODAL ─────────────────────────────────
         $('#addItemBtn').on('click', function () {
             if (!currentLookaheadId) { toastr.warning('Please select a lookahead plan first'); return false; }
             resetItemModal();
         });
 
-        // ── EDIT ITEM BUTTON ────────────────────────────────────
         $(document).on('click', '.editItemBtn', function () {
             const item = $(this).data('item');
             if (!item) return;
 
             resetItemModal();
-            $('#itemId').val(item.id);
-            $('#itemLookaheadId').val(item.lookaheadId);
-            $('#itemActivityId').val(item.activityId);
-            $('#itemZoneId').val(item.zoneId || 0);
-            $('#itemPlannedStart').val(item.plannedStart);
-            $('#itemPlannedEnd').val(item.plannedEnd);
-            $('#itemPlannedQty').val(item.plannedQty);
-            $('#itemRequiredLabor').val(item.requiredLabor);
-            $('#itemRequiredEquip').val(item.requiredEquip);
-            $('#itemNotes').val(item.notes);
-            $('#itemModalLabel').text(`Edit Activity — ${item.activityCode}`);
+            $('#itemId').val(item.Id);
+            $('#itemLookaheadId').val(item.LookaheadId);
+            $('#itemActivityId').val(item.ActivityId);
+            $('#itemZoneId').val(item.ZoneId || 0);
+            $('#itemPlannedStart').val(item.PlannedStart);
+            $('#itemPlannedEnd').val(item.PlannedEnd);
+            $('#itemPlannedQty').val(item.PlannedQty);
+            $('#itemRequiredLabor').val(item.RequiredLabor);
+            $('#itemRequiredEquip').val(item.RequiredEquip);
+            $('#itemNotes').val(item.Notes);
+            $('#itemModalLabel').text(`Edit Activity — ${item.ActivityCode}`);
 
             new bootstrap.Modal(document.getElementById('itemModal')).show();
         });
 
-        // ── DELETE ITEM ─────────────────────────────────────────
         $(document).on('click', '.deleteItemBtn', function () {
             const id = $(this).data('id');
             if (!id) return;
@@ -786,7 +759,6 @@
             });
         });
 
-        // ── SAVE ITEM FORM ──────────────────────────────────────
         $('#itemForm').on('submit', function (e) {
             e.preventDefault();
             const form = this;
@@ -826,7 +798,6 @@
             });
         });
 
-        // ── INIT ────────────────────────────────────────────────
         loadProjects();
     </script>
 }

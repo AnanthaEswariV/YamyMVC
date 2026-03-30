@@ -3730,7 +3730,7 @@ VALUES
             return RedirectToAction("CompanyList", "Account");  // redirect to login page
         }
 
-        #endregion
+        #endregion.
 
         #region Dashboard
         public IActionResult Dashboard()

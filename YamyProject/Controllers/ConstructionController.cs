@@ -4882,8 +4882,8 @@ INNER JOIN tbl_project_planning p
                 l.status,
                 l.notes,
                 l.created_at,
-                IFNULL(s.name, '') AS site_name
-                -- (SELECT COUNT(*) FROM tbl_project_lookahead_items i WHERE i.lookahead_id = l.id) AS item_count
+                IFNULL(s.name, '') AS site_name,
+                (SELECT COUNT(*) FROM tbl_project_lookahead_items i WHERE i.lookahead_id = l.id) AS item_count
             FROM tbl_project_lookahead l
             LEFT JOIN tbl_project_sites s ON s.id = l.site_id
             WHERE l.project_id = @projectId
@@ -4904,15 +4904,15 @@ INNER JOIN tbl_project_planning p
                         ProjectId = reader.GetInt32("project_id"),
                         SiteId = reader.GetInt32("site_id"),
                         SiteName = reader["site_name"].ToString(),
-                        PeriodStart = reader["period_start"] == DBNull.Value ? "" : Convert.ToDateTime(reader["period_start"]).ToString("dd MMM yyyy"),
-                        PeriodEnd = reader["period_end"] == DBNull.Value ? "" : Convert.ToDateTime(reader["period_end"]).ToString("dd MMM yyyy"),
+                        PeriodStart = reader["period_start"] == DBNull.Value ? "" : Convert.ToDateTime(reader["period_start"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                        PeriodEnd = reader["period_end"] == DBNull.Value ? "" : Convert.ToDateTime(reader["period_end"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                        CreatedAt = reader["created_at"] == DBNull.Value ? "" : Convert.ToDateTime(reader["created_at"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
                         WeekNumber = reader["week_number"] == DBNull.Value ? 0 : reader.GetInt32("week_number"),
                         PreparedBy = reader["prepared_by"].ToString(),
                         ApprovedBy = reader["approved_by"].ToString(),
                         Status = reader["status"].ToString(),
                         Notes = reader["notes"].ToString(),
-                        CreatedAt = reader["created_at"] == DBNull.Value ? "" : Convert.ToDateTime(reader["created_at"]).ToString("dd MMM yyyy"),
-                        //ItemCount = reader.GetInt32("item_count")
+                        ItemCount = reader.GetInt32("item_count")
                     });
                 }
 
@@ -5150,7 +5150,7 @@ INNER JOIN tbl_project_planning p
                     cmd.Parameters.AddWithValue("@notes", model.Notes ?? "");
                     cmd.Parameters.AddWithValue("@createdBy", userId);
 
-                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync()); ;
                     return Ok(new { status = true, message = "Lookahead plan created successfully", id = newId });
                 }
                 else
