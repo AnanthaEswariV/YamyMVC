@@ -4530,7 +4530,7 @@ INNER JOIN tbl_project_planning p
 
         #endregion
 
-        #region Project Site Work
+        #region Project Site Daily Work
 
         public IActionResult ProjectSiteWork()
         {
@@ -10191,7 +10191,68 @@ LIMIT 1;";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+        [HttpPost]
+        public async Task<IActionResult> ReserveMaterial(int planningId, int itemId, decimal qtyRequested)
+        {
+            if (planningId <= 0 || itemId <= 0 || qtyRequested <= 0)
+                return BadRequest(new { status = false, message = "Invalid input" });
 
+            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+            { Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase") };
+
+            await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+            await conn.OpenAsync();
+            await using var trx = await conn.BeginTransactionAsync();
+
+            try
+            {
+                // 1) calculate available stock (qty_in - qty_out)
+                string stockSql = "SELECT IFNULL(SUM(qty_in-qty_out),0) FROM tbl_item_transaction WHERE item_id=@itemId";
+                await using (var stockCmd = new MySqlCommand(stockSql, conn, (MySqlTransaction)trx))
+                {
+                    stockCmd.Parameters.Add(new MySqlParameter("@itemId", MySqlDbType.Int32) { Value = itemId });
+                    var availableObj = await stockCmd.ExecuteScalarAsync();
+                    decimal available = Convert.ToDecimal(availableObj ?? 0m);
+
+                    if (available >= qtyRequested)
+                    {
+                        // Reserve: insert reservation row and optionally insert reservation transaction
+                        string insertReserve = @"INSERT INTO tbl_project_material_requests 
+                            (planning_id, tender_id, RequestedDate, itemId, unit, RequestedQty, IssuedQty, ReceivedQty, state, reserved)
+                            VALUES (@planningId, 0, @reqDate, @itemId, '', @reqQty, 0, 0, 0, 1);";
+                        await using var insCmd = new MySqlCommand(insertReserve, conn, (MySqlTransaction)trx);
+                        insCmd.Parameters.Add(new MySqlParameter("@planningId", MySqlDbType.Int32) { Value = planningId });
+                        insCmd.Parameters.Add(new MySqlParameter("@reqDate", MySqlDbType.Date) { Value = DateTime.Today });
+                        insCmd.Parameters.Add(new MySqlParameter("@itemId", MySqlDbType.Int32) { Value = itemId });
+                        insCmd.Parameters.Add(new MySqlParameter("@reqQty", MySqlDbType.Decimal) { Value = qtyRequested });
+                        await insCmd.ExecuteNonQueryAsync();
+
+                        // Optionally insert an item_transaction reservation entry (qty_out pending)
+                    }
+                    else
+                    {
+                        // Create procurement request (simple example: tbl_procurements)
+                        string createProc = @"INSERT INTO tbl_procurements (planning_id, item_id, qty, created_date, status) 
+                                              VALUES (@planningId, @itemId, @qty, NOW(), 'Requested');";
+                        await using var procCmd = new MySqlCommand(createProc, conn, (MySqlTransaction)trx);
+                        procCmd.Parameters.Add(new MySqlParameter("@planningId", MySqlDbType.Int32) { Value = planningId });
+                        procCmd.Parameters.Add(new MySqlParameter("@itemId", MySqlDbType.Int32) { Value = itemId });
+                        procCmd.Parameters.Add(new MySqlParameter("@qty", MySqlDbType.Decimal) { Value = qtyRequested });
+                        await procCmd.ExecuteNonQueryAsync();
+
+                        // Mark material request row as pending procurement if needed
+                    }
+                }
+
+                await trx.CommitAsync();
+                return Ok(new { status = true });
+            }
+            catch (Exception ex)
+            {
+                await trx.RollbackAsync();
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 
