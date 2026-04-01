@@ -2783,6 +2783,30 @@
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+                        CREATE TABLE IF NOT EXISTS `tbl_project_milestones` (
+                             `id`              INT          NOT NULL AUTO_INCREMENT,
+                             `project_id`      INT          NOT NULL DEFAULT 0,
+                             `site_id`         INT          NOT NULL DEFAULT 0,
+                             `milestone_number` VARCHAR(50) NOT NULL DEFAULT '',
+                             `title`           VARCHAR(300) NOT NULL DEFAULT '',
+                             `description`     VARCHAR(1000)         DEFAULT '',
+                             `milestone_type`  VARCHAR(100)          DEFAULT '',   
+                             `planned_date`    DATE                  DEFAULT NULL,
+                             `actual_date`     DATE                  DEFAULT NULL,
+                             `completion_pct`  DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+                             `responsible`     VARCHAR(200)          DEFAULT '',
+                             `remarks`         VARCHAR(500)          DEFAULT '',
+                             -- Pending, In Progress, Achieved, Delayed, Cancelled
+                             `status`          VARCHAR(50)  NOT NULL DEFAULT 'Pending',
+                             `created_by`      INT          NOT NULL DEFAULT 0,
+                             `modified_by`     INT          NOT NULL DEFAULT 0,
+                             `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                             `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                             PRIMARY KEY (`id`),
+                             KEY `idx_ms_project` (`project_id`),
+                             KEY `idx_ms_status`  (`status`)
+                           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                        
 
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,

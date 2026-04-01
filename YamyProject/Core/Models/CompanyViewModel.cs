@@ -941,6 +941,22 @@ namespace YamyProject.Core.Models
         public List<DailyWorkRow> DailyWorks { get; set; }
     }
 
+    public class MilestoneRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int SiteId { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string MilestoneType { get; set; }
+        public string PlannedDate { get; set; }
+        public string ActualDate { get; set; }
+        public decimal CompletionPct { get; set; }
+        public string Responsible { get; set; }
+        public string Remarks { get; set; }
+        public string Status { get; set; }
+    }
+
     public class MaterialItem
     {
         public int? Id { get; set; }    

@@ -1,0 +1,543 @@
+﻿
+@{
+    ViewData["Title"] = "ProjectMilestones";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3450aa !important;
+        }
+
+    /* ── Status badges ── */
+    .ms-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+
+    .ms-Pending {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .ms-In-Progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .ms-Achieved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .ms-Delayed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .ms-Cancelled {
+        background: #f1f5f9;
+        color: #6b7280;
+    }
+
+    /* ── Progress bar ── */
+    .pct-bar {
+        width: 80px;
+        height: 10px;
+        background: #e2e8f0;
+        border-radius: 5px;
+        display: inline-block;
+        vertical-align: middle;
+        overflow: hidden;
+        margin-right: 4px;
+    }
+
+    .pct-fill {
+        height: 10px;
+        border-radius: 5px;
+        background: #435EBE;
+    }
+
+        .pct-fill.green {
+            background: #1D9E75;
+        }
+
+        .pct-fill.red {
+            background: #E24B4A;
+        }
+
+    /* ── Timeline card (summary strip) ── */
+    .ms-timeline {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .ms-card {
+        flex: 1;
+        min-width: 110px;
+        border-radius: 8px;
+        padding: 10px 14px;
+        text-align: center;
+        border: 0.5px solid var(--color-border-tertiary);
+    }
+
+        .ms-card .num {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .ms-card .lbl {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        .ms-card.total {
+            background: #EEF0FB;
+        }
+
+        .ms-card.achieved {
+            background: #E1F5EE;
+        }
+
+        .ms-card.pending {
+            background: #FAEEDA;
+        }
+
+        .ms-card.delayed {
+            background: #FCEBEB;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center"><strong>Project Milestones</strong></div>
+    <div class="card-body">
+
+        <div class="row mb-4 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Select Project</label>
+                <select id="projectSelect" class="form-select">
+                    <option value="">— Select Project —</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Filter by Status</label>
+                <select id="statusFilter" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option>Pending</option>
+                    <option>In Progress</option>
+                    <option>Achieved</option>
+                    <option>Delayed</option>
+                    <option>Cancelled</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="noProjectMsg" class="text-center text-muted py-5">
+            <i class="fas fa-flag fa-3x mb-3 opacity-25"></i>
+            <p>Select a project to view and manage milestones.</p>
+        </div>
+
+        <div id="msWrapper" style="display:none">
+
+            <div class="ms-timeline" id="summaryStrip">
+                <div class="ms-card total">  <div class="num" id="cntTotal">0</div>    <div class="lbl">Total</div></div>
+                <div class="ms-card achieved"><div class="num" id="cntAchieved">0</div> <div class="lbl">Achieved</div></div>
+                <div class="ms-card pending"> <div class="num" id="cntPending">0</div>  <div class="lbl">Pending</div></div>
+                <div class="ms-card delayed"> <div class="num" id="cntDelayed">0</div>  <div class="lbl">Delayed</div></div>
+            </div>
+
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-primary" onclick="openModal(0)">
+                    <i class="bi bi-plus-circle me-1"></i> New Milestone
+                </button>
+            </div>
+
+            <table class="table table-bordered table-hover table-sm w-100" id="msTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>S.No</th>
+                        <th>Number</th>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Site</th>
+                        <th>Planned Date</th>
+                        <th>Actual Date</th>
+                        <th>Responsible</th>
+                        <th>Completion</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="msBody"></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="msModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form id="msForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="msModalLabel">New Milestone</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="msId" value="0" />
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                        <div class="col-sm-9">
+                            <input type="text" id="msTitle" class="form-control" required maxlength="300" placeholder="e.g. Foundation Complete" />
+                            <div class="invalid-feedback">Title is required</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Type</label>
+                        <div class="col-sm-4">
+                            <select id="msType" class="form-select">
+                                <option value="">— Select —</option>
+                                <option>Design</option>
+                                <option>Procurement</option>
+                                <option>Construction</option>
+                                <option>Handover</option>
+                                <option>Financial</option>
+                                <option>Inspection</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <label class="col-sm-1 col-form-label fw-semibold">Site</label>
+                        <div class="col-sm-4">
+                            <select id="msSiteId" class="form-select"></select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Planned Date <span class="text-danger">*</span></label>
+                        <div class="col-sm-3">
+                            <input type="date" id="msPlannedDate" class="form-control" required />
+                            <div class="invalid-feedback">Required</div>
+                        </div>
+                        <label class="col-sm-2 col-form-label fw-semibold">Actual Date</label>
+                        <div class="col-sm-4">
+                            <input type="date" id="msActualDate" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Responsible</label>
+                        <div class="col-sm-5">
+                            <input type="text" id="msResponsible" class="form-control" maxlength="200" placeholder="Name or team" />
+                        </div>
+                        <label class="col-sm-1 col-form-label fw-semibold">Status</label>
+                        <div class="col-sm-3">
+                            <select id="msStatus" class="form-select">
+                                <option>Pending</option>
+                                <option>In Progress</option>
+                                <option>Achieved</option>
+                                <option>Delayed</option>
+                                <option>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Completion %</label>
+                        <div class="col-sm-9">
+                            <div class="d-flex align-items-center gap-3">
+                                <input type="range" id="msPctRange" class="form-range" min="0" max="100" step="5" value="0"
+                                       oninput="document.getElementById('msPctVal').textContent = this.value + '%'; document.getElementById('msCompletionPct').value = this.value;" />
+                                <span id="msPctVal" class="fw-semibold" style="min-width:42px">0%</span>
+                                <input type="hidden" id="msCompletionPct" value="0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Description</label>
+                        <div class="col-sm-9">
+                            <textarea id="msDescription" class="form-control" rows="2" maxlength="1000"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 col-form-label fw-semibold">Remarks</label>
+                        <div class="col-sm-9">
+                            <textarea id="msRemarks" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Save</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css" />
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        let projectId = 0;
+        let allMilestones = [];
+
+            function badge(status) {
+            if (!status) return ''; 
+
+            const cls = 'ms-' + status.replace(/ /g, '-');
+            return `<span class="ms-badge ${cls}">${status}</span>`;
+        }
+        // ── PROGRESS BAR ─────────────────────────────────────────
+        function pctBar(pct) {
+            const color = pct >= 100 ? 'green' : (pct < 30 ? 'red' : '');
+            return `<div class="pct-bar"><div class="pct-fill ${color}" style="width:${pct}%"></div></div><small>${pct}%</small>`;
+        }
+
+        // ── LOAD PROJECTS ─────────────────────────────────────────
+        function loadProjects() {
+            $.get('@Url.Action("GetProjectsForWBS", "Construction")', function (res) {
+                if (!res.status) return;
+                const sel = $('#projectSelect');
+                sel.find('option:not(:first)').remove();
+                $.each(res.data, function (i, p) {
+                    sel.append(`<option value="${p.id}">[${p.code}] ${p.name}</option>`);
+                });
+            });
+        }
+
+        // ── PROJECT CHANGE ────────────────────────────────────────
+        $('#projectSelect').on('change', function () {
+            projectId = parseInt($(this).val()) || 0;
+            if (!projectId) {
+                $('#msWrapper').hide();
+                $('#noProjectMsg').show();
+                return;
+            }
+            $('#noProjectMsg').hide();
+            $('#msWrapper').show();
+            loadSites();
+            loadMilestones();
+        });
+
+        // ── LOAD SITES DROPDOWN (for modal) ───────────────────────
+        function loadSites() {
+            $.get('@Url.Action("GetProjectSites", "Construction")', { projectId }, function (res) {
+                if (!res.status) return;
+                let opts = '<option value="0">— No Site —</option>';
+                $.each(res.data, function (i, s) {
+                    opts += `<option value="${s.id}">${s.name}</option>`;
+                });
+                $('#msSiteId').html(opts);
+            });
+        }
+
+        // ── STATUS FILTER ─────────────────────────────────────────
+        $('#statusFilter').on('change', function () {
+            renderTable(allMilestones);
+        });
+
+        // ── LOAD MILESTONES ───────────────────────────────────────
+        function loadMilestones() {
+            $.ajax({
+                url: '@Url.Action("GetMilestones", "Construction")',
+                type: 'GET',
+                data: { projectId },
+                success: function (res) {
+                    if (!res.status) { toastr.error("Failed to load milestones"); return; }
+                    allMilestones = res.data || [];
+                    updateSummary(allMilestones);
+                    renderTable(allMilestones);
+                    console.log(res);
+                }
+            });
+        }
+
+        // ── SUMMARY CARDS ─────────────────────────────────────────
+        function updateSummary(data) {
+            $('#cntTotal').text(data.length);
+            $('#cntAchieved').text(data.filter(m => m.Status === 'Achieved').length);
+            $('#cntPending').text(data.filter(m => m.Status === 'Pending' || m.Status === 'In Progress').length);
+            $('#cntDelayed').text(data.filter(m => m.Status === 'Delayed').length);
+        }
+
+        // ── RENDER TABLE ──────────────────────────────────────────
+        function renderTable(data) {
+            const filter = $('#statusFilter').val();
+            const filtered = filter ? data.filter(m => m.Status === filter) : data;
+
+            if ($.fn.DataTable.isDataTable('#msTable')) $('#msTable').DataTable().destroy();
+            const tbody = $('#msBody');
+            tbody.empty();
+
+            if (!filtered || filtered.length === 0) {
+                tbody.append('<tr><td colspan="11" class="text-center text-muted py-4">No milestones found</td></tr>');
+                return;
+            }
+
+            $.each(filtered, function (i, m) {
+                tbody.append(`<tr>
+                    <td>${m.sn}</td>
+                    <td><span class="fw-semibold text-primary">${m.milestoneNumber}</span></td>
+                    <td>
+                        <div class="fw-semibold">${m.title}</div>
+                        ${m.description ? `<div class="text-muted" style="font-size:11px">${m.description.substring(0,60)}${m.description.length>60?'…':''}</div>` : ''}
+                    </td>
+                    <td>${m.milestoneType || '—'}</td>
+                    <td>${m.siteName || '—'}</td>
+                    <td>${m.plannedDate || '—'}</td>
+                    <td>${m.actualDate || '—'}</td>
+                    <td>${m.responsible || '—'}</td>
+                    <td>${pctBar(m.completionPct)}</td>
+                    <td>${badge(m.status)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick='editMilestone(${JSON.stringify(m)})' title="Edit">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteMilestone(${m.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`);
+            });
+
+            $('#msTable').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } },
+                    { extend: 'pdfHtml5',   text: '<i class="fas fa-file-pdf me-1"></i> PDF',   className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } }
+                ],
+                pageLength: 25,
+                columnDefs: [{ orderable: false, targets: [10] }],
+                order: [[5, 'asc']]  // order by planned date
+            });
+        }
+
+        // ── OPEN MODAL (new) ──────────────────────────────────────
+        function openModal(id) {
+            if (!projectId) { toastr.warning('Please select a project first'); return; }
+            resetForm();
+            $('#msModalLabel').text('New Milestone');
+            new bootstrap.Modal(document.getElementById('msModal')).show();
+        }
+
+        // ── EDIT ──────────────────────────────────────────────────
+        function editMilestone(m) {
+            resetForm();
+            $('#msId').val(m.id);
+            $('#msTitle').val(m.title);
+            $('#msType').val(m.milestoneType);
+            $('#msSiteId').val(m.siteId);
+            $('#msPlannedDate').val(m.plannedDateRaw);
+            $('#msActualDate').val(m.actualDateRaw);
+            $('#msResponsible').val(m.responsible);
+            $('#msStatus').val(m.status);
+            $('#msDescription').val(m.description);
+            $('#msRemarks').val(m.remarks);
+            const pct = m.completionPct || 0;
+            $('#msPctRange').val(pct);
+            $('#msPctVal').text(pct + '%');
+            $('#msCompletionPct').val(pct);
+            $('#msModalLabel').text(`Edit — ${m.milestoneNumber}`);
+            new bootstrap.Modal(document.getElementById('msModal')).show();
+        }
+
+        // ── RESET FORM ────────────────────────────────────────────
+        function resetForm() {
+            $('#msId').val(0);
+            $('#msForm')[0].reset();
+            $('#msForm').removeClass('was-validated');
+            $('#msPctRange').val(0);
+            $('#msPctVal').text('0%');
+            $('#msCompletionPct').val(0);
+        }
+
+        // ── SAVE ─────────────────────────────────────────────────
+        $('#msForm').on('submit', function (e) {
+            e.preventDefault();
+            if (!this.checkValidity()) { this.classList.add('was-validated'); return; }
+
+            const payload = {
+                Id:             +$('#msId').val(),
+                ProjectId:      projectId,
+                SiteId:         +$('#msSiteId').val() || 0,
+                Title:          $('#msTitle').val().trim(),
+                Description:    $('#msDescription').val().trim(),
+                MilestoneType:  $('#msType').val(),
+                PlannedDate:    $('#msPlannedDate').val() || null,
+                ActualDate:     $('#msActualDate').val()  || null,
+                CompletionPct:  parseFloat($('#msCompletionPct').val()) || 0,
+                Responsible:    $('#msResponsible').val().trim(),
+                Remarks:        $('#msRemarks').val().trim(),
+                Status:         $('#msStatus').val()
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveMilestone", "Construction")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        bootstrap.Modal.getInstance(document.getElementById('msModal')).hide();
+                        loadMilestones();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to save milestone");
+                }
+            });
+        });
+
+        // ── DELETE ────────────────────────────────────────────────
+        function deleteMilestone(id) {
+            if (!confirm('Are you sure you want to delete this milestone?')) return;
+            $.ajax({
+                url: '@Url.Action("DeleteMilestone", "Construction")?milestoneId=' + id,
+                type: 'DELETE',
+                success: function (res) {
+                    if (res.status) { toastr.success(res.message); loadMilestones(); }
+                    else toastr.error(res.message);
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || "Failed to delete");
+                }
+            });
+        }
+
+        // ── INIT ──────────────────────────────────────────────────
+        loadProjects();
+    </script>
+}

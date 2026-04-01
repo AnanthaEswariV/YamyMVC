@@ -4847,6 +4847,243 @@ INNER JOIN tbl_project_planning p
         }
         #endregion
 
+        #region Project Milestones
+
+        public IActionResult ProjectMilestones()
+        {
+            return View();
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetMilestones(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                m.id,
+                m.project_id,
+                m.site_id,
+                m.milestone_number,
+                m.title,
+                m.description,
+                m.milestone_type,
+                m.planned_date,
+                m.actual_date,
+                m.completion_pct,
+                m.responsible,
+                m.remarks,
+                m.status,
+                IFNULL(s.name, '') AS site_name
+            FROM tbl_project_milestones m
+            LEFT JOIN tbl_project_sites s ON s.id = m.site_id
+            WHERE m.project_id = @projectId
+            ORDER BY m.planned_date ASC, m.id ASC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        ProjectId = reader.GetInt32("project_id"),
+                        SiteId = reader.GetInt32("site_id"),
+                        SiteName = reader["site_name"].ToString(),
+                        MilestoneNumber = reader["milestone_number"].ToString(),
+                        Title = reader["title"].ToString(),
+                        Description = reader["description"].ToString(),
+                        MilestoneType = reader["milestone_type"].ToString(),
+                        PlannedDate = reader["planned_date"] == DBNull.Value ? "" :
+                                          Convert.ToDateTime(reader["planned_date"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                        PlannedDateRaw = reader["planned_date"] == DBNull.Value ? "" :
+                                          Convert.ToDateTime(reader["planned_date"]).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                        ActualDate = reader["actual_date"] == DBNull.Value ? "" :
+                                          Convert.ToDateTime(reader["actual_date"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                        ActualDateRaw = reader["actual_date"] == DBNull.Value ? "" :
+                                          Convert.ToDateTime(reader["actual_date"]).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                        CompletionPct = reader["completion_pct"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["completion_pct"]),
+                        Responsible = reader["responsible"].ToString(),
+                        Remarks = reader["remarks"].ToString(),
+                        Status = reader["status"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveMilestone([FromBody] MilestoneRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Project" });
+            if (string.IsNullOrWhiteSpace(model.Title))
+                return BadRequest(new { status = false, message = "Please enter Milestone Title" });
+            if (string.IsNullOrWhiteSpace(model.PlannedDate))
+                return BadRequest(new { status = false, message = "Please enter Planned Date" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                if (model.Id == 0)
+                {
+                    string number = await GenerateNextMilestoneNumber(conn, model.ProjectId);
+
+                    string sql = @"
+                INSERT INTO tbl_project_milestones
+                    (project_id, site_id, milestone_number, title, description,
+                     milestone_type, planned_date, actual_date, completion_pct,
+                     responsible, remarks, status, created_by, modified_by)
+                VALUES
+                    (@pid, @sid, @num, @title, @desc,
+                     @type, @planned, @actual, @pct,
+                     @resp, @remarks, @status, @uid, @uid);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@pid", model.ProjectId);
+                    cmd.Parameters.AddWithValue("@sid", model.SiteId);
+                    cmd.Parameters.AddWithValue("@num", number);
+                    cmd.Parameters.AddWithValue("@title", model.Title.Trim());
+                    cmd.Parameters.AddWithValue("@desc", model.Description ?? "");
+                    cmd.Parameters.AddWithValue("@type", model.MilestoneType ?? "");
+                    cmd.Parameters.AddWithValue("@planned", string.IsNullOrEmpty(model.PlannedDate) ? (object)DBNull.Value : model.PlannedDate);
+                    cmd.Parameters.AddWithValue("@actual", string.IsNullOrEmpty(model.ActualDate) ? (object)DBNull.Value : model.ActualDate);
+                    cmd.Parameters.AddWithValue("@pct", model.CompletionPct);
+                    cmd.Parameters.AddWithValue("@resp", model.Responsible ?? "");
+                    cmd.Parameters.AddWithValue("@remarks", model.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@status", model.Status ?? "Pending");
+                    cmd.Parameters.AddWithValue("@uid", userId);
+
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Ok(new { status = true, message = "Milestone created successfully", id = newId, number });
+                }
+                else
+                {
+                    string sql = @"
+                UPDATE tbl_project_milestones
+                SET site_id        = @sid,
+                    title          = @title,
+                    description    = @desc,
+                    milestone_type = @type,
+                    planned_date   = @planned,
+                    actual_date    = @actual,
+                    completion_pct = @pct,
+                    responsible    = @resp,
+                    remarks        = @remarks,
+                    status         = @status,
+                    modified_by    = @uid
+                WHERE id = @id AND project_id = @pid";
+
+                    await using var cmd = new MySqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@sid", model.SiteId);
+                    cmd.Parameters.AddWithValue("@title", model.Title.Trim());
+                    cmd.Parameters.AddWithValue("@desc", model.Description ?? "");
+                    cmd.Parameters.AddWithValue("@type", model.MilestoneType ?? "");
+                    cmd.Parameters.AddWithValue("@planned", string.IsNullOrEmpty(model.PlannedDate) ? (object)DBNull.Value : model.PlannedDate);
+                    cmd.Parameters.AddWithValue("@actual", string.IsNullOrEmpty(model.ActualDate) ? (object)DBNull.Value : model.ActualDate);
+                    cmd.Parameters.AddWithValue("@pct", model.CompletionPct);
+                    cmd.Parameters.AddWithValue("@resp", model.Responsible ?? "");
+                    cmd.Parameters.AddWithValue("@remarks", model.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@status", model.Status ?? "Pending");
+                    cmd.Parameters.AddWithValue("@uid", userId);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@pid", model.ProjectId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Milestone not found" });
+
+                    return Ok(new { status = true, message = "Milestone updated successfully", id = model.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteMilestone(int milestoneId)
+        {
+            if (milestoneId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Milestone ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new MySqlCommand("DELETE FROM tbl_project_milestones WHERE id = @id", conn);
+                cmd.Parameters.AddWithValue("@id", milestoneId);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Milestone not found" });
+
+                return Ok(new { status = true, message = "Milestone deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextMilestoneNumber(MySqlConnection conn, int projectId)
+        {
+            string query = @"
+        SELECT COUNT(*) FROM tbl_project_milestones
+        WHERE project_id = @pid";
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@pid", projectId);
+            int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            return $"MS-{(count + 1):D4}";
+        }
+
+        #endregion
+
         #region Project LOOKAHEAD
 
         public IActionResult LookAhead()
