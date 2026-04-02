@@ -5615,6 +5615,275 @@ INNER JOIN tbl_project_planning p
 
         #endregion
 
+        #region Project DelayLog
+
+        public IActionResult DelayLog()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDelayLogs(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest(new { status = false, message = "Invalid Project ID" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT
+                d.id,
+                d.project_id,
+                d.site_id,
+                d.activity_id,
+                d.delay_number,
+                d.delay_type,
+                d.title,
+                d.description,
+                d.delay_date,
+                d.days_lost,
+                d.new_completion,
+                d.responsible,
+                d.reported_by,
+                d.impact,
+                d.mitigation,
+                d.approved_days,
+                d.remarks,
+                d.status,
+                IFNULL(s.name, '')  AS site_name,
+                IFNULL(a.name, '')  AS activity_name
+            FROM tbl_project_delay_log d
+            LEFT JOIN tbl_project_sites    s ON s.id = d.site_id
+            LEFT JOIN tbl_project_activity a ON a.id = d.activity_id
+            WHERE d.project_id = @projectId
+            ORDER BY d.delay_date DESC, d.id DESC";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@projectId", projectId);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        SN = sn++,
+                        Id = reader.GetInt32("id"),
+                        ProjectId = reader.GetInt32("project_id"),
+                        SiteId = reader.GetInt32("site_id"),
+                        ActivityId = reader.GetInt32("activity_id"),
+                        DelayNumber = reader["delay_number"].ToString(),
+                        DelayType = reader["delay_type"].ToString(),
+                        Title = reader["title"].ToString(),
+                        Description = reader["description"].ToString(),
+                        DelayDate = reader["delay_date"] == DBNull.Value ? "" :
+                                         Convert.ToDateTime(reader["delay_date"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                        DelayDateRaw = reader["delay_date"] == DBNull.Value ? "" :
+                                         Convert.ToDateTime(reader["delay_date"]).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                        DaysLost = reader.GetInt32("days_lost"),
+                        NewCompletion = reader["new_completion"] == DBNull.Value ? "" :
+                                         Convert.ToDateTime(reader["new_completion"]).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                        NewCompletionRaw = reader["new_completion"] == DBNull.Value ? "" :
+                                         Convert.ToDateTime(reader["new_completion"]).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                        Responsible = reader["responsible"].ToString(),
+                        ReportedBy = reader["reported_by"].ToString(),
+                        Impact = reader["impact"].ToString(),
+                        Mitigation = reader["mitigation"].ToString(),
+                        ApprovedDays = reader.GetInt32("approved_days"),
+                        Remarks = reader["remarks"].ToString(),
+                        Status = reader["status"].ToString(),
+                        SiteName = reader["site_name"].ToString(),
+                        ActivityName = reader["activity_name"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveDelayLog([FromBody] DelayLogRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+            if (model.ProjectId <= 0)
+                return BadRequest(new { status = false, message = "Please select a Project" });
+            if (string.IsNullOrWhiteSpace(model.Title))
+                return BadRequest(new { status = false, message = "Please enter a Title" });
+            if (string.IsNullOrWhiteSpace(model.DelayType))
+                return BadRequest(new { status = false, message = "Please select Delay Type" });
+            if (model.DaysLost <= 0)
+                return BadRequest(new { status = false, message = "Days Lost must be greater than zero" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                if (model.Id == 0)
+                {
+                    string number = await GenerateNextDelayNumber(conn, model.ProjectId);
+
+                    string sql = @"
+                INSERT INTO tbl_project_delay_log
+                    (project_id, site_id, activity_id, delay_number, delay_type,
+                     title, description, delay_date, days_lost, new_completion,
+                     responsible, reported_by, impact, mitigation,
+                     approved_days, remarks, status, created_by, modified_by)
+                VALUES
+                    (@pid, @sid, @aid, @num, @type,
+                     @title, @desc, @delaydt, @days, @newcomp,
+                     @resp, @repby, @impact, @mit,
+                     @appdays, @remarks, @status, @uid, @uid);
+                SELECT LAST_INSERT_ID();";
+
+                    await using var cmd = new MySqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@pid", model.ProjectId);
+                    cmd.Parameters.AddWithValue("@sid", model.SiteId);
+                    cmd.Parameters.AddWithValue("@aid", model.ActivityId);
+                    cmd.Parameters.AddWithValue("@num", number);
+                    cmd.Parameters.AddWithValue("@type", model.DelayType ?? "");
+                    cmd.Parameters.AddWithValue("@title", model.Title.Trim());
+                    cmd.Parameters.AddWithValue("@desc", model.Description ?? "");
+                    cmd.Parameters.AddWithValue("@delaydt", string.IsNullOrEmpty(model.DelayDate) ? (object)DBNull.Value : model.DelayDate);
+                    cmd.Parameters.AddWithValue("@days", model.DaysLost);
+                    cmd.Parameters.AddWithValue("@newcomp", string.IsNullOrEmpty(model.NewCompletion) ? (object)DBNull.Value : model.NewCompletion);
+                    cmd.Parameters.AddWithValue("@resp", model.Responsible ?? "");
+                    cmd.Parameters.AddWithValue("@repby", model.ReportedBy ?? "");
+                    cmd.Parameters.AddWithValue("@impact", model.Impact ?? "");
+                    cmd.Parameters.AddWithValue("@mit", model.Mitigation ?? "");
+                    cmd.Parameters.AddWithValue("@appdays", model.ApprovedDays);
+                    cmd.Parameters.AddWithValue("@remarks", model.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@status", model.Status ?? "Open");
+                    cmd.Parameters.AddWithValue("@uid", userId);
+
+                    int newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    return Ok(new { status = true, message = "Delay log recorded", id = newId, number });
+                }
+                else
+                {
+                    string sql = @"
+                UPDATE tbl_project_delay_log
+                SET site_id        = @sid,
+                    activity_id    = @aid,
+                    delay_type     = @type,
+                    title          = @title,
+                    description    = @desc,
+                    delay_date     = @delaydt,
+                    days_lost      = @days,
+                    new_completion = @newcomp,
+                    responsible    = @resp,
+                    reported_by    = @repby,
+                    impact         = @impact,
+                    mitigation     = @mit,
+                    approved_days  = @appdays,
+                    remarks        = @remarks,
+                    status         = @status,
+                    modified_by    = @uid
+                WHERE id = @id AND project_id = @pid";
+
+                    await using var cmd = new MySqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@sid", model.SiteId);
+                    cmd.Parameters.AddWithValue("@aid", model.ActivityId);
+                    cmd.Parameters.AddWithValue("@type", model.DelayType ?? "");
+                    cmd.Parameters.AddWithValue("@title", model.Title.Trim());
+                    cmd.Parameters.AddWithValue("@desc", model.Description ?? "");
+                    cmd.Parameters.AddWithValue("@delaydt", string.IsNullOrEmpty(model.DelayDate) ? (object)DBNull.Value : model.DelayDate);
+                    cmd.Parameters.AddWithValue("@days", model.DaysLost);
+                    cmd.Parameters.AddWithValue("@newcomp", string.IsNullOrEmpty(model.NewCompletion) ? (object)DBNull.Value : model.NewCompletion);
+                    cmd.Parameters.AddWithValue("@resp", model.Responsible ?? "");
+                    cmd.Parameters.AddWithValue("@repby", model.ReportedBy ?? "");
+                    cmd.Parameters.AddWithValue("@impact", model.Impact ?? "");
+                    cmd.Parameters.AddWithValue("@mit", model.Mitigation ?? "");
+                    cmd.Parameters.AddWithValue("@appdays", model.ApprovedDays);
+                    cmd.Parameters.AddWithValue("@remarks", model.Remarks ?? "");
+                    cmd.Parameters.AddWithValue("@status", model.Status ?? "Open");
+                    cmd.Parameters.AddWithValue("@uid", userId);
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@pid", model.ProjectId);
+
+                    int affected = await cmd.ExecuteNonQueryAsync();
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Record not found" });
+
+                    return Ok(new { status = true, message = "Delay log updated", id = model.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteDelayLog(int delayId)
+        {
+            if (delayId <= 0)
+                return BadRequest(new { status = false, message = "Invalid ID" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new MySqlCommand("DELETE FROM tbl_project_delay_log WHERE id = @id", conn);
+                cmd.Parameters.AddWithValue("@id", delayId);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "Record not found" });
+
+                return Ok(new { status = true, message = "Delay log deleted" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        private async Task<string> GenerateNextDelayNumber(MySqlConnection conn, int projectId)
+        {
+            string query = "SELECT COUNT(*) FROM tbl_project_delay_log WHERE project_id = @pid";
+            await using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@pid", projectId);
+            int count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            return $"DL-{(count + 1):D4}";
+        }
+
+
+        #endregion
+
         #region Project Tender
 
         public IActionResult ProjectTender()

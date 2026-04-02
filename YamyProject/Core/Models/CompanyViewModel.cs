@@ -1072,6 +1072,28 @@ namespace YamyProject.Core.Models
         public string Notes { get; set; }
     }
 
+    public class DelayLogRequest
+    {
+        public int Id { get; set; }
+        public int ProjectId { get; set; }
+        public int SiteId { get; set; }
+        public int ActivityId { get; set; }
+        public string DelayType { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string DelayDate { get; set; }
+        public int DaysLost { get; set; }
+        public string NewCompletion { get; set; }
+        public string Responsible { get; set; }
+        public string ReportedBy { get; set; }
+        public string Impact { get; set; }
+        public string Mitigation { get; set; }
+        public int ApprovedDays { get; set; }
+        public string Remarks { get; set; }
+        public string Status { get; set; }
+    }
+
+
     public class ProjectItem
     {
         public int ItemId { get; set; }

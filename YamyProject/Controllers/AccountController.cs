@@ -2807,6 +2807,34 @@
                              KEY `idx_ms_status`  (`status`)
                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                         
+                            CREATE TABLE IF NOT EXISTS `tbl_project_delay_log` (
+                              `id`              INT           NOT NULL AUTO_INCREMENT,
+                              `project_id`      INT           NOT NULL DEFAULT 0,
+                              `site_id`         INT           NOT NULL DEFAULT 0,
+                              `activity_id`     INT           NOT NULL DEFAULT 0,
+                              `delay_number`    VARCHAR(50)   NOT NULL DEFAULT '',
+                              `delay_type`      VARCHAR(100)  NOT NULL DEFAULT '',  
+                              `title`           VARCHAR(300)  NOT NULL DEFAULT '',
+                              `description`     VARCHAR(2000)          DEFAULT '',
+                              `delay_date`      DATE                   DEFAULT NULL,
+                              `days_lost`       INT           NOT NULL DEFAULT 0,
+                              `new_completion`  DATE                   DEFAULT NULL,
+                              `responsible`     VARCHAR(200)           DEFAULT '',
+                              `reported_by`     VARCHAR(200)           DEFAULT '',
+                              `impact`          VARCHAR(50)            DEFAULT '',   
+                              `mitigation`      VARCHAR(2000)          DEFAULT '',
+                              `approved_days`   INT           NOT NULL DEFAULT 0,
+                              `remarks`         VARCHAR(500)           DEFAULT '',
+                              `status`          VARCHAR(50)   NOT NULL DEFAULT 'Open',
+                              `created_by`      INT           NOT NULL DEFAULT 0,
+                              `modified_by`     INT           NOT NULL DEFAULT 0,
+                              `created_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              `updated_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                              PRIMARY KEY (`id`),
+                              KEY `idx_delay_project` (`project_id`),
+                              KEY `idx_delay_status`  (`status`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
                         CREATE TABLE `tbl_manufacturer_batch` (
 	                        `id` INT(10) NOT NULL AUTO_INCREMENT,

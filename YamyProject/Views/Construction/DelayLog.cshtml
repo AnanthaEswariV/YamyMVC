@@ -1,0 +1,585 @@
+﻿
+@{
+    ViewData["Title"] = "DelayLog";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3450aa !important;
+        }
+
+    /* Status badges */
+    .dl-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+
+    .dl-Open {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .dl-Under-Review {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .dl-Approved {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .dl-Rejected {
+        background: #f1f5f9;
+        color: #6b7280;
+    }
+
+    .dl-Closed {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    /* Impact badges */
+    .imp-Low {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .imp-Medium {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .imp-High {
+        background: #ffedd5;
+        color: #9a3412;
+    }
+
+    .imp-Critical {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .imp-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 7px;
+        border-radius: 8px;
+    }
+
+    /* Summary cards */
+    .dl-summary {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .dl-card {
+        flex: 1;
+        min-width: 110px;
+        border-radius: 8px;
+        padding: 10px 14px;
+        text-align: center;
+        border: 0.5px solid var(--color-border-tertiary);
+    }
+
+        .dl-card .num {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .dl-card .lbl {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-top: 2px;
+        }
+
+        .dl-card.total {
+            background: #EEF0FB;
+        }
+
+        .dl-card.open {
+            background: #FCEBEB;
+        }
+
+        .dl-card.approved {
+            background: #E1F5EE;
+        }
+
+        .dl-card.days {
+            background: #FAEEDA;
+        }
+
+    .days-lost-cell {
+        font-size: 15px;
+        font-weight: 700;
+        color: #E24B4A;
+    }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="card">
+    <div class="card-header text-center"><strong>Project Delay Log</strong></div>
+    <div class="card-body">
+
+        <div class="row mb-4 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Select Project</label>
+                <select id="projectSelect" class="form-select">
+                    <option value="">— Select Project —</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Filter by Type</label>
+                <select id="typeFilter" class="form-select">
+                    <option value="">All Types</option>
+                    <option>Weather</option>
+                    <option>Material</option>
+                    <option>Design</option>
+                    <option>Labor</option>
+                    <option>Equipment</option>
+                    <option>Client</option>
+                    <option>Subcontractor</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Status</label>
+                <select id="statusFilter" class="form-select">
+                    <option value="">All</option>
+                    <option>Open</option>
+                    <option>Under Review</option>
+                    <option>Approved</option>
+                    <option>Rejected</option>
+                    <option>Closed</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="noProjectMsg" class="text-center text-muted py-5">
+            <i class="fas fa-clock fa-3x mb-3 opacity-25"></i>
+            <p>Select a project to view and manage delay logs.</p>
+        </div>
+
+        <div id="dlWrapper" style="display:none">
+
+            <div class="dl-summary">
+                <div class="dl-card total">   <div class="num" id="cntTotal">0</div>    <div class="lbl">Total Delays</div></div>
+                <div class="dl-card open">    <div class="num" id="cntOpen">0</div>     <div class="lbl">Open</div></div>
+                <div class="dl-card approved"><div class="num" id="cntApproved">0</div> <div class="lbl">Approved</div></div>
+                <div class="dl-card days">    <div class="num" id="cntDays">0</div>     <div class="lbl">Total Days Lost</div></div>
+            </div>
+
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-primary" onclick="openModal(0)">
+                    <i class="bi bi-plus-circle me-1"></i> Log New Delay
+                </button>
+            </div>
+
+            <table class="table table-bordered table-hover table-sm w-100" id="dlTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>S.No</th>
+                        <th>Number</th>
+                        <th>Type</th>
+                        <th>Title</th>
+                        <th>Site / Activity</th>
+                        <th>Delay Date</th>
+                        <th>Days Lost</th>
+                        <th>Approved Days</th>
+                        <th>New Completion</th>
+                        <th>Impact</th>
+                        <th>Responsible</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="dlBody"></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dlModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <form id="dlForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title w-100 text-center" id="dlModalLabel">Log New Delay</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="dlId" value="0" />
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Delay Type <span class="text-danger">*</span></label>
+                        <div class="col-sm-3">
+                            <select id="dlType" class="form-select" required>
+                                <option value="">— Select —</option>
+                                <option>Weather</option>
+                                <option>Material</option>
+                                <option>Design</option>
+                                <option>Labor</option>
+                                <option>Equipment</option>
+                                <option>Client</option>
+                                <option>Subcontractor</option>
+                                <option>Other</option>
+                            </select>
+                            <div class="invalid-feedback">Required</div>
+                        </div>
+                        <label class="col-sm-1 col-form-label fw-semibold">Site</label>
+                        <div class="col-sm-3">
+                            <select id="dlSiteId" class="form-select"></select>
+                        </div>
+                        <label class="col-sm-1 col-form-label fw-semibold">Activity</label>
+                        <div class="col-sm-2">
+                            <select id="dlActivityId" class="form-select"></select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                        <div class="col-sm-10">
+                            <input type="text" id="dlTitle" class="form-control" required maxlength="300" placeholder="Brief title of the delay" />
+                            <div class="invalid-feedback">Required</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Description</label>
+                        <div class="col-sm-10">
+                            <textarea id="dlDescription" class="form-control" rows="2" maxlength="2000" placeholder="Detail of what caused the delay"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Delay Date</label>
+                        <div class="col-sm-2">
+                            <input type="date" id="dlDelayDate" class="form-control" />
+                        </div>
+                        <label class="col-sm-2 col-form-label fw-semibold">Days Lost <span class="text-danger">*</span></label>
+                        <div class="col-sm-2">
+                            <input type="number" id="dlDaysLost" class="form-control" required min="1" value="1" placeholder="e.g. 5" />
+                            <div class="invalid-feedback">Must be > 0</div>
+                        </div>
+                        <label class="col-sm-2 col-form-label fw-semibold">Approved Days</label>
+                        <div class="col-sm-2">
+                            <input type="number" id="dlApprovedDays" class="form-control" min="0" value="0" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">New Completion</label>
+                        <div class="col-sm-3">
+                            <input type="date" id="dlNewCompletion" class="form-control" />
+                        </div>
+                        <label class="col-sm-1 col-form-label fw-semibold">Impact</label>
+                        <div class="col-sm-2">
+                            <select id="dlImpact" class="form-select">
+                                <option value="">— Select —</option>
+                                <option>Low</option>
+                                <option>Medium</option>
+                                <option>High</option>
+                                <option>Critical</option>
+                            </select>
+                        </div>
+                        <label class="col-sm-1 col-form-label fw-semibold">Status</label>
+                        <div class="col-sm-3">
+                            <select id="dlStatus" class="form-select">
+                                <option>Open</option>
+                                <option>Under Review</option>
+                                <option>Approved</option>
+                                <option>Rejected</option>
+                                <option>Closed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Responsible</label>
+                        <div class="col-sm-4">
+                            <input type="text" id="dlResponsible" class="form-control" maxlength="200" placeholder="Person or team responsible" />
+                        </div>
+                        <label class="col-sm-2 col-form-label fw-semibold">Reported By</label>
+                        <div class="col-sm-4">
+                            <input type="text" id="dlReportedBy" class="form-control" maxlength="200" />
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Mitigation Action</label>
+                        <div class="col-sm-10">
+                            <textarea id="dlMitigation" class="form-control" rows="2" maxlength="2000" placeholder="Steps taken or planned to recover the delay"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-2 col-form-label fw-semibold">Remarks</label>
+                        <div class="col-sm-10">
+                            <textarea id="dlRemarks" class="form-control" rows="1" maxlength="500"></textarea>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-save me-1"></i> Save</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css" />
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+
+    <script>
+        let projectId = 0;
+        let allDelays  = [];
+
+        function statusBadge(s) {
+            return `<span class="dl-badge dl-${s.replace(/ /g,'-')}">${s}</span>`;
+        }
+        function impactBadge(s) {
+            if (!s) return '—';
+            return `<span class="imp-badge imp-${s}">${s}</span>`;
+        }
+
+        function loadProjects() {
+            $.get('@Url.Action("GetProjectsForWBS", "Construction")', function(res) {
+                if (!res.status) return;
+                const sel = $('#projectSelect');
+                sel.find('option:not(:first)').remove();
+                $.each(res.data, function(i, p) {
+                    sel.append(`<option value="${p.id}">[${p.code}] ${p.name}</option>`);
+                });
+            });
+        }
+
+        $('#projectSelect').on('change', function() {
+            projectId = parseInt($(this).val()) || 0;
+            if (!projectId) { $('#dlWrapper').hide(); $('#noProjectMsg').show(); return; }
+            $('#noProjectMsg').hide(); $('#dlWrapper').show();
+            loadDropdowns();
+            loadDelayLogs();
+        });
+
+        function loadDropdowns() {
+            // Sites
+            $.get('@Url.Action("GetProjectSites", "Construction")', { projectId }, function(res) {
+                if (!res.status) return;
+                let opts = '<option value="0">— No Site —</option>';
+                $.each(res.data, function(i, s) { opts += `<option value="${s.id}">${s.name}</option>`; });
+                $('#dlSiteId').html(opts);
+            });
+            // Activities
+            $.get('@Url.Action("GetActivitiesDropdown", "Construction")', { projectId }, function(res) {
+                if (!res.status) return;
+                let opts = '<option value="0">— No Activity —</option>';
+                $.each(res.data, function(i, a) { opts += `<option value="${a.id}">${a.display}</option>`; });
+                $('#dlActivityId').html(opts);
+            });
+        }
+
+        $('#typeFilter, #statusFilter').on('change', function() { renderTable(allDelays); });
+
+        function loadDelayLogs() {
+            $.ajax({
+                url: '@Url.Action("GetDelayLogs", "Construction")',
+                type: 'GET',
+                data: { projectId },
+                success: function(res) {
+                    if (!res.status) { toastr.error("Failed to load"); return; }
+                    allDelays = res.data || [];
+                    updateSummary(allDelays);
+                    renderTable(allDelays);
+                }
+            });
+        }
+
+        function updateSummary(data) {
+            const totalDays = data.reduce((s, d) => s + (d.DaysLost || 0), 0);
+            $('#cntTotal').text(data.length);
+            $('#cntOpen').text(data.filter(d => d.Status === 'Open' || d.Status === 'Under Review').length);
+            $('#cntApproved').text(data.filter(d => d.Status === 'Approved').length);
+            $('#cntDays').text(totalDays);
+        }
+
+        function renderTable(data) {
+            const tf = $('#typeFilter').val();
+            const sf = $('#statusFilter').val();
+            let filtered = data;
+            if (tf) filtered = filtered.filter(d => d.delayType === tf);
+            if (sf) filtered = filtered.filter(d => d.status === sf);
+
+            if ($.fn.DataTable.isDataTable('#dlTable')) $('#dlTable').DataTable().destroy();
+            const tbody = $('#dlBody');
+            tbody.empty();
+
+            if (!filtered || filtered.length === 0) {
+                tbody.append('<tr><td colspan="13" class="text-center text-muted py-4">No delay logs found</td></tr>');
+                return;
+            }
+
+            $.each(filtered, function(i, d) {
+                const siteLine = [d.siteName, d.activityName].filter(Boolean).join(' / ') || '—';
+                tbody.append(`<tr>
+                    <td>${d.sn}</td>
+                    <td><span class="fw-semibold text-danger">${d.delayNumber}</span></td>
+                    <td>${d.delayType}</td>
+                    <td>
+                        <div class="fw-semibold">${d.title}</div>
+                        ${d.description ? `<div class="text-muted" style="font-size:11px">${d.description.substring(0,55)}${d.description.length>55?'…':''}</div>` : ''}
+                    </td>
+                    <td><small>${siteLine}</small></td>
+                    <td>${d.delayDate || '—'}</td>
+                    <td class="text-center days-lost-cell">${d.daysLost}</td>
+                    <td class="text-center fw-semibold text-success">${d.approvedDays || 0}</td>
+                    <td>${d.newCompletion || '—'}</td>
+                    <td>${impactBadge(d.impact)}</td>
+                    <td><small>${d.responsible || '—'}</small></td>
+                    <td>${statusBadge(d.status)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick='editDelay(${JSON.stringify(d)})' title="Edit">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDelay(${d.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`);
+            });
+
+            $('#dlTable').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    { extend:'excelHtml5', text:'<i class="fas fa-file-excel me-1"></i> Excel', className:'btn btn-primary btn-sm', exportOptions:{ columns:':not(:last-child)' } },
+                    { extend:'pdfHtml5',   text:'<i class="fas fa-file-pdf me-1"></i> PDF',   className:'btn btn-primary btn-sm', exportOptions:{ columns:':not(:last-child)' } }
+                ],
+                pageLength: 25,
+                columnDefs: [{ orderable: false, targets: [12] }],
+                order: [[5, 'desc']]
+            });
+        }
+
+        function openModal() {
+            if (!projectId) { toastr.warning('Please select a project first'); return; }
+            resetForm();
+            $('#dlModalLabel').text('Log New Delay');
+            new bootstrap.Modal(document.getElementById('dlModal')).show();
+        }
+
+        function editDelay(d) {
+            resetForm();
+            $('#dlId').val(d.id);
+            $('#dlType').val(d.delayType);
+            $('#dlSiteId').val(d.siteId);
+            $('#dlActivityId').val(d.activityId);
+            $('#dlTitle').val(d.title);
+            $('#dlDescription').val(d.description);
+            $('#dlDelayDate').val(d.delayDateRaw);
+            $('#dlDaysLost').val(d.daysLost);
+            $('#dlApprovedDays').val(d.approvedDays);
+            $('#dlNewCompletion').val(d.newCompletionRaw);
+            $('#dlImpact').val(d.impact);
+            $('#dlStatus').val(d.status);
+            $('#dlResponsible').val(d.responsible);
+            $('#dlReportedBy').val(d.reportedBy);
+            $('#dlMitigation').val(d.mitigation);
+            $('#dlRemarks').val(d.remarks);
+            $('#dlModalLabel').text(`Edit — ${d.delayNumber}`);
+            new bootstrap.Modal(document.getElementById('dlModal')).show();
+        }
+
+        function resetForm() {
+            $('#dlId').val(0);
+            $('#dlForm')[0].reset();
+            $('#dlForm').removeClass('was-validated');
+            $('#dlDaysLost').val(1);
+            $('#dlApprovedDays').val(0);
+        }
+
+        $('#dlForm').on('submit', function(e) {
+            e.preventDefault();
+            if (!this.checkValidity()) { this.classList.add('was-validated'); return; }
+
+            const payload = {
+                Id:            +$('#dlId').val(),
+                ProjectId:     projectId,
+                SiteId:        +$('#dlSiteId').val()     || 0,
+                ActivityId:    +$('#dlActivityId').val() || 0,
+                DelayType:     $('#dlType').val(),
+                Title:         $('#dlTitle').val().trim(),
+                Description:   $('#dlDescription').val().trim(),
+                DelayDate:     $('#dlDelayDate').val()     || null,
+                DaysLost:      parseInt($('#dlDaysLost').val()) || 1,
+                ApprovedDays:  parseInt($('#dlApprovedDays').val()) || 0,
+                NewCompletion: $('#dlNewCompletion').val() || null,
+                Impact:        $('#dlImpact').val(),
+                Status:        $('#dlStatus').val(),
+                Responsible:   $('#dlResponsible').val().trim(),
+                ReportedBy:    $('#dlReportedBy').val().trim(),
+                Mitigation:    $('#dlMitigation').val().trim(),
+                Remarks:       $('#dlRemarks').val().trim()
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveDelayLog", "Construction")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function(res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+                        bootstrap.Modal.getInstance(document.getElementById('dlModal')).hide();
+                        loadDelayLogs();
+                    } else { toastr.error(res.message); }
+                },
+                error: function(xhr) { toastr.error(xhr.responseJSON?.message || "Failed to save"); }
+            });
+        });
+
+        function deleteDelay(id) {
+            if (!confirm('Are you sure you want to delete this delay log?')) return;
+            $.ajax({
+                url: '@Url.Action("DeleteDelayLog", "Construction")?delayId=' + id,
+                type: 'DELETE',
+                success: function(res) {
+                    if (res.status) { toastr.success(res.message); loadDelayLogs(); }
+                    else toastr.error(res.message);
+                },
+                error: function(xhr) { toastr.error(xhr.responseJSON?.message || "Failed to delete"); }
+            });
+        }
+
+        loadProjects();
+    </script>
+}
+
+
