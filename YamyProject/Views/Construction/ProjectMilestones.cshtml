@@ -317,13 +317,11 @@
             const cls = 'ms-' + status.replace(/ /g, '-');
             return `<span class="ms-badge ${cls}">${status}</span>`;
         }
-        // ── PROGRESS BAR ─────────────────────────────────────────
         function pctBar(pct) {
             const color = pct >= 100 ? 'green' : (pct < 30 ? 'red' : '');
             return `<div class="pct-bar"><div class="pct-fill ${color}" style="width:${pct}%"></div></div><small>${pct}%</small>`;
         }
 
-        // ── LOAD PROJECTS ─────────────────────────────────────────
         function loadProjects() {
             $.get('@Url.Action("GetProjectsForWBS", "Construction")', function (res) {
                 if (!res.status) return;
@@ -335,7 +333,6 @@
             });
         }
 
-        // ── PROJECT CHANGE ────────────────────────────────────────
         $('#projectSelect').on('change', function () {
             projectId = parseInt($(this).val()) || 0;
             if (!projectId) {
@@ -349,7 +346,6 @@
             loadMilestones();
         });
 
-        // ── LOAD SITES DROPDOWN (for modal) ───────────────────────
         function loadSites() {
             $.get('@Url.Action("GetProjectSites", "Construction")', { projectId }, function (res) {
                 if (!res.status) return;
@@ -361,12 +357,10 @@
             });
         }
 
-        // ── STATUS FILTER ─────────────────────────────────────────
         $('#statusFilter').on('change', function () {
             renderTable(allMilestones);
         });
 
-        // ── LOAD MILESTONES ───────────────────────────────────────
         function loadMilestones() {
             $.ajax({
                 url: '@Url.Action("GetMilestones", "Construction")',
@@ -382,7 +376,6 @@
             });
         }
 
-        // ── SUMMARY CARDS ─────────────────────────────────────────
         function updateSummary(data) {
             $('#cntTotal').text(data.length);
             $('#cntAchieved').text(data.filter(m => m.Status === 'Achieved').length);
@@ -390,7 +383,6 @@
             $('#cntDelayed').text(data.filter(m => m.Status === 'Delayed').length);
         }
 
-        // ── RENDER TABLE ──────────────────────────────────────────
         function renderTable(data) {
             const filter = $('#statusFilter').val();
             const filtered = filter ? data.filter(m => m.Status === filter) : data;
@@ -442,7 +434,6 @@
             });
         }
 
-        // ── OPEN MODAL (new) ──────────────────────────────────────
         function openModal(id) {
             if (!projectId) { toastr.warning('Please select a project first'); return; }
             resetForm();
@@ -450,7 +441,6 @@
             new bootstrap.Modal(document.getElementById('msModal')).show();
         }
 
-        // ── EDIT ──────────────────────────────────────────────────
         function editMilestone(m) {
             resetForm();
             $('#msId').val(m.id);
@@ -471,7 +461,6 @@
             new bootstrap.Modal(document.getElementById('msModal')).show();
         }
 
-        // ── RESET FORM ────────────────────────────────────────────
         function resetForm() {
             $('#msId').val(0);
             $('#msForm')[0].reset();
@@ -481,7 +470,6 @@
             $('#msCompletionPct').val(0);
         }
 
-        // ── SAVE ─────────────────────────────────────────────────
         $('#msForm').on('submit', function (e) {
             e.preventDefault();
             if (!this.checkValidity()) { this.classList.add('was-validated'); return; }
@@ -521,7 +509,6 @@
             });
         });
 
-        // ── DELETE ────────────────────────────────────────────────
         function deleteMilestone(id) {
             if (!confirm('Are you sure you want to delete this milestone?')) return;
             $.ajax({
@@ -537,7 +524,6 @@
             });
         }
 
-        // ── INIT ──────────────────────────────────────────────────
         loadProjects();
     </script>
 }
