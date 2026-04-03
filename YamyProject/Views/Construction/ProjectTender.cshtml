@@ -15,6 +15,7 @@
             color: #fff !important;
         }
 </style>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
 <div class="card">
@@ -338,20 +339,14 @@
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
     <script>
-              // ==========================================
-        // 🔹 IMPROVED Column Detection Function
-        // ==========================================
         function detectColumns(headers) {
             const map = {};
 
@@ -404,9 +399,7 @@
             console.log("Final column mapping:", map);
             return map;
         }
-        // ==========================================
-        // 🔹 Import Modal Logic
-        // ==========================================
+
         document.addEventListener("DOMContentLoaded", function () {
             const downloadBtn = document.getElementById("downloadSampleBtn");
             const importBoqBtn = document.getElementById("importBoqBtn");
@@ -560,9 +553,6 @@
         });
         });
 
-        // ==========================================
-        // 🔹 Helper Functions
-        // ==========================================
         function loadWarehouses() {
             $.ajax({
                 url: '@Url.Action("GetWarehouses", "Inventory")',
@@ -634,17 +624,12 @@
             `);
         }
 
-        // ==========================================
-        // 🔹 Main Document Ready
-        // ==========================================
         $(document).ready(function () {
             loadProjectTenders();
             loadWarehouses();
 
-            // Initialize with one empty row if table is empty
             if ($('#tenderTableBody tr').length === 0) addRow();
 
-            // Auto-add new row when typing in last row
             $('#tenderTableBody').on('input', 'tr:last-child input', function () {
                 const $lastRow = $(this).closest('tr');
                 const filled = $lastRow.find('input').toArray().some(i => $(i).val().trim() !== '');
@@ -728,9 +713,9 @@
                                         className: 'btn btn-primary btn-sm'
                                     },
                                     {
-                                        extend: 'pdfHtml5',
-                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                        className: 'btn btn-primary btn-sm'
+                                      extend: 'print',
+                                      text: '<i class="fas fa-print me-1"></i> Print',
+                                      className: 'btn btn-primary btn-sm',
                                     }
                                 ],
                                 order: [[0, 'asc']],
@@ -802,10 +787,10 @@
                                         className: 'btn btn-primary btn-sm'
                                     },
                                     {
-                                        extend: 'pdfHtml5',
-                                        text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                        className: 'btn btn-primary btn-sm'
-                                    }
+                                       extend: 'print',
+                                       text: '<i class="fas fa-print me-1"></i> Print',
+                                       className: 'btn btn-primary btn-sm',
+                                     }
                                 ],
                                 order: [[0, 'asc']],
                                 pageLength: 10

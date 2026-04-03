@@ -2132,7 +2132,6 @@ total_values, billed_to_dates, balances)
             return View();
         }
 
-        // ── GET ALL WBS FOR A PROJECT ─────────────────────────────────
 
         [HttpGet]
         public async Task<IActionResult> GetWBSList(int projectId)
@@ -2201,7 +2200,6 @@ total_values, billed_to_dates, balances)
             }
         }
 
-        // ── GET PARENT DROPDOWN (all WBS of a project for parent select) ──
 
         [HttpGet]
         public async Task<IActionResult> GetWBSDropdown(int projectId)
@@ -2249,8 +2247,6 @@ total_values, billed_to_dates, balances)
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
-
-        // ── GET PROJECTS DROPDOWN ─────────────────────────────────────
 
         [HttpGet]
         public async Task<IActionResult> GetProjectsForWBS()
@@ -2398,7 +2394,6 @@ total_values, billed_to_dates, balances)
             }
         }
 
-        // ── Exactly like GenerateNextProjectCode ─────────────────────
         private async Task<string> GenerateNextWBSCode(MySqlConnection conn, int projectId, int parentWbsId)
         {
             if (parentWbsId == 0)
@@ -2432,8 +2427,6 @@ total_values, billed_to_dates, balances)
                 return $"{parentCode}.{maxSib + 1}";
             }
         }
-
-        // ── DELETE ────────────────────────────────────────────────────
 
         [HttpDelete]
         public async Task<IActionResult> DeleteWBS(int wbsId)

@@ -255,9 +255,8 @@
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
@@ -814,11 +813,10 @@
                                     className: 'btn btn-primary btn-sm'
                                 },
                                 {
-                                    extend: 'pdfHtml5',
-                                    title: 'Advance Payment Voucher',
-                                    orientation: 'landscape',
-                                    pageSize: 'A4',
-                                    className: 'btn btn-primary btn-sm',
+                                     extend: 'print',
+                                     text: '<i class="fas fa-print me-1"></i> Print',
+                                     title: 'Advance Payment Voucher',
+                                     className: 'btn btn-primary btn-sm',
                                 }
                             ],
                             pageLength: 15,
