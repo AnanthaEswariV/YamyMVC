@@ -6478,14 +6478,14 @@ INNER JOIN tbl_project_planning p
                     updateCmd.Parameters.AddWithValue("@modifiedDate", DateTime.Now.Date);
 
                     await updateCmd.ExecuteNonQueryAsync();
-
+                    //DELETE FROM tbl_item_transaction WHERE type = 'Project Tender' AND item_id = @tenderId;
                     // 🔹 Delete existing related records
                     string deleteQuery = @"
                 DELETE FROM tbl_project_tender_details WHERE tender_id = @tenderId;
                 DELETE FROM tbl_items_boq_details WHERE ref_id IN (SELECT id FROM tbl_items_boq WHERE ref_id = @tenderId);
                 DELETE FROM tbl_item_assembly_bos WHERE assembly_id IN (SELECT id FROM tbl_items_boq WHERE ref_id = @tenderId);
                 DELETE FROM tbl_items_boq WHERE ref_id = @tenderId;
-                DELETE FROM tbl_item_transaction WHERE type = 'Project Tender' AND item_id = @tenderId;
+              
                 DELETE FROM tbl_transaction WHERE type = 'Project Tender' AND transaction_id = @tenderId;
                 DELETE FROM tbl_item_card_details WHERE trans_type = 'Project Tender' AND trans_no = @tenderId;";
 
@@ -6767,14 +6767,14 @@ INNER JOIN tbl_project_planning p
                                                     await assemblyRelCmd.ExecuteNonQueryAsync();
 
                                                     // 🔹 Insert item transaction if qty > 0
-                                                    if (assemblyModel.Qty > 0)
-                                                    {
-                                                        await InsertItemTransactionAsync(conn, transaction, assemblyModel.Qty, model.Date,
-                                                            assemblyModel.Cost, model.Id.ToString(), itemIdOf.ToString());
+                                                    //if (assemblyModel.Qty > 0)
+                                                    //{
+                                                    //    await InsertItemTransactionAsync(conn, transaction, assemblyModel.Qty, model.Date,
+                                                    //        assemblyModel.Cost, model.Id.ToString(), itemIdOf.ToString());
 
-                                                        await InsertItemJournalAsync(conn, transaction, assemblyModel.Qty, model.Date,
-                                                            itemCode.ToString(), assemblyModel.Cost, model.Id.ToString(), userId);
-                                                    }
+                                                    //    await InsertItemJournalAsync(conn, transaction, assemblyModel.Qty, model.Date,
+                                                    //        itemCode.ToString(), assemblyModel.Cost, model.Id.ToString(), userId);
+                                                    //}
 
                                                     itemCode++;
                                                     subId++;

@@ -380,7 +380,10 @@
             // Update row fields
             $row.find(".amount").val(subTotal.toFixed(2));
             $row.find(".margin").val(marginPct.toFixed(2));
+            // $row.find(".marginamount").val(marginAmt.toFixed(2));
+                    if (changedField !== "marginamount") {
             $row.find(".marginamount").val(marginAmt.toFixed(2));
+        }
             $row.find(".total").val(total.toFixed(2));
 
             // Recalculate grand total after updating this row
@@ -416,11 +419,14 @@
             return classes.find(cls => knownFields.includes(cls));
         }
 
+
+
         function buildRowHtml(sr, item = {}) {
             return `
                 <tr>
                     <td><input type="text" class="form-control text-center sr" value="${sr}" readonly></td>
-                    <td><input type="text" class="form-control description" value="${escapeHtml(item.description)}"></td>
+                    <td> <input type="text" class="form-control description" value="${escapeHtml(item.description)}" title="${escapeHtml(item.description)}"
+                  oninput="this.title=this.value" style="min-width:200px;"> </td>
                     <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
                     <td><input type="text" step="any" class="form-control qty" value="${item.qty ?? ''}"></td>
                     <td><input type="text" class="form-control unit" value="${escapeHtml(item.unit)}"></td>
