@@ -1759,6 +1759,8 @@
 
                 $(document).ready(function () {
 
+                    let selectedTenderId = null;
+
                     // Load items dynamically from tender selection
                     function loadItems(projectId, targetDropdown = null) {
                         $.ajax({
@@ -1837,6 +1839,15 @@
                         }
                     });
 
+
+                            $(document).on('click', '#table1 tbody tr', function () {
+            selectedTenderId = $(this).data('id');
+
+            // optional UI highlight
+            $('#table1 tbody tr').removeClass('table-active');
+            $(this).addClass('table-active');
+        });
+
                     // Submit request
                     $('#submitRequestBtn').on('click', function () {
                         let requestDate = $('#requestDate').val();
@@ -1867,7 +1878,7 @@
                         }
 
                               const model = {
-                    TenderId: currentTenderId,
+                    TenderId: selectedTenderId,
                     PlanningId: currentPlanningId,
                     RequestedDate: requestDate,
                     Items: items
@@ -1918,26 +1929,11 @@
                 loadItems(currentProjectId);
             }
         });
-                });
-
-                function formatDate(dateStr) {
-                            // Convert DD/MM/YYYY to YYYY-MM-DD for input[type=date]
-                            var parts = dateStr.split('/');
-                            return parts[2] + '-' + parts[1] + '-' + parts[0];
-                        }
-
-                document.addEventListener('DOMContentLoaded', function() {
-                    const activityInput = document.getElementById('activitys');
-
-                activityInput.addEventListener('click', function() {
-                        // Open Sub-Activity modal
-                        // var subActivityModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
-                        // subActivityModal.show();
-                    });
 
 
-                $(document).ready(function () {
-            // Load requested data for dropdowns
+
+
+               // Load requested data for dropdowns
             function loadRequestedItems(planningId, dropdown) {
                 $.ajax({
                    url: '@Url.Action("GetRequestedData", "Construction")' + '?planningId=' + planningId,
@@ -2034,7 +2030,7 @@
 
                 const model = {
                     PlanningId: currentPlanningId,
-                    TenderId: currentTenderId,
+                    TenderId: selectedTenderId,
                     IssueDate: issueDate,
                     Items: issuedItems
                 };
@@ -2072,11 +2068,9 @@
                 $('#issueMaterialTable tbody').empty();
                 addIssueRow();
             });
-        });
 
 
-                $(document).ready(function () {
-            // 🔹 Load issued-but-not-received materials for dropdowns
+              // 🔹 Load issued-but-not-received materials for dropdowns
             function loadPendingReceivedItems(planningId, dropdown) {
                 $.ajax({
                 url: '@Url.Action("GetPendingReceivedMaterials", "Construction")' + '?planningId=' + planningId,
@@ -2117,7 +2111,7 @@
                                 <option value="">Select Issued Item</option>
                             </select>
                         </td>
-                        <td><input type="number" class="form-control receiveQty" min="1" readonly></td>
+                        <td><input type="number" class="form-control receiveQty" min="1" ></td>
                         <td><input type="text" class="form-control receiveUnit" readonly></td>
                     </tr>`;
                 $('#receiveMaterialTable tbody').append(newRow);
@@ -2171,7 +2165,7 @@
 
                 const model = {
                     PlanningId: currentPlanningId,
-                    TenderId: currentTenderId,
+                    TenderId: selectedTenderId,
                     ReceiveDate: receiveDate,
                     Items: items
                 };
@@ -2259,7 +2253,39 @@
         }
 
 
+
+                });
+
+                function formatDate(dateStr) {
+                            // Convert DD/MM/YYYY to YYYY-MM-DD for input[type=date]
+                            var parts = dateStr.split('/');
+                            return parts[2] + '-' + parts[1] + '-' + parts[0];
+                        }
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    const activityInput = document.getElementById('activitys');
+
+                activityInput.addEventListener('click', function() {
+                        // Open Sub-Activity modal
+                        // var subActivityModal = new bootstrap.Modal(document.getElementById('subActivityModal'));
+                        // subActivityModal.show();
+                    });
+
+
+                $(document).ready(function () {
+     
         });
+
+
+                $(document).ready(function () {
+          
+
+
+        });
+
+
+
+
 
                 function toggleEmployeeDropdown() {
             const selectedType = $('input[name="type"]:checked').val();
