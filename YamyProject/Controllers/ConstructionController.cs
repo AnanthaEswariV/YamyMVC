@@ -6409,9 +6409,14 @@ INNER JOIN tbl_project_planning p
 
             if (model.Items == null || model.Items.Count == 0)
                 return BadRequest(new { status = false, message = "Please add at least one item" });
-
-            if (string.IsNullOrEmpty(model.TotalAmount) || decimal.Parse(model.TotalAmount) == 0)
-                return BadRequest(new { status = false, message = "Total must be bigger than zero" });
+           
+                if (string.IsNullOrEmpty(model.TotalAmount) ||
+      decimal.Parse(model.TotalAmount, CultureInfo.InvariantCulture) == 0)
+                {
+                    return BadRequest(new { status = false, message = "Total must be bigger than zero" });
+                }
+;
+            
 
             try
             {
