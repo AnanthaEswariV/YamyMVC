@@ -1526,7 +1526,7 @@
             $('#pettyCashSection').slideDown();
             $('#activity-tab').tab('show');
 
-            loadActivityPlanning(currentTenderId);
+            loadActivityPlanning(planning.project_Id);
             loadRequestMaterial(currentPlanningId);
             loadIssuedMaterial(currentPlanningId);
             loadReceivedMaterial(currentPlanningId);
@@ -1724,12 +1724,12 @@
                     const tender = $(this).data('planning');
                     $('#pettyCashSection').show();
                     $('#activity-tab').tab('show');
-                    loadActivityPlanning(tender.tenderId);
+                    loadActivityPlanning(planning.project_Id);
                 });
 
                 $('#activity-tab').on('shown.bs.tab', function () {
                     if (currentTenderId) {
-                        loadActivityPlanning(currentTenderId);
+                        // loadActivityPlanning(currentTenderId);
                     }
                 });
 
@@ -1760,9 +1760,9 @@
                 $(document).ready(function () {
 
                     // Load items dynamically from tender selection
-                    function loadItems(tenderId, targetDropdown = null) {
+                    function loadItems(projectId, targetDropdown = null) {
                         $.ajax({
-                            url: '@Url.Action("GetItemsByTenderId", "Construction")' + '?tenderId=' + tenderId,
+                            url: '@Url.Action("GetItemsByTenderId", "Construction")' + '?projectId=' + projectId,
                             type: 'GET',
                             success: function (response) {
                                 if (response.status) {
@@ -1814,8 +1814,10 @@
 
                         $('#materialTable tbody').append(newRow);
 
-                        // Load items only for the new dropdown
-                        if (currentTenderId) loadItems(currentTenderId, newRow.find('.materialDescription'));
+                        // // Load items only for the new dropdown
+                        // if (currentTenderId) loadItems(currentTenderId, newRow.find('.materialDescription'));
+                                const currentProjectId = $('#projectNames').val();
+        if (currentProjectId) loadItems(currentProjectId, newRow.find('.materialDescription'));
                     }
 
                     // Event: when a description is selected → fill qty/unit + auto add row
@@ -1901,13 +1903,21 @@
                     });
 
                     // When modal opens, load items & create the first row
-                    $('#requestModal').on('shown.bs.modal', function () {
-                        $('#materialTable tbody').empty();
-                        addNewRow();
-                        if (currentTenderId) {
-                            loadItems(currentTenderId);
-                        }
-                    });
+                    // $('#requestModal').on('shown.bs.modal', function () {
+                    //     $('#materialTable tbody').empty();
+                    //     addNewRow();
+                    //     if (currentTenderId) {
+                    //         loadItems(currentTenderId);
+                    //     }
+                    // });
+                          $('#requestModal').on('shown.bs.modal', function () {
+            $('#materialTable tbody').empty();
+            addNewRow();
+            const currentProjectId = $('#projectNames').val();
+            if (currentProjectId) {
+                loadItems(currentProjectId);
+            }
+        });
                 });
 
                 function formatDate(dateStr) {
@@ -2600,7 +2610,7 @@
                     if (res.status) {
                         $('#subActivityModal').modal('hide');
                         toastr.success(res.message || 'Activity Assigned successfully');
-                        loadActivityPlanning(currentTenderId);
+                        loadActivityPlanning(planning.project_Id);
                     } else {
                         alert(res.message || 'Failed to save activity');
                     }

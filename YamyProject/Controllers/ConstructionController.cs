@@ -3554,9 +3554,9 @@ INNER JOIN tbl_project_planning p
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetItemsByTenderId(int tenderId)
+        public async Task<IActionResult> GetItemsByTenderId(int projectId)
         {
-            if (tenderId <= 0)
+            if (projectId <= 0)
             {
                 return BadRequest(new { status = false, message = "Invalid Tender ID" });
             }
@@ -3585,7 +3585,7 @@ INNER JOIN tbl_project_planning p
             WHERE tbl_project_tender_details.tender_id = @tenderId";
 
                 await using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@tenderId", tenderId);
+                cmd.Parameters.AddWithValue("@tenderId", projectId);
 
                 var dt = new DataTable();
                 using (var reader = await cmd.ExecuteReaderAsync())
