@@ -39,7 +39,7 @@
             <thead>
                 <tr>
                     <th>S.No</th>
-                    <th>Date</th>
+                    <th>Date</th> 
                     <th>Project Name</th>
                     <th>Tender Name</th>
                     <th>Submit Date</th>
@@ -279,7 +279,7 @@
 
                     <div class="col-md-4 ms-auto">
                         <label class="form-label">Total Cost</label>
-                        <input type="text" class="form-control" readonly>
+                        <input type="text" class="form-control" readonly>                                            
                     </div>
                 </div>
 
@@ -418,8 +418,6 @@
             const classes = $(el).attr("class").split(/\s+/);
             return classes.find(cls => knownFields.includes(cls));
         }
-
-
 
         function buildRowHtml(sr, item = {}) {
             return `
