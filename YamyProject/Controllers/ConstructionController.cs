@@ -6075,8 +6075,8 @@ INNER JOIN tbl_project_planning p
             if (model.TenderNameId <= 0)
                 return BadRequest(new { status = false, message = "Please select a Tender" });
 
-            if (model.WarehouseId <= 0)
-                return BadRequest(new { status = false, message = "Please select a Warehouse" });
+            //if (model.WarehouseId <= 0)
+            //    return BadRequest(new { status = false, message = "Please select a Warehouse" });
 
             if (model.Items == null || model.Items.Count == 0)
                 return BadRequest(new { status = false, message = "Please add at least one BOQ item" });
