@@ -1235,11 +1235,11 @@
                 return;
             }
 
-            if (!model.WarehouseId || model.WarehouseId <= 0) {
-                toastr.warning("Warehouse must be selected");
-                $("#warehouseDropdown").focus();
-                return;
-            }
+            // if (!model.WarehouseId || model.WarehouseId <= 0) {
+            //     toastr.warning("Warehouse must be selected");
+            //     $("#warehouseDropdown").focus();
+            //     return;
+            // }
 
             if (model.Items.length === 0) {
                 toastr.warning("Insert items first");
