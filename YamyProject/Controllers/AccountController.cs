@@ -1,4 +1,7 @@
-﻿namespace YamyProject.Controllers
+﻿using Microsoft.AspNetCore.Identity;
+using Umbraco.Core.Models.Membership;
+
+namespace YamyProject.Controllers
 {
     public class AccountController : Controller
     {
@@ -1978,6 +1981,7 @@
                           `state` int NOT NULL,
                           `password_updated_by` int DEFAULT NULL,
                           `password_last_update` date DEFAULT NULL,
+                          `Password` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
                           PRIMARY KEY (`id`) USING BTREE
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -5280,12 +5284,10 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
-
                 using var conn = GetConnection();
                 await conn.OpenAsync();
 
-                string query = @"SELECT id, CONCAT(first_name, ' ', last_name) as name, 
-                                user_name, first_name, last_name, active
+                string query = @"SELECT *
                                 FROM tbl_sec_users WHERE id > 0";
 
                 if (state == "active")
@@ -5300,6 +5302,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 {
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
+
                         int sn = 1;
                         while (await reader.ReadAsync())
                         {
@@ -5307,12 +5310,14 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                             {
                                 sn = sn++,
                                 id = reader["id"],
-                                name = reader["name"],
                                 userName = reader["user_name"],
                                 firstName = reader["first_name"],
                                 lastName = reader["last_name"],
                                 active = Convert.ToInt32(reader["active"]) == 0 ? "Active" : "Inactive",
-                                // email = reader["email"]
+                                emp_id = reader["emp_id"],
+                                Role_Id = reader["Role_Id"],
+                                Password = reader["Password"],
+
                             });
                         }
                     }
@@ -5482,8 +5487,8 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     string passwordHash = PasswordHelper.HashPassword(model.Password, out salt);
 
                     var insertQuery = @"INSERT INTO tbl_sec_users 
-                                (user_name, passwordhash, salt, emp_id, first_name, last_name, role_id, active, state)
-                                VALUES (@user_name, @passwordhash, @salt, @emp_id, @first_name, @last_name, @role_id, @active, 0)";
+                                (user_name, passwordhash, salt, emp_id, first_name, last_name, role_id, active, state, Password)
+                                VALUES (@user_name, @passwordhash, @salt, @emp_id, @first_name, @last_name, @role_id, @active, 0 , @Password)";
                     await using var insertCmd = new MySqlCommand(insertQuery, conn);
                     insertCmd.Parameters.AddWithValue("@user_name", model.Username.Trim());
                     insertCmd.Parameters.AddWithValue("@passwordhash", passwordHash);
@@ -5493,6 +5498,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     insertCmd.Parameters.AddWithValue("@last_name", model.LastName?.Trim() ?? "");
                     insertCmd.Parameters.AddWithValue("@role_id", model.RoleId);
                     insertCmd.Parameters.AddWithValue("@active", model.IsActive ? 0 : 1);
+                    insertCmd.Parameters.AddWithValue("@Password", model.Password?.Trim() ?? "");
 
                     await insertCmd.ExecuteNonQueryAsync();
 
@@ -5506,12 +5512,14 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                                 first_name=@first_name, 
                                 last_name=@last_name, 
                                 role_id=@role_id, 
+                                Password = @Password,
                                 active=@active
                                 WHERE id=@id";
                     await using var updateCmd = new MySqlCommand(updateQuery, conn);
                     updateCmd.Parameters.AddWithValue("@user_name", model.Username.Trim());
                     updateCmd.Parameters.AddWithValue("@emp_id", model.EmployeeId ?? -1);
                     updateCmd.Parameters.AddWithValue("@first_name", model.FirstName?.Trim() ?? "");
+                    updateCmd.Parameters.AddWithValue("@Password", model.Password?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@last_name", model.LastName?.Trim() ?? "");
                     updateCmd.Parameters.AddWithValue("@role_id", model.RoleId);
                     updateCmd.Parameters.AddWithValue("@active", model.IsActive ? 0 : 1);
@@ -5523,6 +5531,41 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
                     return Ok(new { status = true, message = "User updated successfully" });
                 }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteUser([FromBody] int id)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                if (id <= 0)
+                    return BadRequest(new { status = false, message = "Invalid user id" });
+
+                using var conn = GetConnection();
+                await conn.OpenAsync();
+
+                var query = "DELETE FROM tbl_sec_users WHERE id = @id";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                int affected = await cmd.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                    return NotFound(new { status = false, message = "User not found" });
+
+                return Ok(new { status = true, message = "User deleted successfully" });
             }
             catch (Exception ex)
             {

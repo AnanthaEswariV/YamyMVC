@@ -166,6 +166,7 @@
                                     <tr>
                                         <th>SN</th>
                                         <th>Name</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -1862,7 +1863,8 @@
                         </div>
 
                         <div class="col-md-6">userName
-                            <input type="text" class="form-control" id="userName" placeholder="Enter User Name" />
+                            <!-- renamed input id to avoid collision with display span '#userName' -->
+                            <input type="text" class="form-control" id="modalUserName" placeholder="Enter User Name" />
                             <div class="form-check ms-3">
                                 <input class="form-check-input" type="checkbox" id="activeCheck" checked>
                                 <label class="form-check-label small" for="activeCheck">
@@ -1893,8 +1895,8 @@
             </div>
 
             <div class="modal-footer justify-content-between custom-modal-footer">
-                <button type="button" class="btn btn-primary px-4">Save</button>
-                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1926,14 +1928,16 @@
 
 
 @section Scripts {
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
-
+    
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -1942,92 +1946,9 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
+    
 
-        document.querySelectorAll('.password-toggle').forEach(button => {
-          button.addEventListener('click', () => {
-            const input = button.previousElementSibling;
-            if (input.type === "password") {
-              input.type = "text";
-              button.innerHTML = '<i class="bi bi-eye-slash"></i>';
-            } else {
-              input.type = "password";
-              button.innerHTML = '<i class="bi bi-eye"></i>';
-            }
-          });
-        });
-
-               function loadUsers(state = "all") {
-            $.ajax({
-                url: '@Url.Action("GetUsers", "Account")' + '?state=' + state,
-                type: "GET",
-                success: function (res) {
-                    console.log(res);
-
-                    if ($.fn.DataTable.isDataTable("#table1")) {
-                        $("#table1").DataTable().destroy();
-                    }
-
-                    let table = $("#table1");
-
-                    if (table.find("tbody").length === 0) {
-                        table.append("<tbody></tbody>");
-                    }
-
-                    let tbody = table.find("tbody");
-                    tbody.empty();
-
-                    if (res.status && res.data.length > 0) {
-                        $.each(res.data, function (i, row) {
-                            tbody.append(`
-                                <tr data-user-id="${row.id}" data-user-name="${row.userName}"
-                                    data-user-fullname="${row.firstName} ${row.lastName}"
-                                    data-user-status="${row.active}"
-                                    data-user-code="${row.sn}">
-                                    <td>${row.sn}</td>
-                                    <td>${row.userName}</td>
-                                </tr>
-                            `);
-                        });
-
-                        // Add click event to each row - UPDATED TO SET TARGET USER ID
-                        table.find("tbody tr").on("click", function () {
-                            // Remove highlight from other rows
-                            table.find("tbody tr").removeClass("table-active");
-                            $(this).addClass("table-active");
-
-                            const userId = $(this).data("user-id");
-                            const userCode = $(this).data("user-code");
-                            const userName = $(this).data("user-name");
-                            const userFullName = $(this).data("user-fullname");
-                            const userStatus = $(this).data("user-status");
-
-                            // SET THE TARGET USER ID - THIS WAS MISSING!
-                            $('#targetUserId').val(userId);
-                            $('#SelectedUserId').val(userId);
-
-
-                            // Dynamically update the user info section
-                            $('#userCode').text('- ' + userCode);
-                            $('#userName').text('- ' + userName);
-                            $('#userFullName').text('- ' + userFullName);
-                            $('#userStatus').text('- ' + (userStatus === "Active" ? "Active" : "Inactive"));
-
-                            // Optional: Load permissions for this user
-                            loadUserPermissions(userId);
-                        });
-                    } else {
-                        tbody.append(`
-                            <tr>
-                                <td colspan="2" class="text-center">No records found</td>
-                            </tr>
-                        `);
-                    }
-                }
-            });
-        }
-
-
-                function loadUserPermissions(targetUserId) {
+       function loadUserPermissions(targetUserId) {
             $.ajax({
                 url: '@Url.Action("GetUserPermissions", "Account")',
                 type: 'GET',
@@ -2158,11 +2079,74 @@
                $("#statusFilter").change(function () {
             const state = $(this).val();
             loadUsers(state);
+
+               
         });
+
+
+                     $(document).on("click", ".password-toggle", function () {
+            const input = this.previousElementSibling;
+
+            if (input.type === "password") {
+                input.type = "text";
+                this.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            } else {
+                input.type = "password";
+                this.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+        });
+
+                  $('#btnNewUser').on('click', function () {
+             $("#userId").val(0);
+             $("#firstName, #lastName, #modalUserName, #password, #confirmPassword").val("");
+             $("#role").val("");
+             $("#activeCheck").prop("checked", true);
+             $("#newUserModalLabel").text("Users - New User");
+             loadEmployeeDropdown(null);
+         });
 
                loadEmployeeDropdown();
                loadRolesDropdown();
 
+  $(document).on("click", ".editUserBtn", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const btn = $(this);
+
+    const id = btn.data("id") ?? 0;
+    const firstName = btn.data("firstname") ?? "";
+    const lastName = btn.data("lastname") ?? "";
+    const userName = btn.data("username") ?? "";
+    const roleId = btn.data("roleid") ?? "";
+    const employeeId = btn.data("employeeid") ?? null;
+    const active = btn.data("active");
+    const password = btn.data("password") ?? "";   // ✅ FIX HERE
+
+    $("#userId").val(id);
+    $("#firstName").val(firstName);
+    $("#lastName").val(lastName);
+    $("#modalUserName").val(userName);
+
+    $("#role").val(roleId).trigger("change");
+
+    $("#activeCheck").prop(
+        "checked",
+        active === "Active" || active === true || active == 1
+    );
+
+    loadEmployeeDropdown(employeeId);
+
+    // ✅ SHOW PASSWORD
+    $("#password").val(password);
+    $("#confirmPassword").val(password);
+
+    $("#newUserModalLabel").text("Edit User");
+
+    const modalEl = document.getElementById("newUserModal");
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+});
                $('#roleForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -2202,74 +2186,108 @@
             });
         });
 
-              $(document).on('click', '#newUserModal .btn-primary', function(e) {
-            e.preventDefault();
+         function savePermissionsForUser(targetUserId, cb) {
+        if (!targetUserId || parseInt(targetUserId) <= 0) {
+            if (cb) cb();
+            return;
+        }
 
-              const modal = $('#newUserModal');
+        const permissions = collectPermissions();
 
-        const userData = {
-            Id: modal.find('#userId').val() ? parseInt(modal.find('#userId').val()) : 0,
-            Username: modal.find('#userName').val().trim(),
-            Password: modal.find('#password').val().trim(),
-            ConfirmPassword: modal.find('#confirmPassword').val().trim(),
-            FirstName: modal.find('#firstName').val().trim(),
-            LastName: modal.find('#lastName').val().trim(),
-            RoleId: modal.find('#role').val() ? parseInt(modal.find('#role').val()) : 0,
-            EmployeeId: modal.find('#empName').val() ? parseInt(modal.find('#empName').val()) : -1,
-            IsActive: modal.find('#activeCheck').is(':checked')
-        };
-
-            console.log(userData);
-            // Simple client-side validation
-             if(!userData.FirstName) {
-                toastr.warning("Enter First Name");
-                return;
-            }
-            if(!userData.Username) {
-                toastr.warning("Enter at least User Name");
-                return;
-            }
-            if(userData.RoleId <= 0) {
-                toastr.warning("Choose Role First");
-                return;
-            }
-           if(userData.EmployeeId <= 0) {
-                toastr.warning("Choose Employee First");
-                return;
-            }
-            if(userData.Id === 0) { // new user
-                if(!userData.Password) {
-                    toastr.warning("Enter your new password");
-                    return;
+        $.ajax({
+            url: `@Url.Action("BulkUpdatePermissions", "Account")?targetUserId=${targetUserId}`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ Permissions: permissions }),
+            success: function (res) {
+                if (res && res.status) {
+                    toastr.success('Permissions saved for user');
+                } else {
+                    toastr.warning('Permissions save failed: ' + (res?.message || 'unknown'));
                 }
-                if(userData.Password !== userData.ConfirmPassword) {
-                    toastr.warning("Confirm password mismatch");
-                    return;
-                }
+            },
+            error: function (xhr) {
+                toastr.error('Permissions save failed: ' + (xhr.responseJSON?.message || xhr.statusText));
+            },
+            complete: function () {
+                if (typeof cb === 'function') cb();
             }
-
-            $.ajax({
-                url: '@Url.Action("SaveUser", "Account")',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(userData),
-                success: function(res) {
-                    if(res.status) {
-                        toastr.success(res.message);
-                        $('#newUserModal').modal('hide');
-                                // Optional: refresh role list after saving
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        toastr.error(res.message);
-                    }
-                },
-                error: function(xhr) {
-                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
-                }
-            });
         });
+    }
 
-        $('#savePermissionsBtn').on('click', function (e) {
+$(document).on('click', '#newUserModal .btn-primary', function (e) {
+    e.preventDefault();
+
+    const modal = $('#newUserModal');
+
+    const userData = {
+        Id: modal.find('#userId').val() ? parseInt(modal.find('#userId').val()) : 0,
+        Username: modal.find('#modalUserName').val().trim(),
+        Password: modal.find('#password').val().trim(),
+        ConfirmPassword: modal.find('#confirmPassword').val().trim(),
+        FirstName: modal.find('#firstName').val().trim(),
+        LastName: modal.find('#lastName').val().trim(),
+        RoleId: modal.find('#role').val() ? parseInt(modal.find('#role').val()) : 0,
+        EmployeeId: modal.find('#empName').val() ? parseInt(modal.find('#empName').val()) : -1,
+        IsActive: modal.find('#activeCheck').is(':checked')
+    };
+
+    // validations
+    if (!userData.FirstName) { toastr.warning("Enter First Name"); return; }
+    if (!userData.Username) { toastr.warning("Enter at least User Name"); return; }
+    if (userData.RoleId <= 0) { toastr.warning("Choose Role First"); return; }
+    if (userData.EmployeeId <= 0) { toastr.warning("Choose Employee First"); return; }
+
+    // password only required for NEW user OR when changing password
+    if (userData.Id === 0 && !userData.Password) {
+        toastr.warning("Enter your new password");
+        return;
+    }
+
+    if (userData.Password && userData.Password !== userData.ConfirmPassword) {
+        toastr.warning("Confirm password mismatch");
+        return;
+    }
+
+    $.ajax({
+        url: '@Url.Action("SaveUser", "Account")',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(userData),
+        success: function (res) {
+
+            if (res && res.status) {
+
+                const savedId =
+                    (res.data && res.data.id) ||
+                    res.id ||
+                    res.userId ||
+                    (userData.Id > 0 ? userData.Id : null);
+
+                if (savedId) {
+                    savePermissionsForUser(savedId, function () {
+                        toastr.success(res.message || 'User saved');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('newUserModal')).hide();
+                        setTimeout(() => location.reload(), 800);
+                    });
+                } else {
+                    const fallbackId = $('#targetUserId').val();
+                    savePermissionsForUser(fallbackId, function () {
+                        toastr.success(res.message || 'User saved');
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('newUserModal')).hide();
+                        setTimeout(() => location.reload(), 800);
+                    });
+                }
+            }
+            else {
+                toastr.error(res?.message || 'User save failed');
+            }
+        },
+        error: function (xhr) {
+            toastr.error(xhr.responseJSON?.message || xhr.statusText);
+        }
+    });
+});        $('#savePermissionsBtn').on('click', function (e) {
             e.preventDefault();
 
             // Get the target user ID
@@ -2318,10 +2336,122 @@
             });
         });
 
+             function loadUsers(state = "all") {
+             $.ajax({
+                 url: '@Url.Action("GetUsers", "Account")' + '?state=' + state,
+                 type: "GET",
+                 success: function (res) {
+                     console.log(res);
 
+                     if ($.fn.DataTable.isDataTable("#table1")) {
+                         $("#table1").DataTable().destroy();
+                     }
+
+                     let table = $("#table1");
+
+                     if (table.find("tbody").length === 0) {
+                         table.append("<tbody></tbody>");
+                     }
+
+                     let tbody = table.find("tbody");
+                     tbody.empty();
+
+                     if (res.status && res.data.length > 0) {
+                         $.each(res.data, function (i, row) {
+                                     tbody.append(`
+             <tr data-user-id="${row.id}"
+                 data-user-name="${row.userName}"
+                 data-user-fullname="${row.firstName} ${row.lastName}"
+                 data-user-status="${row.active}"
+                 data-user-code="${row.sn}">
+                 <td>${row.sn}</td>
+                 <td>${row.userName}</td>
+                 <td>
+                     <button class="btn btn-sm btn-primary editUserBtn"
+                         data-id="${row.id}"
+                         data-firstname="${(row.firstName || '').replace(/"/g, '&quot;')}"
+                         data-lastname="${(row.lastName || '').replace(/"/g, '&quot;')}"
+                         data-username="${row.userName || ''}"
+                         data-roleid="${row.role_Id || ''}"
+                         data-employeeid="${row.emp_id || ''}"
+                         data-active="${row.active}"
+                         data-password="${row.password || ''}">
+                         <i class="fas fa-pen"></i>
+                     </button>
+                     <button class="btn btn-sm btn-danger deleteUserBtn"
+                         data-id="${row.id}">
+                         <i class="fas fa-trash"></i>
+                     </button>
+                 </td>
+             </tr>
+         `);
+                         });
+
+
+                         $(document).on("click", ".deleteUserBtn", function () {
+
+    const userId = parseInt($(this).attr("data-id"));
+    if (!userId) return;
+
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    $.ajax({
+        url: '@Url.Action("DeleteUser", "Account")',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(userId),
+
+        success: function (res) {
+            if (res.status) {
+                toastr.success("User deleted successfully");
+
+                // reload your table
+                loadUsers();
+            } else {
+                toastr.error(res.message || "Delete failed");
+            }
+        },
+
+        error: function (xhr) {
+            toastr.error(xhr.responseJSON?.message || xhr.statusText || "Something went wrong");
+        }
+    });
+});
+
+
+                              $(document).on("click", "#table1 tbody tr", function (e){
+             // If a button inside the row was clicked, ignore the row click
+             if ($(e.target).closest('button').length) return;
+
+             table.find("tbody tr").removeClass("table-active");
+             $(this).addClass("table-active");
+
+             const userId      = $(this).data("user-id");
+             const userCode    = $(this).data("user-code");
+             const userName    = $(this).data("user-name");
+             const userFullName = $(this).data("user-fullname");
+             const userStatus  = $(this).data("user-status");
+
+             $('#targetUserId').val(userId);
+             $('#SelectedUserId').val(userId);
+
+             $('#userCode').text('- ' + userCode);
+             $('#userName').text('- ' + userName);
+             $('#userFullName').text('- ' + userFullName);
+             $('#userStatus').text('- ' + (userStatus === "Active" ? "Active" : "Inactive"));
+
+             loadUserPermissions(userId);
+         });
+                     } else {
+                         tbody.append(`
+                             <tr>
+                                 <td colspan="2" class="text-center">No records found</td>
+                             </tr>
+                         `);
+                     }
+                 }
+             });
+         }
         });
-
-
-
     </script>
 }
