@@ -944,7 +944,7 @@
         $('#checkAllAccounts').on('change', function () {
             $('.accountCheck:not(:disabled)').prop('checked', this.checked);
         });
-
+         
         $('#createAccountsBtn').on('click', function () {
             const projectId = parseInt($('#projectId').val()) || 0;
             if (projectId === 0) { toastr.error('Please save project first'); return; }
@@ -1179,7 +1179,7 @@
 
         });
 
-             function formatDate(dateStr) {
+        function formatDate(dateStr) {
             if (!dateStr || isNaN(new Date(dateStr))) return '';
 
             const d = new Date(dateStr);
@@ -1485,6 +1485,7 @@
                 }
             });
         }
+
 
         $(document).on('click', '.deleteEngineerRow', function(e) {
             e.preventDefault();
