@@ -337,1028 +337,784 @@
 
     <script>
 
-        var itemsList = [];
-        var currentBomRow = null; // Store reference to current tender row when opening BOM
 
-        function parseDecimal(val) {
-            const v = parseFloat(val);
-            return isNaN(v) ? 0 : v;
+var itemsList = [];
+var currentBomRow = null;   // tender row that opened the BOM modal
+var currentBomKey = "";     // localStorage key = "Assembly_" + item description
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function parseDecimal(val) {
+    const v = parseFloat(val);
+    return isNaN(v) ? 0 : v;
+}
+
+function escapeHtml(text) {
+    return String(text ?? "").replace(/[&<>"'`=\/]/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+        "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
+    })[s]);
+}
+
+// ── tender row calculations ───────────────────────────────────────────────────
+
+function calculateTenderRow($row, changedField) {
+    const qty      = parseDecimal($row.find(".qty").val());
+    const rate     = parseDecimal($row.find(".rate").val());
+    const subTotal = qty * rate;
+
+    let marginPct = parseDecimal($row.find(".margin").val());
+    let marginAmt = parseDecimal($row.find(".marginamount").val());
+
+    if (changedField === "margin") {
+        marginAmt = subTotal * (marginPct / 100);
+    } else if (changedField === "marginamount" && subTotal > 0) {
+        marginPct = (marginAmt / subTotal) * 100;
+    } else {
+        marginAmt = subTotal * (marginPct / 100);
+    }
+
+    if (!isFinite(marginAmt)) marginAmt = 0;
+    if (!isFinite(marginPct)) marginPct = 0;
+
+    $row.find(".amount").val(subTotal.toFixed(2));
+    $row.find(".margin").val(marginPct.toFixed(2));
+    if (changedField !== "marginamount") {
+        $row.find(".marginamount").val(marginAmt.toFixed(2));
+    }
+    $row.find(".total").val((subTotal + marginAmt).toFixed(2));
+    calculateGrandTotal();
+}
+
+function calculateGrandTotal() {
+    let total = 0;
+    $("#tenderTableBody tr").each(function () {
+        total += parseDecimal($(this).find(".total").val());
+    });
+    const grand = total + parseDecimal($("#fees").val());
+    $("#grandTotal").val(grand.toFixed(2));
+}
+
+function getChangedFieldClass(el) {
+    const known = ["qty", "rate", "margin", "marginamount"];
+    return $(el).attr("class").split(/\s+/).find(c => known.includes(c));
+}
+
+// ── tender table rows ─────────────────────────────────────────────────────────
+
+function buildRowHtml(sr, item = {}) {
+    return `
+        <tr>
+            <td><input type="text" class="form-control text-center sr" value="${sr}" readonly></td>
+            <td><input type="text" class="form-control description"
+                 value="${escapeHtml(item.description ?? '')}"
+                 title="${escapeHtml(item.description ?? '')}"
+                 oninput="this.title=this.value" style="min-width:200px;"></td>
+            <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
+            <td><input type="text" class="form-control qty"         value="${item.qty    ?? ''}"></td>
+            <td><input type="text" class="form-control unit"        value="${escapeHtml(item.unit ?? '')}"></td>
+            <td><input type="text" class="form-control length"      value="${item.length ?? ''}"></td>
+            <td><input type="text" class="form-control width"       value="${item.width  ?? ''}"></td>
+            <td><input type="text" class="form-control thick"       value="${item.thick  ?? ''}"></td>
+            <td><input type="text" class="form-control rate"        value="${item.rate   ?? ''}"></td>
+            <td><input type="text" class="form-control amount"   readonly value="${item.amount ?? ''}"></td>
+            <td><input type="text" class="form-control margin"      value="${item.margin ?? ''}"></td>
+            <td><input type="text" class="form-control marginamount" value="${item.marginAmount ?? ''}"></td>
+            <td><input type="text" class="form-control total"    readonly value="${item.total ?? ''}"></td>
+            <td><input type="text" class="form-control note"        value="${escapeHtml(item.note ?? '')}"></td>
+        </tr>`;
+}
+
+function addEmptyRow() {
+    $("#tenderTableBody").append(buildRowHtml(0));
+    updateSrNumbers();
+}
+
+function updateSrNumbers() {
+    $("#tenderTableBody tr").each(function (i) {
+        $(this).find(".sr").val(i + 1);
+    });
+}
+
+// ── BOM table ─────────────────────────────────────────────────────────────────
+
+function calculateBomRow($row) {
+    const qty   = parseFloat($row.find("td:nth-child(4) input").val()) || 0;
+    const cost  = parseFloat($row.find("td:nth-child(5) input").val()) || 0;
+    $row.find("td:nth-child(6) input").val((qty * cost).toFixed(2));
+    calculateBomTotal();
+}
+
+function calculateBomTotal() {
+    let total = 0;
+    $("#bomTableBody tr").each(function () {
+        total += parseFloat($(this).find("td:nth-child(6) input").val()) || 0;
+    });
+    $(".bom-total-input").val(total.toFixed(2));
+    return total;
+}
+
+function reindexBomRows() {
+    $("#bomTableBody tr").each(function (i) {
+        $(this).find("td:first-child").text(i + 1);
+    });
+}
+
+function attachBomRowListeners(tr) {
+    // Auto-add row when last row gets input
+    $(tr).find("input, select").on("input change", function () {
+        const $rows = $("#bomTableBody tr");
+        const isLast = $(tr).is($rows.last());
+        const hasValue = $(tr).find("input, select").toArray()
+            .some(el => $(el).val().toString().trim() !== "" && $(el).val() !== "");
+        if (isLast && hasValue) {
+            addBomRow();
         }
+        calculateBomRow($(tr));
+    });
 
-        function escapeHtml(text) {
-            return String(text ?? "").replace(/[&<>"'`=\/]/g, s => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
-                "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
-            })[s]);
-        }
+    // Delete button
+    $(tr).find(".btn-danger").on("click", function () {
+        $(tr).remove();
+        reindexBomRows();
+        calculateBomTotal();
+    });
+}
 
-        function calculateTenderRow($row, changedField) {
-            const qty = parseDecimal($row.find(".qty").val());
-            const rate = parseDecimal($row.find(".rate").val());
+function addBomRow(itemData = null) {
+    const index = $("#bomTableBody tr").length + 1;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td>${index}</td>
+        <td><input class="form-control form-control-sm" value="${itemData ? escapeHtml(itemData.Code) : ''}"></td>
+        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+        <td><input class="form-control form-control-sm" value="${itemData ? itemData.Qty : ''}"></td>
+        <td><input class="form-control form-control-sm" value="${itemData ? itemData.Cost : ''}"></td>
+        <td><input class="form-control form-control-sm" readonly value="${itemData ? itemData.Total : ''}"></td>
+        <td><button class="btn btn-sm btn-danger">X</button></td>
+    `;
+    $("#bomTableBody").append(tr);
+    attachBomRowListeners(tr);
 
-            // Base amount = Qty * Rate
-            const subTotal = qty * rate;
-
-            let marginPct = parseDecimal($row.find(".margin").val());
-            let marginAmt = parseDecimal($row.find(".marginamount").val());
-
-            // Margin recalculation
-            if (changedField === "margin") {
-                marginAmt = subTotal * (marginPct / 100);
-            } else if (changedField === "marginamount" && subTotal > 0) {
-                marginPct = (marginAmt / subTotal) * 100;
-            } else {
-                marginAmt = subTotal * (marginPct / 100);
-            }
-
-            // Safety checks
-            if (!isFinite(marginAmt)) marginAmt = 0;
-            if (!isFinite(marginPct)) marginPct = 0;
-
-            const total = subTotal + marginAmt;
-
-            // Update row fields
-            $row.find(".amount").val(subTotal.toFixed(2));
-            $row.find(".margin").val(marginPct.toFixed(2));
-            // $row.find(".marginamount").val(marginAmt.toFixed(2));
-                    if (changedField !== "marginamount") {
-            $row.find(".marginamount").val(marginAmt.toFixed(2));
-        }
-            $row.find(".total").val(total.toFixed(2));
-
-            // Recalculate grand total after updating this row
-            calculateGrandTotal();
-        }
-
-        function calculateGrandTotal() {
-            let totalSum = 0;
-
-            // Sum all row totals from tender table
-            $("#tenderTableBody tr").each(function () {
-                const rowTotal = parseDecimal($(this).find(".total").val());
-                totalSum += rowTotal;
-            });
-
-            // Add fees to the total
-            const fees = parseDecimal($("#fees").val());
-            const grand = totalSum + fees;
-
-            console.log("Grand Total:", {
-                rowsTotal: totalSum.toFixed(2),
-                fees: fees.toFixed(2),
-                grandTotal: grand.toFixed(2)
-            });
-
-            // Update the grand total display
-            $("#grandTotal").val(grand.toFixed(2));
-        }
-
-        function getChangedFieldClass(el) {
-            const knownFields = ["qty", "rate", "margin", "marginamount"];
-            const classes = $(el).attr("class").split(/\s+/);
-            return classes.find(cls => knownFields.includes(cls));
-        }
-
-        function buildRowHtml(sr, item = {}) {
-            return `
-                <tr>
-                    <td><input type="text" class="form-control text-center sr" value="${sr}" readonly></td>
-                    <td> <input type="text" class="form-control description" value="${escapeHtml(item.description)}" title="${escapeHtml(item.description)}"
-                  oninput="this.title=this.value" style="min-width:200px;"> </td>
-                    <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
-                    <td><input type="text" step="any" class="form-control qty" value="${item.qty ?? ''}"></td>
-                    <td><input type="text" class="form-control unit" value="${escapeHtml(item.unit)}"></td>
-                    <td><input type="text" step="any" class="form-control length" value="${item.length ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control width" value="${item.width ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control thick" value="${item.thick ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control rate" value="${item.rate ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control amount" readonly value="${item.amount ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control margin" value="${item.margin ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control marginamount" value="${item.marginAmount ?? ''}"></td>
-                    <td><input type="text" step="any" class="form-control total" readonly value="${item.total ?? ''}"></td>
-                    <td><input type="text" class="form-control note" value="${escapeHtml(item.note)}"></td>
-                </tr>`;
-        }
-
-        function addEmptyRow() {
-            $("#tenderTableBody").append(buildRowHtml(0));
-            updateSrNumbers();
-        }
-
-        function updateSrNumbers() {
-            $("#tenderTableBody tr").each(function (index) {
-                $(this).find(".sr").val(index + 1);
-            });
-        }
-
-        function calculateBomRow(row) {
-            const qty = parseFloat(row.find("td:nth-child(4) input").val()) || 0;
-            const price = parseFloat(row.find("td:nth-child(5) input").val()) || 0;
-            const net = qty * price;
-            row.find("td:nth-child(6) input").val(net.toFixed(2));
-
-            // Calculate BOM grand total
-            calculateBomTotal();
-        }
-
-        function calculateBomTotal() {
-            let bomTotal = 0;
-            $("#bomTableBody tr").each(function() {
-                const rowTotal = parseFloat($(this).find("td:nth-child(6) input").val()) || 0;
-                bomTotal += rowTotal;
-            });
-
-            // Update the total cost display in BOM modal
-            $(".row.mb-3.align-items-end .col-md-4.ms-auto input").val(bomTotal.toFixed(2));
-
-            return bomTotal;
-        }
-
-        const bomTableBody = document.getElementById("bomTableBody");
-
-        function attachInputListeners(row) {
-            const inputs = row.querySelectorAll("input, select");
-
-            inputs.forEach(input => {
-                input.addEventListener("input", () => {
-                    const rows = bomTableBody.querySelectorAll("tr");
-                    const lastRow = rows[rows.length - 1];
-
-                    if (row === lastRow && Array.from(inputs).some(i => i.value.trim() !== "")) {
-                        createNewRow(rows.length + 1);
-                    }
-                });
-            });
-
-            const deleteBtn = row.querySelector("button.btn-danger");
-            if (deleteBtn) {
-                deleteBtn.addEventListener("click", () => {
-                    row.remove();
-                    reindexRows();
-                    calculateBomTotal(); // Recalculate after deletion
-                });
-            }
-        }
-
-        function createNewRow(index) {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${index}</td>
-                <td><input class="form-control form-control-sm"></td>
-                <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                <td><input class="form-control form-control-sm"></td>
-                <td><input class="form-control form-control-sm"></td>
-                <td><input class="form-control form-control-sm" readonly></td>
-                <td><button class="btn btn-sm btn-danger">X</button></td>
-            `;
-
-            bomTableBody.appendChild(tr);
-            attachInputListeners(tr);
-            loadItem($(tr).find(".itemNameSelect"));
-        }
-
-        function reindexRows() {
-            bomTableBody.querySelectorAll("tr").forEach((row, i) => {
-                row.querySelector("td:first-child").textContent = i + 1;
-            });
-        }
-
-        function loadWarehouses() {
-            $.ajax({
-                url: '@Url.Action("GetWarehouses", "Inventory")',
-                type: 'GET',
-                success: function(result) {
-                    const dropdown = $('#warehouseDropdown');
-                    dropdown.empty().append('<option value="">Select Warehouse</option>');
-
-                    if (result.status && result.data && result.data.length > 0) {
-                        result.data.forEach(w => {
-                            dropdown.append(`<option value="${w.id}">${w.display}</option>`);
-                        });
-                    }
-                },
-                error: function(err) {
-                    console.error('Error fetching warehouses:', err);
+    // Load items into this row's dropdown, then restore selection if editing
+    loadItem($(tr).find(".itemNameSelect")).then(() => {
+        if (itemData && itemData.Name) {
+            const $sel = $(tr).find(".itemNameSelect");
+            $sel.find("option").each(function () {
+                if ($(this).text().trim() === itemData.Name) {
+                    $sel.val($(this).val());
+                    return false;
                 }
             });
         }
+    });
 
-        function loadAccountsAndDefaults() {
-            $.ajax({
-                url: '@Url.Action("GetAllLevel4Accounts", "Lists")',
-                type: 'GET',
-                success: function (accounts) {
-                    const dropdowns = [
-                        { ddl: '#incomeAccount', category: 'Sales' },
-                        { ddl: '#assetAccount', category: 'Inventory' },
-                        { ddl: '#cogsAccount', category: 'COGS' }
-                    ];
+    return tr;
+}
 
-                    dropdowns.forEach(cfg => {
-                        const $ddl = $(cfg.ddl);
-                        $ddl.empty().append('<option value="">-- Select --</option>');
+// ── localStorage helpers ──────────────────────────────────────────────────────
 
-                        $.each(accounts, function (i, acc) {
-                            $ddl.append(
-                                $('<option>', {
-                                    value: acc.id,
-                                    text: acc.code + ' - ' + acc.name,
-                                    'data-code': acc.code
-                                })
-                            );
-                        });
+// KEY FIX: key is always "Assembly_" + item description (trimmed, original case)
+function getAssemblyStorageKey(description) {
+    return "Assembly_" + (description || "").trim();
+}
 
-                        $.ajax({
-                            url: '@Url.Action("GetDefaultAccountByCategory", "Lists")',
-                            type: 'GET',
-                            data: { category: cfg.category },
-                            success: function (res) {
-                                if (res.status && res.accountId > 0) {
-                                    $ddl.val(res.accountId);
-                                }
-                            }
-                        });
+// Returns [] if not found, or array of assembly items
+function getAssemblyForItem(description) {
+    if (!description || !description.trim()) return [];
+
+    const key = getAssemblyStorageKey(description);
+    const raw = localStorage.getItem(key);
+
+    if (!raw) {
+        console.warn("[Assembly] No data in localStorage for key:", key);
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.Items) || parsed.Items.length === 0) {
+            console.warn("[Assembly] Items array empty for key:", key);
+            return [];
+        }
+
+        console.log("[Assembly] Found", parsed.Items.length, "items for:", description);
+
+        return parsed.Items.map(x => ({
+            Code:            x.Code            || "",
+            Name:            x.Name            || description,
+            Cost:            parseFloat(x.Cost)  || 0,
+            Qty:             parseFloat(x.Qty)   || 0,
+            Total:           parseFloat(x.Total) || 0,
+            AssetAccountId:  parseInt(parsed.AssetAccountId)  || 0,
+            COGSAccountId:   parseInt(parsed.COGSAccountId)   || 0,
+            IncomeAccountId: parseInt(parsed.IncomeAccountId) || 0,
+            VendorAccountId: parseInt(parsed.VendorAccountId) || 0
+        }));
+    } catch (e) {
+        console.error("[Assembly] Parse error for key:", key, e);
+        return [];
+    }
+}
+
+// ── API loaders ───────────────────────────────────────────────────────────────
+
+function loadItem(selector) {
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            url: '@Url.Action("GetItems", "Lists")',
+            type: 'GET',
+            success: function (res) {
+                if (res.status) {
+                    itemsList = res.data;
+                    const $ddl = $(selector);
+                    $ddl.empty().append('<option value="">Select Item</option>');
+                    res.data.forEach(item => {
+                        $ddl.append(`<option value="${item.id}">${item.itemName}</option>`);
                     });
-                },
-                error: function (xhr) {
-                    console.error("Error loading accounts", xhr);
+                    resolve();
+                } else {
+                    reject("Failed to load items");
                 }
-            });
+            },
+            error: reject
+        });
+    });
+}
+
+function loadWarehouses() {
+    $.ajax({
+        url: '@Url.Action("GetWarehouses", "Inventory")',
+        type: 'GET',
+        success: function (result) {
+            const $ddl = $('#warehouseDropdown');
+            $ddl.empty().append('<option value="">Select Warehouse</option>');
+            if (result.status && result.data) {
+                result.data.forEach(w => $ddl.append(`<option value="${w.id}">${w.display}</option>`));
+            }
         }
+    });
+}
 
-        function loadPreferredVendors() {
-            $.ajax({
-                url: '@Url.Action("GetVendorAndSub", "Vendor")',
-                type: 'GET',
-                success: function (res) {
-                    if (res.status) {
-                        const $ddl = $('#preferredVendor');
-                        $ddl.empty().append('<option value="">-- Select Vendor --</option>');
-
-                        $.each(res.data, function (i, v) {
-                            $ddl.append(
-                                $('<option>', {
-                                    value: v.id,
-                                    text: v.code + ' - ' + v.name
-                                })
-                            );
-                        });
-                    }
-                },
-                error: function (xhr) {
-                    console.error('Error loading vendors:', xhr);
-                }
-            });
-        }
-
-        function loadProjects() {
-            $.ajax({
-                url: '@Url.Action("GetProjectManagement", "Construction")',
-                type: 'GET',
-                success: function (result) {
-                    if (result.status) {
-                        const $dropdown = $('#projectName');
-                        $dropdown.empty().append('<option value="">-- Select Project --</option>');
-
-                        $.each(result.data, function (index, project) {
-                            $dropdown.append('<option value="' + project.id + '">' + project.name + '</option>');
-                        });
-                    }
-                },
-                error: function () {
-                    toastr.error('Error loading projects');
-                }
-            });
-        }
-
-        function loadProjectTenders(projectId) {
-            $.ajax({
-                url: '@Url.Action("GetProjectTenders", "Construction")',
-                type: 'GET',
-                data: { projectId: projectId },
-                success: function (res) {
-                    if (!res.status) {
-                        toastr.error('Failed to load project tenders');
-                        return;
-                    }
-
-                    if ($.fn.DataTable.isDataTable('#table1')) {
-                        $('#table1').DataTable().clear().destroy();
-                    }
-
-                    const tbody = $('#table1 tbody');
-                    tbody.empty();
-
-                    if (res.data && res.data.length > 0) {
-                        $.each(res.data, function (i, row) {
-                            const tr = `
-                                <tr data-id="${row.id}">
-                                    <td>${i + 1}</td>
-                                    <td>${row.date ?? ''}</td>
-                                    <td>${row.projectName ?? ''}</td>
-                                    <td>${row.tenderName ?? ''}</td>
-                                    <td>${row.submitDate ?? ''}</td>
-                                    <td>${row.fees ?? 0}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-primary editTenderBtn" data-tender='${JSON.stringify(row)}'>
-                                            <i class="fas fa-pen"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}">
-                                            <i class="fas fa-book"></i>
-                                        </button>
-                                    </td>
-                                </tr>`;
-                            tbody.append(tr);
-                        });
-
-                        $('#table1').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm'
-                                },
-                                {
-                                   extend: 'print',
-                                   text: '<i class="fas fa-print me-1"></i> Print',
-                                   className: 'btn btn-primary btn-sm',
-                                 }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 25
-                        });
-                    } else {
-                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
-                    }
-                }
-            });
-        }
-
-        function loadTenderItems(tenderId) {
-            $.ajax({
-                url: '@Url.Action("GetTenderItems", "Construction")',
-                type: 'GET',
-                data: { tenderId: tenderId },
-                success: function (res) {
-                    if ($.fn.DataTable.isDataTable('#table2')) {
-                        $('#table2').DataTable().clear().destroy();
-                    }
-
-                    const tbody = $('#table2 tbody');
-                    tbody.empty();
-
-                    if (res.status && res.data && res.data.length > 0) {
-                        $.each(res.data, function (i, item) {
-                            const tr = `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${item.itemName ?? ''}</td>
-                                    <td>${item.qty ?? 0}</td>
-                                    <td>${item.rate ?? 0}</td>
-                                    <td>${item.unit ?? ''}</td>
-                                    <td>${item.amount ?? 0}</td>
-                                </tr>`;
-                            tbody.append(tr);
-                        });
-
-                        $('#table2').DataTable({
-                            dom: 'Bfrtip',
-                            buttons: [
-                                {
-                                    extend: 'excelHtml5',
-                                    text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                    className: 'btn btn-primary btn-sm'
-                                },
-                                {
-                                  extend: 'print',
-                                  text: '<i class="fas fa-print me-1"></i> Print',
-                                  className: 'btn btn-primary btn-sm',
-                                }
-                            ],
-                            order: [[0, 'asc']],
-                            pageLength: 10
-                        });
-                    } else {
-                        tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>`);
-                    }
-                }
-            });
-        }
-
-        function populateBankAccounts() {
-            $.ajax({
-                url: '@Url.Action("GetAccruedSalaries", "HR")',
-                type: 'GET',
-                success: function(res) {
-                    const data = Array.isArray(res) ? res : res.data || [];
-                    if (!data.length) return;
-
-                    const $select = $('#debitAccount');
-                    $select.empty().append('<option value="">-- Select --</option>');
-
-                    $.each(data, function(i, item) {
-                        $select.append(
-                            $('<option>', {
-                                value: item.id,
-                                text: `${item.code} - ${item.name}`
-                            })
-                        );
-                    });
-                }
-            });
-        }
-
-        function loadItem(selector = ".itemNameSelect") {
-            return new Promise((resolve, reject) => {
+function loadAccountsAndDefaults() {
+    $.ajax({
+        url: '@Url.Action("GetAllLevel4Accounts", "Lists")',
+        type: 'GET',
+        success: function (accounts) {
+            [
+                { ddl: '#incomeAccount', category: 'Sales' },
+                { ddl: '#assetAccount',  category: 'Inventory' },
+                { ddl: '#cogsAccount',   category: 'COGS' }
+            ].forEach(cfg => {
+                const $ddl = $(cfg.ddl);
+                $ddl.empty().append('<option value="">-- Select --</option>');
+                accounts.forEach(acc => {
+                    $ddl.append(`<option value="${acc.id}">${acc.code} - ${acc.name}</option>`);
+                });
                 $.ajax({
-                    url: '@Url.Action("GetItems", "Lists")',
+                    url: '@Url.Action("GetDefaultAccountByCategory", "Lists")',
                     type: 'GET',
+                    data: { category: cfg.category },
                     success: function (res) {
-                        if (res.status) {
-                            itemsList = res.data;
-                            const dropdowns = $(selector);
-                            dropdowns.empty().append('<option value="">Select Item</option>');
-                            res.data.forEach(item => {
-                                dropdowns.append(`<option value="${item.id}">${item.itemName}</option>`);
-                            });
-                            resolve();
-                        } else {
-                            reject("Failed to load items.");
-                        }
-                    },
-                    error: function (err) {
-                        console.error("Error fetching items:", err);
-                        reject(err);
+                        if (res.status && res.accountId > 0) $ddl.val(res.accountId);
                     }
                 });
             });
         }
+    });
+}
 
-        $(document).ready(function () {
+function loadPreferredVendors() {
+    $.ajax({
+        url: '@Url.Action("GetVendorAndSub", "Vendor")',
+        type: 'GET',
+        success: function (res) {
+            if (res.status) {
+                const $ddl = $('#preferredVendor');
+                $ddl.empty().append('<option value="">-- Select Vendor --</option>');
+                res.data.forEach(v => $ddl.append(`<option value="${v.id}">${v.code} - ${v.name}</option>`));
+            }
+        }
+    });
+}
 
-            // Load initial data
-            loadWarehouses();
-            loadAccountsAndDefaults();
-            loadPreferredVendors();
-            loadProjects();
-            populateBankAccounts();
-            loadProjectTenders();
-            loadItem();
+function loadProjects() {
+    $.ajax({
+        url: '@Url.Action("GetProjectManagement", "Construction")',
+        type: 'GET',
+        success: function (result) {
+            if (result.status) {
+                const $ddl = $('#projectName');
+                $ddl.empty().append('<option value="">-- Select Project --</option>');
+                result.data.forEach(p => $ddl.append(`<option value="${p.id}">${p.name}</option>`));
+            }
+        }
+    });
+}
 
-            $('#projectName').on('change', function () {
-                const projectId = $(this).val();
-                if (projectId) {
-                    loadProjectTenders(projectId);
-                } else {
-                    if ($.fn.DataTable.isDataTable('#table1')) {
-                        $('#table1').DataTable().clear().destroy();
-                    }
-                    $('#table1 tbody').html(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
-                }
-            });
+function loadProjectTenders(projectId) {
+    $.ajax({
+        url: '@Url.Action("GetProjectTenders", "Construction")',
+        type: 'GET',
+        data: { projectId: projectId },
+        success: function (res) {
+            if (!res.status) { toastr.error('Failed to load project tenders'); return; }
 
-            $(document).on('click', '.viewItemsBtn', function () {
-                const tenderId = $(this).data('id');
-                if (tenderId) {
-                    $('#tenderItemsModal').modal('show');
-                    loadTenderItems(tenderId);
-                }
-            });
+            if ($.fn.DataTable.isDataTable('#table1')) $('#table1').DataTable().clear().destroy();
+            const $tbody = $('#table1 tbody').empty();
 
-            $.ajax({
-                url: '@Url.Action("GetProjectManagement", "Construction")',
-                type: 'GET',
-                dataType: 'json',
-                success: function (response) {
-                    if (response.status) {
-                        var dropdown = $('#projectDropdown');
-                        dropdown.empty().append('<option value="">-- Select Project --</option>');
-                        response.data.forEach(function (project) {
-                            dropdown.append(
-                                $('<option>', {
-                                    value: project.id,
-                                    text: project.name,
-                                    'data-code': project.code
-                                })
-                            );
-                        });
-                    }
-                }
-            });
-
-            $('#projectDropdown').on('change', function () {
-                var selectedOption = $(this).find('option:selected');
-                var projectCode = selectedOption.data('code') || '';
-                $('#projectCode').val(projectCode);
-            });
-
-            $.ajax({
-                url: '@Url.Action("GetTenders", "Construction")',
-                type: 'GET',
-                dataType: 'json',
-                success: function(response) {
-                    if (response.status) {
-                        var dropdown = $('#tenderDropdown');
-                        response.data.forEach(function(tender) {
-                            dropdown.append(
-                                $('<option>', {
-                                    value: tender.id,
-                                    text: tender.name
-                                })
-                            );
-                        });
-                    }
-                }
-            });
-
-            // Edit tender button
-            $(document).on("click", ".editTenderBtn", function () {
-                const tenderStr = $(this).attr("data-tender");
-                const tender = tenderStr ? JSON.parse(tenderStr) : null;
-                if (!tender) return;
-
-                // Fill form fields
-                $("#TenderId").val(tender.id ?? 0);
-                $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0,10));
-                $("#projectDropdown").val(tender.project_Id ?? 0);
-                $("#projectCode").val(tender.code ?? "");
-                $("#debitAccount").val(tender.account_Id ?? 0);
-                $("#warehouseDropdown").val(tender.warehouse_Id ?? 0);
-                $("#tenderDropdown").val(tender.tender_Name_Id ?? 0);
-                $("#submissionDate").val(tender.submitDate ?? new Date().toISOString().slice(0,10));
-                $("#fees").val(tender.fees ?? 0);
-                $("#tenderDescription").val(tender.description ?? "");
-
-                // Clear existing rows
-                $("#tenderTableBody").empty();
-
-                // Load tender items
-                $.ajax({
-                    url: '@Url.Action("GetTenderItems", "Construction")',
-                    type: 'GET',
-                    data: { tenderId: tender.id },
-                    success: function(res) {
-                        if (res && res.status && res.data && res.data.length > 0) {
-                            res.data.forEach((item, index) => {
-                                const sr = item.sr ?? String.fromCharCode(65 + index);
-                                $("#tenderTableBody").append(`
-                                    <tr>
-                                        <td><input type="text" class="form-control sr" value="${sr}" readonly></td>
-                                        <td><input type="text" class="form-control description" value="${item.name ?? ''}"></td>
-                                        <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
-                                        <td><input type="text" class="form-control qty" value="${item.qty ?? 0}"></td>
-                                        <td><input type="text" class="form-control unit" value="${item.unit_Name ?? ''}"></td>
-                                        <td><input type="text" class="form-control length" value="${item.length ?? 0}"></td>
-                                        <td><input type="text" class="form-control width" value="${item.width ?? 0}"></td>
-                                        <td><input type="text" class="form-control thick" value="${item.thickness ?? 0}"></td>
-                                        <td><input type="text" class="form-control rate" value="${item.rate ?? 0}"></td>
-                                        <td><input type="text" class="form-control amount" readonly value="${item.amount ?? 0}"></td>
-                                        <td><input type="text" class="form-control margin" value="${item.margin_Percentage ?? 0}"></td>
-                                        <td><input type="text" class="form-control marginamount" value="${item.margin_Amount ?? 0}"></td>
-                                        <td><input type="text" class="form-control total" readonly value="${item.totoal ?? 0}"></td>
-                                        <td><input type="text" class="form-control note" value="${item.note ?? ''}"></td>
-                                    </tr>
-                                `);
-                            });
-
-                            // Recalculate all rows
-                            $("#tenderTableBody tr").each(function () {
-                                calculateTenderRow($(this), "rate");
-                            });
-                            calculateGrandTotal();
-                        } else {
-                            addEmptyRow();
-                        }
-                    },
-                    error: function() {
-                        toastr.error("Failed to load BOQ items");
-                        addEmptyRow();
-                    }
+            if (res.data && res.data.length > 0) {
+                res.data.forEach((row, i) => {
+                    $tbody.append(`
+                        <tr data-id="${row.id}">
+                            <td>${i + 1}</td>
+                            <td>${row.date ?? ''}</td>
+                            <td>${row.projectName ?? ''}</td>
+                            <td>${row.tenderName ?? ''}</td>
+                            <td>${row.submitDate ?? ''}</td>
+                            <td>${row.fees ?? 0}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary editTenderBtn"
+                                    data-tender='${JSON.stringify(row)}'>
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary viewItemsBtn"
+                                    data-id="${row.id}">
+                                    <i class="fas fa-book"></i>
+                                </button>
+                            </td>
+                        </tr>`);
                 });
+                $('#table1').DataTable({
+                    dom: 'Bfrtip',
+                    buttons: [
+                        { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm' },
+                        { extend: 'print',      text: '<i class="fas fa-print me-1"></i> Print',     className: 'btn btn-primary btn-sm' }
+                    ],
+                    order: [[0, 'asc']], pageLength: 25
+                });
+            } else {
+                $tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
+            }
+        }
+    });
+}
 
-                $("#tenderModalLabel").text("Edit Project Tender");
-                $("#tenderModal").modal("show");
-            });
+function loadTenderItems(tenderId) {
+    $.ajax({
+        url: '@Url.Action("GetTenderItems", "Construction")',
+        type: 'GET',
+        data: { tenderId: tenderId },
+        success: function (res) {
+            if ($.fn.DataTable.isDataTable('#table2')) $('#table2').DataTable().clear().destroy();
+            const $tbody = $('#table2 tbody').empty();
 
-            // Tender table input changes
-            $("#tenderTableBody").on("input change", ".qty, .rate, .margin, .marginamount", function () {
-                const $row = $(this).closest("tr");
-                const field = getChangedFieldClass(this);
-                calculateTenderRow($row, field);
-            });
+            if (res.status && res.data && res.data.length > 0) {
+                res.data.forEach((item, i) => {
+                    $tbody.append(`
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${item.itemName ?? ''}</td>
+                            <td>${item.qty ?? 0}</td>
+                            <td>${item.rate ?? 0}</td>
+                            <td>${item.unit ?? ''}</td>
+                            <td>${item.amount ?? 0}</td>
+                        </tr>`);
+                });
+                $('#table2').DataTable({
+                    dom: 'Bfrtip',
+                    buttons: [
+                        { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm' },
+                        { extend: 'print',      text: '<i class="fas fa-print me-1"></i> Print',     className: 'btn btn-primary btn-sm' }
+                    ],
+                    order: [[0, 'asc']], pageLength: 10
+                });
+            } else {
+                $tbody.append(`<tr><td colspan="6" class="text-center text-muted py-3">No items found</td></tr>`);
+            }
+        }
+    });
+}
 
-            // Auto-add row
-            $("#tenderTableBody").on("input change", "tr:last-child input", function () {
-                const $last = $(this).closest("tr");
-                const hasValue = $last.find("input").toArray().some(el => $(el).val().trim() !== "");
-                if (hasValue) addEmptyRow();
-            });
+function populateBankAccounts() {
+    $.ajax({
+        url: '@Url.Action("GetAccruedSalaries", "HR")',
+        type: 'GET',
+        success: function (res) {
+            const data = Array.isArray(res) ? res : res.data || [];
+            if (!data.length) return;
+            const $ddl = $('#debitAccount').empty().append('<option value="">-- Select --</option>');
+            data.forEach(item => $ddl.append(`<option value="${item.id}">${item.code} - ${item.name}</option>`));
+        }
+    });
+}
 
-            // Fees change
-            $("#fees").on("input change", calculateGrandTotal);
+// ── document ready ────────────────────────────────────────────────────────────
 
-            // Add row button
-            $("#tenderModal").on('shown.bs.modal', function () {
-                $("#btnAddRow").off('click').on("click", function () {
+$(document).ready(function () {
+
+    // Initial loads
+    loadWarehouses();
+    loadAccountsAndDefaults();
+    loadPreferredVendors();
+    loadProjects();
+    populateBankAccounts();
+    loadProjectTenders();
+    loadItem(".itemNameSelect");
+
+    // Project filter for main table
+    $('#projectName').on('change', function () {
+        const id = $(this).val();
+        if (id) {
+            loadProjectTenders(id);
+        } else {
+            if ($.fn.DataTable.isDataTable('#table1')) $('#table1').DataTable().clear().destroy();
+            $('#table1 tbody').html(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
+        }
+    });
+
+    // View items button
+    $(document).on('click', '.viewItemsBtn', function () {
+        const tenderId = $(this).data('id');
+        if (tenderId) { $('#tenderItemsModal').modal('show'); loadTenderItems(tenderId); }
+    });
+
+    // Load modal project dropdown
+    $.ajax({
+        url: '@Url.Action("GetProjectManagement", "Construction")',
+        type: 'GET',
+        success: function (res) {
+            if (res.status) {
+                const $ddl = $('#projectDropdown').empty().append('<option value="">-- Select Project --</option>');
+                res.data.forEach(p => $ddl.append(`<option value="${p.id}" data-code="${p.code}">${p.name}</option>`));
+            }
+        }
+    });
+
+    $('#projectDropdown').on('change', function () {
+        $('#projectCode').val($(this).find('option:selected').data('code') || '');
+    });
+
+    // Load modal tender dropdown
+    $.ajax({
+        url: '@Url.Action("GetTenders", "Construction")',
+        type: 'GET',
+        success: function (res) {
+            if (res.status) {
+                const $ddl = $('#tenderDropdown');
+                res.data.forEach(t => $ddl.append(`<option value="${t.id}">${t.name}</option>`));
+            }
+        }
+    });
+
+    // ── Edit tender button ────────────────────────────────────────────────────
+    $(document).on("click", ".editTenderBtn", function () {
+        const tender = JSON.parse($(this).attr("data-tender") || "null");
+        if (!tender) return;
+
+        $("#TenderId").val(tender.id ?? 0);
+        $("#tenderDate").val(tender.date ?? new Date().toISOString().slice(0, 10));
+        $("#projectDropdown").val(tender.project_Id ?? 0);
+        $("#projectCode").val(tender.code ?? "");
+        $("#debitAccount").val(tender.account_Id ?? 0);
+        $("#warehouseDropdown").val(tender.warehouse_Id ?? 0);
+        $("#tenderDropdown").val(tender.tender_Name_Id ?? 0);
+        $("#submissionDate").val(tender.submitDate ?? new Date().toISOString().slice(0, 10));
+        $("#fees").val(tender.fees ?? 0);
+        $("#tenderDescription").val(tender.description ?? "");
+        $("#tenderTableBody").empty();
+
+        $.ajax({
+            url: '@Url.Action("GetTenderItems", "Construction")',
+            type: 'GET',
+            data: { tenderId: tender.id },
+            success: function (res) {
+                if (res && res.status && res.data && res.data.length > 0) {
+                    res.data.forEach((item, i) => {
+                        $("#tenderTableBody").append(`
+                            <tr>
+                                <td><input type="text" class="form-control sr" value="${item.sr ?? i + 1}" readonly></td>
+                                <td><input type="text" class="form-control description" value="${item.name ?? ''}"></td>
+                                <td><button type="button" class="btn btn-sm btn-info view-btn">BOM</button></td>
+                                <td><input type="text" class="form-control qty"          value="${item.qty ?? 0}"></td>
+                                <td><input type="text" class="form-control unit"         value="${item.unit_Name ?? ''}"></td>
+                                <td><input type="text" class="form-control length"       value="${item.length ?? 0}"></td>
+                                <td><input type="text" class="form-control width"        value="${item.width ?? 0}"></td>
+                                <td><input type="text" class="form-control thick"        value="${item.thickness ?? 0}"></td>
+                                <td><input type="text" class="form-control rate"         value="${item.rate ?? 0}"></td>
+                                <td><input type="text" class="form-control amount" readonly value="${item.amount ?? 0}"></td>
+                                <td><input type="text" class="form-control margin"       value="${item.margin_Percentage ?? 0}"></td>
+                                <td><input type="text" class="form-control marginamount" value="${item.margin_Amount ?? 0}"></td>
+                                <td><input type="text" class="form-control total"  readonly value="${item.totoal ?? 0}"></td>
+                                <td><input type="text" class="form-control note"         value="${item.note ?? ''}"></td>
+                            </tr>`);
+                    });
+                    $("#tenderTableBody tr").each(function () { calculateTenderRow($(this), "rate"); });
+                    calculateGrandTotal();
+                } else {
                     addEmptyRow();
-                    toastr.success("New row added!");
-                });
-            });
-
-            // BOM modal buttons
-            document.addEventListener("click", function (e) {
-                if (e.target.classList.contains("add-btn")) {
-                    window.location.href = `/Lists/ItemList?openModal=true`;
                 }
-            });
+            },
+            error: function () { toastr.error("Failed to load BOQ items"); addEmptyRow(); }
+        });
 
-            // Store the current row when opening BOM modal
-            document.addEventListener("click", function (e) {
-                if (e.target.classList.contains("view-btn")) {
-                    // Store reference to the tender row
-                    currentBomRow = $(e.target).closest("tr");
+        $("#tenderModalLabel").text("Edit Project Tender");
+        $("#tenderModal").modal("show");
+    });
 
-                    const modal = new bootstrap.Modal(document.getElementById("bomModal"));
-                    modal.show();
-                }
-            });
+    // ── Tender table input changes ────────────────────────────────────────────
+    $("#tenderTableBody").on("input change", ".qty, .rate, .margin, .marginamount", function () {
+        calculateTenderRow($(this).closest("tr"), getChangedFieldClass(this));
+    });
 
-            // BOM item selection
-            $(document).on("change", "#bomTableBody .itemNameSelect", function () {
-                const selectedId = parseInt($(this).val(), 10);
-                const row = $(this).closest("tr");
+    // Auto-add row when last row gets any value
+    $("#tenderTableBody").on("input change", "tr:last-child input", function () {
+        const hasValue = $(this).closest("tr").find("input").toArray()
+            .some(el => $(el).val().trim() !== "");
+        if (hasValue) addEmptyRow();
+    });
 
-                if (selectedId && itemsList) {
-                    const selectedItem = itemsList.find(item => item.id === selectedId);
-                    if (selectedItem) {
-                        row.find("td:nth-child(2) input").val(selectedItem.code || "");
-                        row.find("td:nth-child(5) input").val(selectedItem.cost_price || 0);
-                        calculateBomRow(row);
-                    }
+    $("#fees").on("input change", calculateGrandTotal);
+
+    $("#tenderModal").on('shown.bs.modal', function () {
+        $("#btnAddRow").off('click').on("click", function () { addEmptyRow(); toastr.success("New row added!"); });
+    });
+
+    // ── BOM modal — open ──────────────────────────────────────────────────────
+    // FIX: set currentBomKey from the row's description BEFORE opening modal
+    $(document).on("click", ".view-btn", function () {
+        currentBomRow = $(this).closest("tr");
+        const description = currentBomRow.find(".description").val().trim();
+
+        if (!description) {
+            toastr.warning("Please enter an item description before opening BOM.");
+            return;
+        }
+
+        // ✅ KEY FIX: modal title = item description = localStorage key suffix
+        currentBomKey = getAssemblyStorageKey(description);
+        $("#bomModalLabel").text(description);
+
+        // Clear BOM table
+        $("#bomTableBody").empty();
+
+        // Restore accounts to defaults first
+        loadAccountsAndDefaults();
+        loadPreferredVendors();
+
+        // Load existing assembly data if saved
+        const existing = localStorage.getItem(currentBomKey);
+        if (existing) {
+            try {
+                const parsed = JSON.parse(existing);
+                console.log("[BOM] Restoring existing data for:", currentBomKey, parsed);
+
+                // Restore account selections
+                if (parsed.AssetAccountId)  setTimeout(() => $("#assetAccount").val(parsed.AssetAccountId), 400);
+                if (parsed.COGSAccountId)   setTimeout(() => $("#cogsAccount").val(parsed.COGSAccountId), 400);
+                if (parsed.IncomeAccountId) setTimeout(() => $("#incomeAccount").val(parsed.IncomeAccountId), 400);
+                if (parsed.VendorAccountId) setTimeout(() => $("#preferredVendor").val(parsed.VendorAccountId), 400);
+
+                // Restore rows
+                if (Array.isArray(parsed.Items) && parsed.Items.length > 0) {
+                    parsed.Items.forEach(item => addBomRow(item));
+                    calculateBomTotal();
                 } else {
-                    row.find("td:nth-child(2) input").val("");
-                    row.find("td:nth-child(5) input").val(0);
-                    calculateBomRow(row);
+                    addBomRow();
                 }
-            });
+            } catch (e) {
+                console.error("[BOM] Restore error:", e);
+                addBomRow();
+            }
+        } else {
+            console.log("[BOM] No existing data, starting fresh for:", currentBomKey);
+            addBomRow();
+        }
 
-            // BOM input changes
-            $(document).on("input", "#bomTableBody input", function () {
-                const $row = $(this).closest("tr");
+        new bootstrap.Modal(document.getElementById("bomModal")).show();
+    });
+
+    // ── BOM item dropdown change ──────────────────────────────────────────────
+    $(document).on("change", "#bomTableBody .itemNameSelect", function () {
+        const id  = parseInt($(this).val(), 10);
+        const $row = $(this).closest("tr");
+        if (id && itemsList.length) {
+            const found = itemsList.find(x => x.id === id);
+            if (found) {
+                $row.find("td:nth-child(2) input").val(found.code || "");
+                $row.find("td:nth-child(5) input").val(found.cost_price || 0);
                 calculateBomRow($row);
-            });
+            }
+        } else {
+            $row.find("td:nth-child(2) input").val("");
+            $row.find("td:nth-child(5) input").val(0);
+            calculateBomRow($row);
+        }
+    });
 
-            // BOM add row
-            $(".add-btn").click(function () {
-                const rowCount = $("#bomTableBody tr").length + 1;
-                $("#bomTableBody").append(`
-                    <tr>
-                        <td>${rowCount}</td>
-                        <td><input class="form-control form-control-sm"></td>
-                        <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                        <td><input class="form-control form-control-sm"></td>
-                        <td><input class="form-control form-control-sm"></td>
-                        <td><input class="form-control form-control-sm" readonly></td>
-                        <td><button class="btn btn-sm btn-danger delRow">X</button></td>
-                    </tr>
-                `);
-                loadItem($("#bomTableBody tr:last .itemNameSelect"));
-            });
+    $(document).on("input", "#bomTableBody input", function () {
+        calculateBomRow($(this).closest("tr"));
+    });
 
-            // BOM delete row
-            $(document).on("click", ".delRow", function () {
-                $(this).closest("tr").remove();
-                reindexRows();
-                calculateBomTotal();
-            });
+    // ── BOM modal — save ──────────────────────────────────────────────────────
+    // FIX: use currentBomKey (set when modal opened) not modal title text
+    $(document).on("click", "#bomModal .modal-footer .btn-primary", function () {
 
-            // BOM save - Add BOM total to tender row's rate
-            $("#bomModal .btn-primary").click(function () {
-                const refId = $("#bomModalLabel").text().trim();
-                const items = [];
-                let grandTotal = 0;
+        if (!currentBomKey) {
+            toastr.warning("No item linked. Please close and reopen BOM from a row.");
+            return;
+        }
 
-                $("#bomTableBody tr").each(function (index) {
-                    const $row = $(this);
-                    const code = $row.find("td:eq(1) input").val();
-                    const name = $row.find("td:eq(2) select option:selected").text().trim();
-                    const qty = parseFloat($row.find("td:eq(3) input").val()) || 0;
-                    const cost = parseFloat($row.find("td:eq(4) input").val()) || 0;
-                    const total = qty * cost;
+        const items = [];
+        let grandTotal = 0;
 
-                    if (code && name && qty > 0) {
-                        $row.find("td:eq(5) input").val(total.toFixed(2));
-                        grandTotal += total;
+        $("#bomTableBody tr").each(function (i) {
+            const $row = $(this);
+            const code  = $row.find("td:eq(1) input").val().trim();
+            const $sel  = $row.find("td:eq(2) select");
+            const name  = $sel.find("option:selected").text().trim();
+            const qty   = parseFloat($row.find("td:eq(3) input").val()) || 0;
+            const cost  = parseFloat($row.find("td:eq(4) input").val()) || 0;
+            const total = qty * cost;
 
-                        items.push({
-                            ItemId: index + 1,
-                            RefId: refId,
-                            Code: code,
-                            Name: name,
-                            Qty: qty,
-                            Cost: cost,
-                            Total: total
-                        });
-                    }
-                });
+            // Only save rows that have a real item selected
+            if (name && name !== "Select Item" && qty > 0) {
+                $row.find("td:eq(5) input").val(total.toFixed(2));
+                grandTotal += total;
+                items.push({ ItemId: i + 1, Code: code, Name: name, Qty: qty, Cost: cost, Total: total });
+            }
+        });
 
-                if (items.length === 0) {
-                    toastr.warning("Assembly items can't be empty");
-                    return;
-                }
+        if (items.length === 0) {
+            toastr.warning("Please add at least one assembly item with qty > 0.");
+            return;
+        }
 
-                const model = {
-                    RefId: refId,
-                    AssetAccountId: $("#assetAccount").val() || 0,
-                    IncomeAccountId: $("#incomeAccount").val() || 0,
-                    VendorAccountId: $("#preferredVendor").val() || 0,
-                    COGSAccountId: $("#cogsAccount").val() || 0,
-                    TotalCost: grandTotal,
-                    Items: items
-                };
+        const model = {
+            RefId:           currentBomKey.replace("Assembly_", ""),
+            AssetAccountId:  parseInt($("#assetAccount").val())   || 0,
+            IncomeAccountId: parseInt($("#incomeAccount").val())  || 0,
+            VendorAccountId: parseInt($("#preferredVendor").val())|| 0,
+            COGSAccountId:   parseInt($("#cogsAccount").val())    || 0,
+            TotalCost:       grandTotal,
+            Items:           items
+        };
 
-                localStorage.setItem("Assembly_" + refId, JSON.stringify(model));
-                AssemblyItems: getAssemblyForItem(sr)
+        // ✅ Save with key that matches what getAssemblyForItem() will look for
+        localStorage.setItem(currentBomKey, JSON.stringify(model));
+        console.log("[BOM] Saved to localStorage:", currentBomKey, model);
 
-                      // Add BOM total to the tender row's AMOUNT (not rate)
+        // Update tender row
         if (currentBomRow) {
+            const rowQty    = parseDecimal(currentBomRow.find(".qty").val());
+            const rowRate   = parseDecimal(currentBomRow.find(".rate").val());
+            const newAmount = (rowQty * rowRate) + grandTotal;
+            const marginPct = parseDecimal(currentBomRow.find(".margin").val());
+            const marginAmt = isFinite((newAmount * marginPct) / 100)
+                              ? (newAmount * marginPct) / 100 : 0;
 
-            const qty = parseDecimal(currentBomRow.find(".qty").val());
-            const rate = parseDecimal(currentBomRow.find(".rate").val());
-
-            // Base amount from qty * rate
-            const baseAmount = qty * rate;
-
-            // Add BOM cost
-            const newAmount = baseAmount + grandTotal;
-
-            // Update amount column
             currentBomRow.find(".amount").val(newAmount.toFixed(2));
-
-            // --- Recalculate margin ---
-            let marginPct = parseDecimal(currentBomRow.find(".margin").val());
-            let marginAmt = (newAmount * marginPct) / 100;
-
-            if (!isFinite(marginAmt)) marginAmt = 0;
-
-            // Update margin & total
             currentBomRow.find(".marginamount").val(marginAmt.toFixed(2));
             currentBomRow.find(".total").val((newAmount + marginAmt).toFixed(2));
-
             calculateGrandTotal();
-
-            toastr.success(`Assembly saved! BOM Amount (${grandTotal.toFixed(2)}) added to amount.`);
-        }
-        else {
-            toastr.success("Assembly saved locally");
-        }
-         
-
-                $("#bomModal").modal("hide");
-            });
-
-            // Initialize BOM table listeners
-            if (bomTableBody && bomTableBody.querySelector("tr")) {
-                attachInputListeners(bomTableBody.querySelector("tr"));
-            }
-
-            // Initialize with one empty row
-            addEmptyRow();
-            calculateGrandTotal();
-
-
-             $("#btnSaveEstimation").click(function () {
-            // 🔹 Get account IDs from dropdowns
-            const assetAccountId = parseInt($("#assetAccount").val()) || 0;
-            const cogsAccountId = parseInt($("#cogsAccount").val()) || 0;
-            const incomeAccountId = parseInt($("#incomeAccount").val()) || 0;
-            const vendorAccountId = parseInt($("#preferredVendor").val()) || 0;
-
-            const model = {
-                Id: parseInt($("#TenderId").val()) || 0,
-                Date: $("#tenderDate").val(),
-                SubmissionDate: $("#submissionDate").val(),
-                ProjectId: parseInt($("#projectDropdown").val()) || 0,
-                TenderNameId: parseInt($("#tenderDropdown").val()) || 0,
-                TenderName: $("#tenderDropdown option:selected").text(),
-                AccountId: parseInt($("#debitAccount").val()) || 0,
-                WarehouseId: parseInt($("#warehouseDropdown").val()) || 0,
-                Fees: $("#fees").val() || "0",
-                Description: $("#tenderDescription").val(),
-                TotalAmount: $("#grandTotal").val() || "0",
-                AssetAccountId: assetAccountId,
-                COGSAccountId: cogsAccountId,
-                IncomeAccountId: incomeAccountId,
-                Items: []
-            };
-
-                     const allAssemblyData = buildAssemblyJson();
-
-        model.AssemblyJson = JSON.stringify(allAssemblyData);
-
-        console.log("FINAL AssemblyJson:", model.AssemblyJson);
-
-            for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith("Assembly_")) {
-                console.log("KEY:", key);
-            }
+            toastr.success(`Assembly saved: ${items.length} item(s), total ${grandTotal.toFixed(2)}`);
         }
 
-        model.AssemblyJson = JSON.stringify(allAssemblyData);
-        console.log("FINAL AssemblyJson:", model.AssemblyJson);
+        $("#bomModal").modal("hide");
+    });
 
-            // 🔹 Collect grid items
-            $("#tenderTableBody tr").each(function () {
-                const $row = $(this);
-                const sr = $row.find(".sr").val();
-                const description = $row.find(".description").val();
+    // ── Save estimation ───────────────────────────────────────────────────────
+    $("#btnSaveEstimation").click(function () {
 
-                if (!description || description.trim() === "")
-                    return;
+        const model = {
+            Id:           parseInt($("#TenderId").val())        || 0,
+            Date:         $("#tenderDate").val(),
+            SubmissionDate: $("#submissionDate").val(),
+            ProjectId:    parseInt($("#projectDropdown").val()) || 0,
+            TenderNameId: parseInt($("#tenderDropdown").val())  || 0,
+            TenderName:   $("#tenderDropdown option:selected").text(),
+            AccountId:    parseInt($("#debitAccount").val())    || 0,
+            WarehouseId:  parseInt($("#warehouseDropdown").val())|| 0,
+            Fees:         $("#fees").val() || "0",
+            Description:  $("#tenderDescription").val(),
+            TotalAmount:  $("#grandTotal").val() || "0",
+            Items: []
+        };
 
-                model.Items.push({
-                    Sr: sr || "",
-                    Name: description,
-                    Unit: $row.find(".unit").val() || "",
-                    Qty: $row.find(".qty").val() || "0",
-                    Rate: $row.find(".rate").val() || "0",
-                    Amount: $row.find(".amount").val() || "0",
-                    Length: $row.find(".length").val() || "0",
-                    Width: $row.find(".width").val() || "0",
-                    Thick: $row.find(".thick").val() || "0",
-                    Note: $row.find(".note").val() || "",
-                    MarginAmount: $row.find(".marginamount").val() || "0",
-                    MarginPercentage: $row.find(".margin").val() || "0",
+        // Build items — each carries its own AssemblyItems
+        $("#tenderTableBody tr").each(function () {
+            const $row       = $(this);
+            const sr          = $row.find(".sr").val();
+            const description = $row.find(".description").val().trim();
+            if (!description) return;
 
-                    AssemblyItems: getAssemblyForItem(description)
-                });
-            });
+            const assemblyItems = getAssemblyForItem(description);
 
-            console.log("Final model:", model);
+            // Debug: show what is being sent
+            console.log(`[Save] Item "${description}" → AssemblyItems: ${assemblyItems.length}`);
 
-            // Validations...
-            if (!model.ProjectId || model.ProjectId <= 0) {
-                toastr.warning("Project must be selected");
-                $("#projectDropdown").focus();
-                return;
-            }
-
-            if (!model.TenderNameId || model.TenderNameId <= 0) {
-                toastr.warning("Tender must be selected");
-                $("#tenderDropdown").focus();
-                return;
-            }
-
-            // if (!model.WarehouseId || model.WarehouseId <= 0) {
-            //     toastr.warning("Warehouse must be selected");
-            //     $("#warehouseDropdown").focus();
-            //     return;
-            // }
-
-            if (model.Items.length === 0) {
-                toastr.warning("Insert items first");
-                return;
-            }
-
-            if (!model.TotalAmount || parseFloat(model.TotalAmount) <= 0) {
-                toastr.warning("Total must be bigger than zero");
-                return;
-            }
-
-            // Send to API
-            $.ajax({
-                url: '@Url.Action("SaveOrUpdateEstimation", "Construction")',
-                type: 'POST',
-                data: JSON.stringify(model),
-                contentType: 'application/json; charset=utf-8',
-                beforeSend: function () {
-                    $("#btnSaveEstimation").prop("disabled", true).text("Generating Estimate...");
-                },
-                success: function (res) {
-                    if (res.status) {
-                        toastr.success(res.message);
-
-                        // 🔹 Clear all assembly data from localStorage
-                        for (let i = localStorage.length - 1; i >= 0; i--) {
-                            const key = localStorage.key(i);
-                            if (key && key.startsWith("Assembly_")) {
-                                localStorage.removeItem(key);
-                                console.log(`Cleared localStorage key: ${key}`);
-                            }
-                        }
-
-                        $("#tenderModal").modal("hide");
-                        loadProjectTenders($('#projectName').val());
-                    } else {
-                        toastr.warning(res.message);
-                    }
-                },
-                error: function (xhr) {
-                    const errorMsg = xhr.responseJSON?.message || xhr.responseText || "Unexpected error occurred";
-                    toastr.error(errorMsg);
-                },
-                complete: function () {
-                    $("#btnSaveEstimation").prop("disabled", false).text("Generate Estimate");
-                }
+            model.Items.push({
+                Sr:               sr || "",
+                Name:             description,
+                Unit:             $row.find(".unit").val()         || "",
+                Qty:              $row.find(".qty").val()           || "0",
+                Rate:             $row.find(".rate").val()          || "0",
+                Amount:           $row.find(".amount").val()        || "0",
+                Length:           $row.find(".length").val()        || "0",
+                Width:            $row.find(".width").val()         || "0",
+                Thick:            $row.find(".thick").val()         || "0",
+                Note:             $row.find(".note").val()          || "",
+                MarginAmount:     $row.find(".marginamount").val()  || "0",
+                MarginPercentage: $row.find(".margin").val()        || "0",
+                AssemblyItems:    assemblyItems   // ✅ array of assembly items or []
             });
         });
 
+        console.log("[Save] Full model:", JSON.stringify(model, null, 2));
 
-               function getAssemblyForItem(itemName) {
-            if (!itemName) return [];
+        if (!model.ProjectId)    { toastr.warning("Project must be selected");    return; }
+        if (!model.TenderNameId) { toastr.warning("Tender must be selected");     return; }
+        if (model.Items.length === 0) { toastr.warning("Insert items first");     return; }
+        if (parseFloat(model.TotalAmount) <= 0) {
+            toastr.warning("Total must be bigger than zero"); return;
+        }
 
-            // 🔥 normalize name
-            const cleanName = itemName.trim().toLowerCase();
-
-            let foundData = null;
-
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-
-                if (key && key.startsWith("Assembly_")) {
-                    const keyName = key.replace("Assembly_", "").trim().toLowerCase();
-
-                    if (keyName === cleanName) {
-                        foundData = localStorage.getItem(key);
-                        break;
+        $.ajax({
+            url: '@Url.Action("SaveOrUpdateEstimation", "Construction")',
+            type: 'POST',
+            data: JSON.stringify(model),
+            contentType: 'application/json; charset=utf-8',
+            beforeSend: function () {
+                $("#btnSaveEstimation").prop("disabled", true).text("Generating Estimate...");
+            },
+            success: function (res) {
+                if (res.status) {
+                    toastr.success(res.message);
+                    // Clear all assembly data from localStorage
+                    for (let i = localStorage.length - 1; i >= 0; i--) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith("Assembly_")) localStorage.removeItem(key);
                     }
+                    $("#tenderModal").modal("hide");
+                    loadProjectTenders($('#projectName').val());
+                } else {
+                    toastr.warning(res.message);
                 }
+            },
+            error: function (xhr) {
+                toastr.error(xhr.responseJSON?.message || xhr.responseText || "Unexpected error");
+            },
+            complete: function () {
+                $("#btnSaveEstimation").prop("disabled", false).text("Generate Estimate");
             }
-
-            if (!foundData) {
-                console.warn("No assembly found for:", itemName);
-                return [];
-            }
-
-            try {
-                const parsed = JSON.parse(foundData);
-
-                if (!parsed.Items || !Array.isArray(parsed.Items)) {
-                    return [];
-                }
-
-                return parsed.Items.map(x => ({
-                    Code: x.Code || "",
-                    Name: x.Name || "",
-                    Cost: parseFloat(x.Cost) || 0,
-                    Qty: parseFloat(x.Qty) || 0,
-                    Total: parseFloat(x.Total) || 0,
-                    AssetAccountId: parseInt(parsed.AssetAccountId) || 0,
-                    COGSAccountId: parseInt(parsed.COGSAccountId) || 0,
-                    IncomeAccountId: parseInt(parsed.IncomeAccountId) || 0,
-                    VendorAccountId: parseInt(parsed.VendorAccountId) || 0
-                }));
-            } catch (e) {
-                console.error("Assembly parse error:", e);
-                return [];
-            }
-        }
-
-
-                function buildAssemblyJson() {
-
-            const allAssemblyData = {};
-
-            for (let i = 0; i < localStorage.length; i++) {
-
-                const key = localStorage.key(i);
-
-                if (!key || !key.startsWith("Assembly_")) continue;
-
-                const raw = localStorage.getItem(key);
-                if (!raw) continue;
-
-                try {
-                    const parsed = JSON.parse(raw);
-
-                    // IMPORTANT: derive item key safely
-                    const itemKey = (parsed.RefId || key.replace("Assembly_", "")).trim();
-
-                    if (!parsed.Items || !Array.isArray(parsed.Items)) continue;
-
-                    allAssemblyData[itemKey] = parsed.Items.map(x => ({
-                        Code: x.Code || "",
-                        Name: x.Name || "",
-                        Cost: Number(x.Cost) || 0,
-                        Qty: Number(x.Qty) || 0,
-                        Total: Number(x.Total) || 0,
-                        AssetAccountId: Number(parsed.AssetAccountId) || 0,
-                        COGSAccountId: Number(parsed.COGSAccountId) || 0,
-                        IncomeAccountId: Number(parsed.IncomeAccountId) || 0,
-                        VendorAccountId: Number(parsed.VendorAccountId) || 0
-                    }));
-
-                } catch (e) {
-                    console.error("Assembly parse error:", key, e);
-                }
-            }
-
-            return allAssemblyData;
-        }
-
         });
+    });
+
+    // ── Initial state ─────────────────────────────────────────────────────────
+    addEmptyRow();
+    calculateGrandTotal();
+
+}); // end document.ready
 
     </script>
 }

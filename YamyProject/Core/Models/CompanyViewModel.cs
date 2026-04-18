@@ -833,25 +833,26 @@ namespace YamyProject.Core.Models
         public int AssetAccountId { get; set; }
         public int COGSAccountId { get; set; }
         public int IncomeAccountId { get; set; }
-        public string? AssemblyJson { get; set; }
         public List<EstimateItemRequest> Items { get; set; }
     }
 
     public class EstimateItemRequest
     {
-        public string? Sr { get; set; }
-        public string? Name { get; set; }
-        public string? Unit { get; set; }
-        public string? Qty { get; set; }
-        public string? Rate { get; set; }
-        public string? Amount { get; set; }
-        public string? Length { get; set; }
-        public string? Width { get; set; }
-        public string? Thick { get; set; }
-        public string? Note { get; set; }
-        public string? MarginAmount { get; set; }
-        public string? MarginPercentage { get; set; }
-        public List<AssemblyItemRequest>? AssemblyItems { get; set; }
+        public string Sr { get; set; }
+        public string Name { get; set; }
+        public string Unit { get; set; }
+        public string Qty { get; set; }
+        public string Rate { get; set; }
+        public string Amount { get; set; }
+        public string Length { get; set; }
+        public string Width { get; set; }
+        public string Thick { get; set; }
+        public string Note { get; set; }
+        public string MarginAmount { get; set; }
+        public string MarginPercentage { get; set; }
+
+        // ✅ THIS is what carries the assembly data per item
+        public List<AssemblyItemRequest> AssemblyItems { get; set; }
     }
 
     public class AssemblyItemRequest
@@ -878,39 +879,39 @@ namespace YamyProject.Core.Models
         public decimal Total { get; set; }
     }
 
-    //public class ProjectPlanningRequest
-    //{
-    //    public int Id { get; set; }
-    //    public DateTime Date { get; set; }
-    //    public int ProjectId { get; set; }
-    //    public int SiteId { get; set; }
-    //    public int TenderId { get; set; }
-    //    public int TenderNameId { get; set; }
-    //    public int AccountId { get; set; }
-    //    public int CashAccountId { get; set; }
-    //    public decimal EstimatedBudget { get; set; }
-    //    public string Status { get; set; }
-    //    public string ProjectType { get; set; }
-    //    public DateTime StartDate { get; set; }
-    //    public DateTime EndDate { get; set; }
-    //}
-
     public class ProjectPlanningRequest
     {
         public int Id { get; set; }
         public DateTime Date { get; set; }
         public int ProjectId { get; set; }
         public int SiteId { get; set; }
-        public string SiteName { get; set; } 
         public int TenderId { get; set; }
         public int TenderNameId { get; set; }
+        public int AccountId { get; set; }
+        public int CashAccountId { get; set; }
+        public decimal EstimatedBudget { get; set; }
+        public string Status { get; set; }
+        public string ProjectType { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-        public decimal EstimatedBudget { get; set; }
-        public int SubcontractorId { get; set; }
-        public decimal RetentionPercent { get; set; }
-        public string Status { get; set; }
     }
+
+    //public class ProjectPlanningRequest
+    //{
+    //    public int Id { get; set; }
+    //    public DateTime Date { get; set; }
+    //    public int ProjectId { get; set; }
+    //    public int SiteId { get; set; }
+    //    public string SiteName { get; set; } 
+    //    public int TenderId { get; set; }
+    //    public int TenderNameId { get; set; }
+    //    public DateTime StartDate { get; set; }
+    //    public DateTime EndDate { get; set; }
+    //    public decimal EstimatedBudget { get; set; }
+    //    public int SubcontractorId { get; set; }
+    //    public decimal RetentionPercent { get; set; }
+    //    public string Status { get; set; }
+    //}
 
     public class MaterialRequest
     {
