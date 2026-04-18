@@ -13,8 +13,6 @@
     <title>YamyProject | @ViewData["Title"]</title>
 
     <style>
-        /* White overlay — covers page while GT is translating.
-                   visibility:visible !important overrides the parent html visibility:hidden */
         #gt-overlay {
             position: fixed;
             top: 0;
@@ -27,7 +25,6 @@
             align-items: center;
             justify-content: center;
             visibility: visible !important;
-
         }
 
             #gt-overlay .gt-spinner {
@@ -54,10 +51,7 @@
             }
         }
 
-        /* Hide Google Translate toolbar completely */
-        .goog-te-banner-frame,
-        .goog-te-gadget,
-        .skiptranslate {
+        .goog-te-banner-frame, .goog-te-gadget, .skiptranslate {
             display: none !important;
         }
 
@@ -67,9 +61,92 @@
     </style>
 
     <script>
+        /* ============================================================
+           STEP 1 — GLOBAL GT PROTECTION (runs before GT loads)
+           ============================================================
+           A) Marks modal-content, modal-body, table tbody as notranslate
+              so GT never corrupts form labels or table data
+           B) Backs up every data-* attribute that contains JSON / long text
+              then restores after GT finishes
+        ============================================================ */
         (function () {
 
-            /* ── cookie helpers ─────────────────────────────────────── */
+                  // ✅ NEW — only shields modals, tables translate normally
+        var SHIELD_SEL = '.modal-content,.modal-body,.modal-header';
+
+            function shieldNode(node) {
+                if (node.nodeType !== 1) return;
+                if (node.matches && node.matches(SHIELD_SEL)) {
+                    node.setAttribute('translate', 'no');
+                    node.classList.add('notranslate');
+                }
+                if (node.querySelectorAll) {
+                    node.querySelectorAll(SHIELD_SEL).forEach(function (el) {
+                        el.setAttribute('translate', 'no');
+                        el.classList.add('notranslate');
+                    });
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                shieldNode(document.body);
+            });
+
+            new MutationObserver(function (muts) {
+                muts.forEach(function (m) {
+                    m.addedNodes.forEach(shieldNode);
+                });
+            }).observe(document.documentElement, { childList: true, subtree: true });
+
+            /* ── B: data-attribute guardian ────────────────────────── */
+            var _attrStore = [];   // [{el, name, value}]
+
+            function guardEl(el) {
+                if (!el || el.nodeType !== 1 || el._gtGuarded) return;
+                el._gtGuarded = true;
+                for (var i = 0; i < el.attributes.length; i++) {
+                    var a = el.attributes[i];
+                    if (a.name.indexOf('data-') === 0 && a.value.length > 5) {
+                        _attrStore.push({ el: el, name: a.name, value: a.value });
+                    }
+                }
+            }
+
+            function guardSubtree(root) {
+                guardEl(root);
+                if (root.querySelectorAll) {
+                    root.querySelectorAll('[data-id],[data-project],[data-item],[data-vendor],[data-customer],[data-account],[data-record],[data-row]')
+                        .forEach(guardEl);
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                guardSubtree(document.body);
+            });
+
+            new MutationObserver(function (muts) {
+                muts.forEach(function (m) {
+                    m.addedNodes.forEach(function (n) {
+                        if (n.nodeType === 1) guardSubtree(n);
+                    });
+                });
+            }).observe(document.documentElement, { childList: true, subtree: true });
+
+            /* expose restore so gtReady handler (bottom of body) can call it */
+            window.__restoreDataAttrs = function () {
+                _attrStore.forEach(function (item) {
+                    try { item.el.setAttribute(item.name, item.value); } catch (e) {}
+                });
+            };
+
+        })();
+    </script>
+
+    <script>
+        /* ============================================================
+           STEP 2 — GT OVERLAY / REVEAL LOGIC
+        ============================================================ */
+        (function () {
             function getCookie(n) {
                 var m = document.cookie.match('(?:^|; )' + n.replace(/([.$?*|{}()\[\]\/+^])/g, '\\$1') + '=([^;]*)');
                 return m ? decodeURIComponent(m[1]) : null;
@@ -85,22 +162,14 @@
                 document.cookie = 'googtrans=' + e + '; domain=.' + location.hostname;
             }
 
-            /* ── read language preference ───────────────────────────── */
             var lang = getCookie('siteLang') ||
-                (function () { try { return localStorage.getItem('siteLang'); } catch (e) { return null; } })() ||
-                'en';
+                (function () { try { return localStorage.getItem('siteLang'); } catch (e) { return null; } })() || 'en';
 
-            /* ── build overlay immediately (before body exists) ─────── */
             var overlay = document.createElement('div');
             overlay.id = 'gt-overlay';
-            overlay.innerHTML =
-                '<div style="text-align:center">' +
-                '<div class="gt-spinner"></div>' +
-                 '<div class="gt-msg">Applying language\u2026</div>' +
-                '</div>';
+            overlay.innerHTML = '<div style="text-align:center"><div class="gt-spinner"></div><div class="gt-msg">Applying language\u2026</div></div>';
             document.documentElement.appendChild(overlay);
 
-            /* ── ENGLISH path: show page right away ─────────────────── */
             if (lang !== 'ar') {
                 clearGT();
                 document.documentElement.style.visibility = 'visible';
@@ -108,22 +177,16 @@
                 return;
             }
 
-            /* ══════════════════════════════════════════════════════════
-               ARABIC PATH
-               ══════════════════════════════════════════════════════════ */
             document.documentElement.setAttribute('dir', 'rtl');
             document.documentElement.setAttribute('lang', 'ar');
             setGT('/en/ar');
-
-            // Show the white overlay (html stays visibility:hidden underneath)
             overlay.style.display = 'flex';
-            void overlay.offsetHeight; // force paint immediately
+            void overlay.offsetHeight;
 
             var done = false;
             var settleTimer = null;
             var classObs, bodyObs;
 
-            /* Reveal page — called only once mutations have settled */
             function reveal() {
                 if (done) return;
                 done = true;
@@ -131,82 +194,60 @@
                 clearTimeout(fallback);
                 try { classObs && classObs.disconnect(); } catch (e) {}
                 try { bodyObs  && bodyObs.disconnect();  } catch (e) {}
-
-                // Make page visible first, then remove overlay
                 document.documentElement.style.visibility = 'visible';
                 setTimeout(function () {
                     overlay.style.display = 'none';
                     overlay.parentNode && overlay.parentNode.removeChild(overlay);
+                    /* restore any data-* attrs GT may have touched */
+                    try { window.__restoreDataAttrs && window.__restoreDataAttrs(); } catch (e) {}
+                    /* signal pages that GT is done */
+                    try { window.dispatchEvent(new CustomEvent('gtReady')); } catch (e) {}
                 }, 80);
             }
 
-            /*
-             * THE REAL FIX — debounced mutation settle
-             * ─────────────────────────────────────────
-             * Google Translate adds `translated-rtl` to <html> when it
-             * STARTS translating — NOT when it finishes.  Text nodes
-             * continue to be swapped for hundreds of milliseconds after.
-             *
-             * Solution:
-             *  1. Detect `translated-rtl` on <html>.
-             *  2. Watch body for any further DOM mutations.
-             *  3. Each mutation resets a 500ms settle timer.
-             *  4. Reveal only after 500ms of NO mutations
-             *     (GT has truly finished replacing all text nodes).
-             */
+            /* GT sometimes adds translated-ltr instead of translated-rtl */
+            function isTranslated() {
+                return (document.documentElement.className || '').indexOf('translated-') !== -1;
+            }
+
             function resetSettle() {
                 clearTimeout(settleTimer);
-                settleTimer = setTimeout(reveal, 500);
+                settleTimer = setTimeout(reveal, 300);
             }
 
-            function isArabicReady() {
-                return document.documentElement.classList.contains('translated-rtl');
-            }
-
-            /* Watch <html> class attribute for translated-rtl */
             classObs = new MutationObserver(function () {
-                if (isArabicReady()) resetSettle();
+                if (isTranslated()) resetSettle();
             });
-            classObs.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['class']
-            });
+            classObs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-            /* Watch body text/child mutations — each one resets the timer */
             function startBodyWatch() {
                 if (!document.body) { setTimeout(startBodyWatch, 20); return; }
                 bodyObs = new MutationObserver(function () {
-                    if (isArabicReady()) resetSettle();
+                    if (isTranslated()) resetSettle();
                 });
-                bodyObs.observe(document.body, {
-                    childList: true,
-                    subtree: true,
-                    characterData: true
-                });
+                bodyObs.observe(document.body, { childList: true, subtree: true, characterData: true });
             }
             startBodyWatch();
 
-            /* Safety fallback: reveal after 20s even if GT never finishes */
-            var fallback = setTimeout(function () {
-                if (!done) reveal();
-            }, 20000);
+            /* Force reveal after 4s if GT class appeared but settle never triggered */
+            setTimeout(function () { if (isTranslated() && !done) reveal(); }, 4000);
 
-            /* Already translated? (cached page) */
-            if (isArabicReady()) resetSettle();
+            /* Safety fallback */
+            var fallback = setTimeout(function () { if (!done) reveal(); }, 20000);
 
+            if (isTranslated()) resetSettle();
         })();
     </script>
 
     <script>
-        /* ── Navigation guard ──────────────────────────────────────────
-           On every internal link click, immediately hide the page and
-           show a fresh overlay so the outgoing page never flashes.       */
+        /* ============================================================
+           STEP 3 — NAVIGATION GUARD
+        ============================================================ */
         (function () {
             function setCookie(name, value, days) {
                 document.cookie = name + '=' + encodeURIComponent(value) +
                     '; path=/; max-age=' + (days * 86400);
             }
-
             function isInternal(a) {
                 if (!a || !a.getAttribute) return false;
                 var h = a.getAttribute('href');
@@ -214,39 +255,24 @@
                 try { return new URL(h, location.href).origin === location.origin; }
                 catch (e) { return false; }
             }
-
             function hideForNav() {
                 try {
                     var m = document.cookie.match('(?:^|; )siteLang=([^;]*)');
                     var l = m ? decodeURIComponent(m[1]) : null;
                     if (!l) { try { l = localStorage.getItem('siteLang'); } catch (e) {} }
                     if (l !== 'ar') return;
-
-                    // Hide the outgoing page immediately
                     document.documentElement.style.visibility = 'hidden';
-
                     var ov = document.getElementById('gt-overlay');
                     if (ov) {
                         ov.style.display = 'flex';
                     } else {
-                        // Overlay was already removed — recreate for transition
                         var fresh = document.createElement('div');
-                        fresh.style.cssText =
-                            'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;' +
-                            'z-index:2147483647;display:flex;align-items:center;' +
-                            'justify-content:center;visibility:visible!important;';
-                        fresh.innerHTML =
-                            '<div style="text-align:center">' +
-                            '<div style="width:56px;height:56px;border:6px solid #e5e7eb;' +
-                            'border-top-color:#4f46e5;border-radius:50%;' +
-                            'animation:gt-spin .9s linear infinite;margin-bottom:12px"></div>' +
-                            '<div style="font:600 13px/1 Nunito,sans-serif;color:#374151">' +
-                            'Applying language\u2026</div></div>';
+                        fresh.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:2147483647;display:flex;align-items:center;justify-content:center;visibility:visible!important;';
+                        fresh.innerHTML = '<div style="text-align:center"><div style="width:56px;height:56px;border:6px solid #e5e7eb;border-top-color:#4f46e5;border-radius:50%;animation:gt-spin .9s linear infinite;margin-bottom:12px"></div><div style="font:600 13px/1 Nunito,sans-serif;color:#374151">Applying language\u2026</div></div>';
                         document.documentElement.appendChild(fresh);
                     }
                 } catch (e) {}
             }
-
             document.addEventListener('click', function (ev) {
                 var a = ev.target.closest('a');
                 if (!a) return;
@@ -255,7 +281,6 @@
                 if (!isInternal(a)) return;
                 hideForNav();
             }, true);
-
             document.addEventListener('submit', hideForNav, true);
             window.__setSiteLangCookie = setCookie;
         })();
@@ -336,7 +361,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="sidebar-menu">
                     <ul class="menu">
                         <li class="sidebar-item active">
@@ -434,13 +458,11 @@
                     @RenderBody()
                 </div>
             </div>
-
             <div class="modal fade" id="companyProfileModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-centered">
                     <div class="modal-content" id="companyProfileModalContent"></div>
                 </div>
             </div>
-
             <footer>
                 <partial name="_footer" />
             </footer>
@@ -531,5 +553,44 @@
 
     @await RenderSectionAsync("Scripts", required: false)
     <script src="~/js/site.js"></script>
+
+    <%-- STEP 4: gtReady handler — MUST be here after jQuery loads --%>
+    <script>
+        window.addEventListener('gtReady', function () {
+            /* Restore all data-* attributes GT may have corrupted */
+            try { window.__restoreDataAttrs && window.__restoreDataAttrs(); } catch (e) {}
+
+            /* Re-init Bootstrap dropdowns */
+            if (window.bootstrap) {
+                document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (el) {
+                    try { bootstrap.Dropdown.getOrCreateInstance(el); } catch (e) {}
+                });
+                /* Re-init any open modal events */
+                document.querySelectorAll('[data-bs-toggle="modal"]').forEach(function (el) {
+                    try { bootstrap.Modal.getOrCreateInstance(el); } catch (e) {}
+                });
+            }
+
+            /* Re-apply notranslate shield to everything now in DOM */
+          var SHIELD_SEL = '.modal-content,.modal-body,.modal-header';
+            document.querySelectorAll(SHIELD_SEL).forEach(function (el) {
+                el.setAttribute('translate', 'no');
+                el.classList.add('notranslate');
+            });
+
+            /* Re-init sidebar active state */
+            if (window.$) {
+                var cp = window.location.pathname;
+                $('.submenu-item a').each(function () {
+                    var lp = $(this).attr('href');
+                    if (lp && cp.indexOf(lp) !== -1 && lp !== '/') {
+                        $(this).parent('.submenu-item').addClass('active');
+                        $(this).closest('.sidebar-item.has-sub').addClass('active');
+                        $(this).closest('.submenu').show();
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

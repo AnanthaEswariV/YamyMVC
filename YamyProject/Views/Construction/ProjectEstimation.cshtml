@@ -1079,6 +1079,7 @@
                 };
 
                 localStorage.setItem("Assembly_" + refId, JSON.stringify(model));
+                AssemblyItems: getAssemblyForItem(sr)
 
                       // Add BOM total to the tender row's AMOUNT (not rate)
         if (currentBomRow) {
@@ -1152,48 +1153,21 @@
                 Items: []
             };
 
-            // 🔹 Collect ALL assembly data from localStorage
-            const allAssemblyData = {};
+                     const allAssemblyData = buildAssemblyJson();
 
-            // Get all localStorage keys that start with "Assembly_"
+        model.AssemblyJson = JSON.stringify(allAssemblyData);
+
+        console.log("FINAL AssemblyJson:", model.AssemblyJson);
+
             for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith("Assembly_")) {
-                    const assemblyData = localStorage.getItem(key);
-
-                    if (assemblyData) {
-                        try {
-                            const parsedData = JSON.parse(assemblyData);
-
-                            // Extract the RefId (item name) and Items array
-                            if (parsedData.RefId && parsedData.Items && Array.isArray(parsedData.Items)) {
-                                const itemName = parsedData.RefId;
-
-                                // Map the Items array to the format expected by the API
-                                allAssemblyData[itemName] = parsedData.Items.map(item => ({
-                                    Code: item.Code || "",
-                                    Name: item.Name || "",
-                                    Cost: parseFloat(item.Cost) || 0,
-                                    Qty: parseFloat(item.Qty) || 0,
-                                    Total: parseFloat(item.Total) || 0,
-                                    AssetAccountId: parseInt(parsedData.AssetAccountId) || assetAccountId,
-                                    COGSAccountId: parseInt(parsedData.COGSAccountId) || cogsAccountId,
-                                    IncomeAccountId: parseInt(parsedData.IncomeAccountId) || incomeAccountId,
-                                    VendorAccountId: parseInt(parsedData.VendorAccountId) || vendorAccountId
-                                }));
-
-                                console.log(`Loaded assembly data for: ${itemName}`, allAssemblyData[itemName]);
-                            }
-                        } catch (e) {
-                            console.error("Error parsing assembly data for " + key, e);
-                        }
-                    }
-                }
+            const key = localStorage.key(i);
+            if (key.startsWith("Assembly_")) {
+                console.log("KEY:", key);
             }
+        }
 
-            // 🔹 Convert to JSON string
-            model.AssemblyJson = JSON.stringify(allAssemblyData);
-            console.log("AssemblyJson:", model.AssemblyJson);
+        model.AssemblyJson = JSON.stringify(allAssemblyData);
+        console.log("FINAL AssemblyJson:", model.AssemblyJson);
 
             // 🔹 Collect grid items
             $("#tenderTableBody tr").each(function () {
@@ -1216,7 +1190,9 @@
                     Thick: $row.find(".thick").val() || "0",
                     Note: $row.find(".note").val() || "",
                     MarginAmount: $row.find(".marginamount").val() || "0",
-                    MarginPercentage: $row.find(".margin").val() || "0"
+                    MarginPercentage: $row.find(".margin").val() || "0",
+
+                    AssemblyItems: getAssemblyForItem(description)
                 });
             });
 
@@ -1288,6 +1264,99 @@
                 }
             });
         });
+
+
+               function getAssemblyForItem(itemName) {
+            if (!itemName) return [];
+
+            // 🔥 normalize name
+            const cleanName = itemName.trim().toLowerCase();
+
+            let foundData = null;
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+
+                if (key && key.startsWith("Assembly_")) {
+                    const keyName = key.replace("Assembly_", "").trim().toLowerCase();
+
+                    if (keyName === cleanName) {
+                        foundData = localStorage.getItem(key);
+                        break;
+                    }
+                }
+            }
+
+            if (!foundData) {
+                console.warn("No assembly found for:", itemName);
+                return [];
+            }
+
+            try {
+                const parsed = JSON.parse(foundData);
+
+                if (!parsed.Items || !Array.isArray(parsed.Items)) {
+                    return [];
+                }
+
+                return parsed.Items.map(x => ({
+                    Code: x.Code || "",
+                    Name: x.Name || "",
+                    Cost: parseFloat(x.Cost) || 0,
+                    Qty: parseFloat(x.Qty) || 0,
+                    Total: parseFloat(x.Total) || 0,
+                    AssetAccountId: parseInt(parsed.AssetAccountId) || 0,
+                    COGSAccountId: parseInt(parsed.COGSAccountId) || 0,
+                    IncomeAccountId: parseInt(parsed.IncomeAccountId) || 0,
+                    VendorAccountId: parseInt(parsed.VendorAccountId) || 0
+                }));
+            } catch (e) {
+                console.error("Assembly parse error:", e);
+                return [];
+            }
+        }
+
+
+                function buildAssemblyJson() {
+
+            const allAssemblyData = {};
+
+            for (let i = 0; i < localStorage.length; i++) {
+
+                const key = localStorage.key(i);
+
+                if (!key || !key.startsWith("Assembly_")) continue;
+
+                const raw = localStorage.getItem(key);
+                if (!raw) continue;
+
+                try {
+                    const parsed = JSON.parse(raw);
+
+                    // IMPORTANT: derive item key safely
+                    const itemKey = (parsed.RefId || key.replace("Assembly_", "")).trim();
+
+                    if (!parsed.Items || !Array.isArray(parsed.Items)) continue;
+
+                    allAssemblyData[itemKey] = parsed.Items.map(x => ({
+                        Code: x.Code || "",
+                        Name: x.Name || "",
+                        Cost: Number(x.Cost) || 0,
+                        Qty: Number(x.Qty) || 0,
+                        Total: Number(x.Total) || 0,
+                        AssetAccountId: Number(parsed.AssetAccountId) || 0,
+                        COGSAccountId: Number(parsed.COGSAccountId) || 0,
+                        IncomeAccountId: Number(parsed.IncomeAccountId) || 0,
+                        VendorAccountId: Number(parsed.VendorAccountId) || 0
+                    }));
+
+                } catch (e) {
+                    console.error("Assembly parse error:", key, e);
+                }
+            }
+
+            return allAssemblyData;
+        }
 
         });
 
