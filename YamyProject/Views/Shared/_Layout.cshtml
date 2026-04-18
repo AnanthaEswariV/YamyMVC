@@ -70,34 +70,28 @@
               then restores after GT finishes
         ============================================================ */
         (function () {
-
-                  // ✅ NEW — only shields modals, tables translate normally
-        var SHIELD_SEL = '.modal-content,.modal-body,.modal-header';
-
-            function shieldNode(node) {
-                if (node.nodeType !== 1) return;
-                if (node.matches && node.matches(SHIELD_SEL)) {
-                    node.setAttribute('translate', 'no');
-                    node.classList.add('notranslate');
-                }
-                if (node.querySelectorAll) {
-                    node.querySelectorAll(SHIELD_SEL).forEach(function (el) {
-                        el.setAttribute('translate', 'no');
-                        el.classList.add('notranslate');
-                    });
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                shieldNode(document.body);
+        // ✅ REPLACE WITH — only shields hidden inputs so JS values stay safe
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('input[type="hidden"]').forEach(function(el) {
+                el.setAttribute('translate', 'no');
             });
+        });
 
-            new MutationObserver(function (muts) {
-                muts.forEach(function (m) {
-                    m.addedNodes.forEach(shieldNode);
+        new MutationObserver(function (muts) {
+            muts.forEach(function (m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType !== 1) return;
+                    if (node.matches && node.matches('input[type="hidden"]')) {
+                        node.setAttribute('translate', 'no');
+                    }
+                    if (node.querySelectorAll) {
+                        node.querySelectorAll('input[type="hidden"]').forEach(function(el) {
+                            el.setAttribute('translate', 'no');
+                        });
+                    }
                 });
-            }).observe(document.documentElement, { childList: true, subtree: true });
-
+            });
+        }).observe(document.documentElement, { childList: true, subtree: true });
             /* ── B: data-attribute guardian ────────────────────────── */
             var _attrStore = [];   // [{el, name, value}]
 
@@ -571,12 +565,6 @@
                 });
             }
 
-            /* Re-apply notranslate shield to everything now in DOM */
-          var SHIELD_SEL = '.modal-content,.modal-body,.modal-header';
-            document.querySelectorAll(SHIELD_SEL).forEach(function (el) {
-                el.setAttribute('translate', 'no');
-                el.classList.add('notranslate');
-            });
 
             /* Re-init sidebar active state */
             if (window.$) {

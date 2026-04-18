@@ -1,5 +1,5 @@
 ﻿<style>
-    /* ── RTL Submenu Fix ─────────────────────────────────────────────── */
+
     [dir="rtl"] .navbar-links .submenu {
         left: auto !important;
         right: 0 !important;
@@ -10,7 +10,7 @@
         right: 0 !important;
     }
 
-    /* Nested submenus open to the LEFT in RTL */
+  
     [dir="rtl"] .navbar-links .has-submenu > .submenu {
         left: auto !important;
         right: 100% !important;
@@ -25,7 +25,7 @@
         flex-direction: row-reverse;
     }
 
-    /* Nested submenus open to the RIGHT in LTR */
+
     [dir="ltr"] .navbar-links .has-submenu > .submenu {
         left: 100% !important;
         right: auto !important;
@@ -196,7 +196,7 @@
                     <li><a href="@Url.Action("LookAhead", "Construction")">Project LookAhead</a></li>
                     <li><a href="@Url.Action("DelayLog", "Construction")">Project DelayLog</a></li>
                    
-                   @*  <li><a href="@Url.Action("ProjectWorkDone", "Construction")">Project Work Done</a></li> *@
+                     <li><a href="@Url.Action("ProjectWorkDone", "Construction")">Project Work Done</a></li> 
                     <li class="dropdown has-submenu">
                         <a href="">Project Management</a>
                         <ul class="submenu">
