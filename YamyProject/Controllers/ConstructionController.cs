@@ -4550,7 +4550,7 @@ total_values, billed_to_dates, balances)
             SELECT 
                 p.tender_id,
                 IFNULL(t.name, '') AS tender_name
-            FROM tbl_projects_site_setup p
+            FROM tbl_project_planning p
             LEFT JOIN tbl_tender_names t 
                 ON p.tender_id = t.id
             WHERE p.project_id = @projectId 
@@ -8994,7 +8994,7 @@ INNER JOIN tbl_project_planning p
                 // ✅ Fixed parameter name here
                 string query = @"
             SELECT Id, Date 
-            FROM tbl_projects_site_setup 
+            FROM tbl_project_planning 
             WHERE project_id = @project 
               AND tender_id = @tenderId 
               AND site = @siteId";
@@ -9047,7 +9047,7 @@ INNER JOIN tbl_project_planning p
                 string query = @"
            SELECT tbl_items_boq.id,tbl_project_tender_details.sr,tbl_project_tender_details.qty,tbl_project_tender_details.unit_id,tbl_project_tender_details.item_id, tbl_items_boq.id as code,tbl_items_boq.name,tbl_items_boq.type,tbl_items_boq.unit_name as unit_name FROM tbl_project_tender_details 
                             INNER JOIN tbl_items_boq ON tbl_project_tender_details.tender_id = ref_id AND tbl_project_tender_details.item_id = tbl_items_boq.id
-                            WHERE tbl_project_tender_details.tender_id = (SELECT tender_id FROM tbl_projects_site_setup WHERE id=@planningId)";
+                            WHERE tbl_project_tender_details.tender_id = (SELECT tender_id FROM tbl_project_planning WHERE id=@planningId)";
 
                 await using var cmd = new MySqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@planningId", planningId);
@@ -10001,7 +10001,7 @@ LIMIT 1;";
             }
         }
 
-        #endregion
+        #endregion 
 
         #region Project Assign Report
 

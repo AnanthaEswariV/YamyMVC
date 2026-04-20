@@ -370,14 +370,14 @@
 </div>
 
 <script>
-    // ── Mark the active language button immediately from localStorage ────────
+
     (function () {
         var lang = localStorage.getItem('siteLang') || 'en';
         var btn = document.getElementById('btn-' + lang);
         if (btn) btn.classList.add('active');
     })();
 
-    // ── Permission-based menu filtering ─────────────────────────────────────
+ 
     document.addEventListener('DOMContentLoaded', function () {
         var permissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
 
