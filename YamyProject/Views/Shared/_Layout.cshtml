@@ -275,7 +275,15 @@
                 if (!isInternal(a)) return;
                 hideForNav();
             }, true);
-            document.addEventListener('submit', hideForNav, true);
+        document.addEventListener('submit', function (ev) {
+            var form = ev.target;
+            if (!form) return;
+            if (form.getAttribute('data-ajax') === 'true') return;
+            if (form.hasAttribute('data-ajax')) return;
+            var action = form.getAttribute('action') || '';
+            if (!action || action === '#' || action === '') return;
+            hideForNav();
+        }, true);
             window.__setSiteLangCookie = setCookie;
         })();
     </script>
@@ -550,23 +558,30 @@
 
   
     <script>
-        window.addEventListener('gtReady', function () {
-            /* Restore all data-* attributes GT may have corrupted */
+             window.addEventListener('gtReady', function () {
             try { window.__restoreDataAttrs && window.__restoreDataAttrs(); } catch (e) {}
 
-            /* Re-init Bootstrap dropdowns */
             if (window.bootstrap) {
                 document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (el) {
                     try { bootstrap.Dropdown.getOrCreateInstance(el); } catch (e) {}
                 });
-                /* Re-init any open modal events */
                 document.querySelectorAll('[data-bs-toggle="modal"]').forEach(function (el) {
                     try { bootstrap.Modal.getOrCreateInstance(el); } catch (e) {}
                 });
             }
 
+            document.querySelectorAll('button[type="submit"], button[type="button"]').forEach(function (btn) {
+                btn.querySelectorAll('font').forEach(function (font) {
+                    while (font.firstChild) {
+                        font.parentNode.insertBefore(font.firstChild, font);
+                    }
+                    font.parentNode.removeChild(font);
+                });
+            });
 
-            /* Re-init sidebar active state */
+            var toastrEl = document.getElementById('toast-container');
+            if (toastrEl) toastrEl.style.zIndex = '999999';
+
             if (window.$) {
                 var cp = window.location.pathname;
                 $('.submenu-item a').each(function () {
