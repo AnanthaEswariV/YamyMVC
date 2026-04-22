@@ -94,8 +94,8 @@
                         <tr>
                             <th>S.No</th>
                             <th>Date</th>
-                            <th>INV No</th>
-                            <th>Customer Name</th>
+                            <th style="width:10%;">INV No</th>
+                            <th style="width: 20%;">Vendor Name</th>
                             <th>Payment Method</th>
                             <th>Total</th>
                             <th>VAT</th>
@@ -557,14 +557,15 @@
 
 
 @section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
     <script>
@@ -980,7 +981,7 @@
             });
         }
 
-        function populateDefaultTables(data) {
+          function populateDefaultTables(data) {
 
             const table1Body = $("#table1 tbody").empty();
             const table2Body = $("#table2 tbody").empty();
@@ -991,91 +992,117 @@
                         <td colspan="10" class="text-center">No records found</td>
                     </tr>
                 `);
-                return;
-            }
+            } else {
+                data.forEach((sale, index) => {
 
-            data.forEach((sale, index) => {
-
-                const row = $(`
-                    <tr data-index="${index}">
-                        <td>${index + 1}</td>
-                        <td>${formatDate(sale.date)}</td>
-                        <td>${sale.invoiceNo}</td>
-                        <td>${sale.vendorName}</td>
-                        <td>${sale.paymentMethod}</td>
-                        <td>${sale.total.toFixed(2)}</td>
-                        <td>${sale.vat.toFixed(2)}</td>
-                        <td>${sale.net.toFixed(2)}</td>
-                        <td></td>
-                        <td>
-                            <button class="btn btn-sm btn-primary editSalesQuotationBtn">
-                                <i class="fas fa-pen"></i>
-                            </button>
-                             <button class="btn btn-sm btn-primary viewInvoiceBtn"
-                data-sales-id="${sale.id}">
-            <i class="fas fa-eye"></i>
-        </button>
-
-         <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
+                    const row = $(`
+                        <tr data-index="${index}">
+                            <td>${index + 1}</td>
+                            <td>${formatDate(sale.date)}</td>
+                            <td>${sale.invoiceNo}</td>
+                            <td>${sale.vendorName}</td>
+                            <td>${sale.paymentMethod}</td>
+                            <td>${sale.total.toFixed(2)}</td>
+                            <td>${sale.vat.toFixed(2)}</td>
+                            <td>${sale.net.toFixed(2)}</td>
+                            <td></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary editSalesQuotationBtn">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary viewInvoiceBtn" data-sales-id="${sale.id}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-success createInvoiceBtn" data-sales-id="${sale.id}">
                                     <i class="fas fa-file-invoice"></i>
                                 </button>
-                        </td>
-                    </tr>
-                `);
+                            </td>
+                        </tr>
+                    `);
+
+                    // Row click for items
                     row.on("click", function (e) {
-            if ($(e.target).closest(".editSalesQuotationBtn").length) return;
+                        if ($(e.target).closest(".editSalesQuotationBtn").length) return;
 
-            table2Body.empty();
+                        table2Body.empty();
 
-            $.ajax({
-                url: '@Url.Action("GetPurchaseOrderItems", "Vendor")',
-                type: 'GET',
-                data: { purchaseId: sale.id },
-                success: function (res) {
+                        $.ajax({
+                            url: '@Url.Action("GetPurchaseOrderItems", "Vendor")',
+                            type: 'GET',
+                            data: { purchaseId: sale.id },
+                            success: function (res) {
+                                if (!res.status || !res.data || res.data.length === 0) {
+                                    table2Body.append(`
+                                        <tr>
+                                            <td colspan="5" class="text-center">No Items</td>
+                                        </tr>
+                                    `);
+                                    return;
+                                }
 
-                    if (!res.status || !res.data || res.data.length === 0) {
-                        table2Body.append(`
-                            <tr>
-                                <td colspan="5" class="text-center">No Items</td>
-                            </tr>
-                        `);
-                        return;
-                    }
-
-                    res.data.forEach(item => {
-                        table2Body.append(`
-                            <tr>
-                                <td>${item.itemName}</td>
-                                <td>${item.qty}</td>
-                                <td>${item.costPrice.toFixed(2)}</td>
-                                <td>${item.vat.toFixed(2)}</td>
-                                <td>${item.total.toFixed(2)}</td>
-                            </tr>
-                        `);
+                                res.data.forEach(item => {
+                                    table2Body.append(`
+                                        <tr>
+                                            <td>${item.itemName}</td>
+                                            <td>${item.qty}</td>
+                                            <td>${item.costPrice.toFixed(2)}</td>
+                                            <td>${item.vat.toFixed(2)}</td>
+                                            <td>${item.total.toFixed(2)}</td>
+                                        </tr>
+                                    `);
+                                });
+                            },
+                            error: function () {
+                                toastr.error("Failed to load items");
+                            }
+                        });
                     });
-                },
-                error: function () {
-                    toastr.error("Failed to load items");
-                }
-            });
-        });
 
+                    // Edit button
+                    row.find(".editSalesQuotationBtn").on("click", function (e) {
+                        e.stopPropagation();
+                        openSalesModal(sale);
+                    });
 
-                // Edit
-                row.find(".editSalesQuotationBtn").on("click", function (e) {
-                    e.stopPropagation();
-                    openSalesModal(sale);
-                });
-
-                   row.find(".createInvoiceBtn").on("click", function (e) {
+                    // Create invoice button
+                    row.find(".createInvoiceBtn").on("click", function (e) {
                         e.stopPropagation();
                         openSalesCenterModal(sale);
                     });
 
+                    table1Body.append(row);
+                });
+            }
 
-                table1Body.append(row);
+            // Destroy existing DataTable if it exists
+            if ($.fn.DataTable.isDataTable('#table1')) {
+                $('#table1').DataTable().clear().destroy();
+            }
+
+            // Initialize DataTable for pagination, search, sorting
+            $('#table1').DataTable({
+                pageLength: 10,       // Number of rows per page
+                lengthMenu: [10, 25, 50, 100], // Dropdown options for rows per page
+                ordering: true,       // Enable column sorting
+                order: [[0, 'asc']],  // Default sort by first column
+                dom: 'Bfrtip',        // Show buttons on top
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                        className: 'btn btn-primary btn-sm',
+                        exportOptions: { columns: ':visible' }
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="fas fa-print me-1"></i> Print',
+                        className: 'btn btn-primary btn-sm',
+                        exportOptions: { columns: ':visible' }
+                    }
+                ]
             });
         }
+
 
         $(document).on('click', '.viewInvoiceBtn', function () {
             const purchaseId = $(this).data('sales-id');

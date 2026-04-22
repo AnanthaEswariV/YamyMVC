@@ -10,6 +10,15 @@ namespace YamyProject.Core.Models
 {
     public static class SapInvoicePdfGenerator
     {
+        // ── Letterhead accent colours (matched from the .docx) ───────────────────
+        private static readonly string AccentGreen = "#a5b592";
+        private static readonly string AccentBlue = "#809ec2";
+        private static readonly string AccentYellow = "#e7bc29";
+        private static readonly string AccentDark = "#444d26";
+        private static readonly string FooterBlue = "#4472C4";
+        private static readonly string FooterGreen2 = "#70AD47";
+        private static readonly string FooterGray = "#A5A5A5";
+
         public static byte[] Generate(
             CompanyReportDto company,
             SaleReportDto sale,
@@ -20,142 +29,302 @@ namespace YamyProject.Core.Models
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.Margin(20);
-                    page.DefaultTextStyle(x => x.FontSize(9));
+                    page.MarginTop(15);
+                    page.MarginBottom(10);
+                    page.MarginLeft(20);
+                    page.MarginRight(20);
+                    page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
 
-                    // ================= CONTENT =================
-                    page.Content().Column(col =>
+                    // ══════════════════════════════════════════════════════════
+                    // HEADER
+                    // ══════════════════════════════════════════════════════════
+                    page.Header().Column(headerCol =>
                     {
-                        // 🔹 HEADER
-                        col.Item().Border(1).Padding(10).Row(row =>
+                        headerCol.Item().Height(70).Row(headerRow =>
                         {
-                            // LEFT – Company Info
-                            row.RelativeColumn(3).Column(c =>
+                            // ── Decorative colour bars (fixed heights, no ExtendVertical) ──
+                            headerRow.ConstantColumn(6).Background(AccentGreen);
+                            headerRow.ConstantColumn(2);
+                            headerRow.ConstantColumn(6).Column(c =>
                             {
-                                c.Item().Text(company.Name).Bold().FontSize(11);
-                                c.Item().Text(company.Phone);
-                                c.Item().Text(company.Email);
+                                c.Item().Height(55).Background(AccentBlue);
+                                c.Item().Extend();
+                            });
+                            headerRow.ConstantColumn(2);
+                            headerRow.ConstantColumn(6).Column(c =>
+                            {
+                                c.Item().Height(42).Background(AccentYellow);
+                                c.Item().Extend();
+                            });
+                            headerRow.ConstantColumn(2);
+                            headerRow.ConstantColumn(5).Column(c =>
+                            {
+                                c.Item().Height(28).Background(AccentDark);
+                                c.Item().Extend();
+                            });
+                            headerRow.ConstantColumn(6);
+
+                            // ── Company info ────────────────────────────────────
+                            headerRow.RelativeColumn().PaddingLeft(4).Column(info =>
+                            {
+                                info.Item().Text(company.Name ?? "")
+                                    .Bold().FontSize(12).FontColor("#1F3864");
+                                if (!string.IsNullOrEmpty(company.Address))
+                                    info.Item().Text(company.Address)
+                                        .FontSize(7.5f).FontColor("#555555");
+                                if (!string.IsNullOrEmpty(company.Phone))
+                                    info.Item().Text($"Tel: {company.Phone}")
+                                        .FontSize(7.5f).FontColor("#555555");
+                                if (!string.IsNullOrEmpty(company.Email))
+                                    info.Item().Text(company.Email)
+                                        .FontSize(7.5f).FontColor("#555555");
+                                if (!string.IsNullOrEmpty(company.TRN))
+                                    info.Item().Text($"TRN: {company.TRN}")
+                                        .FontSize(7.5f).FontColor("#555555");
                             });
 
-                            // CENTER – Logo (small)
-                            row.RelativeColumn(4)
-                                .AlignCenter()
-                                .AlignMiddle()
-                                .Height(70)
+                            // ── Logo ────────────────────────────────────────────
+                            headerRow.ConstantColumn(72).AlignCenter().AlignMiddle()
                                 .Element(el =>
                                 {
                                     if (company.Logo != null && company.Logo.Length > 0)
-                                        el.Image(company.Logo).FitArea();
+                                        el.MaxHeight(65).MaxWidth(72)
+                                          .Image(company.Logo).FitArea();
                                 });
 
-                            // RIGHT – QR (default if null)
-                            row.RelativeColumn(3)
-                                .AlignRight()
-                                .Height(70)
-                                .Image(GetQrCode(company.QrCode))
-                                .FitArea();
+                            // ── QR code ─────────────────────────────────────────
+                            headerRow.ConstantColumn(65).AlignCenter().AlignMiddle()
+                                .Element(el =>
+                                {
+                                    var qr = GetQrCode(company.QrCode);
+                                    if (qr != null)
+                                        el.MaxHeight(65).MaxWidth(65)
+                                          .Image(qr).FitArea();
+                                });
                         });
 
-                        // 🔹 TITLE
-                        col.Item().PaddingVertical(10)
-                            .AlignCenter()
+                        // Blue underline
+                        headerCol.Item().LineHorizontal(2).LineColor(FooterBlue);
+                    });
+
+                    // ══════════════════════════════════════════════════════════
+                    // WATERMARK – uses page.Foreground() to avoid layout conflicts
+                    // ══════════════════════════════════════════════════════════
+                    if (company.Logo != null && company.Logo.Length > 0)
+                    {
+                        page.Foreground()
+                            .AlignCenter().AlignMiddle()
+                            .Width(250).Height(250)
+                            //.Opacity(0.06f)
+                            .Image(company.Logo).FitArea();
+                    }
+
+                    // ══════════════════════════════════════════════════════════
+                    // CONTENT
+                    // ══════════════════════════════════════════════════════════
+                    page.Content().PaddingTop(8).Column(col =>
+                    {
+                        // ── Title ─────────────────────────────────────────────
+                        col.Item().AlignCenter()
                             .Text("TAX INVOICE")
-                            .Bold()
-                            .FontSize(14);
+                            .Bold().FontSize(14).FontColor("#1F3864");
 
-                        col.Item().AlignCenter().Text("Sale").SemiBold();
-                        col.Item().PaddingVertical(5).LineHorizontal(1);
+                        col.Item().AlignCenter().PaddingBottom(4)
+                            .Text("Sale").SemiBold().FontSize(10).FontColor("#555555");
 
-                        // 🔹 CUSTOMER + BILL
-                        col.Item().Row(row =>
+                        col.Item().PaddingBottom(6).LineHorizontal(1).LineColor(FooterBlue);
+
+                        // ── Customer + Bill info ──────────────────────────────
+                        col.Item().PaddingBottom(6).Row(row =>
                         {
                             row.RelativeColumn().Column(c =>
                             {
-                                c.Item().Text($"Name : {sale.CustomerName}");
-                                c.Item().Text($"Address : {sale.City}");
+                                InfoLine(c, "Name", sale.CustomerName ?? "");
+                                InfoLine(c, "Address", sale.City ?? "");
+                                if (!string.IsNullOrEmpty(company.TRN))
+                                    InfoLine(c, "TRN", company.TRN);
                             });
 
                             row.RelativeColumn().Column(c =>
                             {
-                                c.Item().Text($"Bill No : {sale.InvoiceNo}");
-                                c.Item().Text($"Amount : {sale.Total:N2}");
-                                c.Item().Text($"Date : {sale.Date:dd-MM-yyyy}");
-                                c.Item().Text($"Sales Man : {sale.SalesMan}");
+                                InfoLine(c, "Bill No", sale.InvoiceNo ?? "");
+                                InfoLine(c, "Date", sale.Date.ToString("dd-MM-yyyy"));
+                                InfoLine(c, "Amount", sale.Total.ToString("N2"));
+                                InfoLine(c, "Sales Man", sale.SalesMan ?? "");
+                                if (!string.IsNullOrEmpty(sale.PaymentMethod))
+                                    InfoLine(c, "Pay Method", sale.PaymentMethod);
                             });
                         });
 
-                        col.Item().PaddingVertical(10).LineHorizontal(1);
+                        col.Item().PaddingBottom(6).LineHorizontal(1).LineColor(FooterBlue);
 
-                        // 🔹 ITEMS TABLE
+                        // ── Items table ───────────────────────────────────────
                         col.Item().Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
                             {
-                                columns.ConstantColumn(30);
+                                columns.ConstantColumn(26);
                                 columns.RelativeColumn(3);
-                                columns.ConstantColumn(40);
-                                columns.ConstantColumn(40);
-                                columns.ConstantColumn(40);
-                                columns.ConstantColumn(40);
-                                columns.ConstantColumn(60);
+                                columns.ConstantColumn(42);
+                                columns.ConstantColumn(42);
+                                columns.ConstantColumn(52);
+                                columns.ConstantColumn(46);
+                                columns.ConstantColumn(56);
                             });
 
                             table.Header(h =>
                             {
-                                h.Cell().Text("S/N").Bold();
-                                h.Cell().Text("Item Name").Bold();
-                                h.Cell().Text("Qty").Bold();
-                                h.Cell().Text("Unit").Bold();
-                                h.Cell().Text("Price").Bold();
-                                h.Cell().Text("Disc").Bold();
-                                h.Cell().Text("Net").Bold();
+                                HeaderCell(h, "S/N", right: false);
+                                HeaderCell(h, "Item Name", right: false);
+                                HeaderCell(h, "Qty", right: true);
+                                HeaderCell(h, "Unit", right: false);
+                                HeaderCell(h, "Price", right: true);
+                                HeaderCell(h, "Disc", right: true);
+                                HeaderCell(h, "Net", right: true);
                             });
 
                             int i = 1;
                             foreach (var item in items)
                             {
-                                table.Cell().Text(i++.ToString());
-                                table.Cell().Text(item.Name);
-                                table.Cell().Text(item.Qty.ToString("N2"));
-                                table.Cell().Text(item.UnitName);
-                                table.Cell().Text(item.Price.ToString("N2"));
-                                table.Cell().Text(item.Discount?.ToString("N2"));
-                                table.Cell().Text(item.Total.ToString("N2"));
+                                string bg = (i % 2 == 0) ? "#EBF3FB" : "#FFFFFF";
+                                DataCell(table, i.ToString(), bg, right: false);
+                                DataCell(table, item.Name ?? "", bg, right: false);
+                                DataCell(table, item.Qty.ToString("N2"), bg, right: true);
+                                DataCell(table, item.UnitName ?? "", bg, right: false);
+                                DataCell(table, item.Price.ToString("N2"), bg, right: true);
+                                DataCell(table, (item.Discount ?? 0).ToString("N2"), bg, right: true);
+                                DataCell(table, item.Total.ToString("N2"), bg, right: true);
+                                i++;
                             }
                         });
 
-                        // 🔹 TOTALS
-                        col.Item().AlignRight().PaddingTop(15).Column(c =>
+                        // ── Totals ────────────────────────────────────────────
+                        decimal totalDiscount = items.Sum(x => x.Discount ?? 0m);
+                        col.Item().AlignRight().PaddingTop(8).Width(200).Column(totals =>
                         {
-                            c.Item().Text($"TOTAL : {sale.Total:N2}");
-                            c.Item().Text($"TOTAL VAT : {sale.Vat:N2}");
-                            c.Item().Text($"TOTAL DISCOUNT : {items.Sum(x => x.Discount):N2}");
-                            c.Item().Text($"TOTAL AMOUNT : {sale.Net:N2}").Bold();
+                            TotalRow(totals, "TOTAL", sale.Total.ToString("N2"), "#F2F2F2", bold: false);
+                            TotalRow(totals, "TOTAL VAT", sale.Vat.ToString("N2"), "#FFFFFF", bold: false);
+                            TotalRow(totals, "TOTAL DISCOUNT", totalDiscount.ToString("N2"), "#F2F2F2", bold: false);
+                            TotalRow(totals, "TOTAL AMOUNT", sale.Net.ToString("N2"), FooterBlue, bold: true, textColor: "#FFFFFF");
                         });
 
-                        page.Footer().PaddingTop(20).Row(row =>
+                        // ── Signatures ────────────────────────────────────────
+                        col.Item().PaddingTop(16).LineHorizontal(1).LineColor("#CCCCCC");
+                        col.Item().PaddingTop(8).Row(sig =>
                         {
-                            // Created By
-                            row.RelativeColumn().Column(c =>
+                            sig.RelativeColumn().Column(c =>
                             {
                                 c.Item().Text("Created By").SemiBold();
-                                c.Item().PaddingTop(20).Text("Signature");
+                                c.Item().PaddingTop(22).Width(110)
+                                    .LineHorizontal(1).LineColor("#AAAAAA");
+                                c.Item().PaddingTop(3)
+                                    .Text("Signature").FontSize(7.5f).FontColor("#888888");
                             });
-
-                            // Approved By
-                            row.RelativeColumn().AlignRight().Column(c =>
+                            sig.RelativeColumn().AlignRight().Column(c =>
                             {
-                                c.Item().Text("Approved By").SemiBold().AlignRight();
-                                c.Item().PaddingTop(20).AlignRight().Text("Signature");
+                                c.Item().AlignRight().Text("Approved By").SemiBold();
+                                c.Item().AlignRight().PaddingTop(22).Width(110)
+                                    .LineHorizontal(1).LineColor("#AAAAAA");
+                                c.Item().AlignRight().PaddingTop(3)
+                                    .Text("Signature").FontSize(7.5f).FontColor("#888888");
                             });
                         });
+                    });
 
+                    // ══════════════════════════════════════════════════════════
+                    // FOOTER
+                    // ══════════════════════════════════════════════════════════
+                    page.Footer().Column(footerCol =>
+                    {
+                        footerCol.Item().LineHorizontal(2).LineColor(FooterBlue);
+                        footerCol.Item().PaddingTop(4).Row(footerRow =>
+                        {
+                            // Contact info
+                            footerRow.RelativeColumn().Column(details =>
+                            {
+                                if (!string.IsNullOrEmpty(company.Phone))
+                                    details.Item().Text($"Tel: {company.Phone}")
+                                        .FontSize(7.5f).FontColor("#333333");
+                                if (!string.IsNullOrEmpty(company.Email))
+                                    details.Item().Text($"Email: {company.Email}")
+                                        .FontSize(7.5f).FontColor("#333333");
+                                if (!string.IsNullOrEmpty(company.Address))
+                                    details.Item().Text($"Address: {company.Address}")
+                                        .FontSize(7.5f).FontColor("#333333");
+                            });
+
+                            // Page number
+                            footerRow.ConstantColumn(60).AlignCenter().AlignBottom()
+                                .Text(t =>
+                                {
+                                    t.DefaultTextStyle(s => s.FontSize(7.5f).FontColor("#777777"));
+                                    t.CurrentPageNumber();
+                                    t.Span(" / ");
+                                    t.TotalPages();
+                                });
+
+                            // Colour strips
+                            footerRow.ConstantColumn(44).AlignRight().Row(strips =>
+                            {
+                                strips.ConstantColumn(9).Background(FooterBlue);
+                                strips.ConstantColumn(2);
+                                strips.ConstantColumn(9).Background(FooterGreen2);
+                                strips.ConstantColumn(2);
+                                strips.ConstantColumn(9).Background(FooterGray);
+                                strips.ConstantColumn(2);
+                                strips.ConstantColumn(9).Background(AccentYellow);
+                            });
+                        });
                     });
                 });
             }).GeneratePdf();
         }
 
-        // ================= DEFAULT QR HANDLER =================
+        // ── Helpers ───────────────────────────────────────────────────────────────
+
+        private static void InfoLine(ColumnDescriptor col, string label, string value)
+        {
+            col.Item().PaddingBottom(2).Text(t =>
+            {
+                t.Span($"{label}: ").Bold().FontSize(8.5f);
+                t.Span(value).FontSize(8.5f);
+            });
+        }
+
+        private static void HeaderCell(TableCellDescriptor h,
+            string text, bool right)
+        {
+            var cell = h.Cell().Background(FooterBlue)
+                .PaddingVertical(4).PaddingHorizontal(3);
+            var txt = cell.Text(text).Bold().FontSize(8).FontColor("#FFFFFF");
+            if (right) txt.AlignRight();
+        }
+
+        private static void DataCell(TableDescriptor table,
+            string text, string bg, bool right)
+        {
+            var cell = table.Cell().Background(bg)
+                .BorderBottom(1).BorderColor("#DDDDDD")
+                .PaddingVertical(3).PaddingHorizontal(3);
+            var txt = cell.Text(text).FontSize(8);
+            if (right) txt.AlignRight();
+        }
+
+        private static void TotalRow(ColumnDescriptor col,
+            string label, string value,
+            string bg, bool bold,
+            string textColor = "#000000")
+        {
+            col.Item().Background(bg)
+                .PaddingVertical(3).PaddingHorizontal(5)
+                .Row(r =>
+                {
+                    var lbl = r.RelativeColumn().Text(label).FontSize(8).FontColor(textColor);
+                    var val = r.ConstantColumn(70).AlignRight().Text(value).FontSize(8).FontColor(textColor);
+                    if (bold) { lbl.Bold(); val.Bold(); }
+                });
+        }
+
         private static byte[] GetQrCode(byte[] qrCode)
         {
             if (qrCode != null && qrCode.Length > 0)
@@ -163,24 +332,14 @@ namespace YamyProject.Core.Models
 
             var path = Path.Combine(
                 Directory.GetCurrentDirectory(),
-                "wwwroot",
-                "assets",
-                "images",
-                "DefaultQR.jpg");
+                "wwwroot", "assets", "images", "DefaultQR.jpg");
 
             return System.IO.File.Exists(path)
                 ? System.IO.File.ReadAllBytes(path)
                 : null;
         }
-
-
-
-        public class SalesInvoiceReportDto
-        {
-            public SaleReportDto Sale { get; set; }
-            public List<SaleItemReportDto> Items { get; set; }
-        }
     }
+
 
     public static class SalesQuotationPdfGenerator
     {

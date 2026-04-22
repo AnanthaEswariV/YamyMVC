@@ -2703,6 +2703,7 @@ WHERE p.state = 0
                 {
                     if (string.IsNullOrEmpty(invoiceId))
                         invoiceId = await GenerateNextPurchaseCodeAsync(conn, tx);
+                    //invoiceId = "88778";
                     var insertSql = @"
 INSERT INTO tbl_purchase_order
 (date, vendor_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man,
