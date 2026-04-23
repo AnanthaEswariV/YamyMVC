@@ -376,12 +376,21 @@
             if (year) return `${year}-${month}-${day}`;
             return dateStr;
         }
+                function formatToISO(dateStr) {
+            // Expecting dd/MM/yyyy
+            const parts = dateStr.split('/');
+            if (parts.length !== 3) return null;
+
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
 
          function loadJournalDetails(refId, vType, date) {
+            const formattedDate = formatToISO(date);
             const data = {
                 refId: refId,
                 vType: vType,
-                date: date
+                date: formattedDate
             };
 
             $.ajax({
