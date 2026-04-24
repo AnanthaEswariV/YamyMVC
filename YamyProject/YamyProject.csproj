@@ -28,6 +28,7 @@
     <PackageReference Include="MySql.Data" Version="8.4.0" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageReference Include="QuestPDF" Version="2025.12.3" />
+    <PackageReference Include="SkiaSharp" Version="3.119.2" />
     <PackageReference Include="UmbracoCms.Core" Version="8.18.15" />
   </ItemGroup>
 

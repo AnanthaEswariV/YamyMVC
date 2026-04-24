@@ -1455,503 +1455,503 @@ WHERE a.assembly_id = @assemblyId;
             return Json(new { status = true, message = "Item is valid" });
         }
 
-    //    #region
+        //    #region
 
-    //    [HttpPost]
-    //    public async Task<IActionResult> SaveInvoice([FromBody] SalesInvoiceRequest model)
-    //    {
-    //        if (model == null)
-    //            return Json(new { status = false, message = "Invalid request" });
+        //    [HttpPost]
+        //    public async Task<IActionResult> SaveInvoice([FromBody] SalesInvoiceRequest model)
+        //    {
+        //        if (model == null)
+        //            return Json(new { status = false, message = "Invalid request" });
 
-    //        int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
-    //        if (userId <= 0)
-    //            return Json(new { status = false, message = "User not logged in" });
+        //        int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+        //        if (userId <= 0)
+        //            return Json(new { status = false, message = "User not logged in" });
 
-    //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-    //        {
-    //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-    //        };
+        //        var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //        {
+        //            Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //        };
 
-    //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
-    //        await conn.OpenAsync();
-    //        using var tx = await conn.BeginTransactionAsync();
+        //        using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+        //        await conn.OpenAsync();
+        //        using var tx = await conn.BeginTransactionAsync();
 
-    //        try
-    //        {
-    //            // =======================
-    //            // 1. VALIDATIONS
-    //            // =======================
-    //            if (model.Items == null || model.Items.Count == 0)
-    //                return Json(new { status = false, message = "Insert items first." });
+        //        try
+        //        {
+        //            // =======================
+        //            // 1. VALIDATIONS
+        //            // =======================
+        //            if (model.Items == null || model.Items.Count == 0)
+        //                return Json(new { status = false, message = "Insert items first." });
 
-    //            if (model.CustomerId <= 0)
-    //                return Json(new { status = false, message = "Customer must be selected." });
+        //            if (model.CustomerId <= 0)
+        //                return Json(new { status = false, message = "Customer must be selected." });
 
-    //            if (string.IsNullOrWhiteSpace(model.PaymentMethod))
-    //                return Json(new { status = false, message = "Payment method must be selected." });
+        //            if (string.IsNullOrWhiteSpace(model.PaymentMethod))
+        //                return Json(new { status = false, message = "Payment method must be selected." });
 
-    //            if (model.WarehouseId <= 0)
-    //                return Json(new { status = false, message = "Warehouse must be selected." });
+        //            if (model.WarehouseId <= 0)
+        //                return Json(new { status = false, message = "Warehouse must be selected." });
 
-    //            if (model.AccountCashId <= 0 && model.PaymentMethod == "Cash")
-    //                return Json(new { status = false, message = "Cash account must be selected." });
+        //            if (model.AccountCashId <= 0 && model.PaymentMethod == "Cash")
+        //                return Json(new { status = false, message = "Cash account must be selected." });
 
-    //            if (model.NetTotal <= 0)
-    //                return Json(new { status = false, message = "Total must be bigger than zero." });
+        //            if (model.NetTotal <= 0)
+        //                return Json(new { status = false, message = "Total must be bigger than zero." });
 
-    //            // =======================
-    //            // 2. INSERT OR UPDATE INVOICE
-    //            // =======================
-    //            long invId = 0;
-    //            if (model.Id == 0) // INSERT
-    //            {
-    //                // Generate next invoice code
-    //                string nextCode = "SI-0001";
-    //                using (var cmd = new MySqlCommand("SELECT MAX(CAST(SUBSTRING(invoice_id, 4) AS UNSIGNED)) FROM tbl_sales", conn, tx))
-    //                {
-    //                    var result = await cmd.ExecuteScalarAsync();
-    //                    if (result != DBNull.Value && result != null)
-    //                        nextCode = "SI-" + (Convert.ToInt32(result) + 1).ToString("D4");
-    //                }
+        //            // =======================
+        //            // 2. INSERT OR UPDATE INVOICE
+        //            // =======================
+        //            long invId = 0;
+        //            if (model.Id == 0) // INSERT
+        //            {
+        //                // Generate next invoice code
+        //                string nextCode = "SI-0001";
+        //                using (var cmd = new MySqlCommand("SELECT MAX(CAST(SUBSTRING(invoice_id, 4) AS UNSIGNED)) FROM tbl_sales", conn, tx))
+        //                {
+        //                    var result = await cmd.ExecuteScalarAsync();
+        //                    if (result != DBNull.Value && result != null)
+        //                        nextCode = "SI-" + (Convert.ToInt32(result) + 1).ToString("D4");
+        //                }
 
-    //                var insertSql = @"
-    //            INSERT INTO tbl_sales 
-    //            (date, customer_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man, 
-    //             ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
-    //             total, vat, net, pay, `change`, created_by, created_date, state)
-    //            VALUES
-    //            (@date, @customer_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man, 
-    //             @ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
-    //             @total, @vat, @net, @pay, @change, @created_by, @created_date, 0);
-    //            SELECT LAST_INSERT_ID();";
+        //                var insertSql = @"
+        //            INSERT INTO tbl_sales 
+        //            (date, customer_id, invoice_id, warehouse_id, po_num, bill_to, city, sales_man, 
+        //             ship_date, ship_via, ship_to, payment_method, account_cash_id, payment_terms, payment_date,
+        //             total, vat, net, pay, `change`, created_by, created_date, state)
+        //            VALUES
+        //            (@date, @customer_id, @invoice_id, @warehouse_id, @po_num, @bill_to, @city, @sales_man, 
+        //             @ship_date, @ship_via, @ship_to, @payment_method, @account_cash_id, @payment_terms, @payment_date,
+        //             @total, @vat, @net, @pay, @change, @created_by, @created_date, 0);
+        //            SELECT LAST_INSERT_ID();";
 
-    //                using var cmdInsert = new MySqlCommand(insertSql, conn, tx);
-    //                cmdInsert.Parameters.AddWithValue("@date", model.InvoiceDate);
-    //                cmdInsert.Parameters.AddWithValue("@customer_id", model.CustomerId);
-    //                cmdInsert.Parameters.AddWithValue("@invoice_id", nextCode);
-    //                cmdInsert.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
-    //                cmdInsert.Parameters.AddWithValue("@po_num", model.PoNo ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@city", model.City ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@ship_date", model.ShipDate);
-    //                cmdInsert.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
-    //                cmdInsert.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
-    //                cmdInsert.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
-    //                cmdInsert.Parameters.AddWithValue("@payment_date", model.PaymentDate);
-    //                cmdInsert.Parameters.AddWithValue("@total", model.TotalBeforeVat);
-    //                cmdInsert.Parameters.AddWithValue("@vat", model.Vat);
-    //                cmdInsert.Parameters.AddWithValue("@net", model.NetTotal);
-    //                cmdInsert.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
-    //                cmdInsert.Parameters.AddWithValue("@change", model.PaymentMethod == "Cash" ? 0 : model.NetTotal);
-    //                cmdInsert.Parameters.AddWithValue("@created_by", userId);
-    //                cmdInsert.Parameters.AddWithValue("@created_date", DateTime.Now);
+        //                using var cmdInsert = new MySqlCommand(insertSql, conn, tx);
+        //                cmdInsert.Parameters.AddWithValue("@date", model.InvoiceDate);
+        //                cmdInsert.Parameters.AddWithValue("@customer_id", model.CustomerId);
+        //                cmdInsert.Parameters.AddWithValue("@invoice_id", nextCode);
+        //                cmdInsert.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+        //                cmdInsert.Parameters.AddWithValue("@po_num", model.PoNo ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@city", model.City ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@ship_date", model.ShipDate);
+        //                cmdInsert.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
+        //                cmdInsert.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+        //                cmdInsert.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+        //                cmdInsert.Parameters.AddWithValue("@payment_date", model.PaymentDate);
+        //                cmdInsert.Parameters.AddWithValue("@total", model.TotalBeforeVat);
+        //                cmdInsert.Parameters.AddWithValue("@vat", model.Vat);
+        //                cmdInsert.Parameters.AddWithValue("@net", model.NetTotal);
+        //                cmdInsert.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
+        //                cmdInsert.Parameters.AddWithValue("@change", model.PaymentMethod == "Cash" ? 0 : model.NetTotal);
+        //                cmdInsert.Parameters.AddWithValue("@created_by", userId);
+        //                cmdInsert.Parameters.AddWithValue("@created_date", DateTime.Now);
 
-    //                invId = Convert.ToInt64(await cmdInsert.ExecuteScalarAsync());
+        //                invId = Convert.ToInt64(await cmdInsert.ExecuteScalarAsync());
 
-    //            }
-    //            else // UPDATE
-    //            {
-    //                invId = model.Id;
+        //            }
+        //            else // UPDATE
+        //            {
+        //                invId = model.Id;
 
-    //                // Return items to inventory before updating
-    //                await ReturnItemsToInventoryAsync(conn, tx, invId);
+        //                // Return items to inventory before updating
+        //                await ReturnItemsToInventoryAsync(conn, tx, invId);
 
-    //                var updateSql = @"
-    //            UPDATE tbl_sales SET
-    //                date=@date, customer_id=@customer_id, invoice_id=@invoice_id, warehouse_id=@warehouse_id,
-    //                po_num=@po_num, bill_to=@bill_to, city=@city, sales_man=@sales_man, ship_date=@ship_date,
-    //                ship_via=@ship_via, ship_to=@ship_to, payment_method=@payment_method, account_cash_id=@account_cash_id,
-    //                payment_terms=@payment_terms, payment_date=@payment_date, total=@total, vat=@vat, net=@net,
-    //                pay=@pay, `change`=@change, modified_by=@modified_by, modified_date=@modified_date
-    //            WHERE id=@id";
+        //                var updateSql = @"
+        //            UPDATE tbl_sales SET
+        //                date=@date, customer_id=@customer_id, invoice_id=@invoice_id, warehouse_id=@warehouse_id,
+        //                po_num=@po_num, bill_to=@bill_to, city=@city, sales_man=@sales_man, ship_date=@ship_date,
+        //                ship_via=@ship_via, ship_to=@ship_to, payment_method=@payment_method, account_cash_id=@account_cash_id,
+        //                payment_terms=@payment_terms, payment_date=@payment_date, total=@total, vat=@vat, net=@net,
+        //                pay=@pay, `change`=@change, modified_by=@modified_by, modified_date=@modified_date
+        //            WHERE id=@id";
 
-    //                using var cmdUpdate = new MySqlCommand(updateSql, conn, tx);
-    //                cmdUpdate.Parameters.AddWithValue("@id", invId);
-    //                cmdUpdate.Parameters.AddWithValue("@date", model.InvoiceDate);
-    //                cmdUpdate.Parameters.AddWithValue("@customer_id", model.CustomerId);
-    //                cmdUpdate.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
-    //                cmdUpdate.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
-    //                cmdUpdate.Parameters.AddWithValue("@po_num", model.PoNo ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@city", model.City ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@ship_date", model.ShipDate);
-    //                cmdUpdate.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
-    //                cmdUpdate.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
-    //                cmdUpdate.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
-    //                cmdUpdate.Parameters.AddWithValue("@payment_date", model.PaymentDate);
-    //                cmdUpdate.Parameters.AddWithValue("@total", model.TotalBeforeVat);
-    //                cmdUpdate.Parameters.AddWithValue("@vat", model.Vat);
-    //                cmdUpdate.Parameters.AddWithValue("@net", model.NetTotal);
-    //                cmdUpdate.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
-    //                cmdUpdate.Parameters.AddWithValue("@change", model.PaymentMethod == "Cash" ? 0 : model.NetTotal);
-    //                cmdUpdate.Parameters.AddWithValue("@modified_by", userId);
-    //                cmdUpdate.Parameters.AddWithValue("@modified_date", DateTime.Now);
+        //                using var cmdUpdate = new MySqlCommand(updateSql, conn, tx);
+        //                cmdUpdate.Parameters.AddWithValue("@id", invId);
+        //                cmdUpdate.Parameters.AddWithValue("@date", model.InvoiceDate);
+        //                cmdUpdate.Parameters.AddWithValue("@customer_id", model.CustomerId);
+        //                cmdUpdate.Parameters.AddWithValue("@invoice_id", model.InvoiceCode);
+        //                cmdUpdate.Parameters.AddWithValue("@warehouse_id", model.WarehouseId);
+        //                cmdUpdate.Parameters.AddWithValue("@po_num", model.PoNo ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@bill_to", model.BillTo ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@city", model.City ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@sales_man", model.SalesMan ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@ship_date", model.ShipDate);
+        //                cmdUpdate.Parameters.AddWithValue("@ship_via", model.ShipVia ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@ship_to", model.ShipTo ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@payment_method", model.PaymentMethod);
+        //                cmdUpdate.Parameters.AddWithValue("@account_cash_id", model.AccountCashId);
+        //                cmdUpdate.Parameters.AddWithValue("@payment_terms", model.PaymentTerms ?? "");
+        //                cmdUpdate.Parameters.AddWithValue("@payment_date", model.PaymentDate);
+        //                cmdUpdate.Parameters.AddWithValue("@total", model.TotalBeforeVat);
+        //                cmdUpdate.Parameters.AddWithValue("@vat", model.Vat);
+        //                cmdUpdate.Parameters.AddWithValue("@net", model.NetTotal);
+        //                cmdUpdate.Parameters.AddWithValue("@pay", model.PaymentMethod == "Cash" ? model.NetTotal : 0);
+        //                cmdUpdate.Parameters.AddWithValue("@change", model.PaymentMethod == "Cash" ? 0 : model.NetTotal);
+        //                cmdUpdate.Parameters.AddWithValue("@modified_by", userId);
+        //                cmdUpdate.Parameters.AddWithValue("@modified_date", DateTime.Now);
 
-    //                await cmdUpdate.ExecuteNonQueryAsync();
+        //                await cmdUpdate.ExecuteNonQueryAsync();
 
-    //                // Delete old sales details & accounting
-    //                await CommonDeleteTransactionsAsync(conn, tx, invId);
-    //            }
+        //                // Delete old sales details & accounting
+        //                await CommonDeleteTransactionsAsync(conn, tx, invId);
+        //            }
 
-    //            // =======================
-    //            // 3. INSERT SALES ITEMS
-    //            // =======================
-    //            await InsertSalesItemAsync(conn, tx, invId, model.Items);
+        //            // =======================
+        //            // 3. INSERT SALES ITEMS
+        //            // =======================
+        //            await InsertSalesItemAsync(conn, tx, invId, model.Items);
 
-    //            // =======================
-    //            // 4. PROCESS INVENTORY
-    //            // =======================
-    //            await ProcessInventoryAsync(conn, tx, invId, model.Items, model.WarehouseId);
+        //            // =======================
+        //            // 4. PROCESS INVENTORY
+        //            // =======================
+        //            await ProcessInventoryAsync(conn, tx, invId, model.Items, model.WarehouseId);
 
-    //            // =======================
-    //            // 5. ACCOUNTING ENTRIES
-    //            // =======================
-    //            await InsertAccountingAsync(conn, tx, invId, model, userId);
+        //            // =======================
+        //            // 5. ACCOUNTING ENTRIES
+        //            // =======================
+        //            await InsertAccountingAsync(conn, tx, invId, model, userId);
 
-    //            // =======================
-    //            // 6. COMMIT
-    //            // =======================
-    //            await tx.CommitAsync();
+        //            // =======================
+        //            // 6. COMMIT
+        //            // =======================
+        //            await tx.CommitAsync();
 
-    //            return Json(new { status = true, message = model.Id == 0 ? "Invoice created successfully" : "Invoice updated successfully", invoiceId = invId });
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            await tx.RollbackAsync();
-    //            return Json(new { status = false, message = ex.Message });
-    //        }
-    //    }
-
-
-    //    private async Task ReturnItemsToInventoryAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
-    //    {
-    //        var query = @"
-    //    SELECT sd.item_id, sd.qty, i.method, i.type
-    //    FROM tbl_sales_details sd
-    //    INNER JOIN tbl_items i ON sd.item_id = i.id
-    //    WHERE sd.sales_id = @salesId";
-
-    //        using var cmd = new MySqlCommand(query, conn, tx);
-    //        cmd.Parameters.AddWithValue("@salesId", invoiceId);
-
-    //        using var reader = await cmd.ExecuteReaderAsync();
-    //        var itemsToReturn = new List<(int ItemId, decimal Qty, string Method, string Type)>();
-    //        while (await reader.ReadAsync())
-    //        {
-    //            itemsToReturn.Add((
-    //                reader.GetInt32("item_id"),
-    //                reader.GetDecimal("qty"),
-    //                reader.GetString("method"),
-    //                reader.GetString("type")
-    //            ));
-    //        }
-    //        reader.Close();
-
-    //        foreach (var item in itemsToReturn)
-    //        {
-    //            if (item.Type == "12 - Service") continue;
-
-    //            if (item.Type == "13 - Inventory Assembly")
-    //            {
-    //                var compQuery = "SELECT item_id, qty FROM tbl_item_assembly WHERE assembly_id=@assemblyId";
-    //                using var compCmd = new MySqlCommand(compQuery, conn, tx);
-    //                compCmd.Parameters.AddWithValue("@assemblyId", item.ItemId);
-
-    //                using var compReader = await compCmd.ExecuteReaderAsync();
-    //                var components = new List<(int ComponentId, decimal Qty)>();
-    //                while (await compReader.ReadAsync())
-    //                {
-    //                    components.Add((
-    //                        compReader.GetInt32("item_id"),
-    //                        compReader.GetDecimal("qty") * item.Qty
-    //                    ));
-    //                }
-    //                compReader.Close();
-
-    //                foreach (var comp in components)
-    //                {
-    //                    var updateQty = "UPDATE tbl_items SET on_hand = on_hand + @qty WHERE id=@itemId";
-    //                    using var updateCmd = new MySqlCommand(updateQty, conn, tx);
-    //                    updateCmd.Parameters.AddWithValue("@qty", comp.Qty);
-    //                    updateCmd.Parameters.AddWithValue("@itemId", comp.ComponentId);
-    //                    await updateCmd.ExecuteNonQueryAsync();
-    //                }
-    //            }
-    //            else
-    //            {
-    //                var updateQty = "UPDATE tbl_items SET on_hand = on_hand + @qty WHERE id=@itemId";
-    //                using var updateCmd = new MySqlCommand(updateQty, conn, tx);
-    //                updateCmd.Parameters.AddWithValue("@qty", item.Qty);
-    //                updateCmd.Parameters.AddWithValue("@itemId", item.ItemId);
-    //                await updateCmd.ExecuteNonQueryAsync();
-    //            }
-    //        }
-    //    }
+        //            return Json(new { status = true, message = model.Id == 0 ? "Invoice created successfully" : "Invoice updated successfully", invoiceId = invId });
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            await tx.RollbackAsync();
+        //            return Json(new { status = false, message = ex.Message });
+        //        }
+        //    }
 
 
-    //    private async Task CommonDeleteTransactionsAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
-    //    {
-    //        try
-    //        {
-    //            var deleteSalesDetails = "DELETE FROM tbl_sales_details WHERE sales_id=@id";
-    //            using (var cmd = new MySqlCommand(deleteSalesDetails, conn, tx))
-    //            {
-    //                cmd.Parameters.AddWithValue("@id", invoiceId);
-    //                await cmd.ExecuteNonQueryAsync();
-    //            }
+        //    private async Task ReturnItemsToInventoryAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
+        //    {
+        //        var query = @"
+        //    SELECT sd.item_id, sd.qty, i.method, i.type
+        //    FROM tbl_sales_details sd
+        //    INNER JOIN tbl_items i ON sd.item_id = i.id
+        //    WHERE sd.sales_id = @salesId";
 
-    //            var deleteItemTrans = @"
-    //    DELETE FROM tbl_item_transaction WHERE reference=@invId AND type='SALES';
-    //    DELETE FROM tbl_item_card_details WHERE trans_type='Sales Invoice' AND trans_no=@invId;
-    //    DELETE FROM tbl_cost_center_transaction WHERE ref_id=@invId AND type='Sales';
-    //    DELETE FROM tbl_transaction WHERE transaction_id=@invId AND type='Sales Invoice Cash';
-    //";
-    //            using (var cmd = new MySqlCommand(deleteItemTrans, conn, tx))
-    //            {
-    //                cmd.Parameters.AddWithValue("@invId", invoiceId);
-    //                await cmd.ExecuteNonQueryAsync();
-    //            }
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            throw ex;
-    //        }
-    //    }
+        //        using var cmd = new MySqlCommand(query, conn, tx);
+        //        cmd.Parameters.AddWithValue("@salesId", invoiceId);
 
+        //        using var reader = await cmd.ExecuteReaderAsync();
+        //        var itemsToReturn = new List<(int ItemId, decimal Qty, string Method, string Type)>();
+        //        while (await reader.ReadAsync())
+        //        {
+        //            itemsToReturn.Add((
+        //                reader.GetInt32("item_id"),
+        //                reader.GetDecimal("qty"),
+        //                reader.GetString("method"),
+        //                reader.GetString("type")
+        //            ));
+        //        }
+        //        reader.Close();
 
-    //    private async Task InsertSalesItemAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId, List<SalesItemRequest> items)
-    //    {
-    //        foreach (var item in items)
-    //        {
-    //            var insertDetail = @"
-    //        INSERT INTO tbl_sales_details
-    //        (sales_id, item_id, qty, cost_price, price, discount, vatp, vat, total, cost_center_id)
-    //        VALUES
-    //        (@sales_id, @item_id, @qty, @cost_price, @price, @discount, @vatp, @vat, @total, @costCenter)";
+        //        foreach (var item in itemsToReturn)
+        //        {
+        //            if (item.Type == "12 - Service") continue;
 
-    //            using var cmd = new MySqlCommand(insertDetail, conn, tx);
-    //            cmd.Parameters.AddWithValue("@sales_id", invoiceId);
-    //            cmd.Parameters.AddWithValue("@item_id", item.ItemId);
-    //            cmd.Parameters.AddWithValue("@qty", item.Qty);
-    //            cmd.Parameters.AddWithValue("@cost_price", item.CostPrice);
-    //            cmd.Parameters.AddWithValue("@price", item.Price);
-    //            cmd.Parameters.AddWithValue("@discount", item.Discount);
-    //            cmd.Parameters.AddWithValue("@vatp", item.VatP);
-    //            cmd.Parameters.AddWithValue("@vat", item.Vat);
-    //            cmd.Parameters.AddWithValue("@total", item.Total);
-    //            cmd.Parameters.AddWithValue("@costCenter", item.CostCenterId);
-    //            await cmd.ExecuteNonQueryAsync();
-    //        }
-    //    }
+        //            if (item.Type == "13 - Inventory Assembly")
+        //            {
+        //                var compQuery = "SELECT item_id, qty FROM tbl_item_assembly WHERE assembly_id=@assemblyId";
+        //                using var compCmd = new MySqlCommand(compQuery, conn, tx);
+        //                compCmd.Parameters.AddWithValue("@assemblyId", item.ItemId);
 
+        //                using var compReader = await compCmd.ExecuteReaderAsync();
+        //                var components = new List<(int ComponentId, decimal Qty)>();
+        //                while (await compReader.ReadAsync())
+        //                {
+        //                    components.Add((
+        //                        compReader.GetInt32("item_id"),
+        //                        compReader.GetDecimal("qty") * item.Qty
+        //                    ));
+        //                }
+        //                compReader.Close();
 
-    //    private async Task ProcessInventoryAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId, List<SalesItemRequest> items, int warehouseId)
-    //    {
-    //        foreach (var item in items)
-    //        {
-    //            if (item.Type == "12 - Service") continue;
-
-    //            if (item.Type == "13 - Inventory Assembly")
-    //            {
-    //                var compQuery = "SELECT item_id, qty, method FROM tbl_item_assembly INNER JOIN tbl_items ON tbl_item_assembly.item_id=tbl_items.id WHERE assembly_id=@assemblyId";
-    //                using var cmd = new MySqlCommand(compQuery, conn, tx);
-    //                cmd.Parameters.AddWithValue("@assemblyId", item.ItemId);
-
-    //                using var reader = await cmd.ExecuteReaderAsync();
-    //                var components = new List<(int Id, decimal Qty, string Method)>();
-    //                while (await reader.ReadAsync())
-    //                {
-    //                    components.Add((
-    //                        reader.GetInt32("item_id"),
-    //                        reader.GetDecimal("qty") * item.Qty,
-    //                        reader.GetString("method")
-    //                    ));
-    //                }
-    //                reader.Close();
-
-    //                foreach (var comp in components)
-    //                {
-    //                    var updateQty = "UPDATE tbl_items SET on_hand = on_hand - @qty WHERE id=@itemId";
-    //                    using var updateCmd = new MySqlCommand(updateQty, conn, tx);
-    //                    updateCmd.Parameters.AddWithValue("@qty", comp.Qty);
-    //                    updateCmd.Parameters.AddWithValue("@itemId", comp.Id);
-    //                    await updateCmd.ExecuteNonQueryAsync();
-    //                }
-    //            }
-    //            else
-    //            {
-    //                var updateQty = "UPDATE tbl_items SET on_hand = on_hand - @qty WHERE id=@itemId";
-    //                using var cmd = new MySqlCommand(updateQty, conn, tx);
-    //                cmd.Parameters.AddWithValue("@qty", item.Qty);
-    //                cmd.Parameters.AddWithValue("@itemId", item.ItemId);
-    //                await cmd.ExecuteNonQueryAsync();
-    //            }
-    //        }
-    //    }
-
-    //    private async Task InsertAccountingAsync(
-    //   MySqlConnection conn,
-    //   MySqlTransaction tx,
-    //   long invoiceId,
-    //   SalesInvoiceRequest model,
-    //   int userId)
-    //    {
-    //        // Determine main account (Cash or Credit)
-    //        string accountId = model.PaymentMethod == "Credit"
-    //            ? model.PaymentCreditAccountId.ToString()
-    //            : model.AccountCashId.ToString();
-    //        int level4SalesInvoice = await GetDefaultAccountId("Sales");
-    //        int level4VatId = await GetDefaultAccountId("Vat Output");
-    //        int level4COGS = await GetDefaultAccountId("COGS");
-    //        int level4Id = await GetDefaultAccountId("Inventory");
-
-    //        // =========================
-    //        // 1. Customer / Cash / Credit Entry
-    //        // =========================
-    //        if (model.NetTotal > 0)
-    //        {
-    //            await InsertTransactionAsync(
-    //                conn, tx,
-    //                model.InvoiceDate,
-    //                accountId,
-    //                model.PaymentMethod == "Cash" ? model.NetTotal : 0,
-    //                model.PaymentMethod == "Credit" ? model.NetTotal : 0,
-    //                invoiceId,
-    //                model.CustomerId,
-    //                model.PaymentMethod == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
-    //                "SALES",
-    //                $"Sales Invoice NO. {model.InvoiceCode}",
-    //                userId,
-    //                model.InvoiceCode
-    //            );
-    //        }
-
-    //        // =========================
-    //        // 2. Sales Revenue Entry
-    //        // =========================
-    //        await InsertTransactionAsync(
-    //            conn, tx,
-    //            model.InvoiceDate,
-    //            level4SalesInvoice.ToString(),
-    //            0,
-    //            model.TotalBeforeVat,
-    //            invoiceId,
-    //            0,
-    //            model.PaymentMethod == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
-    //            "SALES",
-    //            $"Sales Revenue For Invoice No. {model.InvoiceCode}",
-    //            userId,
-    //            model.InvoiceCode
-    //        );
-
-    //        // =========================
-    //        // 3. VAT Output Entry (only if VAT > 0)
-    //        // =========================
-    //        if (model.Vat > 0)
-    //        {
-    //            await InsertTransactionAsync(
-    //                conn, tx,
-    //                model.InvoiceDate,
-    //                level4VatId.ToString(),
-    //                0,
-    //                model.Vat,
-    //                invoiceId,
-    //                0,
-    //                model.PaymentMethod == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
-    //                "SALES",
-    //                $"Vat Output For Invoice No. {model.InvoiceCode}",
-    //                userId,
-    //                model.InvoiceCode
-    //            );
-    //        }
-
-    //        // =========================
-    //        // 4. COGS & Inventory Entries (only if inventory cost > 0)
-    //        // =========================
-    //        if (model.InventoryCost > 0)
-    //        {
-    //            // COGS Debit
-    //            await InsertTransactionAsync(
-    //                conn, tx,
-    //                model.InvoiceDate,
-    //                level4COGS.ToString(),
-    //                model.InventoryCost,
-    //                0,
-    //                invoiceId,
-    //                0,
-    //                "Sales Invoice",
-    //                "SALES",
-    //                $"COGS For Sales No. {model.InvoiceCode}",
-    //                userId,
-    //                model.InvoiceCode
-    //            );
-
-    //            // Inventory Credit (Warehouse Account)
-    //            await InsertTransactionAsync(
-    //                conn, tx,
-    //                model.InvoiceDate,
-    //                level4Id.ToString(),
-    //                0,
-    //                model.InventoryCost,
-    //                invoiceId,
-    //                0,
-    //                "Sales Invoice",
-    //                "SALES",
-    //                $"Item Sold For Sales No. {model.InvoiceCode}",
-    //                userId,
-    //                model.InvoiceCode
-    //            );
-    //        }
-    //    }
-
-    //    private static async Task InsertTransactionAsync(
-    //        MySqlConnection conn,
-    //        MySqlTransaction tx,
-    //        DateTime date,
-    //        string accountId,
-    //        decimal debit,
-    //        decimal credit,
-    //        long transactionId,
-    //        long humId,
-    //        string type,
-    //        string tType,
-    //        string description,
-    //        int createdBy,
-    //        string voucherNo)
-    //    {
-    //        using var cmd = new MySqlCommand(@"
-    //    INSERT INTO tbl_transaction
-    //    (date, account_id, debit, credit, transaction_id, hum_id,
-    //     t_type, type, description, created_by, created_date, state, voucher_no)
-    //    VALUES
-    //    (@date, @account_id, @debit, @credit, @transaction_id, @hum_id,
-    //     @t_type, @type, @description, @created_by, @created_date, 0, @voucher_no)
-    //", conn, tx);
-
-    //        cmd.Parameters.AddWithValue("@date", date);
-    //        cmd.Parameters.AddWithValue("@account_id", accountId);
-    //        cmd.Parameters.AddWithValue("@debit", debit);
-    //        cmd.Parameters.AddWithValue("@credit", credit);
-    //        cmd.Parameters.AddWithValue("@transaction_id", transactionId);
-    //        cmd.Parameters.AddWithValue("@hum_id", humId);
-    //        cmd.Parameters.AddWithValue("@t_type", tType);
-    //        cmd.Parameters.AddWithValue("@type", type);
-    //        cmd.Parameters.AddWithValue("@description", description);
-    //        cmd.Parameters.AddWithValue("@created_by", createdBy);
-    //        cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
-    //        cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
-
-    //        await cmd.ExecuteNonQueryAsync();
-    //    }
+        //                foreach (var comp in components)
+        //                {
+        //                    var updateQty = "UPDATE tbl_items SET on_hand = on_hand + @qty WHERE id=@itemId";
+        //                    using var updateCmd = new MySqlCommand(updateQty, conn, tx);
+        //                    updateCmd.Parameters.AddWithValue("@qty", comp.Qty);
+        //                    updateCmd.Parameters.AddWithValue("@itemId", comp.ComponentId);
+        //                    await updateCmd.ExecuteNonQueryAsync();
+        //                }
+        //            }
+        //            else
+        //            {
+        //                var updateQty = "UPDATE tbl_items SET on_hand = on_hand + @qty WHERE id=@itemId";
+        //                using var updateCmd = new MySqlCommand(updateQty, conn, tx);
+        //                updateCmd.Parameters.AddWithValue("@qty", item.Qty);
+        //                updateCmd.Parameters.AddWithValue("@itemId", item.ItemId);
+        //                await updateCmd.ExecuteNonQueryAsync();
+        //            }
+        //        }
+        //    }
 
 
-    //    #endregion
+        //    private async Task CommonDeleteTransactionsAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId)
+        //    {
+        //        try
+        //        {
+        //            var deleteSalesDetails = "DELETE FROM tbl_sales_details WHERE sales_id=@id";
+        //            using (var cmd = new MySqlCommand(deleteSalesDetails, conn, tx))
+        //            {
+        //                cmd.Parameters.AddWithValue("@id", invoiceId);
+        //                await cmd.ExecuteNonQueryAsync();
+        //            }
+
+        //            var deleteItemTrans = @"
+        //    DELETE FROM tbl_item_transaction WHERE reference=@invId AND type='SALES';
+        //    DELETE FROM tbl_item_card_details WHERE trans_type='Sales Invoice' AND trans_no=@invId;
+        //    DELETE FROM tbl_cost_center_transaction WHERE ref_id=@invId AND type='Sales';
+        //    DELETE FROM tbl_transaction WHERE transaction_id=@invId AND type='Sales Invoice Cash';
+        //";
+        //            using (var cmd = new MySqlCommand(deleteItemTrans, conn, tx))
+        //            {
+        //                cmd.Parameters.AddWithValue("@invId", invoiceId);
+        //                await cmd.ExecuteNonQueryAsync();
+        //            }
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            throw ex;
+        //        }
+        //    }
+
+
+        //    private async Task InsertSalesItemAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId, List<SalesItemRequest> items)
+        //    {
+        //        foreach (var item in items)
+        //        {
+        //            var insertDetail = @"
+        //        INSERT INTO tbl_sales_details
+        //        (sales_id, item_id, qty, cost_price, price, discount, vatp, vat, total, cost_center_id)
+        //        VALUES
+        //        (@sales_id, @item_id, @qty, @cost_price, @price, @discount, @vatp, @vat, @total, @costCenter)";
+
+        //            using var cmd = new MySqlCommand(insertDetail, conn, tx);
+        //            cmd.Parameters.AddWithValue("@sales_id", invoiceId);
+        //            cmd.Parameters.AddWithValue("@item_id", item.ItemId);
+        //            cmd.Parameters.AddWithValue("@qty", item.Qty);
+        //            cmd.Parameters.AddWithValue("@cost_price", item.CostPrice);
+        //            cmd.Parameters.AddWithValue("@price", item.Price);
+        //            cmd.Parameters.AddWithValue("@discount", item.Discount);
+        //            cmd.Parameters.AddWithValue("@vatp", item.VatP);
+        //            cmd.Parameters.AddWithValue("@vat", item.Vat);
+        //            cmd.Parameters.AddWithValue("@total", item.Total);
+        //            cmd.Parameters.AddWithValue("@costCenter", item.CostCenterId);
+        //            await cmd.ExecuteNonQueryAsync();
+        //        }
+        //    }
+
+
+        //    private async Task ProcessInventoryAsync(MySqlConnection conn, MySqlTransaction tx, long invoiceId, List<SalesItemRequest> items, int warehouseId)
+        //    {
+        //        foreach (var item in items)
+        //        {
+        //            if (item.Type == "12 - Service") continue;
+
+        //            if (item.Type == "13 - Inventory Assembly")
+        //            {
+        //                var compQuery = "SELECT item_id, qty, method FROM tbl_item_assembly INNER JOIN tbl_items ON tbl_item_assembly.item_id=tbl_items.id WHERE assembly_id=@assemblyId";
+        //                using var cmd = new MySqlCommand(compQuery, conn, tx);
+        //                cmd.Parameters.AddWithValue("@assemblyId", item.ItemId);
+
+        //                using var reader = await cmd.ExecuteReaderAsync();
+        //                var components = new List<(int Id, decimal Qty, string Method)>();
+        //                while (await reader.ReadAsync())
+        //                {
+        //                    components.Add((
+        //                        reader.GetInt32("item_id"),
+        //                        reader.GetDecimal("qty") * item.Qty,
+        //                        reader.GetString("method")
+        //                    ));
+        //                }
+        //                reader.Close();
+
+        //                foreach (var comp in components)
+        //                {
+        //                    var updateQty = "UPDATE tbl_items SET on_hand = on_hand - @qty WHERE id=@itemId";
+        //                    using var updateCmd = new MySqlCommand(updateQty, conn, tx);
+        //                    updateCmd.Parameters.AddWithValue("@qty", comp.Qty);
+        //                    updateCmd.Parameters.AddWithValue("@itemId", comp.Id);
+        //                    await updateCmd.ExecuteNonQueryAsync();
+        //                }
+        //            }
+        //            else
+        //            {
+        //                var updateQty = "UPDATE tbl_items SET on_hand = on_hand - @qty WHERE id=@itemId";
+        //                using var cmd = new MySqlCommand(updateQty, conn, tx);
+        //                cmd.Parameters.AddWithValue("@qty", item.Qty);
+        //                cmd.Parameters.AddWithValue("@itemId", item.ItemId);
+        //                await cmd.ExecuteNonQueryAsync();
+        //            }
+        //        }
+        //    }
+
+        //    private async Task InsertAccountingAsync(
+        //   MySqlConnection conn,
+        //   MySqlTransaction tx,
+        //   long invoiceId,
+        //   SalesInvoiceRequest model,
+        //   int userId)
+        //    {
+        //        // Determine main account (Cash or Credit)
+        //        string accountId = model.PaymentMethod == "Credit"
+        //            ? model.PaymentCreditAccountId.ToString()
+        //            : model.AccountCashId.ToString();
+        //        int level4SalesInvoice = await GetDefaultAccountId("Sales");
+        //        int level4VatId = await GetDefaultAccountId("Vat Output");
+        //        int level4COGS = await GetDefaultAccountId("COGS");
+        //        int level4Id = await GetDefaultAccountId("Inventory");
+
+        //        // =========================
+        //        // 1. Customer / Cash / Credit Entry
+        //        // =========================
+        //        if (model.NetTotal > 0)
+        //        {
+        //            await InsertTransactionAsync(
+        //                conn, tx,
+        //                model.InvoiceDate,
+        //                accountId,
+        //                model.PaymentMethod == "Cash" ? model.NetTotal : 0,
+        //                model.PaymentMethod == "Credit" ? model.NetTotal : 0,
+        //                invoiceId,
+        //                model.CustomerId,
+        //                model.PaymentMethod == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
+        //                "SALES",
+        //                $"Sales Invoice NO. {model.InvoiceCode}",
+        //                userId,
+        //                model.InvoiceCode
+        //            );
+        //        }
+
+        //        // =========================
+        //        // 2. Sales Revenue Entry
+        //        // =========================
+        //        await InsertTransactionAsync(
+        //            conn, tx,
+        //            model.InvoiceDate,
+        //            level4SalesInvoice.ToString(),
+        //            0,
+        //            model.TotalBeforeVat,
+        //            invoiceId,
+        //            0,
+        //            model.PaymentMethod == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
+        //            "SALES",
+        //            $"Sales Revenue For Invoice No. {model.InvoiceCode}",
+        //            userId,
+        //            model.InvoiceCode
+        //        );
+
+        //        // =========================
+        //        // 3. VAT Output Entry (only if VAT > 0)
+        //        // =========================
+        //        if (model.Vat > 0)
+        //        {
+        //            await InsertTransactionAsync(
+        //                conn, tx,
+        //                model.InvoiceDate,
+        //                level4VatId.ToString(),
+        //                0,
+        //                model.Vat,
+        //                invoiceId,
+        //                0,
+        //                model.PaymentMethod == "Credit" ? "Sales Invoice" : "Sales Invoice Cash",
+        //                "SALES",
+        //                $"Vat Output For Invoice No. {model.InvoiceCode}",
+        //                userId,
+        //                model.InvoiceCode
+        //            );
+        //        }
+
+        //        // =========================
+        //        // 4. COGS & Inventory Entries (only if inventory cost > 0)
+        //        // =========================
+        //        if (model.InventoryCost > 0)
+        //        {
+        //            // COGS Debit
+        //            await InsertTransactionAsync(
+        //                conn, tx,
+        //                model.InvoiceDate,
+        //                level4COGS.ToString(),
+        //                model.InventoryCost,
+        //                0,
+        //                invoiceId,
+        //                0,
+        //                "Sales Invoice",
+        //                "SALES",
+        //                $"COGS For Sales No. {model.InvoiceCode}",
+        //                userId,
+        //                model.InvoiceCode
+        //            );
+
+        //            // Inventory Credit (Warehouse Account)
+        //            await InsertTransactionAsync(
+        //                conn, tx,
+        //                model.InvoiceDate,
+        //                level4Id.ToString(),
+        //                0,
+        //                model.InventoryCost,
+        //                invoiceId,
+        //                0,
+        //                "Sales Invoice",
+        //                "SALES",
+        //                $"Item Sold For Sales No. {model.InvoiceCode}",
+        //                userId,
+        //                model.InvoiceCode
+        //            );
+        //        }
+        //    }
+
+        //    private static async Task InsertTransactionAsync(
+        //        MySqlConnection conn,
+        //        MySqlTransaction tx,
+        //        DateTime date,
+        //        string accountId,
+        //        decimal debit,
+        //        decimal credit,
+        //        long transactionId,
+        //        long humId,
+        //        string type,
+        //        string tType,
+        //        string description,
+        //        int createdBy,
+        //        string voucherNo)
+        //    {
+        //        using var cmd = new MySqlCommand(@"
+        //    INSERT INTO tbl_transaction
+        //    (date, account_id, debit, credit, transaction_id, hum_id,
+        //     t_type, type, description, created_by, created_date, state, voucher_no)
+        //    VALUES
+        //    (@date, @account_id, @debit, @credit, @transaction_id, @hum_id,
+        //     @t_type, @type, @description, @created_by, @created_date, 0, @voucher_no)
+        //", conn, tx);
+
+        //        cmd.Parameters.AddWithValue("@date", date);
+        //        cmd.Parameters.AddWithValue("@account_id", accountId);
+        //        cmd.Parameters.AddWithValue("@debit", debit);
+        //        cmd.Parameters.AddWithValue("@credit", credit);
+        //        cmd.Parameters.AddWithValue("@transaction_id", transactionId);
+        //        cmd.Parameters.AddWithValue("@hum_id", humId);
+        //        cmd.Parameters.AddWithValue("@t_type", tType);
+        //        cmd.Parameters.AddWithValue("@type", type);
+        //        cmd.Parameters.AddWithValue("@description", description);
+        //        cmd.Parameters.AddWithValue("@created_by", createdBy);
+        //        cmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+        //        cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
+
+        //        await cmd.ExecuteNonQueryAsync();
+        //    }
+
+
+        //    #endregion
 
         [HttpGet]
         public async Task<IActionResult> GetSalesInvoiceReport(int salesId)
@@ -1970,29 +1970,21 @@ WHERE a.assembly_id = @assemblyId;
 
                 // 🔹 SALES HEADER
                 var saleCmd = new MySqlCommand(@"
-SELECT 
-    s.id,
-    s.date,
-    s.invoice_id,
+SELECT
+    s.id, s.date, s.invoice_id,
     c.name AS customerName,
     s.payment_method,
-    s.total,
-    s.vat,
-    s.net,
-    s.city,
-    s.sales_man,
-    s.ship_date,
+    s.total, s.vat, s.net,
+    s.city, s.sales_man, s.ship_date,
     coa.name AS accountName
 FROM tbl_sales s
-INNER JOIN tbl_customer c ON s.customer_id = c.id
-LEFT JOIN tbl_coa_level_4 coa ON coa.id = s.account_cash_id
-WHERE s.id = @salesId;
-", conn);
+INNER JOIN tbl_customer c      ON s.customer_id    = c.id
+LEFT  JOIN tbl_coa_level_4 coa ON coa.id           = s.account_cash_id
+WHERE s.id = @salesId;", conn);
 
                 saleCmd.Parameters.Add("@salesId", MySqlDbType.Int32).Value = salesId;
 
                 SaleReportDto sale = null;
-
                 await using (var reader = await saleCmd.ExecuteReaderAsync())
                 {
                     if (await reader.ReadAsync())
@@ -2020,28 +2012,20 @@ WHERE s.id = @salesId;
 
                 // 🔹 ITEMS
                 var itemCmd = new MySqlCommand(@"
-SELECT 
-    d.item_id,
-    i.code,
-    i.name,
-    d.qty,
-    d.price,
-    d.discount,
-    d.vat,
-    d.total,
+SELECT
+    d.item_id, i.code, i.name,
+    d.qty, d.price, d.discount, d.vat, d.total,
     cc.name AS costCenterName,
-    u.name AS unitName
+    u.name  AS unitName
 FROM tbl_sales_details d
-INNER JOIN tbl_items i ON d.item_id = i.id
-LEFT JOIN tbl_sub_cost_center cc ON cc.id = d.cost_center_id
-LEFT JOIN tbl_unit u ON u.id = i.unit_id
-WHERE d.sales_id = @salesId;
-", conn);
+INNER JOIN tbl_items i              ON d.item_id     = i.id
+LEFT  JOIN tbl_sub_cost_center cc   ON cc.id         = d.cost_center_id
+LEFT  JOIN tbl_unit u               ON u.id          = i.unit_id
+WHERE d.sales_id = @salesId;", conn);
 
                 itemCmd.Parameters.Add("@salesId", MySqlDbType.Int32).Value = salesId;
 
                 var items = new List<SaleItemReportDto>();
-
                 await using (var reader = await itemCmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
@@ -2051,55 +2035,44 @@ WHERE d.sales_id = @salesId;
                             ItemId = reader.GetInt32("item_id"),
                             Code = reader.GetString("code"),
                             Name = reader.GetString("name"),
-
                             Qty = Convert.ToDecimal(reader["qty"]),
                             Price = Convert.ToDecimal(reader["price"]),
                             Discount = Convert.ToDecimal(reader["discount"]),
                             Vat = Convert.ToDecimal(reader["vat"]),
                             Total = Convert.ToDecimal(reader["total"]),
-
-                            CostCenterName = reader.IsDBNull("costCenterName")
-                                ? null
-                                : reader.GetString("costCenterName"),
-
-                            UnitName = reader.IsDBNull("unitName")
-                                ? null
-                                : reader.GetString("unitName")
+                            CostCenterName = reader.IsDBNull("costCenterName") ? null : reader.GetString("costCenterName"),
+                            UnitName = reader.IsDBNull("unitName") ? null : reader.GetString("unitName")
                         });
                     }
                 }
 
-
                 // 🔹 COMPANY INFO
+                // Added: phone2, website alongside existing fields
                 var companyCmd = new MySqlCommand(@"
-SELECT 
-    id,
-    name,
-    phone1,
-    gmail,
-    address,
-    trn_no,
+SELECT
+    id, name,
+    phone1, phone2,
+    gmail, website,
+    address, trn_no,
     logoComp
 FROM tbl_company
-LIMIT 1;
-", conn);
+LIMIT 1;", conn);
 
                 CompanyReportDto company = null;
-
                 await using (var reader = await companyCmd.ExecuteReaderAsync())
                 {
                     if (await reader.ReadAsync())
                     {
                         company = new CompanyReportDto
                         {
-                           // Id = reader.GetInt32("id"),
                             Name = reader.GetString("name"),
                             Phone = reader.IsDBNull("phone1") ? null : reader.GetString("phone1"),
+                            Phone2 = reader.IsDBNull("phone2") ? null : reader.GetString("phone2"),
                             Email = reader.IsDBNull("gmail") ? null : reader.GetString("gmail"),
+                            Website = reader.IsDBNull("website") ? null : reader.GetString("website"),
                             Address = reader.IsDBNull("address") ? null : reader.GetString("address"),
                             TRN = reader.IsDBNull("trn_no") ? null : reader.GetString("trn_no"),
-                            Logo = reader.IsDBNull("logoComp")? null: (byte[])reader["logoComp"]
-
+                            Logo = reader.IsDBNull("logoComp") ? null : (byte[])reader["logoComp"]
                         };
                     }
                 }
@@ -2107,16 +2080,10 @@ LIMIT 1;
                 if (company == null)
                     return BadRequest(new { status = false, message = "Company info not found" });
 
-
                 // 🔹 PDF GENERATION
                 byte[] pdfBytes = SapInvoicePdfGenerator.Generate(company, sale, items);
 
-                return File(
-    pdfBytes,
-    "application/pdf",
-    fileDownloadName: null // null or omit => browser opens inline
-);
-
+                return File(pdfBytes, "application/pdf", fileDownloadName: null);
             }
             catch (Exception ex)
             {

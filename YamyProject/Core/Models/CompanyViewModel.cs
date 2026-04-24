@@ -1622,12 +1622,13 @@ namespace YamyProject.Core.Models
     public class CompanyReportDto
     {
         public string Name { get; set; }
-        public string Phone { get; set; }
-        public string Email { get; set; }
+        public string Phone { get; set; }   
+        public string Phone2 { get; set; } 
+        public string Email { get; set; }  
+        public string Website { get; set; }   
         public string Address { get; set; }
         public string TRN { get; set; }
-
-        public byte[] Logo { get; set; }
+        public byte[] Logo { get; set; }   
         public byte[] QrCode { get; set; }
     }
 
