@@ -3679,15 +3679,10 @@ VALUES
         {
             try
             {
-                string connStr = _config.GetConnectionString("DefaultConnection");
-                string dbName = database;
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                    return Json(new { status = false, message = "Username and password are required." });
 
-                if (string.IsNullOrWhiteSpace(username) ||
-                    string.IsNullOrWhiteSpace(password) ||
-                    string.IsNullOrWhiteSpace(dbName))
-                {
-                    return Json(new { status = false, message = "Missing login fields." });
-                }
+                string connStr = _config.GetConnectionString("DefaultConnection");
 
                 using var conn = new MySqlConnection(connStr);
                 await conn.OpenAsync();
@@ -3695,10 +3690,11 @@ VALUES
                 // 🔥 SUPER ADMIN LOGIN
                 if (username == "yamy" && password == "yamy@123")
                 {
+                    string dbName = database;
                     string superQuery = $@"
-                SELECT * FROM `{dbName}`.tbl_sec_users
-                WHERE role_id = 1 AND active = 0
-                LIMIT 1";
+            SELECT * FROM `{dbName}`.tbl_sec_users
+            WHERE role_id = 1 AND active = 0
+            LIMIT 1";
 
                     using var cmdSuper = new MySqlCommand(superQuery, conn);
                     using var rSuper = await cmdSuper.ExecuteReaderAsync();
@@ -3714,76 +3710,221 @@ VALUES
                             UserName = rSuper["user_name"].ToString()
                         };
 
-                        // Save session
                         HttpContext.Session.SetString("DatabaseName", dbName);
                         HttpContext.Session.SetString("UserName", username);
                         HttpContext.Session.SetInt32("UserId", user.Id);
                         HttpContext.Session.SetInt32("RoleId", user.RoleId);
                         return Json(new { status = true, user });
                     }
+
+                    return Json(new { status = false, message = "Super admin user not found in selected company." });
                 }
 
-                // NORMAL USER LOGIN
-                string query = $@"
-            SELECT id, role_id, first_name, last_name, user_name, passwordhash, salt, active
-            FROM `{dbName}`.tbl_sec_users
-            WHERE user_name = @user_name
-            LIMIT 1";
+                // ✅ STEP 1: Get all company databases from yamycompany.tbl_company
+                string getDbsQuery = @"
+        SELECT database_name 
+        FROM yamycompany.tbl_company 
+        WHERE database_name IS NOT NULL AND database_name != ''";
 
-                using var cmd = new MySqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@user_name", username.Trim());
-
-                using var reader = await cmd.ExecuteReaderAsync();
-                if (!await reader.ReadAsync())
+                List<string> databases = new List<string>();
+                using (var dbCmd = new MySqlCommand(getDbsQuery, conn))
+                using (var dbReader = await dbCmd.ExecuteReaderAsync())
                 {
+                    while (await dbReader.ReadAsync())
+                    {
+                        databases.Add(dbReader["database_name"].ToString());
+                    }
+                }
+
+                if (databases.Count == 0)
+                    return Json(new { status = false, message = "No companies found." });
+
+                // ✅ STEP 2: Search for the username across all company databases
+                string foundDb = null;
+                int userId = 0, roleId = 0;
+                string firstName = "", lastName = "", userName = "";
+                string passwordHash = "", salt = "", activeStatus = "";
+
+                foreach (var db in databases)
+                {
+                    try
+                    {
+                        string userQuery = $@"
+                SELECT id, role_id, first_name, last_name, user_name, passwordhash, salt, active
+                FROM `{db}`.tbl_sec_users
+                WHERE user_name = @user_name
+                LIMIT 1";
+
+                        using var userCmd = new MySqlCommand(userQuery, conn);
+                        userCmd.Parameters.AddWithValue("@user_name", username.Trim());
+
+                        using var userReader = await userCmd.ExecuteReaderAsync();
+                        if (await userReader.ReadAsync())
+                        {
+                            foundDb = db;
+                            userId = Convert.ToInt32(userReader["id"]);
+                            roleId = Convert.ToInt32(userReader["role_id"]);
+                            firstName = userReader["first_name"].ToString();
+                            lastName = userReader["last_name"].ToString();
+                            userName = userReader["user_name"].ToString();
+                            passwordHash = userReader["passwordhash"].ToString();
+                            salt = userReader["salt"].ToString();
+                            activeStatus = userReader["active"].ToString();
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // skip if that db has an issue, continue searching
+                        continue;
+                    }
+                }
+
+                if (foundDb == null)
                     return Json(new { status = false, message = "Invalid Username." });
-                }
 
-                if (reader["active"].ToString() != "0")
-                {
+                if (activeStatus != "0")
                     return Json(new { status = false, message = "User is not active." });
-                }
 
-                bool passwordMatch = PasswordHelper.VerifyPassword(
-                    password,
-                    reader["passwordhash"].ToString(),
-                    reader["salt"].ToString()
-                );
-
+                // ✅ STEP 3: Verify password
+                bool passwordMatch = PasswordHelper.VerifyPassword(password, passwordHash, salt);
                 if (!passwordMatch)
-                {
                     return Json(new { status = false, message = "Invalid Username or Password." });
-                }
 
                 var userRes = new UserResponse
                 {
-                    Id = Convert.ToInt32(reader["id"]),
-                    RoleId = Convert.ToInt32(reader["role_id"]),
-                    FirstName = reader["first_name"].ToString(),
-                    LastName = reader["last_name"].ToString(),
-                    UserName = reader["user_name"].ToString(),
+                    Id = userId,
+                    RoleId = roleId,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    UserName = userName,
                 };
 
-                // Save session
-                HttpContext.Session.SetString("DatabaseName", dbName);
+                // ✅ STEP 4: Store the found company database in session
+                HttpContext.Session.SetString("DatabaseName", foundDb);
                 HttpContext.Session.SetString("UserName", username);
                 HttpContext.Session.SetInt32("UserId", userRes.Id);
                 HttpContext.Session.SetInt32("RoleId", userRes.RoleId);
 
                 return Json(new { status = true, user = userRes });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                // ❗Do NOT expose real error to the frontend
                 return Json(new { status = false, message = "Something went wrong, please try again." });
             }
         }
+
+        //[HttpPost]
+        //public async Task<IActionResult> LoginUser(string username, string password, string database)
+        //{
+        //    try
+        //    {
+        //        string connStr = _config.GetConnectionString("DefaultConnection");
+        //        string dbName = database;
+
+        //        if (string.IsNullOrWhiteSpace(username) ||
+        //            string.IsNullOrWhiteSpace(password) ||
+        //            string.IsNullOrWhiteSpace(dbName))
+        //        {
+        //            return Json(new { status = false, message = "Missing login fields." });
+        //        }
+
+        //        using var conn = new MySqlConnection(connStr);
+        //        await conn.OpenAsync();
+
+        //        // 🔥 SUPER ADMIN LOGIN
+        //        if (username == "yamy" && password == "yamy@123")
+        //        {
+        //            string superQuery = $@"
+        //        SELECT * FROM `{dbName}`.tbl_sec_users
+        //        WHERE role_id = 1 AND active = 0
+        //        LIMIT 1";
+
+        //            using var cmdSuper = new MySqlCommand(superQuery, conn);
+        //            using var rSuper = await cmdSuper.ExecuteReaderAsync();
+
+        //            if (await rSuper.ReadAsync())
+        //            {
+        //                var user = new UserResponse
+        //                {
+        //                    Id = Convert.ToInt32(rSuper["id"]),
+        //                    RoleId = Convert.ToInt32(rSuper["role_id"]),
+        //                    FirstName = rSuper["first_name"].ToString(),
+        //                    LastName = rSuper["last_name"].ToString(),
+        //                    UserName = rSuper["user_name"].ToString()
+        //                };
+
+        //                // Save session
+        //                HttpContext.Session.SetString("DatabaseName", dbName);
+        //                HttpContext.Session.SetString("UserName", username);
+        //                HttpContext.Session.SetInt32("UserId", user.Id);
+        //                HttpContext.Session.SetInt32("RoleId", user.RoleId);
+        //                return Json(new { status = true, user });
+        //            }
+        //        }
+
+        //        // NORMAL USER LOGIN
+        //        string query = $@"
+        //    SELECT id, role_id, first_name, last_name, user_name, passwordhash, salt, active
+        //    FROM `{dbName}`.tbl_sec_users
+        //    WHERE user_name = @user_name
+        //    LIMIT 1";
+
+        //        using var cmd = new MySqlCommand(query, conn);
+        //        cmd.Parameters.AddWithValue("@user_name", username.Trim());
+
+        //        using var reader = await cmd.ExecuteReaderAsync();
+        //        if (!await reader.ReadAsync())
+        //        {
+        //            return Json(new { status = false, message = "Invalid Username." });
+        //        }
+
+        //        if (reader["active"].ToString() != "0")
+        //        {
+        //            return Json(new { status = false, message = "User is not active." });
+        //        }
+
+        //        bool passwordMatch = PasswordHelper.VerifyPassword(
+        //            password,
+        //            reader["passwordhash"].ToString(),
+        //            reader["salt"].ToString()
+        //        );
+
+        //        if (!passwordMatch)
+        //        {
+        //            return Json(new { status = false, message = "Invalid Username or Password." });
+        //        }
+
+        //        var userRes = new UserResponse
+        //        {
+        //            Id = Convert.ToInt32(reader["id"]),
+        //            RoleId = Convert.ToInt32(reader["role_id"]),
+        //            FirstName = reader["first_name"].ToString(),
+        //            LastName = reader["last_name"].ToString(),
+        //            UserName = reader["user_name"].ToString(),
+        //        };
+
+        //        // Save session
+        //        HttpContext.Session.SetString("DatabaseName", dbName);
+        //        HttpContext.Session.SetString("UserName", username);
+        //        HttpContext.Session.SetInt32("UserId", userRes.Id);
+        //        HttpContext.Session.SetInt32("RoleId", userRes.RoleId);
+
+        //        return Json(new { status = true, user = userRes });
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        // ❗Do NOT expose real error to the frontend
+        //        return Json(new { status = false, message = "Something went wrong, please try again." });
+        //    }
+        //}
+
 
         [HttpGet]
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();  // clear session
-            return RedirectToAction("CompanyList", "Account");  // redirect to login page
+            return RedirectToAction("Login", "Account");  // redirect to login page
         }
 
         #endregion.
