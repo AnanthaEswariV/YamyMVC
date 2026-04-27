@@ -53,16 +53,16 @@
 
             <!-- Login Button -->
             <button type="submit"
-                    class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded-lg font-semibold shadow-md transition">
+                    class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded-lgm font-semibold shadow-md transition">
                 Login
             </button>
         </form>
 
         <!-- Register link -->
-        <p class="text-center text-sm text-gray-300 mt-6">
+       @*  <p class="text-center text-sm text-gray-300 mt-6">
             Don’t have an account?
             <a href="@Url.Action("Register", "Account")" class="text-blue-400 hover:underline">Register</a>
-        </p>
+        </p> *@
 
         <!-- Footer -->
         <div class="text-center text-xs text-gray-500 mt-8">
@@ -113,7 +113,6 @@
                         toastr.success('Login successful!');
                         $("#navUsername").text(res.user.userName + " ▾");
 
-                        // 🔥 CALL PERMISSIONS API HERE
                             $.ajax({
         url: '@Url.Action("GetUserPermissions", "Account")',
         type: 'GET',
@@ -122,7 +121,6 @@
                 localStorage.setItem("userPermissions", JSON.stringify(res.data));
             }
 
-                                // redirect after permissions loaded
                                 window.location.href = '@Url.Action("Index", "Home")';
                             },
                             error: function () {
