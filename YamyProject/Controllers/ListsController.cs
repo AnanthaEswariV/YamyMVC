@@ -6318,7 +6318,7 @@ WHERE
                         (petty_cash_id, hum_id, entry_date, hum_name, ref_id, cost_center_id, amount, tax, project_id, vendor_id, description, category, note)
                     VALUES
                         (@petty_cash_id, @hum_id, @entry_date, @hum_name, @ref_id, @cost_center_id, @amount, @tax, @project_id, @vendor_id, @description, @category, @note);";
-
+                            
                         using var cmdDetail = new MySqlCommand(insertDetailQuery, conn);
                         cmdDetail.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
                         cmdDetail.Parameters.AddWithValue("@hum_id", humId);
@@ -6354,7 +6354,7 @@ WHERE
             }
             catch (Exception ex)
             {
-                return Json(500, new { status = false, message = ex.Message });
+                return Json(new { status = false, message = ex.Message });
             }
         }
 

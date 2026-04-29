@@ -659,83 +659,86 @@
             return total;
         }
 
-        $('#savePettyCashBtn').on('click', function() {
-            const pettyCashName = $('#pettyCashNameDropdown').val();
-            const pettyCashDate = $('#pettyCashDate').val();
-            const empId = parseInt($('#pettyCashEmployeeId').val()) || 0;
-                    const vendorId = parseInt($('.vendorName').val()) || 0;
-            if (!pettyCashName) return toastr.warning('Select Petty Cash Name');
+ $('#savePettyCashBtn').on('click', function () {
+    const pettyCashName = $('#pettyCashNameDropdown').val();
+    const pettyCashDate = $('#pettyCashDate').val();
+    const empId = parseInt($('#pettyCashEmployeeId').val()) || 0;
+    const vendorId = parseInt($('.vendorName').first().val()) || 0;
 
-            const totalAmount = calculateTotalAmount();
-            if (!totalAmount) return toastr.warning('Enter at least one valid amount');
-                const details = [];
-           let totalTax = 0;
-        let grandTotal = 0;
-        $('#pettyCashTableBody tr').each(function() {
-            const row = $(this);
+    if (!pettyCashName) return toastr.warning('Select Petty Cash Name');
+    const totalAmount = calculateTotalAmount();
+    if (!totalAmount) return toastr.warning('Enter at least one valid amount');
 
-            const amount = parseFloat(row.find('td:eq(8) input').val()) || 0;
-            const total = parseFloat(row.find('.rowTotal').val()) || amount;
+    const details = [];
 
-            if (amount > 0) {
-                const Category = row.find('select.pettyCashCategorySelect').val();
-                const dateVal = row.find('td:eq(1) input').val();
-                                let entryDate = null;
-        if (dateVal) {
-            const parsedDate = new Date(dateVal);
-            if (!isNaN(parsedDate)) {
-                entryDate = parsedDate.toISOString();
+    $('#pettyCashTableBody tr').each(function () {
+        const row = $(this);
+        const amount = parseFloat(row.find('td:eq(8) input').val()) || 0;
+        const total  = parseFloat(row.find('.rowTotal').val()) || amount;
+
+        if (amount > 0) {
+            const Category = row.find('select.pettyCashCategorySelect').val();
+            const dateVal  = row.find('td:eq(1) input').val();
+            let entryDate  = null;
+
+            if (dateVal) {
+                const parsedDate = new Date(dateVal);
+                if (!isNaN(parsedDate)) entryDate = parsedDate.toISOString();
             }
-        }
-                details.push({
-                            EntryDate: entryDate,
-                    RefId: row.find('td:eq(2) input').val(),
-                    ProjectId: row.find(".projectName").val(),
-                    VendorId: row.find(".vendorName").val(),
-                    Category: Category ? Category.toString() : null,
-                    HumName: row.find('td:eq(4) input').val(),
-                    CostCenterId: row.find('td:eq(5) select').val() || null,
-                    Description: row.find('td:eq(6) input').val(),
-                    Amount: amount,
-                    Tax: row.find('.tax').val() || null,
-                    TotalAmount: total,
-                    Note: row.find('td:eq(11) input').val()
-                });
-            }
-        });
-         console.log(details);
 
-            $.ajax({
-                   url: '@Url.Action("SavePettyCashVoucher", "Lists")',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    VoucherDate: new Date(pettyCashDate).toISOString(), 
-                    CashAccountId: parseInt(pettyCashName) || 0,
-                    EmployeeId: empId,
-                    Total: totalAmount,
-                    VendorId : vendorId,
-                    Details: details
-                }),
-                success: function(res) {
-                    if (res.status) {
-                        toastr.success('Petty Cash saved successfully');
-                        $('#addPettyCashModal').modal('hide');
-                        $('#pettyCashTableBody').empty();
-                                   setTimeout(function () {
-                                        location.reload();
-                                     }, 1500); 
-                        addNewRow();
-                        loadPettyCashCards();
-                    } else {
-                        toastr.error(res.message || 'Save failed');
-                    }
-                },
-                error: function(xhr) {
-                    toastr.error(xhr.responseJSON?.message || 'Error saving petty cash');
-                }
+            details.push({
+                EntryDate:    entryDate,
+                RefId:        row.find('td:eq(2) input').val() || null,       // string ✅
+                ProjectId:    row.find(".projectName").val() || null,          // string ✅ (not parseInt)
+                VendorId:     row.find(".vendorName").val() || null,           // string ✅ (not parseInt)
+                Category:     Category ? Category.toString() : null,
+                HumName:      row.find('td:eq(4) input').val() || null,
+                CostCenterId: row.find('td:eq(5) select').val() || null,       // string ✅ (not parseInt)
+                Description:  row.find('td:eq(6) input').val() || null,
+                Amount:       amount,
+                Tax:          parseFloat(row.find('.tax').val()) || null,
+                TotalAmount:  total,
+                Note:         row.find('td:eq(11) input').val() || null
             });
-        });
+        }
+    });
+
+    console.log(JSON.stringify(details, null, 2));
+
+    $.ajax({
+        url: '@Url.Action("SavePettyCashVoucher", "Lists")',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            VoucherDate:   new Date(pettyCashDate).toISOString(),
+            CashAccountId: parseInt(pettyCashName) || 0,
+            EmployeeId:    empId,
+            Total:         totalAmount,
+            VendorId:      vendorId,         // int ✅ (top-level is int in C#)
+            Details:       details
+        }),
+        success: function (res) {
+            if (res.status) {
+                toastr.success('Petty Cash saved successfully');
+                $('#addPettyCashModal').modal('hide');
+                $('#pettyCashTableBody').empty();
+                setTimeout(function () { location.reload(); }, 1500);
+                addNewRow();
+                loadPettyCashCards();
+            } else {
+                toastr.error(res.message || 'Save failed');
+            }
+        },
+        error: function (xhr) {
+            console.error('Status:', xhr.status);
+            console.error('Full error:', xhr.responseText);
+            toastr.error(xhr.responseJSON?.message || 'Error saving petty cash');
+        }
+    });
+});
+
+
+
 
         $('#addPettyCashBtn').on('click', function() {
             $('#pettyCashForm')[0].reset();  
