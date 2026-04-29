@@ -1290,93 +1290,107 @@
             $('#purchaseType').val(invoice.purchaseType || 'Inventory');
             $('#fixedAssetCategory').val(invoice.fixedAssetCategoryId || '');
 
+            // 🔹 UI Toggles
+            if (invoice.purchaseType === 'Fixed Assets') {
+                $('#fixedAssetCategoryWrapper').show();
+            } else {
+                $('#fixedAssetCategoryWrapper').hide();
+            }
 
-                 if (invoice.purchaseType === 'Fixed Assets') {
-            $('#fixedAssetCategoryWrapper').show();
-        } else {
-            $('#fixedAssetCategoryWrapper').hide();
+            if (invoice.paymentMethod === 'Credit') {
+                $('#paymentTerms').prop('disabled', false);
+            } else {
+                $('#paymentTerms').prop('disabled', true);
+            }
+
+            const tbody = $("#salesModal tbody");
+            tbody.empty();
+
+            Promise.all([loadItem(), loadTax()]).then(() => {
+
+                // 🔹 Merge item list
+                const allItems = [...itemsList];
+                (invoice.items || []).forEach(invoiceItem => {
+                    const exists = allItems.find(i => Number(i.id) === Number(invoiceItem.itemId));
+                    if (!exists && invoiceItem.itemId) {
+                        allItems.push({
+                            id: invoiceItem.itemId,
+                            itemName: invoiceItem.itemName,
+                            code: invoiceItem.itemCode,
+                            cost_price: invoiceItem.costPrice || 0
+                        });
+                    }
+                });
+
+                // 🔹 Create rows
+                (invoice.items || []).forEach((item, idx) => {
+
+                    // ✅ FIX: calculate displayPrice INSIDE loop
+                    const displayPrice = (item.price && item.price > 0)
+                        ? item.price
+                        : (item.costPrice || 0);
+
+                    const row = $(`
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td><input type="text" class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
+                            <td><select class="form-select form-select-sm itemNameSelect"></select></td>
+                            <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
+                            <td>
+                                <input type="number"
+                                       class="form-control form-control-sm itemPrice"
+                                       value="${displayPrice}"
+                                       data-cost-price="${item.costPrice || 0}"
+                                       step="0.01">
+                            </td>
+                            <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
+                            <td class="text-center itemNet">
+                                ${(((item.qty || 0) * displayPrice) - (item.discount || 0)).toFixed(2)}
+                            </td>
+                            <td><select class="form-select form-select-sm tax"></select></td>
+                            <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
+                            <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
+                        </tr>
+                    `);
+
+                    // 🔹 Populate item dropdown
+                    const itemSelect = row.find('.itemNameSelect');
+                    itemSelect.append('<option value="">Select Item</option>');
+                    allItems.forEach(itm => {
+                        const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
+                        itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
+                    });
+
+                    // 🔹 Populate tax dropdown
+                    const taxSelect = row.find('.tax');
+                    taxSelect.append('<option value="">-- Select Tax --</option>');
+                    taxesList.forEach(tax => {
+                        const matchByPercentage = Number(tax.value) === Number(item.vatP || item.vatPercentage);
+                        const matchById = Number(tax.id) === Number(item.taxId);
+                        const selected = (matchByPercentage || matchById) ? 'selected' : '';
+
+                        taxSelect.append(`
+                            <option value="${tax.id}" data-value="${tax.value}" ${selected}>
+                                ${tax.name}-${tax.value}%
+                            </option>
+                        `);
+                    });
+
+                    tbody.append(row);
+                });
+
+                populateAndSelectCostCenter();
+
+                // 🔹 Recalculate
+                $("#salesModal tbody tr").each(function () {
+                    calculateRow($(this));
+                });
+            });
+
+            $("#purchaseInvoiceForm").data("purchaseInvoiceId", invoice.id || 0);
+            $("#salesModal .modal-title").text("Edit Purchase");
+            $("#salesModal").modal("show");
         }
-
-        if (invoice.paymentMethod === 'Credit') {
-            $('#paymentTerms').prop('disabled', false);
-        } else {
-            $('#paymentTerms').prop('disabled', true);
-        }
-
-
-              const tbody = $("#salesModal tbody");
-             tbody.empty();
-
-                Promise.all([loadItem(), loadTax()]).then(() => {
-
-                 // Create combined items list
-                 const allItems = [...itemsList];
-                 (invoice.items || []).forEach(invoiceItem => {
-                     const exists = allItems.find(item => Number(item.id) === Number(invoiceItem.itemId));
-                     if (!exists && invoiceItem.itemId) {
-                         allItems.push({
-                             id: invoiceItem.itemId,
-                             itemName: invoiceItem.itemName,
-                             code: invoiceItem.itemCode,
-                             cost_price: invoiceItem.costPrice || 0
-                         });
-                     }
-                 });
-
-                 // Create rows
-                 (invoice.items || []).forEach((item, idx) => {
-
-                     const row = $(`
-                         <tr>
-                             <td>${idx + 1}</td>
-                             <td><input type="text" class="form-control form-control-sm itemCode" value="${item.itemCode || ''}" readonly></td>
-                             <td><select class="form-select form-select-sm itemNameSelect"></select></td>
-                             <td><input type="number" class="form-control form-control-sm qty" value="${item.qty || 0}"></td>
-                             <td><input type="number" class="form-control form-control-sm itemPrice" value="${item.price || 0}" data-cost-price="${item.costPrice || 0}" step="0.01"></td>
-                             <td><input type="number" class="form-control form-control-sm itemDiscount" value="${item.discount || 0}" step="0.01" disabled></td>
-                             <td class="text-center itemNet">${((item.qty * item.price) - item.discount || 0).toFixed(2)}</td>
-                             <td><select class="form-select form-select-sm tax"></select></td>
-                             <td class="text-center itemAmount">${(item.total || 0).toFixed(2)}</td>
-                             <td><select class="form-select form-select-sm costCenterSelect" data-selected-id="${item.costCenterId || ''}"></select></td>
-                         </tr>
-                     `);
-
-                     // Populate item dropdown
-                     const itemSelect = row.find('.itemNameSelect');
-                     itemSelect.append('<option value="">Select Item</option>');
-                     allItems.forEach(itm => {
-                         const selected = Number(itm.id) === Number(item.itemId) ? 'selected' : '';
-                         itemSelect.append(`<option value="${itm.id}" ${selected}>${itm.itemName || itm.code}</option>`);
-                         if (selected) console.log('✓ Matched item:', itm.itemName, 'ID:', itm.id);
-                     });
-
-                     // Populate tax dropdown
-                     const taxSelect = row.find('.tax');
-                     taxSelect.append('<option value="">-- Select Tax --</option>');
-                     taxesList.forEach(tax => {
-                         const matchByPercentage = Number(tax.value) === Number(item.vatP || item.vatPercentage);
-                         const matchById = Number(tax.id) === Number(item.taxId);
-                         const selected = (matchByPercentage || matchById) ? 'selected' : '';
-                         const text = `${tax.name}-${tax.value}%`;
-                         taxSelect.append(`<option value="${tax.id}" data-value="${tax.value}" ${selected}>${text}</option>`);
-                         if (selected) console.log('✓ Matched tax:', text, 'ID:', tax.id);
-                     });
-
-                     tbody.append(row);
-                 });
-
-                 populateAndSelectCostCenter();
-
-                 // Recalculate all rows
-                  $("#salesModal tbody tr").each(function() {
-                     calculateRow($(this));
-                 });
-             });
-                $("#purchaseInvoiceForm").data("purchaseInvoiceId", invoice.id || 0);
-                  $("#salesModal .modal-title").text("Edit Purchase");
-                  $("#salesModal").modal("show");
-        }
-
 
           
 
