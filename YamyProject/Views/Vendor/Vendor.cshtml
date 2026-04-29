@@ -425,7 +425,6 @@
         $(document).ready(function () {
             loadCustomerCategories();
             loadCustomers();
-                   // When Vendor modal is shown
         $('#newCustomerModal').on('shown.bs.modal', function () {
             const invoiceType = 'Vendor'; 
             loadAccounts(invoiceType);
@@ -787,7 +786,7 @@
                 }
             });
 
-                    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
                 const target = $(e.target).attr("href");
 
                 // Clear existing buttons
@@ -931,12 +930,11 @@
                     endDate: endDate
                 },
                 success: function (res) {
-
                     if (res.status && res.data.length > 0) {
-
+                        console.log(res);
                         $.each(res.data, function (i, row) {
                             tbody.append(`
-                                <tr>
+                                 <tr data-id="${row.invoiceId}">
                                     <td>${row.sn}</td>
                                     <td>${row.date}</td>
                                     <td>${row.voucherNo}</td>
@@ -980,6 +978,15 @@
                             $("#exportButtons").empty();
                             table.buttons().container().appendTo('#exportButtons');
                         }
+
+
+                             $('#pettyCashVoucherTable tbody').on('dblclick', 'tr', function () {
+            const id = $(this).data('id');
+            if (id) {
+                window.location.href = `/Vendor/PurchaseCenter?id=${id}`;
+            }
+        });
+
 
                     } else {
                         // No data - just show message, don't initialize DataTable
@@ -1144,6 +1151,11 @@
                 }
             });
         }
+
+
+   
+       
+
 
     </script>
 }

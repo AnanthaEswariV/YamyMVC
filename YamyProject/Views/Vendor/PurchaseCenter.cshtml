@@ -417,6 +417,27 @@
             loadWarehouses();
             populateAndSelectCostCenter();
 
+
+
+                    const urlParams = new URLSearchParams(window.location.search);
+        const purchaseId = urlParams.get('id');
+
+        if (purchaseId) {
+            const waitForData = setInterval(function () {
+                if (salesData.length > 0) {
+                    clearInterval(waitForData);
+                    const invoice = salesData.find(s => String(s.id) === String(purchaseId));
+                    if (invoice) {
+                        openSalesModal(invoice);
+                    } else {
+                        toastr.warning(`Invoice #${purchaseId} not found`);
+                    }
+                }
+            }, 300);
+
+            setTimeout(function () { clearInterval(waitForData); }, 10000);
+        }
+
             function toggleFixedAssetCategory() {
             const type = $("#purchaseType").val();
 
@@ -662,7 +683,10 @@
             });
         }
 
+
+
                 function populateDefaultTables(data) {
+                    salesData = data || [];
 
             const table1Body = $("#table1 tbody").empty();
             const table2Body = $("#table2 tbody").empty();
@@ -974,6 +998,7 @@
 
          let itemsList = [];
          let taxesList = [];
+         let salesData = [];
 
          function loadItem(selector = ".itemNameSelect") {
              return new Promise((resolve, reject) => {
@@ -1351,6 +1376,9 @@
                   $("#salesModal .modal-title").text("Edit Purchase");
                   $("#salesModal").modal("show");
         }
+
+
+          
 
     </script>
     }
