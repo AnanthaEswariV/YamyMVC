@@ -1907,6 +1907,51 @@ namespace YamyProject.Core.Models
         public List<JournalVoucherDetailRequest> Details { get; set; }
     }
 
+    public class AccountingDashboardViewModel
+    {
+        // ── Summary Cards ──────────────────────────────────────
+        public decimal TotalIncome { get; set; }
+        public decimal TotalExpenses { get; set; }
+        public decimal CurrentBalance => TotalIncome - TotalExpenses;
+        public decimal PettyCash { get; set; }
+
+        // ── Account Overview ───────────────────────────────────
+        public decimal CashInHand { get; set; }  // Petty Cash level-3
+        public decimal BankBalance { get; set; }  // Banks level-3
+        public decimal CreditBalance { get; set; }  // Suppliers level-3 (payable)
+        public decimal Receivables { get; set; }  // Accounts Receivable level-3
+
+        // ── Monthly Chart (last 6 months) ──────────────────────
+        public List<MonthlyChartItem> MonthlyData { get; set; } = new();
+
+        // ── Recent Transactions (last 10) ──────────────────────
+        public List<DashboardTransaction> RecentTransactions { get; set; } = new();
+    }
+
+    public class MonthlyChartItem
+    {
+        public string Month { get; set; }   // "Jan", "Feb", …
+        public decimal Income { get; set; }
+        public decimal Expense { get; set; }
+    }
+
+    public class DashboardTransaction
+    {
+        public DateTime Date { get; set; }
+        public string Description { get; set; }
+        public string VoucherCode { get; set; }
+        public string TxType { get; set; }   // "Income" | "Expense" | "Transfer"
+        public decimal Amount { get; set; }
+
+        public string BadgeClass => TxType switch
+        {
+            "Income" => "bg-success",
+            "Expense" => "bg-danger",
+            _ => "bg-warning text-dark"
+        };
+    }
+
+
     public class JournalVoucherDetailRequest
     {
         public int AccountId { get; set; }
