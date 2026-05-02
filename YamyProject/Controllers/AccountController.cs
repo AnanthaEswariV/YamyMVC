@@ -7865,10 +7865,10 @@ WHERE payment_id = @paymentId";
                 }
 
                 // Insert Cost Center Transactions
-                await InsertCostCenterTransaction(conn, transaction, model.Date, model.Amount.ToString(), "0",
+                await InsertCostCenterTransaction(conn, transaction, model.Date, model.Amount, 0,
                     id.ToString(), "Payment", "Payment Debit Entry", model.DebitCostCenterId?.ToString() ?? "0");
 
-                await InsertCostCenterTransaction(conn, transaction, model.Date, "0", model.Amount.ToString(),
+                await InsertCostCenterTransaction(conn, transaction, model.Date, 0, model.Amount,
                     id.ToString(), "Payment", "Payment Credit Entry", model.CreditCostCenterId?.ToString() ?? "0");
 
                 await transaction.CommitAsync();
@@ -8011,13 +8011,13 @@ WHERE payment_id = @paymentId";
                 }
 
                 // Insert journal entries
-                await InsertJournals(conn, transaction, model, voucherType, payment.ToString(),
+                await InsertJournals(conn, transaction, model, voucherType, payment,
                     description, pvId, code, userId, humId);
             }
         }
 
         private async Task InsertJournals(MySqlConnection conn, MySqlTransaction transaction,
-            PaymentVoucherRequest model, string voucherType, string amount, string description,
+            PaymentVoucherRequest model, string voucherType, decimal amount, string description,
             int pvId, string code, int userId, int? humId)
         {
             string tType = "";
@@ -8051,63 +8051,79 @@ WHERE payment_id = @paymentId";
 
             // Insert debit transaction entry
             await AddTransactionEntry(conn, transaction, model.Date,
-                model.DebitAccountId.ToString(), amount, "0", pvId.ToString(),
+                model.DebitAccountId.ToString(), amount, 0, pvId.ToString(),
                 humIdStr, tType, "Vendor Payment", $"Payment Voucher NO. {code}",
                 userId, DateTime.Now, code);
 
             // Insert credit transaction entry
             await AddTransactionEntry(conn, transaction, model.Date,
-                model.CreditAccountId.ToString(), "0", amount, pvId.ToString(),
+                model.CreditAccountId.ToString(), 0, amount, pvId.ToString(),
                 "0", tType, "Vendor Payment", $"Payment Voucher NO. {code}",
                 userId, DateTime.Now, code);
         }
 
         private async Task AddTransactionEntry(MySqlConnection conn, MySqlTransaction transaction,
-            DateTime date, string accountId, string debit, string credit, string transactionId,
+            DateTime date, string accountId, decimal debit, decimal credit, string transactionId,
             string humId, string tType, string type, string description, int createdBy,
             DateTime createdDate, string voucherNo)
         {
-            var query = @"INSERT INTO tbl_transaction 
+            try
+            {
+                var query = @"INSERT INTO tbl_transaction 
                 (date, account_id, debit, credit, transaction_id, hum_id, t_type, type, 
                  description, created_by, created_date, state, voucher_no) 
                 VALUES (@date, @accountId, @debit, @credit, @transactionId, @hum_id, @tType, 
                         @type, @description, @createdBy, @createdDate, 0, @voucher_no)";
 
-            using var cmd = new MySqlCommand(query, conn, transaction);
-            cmd.Parameters.AddWithValue("@date", date);
-            cmd.Parameters.AddWithValue("@accountId", accountId);
-            cmd.Parameters.AddWithValue("@debit", debit);
-            cmd.Parameters.AddWithValue("@credit", credit);
-            cmd.Parameters.AddWithValue("@transactionId", transactionId);
-            cmd.Parameters.AddWithValue("@type", type);
-            cmd.Parameters.AddWithValue("@tType", tType);
-            cmd.Parameters.AddWithValue("@hum_id", humId);
-            cmd.Parameters.AddWithValue("@description", description);
-            cmd.Parameters.AddWithValue("@createdBy", createdBy);
-            cmd.Parameters.AddWithValue("@createdDate", createdDate);
-            cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
+                using var cmd = new MySqlCommand(query, conn, transaction);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@accountId", accountId);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@transactionId", transactionId);
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@tType", tType);
+                cmd.Parameters.AddWithValue("@hum_id", humId);
+                cmd.Parameters.AddWithValue("@description", description);
+                cmd.Parameters.AddWithValue("@createdBy", createdBy);
+                cmd.Parameters.AddWithValue("@createdDate", createdDate);
+                cmd.Parameters.AddWithValue("@voucher_no", voucherNo);
 
-            await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+            
         }
 
         private async Task InsertCostCenterTransaction(MySqlConnection conn, MySqlTransaction transaction,
-            DateTime date, string debit, string credit, string refId, string type,
+            DateTime date, decimal debit, decimal credit, string refId, string type,
             string description, string costCenterId)
         {
-            var query = @"INSERT INTO tbl_cost_center_transaction 
+            try
+            {
+                var query = @"INSERT INTO tbl_cost_center_transaction 
                 (type, date, ref_id, debit, credit, description, cost_center_id) 
                 VALUES (@type, @date, @ref, @debit, @credit, @description, @cost_center_id)";
 
-            using var cmd = new MySqlCommand(query, conn, transaction);
-            cmd.Parameters.AddWithValue("@date", date);
-            cmd.Parameters.AddWithValue("@type", type);
-            cmd.Parameters.AddWithValue("@debit", debit);
-            cmd.Parameters.AddWithValue("@credit", credit);
-            cmd.Parameters.AddWithValue("@ref", refId);
-            cmd.Parameters.AddWithValue("@description", description);
-            cmd.Parameters.AddWithValue("@cost_center_id", costCenterId);
+                using var cmd = new MySqlCommand(query, conn, transaction);
+                cmd.Parameters.AddWithValue("@date", date);
+                cmd.Parameters.AddWithValue("@type", type);
+                cmd.Parameters.AddWithValue("@debit", debit);
+                cmd.Parameters.AddWithValue("@credit", credit);
+                cmd.Parameters.AddWithValue("@ref", refId);
+                cmd.Parameters.AddWithValue("@description", description);
+                cmd.Parameters.AddWithValue("@cost_center_id", costCenterId);
 
-            await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
+            
         }
 
         private async Task<string> GenerateNextPaymentCode(MySqlConnection conn, MySqlTransaction transaction)
