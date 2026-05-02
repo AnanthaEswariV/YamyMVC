@@ -786,7 +786,7 @@ $(document).on('blur', '.pay-input', function () {
     try {
         const res = await fetch(url);
         const data = await res.json();
-        console.log(data);
+     
         
         if (!data.status) {
             toastr.error('Failed to load invoices');
@@ -985,17 +985,11 @@ $(document).on('blur', '.pay-input', function () {
     const voucher = $(this).data("customer");
     if (!voucher) return;
 
-    /* =========================
-       RESET MODAL
-    ========================== */
     const modal = $("#paymentVoucherModal");
     modal.find("form")[0].reset();
     modal.find("select").val("");
     modal.find("tbody").empty();
 
-    /* =========================
-       SET A FLAG TO PREVENT AUTO-LOADING
-    ========================== */
     modal.data("editing", true);
 
     $("#voucherId").val(voucher.id || 0);
@@ -1170,35 +1164,87 @@ $(document).on('blur', '.pay-input', function () {
     ========================== */
     $("#chequeFields, #transferFields").addClass("d-none");
 
-    if (voucher.Method === "Cheque") {
-        $("#chequeFields").removeClass("d-none");
-        
-        // Load banks
-        $.ajax({
-            url: '@Url.Action("GetBankss", "Account")',
-            type: 'GET',
-            success: function(res) {
-                if (!res.status || !res.data) return;
-                const $bankSelect = $('#bankNameSelect');
-                $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
-                
-                res.data.forEach(bank => {
-                    $bankSelect.append(
-                        `<option value="${bank.id}">${bank.bankName}</option>`
-                    );
-                });
-                
-                // Set bank values
-                $bankSelect.val(voucher.BankId || "");
-                $("#chequeBookSelect").val(voucher.CheckName || "");
-                $("#chequeNoSelect").val(voucher.CheckNo || "");
-                $("#chequeDate").val(voucher.CheckDate?.split("T")[0] || "");
-                $("#bankAccountSelect").val(voucher.BankAccountId || "");
-                $("#bookNoSelect").val(voucher.BookNo || "");
-            }
-        });
-    }
+if (voucher.Method === "Cheque") {
+    $("#chequeFields").removeClass("d-none");
 
+    $.ajax({
+        url: '@Url.Action("GetBankss", "Account")',
+        type: 'GET',
+        success: function (res) {
+            if (!res.status || !res.data) return;
+
+            const $bankSelect = $('#bankNameSelect');
+            $bankSelect.empty().append('<option value="">-- Select Bank --</option>');
+
+            res.data.forEach(bank => {
+                $bankSelect.append(
+                    `<option value="${bank.id}">${bank.bankName}</option>`
+                );
+            });
+
+            $bankSelect.val(voucher.BankId || "");
+
+            // ✅ FIX: Always fetch fresh cheque books to avoid race condition
+            $.ajax({
+                url: '@Url.Action("GetChequeBooks", "Account")',
+                type: 'GET',
+                success: function (cbRes) {
+                    chequeBooksData = cbRes.data || [];
+
+                    const selectedBankId = parseInt(voucher.BankId);
+
+                    const $chequeNoSelect    = $('#chequeNoSelect');
+                    const $bankAccountSelect = $('#bankAccountSelect');
+                    const $bookNoSelect      = $('#bookNoSelect');
+
+                    // Reset
+                    $chequeNoSelect.empty().append('<option value="">-- Select Cheque No --</option>').prop('disabled', true);
+                    $bookNoSelect.empty().append('<option value="">-- Select Book No --</option>').prop('disabled', true);
+                    $bankAccountSelect.empty().append('<option value="">-- Select Bank Account --</option>').prop('disabled', true);
+
+                    if (!selectedBankId) return;
+
+                    // ✅ FIX: Use bank_card_id (not bankId)
+                    const bankChequeBooks = chequeBooksData.filter(cb => cb.bank_card_id === selectedBankId);
+
+                    if (bankChequeBooks.length === 0) {
+                        console.warn('No cheque books found for bankId:', selectedBankId);
+                        return;
+                    }
+
+                    const book = bankChequeBooks[0];
+
+                    // ✅ FIX: Use startFrom/endIn range (not book.cheques array)
+                    for (let i = parseInt(book.startFrom); i <= parseInt(book.endIn); i++) {
+                        $chequeNoSelect.append(`<option value="${i}">${i}</option>`);
+                    }
+
+                    $bookNoSelect.append(
+                        `<option value="${book.chqBookNo}">${book.chqBookNo}</option>`
+                    );
+                    $bankAccountSelect.append(
+                        `<option value="${book.bank_card_id}">${book.acName}</option>`
+                    );
+
+                    // Enable dropdowns
+                    $chequeNoSelect.prop('disabled', false);
+                    $bookNoSelect.prop('disabled', false);
+                    $bankAccountSelect.prop('disabled', false);
+
+                    // ✅ Set saved values AFTER options are populated
+                    $("#chequeBookSelect").val(voucher.CheckName || "");
+                    $("#chequeNoSelect").val(voucher.CheckNo || "");
+                    $("#bookNoSelect").val(voucher.BookNo || "");
+                    $("#bankAccountSelect").val(voucher.BankAccountId || "");
+                    $("#chequeDate").val(voucher.CheckDate?.split("T")[0] || "");
+                },
+                error: function () {
+                    console.error('Failed to load cheque books during edit');
+                }
+            });
+        }
+    });
+}
     if (voucher.Method === "Transfer") {
         $("#transferFields").removeClass("d-none");
         $("#transferDate").val(voucher.TransDate?.split("T")[0] || "");
