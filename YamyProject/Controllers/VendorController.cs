@@ -1,4 +1,5 @@
-﻿namespace YamyProject.Controllers
+﻿using System.Globalization;
+namespace YamyProject.Controllers
 {
     public class VendorController : Controller
     {
@@ -1747,7 +1748,7 @@ WHERE id=@id;";
             if (model.NetTotal > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountId, "0",
-                    model.NetTotal.ToString(), purchaseId.ToString(), model.VendorId.ToString(), "Purchase Invoice",
+                    model.NetTotal.ToString(CultureInfo.InvariantCulture), purchaseId.ToString(), model.VendorId.ToString(), "Purchase Invoice",
                     description, $"Purchase Invoice NO. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
 
@@ -1755,7 +1756,7 @@ WHERE id=@id;";
             if (model.Vat > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountIds.VatId.ToString(),
-                    model.Vat.ToString(), "0", purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
+                    model.Vat.ToString(CultureInfo.InvariantCulture), "0", purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
                     $"Vat Input For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
 
@@ -1763,7 +1764,7 @@ WHERE id=@id;";
             if (model.TotalBefore > 0)
             {
                 await AddTransactionEntry(conn, transaction, model.Date.Date, accountIds.InventoryId.ToString(),
-                    model.TotalBefore.ToString(), "0", purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
+                    model.TotalBefore.ToString(CultureInfo.InvariantCulture), "0", purchaseId.ToString(), "0", "Purchase Invoice", "Purchase Invoice",
                     $"Purchase For Invoice No. {model.InvoiceCode}", userId, DateTime.Now.Date, model.InvoiceCode);
             }
         }
