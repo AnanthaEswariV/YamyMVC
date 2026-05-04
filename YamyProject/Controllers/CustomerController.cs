@@ -212,7 +212,7 @@
 
                 // 2) Customer Account - Debit=0, Credit=creditAmount
                 await AddTransactionEntryAsync(
-                    conn, transactionDate, accountId,
+                    conn, transactionDate, openingBalanceEquity,
                     "0", creditAmount.ToString(),
                     customerId.ToString(), customerId.ToString(),
                     "Customer Opening Balance", "OPENING BALANCE",
@@ -234,7 +234,7 @@
 
                 // 2) Customer Account - Debit=debitAmount, Credit=0
                 await AddTransactionEntryAsync(
-                    conn, transactionDate, accountId,
+                    conn, transactionDate, openingBalanceEquity,
                     debitAmount.ToString(), "0",
                     customerId.ToString(), customerId.ToString(),
                     "Customer Opening Balance", "OPENING BALANCE",
