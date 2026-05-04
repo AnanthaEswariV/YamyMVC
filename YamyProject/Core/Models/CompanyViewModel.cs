@@ -473,11 +473,11 @@ namespace YamyProject.Core.Models
     public class ChequeActionRequest
     {
         public int CheckDetailId { get; set; }
-        public string Action { get; set; }  
+        public string Action { get; set; }
         public DateTime SelectedDate { get; set; }
-        public bool IsPayable { get; set; } 
+        public bool IsPayable { get; set; }
     }
-    public class PettyCashCategoryRequest
+        public class PettyCashCategoryRequest
     {
         public int Id { get; set; }
         public string Name { get; set; }

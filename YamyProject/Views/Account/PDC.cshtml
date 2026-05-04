@@ -107,54 +107,75 @@
         $(document).ready(function () {
 
             // Load table based on selection
-            function loadChecks(type) {
-                $.ajax({
-                  url: `@Url.Action("GetChecks", "Account")?type=${type}`,
-                    type: "GET",
-                    success: function (res) {
-                        if ($.fn.DataTable.isDataTable("#table1")) $("#table1").DataTable().destroy();
-                        let tbody = $("#table1 tbody").empty();
-                        console.log(res);
-                        if (res.status && res.data.length > 0) {
-                            $.each(res.data, function (i, row) {
-                                tbody.append(`
-                                    <tr>
-                                        <td>${row.sn}</td>
-                                        <td>${row.trsDate ? new Date(row.trsDate).toLocaleDateString() : ''}</td>
-                                        <td>${row.checkDate ? new Date(row.checkDate).toLocaleDateString() : ''}</td>
-                                        <td>${row.trsRef ?? ''}</td>
-                                        <td>${row.checkNo ?? ''}</td>
-                                        <td>${row.checkName ?? ''}</td>
-                                        <td>${row.bankName ?? ''}</td>
-                                        <td>${row.amount?.toFixed(3) ?? ''}</td>
-                                        <td>${row.state ?? ''}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-success passBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Pass"><i class="fas fa-check"></i></button>
-                                            <button class="btn btn-sm btn-warning returnBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Return"><i class="fas fa-undo"></i></button>
-                                            <button class="btn btn-sm btn-info holdBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Hold"><i class="fas fa-pause"></i></button>
-                                            <button class="btn btn-sm btn-danger cancelBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Cancel"><i class="fas fa-times"></i></button>
-                                        </td>
-                                    </tr>
-                                `);
-                            });
+               function loadChecks(type) {
+            $.ajax({
+                url: `@Url.Action("GetChecks", "Account")?type=${type}`,
+                type: "GET",
+                success: function (res) {
+                    // Check if DataTable already exists and destroy it before re-rendering
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
 
-                            $("#table1").DataTable({
-                                dom: 'Bfrtip',
-                                buttons: [
-                                    { extend: 'excelHtml5',  className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } },
-                                    {  extend: 'print', text: '<i class="fas fa-print me-1"></i> Print', className: 'btn btn-primary btn-sm',  exportOptions: {  columns: ':not(:last-child)'} }
-                                ],
-                                order: [[0, 'asc']],
-                                pageLength: 25
-                            });
-                        } else {
-                            tbody.append(`<tr><td colspan="10" class="text-center">No records found</td></tr>`);
-                        }
-                    },
-                    error: function () { toastr.error("Error loading data"); }
-                });
-            }
+                    let tbody = $("#table1 tbody").empty(); // Clear the table body
 
+                    console.log(res); // Log the response for debugging purposes
+
+                    // Check if response contains data
+                    if (res.status && res.data.length > 0) {
+                        $.each(res.data, function (i, row) {
+                            // Prepare action buttons and check whether the cheque is payable
+                            let actionButtons = `
+                                <button class="btn btn-sm btn-success passBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Pass"><i class="fas fa-check"></i></button>
+                                <button class="btn btn-sm btn-warning returnBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Return"><i class="fas fa-undo"></i></button>
+                                <button class="btn btn-sm btn-info holdBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Hold"><i class="fas fa-pause"></i></button>
+                                <button class="btn btn-sm btn-danger cancelBtn" data-id="${row.id}" data-date="${row.checkDate}" title="Cancel"><i class="fas fa-times"></i></button>
+                            `;
+
+                            // Disable actions for non-payable checks
+                            if (!row.isPayable) {
+                                actionButtons = `
+                                    <button class="btn btn-sm btn-secondary" disabled><i class="fas fa-ban"></i> Not Payable</button>
+                                `;
+                            }
+
+                            // Append row to the table body
+                            tbody.append(`
+                                <tr>
+                                    <td>${row.sn}</td>
+                                    <td>${row.trsDate ? new Date(row.trsDate).toLocaleDateString() : ''}</td>
+                                    <td>${row.checkDate ? new Date(row.checkDate).toLocaleDateString() : ''}</td>
+                                    <td>${row.trsRef ?? ''}</td>
+                                    <td>${row.checkNo ?? ''}</td>
+                                    <td>${row.checkName ?? ''}</td>
+                                    <td>${row.bankName ?? ''}</td>
+                                    <td>${row.amount?.toFixed(3) ?? ''}</td>
+                                    <td>${row.state ?? ''}</td>
+                                    <td>${actionButtons}</td>
+                                </tr>
+                            `);
+                        });
+
+                        // Initialize DataTable after appending rows
+                        $("#table1").DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } },
+                                { extend: 'print', text: '<i class="fas fa-print me-1"></i> Print', className: 'btn btn-primary btn-sm', exportOptions: { columns: ':not(:last-child)' } }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+                    } else {
+                        // If no data, show a message
+                        tbody.append(`<tr><td colspan="10" class="text-center">No records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error("Error loading data"); // Show error message if AJAX fails
+                }
+            });
+        }
             // Initial load
             loadChecks($("#transactionSelect").val());
 
@@ -207,43 +228,55 @@
                 new bootstrap.Modal(document.getElementById('pdcModal')).show();
             });
 
-           // Save button click/
-        $("#saveBtn").on("click", function () {
+            // Save button click
+            $("#saveBtn").on("click", function () {
+            // Get values from the form
             let chequeDate = $("#chequeDate").val();
             let actionDate = $("#actionDate").val();
             let actionType = $("#actionType").val();
+            let isPayable = $("#isPayable").val();  // Assuming this is correctly set as a boolean
 
-            // ✅ Validation
+            // Convert to boolean if necessary
+            isPayable = (isPayable === "true") || isPayable === true; // Ensure `isPayable` is treated as a boolean value
+
+            // ✅ Validation: Check if action date is selected
             if (!actionDate) {
                 toastr.error("Please select " + actionType + " date.");
                 return;
             }
 
-            if (actionDate < chequeDate) {
+            // ✅ Validation: Ensure action date is not before cheque date
+            let chequeDateObj = new Date(chequeDate);
+            let actionDateObj = new Date(actionDate);
+
+            if (actionDateObj < chequeDateObj) {
                 toastr.error(actionType + " date cannot be before Cheque Date.");
                 return;
             }
 
-            // ✅ Payload
+
+            // ✅ Prepare the payload for the AJAX request
             let payload = {
-                CheckDetailId: $("#rowId").val(),
+                CheckDetailId: $("#rowId").val(),  // Assuming this value is set correctly
                 Action: actionType,
                 SelectedDate: actionDate
             };
 
-            // ✅ AJAX request
+            // ✅ AJAX request to save the data
             $.ajax({
-              url: '@Url.Action("UpdateChequeState", "Account")',
+                url: '@Url.Action("UpdateChequeState", "Account")',  // Controller action URL
                 type: "POST",
-                contentType: "application/json",
-                data: JSON.stringify(payload),
-                success: function () {
-                    toastr.success("Saved successfully");
-                    $("#pdcModal").modal("hide");
-                    loadChecks($("#transactionSelect").val()); // refresh grid
+                contentType: "application/json",  // Sending JSON data
+                data: JSON.stringify(payload),  // Send the payload as JSON string
+                success: function (response) {
+                    toastr.success("Saved successfully.");
+                    $("#pdcModal").modal("hide");  // Close the modal
+                    loadChecks($("#transactionSelect").val()); // Refresh the grid with updated data
                 },
-                error: function (xhr) {
-                    toastr.error(xhr.responseJSON?.message ?? "Error saving action");
+                error: function (xhr, status, error) {
+                    // Handle server error gracefully
+                    let errorMessage = xhr.responseJSON?.message || "An error occurred while saving the data.";
+                    toastr.error(errorMessage);
                 }
             });
         });

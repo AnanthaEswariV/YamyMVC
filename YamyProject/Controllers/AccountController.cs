@@ -5029,7 +5029,8 @@ LIMIT 1";
                            '' AS BankName,
                            pv.id AS RefId,
                            CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
-                           cd.State
+                           cd.State,
+                           0 AS IsPayable
                   FROM tbl_check_details cd
                   INNER JOIN tbl_receipt_voucher pv ON cd.pvc_no = pv.id
                   WHERE cd.check_type = @checkType
@@ -5045,7 +5046,8 @@ LIMIT 1";
                            '' AS BankName,
                            pv.id AS RefId,
                            CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
-                           cd.State
+                           cd.State,
+                             0 AS IsPayable
                   FROM tbl_check_details cd
                   INNER JOIN tbl_receipt_voucher pv ON cd.pvc_no = pv.id
                   WHERE cd.check_type = @checkType";
@@ -5063,7 +5065,8 @@ LIMIT 1";
                            cd.check_name AS CheckName,
                            b.name AS BankName,
                            CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
-                           cd.State
+                           cd.State,
+                             1 AS IsPayable 
                   FROM tbl_check_details cd
                   INNER JOIN tbl_payment_voucher pv ON cd.pvc_no = pv.id
                   INNER JOIN tbl_cheque chq ON cd.check_id = chq.id
@@ -5081,7 +5084,8 @@ LIMIT 1";
                            cd.check_name AS CheckName,
                            b.name AS BankName,
                            CAST(cd.Amount AS DECIMAL(18,3)) AS Amount,
-                           cd.State
+                           cd.State,
+                             1 AS IsPayable 
                   FROM tbl_check_details cd
                   INNER JOIN tbl_payment_voucher pv ON cd.pvc_no = pv.id
                   INNER JOIN tbl_cheque chq ON cd.check_id = chq.id
@@ -5118,7 +5122,8 @@ LIMIT 1";
                         checkName = reader["CheckName"] != DBNull.Value ? reader["CheckName"].ToString() : null,
                         bankName = reader["BankName"] != DBNull.Value ? reader["BankName"].ToString() : null,
                         amount = reader["Amount"] != DBNull.Value ? Convert.ToDecimal(reader["Amount"]) : 0,
-                        state = reader["State"] != DBNull.Value ? reader["State"].ToString() : null
+                        state = reader["State"] != DBNull.Value ? reader["State"].ToString() : null,
+                        isPayable = reader["IsPayable"] != DBNull.Value ? Convert.ToBoolean(reader["IsPayable"]) : false
 
                     });
 
@@ -5132,6 +5137,7 @@ LIMIT 1";
                 return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
+
 
         [HttpPost]
         public async Task<IActionResult> UpdateChequeState([FromBody] ChequeActionRequest model)
@@ -5228,7 +5234,7 @@ WHERE cd.id = @checkId";
                     return BadRequest(new { status = false, message = "Can't Cancel Passed Check" });
 
                 // 🔹 Insert journal entry
-                if (model.IsPayable)
+                if (checkType.Equals("Payment", StringComparison.OrdinalIgnoreCase))
                     await InsertJournalEntriesPayable(conn, model.Action, debitAccountId, creditAccountId, bankId, model.SelectedDate, amount, model.CheckDetailId, humId, checkType, voucherCode, userId);
                 else
                     await InsertJournalEntriesReceivable(conn, model.Action, debitAccountId, creditAccountId, bankId, model.SelectedDate, amount, model.CheckDetailId, humId, checkType, voucherCode, userId);
@@ -5254,6 +5260,13 @@ WHERE cd.id = @checkId";
         {
             try
             {
+                string deleteSql = "DELETE FROM tbl_transaction WHERE transaction_id = @checkDetailId";
+                await using (var deleteCmd = new MySqlCommand(deleteSql, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@checkDetailId", checkDetailId);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
                 string debit, credit;
 
                 switch (action)
@@ -5329,6 +5342,15 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC P
         {
             try
             {
+
+
+                string deleteSql = "DELETE FROM tbl_transaction WHERE transaction_id = @checkDetailId";
+                await using (var deleteCmd = new MySqlCommand(deleteSql, conn))
+                {
+                    deleteCmd.Parameters.AddWithValue("@checkDetailId", checkDetailId);
+                    await deleteCmd.ExecuteNonQueryAsync();
+                }
+
                 string debit, credit;
 
                 switch (action)
