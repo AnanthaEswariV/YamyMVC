@@ -7014,7 +7014,7 @@ WHERE payment_id = @paymentId";
             }
         }
 
-        [HttpGet]
+        [HttpGet] 
         public async Task<IActionResult> GetBankss()
         {
             try
