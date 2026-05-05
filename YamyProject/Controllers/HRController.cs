@@ -1518,10 +1518,10 @@ namespace YamyProject.Controllers
             string voucherNote = "Salary Sheet NO. " + refr;
 
             // Debit the employee account (credit is zero)
-            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, empAccId, netSalary.ToString(), "0", attendanceRowId.ToString(), employeeId, description, "Salary", voucherNote, userId, DateTime.Now.Date, "");
+            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, empAccId, netSalary, 0, attendanceRowId.ToString(), employeeId, description, "Salary", voucherNote, userId, DateTime.Now.Date, "");
 
             // Credit the accrued salary account
-            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, accruedSalaryAccountId.ToString(), "0", netSalary.ToString(), attendanceRowId.ToString(), "0", description, "Salary", voucherNote, userId, DateTime.Now.Date, "");
+            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, accruedSalaryAccountId.ToString(), 0, netSalary, attendanceRowId.ToString(), "0", description, "Salary", voucherNote, userId, DateTime.Now.Date, "");
         }
 
         private async Task SaveLeaveSalaryAsync(MySqlConnection conn, MySqlTransaction tx, AttendanceRow firstRow, int workDays, int totalAbsence, decimal basicSalary, int userId, int attendanceId)
@@ -1555,8 +1555,8 @@ namespace YamyProject.Controllers
 
            
             // Insert transactions
-            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, debitAccountId.ToString(), leaveAmount.ToString(), "0", attendanceId.ToString(), firstRow.EmpId, description, "Leave Salary", voucherNote, userId, DateTime.Now.Date, "");
-            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, creditAccountId.ToString(), "0", leaveAmount.ToString(), attendanceId.ToString(), "0", description, "Leave Salary", voucherNote, userId, DateTime.Now.Date, "");
+            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, debitAccountId.ToString(), leaveAmount, 0, attendanceId.ToString(), firstRow.EmpId, description, "Leave Salary", voucherNote, userId, DateTime.Now.Date, "");
+            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, creditAccountId.ToString(), 0, leaveAmount, attendanceId.ToString(), "0", description, "Leave Salary", voucherNote, userId, DateTime.Now.Date, "");
         }
 
         private async Task SaveEndOfServiceAsync(
@@ -1637,17 +1637,17 @@ namespace YamyProject.Controllers
             }
 
             // JOURNAL ENTRY (same as Windows)
-            await AddTransactionEntryAsync(conn, tx,DateTime.Now.Date,debitAccountId.ToString(),endOfServiceAmount.ToString(), "0", attendanceId.ToString(),
+            await AddTransactionEntryAsync(conn, tx,DateTime.Now.Date,debitAccountId.ToString(),endOfServiceAmount, 0, attendanceId.ToString(),
                 firstRow.EmpId,description,"End Of Services",voucherNote, userId, DateTime.Now.Date, "");
 
-            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, creditAccountId.ToString(), "0", endOfServiceAmount.ToString(), attendanceId.ToString(),
+            await AddTransactionEntryAsync(conn, tx, DateTime.Now.Date, creditAccountId.ToString(), 0, endOfServiceAmount, attendanceId.ToString(),
                 "0",description, "End Of Services", voucherNote,userId,
                 DateTime.Now.Date,
                 "");
         }
 
         private async Task AddTransactionEntryAsync(MySqlConnection conn, MySqlTransaction tx,
-                                                    DateTime date, string accountId, string debit, string credit,
+                                                    DateTime date, string accountId, decimal debit, decimal credit,
                                                     string transactionId, string humId, string type, string voucher_name,
                                                     string description, int createdBy, DateTime createdDate, string voucherNo)
         {

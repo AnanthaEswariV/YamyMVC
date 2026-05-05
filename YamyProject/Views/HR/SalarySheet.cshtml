@@ -123,7 +123,7 @@
                 $('#currentDate').text(dateStr);
             }
         }
-        // Load Salary Sheet
+        // Load Salary Sheet 
         function loadSalarySheet() {
             const year = $('#cmbYear').val();
             const month = $('#cmbMonth').val();
@@ -216,9 +216,16 @@
             });
         }
 
-                function cleanNumber(value) {
-            if (!value) return 0;
-            return parseFloat(String(value).replace(/,/g, '')) || 0;
+                      function cleanNumber(val) {
+            if (!val) return 0;
+
+            return parseFloat(
+                val
+                    .toString()
+                    .replace(/٬/g, '')  
+                    .replace(/٫/g, '.')  
+                    .replace(/,/g, '')  
+            ) || 0;
         }
 
                 function viewPayslip(row) {
