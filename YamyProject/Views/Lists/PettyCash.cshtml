@@ -38,6 +38,11 @@
                                     <i class="fas fa-wallet me-2 text-warning"></i> New Petty Cash
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#pettyCashRequestModal">
+                                    <i class="fas fa-file-invoice-dollar me-2 text-primary"></i> Petty Cash Request
+                                </a>
+                            </li>
                           @*   <li>
                                 <a class="dropdown-item" href="#">
                                     <i class="fas fa-edit me-2 text-info"></i> Edit Petty Cash
@@ -207,6 +212,75 @@
                 <!-- Footer -->
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal fade" id="pettyCashRequestModal" tabindex="-1" aria-labelledby="pettyCashRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="pettyCashRequestForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+
+                <!-- Header -->
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="pettyCashRequestModalLabel">
+                        Petty Cash Request - New
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+
+                    <!-- Hidden ID -->
+                    <input type="hidden" id="requestId" value="0" />
+
+                    <!-- Row 1 -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">P.C Request REF</label>
+                            <input type="text" id="requestRef" class="form-control" readonly>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Request Date</label>
+                            <input type="date" id="requestDate" class="form-control" required>
+                            <div class="invalid-feedback">Please select a date.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Name</label>
+                            <select id="employeeRequest" class="form-select" required>
+                                <option value="">-- Select Employee --</option>
+                            </select>
+                            <div class="invalid-feedback">Please select employee.</div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2 -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Amount</label>
+                            <input type="number" id="amount" class="form-control" placeholder="0.00" required>
+                            <div class="invalid-feedback">Enter amount.</div>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Description</label>
+                            <input type="text" id="description" class="form-control" placeholder="Enter description">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Request</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
 
@@ -484,48 +558,55 @@
 
             function loademployee() {
             $.ajax({
-              url: '@Url.Action("GetEmployees", "HR")',
+                url: '@Url.Action("GetEmployees", "HR")',
                 type: 'GET',
                 success: function (res) {
 
                     const employees = res.data;
-
-                    const $ddl = $('#employeeSelect');
-                    if ($ddl.length === 0) {
-                        console.error("❌ #employeeSelect not found in DOM");
-                        return;
-                    }
-
-                    $ddl.empty().append('<option value="">-- Select Employee --</option>');
 
                     if (!Array.isArray(employees)) {
                         console.error("❌ res.data is not an array:", employees);
                         return;
                     }
 
-                    employees.forEach((item, index) => {
+                    // ✅ Target BOTH dropdowns
+                    const dropdowns = ['#employeeSelect', '#employeeRequest'];
 
-                        const empId = item.id ?? "";
-                        const empCode = item.code ?? "";
-                        const empName = item.name ?? "";
+                    dropdowns.forEach(selector => {
+                        const $ddl = $(selector);
 
-                        if (!empId || !empName) return;
+                        if ($ddl.length === 0) return; // skip if not موجود
 
-                        $ddl.append(
-                            $('<option>', {
-                                value: empId,
-                                text: `${empCode} - ${empName}`,
-                                'data-code': empCode
-                            })
-                        );
+                        $ddl.empty().append('<option value="">-- Select Employee --</option>');
+
+                        employees.forEach(item => {
+                            const empId = item.id ?? "";
+                            const empCode = item.code ?? "";
+                            const empName = item.name ?? "";
+
+                            if (!empId || !empName) return;
+
+                            $ddl.append(
+                                $('<option>', {
+                                    value: empId,
+                                    text: `${empCode} - ${empName}`,
+                                    'data-code': empCode
+                                })
+                            );
+                        });
+
+                        // Change event (optional per dropdown)
+                        $ddl.off('change').on('change', function () {
+                            const selected = $(this).find(':selected');
+                            const selectedCode = selected.data('code') || "";
+
+                            // Only update code field if exists (for petty cash modal)
+                            if ($('#code').length) {
+                                $('#code').val(selectedCode);
+                            }
+                        });
                     });
 
-                    // 🔄 Update code field when selected
-                    $ddl.off('change').on('change', function () {
-                        const selected = $(this).find(':selected');
-                        const selectedCode = selected.data('code') || "";
-                        $('#code').val(selectedCode);
-                    });
                 },
                 error: function (xhr, status, error) {
                     console.error("❌ Error loading employees:", status, error);
@@ -575,6 +656,30 @@
                 }
             });
         });
+
+            function getTodayDate() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            document.getElementById('pettyCashRequestModal').addEventListener('shown.bs.modal', function () {
+                const todayDate = getTodayDate();
+
+                // Fill all date fields
+                const dateFields = [
+                    'requestDate'
+                ];
+
+                dateFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field && !field.value) {
+                        field.value = todayDate;
+                    }
+                });
+            });
 
 
         });
