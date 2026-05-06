@@ -1748,7 +1748,212 @@ namespace YamyProject.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> DeleteAttendance(string employeeName, string month, string year)
+        {
+            if (string.IsNullOrWhiteSpace(employeeName) ||
+                string.IsNullOrWhiteSpace(month) ||
+                string.IsNullOrWhiteSpace(year))
+                return BadRequest(new { status = false, message = "Invalid input" });
 
+            int monthInt = ParseMonthToInt(month);
+            int yearInt = ParseYearToInt(year);
+
+            if (monthInt == 0 || yearInt == 0)
+                return BadRequest(new { status = false, message = "Invalid month or year" });
+
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+                await using var tx = await conn.BeginTransactionAsync();
+
+                // 1️⃣ Get Employee Code
+                string empCode;
+                using (var cmd = new MySqlCommand(
+                    "SELECT code FROM tbl_employee WHERE LOWER(name)=LOWER(@name) LIMIT 1",
+                    conn, (MySqlTransaction)tx))
+                {
+                    cmd.Parameters.AddWithValue("@name", employeeName.Trim());
+                    var result = await cmd.ExecuteScalarAsync();
+
+                    if (result == null)
+                    {
+                        await tx.RollbackAsync();
+                        return NotFound(new { status = false, message = "Employee not found" });
+                    }
+
+                    empCode = result.ToString();
+                }
+
+                // 2️⃣ Get Salary IDs
+                var salaryIds = new List<long>();
+
+                using (var cmd = new MySqlCommand(@"
+SELECT DISTINCT attendance_salary_id
+FROM tbl_attendancesheet
+WHERE code=@code
+AND MONTH(WorkDate)=@month
+AND YEAR(WorkDate)=@year",
+                conn, (MySqlTransaction)tx))
+                {
+                    cmd.Parameters.AddWithValue("@code", empCode);
+                    cmd.Parameters.AddWithValue("@month", monthInt);
+                    cmd.Parameters.AddWithValue("@year", yearInt);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        if (!reader.IsDBNull(0))
+                            salaryIds.Add(reader.GetInt64(0));
+                    }
+                }
+
+                if (salaryIds.Count == 0)
+                {
+                    await tx.RollbackAsync();
+                    return Ok(new { status = false, message = "No attendance found" });
+                }
+
+                string ids = string.Join(",", salaryIds);
+
+                // 3️⃣ Delete Attendance Sheet
+                using (var cmd = new MySqlCommand(@"
+DELETE FROM tbl_attendancesheet
+WHERE code=@code
+AND MONTH(WorkDate)=@month
+AND YEAR(WorkDate)=@year",
+                conn, (MySqlTransaction)tx))
+                {
+                    cmd.Parameters.AddWithValue("@code", empCode);
+                    cmd.Parameters.AddWithValue("@month", monthInt);
+                    cmd.Parameters.AddWithValue("@year", yearInt);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 4️⃣ Delete Salary
+                if (!string.IsNullOrEmpty(ids))
+                {
+                    using var cmd = new MySqlCommand(
+                        $"DELETE FROM tbl_attendance_salary WHERE id IN ({ids})",
+                        conn, (MySqlTransaction)tx);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 5️⃣ Delete Transactions
+                if (!string.IsNullOrEmpty(ids))
+                {
+                    using var cmd = new MySqlCommand(
+                        $"DELETE FROM tbl_transaction WHERE transaction_id IN ({ids})",
+                        conn, (MySqlTransaction)tx);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // Build pattern to match stored format e.g. "مارس-26"
+                string datePattern = $"{MonthToArabic(monthInt)}-{yearInt % 100:D2}";
+
+                // 6️⃣ Delete Leave Salary
+                using (var cmd = new MySqlCommand(@"
+    DELETE FROM tbl_leave_salary
+    WHERE code=@code AND date=@datePattern",
+                    conn, (MySqlTransaction)tx))
+                {
+                    cmd.Parameters.AddWithValue("@code", empCode);
+                    cmd.Parameters.AddWithValue("@datePattern", datePattern);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 7️⃣ Delete End Of Service
+                using (var cmd = new MySqlCommand(@"
+    DELETE FROM tbl_end_of_service
+    WHERE code=@code AND date=@datePattern",
+                    conn, (MySqlTransaction)tx))
+                {
+                    cmd.Parameters.AddWithValue("@code", empCode);
+                    cmd.Parameters.AddWithValue("@datePattern", datePattern);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                await tx.CommitAsync();
+
+                return Ok(new { status = true, message = "Attendance deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+        private static int ParseMonthToInt(string input)
+        {
+            var part = input?.Split('-')[0].Trim() ?? "";
+            if (int.TryParse(part.TrimStart('0'), out int n) && n is >= 1 and <= 12) return n;
+
+            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["يناير"] = 1,
+                ["فبراير"] = 2,
+                ["مارس"] = 3,
+                ["أبريل"] = 4,
+                ["ابريل"] = 4,
+                ["مايو"] = 5,
+                ["يونيو"] = 6,
+                ["يوليو"] = 7,
+                ["أغسطس"] = 8,
+                ["اغسطس"] = 8,
+                ["سبتمبر"] = 9,
+                ["أكتوبر"] = 10,
+                ["اكتوبر"] = 10,
+                ["نوفمبر"] = 11,
+                ["ديسمبر"] = 12,
+                ["january"] = 1,
+                ["february"] = 2,
+                ["march"] = 3,
+                ["april"] = 4,
+                ["may"] = 5,
+                ["june"] = 6,
+                ["july"] = 7,
+                ["august"] = 8,
+                ["september"] = 9,
+                ["october"] = 10,
+                ["november"] = 11,
+                ["december"] = 12
+            };
+
+            return map.TryGetValue(part, out int v) ? v : 0;
+        }
+
+        private static int ParseYearToInt(string input)
+        {
+            var part = input?.Split('-').Last().Trim() ?? "";
+            if (!int.TryParse(part, out int y)) return DateTime.Now.Year;
+            return y < 100 ? y + 2000 : y;
+        }
+
+        private static string MonthToArabic(int month) => month switch
+        {
+            1 => "يناير",
+            2 => "فبراير",
+            3 => "مارس",
+            4 => "أبريل",
+            5 => "مايو",
+            6 => "يونيو",
+            7 => "يوليو",
+            8 => "أغسطس",
+            9 => "سبتمبر",
+            10 => "أكتوبر",
+            11 => "نوفمبر",
+            12 => "ديسمبر",
+            _ => ""
+        };
         #endregion
 
         #region Salary

@@ -98,9 +98,15 @@
            
             </div>
 
-            <button type="button" class="btn btn-primary" id="btnNew" data-bs-toggle="modal" data-bs-target="#attendanceModal">
-                <i class="bi bi-plus-circle me-2"></i>Add Attendance
-            </button>
+            <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-primary" id="btnAdd" data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                    <i class="bi bi-plus-circle me-2"></i>Add Attendance
+                </button>
+
+                <button type="button" class="btn btn-danger" id="btnDelete" data-bs-toggle="modal" data-bs-target="#deleteAttendanceModal">
+                    <i class="bi bi-trash me-2"></i>Delete Attendance
+                </button>
+            </div>
         </div>
 
         <!-- Table -->
@@ -623,6 +629,60 @@
                     uploadExcelFile(file);
                 }
             });
+
+
+                    $('#btnDelete').click(function () {
+
+            const empName = $('#employeeName').val();
+            const monthYear = $('#monthYearPicker').val();
+
+            let year = '', month = '';
+
+            if (monthYear) {
+                [year, month] = monthYear.split('-');
+            }
+
+            // Validation
+            if (!empName) {
+                toastr.warning("Please select Employee");
+                return;
+            }
+
+            if (!month || !year) {
+                toastr.warning("Please select Month and Year");
+                return;
+            }
+
+            // Confirmation
+            if (!confirm(`Are you sure you want to delete attendance for ${empName} (${month}/${year})?`)) {
+                return;
+            }
+
+            // API Call
+            $.ajax({
+                url: '@Url.Action("DeleteAttendance", "HR")',
+                type: 'POST',
+                data: {
+                    employeeName: empName,
+                    month: month,
+                    year: year
+                },
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message || "Attendance deleted successfully");
+
+                        // Reload table
+                        loadAttendance(empName, month, year);
+                    } else {
+                        toastr.error(res.message || "Delete failed");
+                    }
+                },
+                error: function () {
+                    toastr.error("Error deleting attendance");
+                }
+            });
+
+        });
         });
     </script>
 }
