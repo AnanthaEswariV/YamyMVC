@@ -365,89 +365,112 @@
                 </div>
                 <div class="sidebar-menu">
                     <ul class="menu">
+
+                        <!-- Dashboard — always visible -->
                         <li class="sidebar-item">
-                            <a href="@Url.Action("Index", "Home")"  class="sidebar-link">
+                            <a href="@Url.Action("Index", "Home")" class="sidebar-link">
                                 <i class="bi bi-grid-fill"></i>
                                 <span>Dashboard</span>
                             </a>
                         </li>
-                        <li class="sidebar-item">
-                            <a href="@Url.Action("ChartOfAccount", "Lists")" class="sidebar-link">
+
+                        <!-- Chart Of Account -->
+                        <li class="sidebar-item" data-mainmenu="Accountant">
+                            <a href="@Url.Action("ChartOfAccount", "Lists")"
+                               class="sidebar-link"
+                               data-submenu="Chart Of Account">
                                 <i class="bi bi-calculator-fill"></i>
                                 <span>Chart Of Account</span>
                             </a>
                         </li>
-                        <li class="sidebar-item">
-                            <a href="@Url.Action("Customer", "Customer")" class="sidebar-link">
+
+                        <!-- Customers -->
+                        <li class="sidebar-item" data-mainmenu="Customer">
+                            <a href="@Url.Action("Customer", "Customer")"
+                               class="sidebar-link"
+                               data-submenu="Customer Center">
                                 <i class="bi bi-people-fill"></i>
                                 <span>Customers</span>
                             </a>
                         </li>
-                        <li class="sidebar-item">
-                            <a href="@Url.Action("Vendor", "Vendor")" class="sidebar-link">
+
+                        <!-- Vendors -->
+                        <li class="sidebar-item" data-mainmenu="Vendor">
+                            <a href="@Url.Action("Vendor", "Vendor")"
+                               class="sidebar-link"
+                               data-submenu="Vendor Center">
                                 <i class="bi bi-person-lines-fill"></i>
                                 <span>Vendors</span>
                             </a>
                         </li>
-                        <li class="sidebar-item has-sub">
+
+                        <!-- HR -->
+                        <li class="sidebar-item has-sub" data-mainmenu="HR">
                             <a href="#" class="sidebar-link">
                                 <i class="bi bi-person-badge-fill"></i>
                                 <span>HR</span>
                             </a>
                             <ul class="submenu">
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Human Resource Center">
                                     <a href="@Url.Action("HRMS", "HR")">Human Resource</a>
                                 </li>
                             </ul>
                         </li>
-                        <li class="sidebar-item has-sub">
+
+                        <!-- Inventory -->
+                        <li class="sidebar-item has-sub" data-mainmenu="Inventory">
                             <a href="#" class="sidebar-link">
                                 <i class="bi bi-box-seam-fill"></i>
                                 <span>Inventory</span>
                             </a>
                             <ul class="submenu">
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Inventory Items">
                                     <a href="@Url.Action("ItemList", "Lists")">Item List</a>
                                 </li>
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Warehouse Center">
                                     <a href="@Url.Action("WareHouse", "Inventory")">Warehouse</a>
                                 </li>
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Warehouse Center">
                                     <a href="@Url.Action("WarehouseTransfer", "Inventory")">Item Warehouse Transfer</a>
                                 </li>
                             </ul>
                         </li>
-                        <li class="sidebar-item has-sub">
+
+                        <!-- Banking -->
+                        <li class="sidebar-item has-sub" data-mainmenu="Bank">
                             <a href="#" class="sidebar-link">
                                 <i class="bi bi-bank"></i>
                                 <span>Banking</span>
                             </a>
                             <ul class="submenu">
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Bank Center">
                                     <a href="@Url.Action("BankCenter", "Account")">Bank Center</a>
                                 </li>
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Open Bank Card">
                                     <a href="@Url.Action("BankCardCenter", "Account")">Bank Card Center</a>
                                 </li>
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Cheques">
                                     <a href="@Url.Action("BankCheque", "Account")">Bank Cheque</a>
                                 </li>
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="PDC">
                                     <a href="@Url.Action("PDC", "Account")">PDC</a>
                                 </li>
                             </ul>
                         </li>
-                        <li class="sidebar-item has-sub">
+
+                        <!-- Settings -->
+                        <li class="sidebar-item has-sub" data-mainmenu="Setting">
                             <a href="#" class="sidebar-link">
                                 <i class="bi bi-gear-fill"></i>
                                 <span>Settings</span>
                             </a>
                             <ul class="submenu">
-                                <li class="submenu-item">
+                                <li class="submenu-item" data-submenu="Change Current Password">
                                     <a href="@Url.Action("ChangePassword", "Settings")">Change Password</a>
                                 </li>
                             </ul>
                         </li>
+
                     </ul>
                 </div>
                 <button class="sidebar-toggler btn x"><i class="bi bi-x"></i></button>
@@ -593,6 +616,60 @@
                     }
                 });
             }
+        });
+
+
+                // Apply permissions to sidebar using same localStorage data
+        document.addEventListener('DOMContentLoaded', function () {
+            var permissions = [];
+            try { permissions = JSON.parse(localStorage.getItem('userPermissions') || '[]'); } catch (e) {}
+
+            if (!permissions.length) return;
+
+            var mainMenuMap = {};
+            var subMenuMap  = {};
+
+            permissions.forEach(function (p) {
+                if (p.canView) {
+                    if (p.mainMenuName) mainMenuMap[p.mainMenuName.trim().toLowerCase()] = true;
+                    if (p.subMenuName)  subMenuMap[p.subMenuName.trim().toLowerCase()]  = true;
+                }
+            });
+
+            // Hide individual submenu-items
+            document.querySelectorAll('#sidebar .submenu-item[data-submenu]').forEach(function (li) {
+                var key = li.getAttribute('data-submenu').trim().toLowerCase();
+                if (!subMenuMap[key]) li.style.display = 'none';
+            });
+
+            // Hide parent sidebar-item if all its submenu children are hidden
+            document.querySelectorAll('#sidebar .sidebar-item.has-sub').forEach(function (item) {
+                var mainKey = (item.getAttribute('data-mainmenu') || '').trim().toLowerCase();
+                if (mainKey && !mainMenuMap[mainKey]) {
+                    item.style.display = 'none';
+                    return;
+                }
+                var children = item.querySelectorAll('.submenu-item');
+                var anyVisible = Array.from(children).some(function (li) {
+                    return li.style.display !== 'none';
+                });
+                if (children.length > 0 && !anyVisible) item.style.display = 'none';
+            });
+
+            // Hide flat sidebar-items (no submenu) by data-submenu on <a>
+            document.querySelectorAll('#sidebar .sidebar-item:not(.has-sub) [data-submenu]').forEach(function (a) {
+                var key = a.getAttribute('data-submenu').trim().toLowerCase();
+                if (!subMenuMap[key]) {
+                    var li = a.closest('.sidebar-item');
+                    if (li) li.style.display = 'none';
+                }
+            });
+
+            // Hide flat sidebar-items by data-mainmenu on <li>
+            document.querySelectorAll('#sidebar .sidebar-item:not(.has-sub)[data-mainmenu]').forEach(function (li) {
+                var key = li.getAttribute('data-mainmenu').trim().toLowerCase();
+                if (!mainMenuMap[key]) li.style.display = 'none';
+            });
         });
     </script>
 </body>
