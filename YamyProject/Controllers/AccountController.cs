@@ -5797,13 +5797,16 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
 
         // 3. GET USER PERMISSIONS
         [HttpGet]
-        public async Task<IActionResult> GetUserPermissions()
+        public async Task<IActionResult> GetUserPermissions(int targetUserId)  // ← add parameter
         {
             try
             {
                 int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
                 if (userId <= 0)
                     return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // Use targetUserId if provided, otherwise fall back to logged-in user
+                int queryUserId = targetUserId > 0 ? targetUserId : userId;  // ← use this
 
                 using var conn = GetConnection();
                 await conn.OpenAsync();
@@ -5812,7 +5815,7 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                 int count;
                 using (var cmd = new MySqlCommand(countQuery, conn))
                 {
-                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@userId", queryUserId);  // ← fix
                     count = Convert.ToInt32(await cmd.ExecuteScalarAsync());
                 }
 
@@ -5820,18 +5823,18 @@ VALUES (@date, @account, @debit, @credit, @checkDetailId, @humId, @tType, 'PDC R
                     return Ok(new { status = true, data = new List<object>(), hasPermissions = false });
 
                 string query = @"SELECT p.id, p.user_id, s.id AS sub_menu_id, s.name AS sub_menu_name,
-                         m.id AS main_menu_id, m.name AS main_menu_name,
-                         p.can_view, p.can_edit, p.can_delete
-                         FROM tbl_user_permissions p
-                         INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
-                         INNER JOIN tbl_main_menus m ON s.m_id = m.id
-                         WHERE p.user_id = @userId
-                         ORDER BY m.id, s.id";
+                 m.id AS main_menu_id, m.name AS main_menu_name,
+                 p.can_view, p.can_edit, p.can_delete
+                 FROM tbl_user_permissions p
+                 INNER JOIN tbl_sub_menus s ON p.sub_menu_id = s.id
+                 INNER JOIN tbl_main_menus m ON s.m_id = m.id
+                 WHERE p.user_id = @userId
+                 ORDER BY m.id, s.id";
 
                 var data = new List<object>();
                 using (var cmd = new MySqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@userId", userId);
+                    cmd.Parameters.AddWithValue("@userId", queryUserId);  // ← fix
                     using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {

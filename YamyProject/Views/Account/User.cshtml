@@ -1946,34 +1946,34 @@
     <script src="~/assets/vendors/fontawesome/all.min.js"></script>
 
     <script>
-    
 
-       function loadUserPermissions(targetUserId) {
+        function loadUserPermissions(targetUserId) {
             $.ajax({
                 url: '@Url.Action("GetUserPermissions", "Account")',
                 type: 'GET',
-                data: { targetUserId: targetUserId },
+                data: { targetUserId: targetUserId },  // ← already correct, now controller handles it
                 success: function(res) {
-                    if(res.status && res.data) {
-                        // First uncheck all checkboxes
-                        $('.perm-checkbox[data-item-checkbox="true"]').prop('checked', false);
+                    // ✅ First uncheck ALL item checkboxes
+                    $('.perm-checkbox[data-item-checkbox="true"]').prop('checked', false);
 
-                        // Loop through the permissions and check the relevant checkboxes
+                    if (res.status && res.data && res.data.length > 0) {
                         res.data.forEach(perm => {
+                            const subMenuId = perm.subMenuId;
+
                             if (perm.canView) {
-                                $(`.perm-checkbox[data-submenu-id="${perm.subMenuId}"][data-perm-type="view"]`).prop('checked', true);
+                                $(`.perm-checkbox[data-submenu-id="${subMenuId}"][data-perm-type="view"]`).prop('checked', true);
                             }
                             if (perm.canEdit) {
-                                $(`.perm-checkbox[data-submenu-id="${perm.subMenuId}"][data-perm-type="edit"]`).prop('checked', true);
+                                $(`.perm-checkbox[data-submenu-id="${subMenuId}"][data-perm-type="edit"]`).prop('checked', true);
                             }
                             if (perm.canDelete) {
-                                $(`.perm-checkbox[data-submenu-id="${perm.subMenuId}"][data-perm-type="delete"]`).prop('checked', true);
+                                $(`.perm-checkbox[data-submenu-id="${subMenuId}"][data-perm-type="delete"]`).prop('checked', true);
                             }
                         });
-
-                        // Ensure "Select All" checkboxes are updated based on current selection
-                        updateSelectAllCheckboxes();
                     }
+
+                    // ✅ Sync all "Select All" checkboxes after loading
+                    updateSelectAllCheckboxes();
                 },
                 error: function(xhr) {
                     console.error('Could not load permissions', xhr);
@@ -1993,24 +1993,24 @@
         }
 
         // Function to collect all permissions from the form
-        function collectPermissions() {
-            const permissions = [];
+               function collectPermissions() {
+            const permissions = {};
 
-            // Loop through all permission checkboxes
             $('.perm-checkbox[data-item-checkbox="true"]').each(function() {
-                const checkbox = $(this);
-                const subMenuId = parseInt(checkbox.data('submenu-id'));
-                const canView = checkbox.is(':checked');
+                const subMenuId = parseInt($(this).data('submenu-id'));
+                const permType  = $(this).data('perm-type');
+                const isChecked = $(this).is(':checked');
 
-                permissions.push({
-                    SubMenuId: subMenuId,
-                    CanView: canView,
-                    CanEdit: false,  // Set to true if you have edit checkboxes
-                    CanDelete: false // Set to true if you have delete checkboxes
-                });
+                if (!permissions[subMenuId]) {
+                    permissions[subMenuId] = { SubMenuId: subMenuId, CanView: false, CanEdit: false, CanDelete: false };
+                }
+
+                if (permType === 'view')   permissions[subMenuId].CanView   = isChecked;
+                if (permType === 'edit')   permissions[subMenuId].CanEdit   = isChecked;
+                if (permType === 'delete') permissions[subMenuId].CanDelete = isChecked;
             });
 
-            return permissions;
+            return Object.values(permissions);  // returns array
         }
 
         // Event listener for "Select All" checkboxes
@@ -2071,7 +2071,6 @@
                 }
             });
         }
-
 
         $(document).ready(function () {
                loadUsers("all");
@@ -2453,5 +2452,6 @@ $(document).on('click', '#newUserModal .btn-primary', function (e) {
              });
          }
         });
+
     </script>
 }
