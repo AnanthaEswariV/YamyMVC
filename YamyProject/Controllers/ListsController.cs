@@ -6374,6 +6374,273 @@ VALUES
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashRequestsss(string state = "New")
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+                if (userId <= 0)
+                {
+                    return Unauthorized(new
+                    {
+                        status = false,
+                        message = "User not logged in"
+                    });
+                }
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                r.id,
+                r.request_date AS requestDate,
+                r.request_ref AS requestRef,
+                e.name AS employeeName,
+                e.id AS empId,
+                r.amount AS amount,
+                r.state
+            FROM tbl_petty_cash_request r
+
+            INNER JOIN tbl_petty_cash_card c
+                ON c.name = r.petty_cash_name
+
+            INNER JOIN tbl_employee e
+                ON c.name = e.id
+
+            WHERE r.state = @state
+
+            ORDER BY r.id DESC
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                cmd.Parameters.AddWithValue("@state", state);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+
+                        id = reader["id"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(reader["id"]),
+
+                        requestDate = reader["requestDate"] == DBNull.Value
+                                        ? ""
+                                        : Convert.ToDateTime(reader["requestDate"])
+                                            .ToString("dd/MM/yyyy"),
+
+                        requestRef = reader["requestRef"]?.ToString() ?? "",
+
+                        employeeName = reader["employeeName"]?.ToString() ?? "",
+
+                        empId = reader["empId"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(reader["empId"]),
+
+                        amount = reader["amount"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToDecimal(reader["amount"]),
+
+                        state = reader["state"]?.ToString() ?? ""
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = list
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdatePettyCashStatussss(PettyCashStatusRequest model)
+        {
+            try
+            {
+                if (model == null)
+                {
+                    return BadRequest(new
+                    {
+                        status = false,
+                        message = "Invalid request"
+                    });
+                }
+
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+                if (userId <= 0)
+                {
+                    return Unauthorized(new
+                    {
+                        status = false,
+                        message = "User not logged in"
+                    });
+                }
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+
+                await conn.OpenAsync();
+
+                // ======================================
+                // GET REQUEST DETAILS
+                // ======================================
+
+                string requestRef = "";
+                int empId = 0;
+
+                string getQuery = @"
+            SELECT
+                request_ref,
+                petty_cash_name
+            FROM tbl_petty_cash_request
+            WHERE id = @id
+            LIMIT 1
+        ";
+
+                using (var cmd = new MySqlCommand(getQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    if (await reader.ReadAsync())
+                    {
+                        requestRef = reader["request_ref"]?.ToString() ?? "";
+
+                        empId = reader["petty_cash_name"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToInt32(reader["petty_cash_name"]);
+                    }
+                }
+
+                // ======================================
+                // GET ACCOUNT ID
+                // ======================================
+
+                int debitAccountId = 0;
+
+                string accQuery = @"
+            SELECT account_id
+            FROM tbl_petty_cash_card
+            WHERE name = @id
+            LIMIT 1
+        ";
+
+                using (var accCmd = new MySqlCommand(accQuery, conn))
+                {
+                    accCmd.Parameters.AddWithValue("@id", empId);
+
+                    object result = await accCmd.ExecuteScalarAsync();
+
+                    if (result != null)
+                    {
+                        debitAccountId = Convert.ToInt32(result);
+                    }
+                }
+
+                // ======================================
+                // APPROVE
+                // ======================================
+
+                if (model.Status == "Approved")
+                {
+                    string updateQuery = @"
+                UPDATE tbl_petty_cash_request
+                SET
+                    state = 'Approved',
+                    debit_account_id = @debit_account_id,
+                    credit_account_id = @credit_account_id,
+                    approved_date = @approved_date
+                WHERE id = @id
+            ";
+
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+
+                    updateCmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
+                    updateCmd.Parameters.AddWithValue("@credit_account_id", empId);
+                    updateCmd.Parameters.AddWithValue("@approved_date", DateTime.Now);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    await updateCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = $"Request {requestRef} approved successfully"
+                    });
+                }
+
+                // ======================================
+                // DECLINE
+                // ======================================
+
+                else
+                {
+                    string declineQuery = @"
+                UPDATE tbl_petty_cash_request
+                SET state = 'Declined'
+                WHERE id = @id
+            ";
+
+                    using var declineCmd = new MySqlCommand(declineQuery, conn);
+
+                    declineCmd.Parameters.AddWithValue("@id", model.Id);
+
+                    await declineCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = $"Request {requestRef} declined successfully"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message,
+                    details = ex.InnerException?.Message
+                });
+            }
+        }
+
 
 
         #endregion

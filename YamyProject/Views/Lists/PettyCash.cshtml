@@ -43,6 +43,11 @@
                                     <i class="fas fa-file-invoice-dollar me-2 text-primary"></i> Petty Cash Request
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#pettyCashApprovalModal">
+                                    <i class="fas fa-file-invoice-dollar me-2 text-primary"></i> Petty Cash Approval
+                                </a>
+                            </li>
                           @*   <li>
                                 <a class="dropdown-item" href="#">
                                     <i class="fas fa-edit me-2 text-info"></i> Edit Petty Cash
@@ -319,6 +324,116 @@
 </div>
 
 
+<!-- Petty Cash Approval Modal -->
+<div class="modal fade"
+     id="pettyCashApprovalModal"
+     tabindex="-1"
+     aria-labelledby="pettyCashApprovalModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-xl">
+
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+
+                <h5 class="modal-title"
+                    id="pettyCashApprovalModalLabel">
+                    Petty Cash Request Approval
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+
+                <!-- Status Radio Buttons -->
+                <div class="row mb-3">
+
+                    <div class="col-md-12 d-flex gap-4">
+
+                        <div class="form-check">
+                            <input class="form-check-input status-filter"
+                                   type="radio"
+                                   name="requestStatus"
+                                   id="statusNew"
+                                   value="New"
+                                   checked>
+
+                            <label class="form-check-label" for="statusNew">
+                                New
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input status-filter"
+                                   type="radio"
+                                   name="requestStatus"
+                                   id="statusApproved"
+                                   value="Approved">
+
+                            <label class="form-check-label" for="statusApproved">
+                                Approved
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input status-filter"
+                                   type="radio"
+                                   name="requestStatus"
+                                   id="statusDeclined"
+                                   value="Declined">
+
+                            <label class="form-check-label" for="statusDeclined">
+                                Declined
+                            </label>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Table -->
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover align-middle">
+
+                        <thead class="table-light"
+                               id="approvalTableHead">
+                        </thead>
+
+                        <tbody id="approvalRequestTable">
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Close
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 
 
                                                                         
@@ -431,7 +546,7 @@
                     }
                 });
             }
-
+            
             // 4️⃣ Load Petty Cash Transactions
             function loadTransactions(empCode) {
                 $.ajax({
@@ -469,7 +584,7 @@
             }
 
 
-        function loadPettyCashRequests(empCode) {
+            function loadPettyCashRequests(empCode) {
 
             $.ajax({
                 url: '@Url.Action("GetPettyCashRequests", "Lists")',
@@ -519,7 +634,6 @@
                 }
             });
         }
-
    
 
             loadPettyCashCards();
@@ -811,6 +925,277 @@
                 }
             });
         });
+
+
+             function loadRequests(status = "New") {
+
+            $.ajax({
+
+                url: '@Url.Action("GetPettyCashRequestsss", "Lists")',
+
+                type: 'GET',
+
+                data: {
+                    state: status
+                },
+
+                success: function (res) {
+
+                    let tbody = $("#approvalRequestTable");
+
+                    tbody.empty();
+
+                    // ====================================
+                    // DYNAMIC TABLE HEADER
+                    // ====================================
+
+                    let headerHtml = `
+                        <tr>
+                            <th>Request Date</th>
+                            <th>Request REF</th>
+                            <th>Employee Name</th>
+                            <th class="text-end">Amount</th>
+                    `;
+
+                    // NEW STATUS
+                    if (status === "New") {
+
+                        headerHtml += `
+                            <th class="text-center">Approve</th>
+                            <th class="text-center">Decline</th>
+                        `;
+                    }
+
+                    // DECLINED STATUS
+                    else if (status === "Declined") {
+
+                        headerHtml += `
+                            <th class="text-center">Approve</th>
+                        `;
+                    }
+
+                    headerHtml += `</tr>`;
+
+                    $("#approvalTableHead").html(headerHtml);
+
+                    // ====================================
+                    // TABLE DATA
+                    // ====================================
+
+                    if (res.status && res.data.length > 0) {
+
+                        res.data.forEach((item) => {
+
+                            let actionButtons = "";
+
+                            // NEW
+                            if (status === "New") {
+
+                                actionButtons = `
+                                    <td class="text-center">
+
+                                        <button class="btn btn-success btn-sm approve-btn"
+                                                data-id="${item.id}">
+                                            Approve
+                                        </button>
+
+                                    </td>
+
+                                    <td class="text-center">
+
+                                        <button class="btn btn-danger btn-sm decline-btn"
+                                                data-id="${item.id}">
+                                            Decline
+                                        </button>
+
+                                    </td>
+                                `;
+                            }
+
+                            // DECLINED
+                            else if (status === "Declined") {
+
+                                actionButtons = `
+                                    <td class="text-center">
+
+                                        <button class="btn btn-success btn-sm approve-btn"
+                                                data-id="${item.id}">
+                                            Approve
+                                        </button>
+
+                                    </td>
+                                `;
+                            }
+
+                            tbody.append(`
+                                <tr>
+
+                                    <td>
+                                        ${item.requestDate ?? ""}
+                                    </td>
+
+                                    <td>
+                                        ${item.requestRef ?? ""}
+                                    </td>
+
+                                    <td>
+                                        ${item.employeeName ?? ""}
+                                    </td>
+
+                                    <td class="text-end">
+                                        ${item.amount ?? 0}
+                                    </td>
+
+                                    ${actionButtons}
+
+                                </tr>
+                            `);
+
+                        });
+
+                    }
+                    else {
+
+                        let colspan = 4;
+
+                        if (status === "New")
+                            colspan = 6;
+
+                        else if (status === "Declined")
+                            colspan = 5;
+
+                        tbody.append(`
+                            <tr>
+                                <td colspan="${colspan}"
+                                    class="text-center text-muted">
+
+                                    No requests found
+
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
+
+                error: function () {
+
+                    toastr.error("Failed to load requests");
+
+                }
+
+            });
+        }
+
+
+             $(document).on("change", ".status-filter", function () {
+
+            let status = $(this).val();
+
+            loadRequests(status);
+
+        });
+
+     
+             $(document).on("click", ".approve-btn", function () {
+
+            let id = $(this).data("id");
+
+            $.ajax({
+
+               url: '@Url.Action("UpdatePettyCashStatussss", "Lists")',
+
+                type: 'POST',
+
+                data: {
+                    Id: id,
+                    Status: "Approved"
+                },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        let currentStatus =
+                            $("input[name='requestStatus']:checked").val();
+
+                        loadRequests(currentStatus);
+
+                    } else {
+
+                        toastr.error(res.message);
+
+                    }
+                },
+
+                        error: function (xhr) {
+
+            console.log(xhr);
+
+            console.log(xhr.responseText);
+
+            alert(xhr.responseText);
+
+            toastr.error("Approval failed");
+
+        }
+
+            });
+
+        });
+
+             $(document).on("click", ".decline-btn", function () {
+
+            let id = $(this).data("id");
+
+            $.ajax({
+
+               url: '@Url.Action("UpdatePettyCashStatussss", "Lists")',
+
+                type: 'POST',
+
+                data: {
+                    Id: id,
+                    Status: "Declined"
+                },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.warning(res.message);
+
+                        let currentStatus =
+                            $("input[name='requestStatus']:checked").val();
+
+                        loadRequests(currentStatus);
+
+                    } else {
+
+                        toastr.error(res.message);
+
+                    }
+                },
+
+                       error: function (xhr) {
+
+            console.log(xhr);
+
+            console.log(xhr.responseText);
+
+            alert(xhr.responseText);
+
+            toastr.error("Approval failed");
+
+        }
+
+            });
+
+        });
+
+             loadRequests("New");
+
 
 
         });

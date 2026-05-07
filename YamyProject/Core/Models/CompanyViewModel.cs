@@ -505,6 +505,12 @@ namespace YamyProject.Core.Models
         public decimal Amount { get; set; }
         public string Description { get; set; }
     }
+    public class PettyCashStatusRequest
+    {
+        public int Id { get; set; }
+
+        public string Status { get; set; }
+    }
 
     public class CoaLevel4Request
     {
