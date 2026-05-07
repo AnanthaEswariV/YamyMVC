@@ -6173,6 +6173,207 @@ WHERE
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashRequests(int empCode)
+        {
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+
+                if (userId <= 0)
+                    return Unauthorized(new
+                    {
+                        status = false,
+                        message = "User not logged in"
+                    });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(
+                    _config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                p.id,
+                p.request_date AS requestDate,
+                p.request_ref AS requestRef,
+                e.name AS pettyCashName,
+                p.amount,
+                p.Description,
+                a.name AS accountName,
+                p.State,
+                p.Pay,
+                p.change AS changeAmount
+            FROM tbl_petty_cash_request p
+            INNER JOIN tbl_coa_level_4 a 
+                ON a.id = p.debit_account_id
+            LEFT JOIN tbl_employee e 
+                ON e.id = p.Petty_cash_name
+            WHERE e.code = @empCode
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@empCode", empCode);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        sn = sn++,
+                        id = reader["id"],
+                        requestDate = Convert.ToDateTime(reader["requestDate"]).ToString("yyyy-MM-dd"),
+                        requestRef = reader["requestRef"]?.ToString(),
+                        pettyCashName = reader["pettyCashName"]?.ToString(),
+                        amount = reader["amount"],
+                        description = reader["Description"]?.ToString(),
+                        accountName = reader["accountName"]?.ToString(),
+                        state = reader["State"]?.ToString(),
+                        pay = reader["Pay"],
+                        changeAmount = reader["changeAmount"]
+                    });
+                }
+
+                return Ok(new
+                {
+                    status = true,
+                    data = list
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SavePettyCashRequest([FromBody] PettyCashRequestRequest model)
+        {
+            if (model == null)
+                return BadRequest(new { status = false, message = "Invalid request" });
+
+            if (model.PettyCashName <= 0)
+                return BadRequest(new { status = false, message = "Select petty cash name" });
+
+            if (model.Amount <= 0)
+                return BadRequest(new { status = false, message = "Enter valid amount" });
+
+            try
+            {
+                int userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (userId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 🔹 Get debit_account_id
+                int debitAccountId = 0;
+                string getAccountQuery = "SELECT account_id FROM tbl_petty_cash_card WHERE name=@name LIMIT 1";
+                using (var accCmd = new MySqlCommand(getAccountQuery, conn))
+                {
+                    accCmd.Parameters.AddWithValue("@name", model.PettyCashName);
+                    var result = await accCmd.ExecuteScalarAsync();
+                    if (result != null)
+                        debitAccountId = Convert.ToInt32(result);
+                }
+
+                if (model.Id == 0) // ➝ INSERT
+                {
+                    // 🔹 Generate Request REF (PR-0001)
+                    string newRef = "PR-0001";
+                    string getLastCodeQuery = @"SELECT request_ref FROM tbl_petty_cash_request 
+                                       ORDER BY CAST(SUBSTRING(request_ref, 4) AS UNSIGNED) DESC 
+                                       LIMIT 1";
+
+                    using (var cmd = new MySqlCommand(getLastCodeQuery, conn))
+                    {
+                        var lastCodeObj = await cmd.ExecuteScalarAsync();
+                        if (lastCodeObj != null && !string.IsNullOrEmpty(lastCodeObj.ToString()))
+                        {
+                            int lastNum = int.Parse(lastCodeObj.ToString().Replace("PR-", ""));
+                            newRef = "PR-" + (lastNum + 1).ToString("0000");
+                        }
+                    }
+
+                    var insertQuery = @"
+INSERT INTO tbl_petty_cash_request
+(request_date, request_ref, Petty_cash_name, amount, description, 
+ debit_account_id, state, pay, `change`, created_by, created_date)
+VALUES
+(@request_date, @request_ref, @Petty_cash_name, @amount, @description,
+ @debit_account_id, @state, @pay, @change, @created_by, @created_date)";
+
+                    using var insertCmd = new MySqlCommand(insertQuery, conn);
+                    insertCmd.Parameters.AddWithValue("@request_date", model.RequestDate.Date);
+                    insertCmd.Parameters.AddWithValue("@request_ref", newRef);
+                    insertCmd.Parameters.AddWithValue("@Petty_cash_name", model.PettyCashName);
+                    insertCmd.Parameters.AddWithValue("@amount", model.Amount);
+                    insertCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+                    insertCmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
+                    insertCmd.Parameters.AddWithValue("@state", "New");
+                    insertCmd.Parameters.AddWithValue("@pay", 0);
+                    insertCmd.Parameters.AddWithValue("@change", model.Amount);
+                    insertCmd.Parameters.AddWithValue("@created_by", userId);
+                    insertCmd.Parameters.AddWithValue("@created_date", DateTime.Now);
+
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    return Ok(new { status = true, message = "Petty Cash Request created successfully" });
+                }
+                else // ➝ UPDATE
+                {
+                    var updateQuery = @"
+                UPDATE tbl_petty_cash_request SET
+                    request_date = @request_date,
+                    request_ref = @request_ref,
+                    Petty_cash_name = @Petty_cash_name,
+                    amount = @amount,
+                    description = @description
+                WHERE id = @id";
+
+                    using var updateCmd = new MySqlCommand(updateQuery, conn);
+                    updateCmd.Parameters.AddWithValue("@id", model.Id);
+                    updateCmd.Parameters.AddWithValue("@request_date", model.RequestDate.Date);
+                    updateCmd.Parameters.AddWithValue("@request_ref", model.RequestRef ?? "");
+                    updateCmd.Parameters.AddWithValue("@Petty_cash_name", model.PettyCashName);
+                    updateCmd.Parameters.AddWithValue("@amount", model.Amount);
+                    updateCmd.Parameters.AddWithValue("@description", model.Description ?? "");
+
+                    int affected = await updateCmd.ExecuteNonQueryAsync();
+
+                    if (affected == 0)
+                        return NotFound(new { status = false, message = "Request not found" });
+
+                    return Ok(new { status = true, message = "Petty Cash Request updated successfully" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
 
 
         #endregion

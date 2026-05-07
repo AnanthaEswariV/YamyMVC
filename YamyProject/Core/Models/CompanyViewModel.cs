@@ -496,7 +496,16 @@ namespace YamyProject.Core.Models
         public string Email { get; set; } 
         public int AccountId { get; set; }    
     }
-    
+    public class PettyCashRequestRequest
+    {
+        public int Id { get; set; }
+        public DateTime RequestDate { get; set; }
+        public string RequestRef { get; set; }
+        public int PettyCashName { get; set; }
+        public decimal Amount { get; set; }
+        public string Description { get; set; }
+    }
+
     public class CoaLevel4Request
     {
         public int Id { get; set; }

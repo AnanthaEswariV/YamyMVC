@@ -93,13 +93,20 @@
                                 <a class="nav-link" id="profile-tab" data-bs-toggle="tab" href="#profile"
                                    role="tab" aria-controls="profile" aria-selected="false">Transactions</a>
                             </li>
+
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="request-tab" data-bs-toggle="tab" href="#request"
+                               role="tab" aria-controls="request" aria-selected="false">
+                                Request
+                            </a>
+                        </li>
                         </ul>
                         <div class="tab-content" id="myTabContent">
                             <div class="tab-pane fade show active" id="home" role="tabpanel"
                                  aria-labelledby="home-tab">
                             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-striped custom-table mb-0" id="pettyCashVoucherTable">
-                                    <thead class="table-ligh">
+                                    <thead class="table-light">
                                         <tr>
                                             <th>S.No</th>
                                             <th>Code</th>
@@ -118,7 +125,7 @@
                                  aria-labelledby="profile-tab">
                             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-striped custom-table mb-0" id="pettyCashTransactionsTable">
-                                    <thead class="table-ligh">
+                                    <thead class="table-light">
                                         <tr>
                                             <th>S.No</th>
                                             <th>Date</th>
@@ -137,6 +144,28 @@
                                 </table>
                             </div>
                             </div>
+                            <div class="tab-pane fade" id="request" role="tabpanel" aria-labelledby="request-tab">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-striped custom-table mb-0" id="pettyCashRequestTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Date</th>
+                                            <th>Voucher No</th>
+                                            <th>Amount</th>
+                                           <th>Account</th>
+                                            <th>State</th>
+                                            <th>Pay</th>
+                                            <th>Change</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rows will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -321,7 +350,6 @@
                     success: function (res) {
                         let tbody = $("#pettyCashTable tbody");
                         tbody.empty();
-                        console.log(res);
                         if (res.status && res.data.length > 0) {
                             res.data.forEach(card => {
                                 tbody.append(`
@@ -369,6 +397,7 @@
 
                 loadVouchers(empCode);
                 loadTransactions(empCode);
+                loadPettyCashRequests(empCode);
             });
 
             // 3️⃣ Load Petty Cash Vouchers
@@ -438,6 +467,60 @@
                     }
                 });
             }
+
+
+        function loadPettyCashRequests(empCode) {
+
+            $.ajax({
+                url: '@Url.Action("GetPettyCashRequests", "Lists")',
+                type: 'GET',
+                data: { empCode: empCode },
+
+                success: function (res) {
+                    console.log(res);
+                    let tbody = $("#pettyCashRequestTable tbody");
+                    tbody.empty();
+
+                    if (res.status && res.data.length > 0) {
+
+                        res.data.forEach((item, index) => {
+
+                            tbody.append(`
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${item.requestDate ?? ""}</td>
+                                    <td>${item.requestRef ?? ""}</td>
+                                    <td class="text-end">${item.amount ?? 0}</td>
+                                  <td>${item.accountName ?? ""}</td>
+                                    <td>${item.state ?? ""}</td>
+                                    <td class="text-end">${item.pay ?? 0}</td>
+                                    <td class="text-end">${item.changeAmount ?? 0}</td>
+                                    <td>${item.description ?? "-"}</td>
+                                </tr>
+                            `);
+
+                        });
+
+                    } else {
+
+                        tbody.append(`
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">
+                                    No petty cash requests found
+                                </td>
+                            </tr>
+                        `);
+
+                    }
+                },
+
+                error: function () {
+                    toastr.error("Failed to load petty cash requests");
+                }
+            });
+        }
+
+   
 
             loadPettyCashCards();
 
@@ -680,6 +763,54 @@
                     }
                 });
             });
+
+
+            $('#pettyCashRequestForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            const idVal = $('#requestId').val();
+            const isEdit = idVal && parseInt(idVal) > 0;
+
+            const requestData = {
+                Id: isEdit ? parseInt(idVal) : 0,
+                RequestRef: $('#requestRef').val() || '',
+                RequestDate: $('#requestDate').val(),
+                PettyCashName: parseInt($('#employeeRequest').val()) || 0,
+                Amount: parseFloat($('#amount').val()) || 0,
+                Description: $('#description').val() || ''
+            };
+
+            $.ajax({
+                url: '@Url.Action("SavePettyCashRequest", "Lists")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(isEdit
+                            ? 'Petty Cash Request updated'
+                            : 'Petty Cash Request created');
+
+                        $('#pettyCashRequestModal').modal('hide');
+                        $('#pettyCashRequestForm')[0].reset();
+                        $('#pettyCashRequestForm').removeClass('was-validated');
+
+                        loadPettyCashRequests(); 
+                    } else {
+                        toastr.error(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    toastr.error(xhr.responseJSON?.message || xhr.statusText);
+                }
+            });
+        });
 
 
         });
