@@ -6848,39 +6848,229 @@ WHERE payment_id = @paymentId";
                     resDict["ShowEmployeeList"] = true;
                     resDict["AmountEnabled"] = false;
 
-                    var employees = new List<object>();
-                    using (var cmd = new MySqlCommand("SELECT id, name FROM tbl_employee ORDER BY name", conn))
+                    // ============================
+                    // STEP 1: LOAD ALL EMPLOYEES
+                    // ============================
+
+                    var empList = new List<(int Id, string Code, string Name)>();
+
+                    string empQuery = "SELECT id, code, name FROM tbl_employee ORDER BY name";
+
+                    using (var cmd = new MySqlCommand(empQuery, conn))
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            employees.Add(new
-                            {
-                                Id = reader.GetInt32("id"),
-                                Name = reader["name"].ToString() ?? ""
-                            });
+                            empList.Add((
+                                Id: reader.GetInt32("id"),
+                                Code: reader["code"]?.ToString() ?? "",
+                                Name: reader["name"]?.ToString() ?? ""
+                            ));
                         }
                     }
+
+                    // ============================
+                    // STEP 2: FOR EACH EMPLOYEE LOAD SALARY RECORDS
+                    // ============================
+
+                    var employees = new List<object>();
+
+                    foreach (var emp in empList)
+                    {
+                        var salaryRecords = new List<object>();
+
+                        string salaryQuery = @"
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY id) AS SN,
+                id,
+                date,
+                net_salary,
+                total_loan,
+                Pay
+            FROM tbl_attendance_salary
+            WHERE emp_code = @code
+              AND `change` <> 0";
+
+                        using (var cmd2 = new MySqlCommand(salaryQuery, conn))
+                        {
+                            cmd2.Parameters.AddWithValue("@code", emp.Code);
+
+                            using (var reader2 = await cmd2.ExecuteReaderAsync())
+                            {
+                                while (await reader2.ReadAsync())
+                                {
+                                    decimal netSalary = reader2["net_salary"] != DBNull.Value ? Convert.ToDecimal(reader2["net_salary"]) : 0;
+                                    decimal totalLoan = reader2["total_loan"] != DBNull.Value ? Convert.ToDecimal(reader2["total_loan"]) : 0;
+                                    decimal paid = reader2["Pay"] != DBNull.Value ? Convert.ToDecimal(reader2["Pay"]) : 0;
+                                    decimal finalAmount = netSalary - totalLoan - paid;
+
+                                    if (finalAmount > 0)
+                                    {
+                                        salaryRecords.Add(new
+                                        {
+                                            Id = reader2.GetInt32("id"),
+                                            Date = reader2["date"]?.ToString() ?? "",
+                                            Amount = finalAmount   // net_salary - total_loan - Pay
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        employees.Add(new
+                        {
+                            Id = emp.Id,
+                            Code = emp.Code,
+                            Name = emp.Name,
+                            Records = salaryRecords   // ← nested salary records
+                        });
+                    }
+
                     resDict["Employees"] = employees;
 
-                    // Get debit account info for Accrued Salaries category
-                    using (var cmd = new MySqlCommand("SELECT id, code FROM tbl_coa_level_4 WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)", conn))
+                    // ============================
+                    // STEP 3: DEBIT ACCOUNT CONFIG
+                    // ============================
+
+                    string accQuery = @"
+        SELECT id, code
+        FROM tbl_coa_level_4
+        WHERE id = (
+            SELECT account_id
+            FROM tbl_coa_config
+            WHERE category = @cat
+            LIMIT 1
+        )";
+
+                    using (var accCmd = new MySqlCommand(accQuery, conn))
                     {
-                        cmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
-                        using var reader = await cmd.ExecuteReaderAsync();
-                        if (await reader.ReadAsync())
+                        accCmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
+
+                        using var accReader = await accCmd.ExecuteReaderAsync();
+                        if (await accReader.ReadAsync())
                         {
-                            resDict["DebitAccountCode"] = reader["code"].ToString() ?? "";
-                            resDict["DebitAccountId"] = reader.GetInt32("id");
+                            resDict["DebitAccountCode"] = accReader["code"]?.ToString() ?? "";
+                            resDict["DebitAccountId"] = Convert.ToInt32(accReader["id"]);
                         }
                     }
                 }
-                else if (string.Equals(paymentType, "General", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(paymentType, "Petty Cash", StringComparison.OrdinalIgnoreCase))
                 {
                     resDict["ShowCustomerPanel"] = false;
-                    resDict["ShowEmployeeList"] = false;
-                    resDict["AmountEnabled"] = true;
+                    resDict["ShowEmployeeList"] = true;
+                    resDict["AmountEnabled"] = false;
+
+                    // ============================
+                    // STEP 1: LOAD EMPLOYEES WITH PETTY CASH CARDS
+                    // ============================
+
+                    var empList = new List<(int Id, string Code, string Name)>();  
+
+                    // Petty Cash - STEP 1: Load employees
+                    string empQuery = @"
+    SELECT e.id, e.code, e.name     -- ← ADD e.code
+    FROM tbl_employee e
+    INNER JOIN tbl_petty_cash_card pc ON pc.name = e.id
+    ORDER BY e.name";
+
+                    using (var cmd = new MySqlCommand(empQuery, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            empList.Add((
+                                Id: reader.GetInt32("id"),
+                                Code: reader["code"]?.ToString() ?? "", 
+                                Name: reader["name"]?.ToString() ?? ""
+                            ));
+                        }
+                    }
+                    // ============================
+                    // STEP 2: FOR EACH EMPLOYEE LOAD APPROVED PETTY CASH REQUESTS
+                    // ============================
+
+                    var employees = new List<object>();
+
+                    foreach (var emp in empList)
+                    {
+                        var requests = new List<object>();
+
+                        string reqQuery = @"
+            SELECT 
+                pcr.id,
+                pcr.`change`,
+                pcr.request_date,
+                pcr.amount AS total
+            FROM tbl_petty_cash_request pcr
+            WHERE pcr.Petty_cash_name = @empId
+              AND pcr.state = 'Approved'";
+
+                        using (var cmd2 = new MySqlCommand(reqQuery, conn))
+                        {
+                            cmd2.Parameters.AddWithValue("@empId", emp.Id);
+
+                            using (var reader2 = await cmd2.ExecuteReaderAsync())
+                            {
+                                while (await reader2.ReadAsync())
+                                {
+                                    decimal total = reader2["total"] != DBNull.Value
+                                        ? Convert.ToDecimal(reader2["total"])
+                                        : 0;
+
+                                    if (total > 0)
+                                    {
+                                        requests.Add(new
+                                        {
+                                            Id = reader2.GetInt32("id"),
+                                            Date = reader2["request_date"]?.ToString() ?? "",
+                                            Amount = total,
+                                            Change = reader2["change"] != DBNull.Value
+                                                        ? Convert.ToDecimal(reader2["change"])
+                                                        : 0
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        employees.Add(new
+                        {
+                            Id = emp.Id,
+                            Name = emp.Name,
+                            Code =emp.Code,
+                            Requests = requests   // ← nested approved requests
+                        });
+                    }
+
+                    resDict["Employees"] = employees;
+
+                    // ============================
+                    // STEP 3: DEBIT ACCOUNT CONFIG
+                    // ============================
+
+                    string accQuery = @"
+        SELECT id, code
+        FROM tbl_coa_level_4
+        WHERE id = (
+            SELECT account_id
+            FROM tbl_coa_config
+            WHERE category = @cat
+            LIMIT 1
+        )";
+
+                    using (var accCmd = new MySqlCommand(accQuery, conn))
+                    {
+                        accCmd.Parameters.AddWithValue("@cat", "Petty Cash");
+
+                        using var accReader = await accCmd.ExecuteReaderAsync();
+                        if (await accReader.ReadAsync())
+                        {
+                            resDict["DebitAccountCode"] = accReader["code"]?.ToString() ?? "";
+                            resDict["DebitAccountId"] = Convert.ToInt32(accReader["id"]);
+                        }
+                    }
                 }
+
 
                 return Ok(new { status = true, data = resDict });
             }
@@ -7095,7 +7285,7 @@ WHERE payment_id = @paymentId";
             try
             {
                 if (string.IsNullOrEmpty(paymentType) ||
-                    !(paymentType == "Vendor" || paymentType == "Employee" || paymentType == "General"))
+                    !(paymentType == "Vendor" || paymentType == "Employee" || paymentType == "Petty Cash"))
                 {
                     return BadRequest(new { status = false, message = "Invalid payment type" });
                 }
@@ -7119,7 +7309,9 @@ WHERE payment_id = @paymentId";
                     ["ShowEmployeeList"] = false,
                     ["EnableAmount"] = false,
                     ["DebitAccountId"] = 0,
-                    ["DebitAccountCode"] = ""
+                    ["DebitAccountCode"] = "",
+                    ["Vendors"] = new List<object>(),
+                    ["Employees"] = new List<object>()
                 };
 
                 if (paymentType == "Vendor")
@@ -7128,10 +7320,10 @@ WHERE payment_id = @paymentId";
                     result["ShowEmployeeList"] = false;
                     result["EnableAmount"] = false;
 
-                    // ✅ Load debit account - CLOSE READER PROPERLY
+                    // Load debit account
                     string query = @"SELECT id, code 
-                     FROM tbl_coa_level_4 
-                     WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
+                             FROM tbl_coa_level_4 
+                             WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)";
 
                     using (var cmd = new MySqlCommand(query, conn))
                     {
@@ -7141,16 +7333,16 @@ WHERE payment_id = @paymentId";
                             if (await reader.ReadAsync())
                             {
                                 result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
-                                result["DebitAccountCode"] = reader["code"].ToString();
+                                result["DebitAccountCode"] = reader["code"]?.ToString() ?? "";
                             }
-                        } // ✅ Reader closed here
-                    } // ✅ Command disposed here
+                        }
+                    }
 
-                    // ✅ Load vendors/subcontractors - NEW COMMAND AFTER READER CLOSED
+                    // Load vendors or subcontractors
                     string vendorType = subContractor ? "Subcontractor" : "Vendor";
-                    query = "SELECT id, code, name FROM tbl_vendor WHERE type=@vendorType";
+                    string vendorQuery = "SELECT id, code, name FROM tbl_vendor WHERE type=@vendorType ORDER BY name";
 
-                    using (var cmd2 = new MySqlCommand(query, conn))
+                    using (var cmd2 = new MySqlCommand(vendorQuery, conn))
                     {
                         cmd2.Parameters.AddWithValue("@vendorType", vendorType);
                         using (var reader2 = await cmd2.ExecuteReaderAsync())
@@ -7161,13 +7353,13 @@ WHERE payment_id = @paymentId";
                                 vendors.Add(new
                                 {
                                     Id = reader2.GetInt32("id"),
-                                    Code = reader2["code"].ToString(),
-                                    Name = reader2["name"].ToString()
+                                    Code = reader2["code"]?.ToString() ?? "",
+                                    Name = reader2["name"]?.ToString() ?? ""
                                 });
                             }
                             result["Vendors"] = vendors;
-                        } // ✅ Reader closed
-                    } // ✅ Command disposed
+                        }
+                    }
                 }
                 else if (paymentType == "Employee")
                 {
@@ -7175,11 +7367,9 @@ WHERE payment_id = @paymentId";
                     result["ShowEmployeeList"] = true;
                     result["EnableAmount"] = false;
 
-                    // ✅ Load accrued salaries account - CLOSE READER PROPERLY
-                    string query = @"SELECT id, code 
-                     FROM tbl_coa_level_4 
-                     WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat)";
-
+                    // Debit account
+                    string query = @"SELECT id, code FROM tbl_coa_level_4 
+                     WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)";
                     using (var cmd = new MySqlCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@cat", "Accrued Salaries");
@@ -7188,37 +7378,120 @@ WHERE payment_id = @paymentId";
                             if (await reader.ReadAsync())
                             {
                                 result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
-                                result["DebitAccountCode"] = reader["code"].ToString();
+                                result["DebitAccountCode"] = reader["code"]?.ToString() ?? "";
                             }
-                        } // ✅ Reader closed here
-                    } // ✅ Command disposed here
+                        }
+                    }
 
-                    // ✅ Load employee list - NEW COMMAND AFTER READER CLOSED
-                    query = "SELECT id, code, name FROM tbl_employee ORDER BY name";
-
-                    using (var cmd2 = new MySqlCommand(query, conn))
+                    // Load employees
+                    var empList = new List<(int Id, string Code, string Name)>();
+                    string empQuery = "SELECT id, code, name FROM tbl_employee ORDER BY name";
+                    using (var cmd = new MySqlCommand(empQuery, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        using (var reader2 = await cmd2.ExecuteReaderAsync())
+                        while (await reader.ReadAsync())
+                            empList.Add((reader.GetInt32("id"), reader["code"]?.ToString() ?? "", reader["name"]?.ToString() ?? ""));
+                    }
+
+                    // For each employee load salary records
+                    var employees = new List<object>();
+                    foreach (var emp in empList)
+                    {
+                        var salaryRecords = new List<object>();
+                        string salaryQuery = @"SELECT id, date, net_salary, total_loan, Pay
+                               FROM tbl_attendance_salary
+                               WHERE emp_code = @code AND `change` <> 0";
+                        using (var cmd2 = new MySqlCommand(salaryQuery, conn))
                         {
-                            var employees = new List<object>();
-                            while (await reader2.ReadAsync())
+                            cmd2.Parameters.AddWithValue("@code", emp.Code);
+                            using (var reader2 = await cmd2.ExecuteReaderAsync())
                             {
-                                employees.Add(new
+                                while (await reader2.ReadAsync())
                                 {
-                                    Id = reader2.GetInt32("id"),
-                                    Code = reader2["code"].ToString(),
-                                    Name = reader2["name"].ToString()
-                                });
+                                    decimal netSalary = reader2["net_salary"] != DBNull.Value ? Convert.ToDecimal(reader2["net_salary"]) : 0;
+                                    decimal totalLoan = reader2["total_loan"] != DBNull.Value ? Convert.ToDecimal(reader2["total_loan"]) : 0;
+                                    decimal paid = reader2["Pay"] != DBNull.Value ? Convert.ToDecimal(reader2["Pay"]) : 0;
+                                    decimal finalAmount = netSalary - totalLoan - paid;
+
+                                    if (finalAmount > 0)
+                                    {
+                                        salaryRecords.Add(new
+                                        {
+                                            id = reader2.GetInt32("id"),
+                                            date = reader2["date"] != DBNull.Value
+                                                         ? Convert.ToDateTime(reader2["date"]).ToString("yyyy-MM-dd")
+                                                         : "",
+                                            amount = finalAmount
+                                        });
+                                    }
+                                }
                             }
-                            result["Employees"] = employees;
-                        } // ✅ Reader closed
-                    } // ✅ Command disposed
+                        }
+                        employees.Add(new { id = emp.Id, code = emp.Code, name = emp.Name, records = salaryRecords });
+                    }
+                    result["Employees"] = employees;
                 }
-                else if (paymentType == "General")
+                else if (paymentType == "Petty Cash")
                 {
                     result["ShowInvoiceGrid"] = false;
-                    result["ShowEmployeeList"] = false;
-                    result["EnableAmount"] = true;
+                    result["ShowEmployeeList"] = true;
+                    result["EnableAmount"] = false;
+
+                    // Debit account
+                    string accQuery = @"SELECT id, code FROM tbl_coa_level_4 
+                        WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category=@cat LIMIT 1)";
+                    using (var cmd = new MySqlCommand(accQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@cat", "Petty Cash");
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                result["DebitAccountId"] = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                                result["DebitAccountCode"] = reader["code"]?.ToString() ?? "";
+                            }
+                        }
+                    }
+
+                    // Load employees with petty cash cards + nested approved requests
+                    var empList = new List<(int Id, string Code, string Name)>();
+                    string empQuery = @"SELECT e.id, e.code, e.name FROM tbl_employee e
+                        INNER JOIN tbl_petty_cash_card pc ON pc.name = e.id
+                        ORDER BY e.name";
+                    using (var cmd = new MySqlCommand(empQuery, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                            empList.Add((reader.GetInt32("id"), reader["code"]?.ToString() ?? "", reader["name"]?.ToString() ?? ""));
+                    }
+
+                    var employees = new List<object>();
+                    foreach (var emp in empList)
+                    {
+                        var requests = new List<object>();
+                        string reqQuery = @"SELECT pcr.id, pcr.request_date, pcr.amount AS total
+                            FROM tbl_petty_cash_request pcr
+                            WHERE pcr.Petty_cash_name = @empId AND pcr.state = 'Approved'";
+                        using (var cmd2 = new MySqlCommand(reqQuery, conn))
+                        {
+                            cmd2.Parameters.AddWithValue("@empId", emp.Id);
+                            using (var reader2 = await cmd2.ExecuteReaderAsync())
+                            {
+                                while (await reader2.ReadAsync())
+                                {
+                                    decimal total = reader2["total"] != DBNull.Value ? Convert.ToDecimal(reader2["total"]) : 0;
+                                    if (total > 0)
+                                        requests.Add(new
+                                        {
+                                            id = reader2.GetInt32("id"),
+                                            amount = total
+                                        });
+                                }
+                            }
+                        }
+                        employees.Add(new { id = emp.Id, code = emp.Code, name = emp.Name, requests = requests });
+                    }
+                    result["Employees"] = employees;
                 }
 
                 return Ok(new { status = true, data = result });
@@ -7693,7 +7966,7 @@ WHERE payment_id = @paymentId";
                 int id = model.Id;
 
                 // Parse dates
-                DateTime voucherDate = model.Date;
+                DateTime voucherDate = model.Date ?? DateTime.Now;
                 DateTime? checkDate = model.CheckDate;
                 DateTime? transDate = model.TransDate;
 
@@ -7890,10 +8163,10 @@ WHERE payment_id = @paymentId";
                 }
 
                 // Insert Cost Center Transactions
-                await InsertCostCenterTransaction(conn, transaction, model.Date, model.Amount, 0,
+                await InsertCostCenterTransaction(conn, transaction, model.Date ?? DateTime.Today   , model.Amount, 0,
                     id.ToString(), "Payment", "Payment Debit Entry", model.DebitCostCenterId?.ToString() ?? "0");
 
-                await InsertCostCenterTransaction(conn, transaction, model.Date, 0, model.Amount,
+                await InsertCostCenterTransaction(conn, transaction, model.Date ?? DateTime.Today, 0, model.Amount,
                     id.ToString(), "Payment", "Payment Credit Entry", model.CreditCostCenterId?.ToString() ?? "0");
 
                 await transaction.CommitAsync();
@@ -7929,7 +8202,7 @@ WHERE payment_id = @paymentId";
                 decimal change = total - payment;
                 var description = inv.Description ?? "";
                 var voucherType = inv.VoucherType ?? "";
-                DateTime invDate = inv.InvDate;
+                DateTime invDate = inv.InvDate ?? DateTime.Today;
 
                 // Insert payment voucher details
                 var insertDetailQuery = @"INSERT INTO tbl_payment_voucher_details
@@ -8029,10 +8302,21 @@ WHERE payment_id = @paymentId";
                     //}
                 }
                 // General payment type - currently no specific logic but placeholder for future
-                else if (model.PaymentType == "General")
+                else if (model.PaymentType == "Petty Cash")
                 {
-                    // Placeholder for General payment type logic
-                    // Example: Petty Cash Request handling can be added here
+                    if (invId > 0)
+                    {
+                        var updatePcQuery = @"UPDATE tbl_petty_cash_request 
+                              SET pay = pay + @pay, `change` = @change 
+                              WHERE id = @id";
+
+                        using var updatePcCmd = new MySqlCommand(updatePcQuery, conn, transaction);
+                        updatePcCmd.Parameters.AddWithValue("@pay", payment);
+                        updatePcCmd.Parameters.AddWithValue("@change", change);
+                        updatePcCmd.Parameters.AddWithValue("@id", invId);
+
+                        await updatePcCmd.ExecuteNonQueryAsync();
+                    }
                 }
 
                 // Insert journal entries
@@ -8066,22 +8350,20 @@ WHERE payment_id = @paymentId";
                     tType = "Employee Salary Payment";
                 }
             }
-            else if (model.PaymentType == "General")
+            else if (model.PaymentType == "Petty Cash")
             {
-                if (voucherType == "Petty Cash Request")
-                {
-                    tType = "Employee Petty Cash Payment";
-                }
+                tType = "Employee Petty Cash Payment";
+                humIdStr = humId > 0 ? humId.ToString() : "0";
             }
 
             // Insert debit transaction entry
-            await AddTransactionEntry(conn, transaction, model.Date,
+            await AddTransactionEntry(conn, transaction, model.Date ?? DateTime.Today,
                 model.DebitAccountId.ToString(), amount, 0, pvId.ToString(),
                 humIdStr, tType, "Vendor Payment", $"Payment Voucher NO. {code}",
                 userId, DateTime.Now, code);
 
             // Insert credit transaction entry
-            await AddTransactionEntry(conn, transaction, model.Date,
+            await AddTransactionEntry(conn, transaction, model.Date ?? DateTime.Today,
                 model.CreditAccountId.ToString(), 0, amount, pvId.ToString(),
                 "0", tType, "Vendor Payment", $"Payment Voucher NO. {code}",
                 userId, DateTime.Now, code);

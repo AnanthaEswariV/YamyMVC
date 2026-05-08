@@ -1773,7 +1773,7 @@ namespace YamyProject.Core.Models
     public class PaymentVoucherRequest
     {
         public int Id { get; set; }
-        public DateTime Date { get; set; } 
+        public DateTime? Date { get; set; } 
         public string PaymentType { get; set; }
         public bool IsSubContractor { get; set; }
         public string Method { get; set; }
@@ -1816,7 +1816,7 @@ namespace YamyProject.Core.Models
     {
         public int? InvId { get; set; }
         public string InvCode { get; set; }
-        public DateTime InvDate { get; set; }  
+        public DateTime? InvDate { get; set; }  
         public decimal Total { get; set; }
         public decimal Pay { get; set; }
         public string? Payment { get; set; }

@@ -6721,11 +6721,11 @@ VALUES
                     pettyCashId = Convert.ToInt32(await cmdInsert.ExecuteScalarAsync());
 
                     // --- Insert Petty Cash Request for new voucher ---
-                    bool isRequestInsertedOrUpdated = InsertOrUpdatePettyCashRequest(model, userId, pettyCashId);
-                    if (!isRequestInsertedOrUpdated)
-                    {
-                        return Json(new { status = false, message = "Error inserting/updating petty cash request" });
-                    }
+                    //bool isRequestInsertedOrUpdated = InsertOrUpdatePettyCashRequest(model, userId, pettyCashId);
+                    //if (!isRequestInsertedOrUpdated)
+                    //{
+                    //    return Json(new { status = false, message = "Error inserting/updating petty cash request" });
+                    //}
                 }
                 else
                 {
@@ -6752,11 +6752,11 @@ VALUES
                     //// --- Delete and re-insert petty cash details (keeping original logic) ---
                     //await DeleteAndReinsertPettyCashDetails(conn, model);
                     // After updating or inserting the main petty cash voucher, update the petty cash request
-                    bool isRequestInsertedOrUpdated = InsertOrUpdatePettyCashRequest(model, userId, pettyCashId);
-                    if (!isRequestInsertedOrUpdated)
-                    {
-                        return Json(new { status = false, message = "Error inserting/updating petty cash request" });
-                    }
+                    //bool isRequestInsertedOrUpdated = InsertOrUpdatePettyCashRequest(model, userId, pettyCashId);
+                    //if (!isRequestInsertedOrUpdated)
+                    //{
+                    //    return Json(new { status = false, message = "Error inserting/updating petty cash request" });
+                    //}
                 }
 
                 // --- INSERT PETTY CASH DETAILS ---
@@ -6826,99 +6826,99 @@ VALUES
             }
         }
 
-        private bool InsertOrUpdatePettyCashRequest(PettyCashVoucherRequest model, int userId, int pettyCashId)
-        {
-            int debitAccountId = 0;
-            int pettyCashName = model.CashAccountId;  // Assuming the CashAccountId is used as the Petty Cash Name (id)
+        //private bool InsertOrUpdatePettyCashRequest(PettyCashVoucherRequest model, int userId, int pettyCashId)
+        //{
+        //    int debitAccountId = 0;
+        //    int pettyCashName = model.CashAccountId;  // Assuming the CashAccountId is used as the Petty Cash Name (id)
 
-            var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
-            {
-                Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
-            };
+        //    var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+        //    {
+        //        Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+        //    };
 
-            using (var conn = new MySqlConnection(connStrBuilder.ConnectionString))
-            {
-                conn.Open();
+        //    using (var conn = new MySqlConnection(connStrBuilder.ConnectionString))
+        //    {
+        //        conn.Open();
 
-                // Fetch debit account ID based on Petty Cash Name (CashAccountId)
-                using (var cmd = new MySqlCommand("SELECT account_id FROM tbl_petty_cash_card WHERE name=@name", conn))
-                {
-                    cmd.Parameters.AddWithValue("@name", pettyCashName);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            debitAccountId = Convert.ToInt32(reader["account_id"]);
-                        }
-                    }
-                }
+        //        // Fetch debit account ID based on Petty Cash Name (CashAccountId)
+        //        using (var cmd = new MySqlCommand("SELECT account_id FROM tbl_petty_cash_card WHERE name=@name", conn))
+        //        {
+        //            cmd.Parameters.AddWithValue("@name", pettyCashName);
+        //            using (var reader = cmd.ExecuteReader())
+        //            {
+        //                if (reader.Read())
+        //                {
+        //                    debitAccountId = Convert.ToInt32(reader["account_id"]);
+        //                }
+        //            }
+        //        }
 
-                // Check if the petty cash request exists or if it's a new one
-                string query;
-                if (model.Id == 0) // New request
-                {
-                    // Insert new petty cash request
-                    query = @"
-                INSERT INTO tbl_petty_cash_request
-                    (request_date,petty_cash_id, request_ref, Petty_cash_name, amount, description, debit_account_id, state, pay, `change`, created_by, created_date)
-                VALUES
-                    (@request_date,@petty_cash_id, @request_ref, @Petty_cash_name, @amount, @description, @debit_account_id, @state, @pay, @change, @created_by, @created_date);";
-                }
-                else // Update existing request
-                {
-                    // Update existing petty cash request
-                    query = @"
-                UPDATE tbl_petty_cash_request
-                SET
-                    request_date = @request_date, petty_cash_id= @petty_cash_id,
-                    request_ref = @request_ref,
-                    Petty_cash_name = @Petty_cash_name,
-                    amount = @amount,
-                    description = @description,
-                    debit_account_id = @debit_account_id,
-                    state = @state,
-                    pay = @pay,
-                    `change` = @change,
-                    created_by = @created_by,
-                    created_date = @created_date
-                WHERE id = @id;";
-                }
+        //        // Check if the petty cash request exists or if it's a new one
+        //        string query;
+        //        if (model.Id == 0) // New request
+        //        {
+        //            // Insert new petty cash request
+        //            query = @"
+        //        INSERT INTO tbl_petty_cash_request
+        //            (request_date,petty_cash_id, request_ref, Petty_cash_name, amount, description, debit_account_id, state, pay, `change`, created_by, created_date)
+        //        VALUES
+        //            (@request_date,@petty_cash_id, @request_ref, @Petty_cash_name, @amount, @description, @debit_account_id, @state, @pay, @change, @created_by, @created_date);";
+        //        }
+        //        else // Update existing request
+        //        {
+        //            // Update existing petty cash request
+        //            query = @"
+        //        UPDATE tbl_petty_cash_request
+        //        SET
+        //            request_date = @request_date, petty_cash_id= @petty_cash_id,
+        //            request_ref = @request_ref,
+        //            Petty_cash_name = @Petty_cash_name,
+        //            amount = @amount,
+        //            description = @description,
+        //            debit_account_id = @debit_account_id,
+        //            state = @state,
+        //            pay = @pay,
+        //            `change` = @change,
+        //            created_by = @created_by,
+        //            created_date = @created_date
+        //        WHERE id = @id;";
+        //        }
 
-                try
-                {
-                    using (var cmd = new MySqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@request_date", model.VoucherDate);
-                        cmd.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
-                        cmd.Parameters.AddWithValue("@request_ref", GenerateNextREFCode());  // Generate a new REF code or use model.Code for update
-                        cmd.Parameters.AddWithValue("@Petty_cash_name", pettyCashName);
-                        cmd.Parameters.AddWithValue("@amount", model.Total);
-                        cmd.Parameters.AddWithValue("@description", model.Notes ?? "");
-                        cmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
-                        cmd.Parameters.AddWithValue("@state", "New"); // Adjust the state if needed (e.g., "New", "Approved", "Paid")
-                        cmd.Parameters.AddWithValue("@pay", 0);  // Adjust as per your logic (whether it's paid or not)
-                        cmd.Parameters.AddWithValue("@change", model.Total); // Assuming change equals the total amount
-                        cmd.Parameters.AddWithValue("@created_by", userId);
-                        cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
+        //        try
+        //        {
+        //            using (var cmd = new MySqlCommand(query, conn))
+        //            {
+        //                cmd.Parameters.AddWithValue("@request_date", model.VoucherDate);
+        //                cmd.Parameters.AddWithValue("@petty_cash_id", pettyCashId);
+        //                cmd.Parameters.AddWithValue("@request_ref", GenerateNextREFCode());  // Generate a new REF code or use model.Code for update
+        //                cmd.Parameters.AddWithValue("@Petty_cash_name", pettyCashName);
+        //                cmd.Parameters.AddWithValue("@amount", model.Total);
+        //                cmd.Parameters.AddWithValue("@description", model.Notes ?? "");
+        //                cmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
+        //                cmd.Parameters.AddWithValue("@state", "New"); // Adjust the state if needed (e.g., "New", "Approved", "Paid")
+        //                cmd.Parameters.AddWithValue("@pay", 0);  // Adjust as per your logic (whether it's paid or not)
+        //                cmd.Parameters.AddWithValue("@change", model.Total); // Assuming change equals the total amount
+        //                cmd.Parameters.AddWithValue("@created_by", userId);
+        //                cmd.Parameters.AddWithValue("@created_date", DateTime.Now.Date);
 
-                        if (model.Id != 0) // Add the Id parameter for updates
-                        {
-                            cmd.Parameters.AddWithValue("@id", model.Id);
-                        }
+        //                if (model.Id != 0) // Add the Id parameter for updates
+        //                {
+        //                    cmd.Parameters.AddWithValue("@id", model.Id);
+        //                }
 
-                        // Execute the query (insert or update)
-                        cmd.ExecuteNonQuery();
-                    }
+        //                // Execute the query (insert or update)
+        //                cmd.ExecuteNonQuery();
+        //            }
 
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Error during insert/update: " + ex.Message);
-                    return false;
-                }
-            }
-        }
+        //            return true;
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            Console.WriteLine("Error during insert/update: " + ex.Message);
+        //            return false;
+        //        }
+        //    }
+        //}
 
         private string GenerateNextREFCode()
         {
