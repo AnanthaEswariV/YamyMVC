@@ -6960,18 +6960,14 @@ WHERE payment_id = @paymentId";
                     resDict["ShowEmployeeList"] = true;
                     resDict["AmountEnabled"] = false;
 
-                    // ============================
-                    // STEP 1: LOAD EMPLOYEES WITH PETTY CASH CARDS
-                    // ============================
+                    // STEP 1: Load employees with petty cash cards
+                    var empList = new List<(int Id, string Code, string Name)>();
 
-                    var empList = new List<(int Id, string Code, string Name)>();  
-
-                    // Petty Cash - STEP 1: Load employees
                     string empQuery = @"
-    SELECT e.id, e.code, e.name     -- ← ADD e.code
-    FROM tbl_employee e
-    INNER JOIN tbl_petty_cash_card pc ON pc.name = e.id
-    ORDER BY e.name";
+        SELECT e.id, e.code, e.name
+        FROM tbl_employee e
+        INNER JOIN tbl_petty_cash_card pc ON pc.name = e.id
+        ORDER BY e.name";
 
                     using (var cmd = new MySqlCommand(empQuery, conn))
                     using (var reader = await cmd.ExecuteReaderAsync())
@@ -6980,15 +6976,13 @@ WHERE payment_id = @paymentId";
                         {
                             empList.Add((
                                 Id: reader.GetInt32("id"),
-                                Code: reader["code"]?.ToString() ?? "", 
+                                Code: reader["code"]?.ToString() ?? "",
                                 Name: reader["name"]?.ToString() ?? ""
                             ));
                         }
                     }
-                    // ============================
-                    // STEP 2: FOR EACH EMPLOYEE LOAD APPROVED PETTY CASH REQUESTS
-                    // ============================
 
+                    // STEP 2: For each employee load approved petty cash requests with remaining balance
                     var employees = new List<object>();
 
                     foreach (var emp in empList)
@@ -6998,14 +6992,15 @@ WHERE payment_id = @paymentId";
                         string reqQuery = @"
             SELECT 
                 pcr.id,
-                pcr.`change`,
                 pcr.request_date,
-                pcr.amount AS total
+                pcr.amount,
+                pcr.`change`
             FROM tbl_petty_cash_request pcr
             WHERE pcr.Petty_cash_name = @empId
-              AND pcr.state = 'Approved'";
-
-                        using (var cmd2 = new MySqlCommand(reqQuery, conn))
+              AND pcr.state = 'Approved'
+              AND pcr.`change` > 0";
+                
+        using (var cmd2 = new MySqlCommand(reqQuery, conn))
                         {
                             cmd2.Parameters.AddWithValue("@empId", emp.Id);
 
@@ -7013,20 +7008,21 @@ WHERE payment_id = @paymentId";
                             {
                                 while (await reader2.ReadAsync())
                                 {
-                                    decimal total = reader2["total"] != DBNull.Value
-                                        ? Convert.ToDecimal(reader2["total"])
-                                        : 0;
+                                    // Use `change` (remaining) not `amount` (original)
+                                    decimal remaining = reader2["change"] != DBNull.Value
+                                                           ? Convert.ToDecimal(reader2["change"])
+                                                           : 0;
 
-                                    if (total > 0)
+                                    if (remaining > 0)
                                     {
                                         requests.Add(new
                                         {
                                             Id = reader2.GetInt32("id"),
-                                            Date = reader2["request_date"]?.ToString() ?? "",
-                                            Amount = total,
-                                            Change = reader2["change"] != DBNull.Value
-                                                        ? Convert.ToDecimal(reader2["change"])
-                                                        : 0
+                                            Date = reader2["request_date"] != DBNull.Value
+                                                         ? Convert.ToDateTime(reader2["request_date"]).ToString("yyyy-MM-dd")
+                                                         : "",
+                                            Amount = remaining,   // ← remaining balance shown in table
+                                            Change = remaining
                                         });
                                     }
                                 }
@@ -7036,32 +7032,22 @@ WHERE payment_id = @paymentId";
                         employees.Add(new
                         {
                             Id = emp.Id,
+                            Code = emp.Code,
                             Name = emp.Name,
-                            Code =emp.Code,
-                            Requests = requests   // ← nested approved requests
+                            Requests = requests
                         });
                     }
 
                     resDict["Employees"] = employees;
 
-                    // ============================
-                    // STEP 3: DEBIT ACCOUNT CONFIG
-                    // ============================
-
+                    // STEP 3: Debit account config
                     string accQuery = @"
-        SELECT id, code
-        FROM tbl_coa_level_4
-        WHERE id = (
-            SELECT account_id
-            FROM tbl_coa_config
-            WHERE category = @cat
-            LIMIT 1
-        )";
+        SELECT id, code FROM tbl_coa_level_4
+        WHERE id = (SELECT account_id FROM tbl_coa_config WHERE category = @cat LIMIT 1)";
 
                     using (var accCmd = new MySqlCommand(accQuery, conn))
                     {
                         accCmd.Parameters.AddWithValue("@cat", "Petty Cash");
-
                         using var accReader = await accCmd.ExecuteReaderAsync();
                         if (await accReader.ReadAsync())
                         {
@@ -8077,6 +8063,25 @@ WHERE payment_id = @paymentId";
                     cmd.Parameters.AddWithValue("@modified_date", DateTime.Now);
 
                     await cmd.ExecuteNonQueryAsync();
+                    string voucherType = "";
+                    string tType = model.PaymentType;
+                    if (model.PaymentType == "Employee")
+                    {
+                        if (voucherType == "Employee Loan Payment")
+                            tType = "Employee Loan Payment";
+                        else if (voucherType == "Salary")
+                            tType = "Employee Salary Payment";
+                        else
+                            tType = "Employee Payment";
+                    }
+                    else if (model.PaymentType == "Petty Cash")
+                    {
+                        tType = "Employee Petty Cash Payment";
+                    }
+                    else if (model.PaymentType == "Vendor")
+                    {
+                        tType = model.IsSubContractor ? "Subcontractor Payment" : "Vendor Payment";
+                    }
 
                     // Delete old payment voucher details
                     using (var delCmd = new MySqlCommand("DELETE FROM tbl_payment_voucher_details WHERE payment_id=@id", conn, transaction))
@@ -8085,18 +8090,35 @@ WHERE payment_id = @paymentId";
                         await delCmd.ExecuteNonQueryAsync();
                     }
 
-                    // Delete old transactions
-                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='Vendor Payment'", conn, transaction))
+                    //// Delete old transactions
+                    //using (var delCmd = new MySqlCommand("DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type='Vendor Payment'", conn, transaction))
+                    //{
+                    //    delCmd.Parameters.AddWithValue("@id", id);
+                    //    await delCmd.ExecuteNonQueryAsync();
+                    //}
+
+                    //// Delete old cost center transactions
+                    //using (var delCmd = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='Vendor Payment'", conn, transaction))
+                    //{
+                    //    delCmd.Parameters.AddWithValue("@id", id);
+                    //    await delCmd.ExecuteNonQueryAsync();
+                    //}
+
+                    using (var delTransCmd = new MySqlCommand(
+    "DELETE FROM tbl_transaction WHERE transaction_id=@id AND t_type=@tType", conn, transaction))
                     {
-                        delCmd.Parameters.AddWithValue("@id", id);
-                        await delCmd.ExecuteNonQueryAsync();
+                        delTransCmd.Parameters.AddWithValue("@id", id);
+                        delTransCmd.Parameters.AddWithValue("@tType", tType);
+                        await delTransCmd.ExecuteNonQueryAsync();
                     }
 
-                    // Delete old cost center transactions
-                    using (var delCmd = new MySqlCommand("DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type='Vendor Payment'", conn, transaction))
+                    // Delete old cost center transactions for this voucher
+                    using (var delCCCmd = new MySqlCommand(
+                        "DELETE FROM tbl_cost_center_transaction WHERE ref_id=@id AND type=@tType", conn, transaction))
                     {
-                        delCmd.Parameters.AddWithValue("@id", id);
-                        await delCmd.ExecuteNonQueryAsync();
+                        delCCCmd.Parameters.AddWithValue("@id", id);
+                        delCCCmd.Parameters.AddWithValue("@tType", tType);
+                        await delCCCmd.ExecuteNonQueryAsync();
                     }
 
                     // Handle check details for update
@@ -8330,11 +8352,13 @@ WHERE payment_id = @paymentId";
             int pvId, string code, int userId, int? humId)
         {
             string tType = "";
+            string entryType = "";
             string humIdStr = humId > 0 ? humId.ToString() : "0";
 
             if (model.PaymentType == "Vendor")
             {
                 tType = model.IsSubContractor ? "Subcontractor Payment" : "Vendor Payment";
+                entryType = tType;
                 humIdStr = humId > 0 ? humId.ToString() : "0";
             }
             else if (model.PaymentType == "Employee")
@@ -8349,23 +8373,25 @@ WHERE payment_id = @paymentId";
                 {
                     tType = "Employee Salary Payment";
                 }
+                entryType = tType;
             }
             else if (model.PaymentType == "Petty Cash")
             {
                 tType = "Employee Petty Cash Payment";
+                entryType = tType;
                 humIdStr = humId > 0 ? humId.ToString() : "0";
             }
 
             // Insert debit transaction entry
             await AddTransactionEntry(conn, transaction, model.Date ?? DateTime.Today,
                 model.DebitAccountId.ToString(), amount, 0, pvId.ToString(),
-                humIdStr, tType, "Vendor Payment", $"Payment Voucher NO. {code}",
+                humIdStr, tType, entryType, $"Payment Voucher NO. {code}",
                 userId, DateTime.Now, code);
 
             // Insert credit transaction entry
             await AddTransactionEntry(conn, transaction, model.Date ?? DateTime.Today,
                 model.CreditAccountId.ToString(), 0, amount, pvId.ToString(),
-                "0", tType, "Vendor Payment", $"Payment Voucher NO. {code}",
+                "0", tType, entryType, $"Payment Voucher NO. {code}",
                 userId, DateTime.Now, code);
         }
 
