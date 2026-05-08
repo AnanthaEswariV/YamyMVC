@@ -6318,16 +6318,17 @@ WHERE
 
                     var insertQuery = @"
 INSERT INTO tbl_petty_cash_request
-(request_date, request_ref, Petty_cash_name, amount, description, 
+(request_date, request_ref, Petty_cash_name, petty_cash_id, amount, description, 
  debit_account_id, state, pay, `change`, created_by, created_date)
 VALUES
-(@request_date, @request_ref, @Petty_cash_name, @amount, @description,
+(@request_date, @request_ref, @Petty_cash_name, @petty_cash_id, @amount, @description,
  @debit_account_id, @state, @pay, @change, @created_by, @created_date)";
 
                     using var insertCmd = new MySqlCommand(insertQuery, conn);
                     insertCmd.Parameters.AddWithValue("@request_date", model.RequestDate.Date);
                     insertCmd.Parameters.AddWithValue("@request_ref", newRef);
                     insertCmd.Parameters.AddWithValue("@Petty_cash_name", model.PettyCashName);
+                    insertCmd.Parameters.AddWithValue("@petty_cash_id", model.PettyCashName); // ✅ Add this
                     insertCmd.Parameters.AddWithValue("@amount", model.Amount);
                     insertCmd.Parameters.AddWithValue("@description", model.Description ?? "");
                     insertCmd.Parameters.AddWithValue("@debit_account_id", debitAccountId);
@@ -6344,19 +6345,21 @@ VALUES
                 else // ➝ UPDATE
                 {
                     var updateQuery = @"
-                UPDATE tbl_petty_cash_request SET
-                    request_date = @request_date,
-                    request_ref = @request_ref,
-                    Petty_cash_name = @Petty_cash_name,
-                    amount = @amount,
-                    description = @description
-                WHERE id = @id";
+UPDATE tbl_petty_cash_request SET
+    request_date = @request_date,
+    request_ref = @request_ref,
+    Petty_cash_name = @Petty_cash_name,
+    petty_cash_id = @petty_cash_id,
+    amount = @amount,
+    description = @description
+WHERE id = @id";
 
                     using var updateCmd = new MySqlCommand(updateQuery, conn);
                     updateCmd.Parameters.AddWithValue("@id", model.Id);
                     updateCmd.Parameters.AddWithValue("@request_date", model.RequestDate.Date);
                     updateCmd.Parameters.AddWithValue("@request_ref", model.RequestRef ?? "");
-                    updateCmd.Parameters.AddWithValue("@Petty_cash_name", model.PettyCashName);
+                    updateCmd.Parameters.AddWithValue("@Petty_cash_name", model.PettyCashName); // display name or ID?
+                    updateCmd.Parameters.AddWithValue("@petty_cash_id", model.PettyCashName);   // foreign key
                     updateCmd.Parameters.AddWithValue("@amount", model.Amount);
                     updateCmd.Parameters.AddWithValue("@description", model.Description ?? "");
 
@@ -6638,6 +6641,52 @@ VALUES
                     message = ex.Message,
                     details = ex.InnerException?.Message
                 });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetPettyCashEmployees()
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName")
+                               ?? _config["ConnectionStrings:DefaultDatabase"]
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                CONCAT(pcc.code, ' - ', emp.name) AS name, 
+                CAST(emp.id AS CHAR) AS value
+            FROM tbl_petty_cash_card pcc
+            JOIN tbl_employee emp ON CAST(pcc.name AS UNSIGNED) = emp.id
+            ORDER BY emp.id DESC
+        ";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var result = new List<Dictionary<string, object>>();
+
+                while (await reader.ReadAsync())
+                {
+                    var item = new Dictionary<string, object>
+                    {
+                        ["name"] = reader["name"] is DBNull ? null : reader["name"],
+                        ["value"] = reader["value"] is DBNull ? null : reader["value"]
+                    };
+                    result.Add(item);
+                }
+
+                return Ok(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
             }
         }
 

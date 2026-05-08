@@ -670,7 +670,6 @@
             $("#pettyCashModal").modal("show");
         });
 
-            // Submit form (unchanged, works for both create and update)
             $('#pettyCashForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -767,7 +766,7 @@
                     }
 
                     // ✅ Target BOTH dropdowns
-                    const dropdowns = ['#employeeSelect', '#employeeRequest'];
+                    const dropdowns = ['#employeeSelect'];
 
                     dropdowns.forEach(selector => {
                         const $ddl = $(selector);
@@ -813,6 +812,56 @@
         }
 
              loademployee();
+
+                     function loadPettyCashEmployees() {
+            $.ajax({
+                url: '@Url.Action("GetPettyCashEmployees", "Lists")', 
+                type: 'GET',
+                success: function (res) {
+                    const employees = res.data;
+
+                    if (!Array.isArray(employees)) {
+                        console.error("❌ res.data is not an array:", employees);
+                        return;
+                    }
+
+                    const $ddl = $('#employeeRequest');
+
+                    if ($ddl.length === 0) return;
+
+                    $ddl.empty().append('<option value="">-- Select Employee --</option>');
+
+                    employees.forEach(item => {
+                        const empValue = item.value ?? "";
+                        const empName = item.name ?? "";
+
+                        if (!empValue || !empName) return;
+
+                        $ddl.append(
+                            $('<option>', {
+                                value: empValue,
+                                text: empName
+                            })
+                        );
+                    });
+
+                    // Optional: handle change event
+                    $ddl.off('change').on('change', function () {
+                        const selectedText = $(this).find(':selected').text();
+                        console.log("Selected employee:", selectedText);
+                        // You can do more here if needed (e.g., update other fields)
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error("❌ Error loading petty cash employees:", status, error);
+                    toastr.error("Server error while loading employees");
+                }
+            });
+        }
+
+        
+            loadPettyCashEmployees();
+        
 
             // Reset form when modal is fully hidden
             $('#pettyCashModal').on('hidden.bs.modal', function () {
