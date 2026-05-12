@@ -2369,7 +2369,7 @@ LIMIT 1;", conn);
                     // 1️⃣ Debit: Cash / A/R
                     await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
                         accountId,
-                        model.NetTotal.ToString(), "0",
+                        model.NetTotal, 0,
                         invId.ToString(), model.CustomerId.ToString(),
                         transactionType, "SALES",
                         $"Sales Invoice NO. {invoiceCode}",
@@ -2378,7 +2378,7 @@ LIMIT 1;", conn);
                     // 2️⃣ Credit: Sales Revenue (Total Before VAT)
                     await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
                         level4SalesInvoice.ToString(),
-                        "0", model.TotalBeforeVat.ToString(),
+                        0, model.TotalBeforeVat,
                         invId.ToString(), "0",
                         transactionType, "SALES",
                         $"Sales Revenue For Invoice No. {invoiceCode}",
@@ -2389,7 +2389,7 @@ LIMIT 1;", conn);
                     {
                         await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
                             level4VatId.ToString(),
-                            "0", model.Vat.ToString(),
+                            0, model.Vat,
                             invId.ToString(), "0",
                             transactionType, "SALES",
                             $"Vat Output For Invoice No. {invoiceCode}",
@@ -2415,7 +2415,7 @@ LIMIT 1;", conn);
                         // 4.1 Debit COGS
                         await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
                             level4COGS.ToString(),
-                            itemInventoryCost.ToString("N2"), "0",
+                            itemInventoryCost, 0,
                             invId.ToString(), "0",
                             "Sales Invoice", "SALES",
                             $"COGS For Sales No. {invoiceCode}",
@@ -2424,7 +2424,7 @@ LIMIT 1;", conn);
                         // 4.2 Credit Inventory (NO FALLBACK — same as desktop)
                         await AddTransactionEntryAsync(conn, tx, model.InvoiceDate.Date,
                             warehouseAccountId.ToString(),
-                            "0", itemInventoryCost.ToString("N2"),
+                            0, itemInventoryCost,
                             invId.ToString(), "0",
                             "Sales Invoice", "SALES",
                             $"Item Sold For Sales No. {invoiceCode}",
@@ -2652,130 +2652,141 @@ LIMIT 1;", conn);
             long invId, List<SalesItemRequest> items, DateTime invoiceDate, string invoiceCode,
             int warehouseId, bool allowItemWithoutQty)
         {
-            decimal totalCostAllItems = 0;
-
-            foreach (var item in items)
+            try
             {
-                // Insert sales detail
-                var insertDetailSql = @"
+                decimal totalCostAllItems = 0;
+
+                foreach (var item in items)
+                {
+                    // Insert sales detail
+                    var insertDetailSql = @"
             INSERT INTO tbl_sales_details 
             (sales_id, item_id, qty, cost_price, price, discount, vatp, vat, total, cost_center_id)
             VALUES 
             (@sales_id, @item_id, @qty, @cost_price, @price, @discount, @vatp, @vat, @total, @costCenter);";
 
-                using (var cmdDetail = new MySqlCommand(insertDetailSql, conn, tx))
-                {
-                    cmdDetail.Parameters.AddWithValue("@sales_id", invId);
-                    cmdDetail.Parameters.AddWithValue("@item_id", item.ItemId);
-                    cmdDetail.Parameters.AddWithValue("@qty", item.Qty);
-                    cmdDetail.Parameters.AddWithValue("@price", item.Price);
-                    cmdDetail.Parameters.AddWithValue("@cost_price",
-                        item.CostPrice > 0 ? item.CostPrice : (object)DBNull.Value);
-                    cmdDetail.Parameters.AddWithValue("@discount", item.Discount ?? 0);
-                    cmdDetail.Parameters.AddWithValue("@vat", item.Vat);
-                    cmdDetail.Parameters.AddWithValue("@vatp", item.VatP);
-                    cmdDetail.Parameters.AddWithValue("@total", item.Total);
-                    cmdDetail.Parameters.AddWithValue("@costCenter",
-                        item.CostCenterId > 0 ? item.CostCenterId : (object)DBNull.Value);
-                    await cmdDetail.ExecuteNonQueryAsync();
-                }
+                    using (var cmdDetail = new MySqlCommand(insertDetailSql, conn, tx))
+                    {
+                        cmdDetail.Parameters.AddWithValue("@sales_id", invId);
+                        cmdDetail.Parameters.AddWithValue("@item_id", item.ItemId);
+                        cmdDetail.Parameters.AddWithValue("@qty", item.Qty);
+                        cmdDetail.Parameters.AddWithValue("@price", item.Price);
+                        var costParam = cmdDetail.Parameters.Add("@cost_price", MySqlDbType.Decimal);
+                        costParam.Value = item.CostPrice > 0
+                            ? item.CostPrice
+                            : DBNull.Value;
+                        //cmdDetail.Parameters.AddWithValue("@cost_price",
+                        //    item.CostPrice > 0 ? item.CostPrice : (object)DBNull.Value);
+                        cmdDetail.Parameters.AddWithValue("@discount", item.Discount ?? 0);
+                        cmdDetail.Parameters.AddWithValue("@vat", item.Vat);
+                        cmdDetail.Parameters.AddWithValue("@vatp", item.VatP);
+                        cmdDetail.Parameters.AddWithValue("@total", item.Total);
+                        cmdDetail.Parameters.AddWithValue("@costCenter",
+                            item.CostCenterId > 0 ? item.CostCenterId : (object)DBNull.Value);
+                        await cmdDetail.ExecuteNonQueryAsync();
+                    }
 
-                // Skip services
-                if (item.Type == "12 - Service")
-                    continue;
+                    // Skip services
+                    if (item.Type == "12 - Service")
+                        continue;
 
-                decimal costAmount = 0;
+                    decimal costAmount = 0;
 
-                // Handle Inventory Assembly
-                if (item.Type == "13 - Inventory Assembly")
-                {
-                    var componentsQuery = @"
+                    // Handle Inventory Assembly
+                    if (item.Type == "13 - Inventory Assembly")
+                    {
+                        var componentsQuery = @"
                 SELECT item_id, qty, 
                        (SELECT method FROM tbl_items WHERE tbl_items.id = tbl_item_assembly.item_id) as method 
                 FROM tbl_item_assembly 
                 WHERE assembly_id = @assemblyId";
 
-                    using (var cmdComponents = new MySqlCommand(componentsQuery, conn, tx))
-                    {
-                        cmdComponents.Parameters.AddWithValue("@assemblyId", item.ItemId);
-                        using var readerComponents = await cmdComponents.ExecuteReaderAsync();
-
-                        var components = new List<(int itemId, decimal qty, string method)>();
-                        while (await readerComponents.ReadAsync())
+                        using (var cmdComponents = new MySqlCommand(componentsQuery, conn, tx))
                         {
-                            components.Add((
-                                readerComponents.GetInt32("item_id"),
-                                readerComponents.GetDecimal("qty") * item.Qty,
-                                readerComponents.GetString("method").Trim()
-                            ));
-                        }
-                        await readerComponents.CloseAsync();
+                            cmdComponents.Parameters.AddWithValue("@assemblyId", item.ItemId);
+                            using var readerComponents = await cmdComponents.ExecuteReaderAsync();
 
-                        foreach (var component in components)
-                        {
-                            // Update on_hand
-                            using var cmdUpdate = new MySqlCommand(
-                                "UPDATE tbl_items SET on_hand = on_hand - @qty WHERE id = @componentId",
-                                conn, tx);
-                            cmdUpdate.Parameters.AddWithValue("@qty", component.qty);
-                            cmdUpdate.Parameters.AddWithValue("@componentId", component.itemId);
-                            await cmdUpdate.ExecuteNonQueryAsync();
+                            var components = new List<(int itemId, decimal qty, string method)>();
+                            while (await readerComponents.ReadAsync())
+                            {
+                                components.Add((
+                                    readerComponents.GetInt32("item_id"),
+                                    readerComponents.GetDecimal("qty") * item.Qty,
+                                    readerComponents.GetString("method").Trim()
+                                ));
+                            }
+                            await readerComponents.CloseAsync();
 
-                            // Insert transaction and get cost
-                            decimal costReturned = await InsertItemTransactionAsync(conn, tx,
-                                component.itemId, component.qty, item.Price, component.method,
-                                invoiceDate, invId, invoiceCode, warehouseId, allowItemWithoutQty);
+                            foreach (var component in components)
+                            {
+                                // Update on_hand
+                                using var cmdUpdate = new MySqlCommand(
+                                    "UPDATE tbl_items SET on_hand = on_hand - @qty WHERE id = @componentId",
+                                    conn, tx);
+                                cmdUpdate.Parameters.AddWithValue("@qty", component.qty);
+                                cmdUpdate.Parameters.AddWithValue("@componentId", component.itemId);
+                                await cmdUpdate.ExecuteNonQueryAsync();
 
-                            costAmount = costReturned;
-                            totalCostAllItems += costReturned;
-                        }
-                    }
-                }
-                else // Regular inventory item
-                {
-                    using (var cmdItem = new MySqlCommand("SELECT * FROM tbl_items WHERE id=@id", conn, tx))
-                    {
-                        cmdItem.Parameters.AddWithValue("@id", item.ItemId);
-                        using var readerItem = await cmdItem.ExecuteReaderAsync();
+                                // Insert transaction and get cost
+                                decimal costReturned = await InsertItemTransactionAsync(conn, tx,
+                                    component.itemId, component.qty, item.Price, component.method,
+                                    invoiceDate, invId, invoiceCode, warehouseId, allowItemWithoutQty);
 
-                        if (await readerItem.ReadAsync())
-                        {
-                            decimal onHand = readerItem.GetDecimal("on_hand");
-                            string method = readerItem.GetString("method");
-                            await readerItem.CloseAsync();
-
-                            // Update on_hand
-                            using var cmdUpdate = new MySqlCommand(
-                                "UPDATE tbl_items SET on_hand = @newQty WHERE id = @id", conn, tx);
-                            cmdUpdate.Parameters.AddWithValue("@newQty", onHand - item.Qty);
-                            cmdUpdate.Parameters.AddWithValue("@id", item.ItemId);
-                            await cmdUpdate.ExecuteNonQueryAsync();
-
-                            // Insert transaction and get cost
-                            decimal costReturned = await InsertItemTransactionAsync(conn, tx,
-                                item.ItemId, item.Qty, item.Price, method, invoiceDate, invId,
-                                invoiceCode, warehouseId, allowItemWithoutQty);
-
-                            costAmount = costReturned;
-                            totalCostAllItems += costReturned;
-                        }
-                        else
-                        {
-                            await readerItem.CloseAsync();
+                                costAmount = costReturned;
+                                totalCostAllItems += costReturned;
+                            }
                         }
                     }
+                    else // Regular inventory item
+                    {
+                        using (var cmdItem = new MySqlCommand("SELECT * FROM tbl_items WHERE id=@id", conn, tx))
+                        {
+                            cmdItem.Parameters.AddWithValue("@id", item.ItemId);
+                            using var readerItem = await cmdItem.ExecuteReaderAsync();
+
+                            if (await readerItem.ReadAsync())
+                            {
+                                decimal onHand = readerItem.GetDecimal("on_hand");
+                                string method = readerItem.GetString("method");
+                                await readerItem.CloseAsync();
+
+                                // Update on_hand
+                                using var cmdUpdate = new MySqlCommand(
+                                    "UPDATE tbl_items SET on_hand = @newQty WHERE id = @id", conn, tx);
+                                cmdUpdate.Parameters.AddWithValue("@newQty", onHand - item.Qty);
+                                cmdUpdate.Parameters.AddWithValue("@id", item.ItemId);
+                                await cmdUpdate.ExecuteNonQueryAsync();
+
+                                // Insert transaction and get cost
+                                decimal costReturned = await InsertItemTransactionAsync(conn, tx,
+                                    item.ItemId, item.Qty, item.Price, method, invoiceDate, invId,
+                                    invoiceCode, warehouseId, allowItemWithoutQty);
+
+                                costAmount = costReturned;
+                                totalCostAllItems += costReturned;
+                            }
+                            else
+                            {
+                                await readerItem.CloseAsync();
+                            }
+                        }
+                    }
+
+                    // Insert cost center transaction
+                    if (item.CostCenterId.HasValue && item.CostCenterId.Value > 0)
+                    {
+                        await InsertCostCenterTransactionAsync(conn, tx, invoiceDate, "0",
+                            item.Total.ToString(), invId.ToString(), "Sales", "",
+                            item.CostCenterId.Value.ToString());
+                    }
                 }
 
-                // Insert cost center transaction
-                if (item.CostCenterId.HasValue && item.CostCenterId.Value > 0)
-                {
-                    await InsertCostCenterTransactionAsync(conn, tx, invoiceDate, "0",
-                        item.Total.ToString(), invId.ToString(), "Sales", "",
-                        item.CostCenterId.Value.ToString());
-                }
+                return totalCostAllItems;
             }
-
-            return totalCostAllItems;
+           catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
         private async Task<decimal> InsertItemTransactionAsync(MySqlConnection conn, MySqlTransaction tx,
@@ -2803,7 +2814,7 @@ LIMIT 1;", conn);
                 decimal totalCost = costPrice * qty;
 
                 await InsertItemTransactionRecordAsync(conn, tx, invoiceDate.Date, "Sales Invoice",
-                    invId.ToString(), itemId.ToString(), costPrice.ToString(), "0",
+                    invId.ToString(), itemId.ToString(), costPrice, "0",
                     salesPrice.ToString(), qty.ToString(), "0",
                     $"Sales Invoice No. {invoiceCode} (Negative Stock)", warehouseId.ToString());
 
@@ -2857,7 +2868,7 @@ LIMIT 1;", conn);
 
                             await InsertItemTransactionRecordAsync(conn, tx, invoiceDate.Date,
                                 "Sales Invoice", invId.ToString(), itemId.ToString(),
-                                costPrice.ToString(), "0", salesPrice.ToString(), qtyToUse.ToString(),
+                                costPrice, "0", salesPrice.ToString(), qtyToUse.ToString(),
                                 "0", $"Sales Invoice No. {invoiceCode}", warehouseId.ToString());
 
                             // Update qty_inc
@@ -2892,7 +2903,7 @@ LIMIT 1;", conn);
 
                         await InsertItemTransactionRecordAsync(conn, tx, invoiceDate.Date,
                             "Sales Invoice", invId.ToString(), itemId.ToString(),
-                            costPrice.ToString(), "0", salesPrice.ToString(), remainingQty.ToString(),
+                            costPrice, "0", salesPrice.ToString(), remainingQty.ToString(),
                             "0", $"Sales Invoice No. {invoiceCode} (Neg. Stock)", warehouseId.ToString());
                     }
                 }
@@ -2986,7 +2997,7 @@ LIMIT 1;", conn);
 
                     // Insert the transaction record
                     await InsertItemTransactionRecordAsync(conn, tx, invoiceDate.Date, "Sales Invoice",
-                        invId.ToString(), itemId.ToString(), costPrice.ToString(), "0",
+                        invId.ToString(), itemId.ToString(), costPrice, "0",
                         salesPrice.ToString(), qty.ToString(), "0",
                         $"Sales Invoice No. {invoiceCode}", warehouseId.ToString());
                 }
@@ -2997,7 +3008,7 @@ LIMIT 1;", conn);
         }
 
         private async Task InsertItemTransactionRecordAsync(MySqlConnection conn, MySqlTransaction tx,
-            DateTime date, string type, string reference, string itemId, string price,
+            DateTime date, string type, string reference, string itemId, decimal price,
             string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description,
             string warehouseId)
         {
@@ -3038,7 +3049,7 @@ LIMIT 1;", conn);
         }
 
         private async Task AddItemCardDetailsAsync(MySqlConnection conn, MySqlTransaction tx,
-            DateTime date, string type, string reference, string itemId, string costPrice,
+            DateTime date, string type, string reference, string itemId, decimal costPrice,
             string qtyIn, string salesPrice, string qtyOut, string qtyInc, string description,
             string warehouseId)
         {
@@ -3048,7 +3059,7 @@ LIMIT 1;", conn);
             decimal qtyBalance = 0;
             decimal debit = 0;
             decimal credit = 0;
-            decimal price = decimal.Parse(costPrice);
+            decimal price = costPrice;
             decimal balance = 0;
             decimal fifoQty = 0;
             decimal fifoCost = 0;
@@ -3057,13 +3068,13 @@ LIMIT 1;", conn);
 
             if (!string.IsNullOrEmpty(qtyIn) && decimal.Parse(qtyIn) > 0)
             {
-                debit = decimal.Parse(qtyIn) * decimal.Parse(costPrice);
+                debit = decimal.Parse(qtyIn) * costPrice;
                 _qtyIn = decimal.Parse(qtyIn);
             }
 
             if (!string.IsNullOrEmpty(qtyOut) && decimal.Parse(qtyOut) > 0)
             {
-                credit = decimal.Parse(qtyOut) * decimal.Parse(costPrice);
+                credit = decimal.Parse(qtyOut) * costPrice;
                 _qtyOut = decimal.Parse(qtyOut);
             }
 
@@ -3118,7 +3129,7 @@ LIMIT 1;", conn);
         }
 
         private async Task AddTransactionEntryAsync(MySqlConnection conn, MySqlTransaction tx,
-            DateTime date, string accountId, string debit, string credit, string transactionId,
+            DateTime date, string accountId, decimal debit, decimal credit, string transactionId,
             string humId, string type, string voucherName, string description, int createdBy,
             DateTime createdDate, string voucherNo)
         {
