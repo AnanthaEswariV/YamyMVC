@@ -1,0 +1,258 @@
+﻿
+@{
+    ViewData["Title"] = "Category";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .dt-buttons .btn-primary {
+        background-color: #435EBE !important;
+        color: #fff !important;
+        border: none !important;
+    }
+
+        .dt-buttons .btn-primary:hover {
+            background-color: #3b51a0 !important;
+            color: #fff !important;
+        }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<!-- ✅ Added container + vertical spacing to match hero section margins -->
+<div class="container my-3">
+    <div class="card">
+        <div class="card-header text-center">
+            <strong>Category Management</strong>
+        </div>
+
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <!-- Left side - Filter -->
+                <div style="min-width: 300px;">
+                </div>
+
+                <!-- Right side - Add Bank Button -->
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankModal">
+                        <i class="bi bi-plus-circle me-2"></i>Add Category
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <table class="table table-striped" id="table1">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Code</th>
+                        <th>Category</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be loaded dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Add/Edit Bank Modal -->
+<div class="modal fade" id="bankModal" tabindex="-1" aria-labelledby="bankModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form id="bankForm" class="needs-validation" novalidate>
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title w-100 text-center" id="bankModalLabel">Register Bank</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="bankId" value="0" />
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="bankCode" class="form-label text-muted">Bank Code</label>
+                            <input type="text" class="form-control" id="bankCode" placeholder="Bank Code" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="bankName" class="form-label text-muted">Bank Name</label>
+                            <input type="text" class="form-control" id="bankName" name="BankName" placeholder="Bank Name" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="abbreviationName" class="form-label text-muted">Abbreviation Name</label>
+                            <input type="text" class="form-control" id="abbreviationName" name="AbbName" placeholder="Abbreviation Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="entId" class="form-label text-muted">Ent Id</label>
+                            <input type="text" class="form-control" id="entId" name="EntId" placeholder="Ent Id" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="routeNo" class="form-label text-muted">Route No.</label>
+                            <input type="text" class="form-control" id="routeNo" name="RouteNum" placeholder="Route No." required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="country" class="form-label text-muted">Country</label>
+                            <select class="form-select" id="country" name="CountryId" required>
+                                <option value="">-- Select Country --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script>
+        // ===== Load Item Categories Table =====
+        function loadItemCategories() {
+
+            $.ajax({
+                url: '@Url.Action("GetItemCategories", "Category")',
+                type: "GET",
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        // Destroy existing DataTable
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+
+                            $.each(res.data, function (i, row) {
+
+                                let rowData = JSON.stringify(row);
+
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.categoryCode ?? ""}</td>
+                                        <td>${row.categoryName ?? ""}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editCategoryBtn"
+                                                    data-category='${rowData}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-danger deleteCategoryBtn"
+                                                    data-id='${row.id}'>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>`;
+
+                                tbody.append(tr);
+                            });
+
+                            // Initialize DataTable
+                            $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        className: 'btn btn-primary btn-sm',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        exportOptions: {
+                                            columns: ':not(:last-child)'
+                                        }
+                                    },
+                                    {
+                                        extend: 'print',
+                                        text: '<i class="fas fa-print me-1"></i> Print',
+                                        className: 'btn btn-primary btn-sm',
+                                        exportOptions: {
+                                            columns: ':not(:last-child)'
+                                        }
+                                    }
+                                ],
+                                order: [[0, 'asc']],
+                                pageLength: 15
+                            });
+
+                        } else {
+
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="4"
+                                        class="text-center"
+                                        style="padding:40px; color:#6c757d; font-style:italic;">
+                                        No records found
+                                    </td>
+                                </tr>`);
+
+                            $('.dt-buttons').hide();
+                        }
+
+                    } else {
+
+                        $("#table1 tbody").html(`
+                            <tr>
+                                <td colspan="4"
+                                    class="text-center"
+                                    style="color:red; padding:40px;">
+                                    Error: ${res.message || 'Failed to load data'}
+                                </td>
+                            </tr>`);
+
+                        $('.dt-buttons').hide();
+                    }
+                },
+
+                error: function (xhr, status, error) {
+
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+
+                    $("#table1 tbody").html(`
+                        <tr>
+                            <td colspan="4"
+                                class="text-center"
+                                style="color:red; padding:40px;">
+                                Error loading data: ${error}
+                            </td>
+                        </tr>`);
+
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+        // ===== Page Load =====
+        $(document).ready(function () {
+            loadItemCategories();
+        });
+    </script>
+    }
+    
+
