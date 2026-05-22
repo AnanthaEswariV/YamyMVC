@@ -58,36 +58,19 @@ namespace YamyResturant.Controllers
             return conn;
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetMenuItems()
         {
             try
             {
                 using var conn = await OpenConnectionAsync();
-
                 if (conn == null)
-                {
-                    return Json(new
-                    {
-                        status = false,
-                        message = "Session expired"
-                    });
-                }
+                    return Json(new { status = false, message = "Session expired" });
 
                 string query = @"
-        SELECT 
-            m.id,
-            m.code,
-            m.category_id,
-            c.name AS category_name,
-            m.subcategory_name,
-            m.meal_times,
-            m.price,
-            m.is_active
+        SELECT m.*, c.name AS category_name
         FROM tbl_menu_item m
-        LEFT JOIN tbl_item_category c 
-            ON c.id = m.category_id
+        LEFT JOIN tbl_item_category c ON c.id = m.category_id
         ORDER BY m.id DESC";
 
                 List<object> data = new();
@@ -109,219 +92,139 @@ namespace YamyResturant.Controllers
                         subCategoryName = reader["subcategory_name"]?.ToString(),
                         mealTimes = reader["meal_times"]?.ToString(),
                         price = reader["price"],
-                        isActive = reader["is_active"]
+                        isActive = reader["is_active"],
+                        image = reader["image"]?.ToString()
                     });
                 }
 
-                return Json(new
-                {
-                    status = true,
-                    data
-                });
+                return Json(new { status = true, data });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    status = false,
-                    message = ex.Message
-                });
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
-        // ===== SAVE MENU ITEM =====
         [HttpPost]
-        public async Task<IActionResult> SaveMenuItem(
-            [FromBody] MenuItemRequest model)
+        public async Task<IActionResult> SaveMenuItem([FromForm] MenuItemRequest model)
         {
             try
             {
-                // Validation
                 if (model == null)
-                {
-                    return BadRequest(new
-                    {
-                        status = false,
-                        message = "Invalid request"
-                    });
-                }
-
-                if (model.CategoryId <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        status = false,
-                        message = "Please select category"
-                    });
-                }
-
-                if (string.IsNullOrWhiteSpace(model.SubCategoryName))
-                {
-                    return BadRequest(new
-                    {
-                        status = false,
-                        message = "Please enter subcategory"
-                    });
-                }
+                    return Json(new { status = false, message = "Invalid request" });
 
                 using var conn = await OpenConnectionAsync();
-
                 if (conn == null)
-                {
-                    return Json(new
-                    {
-                        status = false,
-                        message = "Session expired"
-                    });
-                }
+                    return Json(new { status = false, message = "Session expired" });
 
-                // Duplicate Check
+                // ================= DUPLICATE CHECK =================
                 string duplicateQuery = @"
-        SELECT COUNT(*)
+        SELECT COUNT(*) 
         FROM tbl_menu_item
         WHERE id <> @id
         AND category_id = @categoryId
         AND subcategory_name = @name";
 
-                using (var checkCmd =
-                       new MySqlCommand(duplicateQuery, conn))
+                using (var cmd = new MySqlCommand(duplicateQuery, conn))
                 {
-                    checkCmd.Parameters.AddWithValue("@id", model.Id);
-                    checkCmd.Parameters.AddWithValue("@categoryId", model.CategoryId);
-                    checkCmd.Parameters.AddWithValue(
-                        "@name",
-                        model.SubCategoryName.Trim());
+                    cmd.Parameters.AddWithValue("@id", model.Id);
+                    cmd.Parameters.AddWithValue("@categoryId", model.CategoryId);
+                    cmd.Parameters.AddWithValue("@name", model.SubCategoryName.Trim());
 
-                    int exists =
-                        Convert.ToInt32(
-                            await checkCmd.ExecuteScalarAsync());
-
-                    if (exists > 0)
-                    {
-                        return BadRequest(new
-                        {
-                            status = false,
-                            message = "Menu item already exists"
-                        });
-                    }
+                    if (Convert.ToInt32(await cmd.ExecuteScalarAsync()) > 0)
+                        return Json(new { status = false, message = "Already exists" });
                 }
 
-                // Convert meals to comma string
-                string mealTimes =
-                    model.MealTimes != null
-                    ? string.Join(",", model.MealTimes)
-                    : "";
+                // ================= MEAL TIMES (FIXED) =================
+                string mealTimes = model.MealTimesRaw ?? "[]";
 
-                // ===== INSERT =====
+                // ================= IMAGE UPLOAD =================
+                string imageName = null;
+
+                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                {
+                    string folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads/menu");
+
+                    if (!Directory.Exists(folder))
+                        Directory.CreateDirectory(folder);
+
+                    imageName = $"{Guid.NewGuid()}{Path.GetExtension(model.ImageFile.FileName)}";
+
+                    string path = Path.Combine(folder, imageName);
+
+                    using var stream = new FileStream(path, FileMode.Create);
+                    await model.ImageFile.CopyToAsync(stream);
+                }
+
+                // ================= INSERT =================
                 if (model.Id == 0)
                 {
+                    string codeQuery = @"SELECT IFNULL(MAX(CAST(code AS UNSIGNED)),0) FROM tbl_menu_item";
                     int lastCode = 0;
 
-                    string codeQuery = @"
-            SELECT code
-            FROM tbl_menu_item
-            ORDER BY CAST(code AS UNSIGNED) DESC
-            LIMIT 1";
+                    using (var cmd = new MySqlCommand(codeQuery, conn))
+                        lastCode = Convert.ToInt32(await cmd.ExecuteScalarAsync());
 
-                    using (var codeCmd =
-                           new MySqlCommand(codeQuery, conn))
-
-                    using (var reader =
-                           await codeCmd.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            if (reader["code"] != DBNull.Value)
-                            {
-                                lastCode =
-                                    Convert.ToInt32(reader["code"]);
-                            }
-                        }
-                    }
-
-                    string newCode =
-                        (lastCode + 1).ToString("D3");
+                    string newCode = (lastCode + 1).ToString("D3");
 
                     string insertQuery = @"
             INSERT INTO tbl_menu_item
-            (
-                code,
-                category_id,
-                subcategory_name,
-                meal_times,
-                price,
-                is_active
-            )
+            (code, category_id, subcategory_name, meal_times, price, is_active, image)
             VALUES
-            (
-                @code,
-                @categoryId,
-                @name,
-                @mealTimes,
-                @price,
-                @isActive
-            )";
+            (@code, @categoryId, @name, @mealTimes, @price, @isActive, @image)";
 
-                    using (var insertCmd =
-                           new MySqlCommand(insertQuery, conn))
-                    {
-                        insertCmd.Parameters.AddWithValue("@code", newCode);
-                        insertCmd.Parameters.AddWithValue("@categoryId", model.CategoryId);
-                        insertCmd.Parameters.AddWithValue("@name", model.SubCategoryName.Trim());
-                        insertCmd.Parameters.AddWithValue("@mealTimes", mealTimes);
-                        insertCmd.Parameters.AddWithValue("@price", model.Price);
-                        insertCmd.Parameters.AddWithValue("@isActive", model.IsActive);
+                    using var cmdIns = new MySqlCommand(insertQuery, conn);
 
-                        await insertCmd.ExecuteNonQueryAsync();
-                    }
+                    cmdIns.Parameters.AddWithValue("@code", newCode);
+                    cmdIns.Parameters.AddWithValue("@categoryId", model.CategoryId);
+                    cmdIns.Parameters.AddWithValue("@name", model.SubCategoryName);
+                    cmdIns.Parameters.AddWithValue("@mealTimes", mealTimes);
+                    cmdIns.Parameters.AddWithValue("@price", model.Price);
+                    cmdIns.Parameters.AddWithValue("@isActive", model.IsActive);
+                    cmdIns.Parameters.AddWithValue("@image", imageName);
 
-                    return Ok(new
-                    {
-                        status = true,
-                        message = "Menu item added successfully"
-                    });
+                    await cmdIns.ExecuteNonQueryAsync();
+
+                    return Json(new { status = true, message = "Added successfully" });
                 }
 
-                // ===== UPDATE =====
-                else
-                {
-                    string updateQuery = @"
-            UPDATE tbl_menu_item
-            SET
-                category_id = @categoryId,
-                subcategory_name = @name,
-                meal_times = @mealTimes,
-                price = @price,
-                is_active = @isActive
-            WHERE id = @id";
+                // ================= UPDATE =================
+                string updateQuery = imageName != null
+                ? @"UPDATE tbl_menu_item SET 
+            category_id=@categoryId,
+            subcategory_name=@name,
+            meal_times=@mealTimes,
+            price=@price,
+            is_active=@isActive,
+            image=@image
+            WHERE id=@id"
+                : @"UPDATE tbl_menu_item SET 
+            category_id=@categoryId,
+            subcategory_name=@name,
+            meal_times=@mealTimes,
+            price=@price,
+            is_active=@isActive
+            WHERE id=@id";
 
-                    using (var updateCmd =
-                           new MySqlCommand(updateQuery, conn))
-                    {
-                        updateCmd.Parameters.AddWithValue("@id", model.Id);
-                        updateCmd.Parameters.AddWithValue("@categoryId", model.CategoryId);
-                        updateCmd.Parameters.AddWithValue("@name", model.SubCategoryName.Trim());
-                        updateCmd.Parameters.AddWithValue("@mealTimes", mealTimes);
-                        updateCmd.Parameters.AddWithValue("@price", model.Price);
-                        updateCmd.Parameters.AddWithValue("@isActive", model.IsActive);
+                using var cmdUp = new MySqlCommand(updateQuery, conn);
 
-                        await updateCmd.ExecuteNonQueryAsync();
-                    }
+                cmdUp.Parameters.AddWithValue("@id", model.Id);
+                cmdUp.Parameters.AddWithValue("@categoryId", model.CategoryId);
+                cmdUp.Parameters.AddWithValue("@name", model.SubCategoryName);
+                cmdUp.Parameters.AddWithValue("@mealTimes", mealTimes);
+                cmdUp.Parameters.AddWithValue("@price", model.Price);
+                cmdUp.Parameters.AddWithValue("@isActive", model.IsActive);
 
-                    return Ok(new
-                    {
-                        status = true,
-                        message = "Menu item updated successfully"
-                    });
-                }
+                if (imageName != null)
+                    cmdUp.Parameters.AddWithValue("@image", imageName);
+
+                await cmdUp.ExecuteNonQueryAsync();
+
+                return Json(new { status = true, message = "Updated successfully" });
             }
             catch (Exception ex)
             {
-                return Json(new
-                {
-                    status = false,
-                    message = ex.Message
-                });
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
