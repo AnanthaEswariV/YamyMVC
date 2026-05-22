@@ -470,10 +470,26 @@
                                     <a href="@Url.Action("ChangePassword", "Settings")">Change Password</a>
                                 </li>
                                 <li class="submenu-item">
-                                    <a href="@Configuration["ProjectUrls:RestaurantSystem"]" target="_blank">
-                                      @*   <i class="bi bi-shop me-1"></i> *@ Restaurant System
-                                      @*   <i class="bi bi-box-arrow-up-right ms-1" style="font-size:11px;opacity:0.7;"></i> *@
+
+                                    @{
+                                        var db = Context.Session.GetString("DatabaseName");
+                                        var userId = Context.Session.GetInt32("UserId");
+                                        var username = Context.Session.GetString("UserName");
+
+                                        string token = Convert.ToBase64String(
+                                        System.Text.Encoding.UTF8.GetBytes(
+                                        $"{userId}|{username}|{db}"
+                                        )
+                                        );
+
+                                        string restaurantUrl =
+                                        $"{Configuration["ProjectUrls:RestaurantSystem"]}/Auth/AutoLogin?token={token}";
+                                    }
+
+                                    <a href="@restaurantUrl" target="_blank">
+                                        Restaurant System
                                     </a>
+
                                 </li>
                             </ul>
                         </li>
