@@ -22,7 +22,7 @@
 
                 <!-- Right side - Add Bank Button -->
                 <div>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bankModal">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal">
                         <i class="bi bi-plus-circle me-2"></i>Add Category
                     </button>
                 </div>
@@ -45,59 +45,78 @@
         </div>
     </div>
 </div>
-<!-- Add/Edit Bank Modal -->
-<div class="modal fade" id="bankModal" tabindex="-1" aria-labelledby="bankModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <form id="bankForm" class="needs-validation" novalidate>
+<!-- Add/Edit Category Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <form id="categoryForm" class="needs-validation" novalidate>
+
             <div class="modal-content">
+
+                <!-- Header -->
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title w-100 text-center" id="bankModalLabel">Register Bank</h5>
-                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">✕</button>
+                    <h5 class="modal-title w-100 text-center" id="categoryModalLabel">
+                        Category Management
+                    </h5>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-light"
+                            data-bs-dismiss="modal">
+                        ✕
+                    </button>
                 </div>
+
+                <!-- Body -->
                 <div class="modal-body p-4">
-                    <input type="hidden" id="bankId" value="0" />
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="bankCode" class="form-label text-muted">Bank Code</label>
-                            <input type="text" class="form-control" id="bankCode" placeholder="Bank Code" disabled>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="bankName" class="form-label text-muted">Bank Name</label>
-                            <input type="text" class="form-control" id="bankName" name="BankName" placeholder="Bank Name" required>
-                        </div>
+                    <!-- Hidden Id -->
+                    <input type="hidden" id="categoryId" value="0" />
+
+                    <!-- Category Code -->
+                    <div class="mb-3">
+                        <label for="categoryCode" class="form-label text-muted">
+                            Category Code
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="categoryCode"
+                               placeholder="Category Code"
+                               disabled>
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="abbreviationName" class="form-label text-muted">Abbreviation Name</label>
-                            <input type="text" class="form-control" id="abbreviationName" name="AbbName" placeholder="Abbreviation Name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="entId" class="form-label text-muted">Ent Id</label>
-                            <input type="text" class="form-control" id="entId" name="EntId" placeholder="Ent Id" required>
-                        </div>
+                    <!-- Category Name -->
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label text-muted">
+                            Category Name
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="categoryName"
+                               name="CategoryName"
+                               placeholder="Enter Category Name"
+                               required>
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="routeNo" class="form-label text-muted">Route No.</label>
-                            <input type="text" class="form-control" id="routeNo" name="RouteNum" placeholder="Route No." required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="country" class="form-label text-muted">Country</label>
-                            <select class="form-select" id="country" name="CountryId" required>
-                                <option value="">-- Select Country --</option>
-                            </select>
-                        </div>
-                    </div>
                 </div>
 
+                <!-- Footer -->
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary px-4">Save</button>
-                    <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+
+                    <button type="submit" class="btn btn-primary px-4">
+                        Save
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-primary px-4"
+                            data-bs-dismiss="modal">
+                        Close
+                    </button>
+
                 </div>
+
             </div>
+
         </form>
     </div>
 </div>
@@ -236,6 +255,176 @@
                 }
             });
         }
+
+        // ===== Edit Category Button Click =====
+        $(document).on("click", ".editCategoryBtn", function () {
+
+            const category = $(this).data("category");
+
+            if (!category) return;
+
+            console.log(category);
+
+            // Set values
+            $("#categoryId").val(category.id);
+            $("#categoryCode").val(category.categoryCode);
+            $("#categoryName").val(category.categoryName);
+
+            // Change modal title
+            $("#categoryModalLabel").text("Edit Category");
+
+            // Show modal
+            $("#categoryModal").modal("show");
+        });
+
+
+
+        // ===== Add New Category =====
+        $("#btnAddCategory").on("click", function () {
+
+            // Reset form
+            $("#categoryForm")[0].reset();
+
+            // Reset hidden fields
+            $("#categoryId").val(0);
+            $("#categoryCode").val("");
+
+            // Remove validation
+            $("#categoryForm").removeClass("was-validated");
+
+            // Modal title
+            $("#categoryModalLabel").text("Add Category");
+
+            // Show modal
+            $("#categoryModal").modal("show");
+        });
+
+
+
+        // ===== Submit Category Form =====
+        $("#categoryForm").on("submit", function (e) {
+
+            e.preventDefault();
+
+            const form = this;
+
+            // Bootstrap validation
+            if (!form.checkValidity()) {
+
+                form.classList.add("was-validated");
+
+                return;
+            }
+
+            const idVal = $("#categoryId").val();
+
+            const isEdit =
+                idVal && parseInt(idVal) > 0;
+
+            // Create object
+            const categoryData = {
+
+                Id: isEdit
+                    ? parseInt(idVal)
+                    : 0,
+
+                CategoryName:
+                    $("#categoryName").val().trim()
+            };
+
+            $.ajax({
+
+                url: '@Url.Action("SaveCategory", "Category")',
+
+                type: 'POST',
+
+                contentType: 'application/json',
+
+                data: JSON.stringify(categoryData),
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(
+                            isEdit
+                                ? 'Category updated successfully'
+                                : 'Category added successfully'
+                        );
+
+                        // Close modal
+                        $("#categoryModal").modal("hide");
+
+                        // Reload table
+                        loadItemCategories();
+
+                        // Reset form
+                        $("#categoryForm")[0].reset();
+
+                        $("#categoryId").val(0);
+
+                    } else {
+
+                        toastr.error(res.message);
+                    }
+                },
+
+                error: function (xhr) {
+
+                    toastr.error(
+                        xhr.responseJSON?.message
+                        || xhr.statusText
+                    );
+                }
+            });
+        });
+
+
+        // ===== Delete Category =====
+        $(document).on("click", ".deleteCategoryBtn", function () {
+
+            const id = $(this).data("id");
+
+            if (!id) return;
+
+            // Confirm delete
+            if (!confirm("Are you sure you want to delete this category?")) {
+                return;
+            }
+
+            $.ajax({
+
+                url: '@Url.Action("DeleteCategory", "Category")',
+
+                type: 'POST',
+
+                data: { id: id },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        // Reload table
+                        loadItemCategories();
+
+                    } else {
+
+                        toastr.error(res.message);
+                    }
+                },
+
+                error: function (xhr) {
+
+                    toastr.error(
+                        xhr.responseJSON?.message
+                        || xhr.statusText
+                    );
+                }
+            });
+        });
+
 
         // ===== Page Load =====
         $(document).ready(function () {
