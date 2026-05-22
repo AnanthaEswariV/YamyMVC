@@ -13,7 +13,7 @@ namespace YamyRestaurant.Controllers
             _config = config;
         }
 
-        #region Category 
+        #region Category CRUD
 
         public IActionResult Category()
         {
@@ -291,21 +291,17 @@ namespace YamyRestaurant.Controllers
                     });
                 }
 
-
                 // ✅ Check category exists
                 string checkQuery = @"
-            SELECT COUNT(*)
-            FROM tbl_item_category
-            WHERE id = @id";
+        SELECT COUNT(*)
+        FROM tbl_item_category
+        WHERE id = @id";
 
-                using (var checkCmd =
-                       new MySqlCommand(checkQuery, conn))
+                using (var checkCmd = new MySqlCommand(checkQuery, conn))
                 {
                     checkCmd.Parameters.AddWithValue("@id", id);
 
-                    int exists =
-                        Convert.ToInt32(
-                            await checkCmd.ExecuteScalarAsync());
+                    int exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
 
                     if (exists == 0)
                     {
@@ -317,13 +313,34 @@ namespace YamyRestaurant.Controllers
                     }
                 }
 
-                // ✅ Delete query
-                string deleteQuery = @"
-            DELETE FROM tbl_item_category
-            WHERE id = @id";
+                // ❌ Check if category is used in menu items
+                string usageQuery = @"
+        SELECT COUNT(*)
+        FROM tbl_menu_item
+        WHERE category_id = @id";
 
-                using (var deleteCmd =
-                       new MySqlCommand(deleteQuery, conn))
+                using (var usageCmd = new MySqlCommand(usageQuery, conn))
+                {
+                    usageCmd.Parameters.AddWithValue("@id", id);
+
+                    int usedCount = Convert.ToInt32(await usageCmd.ExecuteScalarAsync());
+
+                    if (usedCount > 0)
+                    {
+                        return Json(new
+                        {
+                            status = false,
+                            message = "Cannot delete category. It is used in menu items."
+                        });
+                    }
+                }
+
+                // ✅ Delete category
+                string deleteQuery = @"
+        DELETE FROM tbl_item_category
+        WHERE id = @id";
+
+                using (var deleteCmd = new MySqlCommand(deleteQuery, conn))
                 {
                     deleteCmd.Parameters.AddWithValue("@id", id);
 

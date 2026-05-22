@@ -1,0 +1,676 @@
+﻿
+@{
+    ViewData["Title"] = "MenuItems";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<!-- ✅ Added container + vertical spacing to match hero section margins -->
+<div class="container my-3">
+    <div class="card">
+
+        <!-- Header -->
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Menu Management</strong>
+
+            <button type="button"
+                    class="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#menuModal">
+                <i class="bi bi-plus-circle me-2"></i>
+                Add Menu Item
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body">
+
+            <!-- Table -->
+            <table class="table table-striped align-middle" id="table1">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Code</th>
+                        <th>Category</th>
+                        <th>Subcategory</th>
+                        <th>Meal Time</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th width="150">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <!-- Dynamic rows -->
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- Add/Edit Menu Item Modal -->
+<div class="modal fade"
+     id="menuModal"
+     tabindex="-1"
+     aria-labelledby="menuModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-md">
+
+        <form id="menuForm"
+              class="needs-validation"
+              novalidate>
+
+            <div class="modal-content">
+
+                <!-- Header -->
+                <div class="modal-header bg-primary text-white">
+
+                    <h5 class="modal-title w-100 text-center"
+                        id="menuModalLabel">
+                        Menu Item Management
+                    </h5>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-light"
+                            data-bs-dismiss="modal">
+                        ✕
+                    </button>
+
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body p-4">
+
+                    <!-- Hidden Id -->
+                    <input type="hidden"
+                           id="menuId"
+                           value="0" />
+
+                    <!-- Item Code -->
+                    <div class="mb-3">
+                        <label for="menuCode"
+                               class="form-label text-muted">
+                            Item Code
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="menuCode"
+                               placeholder="Item Code"
+                               disabled>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+
+                        <label for="categoryId"
+                               class="form-label text-muted">
+                            Category
+                        </label>
+
+                        <select class="form-select"
+                                id="categoryId"
+                                name="CategoryId"
+                                required>
+                        </select>
+
+                        <div class="invalid-feedback">
+                            Please select category
+                        </div>
+
+                    </div>
+
+                    <!-- Subcategory -->
+                    <div class="mb-3">
+
+                        <label for="subCategoryName"
+                               class="form-label text-muted">
+                            Subcategory
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="subCategoryName"
+                               name="SubCategoryName"
+                               placeholder="Enter Subcategory Name"
+                               required>
+
+                        <div class="invalid-feedback">
+                            Please enter subcategory
+                        </div>
+
+                    </div>
+
+                    <!-- Meal Time -->
+                    <!-- Available For -->
+                    <div class="mb-3">
+
+                        <label class="form-label text-muted">
+                            Available For
+                        </label>
+
+                        <div class="border rounded p-3">
+
+                            <!-- Breakfast -->
+                            <div class="form-check mb-2">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       value="Breakfast"
+                                       id="breakfast"
+                                       name="MealTime">
+
+                                <label class="form-check-label"
+                                       for="breakfast">
+                                    Breakfast
+                                </label>
+
+                            </div>
+
+                            <!-- Lunch -->
+                            <div class="form-check mb-2">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       value="Lunch"
+                                       id="lunch"
+                                       name="MealTime">
+
+                                <label class="form-check-label"
+                                       for="lunch">
+                                    Lunch
+                                </label>
+
+                            </div>
+
+                            <!-- Snacks -->
+                            <div class="form-check mb-2">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       value="Snacks"
+                                       id="snacks"
+                                       name="MealTime">
+
+                                <label class="form-check-label"
+                                       for="snacks">
+                                    Snacks
+                                </label>
+
+                            </div>
+
+                            <!-- Dinner -->
+                            <div class="form-check">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       value="Dinner"
+                                       id="dinner"
+                                       name="MealTime">
+
+                                <label class="form-check-label"
+                                       for="dinner">
+                                    Dinner
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Price -->
+                    <div class="mb-3">
+
+                        <label for="price"
+                               class="form-label text-muted">
+                            Price
+                        </label>
+
+                        <input type="number"
+                               class="form-control"
+                               id="price"
+                               name="Price"
+                               placeholder="Enter Price"
+                               required>
+
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-check">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="isActive"
+                               checked>
+
+                        <label class="form-check-label"
+                               for="isActive">
+                            Active
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+
+                    <button type="submit"
+                            class="btn btn-primary px-4">
+                        Save
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-primary px-4"
+                            data-bs-dismiss="modal">
+                        Close
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script>
+
+        function loadCategoryDropdown(selectedId = null) {
+
+            $.ajax({
+                url: '@Url.Action("GetItemCategories", "Category")',
+                type: 'GET',
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        const $category = $("#categoryId");
+
+                        // Clear existing options
+                        $category.empty();
+
+                        // Default option
+                        $category.append(
+                            '<option value="">-- Select Category --</option>'
+                        );
+
+                        // Populate dropdown
+                        res.data.forEach(category => {
+
+                            const selected =
+                                selectedId && selectedId == category.id
+                                    ? "selected"
+                                    : "";
+
+                            $category.append(`
+                                <option value="${category.id}" ${selected}>
+                                    ${category.categoryName}
+                                </option>
+                            `);
+
+                        });
+
+                    } else {
+
+                        alert(res.message || "Failed to load categories.");
+
+                    }
+
+                },
+
+                error: function () {
+
+                    alert("Error loading categories.");
+
+                }
+
+            });
+
+        }
+
+        $("#menuForm").on("submit", function (e) {
+
+            e.preventDefault();
+
+            const form = this;
+
+            if (!form.checkValidity()) {
+
+                form.classList.add("was-validated");
+
+                return;
+            }
+
+            // Meal Times
+            const mealTimes = [];
+
+            $('input[name="MealTime"]:checked').each(function () {
+
+                mealTimes.push($(this).val());
+
+            });
+
+            const idVal = $("#menuId").val();
+
+            const isEdit =
+                idVal && parseInt(idVal) > 0;
+
+            const menuData = {
+
+                Id: isEdit
+                    ? parseInt(idVal)
+                    : 0,
+
+                CategoryId:
+                    parseInt($("#categoryId").val()),
+
+                SubCategoryName:
+                    $("#subCategoryName").val().trim(),
+
+                MealTimes: mealTimes,
+
+                Price:
+                    parseFloat($("#price").val()),
+
+                IsActive:
+                    $("#isActive").is(":checked")
+            };
+
+            $.ajax({
+
+                url: '@Url.Action("SaveMenuItem", "Home")',
+
+                type: 'POST',
+
+                contentType: 'application/json',
+
+                data: JSON.stringify(menuData),
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        $("#menuModal").modal("hide");
+
+                        $("#menuForm")[0].reset();
+
+                        $("#menuId").val(0);
+
+                        loadMenuItems();
+
+                    } else {
+
+                        toastr.error(res.message);
+                    }
+                },
+
+                error: function (xhr) {
+
+                    toastr.error(
+                        xhr.responseJSON?.message
+                        || xhr.statusText
+                    );
+                }
+            });
+
+        });
+
+        $("#btnAddMenu").on("click", function () {
+
+            $("#menuForm")[0].reset();
+
+            $("#menuId").val(0);
+
+            $("#menuCode").val("");
+
+            $('input[name="MealTime"]').prop("checked", false);
+
+            $("#menuForm").removeClass("was-validated");
+
+            $("#menuModalLabel").text("Add Menu Item");
+
+            $("#menuModal").modal("show");
+
+        });
+
+                // ===== Edit Menu Item Button Click =====
+        $(document).on("click", ".editMenuBtn", function () {
+
+            const item = $(this).data("item");
+
+            if (!item) return;
+
+            console.log(item);
+
+            // Set values
+            $("#menuId").val(item.id);
+            $("#menuCode").val(item.code);
+
+            $("#categoryId").val(item.categoryId);
+
+            $("#subCategoryName").val(item.subCategoryName);
+
+            $("#price").val(item.price);
+
+            $("#isActive").prop("checked", item.isActive == 1);
+
+            // Meal Time (checkbox reset + set)
+            $('input[name="MealTime"]').prop("checked", false);
+
+            if (item.mealTimes) {
+
+                const meals = item.mealTimes.split(",");
+
+                meals.forEach(function (meal) {
+
+                    $(`input[name="MealTime"][value="${meal}"]`)
+                        .prop("checked", true);
+
+                });
+            }
+
+            // Change modal title
+            $("#menuModalLabel").text("Edit Menu Item");
+
+            // Show modal
+            $("#menuModal").modal("show");
+        });
+
+        function loadMenuItems() {
+
+            $.ajax({
+                url: '@Url.Action("GetMenuItems", "Home")',
+                type: "GET",
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        if ($.fn.DataTable.isDataTable("#table1")) {
+                            $("#table1").DataTable().destroy();
+                        }
+
+                        let tbody = $("#table1 tbody");
+                        tbody.empty();
+
+                        if (res.data && res.data.length > 0) {
+
+                            $.each(res.data, function (i, row) {
+
+                                let rowData = JSON.stringify(row);
+
+                                let statusText =
+                                    row.isActive == 1 ? "Active" : "Inactive";
+
+                                let tr = `
+                                    <tr>
+                                        <td>${row.sn}</td>
+                                        <td>${row.code ?? ""}</td>
+                                        <td>${row.categoryName ?? ""}</td>
+                                        <td>${row.subCategoryName ?? ""}</td>
+                                        <td>${row.mealTimes ?? ""}</td>
+                                        <td>${row.price ?? ""}</td>
+                                        <td>${statusText}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary editMenuBtn"
+                                                    data-item='${rowData}'>
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-danger deleteMenuBtn"
+                                                    data-id='${row.id}'>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>`;
+
+                                tbody.append(tr);
+                            });
+
+                            $("#table1").DataTable({
+                                dom: 'Bfrtip',
+                                buttons: [
+                                    {
+                                        extend: 'excelHtml5',
+                                        className: 'btn btn-primary btn-sm',
+                                        text: '<i class="fas fa-file-excel me-1"></i> Excel',
+                                        exportOptions: {
+                                            columns: ':not(:last-child)'
+                                        }
+                                    },
+                                    {
+                                        extend: 'print',
+                                        className: 'btn btn-primary btn-sm',
+                                        text: '<i class="fas fa-print me-1"></i> Print',
+                                        exportOptions: {
+                                            columns: ':not(:last-child)'
+                                        }
+                                    }
+                                ],
+                                order: [[0, 'desc']],
+                                pageLength: 15
+                            });
+
+                        } else {
+
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="8"
+                                        class="text-center"
+                                        style="padding:40px; color:#6c757d;">
+                                        No records found
+                                    </td>
+                                </tr>`);
+
+                            $('.dt-buttons').hide();
+                        }
+
+                    } else {
+
+                        $("#table1 tbody").html(`
+                            <tr>
+                                <td colspan="8"
+                                    class="text-center"
+                                    style="color:red; padding:40px;">
+                                    ${res.message || 'Failed to load data'}
+                                </td>
+                            </tr>`);
+
+                        $('.dt-buttons').hide();
+                    }
+                },
+
+                error: function (xhr, status, error) {
+
+                    if ($.fn.DataTable.isDataTable("#table1")) {
+                        $("#table1").DataTable().destroy();
+                    }
+
+                    $("#table1 tbody").html(`
+                        <tr>
+                            <td colspan="8"
+                                class="text-center"
+                                style="color:red; padding:40px;">
+                                Error loading data: ${error}
+                            </td>
+                        </tr>`);
+
+                    $('.dt-buttons').hide();
+                }
+            });
+        }
+
+                // ===== Delete Menu Item =====
+        $(document).on("click", ".deleteMenuBtn", function () {
+
+            const id = $(this).data("id");
+
+            if (!id) return;
+
+            if (!confirm("Are you sure you want to delete this menu item?")) {
+                return;
+            }
+
+            $.ajax({
+
+                url: '@Url.Action("DeleteMenuItem", "Home")',
+                type: 'POST',
+                data: { id: id },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        // Reload table
+                        loadMenuItems();
+
+                    } else {
+
+                        toastr.error(res.message);
+                    }
+                },
+
+                error: function (xhr) {
+
+                    toastr.error(
+                        xhr.responseJSON?.message || xhr.statusText
+                    );
+                }
+            });
+
+        });
+
+         // ===== Page Load =====
+        $(document).ready(function () {
+            loadCategoryDropdown();
+            loadMenuItems();
+        });
+    </script>
+    }
