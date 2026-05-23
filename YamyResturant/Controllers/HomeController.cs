@@ -295,5 +295,253 @@ namespace YamyResturant.Controllers
         }
 
         #endregion
+
+
+        #region Table CRUD
+
+        public IActionResult Table()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetRestaurantTables()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                if (conn == null)
+                {
+                    return Json(new
+                    {
+                        status = false,
+                        message = "Session expired"
+                    });
+                }
+
+                string query = @"
+        SELECT *
+        FROM tbl_restaurant_table
+        ORDER BY id DESC";
+
+                List<object> data = new();
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                int sn = 1;
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        sn = sn++,
+                        id = reader["id"],
+                        code = reader["code"]?.ToString(),
+                        tableName = reader["table_name"]?.ToString(),
+                        capacity = reader["capacity"],
+                        location = reader["location"]?.ToString(),
+                        statusText = reader["status"]?.ToString(),
+                        isActive = reader["is_active"]
+                    });
+                }
+
+                return Json(new
+                {
+                    status = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveRestaurantTable(TableRequest model)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                if (conn == null)
+                {
+                    return Json(new
+                    {
+                        status = false,
+                        message = "Session expired"
+                    });
+                }
+
+                // DUPLICATE CHECK
+                string duplicateQuery = @"
+        SELECT COUNT(*)
+        FROM tbl_restaurant_table
+        WHERE id <> @id
+        AND table_name = @tableName";
+
+                using (var checkCmd = new MySqlCommand(duplicateQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@id", model.Id);
+                    checkCmd.Parameters.AddWithValue("@tableName", model.TableName);
+
+                    int exists =
+                        Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+
+                    if (exists > 0)
+                    {
+                        return Json(new
+                        {
+                            status = false,
+                            message = "Table already exists"
+                        });
+                    }
+                }
+
+                // INSERT
+                if (model.Id == 0)
+                {
+                    string codeQuery = @"
+            SELECT IFNULL(MAX(CAST(code AS UNSIGNED)),0)
+            FROM tbl_restaurant_table";
+
+                    int lastCode = 0;
+
+                    using (var cmd = new MySqlCommand(codeQuery, conn))
+                    {
+                        lastCode =
+                            Convert.ToInt32(await cmd.ExecuteScalarAsync());
+                    }
+
+                    string newCode = (lastCode + 1).ToString("D3");
+
+                    string insertQuery = @"
+            INSERT INTO tbl_restaurant_table
+            (
+                code,
+                table_name,
+                capacity,
+                location,
+                status,
+                is_active
+            )
+            VALUES
+            (
+                @code,
+                @tableName,
+                @capacity,
+                @location,
+                @status,
+                @isActive
+            )";
+
+                    using var insertCmd =
+                        new MySqlCommand(insertQuery, conn);
+
+                    insertCmd.Parameters.AddWithValue("@code", newCode);
+                    insertCmd.Parameters.AddWithValue("@tableName", model.TableName);
+                    insertCmd.Parameters.AddWithValue("@capacity", model.Capacity);
+                    insertCmd.Parameters.AddWithValue("@location", model.Location);
+                    insertCmd.Parameters.AddWithValue("@status", model.Status);
+                    insertCmd.Parameters.AddWithValue("@isActive", model.IsActive);
+
+                    await insertCmd.ExecuteNonQueryAsync();
+
+                    return Json(new
+                    {
+                        status = true,
+                        message = "Table added successfully"
+                    });
+                }
+
+                // UPDATE
+                string updateQuery = @"
+        UPDATE tbl_restaurant_table
+        SET
+            table_name=@tableName,
+            capacity=@capacity,
+            location=@location,
+            status=@status,
+            is_active=@isActive
+        WHERE id=@id";
+
+                using var updateCmd =
+                    new MySqlCommand(updateQuery, conn);
+
+                updateCmd.Parameters.AddWithValue("@id", model.Id);
+                updateCmd.Parameters.AddWithValue("@tableName", model.TableName);
+                updateCmd.Parameters.AddWithValue("@capacity", model.Capacity);
+                updateCmd.Parameters.AddWithValue("@location", model.Location);
+                updateCmd.Parameters.AddWithValue("@status", model.Status);
+                updateCmd.Parameters.AddWithValue("@isActive", model.IsActive);
+
+                await updateCmd.ExecuteNonQueryAsync();
+
+                return Json(new
+                {
+                    status = true,
+                    message = "Table updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteRestaurantTable(int id)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                if (conn == null)
+                {
+                    return Json(new
+                    {
+                        status = false,
+                        message = "Session expired"
+                    });
+                }
+
+                string query = @"
+        DELETE FROM tbl_restaurant_table
+        WHERE id=@id";
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                return Json(new
+                {
+                    status = true,
+                    message = "Table deleted successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        #endregion
     }
 }

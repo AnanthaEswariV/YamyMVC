@@ -421,6 +421,26 @@ namespace YamyProject.Controllers
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+                        CREATE TABLE IF NOT EXISTS `tbl_restaurant_table` (
+                          `id` int NOT NULL AUTO_INCREMENT,
+                          `code` varchar(50)
+                          CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `table_name` varchar(255)
+                          CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `capacity` int DEFAULT '0',
+                          `location` varchar(255)
+                          CHARACTER SET utf8mb4  COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `status` varchar(100)
+                          CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `is_active` tinyint(1) DEFAULT '1',
+                          `ss_no` int DEFAULT '0',
+                          `created_by` int DEFAULT NULL,
+                          `created_date` date DEFAULT NULL,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB
+                        DEFAULT CHARSET=utf8mb4
+                        COLLATE=utf8mb4_0900_ai_ci;
+
                         CREATE TABLE IF NOT EXISTS `tbl_coa_config` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `account_id` int DEFAULT NULL,

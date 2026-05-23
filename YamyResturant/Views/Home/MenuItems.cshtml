@@ -398,7 +398,7 @@
             }
 
             $.ajax({
-                url: '/Home/SaveMenuItem',
+                url: '@Url.Action("SaveMenuItem", "Home")',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -589,7 +589,7 @@
             if (!confirm("Delete this menu item?")) return;
 
             $.ajax({
-                url: '/Home/DeleteMenuItem',
+                 url: '@Url.Action("DeleteMenuItem", "Home")',
                 type: 'POST',
                 data: { id: id },
 

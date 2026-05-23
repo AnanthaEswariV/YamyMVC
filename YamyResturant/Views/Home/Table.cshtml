@@ -1,0 +1,426 @@
+﻿
+@{
+    ViewData["Title"] = "Table";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+
+<div class="container my-3">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between">
+            <strong>Restaurant Table Management</strong>
+            <button class="btn btn-primary"
+                    id="btnAddTable">
+                Add Table
+            </button>
+        </div>
+
+        <div class="card-body">
+            <table class="table table-striped align-middle"
+                   id="table1">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Code</th>
+                        <th>Table Name</th>
+                        <th>Capacity</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Active</th>
+                        <th width="150">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Restaurant Table Modal -->
+<div class="modal fade"
+     id="tableModal"
+     tabindex="-1"
+     aria-labelledby="tableModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-md">
+
+        <form id="tableForm"
+              class="needs-validation"
+              novalidate>
+
+            <div class="modal-content">
+
+                <!-- Header -->
+                <div class="modal-header bg-primary text-white">
+
+                    <h5 class="modal-title w-100 text-center"
+                        id="tableModalLabel">
+                        Restaurant Table Management
+                    </h5>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-light"
+                            data-bs-dismiss="modal">
+                        ✕
+                    </button>
+
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body p-4">
+
+                    <!-- Hidden Id -->
+                    <input type="hidden"
+                           id="tableId"
+                           value="0" />
+
+                    <!-- Table Code -->
+                    <div class="mb-3">
+
+                        <label for="tableCode"
+                               class="form-label text-muted">
+                            Table Code
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="tableCode"
+                               placeholder="Table Code"
+                               disabled>
+
+                    </div>
+
+                    <!-- Table Name -->
+                    <div class="mb-3">
+
+                        <label for="tableName"
+                               class="form-label text-muted">
+                            Table Name
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="tableName"
+                               name="TableName"
+                               placeholder="Enter Table Name"
+                               required>
+
+                        <div class="invalid-feedback">
+                            Please enter table name
+                        </div>
+
+                    </div>
+
+                    <!-- Capacity -->
+                    <div class="mb-3">
+
+                        <label for="capacity"
+                               class="form-label text-muted">
+                            Seating Capacity
+                        </label>
+
+                        <input type="number"
+                               class="form-control"
+                               id="capacity"
+                               name="Capacity"
+                               placeholder="Enter Capacity"
+                               required>
+
+                        <div class="invalid-feedback">
+                            Please enter seating capacity
+                        </div>
+
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-3">
+
+                        <label for="location"
+                               class="form-label text-muted">
+                            Location / Section
+                        </label>
+
+                        <input type="text"
+                               class="form-control"
+                               id="location"
+                               name="Location"
+                               placeholder="Example: Indoor, Terrace, VIP">
+
+                    </div>
+
+                    <!-- Status -->
+                    <div class="mb-3">
+
+                        <label for="status"
+                               class="form-label text-muted">
+                            Table Status
+                        </label>
+
+                        <select class="form-select"
+                                id="status"
+                                name="Status"
+                                required>
+
+                            <option value="">
+                                -- Select Status --
+                            </option>
+
+                            <option value="Available">
+                                Available
+                            </option>
+
+                            <option value="Occupied">
+                                Occupied
+                            </option>
+
+                            <option value="Reserved">
+                                Reserved
+                            </option>
+
+                            <option value="Cleaning">
+                                Cleaning
+                            </option>
+
+                        </select>
+
+                        <div class="invalid-feedback">
+                            Please select status
+                        </div>
+
+                    </div>
+
+                    <!-- Active -->
+                    <div class="form-check">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="isActive"
+                               checked>
+
+                        <label class="form-check-label"
+                               for="isActive">
+                            Active
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+
+                    <button type="submit"
+                            class="btn btn-primary px-4">
+                        Save
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-primary px-4"
+                            data-bs-dismiss="modal">
+                        Close
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link rel="stylesheet" href="~/assets/vendors/fontawesome/all.min.css">
+    <script src="~/assets/vendors/fontawesome/all.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    <script>
+
+                // LOAD TABLES
+        function loadTables() {
+
+            $.ajax({
+                 url: '@Url.Action("GetRestaurantTables", "Home")',
+                type: 'GET',
+
+                success: function (res) {
+
+                    let tbody = $("#table1 tbody");
+
+                    tbody.empty();
+
+                    $.each(res.data, function (i, row) {
+
+                        let active =
+                            row.isActive == 1
+                            ? "Yes"
+                            : "No";
+
+                        let tr = `
+                        <tr>
+
+                            <td>${row.sn}</td>
+                            <td>${row.code}</td>
+                            <td>${row.tableName}</td>
+                            <td>${row.capacity}</td>
+                            <td>${row.location}</td>
+                            <td>${row.statusText}</td>
+                            <td>${active}</td>
+
+                            <td>
+
+                                <button class="btn btn-primary btn-sm editBtn"
+                                        data-item='${JSON.stringify(row)}'>
+                                      <i class="fas fa-pen"></i>
+                                </button>
+
+                                <button class="btn btn-danger btn-sm deleteBtn"
+                                        data-id="${row.id}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+
+                            </td>
+
+                        </tr>`;
+
+                        tbody.append(tr);
+                    });
+
+                    $("#table1").DataTable();
+                }
+            });
+        }
+
+
+        // SAVE
+        $("#tableForm").submit(function (e) {
+
+                  e.preventDefault();
+
+        if (!this.checkValidity()) {
+
+            this.classList.add("was-validated");
+            return;
+        }
+
+            $.ajax({
+                 url: '@Url.Action("SaveRestaurantTable", "Home")',
+                type: 'POST',
+
+                data: {
+
+                    Id: $("#tableId").val(),
+                    TableName: $("#tableName").val(),
+                    Capacity: $("#capacity").val(),
+                    Location: $("#location").val(),
+                    Status: $("#status").val(),
+                    IsActive: $("#isActive").is(":checked")
+                },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        $("#tableModal").modal('hide');
+
+                        loadTables();
+                    }
+                    else {
+                        toastr.error(res.message);
+                    }
+                }
+            });
+        });
+
+        // EDIT
+        $(document).on("click", ".editBtn", function () {
+
+            let item = $(this).data("item");
+
+            $("#tableId").val(item.id);
+            $("#tableName").val(item.tableName);
+            $("#capacity").val(item.capacity);
+            $("#location").val(item.location);
+            $("#status").val(item.statusText);
+
+            $("#isActive").prop(
+                "checked",
+                item.isActive == 1
+            );
+
+            $("#tableModal").modal('show');
+        });
+
+        function resetTableForm() {
+
+            $("#tableForm")[0].reset();
+
+            $("#tableId").val(0);
+
+            $("#tableCode").val("");
+
+            $("#isActive").prop("checked", true);
+
+            $("#tableForm").removeClass("was-validated");
+        }
+        // DELETE
+        $(document).on("click", ".deleteBtn", function () {
+
+            if (!confirm("Delete this table?"))
+                return;
+
+            let id = $(this).data("id");
+
+            $.ajax({
+                 url: '@Url.Action("DeleteRestaurantTable", "Home")',
+                type: 'POST',
+
+                data: { id: id },
+
+                success: function (res) {
+
+                    if (res.status) {
+
+                        toastr.success(res.message);
+
+                        loadTables();
+                    }
+                    else {
+                        toastr.error(res.message);
+                    }
+                }
+            });
+        });
+
+        // ADD BUTTON
+        $("#btnAddTable").click(function () {
+
+            $("#tableForm")[0].reset();
+
+            $("#tableId").val(0);
+
+            $("#tableModal").modal('show');
+        });
+
+        // INIT
+        $(document).ready(function () {
+
+            loadTables();
+        });
+
+    </script>
+}
