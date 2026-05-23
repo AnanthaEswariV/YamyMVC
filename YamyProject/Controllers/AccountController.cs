@@ -441,15 +441,45 @@ namespace YamyProject.Controllers
                         DEFAULT CHARSET=utf8mb4
                         COLLATE=utf8mb4_0900_ai_ci;
 
+                        CREATE TABLE IF NOT EXISTS `tbl_order` (
+                          `id` int NOT NULL AUTO_INCREMENT,
+                          `order_no` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `table_id` int DEFAULT NULL,
+                          `customer_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `customer_mobile` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `total_amount` decimal(20,6) DEFAULT '0.000000',
+                          `discount_amount` decimal(20,6) DEFAULT '0.000000',
+                          `tax_amount` decimal(20,6) DEFAULT '0.000000',
+                          `grand_total` decimal(20,6) DEFAULT '0.000000',
+                          `payment_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'Pending',
+                          `order_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'Running',
+                          `remarks` text CHARACTER SET utf8mb4  COLLATE utf8mb4_0900_ai_ci,
+                          `is_active` tinyint(1) DEFAULT '1',
+                          `ss_no` int DEFAULT '0',
+                          `created_by` int DEFAULT NULL,
+                          `created_date` datetime DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+                        CREATE TABLE IF NOT EXISTS `tbl_order_details` (
+                          `id` int NOT NULL AUTO_INCREMENT,
+                          `order_id` int DEFAULT NULL,
+                          `menu_item_id` int DEFAULT NULL,
+                          `item_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `price` decimal(20,6) DEFAULT '0.000000',
+                          `qty` decimal(20,3) DEFAULT '0.000',
+                          `amount` decimal(20,6) DEFAULT '0.000000',
+                          `kot_status` varchar(50) CHARACTER SET utf8mb4  COLLATE utf8mb4_0900_ai_ci DEFAULT 'Pending',
+                          `remarks` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
                         CREATE TABLE IF NOT EXISTS `tbl_coa_config` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `account_id` int DEFAULT NULL,
                           `category` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL UNIQUE,
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;";
-
-
-
 
 
                         using (var cmd = new MySqlCommand(query, conn))

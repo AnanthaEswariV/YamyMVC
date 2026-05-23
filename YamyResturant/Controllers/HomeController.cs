@@ -296,7 +296,6 @@ namespace YamyResturant.Controllers
 
         #endregion
 
-
         #region Table CRUD
 
         public IActionResult Table()
@@ -530,6 +529,267 @@ namespace YamyResturant.Controllers
                 {
                     status = true,
                     message = "Table deleted successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        #endregion
+
+        #region Orders
+
+        public IActionResult Orders()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableTables()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                string query = @"
+        SELECT id, table_name
+        FROM tbl_restaurant_table
+        WHERE is_active = 1";
+
+                List<object> data = new();
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader["id"],
+                        tableName = reader["table_name"]?.ToString()
+                    });
+                }
+
+                return Json(new
+                {
+                    status = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+        [HttpGet]
+        public async Task<IActionResult> GetOrderMenuItems()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                string query = @"
+        SELECT 
+            id,
+            subcategory_name,
+            price,
+            image
+        FROM tbl_menu_item
+        WHERE is_active = 1";
+
+                List<object> data = new();
+
+                using var cmd = new MySqlCommand(query, conn);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader["id"],
+                        name = reader["subcategory_name"]?.ToString(),
+                        price = reader["price"],
+                        image = reader["image"]?.ToString()
+                    });
+                }
+
+                return Json(new
+                {
+                    status = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveOrder(
+    [FromBody] OrderRequest model)
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                using var transaction =
+                    await conn.BeginTransactionAsync();
+
+                // ORDER NUMBER
+                string orderNo = "";
+
+                string orderQuery =
+                @"SELECT IFNULL(MAX(id),0)+1 FROM tbl_order";
+
+                using (var cmd =
+                    new MySqlCommand(orderQuery, conn))
+                {
+                    cmd.Transaction =
+                        (MySqlTransaction)transaction;
+
+                    int nextId =
+                        Convert.ToInt32(
+                            await cmd.ExecuteScalarAsync());
+
+                    orderNo = "ORD" + nextId.ToString("D5");
+                }
+
+                // INSERT ORDER
+                string insertOrder = @"
+        INSERT INTO tbl_order
+        (
+            order_no,
+            table_id,
+            customer_name,
+            customer_mobile,
+            total_amount,
+            discount_amount,
+            tax_amount,
+            grand_total,
+            payment_status,
+            order_status
+        )
+        VALUES
+        (
+            @orderNo,
+            @tableId,
+            @customerName,
+            @customerMobile,
+            @totalAmount,
+            @discountAmount,
+            @taxAmount,
+            @grandTotal,
+            @paymentStatus,
+            @orderStatus
+        );
+
+        SELECT LAST_INSERT_ID();";
+
+                int orderId = 0;
+
+                using (var cmd =
+                    new MySqlCommand(insertOrder, conn))
+                {
+                    cmd.Transaction =
+                        (MySqlTransaction)transaction;
+
+                    cmd.Parameters.AddWithValue("@orderNo", orderNo);
+                    cmd.Parameters.AddWithValue("@tableId", model.TableId);
+                    cmd.Parameters.AddWithValue("@customerName", model.CustomerName);
+                    cmd.Parameters.AddWithValue("@customerMobile", model.CustomerMobile);
+                    cmd.Parameters.AddWithValue("@totalAmount", model.TotalAmount);
+                    cmd.Parameters.AddWithValue("@discountAmount", model.DiscountAmount);
+                    cmd.Parameters.AddWithValue("@taxAmount", model.TaxAmount);
+                    cmd.Parameters.AddWithValue("@grandTotal", model.GrandTotal);
+                    cmd.Parameters.AddWithValue("@paymentStatus", "Pending");
+                    cmd.Parameters.AddWithValue("@orderStatus", "Running");
+
+                    orderId =
+                        Convert.ToInt32(
+                            await cmd.ExecuteScalarAsync());
+                }
+
+                // INSERT ITEMS
+                foreach (var item in model.Items)
+                {
+                    string detailQuery = @"
+            INSERT INTO tbl_order_details
+            (
+                order_id,
+                menu_item_id,
+                item_name,
+                price,
+                qty,
+                amount
+            )
+            VALUES
+            (
+                @orderId,
+                @menuItemId,
+                @itemName,
+                @price,
+                @qty,
+                @amount
+            )";
+
+                    using var detailCmd =
+                        new MySqlCommand(detailQuery, conn);
+
+                    detailCmd.Transaction =
+                        (MySqlTransaction)transaction;
+
+                    detailCmd.Parameters.AddWithValue("@orderId", orderId);
+                    detailCmd.Parameters.AddWithValue("@menuItemId", item.MenuItemId);
+                    detailCmd.Parameters.AddWithValue("@itemName", item.ItemName);
+                    detailCmd.Parameters.AddWithValue("@price", item.Price);
+                    detailCmd.Parameters.AddWithValue("@qty", item.Qty);
+                    detailCmd.Parameters.AddWithValue("@amount", item.Amount);
+
+                    await detailCmd.ExecuteNonQueryAsync();
+                }
+
+                // UPDATE TABLE STATUS
+                string updateTable = @"
+        UPDATE tbl_restaurant_table
+        SET status='Occupied'
+        WHERE id=@tableId";
+
+                using (var tableCmd =
+                    new MySqlCommand(updateTable, conn))
+                {
+                    tableCmd.Transaction =
+                        (MySqlTransaction)transaction;
+
+                    tableCmd.Parameters.AddWithValue(
+                        "@tableId",
+                        model.TableId);
+
+                    await tableCmd.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return Json(new
+                {
+                    status = true,
+                    message = "Order saved successfully"
                 });
             }
             catch (Exception ex)

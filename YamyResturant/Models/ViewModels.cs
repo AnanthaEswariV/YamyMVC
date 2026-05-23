@@ -36,4 +36,41 @@
 
         public bool IsActive { get; set; }
     }
+
+    public class OrderRequest
+    {
+        public int Id { get; set; }
+
+        public int TableId { get; set; }
+
+        public string? CustomerName { get; set; }
+
+        public string? CustomerMobile { get; set; }
+
+        public decimal TotalAmount { get; set; }
+
+        public decimal DiscountAmount { get; set; }
+
+        public decimal TaxAmount { get; set; }
+
+        public decimal GrandTotal { get; set; }
+
+        public string? PaymentStatus { get; set; }
+
+        public string? OrderStatus { get; set; }
+
+        public List<OrderItemRequest>? Items { get; set; }
+    }
+    public class OrderItemRequest
+    {
+        public int MenuItemId { get; set; }
+
+        public string? ItemName { get; set; }
+
+        public decimal Price { get; set; }
+
+        public decimal Qty { get; set; }
+
+        public decimal Amount { get; set; }
+    }
 }
