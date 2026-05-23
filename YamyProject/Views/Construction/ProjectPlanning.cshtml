@@ -1009,83 +1009,188 @@
 
                     populateBankAccounts();
 
-                    $('#showTendersBtn').on('click', function () {
-                    // Get the selected project ID
-                    const projectId = $('#projectNames').val();
+                     $('#showTendersBtn').on('click', function () {
+            const projectId = $('#projectNames').val();
+            const tenderId  = $('#tenderDropdown').val();   // this is tender_name_id
 
-                    if (projectId) {
-                        loadProjectTenders(projectId);
+            if (!projectId) {
+                toastr.error('Please select a Project first.');
+                return;
+            }
+            if (!tenderId) {
+                toastr.error('Please select a Tender first.');
+                return;
+            }
+
+            // Load tender table rows
+            loadProjectTenders(projectId);
+
+            // Auto-fill form fields
+            autoFillPlanningFields(projectId, tenderId);
+        });
+
+                     function autoFillPlanningFields(projectId, tenderId) {
+
+            // ── A) Pull project details → Project Site ──
+            $.ajax({
+                url: '@Url.Action("GetProjectManagementById", "Construction")',
+                type: 'GET',
+                data: { id: projectId },
+                success: function (res) {
+                    if (res.status && res.data) {
+                        const p = res.data;
+
+                        // ✅ Auto-fill Project Site
+                        if (p.siteId) {
+                            $('#projectSite').val(p.siteId).trigger('change');
+                        }
                     } else {
-                        toastr.error('Please select a project first.');
+                        toastr.warning('Project details not found.');
                     }
+                },
+                error: function () {
+                    toastr.warning('Could not auto-fill project details.');
+                }
+            });
 
-                   });
+            // ── B) Pull tender details → Date, Start Date, End Date, Estimated Budget ──
+            $.ajax({
+                url: '@Url.Action("GetTenderById", "Construction")',
+                type: 'GET',
+                data: { id: tenderId },
+                success: function (res) {
+                    if (res.status && res.data) {
+                        const t = res.data;
+
+                        // ✅ Auto-fill Date
+                        if (t.date) {
+                            $('#date').val(t.date);
+                        }
+
+                        // ✅ Auto-fill Start Date
+                        if (t.startDate) {
+                            $('#startDate').val(t.startDate);
+                        }
+
+                        // ✅ Auto-fill End Date
+                        if (t.endDate) {
+                            $('#endDate').val(t.endDate);
+                        }
+
+                        // ✅ Auto-fill Estimated Budget from TotalAmount (sum of tender items)
+                        if (t.totalAmount && t.totalAmount > 0) {
+                            $('#estimatedBudget').val(parseFloat(t.totalAmount).toFixed(2));
+                        } else if (t.fees && t.fees > 0) {
+                            // fallback to fees if TotalAmount is 0
+                            $('#estimatedBudget').val(parseFloat(t.fees).toFixed(2));
+                        }
+
+                        // ✅ Also load tender items table + recalculate BOQ
+                        loadTenderItems(tenderId);
+
+                    } else {
+                        toastr.warning('Tender details not found.');
+                    }
+                },
+                error: function () {
+                    toastr.warning('Could not auto-fill tender details.');
+                }
+            });
+        }
 
                     function loadProjectTenders(projectId) {
-                    $.ajax({
-                     url: '@Url.Action("GetProjectTenders", "Construction")',
-                        type: 'GET',
-                        data: { projectId: projectId },
-                        success: function (res) {
-                            if (!res.status) {
-                                toastr.error('Failed to load project tenders');
-                                return;
-                            }
+            const tenderId = $('#tenderDropdown').val();   // tender_name_id for filtering
 
-                            // Destroy DataTable if already initialized
-                            if ($.fn.DataTable.isDataTable('#table2')) {
-                                $('#table2').DataTable().clear().destroy();
-                            }
+            $.ajax({
+                url: '@Url.Action("GetProjectTenders", "Construction")',
+                type: 'GET',
+                data: { projectId: projectId, tenderId: tenderId },
+                success: function (res) {
+                    if (!res.status) {
+                        toastr.error('Failed to load project tenders');
+                        return;
+                    }
 
-                            const tbody = $('#table2 tbody');
-                            tbody.empty();
+                    if ($.fn.DataTable.isDataTable('#table2')) {
+                        $('#table2').DataTable().clear().destroy();
+                    }
 
-                            if (res.data && res.data.length > 0) {
-                                $.each(res.data, function (i, row) {
-                                    const tr = `
-                                        <tr data-id="${row.id}" style="cursor:pointer;">
-                                            <td>${i + 1}</td>
-                                            <td>${row.date ?? ''}</td>
-                                            <td>${row.projectName ?? ''}</td>
-                                            <td>${row.tenderName ?? ''}</td>
-                                            <td>${row.submitDate ?? ''}</td>
-                                            <td>${row.fees ?? 0}</td>
-                                            <td>
-                                                <button class="btn btn-sm btn-primary viewItemsBtn" data-id="${row.id}" title="View Items">
-                                                    <i class="fas fa-book"></i>
-                                                </button>
-                                            </td>
-                                        </tr>`;
-                                    tbody.append(tr);
-                                });
+                    const tbody = $('#table2 tbody');
+                    tbody.empty();
 
-                                // Initialize DataTable
-                                $('#table2').DataTable({
-                                    dom: 'Bfrtip',
-                                    buttons: [
-                                        {
-                                            extend: 'excelHtml5',
-                                            text: '<i class="fas fa-file-excel me-1"></i> Excel',
-                                            className: 'btn btn-primary btn-sm'
-                                        },
-                                        {
-                                            extend: 'pdfHtml5',
-                                            text: '<i class="fas fa-file-pdf me-1"></i> PDF',
-                                            className: 'btn btn-primary btn-sm'
-                                        }
-                                    ],
-                                    order: [[0, 'asc']],
-                                    pageLength: 25
-                                });
-                            } else {
-                                tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
-                            }
-                        },
-                        error: function () {
-                            toastr.error('Error loading project tenders');
-                        }
-                    });
+                    if (res.data && res.data.length > 0) {
+
+                        // ✅ Use the first row's real pt.id to fetch tender details
+                        const firstTenderId = res.data[0].id;
+                        autoFillFromTenderId(firstTenderId);
+
+                        $.each(res.data, function (i, row) {
+                            const tr = `
+                                <tr data-id="${row.id}" style="cursor:pointer;">
+                                    <td>${i + 1}</td>
+                                    <td>${row.date ?? ''}</td>
+                                    <td>${row.projectName ?? ''}</td>
+                                    <td>${row.tenderName ?? ''}</td>
+                                    <td>${row.submitDate ?? ''}</td>
+                                    <td>${row.fees ?? 0}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary viewItemsBtn"
+                                                data-id="${row.id}" title="View Items">
+                                            <i class="fas fa-book"></i>
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(tr);
+                        });
+
+                        $('#table2').DataTable({
+                            dom: 'Bfrtip',
+                            buttons: [
+                                { extend: 'excelHtml5', text: '<i class="fas fa-file-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm' },
+                                { extend: 'pdfHtml5',   text: '<i class="fas fa-file-pdf me-1"></i> PDF',   className: 'btn btn-primary btn-sm' }
+                            ],
+                            order: [[0, 'asc']],
+                            pageLength: 25
+                        });
+
+                    } else {
+                        tbody.append(`<tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>`);
+                    }
+                },
+                error: function () {
+                    toastr.error('Error loading project tenders');
                 }
+            });
+        }
+
+                    // ✅ Separate function: fills Date, StartDate, EndDate, EstimatedBudget using real pt.id
+                    function autoFillFromTenderId(ptId) {
+            $.ajax({
+                url: '@Url.Action("GetTenderById", "Construction")',
+                type: 'GET',
+                data: { id: ptId },
+                success: function (res) {
+                    console.log(res);
+                    if (res.status && res.data) {
+                        const t = res.data;
+
+                        if (t.date)      $('#date').val(t.date);
+                        if (t.startDate) $('#startDate').val(t.startDate);
+                        if (t.endDate)   $('#endDate').val(t.endDate);
+
+                        // Estimated Budget = TotalAmount (sum of items), fallback to fees
+                        const budget = t.totalAmount > 0 ? t.totalAmount : t.fees;
+                        $('#estimatedBudget').val(parseFloat(budget || 0).toFixed(2));
+
+                        // Reload BOQ table
+                        loadTenderItems(ptId);
+                    }
+                },
+                error: function () {
+                    toastr.warning('Could not auto-fill tender details.');
+                }
+            });
+        }
 
                     $(document).on('click', '.viewItemsBtn', function () {
                     const tenderId = $(this).data('id');
@@ -2512,7 +2617,6 @@
             AssignedResources: assignedResources
         };
 
-        console.log(model);
           
             $.ajax({
                url: '@Url.Action("SaveOrUpdateProjectActivity", "Construction")',

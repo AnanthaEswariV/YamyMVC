@@ -8820,6 +8820,179 @@ INNER JOIN tbl_project_planning p
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProjectManagementById(int id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                p.id,
+                p.code,
+                p.name AS name_en,
+                p.name_ar,
+                p.category,
+                p.status,
+                p.type,
+                p.start_date,
+                p.end_date,
+                p.location,
+                p.contract_value,
+                p.total_value,
+                p.country,
+                p.city,
+                p.emirate,
+                c.name AS customer_name,
+                ps.id AS site_id,
+                ps.name AS site_name
+            FROM tbl_projects p
+            LEFT JOIN tbl_customer c ON p.customer = c.id
+            LEFT JOIN tbl_project_sites ps ON ps.project_id = p.id
+            WHERE p.id = @id
+            LIMIT 1;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var project = new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Code = reader["code"].ToString(),
+                        Name = reader["name_en"].ToString(),
+                        NameArabic = reader["name_ar"].ToString(),
+                        Category = reader["category"].ToString(),
+                        Status = reader["status"].ToString(),
+                        Type = reader["type"].ToString(),
+                        StartDate = reader["start_date"] != DBNull.Value
+                                        ? Convert.ToDateTime(reader["start_date"]).ToString("yyyy-MM-dd")
+                                        : null,
+                        EndDate = reader["end_date"] != DBNull.Value
+                                        ? Convert.ToDateTime(reader["end_date"]).ToString("yyyy-MM-dd")
+                                        : null,
+                        Location = reader["location"].ToString(),
+                        ContractValue = reader["contract_value"] != DBNull.Value
+                                        ? Convert.ToDecimal(reader["contract_value"]) : 0,
+                        TotalValue = reader["total_value"] != DBNull.Value
+                                        ? Convert.ToDecimal(reader["total_value"]) : 0,
+                        Country = reader["country"].ToString(),
+                        City = reader["city"].ToString(),
+                        Emirate = reader["emirate"].ToString(),
+                        CustomerName = reader["customer_name"].ToString(),
+                        SiteId = reader["site_id"] != DBNull.Value
+                                        ? Convert.ToInt32(reader["site_id"]) : (int?)null,
+                        SiteName = reader["site_name"] != DBNull.Value
+                                        ? reader["site_name"].ToString() : null
+                    };
+
+                    return Ok(new { status = true, data = project });
+                }
+
+                return Ok(new { status = false, message = "Project not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTenderById(int id)
+        {
+            try
+            {
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = HttpContext.Session.GetString("DatabaseName") ?? _config.GetConnectionString("DefaultDatabase")
+                };
+
+                await using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                string query = @"
+            SELECT 
+                pt.id,
+                pt.date,
+                pt.submission_date          AS SubmitDate,
+                pt.fees                     AS Fees,
+                pt.description              AS Description,
+                pt.project_id               AS Project_Id,
+                pt.account_id               AS Account_Id,
+                pt.warehouse_id             AS Warehouse_Id,
+                pt.tender_name_id           AS Tender_Name_Id,
+                p.code                      AS ProjectCode,
+                p.name                      AS ProjectName,
+                p.start_date                AS StartDate,
+                p.end_date                  AS EndDate,
+                t.name                      AS TenderName,
+                p.contract_value            AS ContractValue,
+                p.total_value               AS TotalValue,
+                COALESCE(SUM(ptd.total), 0) AS TotalAmount
+            FROM tbl_project_tender pt
+            INNER JOIN tbl_projects p                  ON pt.project_id  = p.id
+            INNER JOIN tbl_tender_names t              ON pt.tender_name_id = t.id
+            LEFT  JOIN tbl_project_tender_details ptd  ON ptd.tender_id  = pt.id
+            WHERE pt.id    = @id
+              AND pt.state = 0
+            GROUP BY 
+                pt.id, pt.date, pt.submission_date, pt.fees, pt.description,
+                pt.project_id, pt.account_id, pt.warehouse_id, pt.tender_name_id,
+                p.code, p.name, p.start_date, p.end_date, t.name
+            LIMIT 1;";
+
+                await using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@id", id);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    var tender = new
+                    {
+                        Id = reader.GetInt32("id"),
+                        Date = reader["date"] != DBNull.Value
+                                            ? Convert.ToDateTime(reader["date"]).ToString("yyyy-MM-dd") : null,
+                        SubmitDate = reader["SubmitDate"] != DBNull.Value
+                                            ? Convert.ToDateTime(reader["SubmitDate"]).ToString("yyyy-MM-dd") : null,
+                        Fees = reader["Fees"] != DBNull.Value
+                                            ? Convert.ToDecimal(reader["Fees"]) : 0,
+                        Description = reader["Description"].ToString(),
+                        Project_Id = reader.GetInt32("Project_Id"),
+                        Account_Id = reader.GetInt32("Account_Id"),
+                        Warehouse_Id = reader.GetInt32("Warehouse_Id"),
+                        Tender_Name_Id = reader.GetInt32("Tender_Name_Id"),
+                        ProjectCode = reader["ProjectCode"].ToString(),
+                        ProjectName = reader["ProjectName"].ToString(),
+                        StartDate = reader["StartDate"] != DBNull.Value
+                                            ? Convert.ToDateTime(reader["StartDate"]).ToString("yyyy-MM-dd") : null,
+                        EndDate = reader["EndDate"] != DBNull.Value
+                                            ? Convert.ToDateTime(reader["EndDate"]).ToString("yyyy-MM-dd") : null,
+                        TenderName = reader["TenderName"].ToString(),
+                        TotalAmount = reader["TotalValue"] != DBNull.Value
+                                            ? Convert.ToDecimal(reader["TotalValue"]) : 0
+                    };
+
+                    return Ok(new { status = true, data = tender });
+                }
+
+                return Ok(new { status = false, message = "Tender not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
 
         #endregion
 
