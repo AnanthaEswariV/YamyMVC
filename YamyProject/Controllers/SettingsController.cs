@@ -441,6 +441,80 @@
 
         #endregion
 
+        #region Attendance List
+
+        public IActionResult AttendanceList()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAttendanceList()
+        {
+            try
+            {
+                // 1️⃣ Get Database from Session
+                var database = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(database))
+                    return BadRequest(new { status = false, message = "No database selected. Please login first." });
+
+                // 2️⃣ Build connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = database
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 3️⃣ Get attendance list
+                var query = @"
+            SELECT 
+                u.Id                                        AS UserId,
+                u.User_Name                                 AS UserName,
+                DATE(a.CheckInTime)                         AS WorkDate,
+                TIME_FORMAT(a.CheckInTime, '%h:%i %p')      AS CheckIn,
+                TIME_FORMAT(a.CheckOutTime, '%h:%i %p')     AS CheckOut,
+                DAYNAME(a.CheckInTime)                      AS DayOfWeek,
+                CASE 
+                    WHEN a.CheckInTime IS NOT NULL 
+                     AND a.CheckOutTime IS NOT NULL THEN 'P'
+                    ELSE 'A'
+                END                                         AS Status
+            FROM tbl_sec_users u
+            LEFT JOIN tbl_labour_checkin a 
+                ON u.Id = a.LabourId 
+                AND DATE(a.CheckInTime) = CURDATE()
+            ORDER BY u.User_Name ASC";
+
+                using var cmd = new MySqlCommand(query, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var list = new List<object>();
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        UserId = reader["UserId"],
+                        UserName = reader["UserName"].ToString(),
+                        WorkDate = reader["WorkDate"] == DBNull.Value ? "-" : Convert.ToDateTime(reader["WorkDate"]).ToString("dd MMM yyyy"),
+                        CheckIn = reader["CheckIn"] == DBNull.Value ? "-" : reader["CheckIn"].ToString(),
+                        CheckOut = reader["CheckOut"] == DBNull.Value ? "-" : reader["CheckOut"].ToString(),
+                        DayOfWeek = reader["DayOfWeek"] == DBNull.Value ? "-" : reader["DayOfWeek"].ToString(),
+                        Status = reader["Status"].ToString()
+                    });
+                }
+
+                return Ok(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
 
     }
 
