@@ -474,6 +474,21 @@ namespace YamyProject.Controllers
                           PRIMARY KEY (`id`)
                         ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+                        CREATE TABLE IF NOT EXISTS `tbl_labour_checkin` (
+                          `Id`                int NOT NULL AUTO_INCREMENT,
+                          `LabourId`          int NOT NULL DEFAULT '0',
+                          `CheckInTime`       datetime DEFAULT NULL,
+                          `Latitude`          decimal(10,7) DEFAULT NULL,
+                          `Longitude`         decimal(10,7) DEFAULT NULL,
+                          `CheckInAddress`    varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `CheckOutTime`      datetime DEFAULT NULL,
+                          `CheckOutLatitude`  decimal(10,7) DEFAULT NULL,
+                          `CheckOutLongitude` decimal(10,7) DEFAULT NULL,
+                          `CheckOutAddress`   varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+                          `CreatedAt`         datetime DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`Id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
                         CREATE TABLE IF NOT EXISTS `tbl_coa_config` (
                           `id` int NOT NULL AUTO_INCREMENT,
                           `account_id` int DEFAULT NULL,

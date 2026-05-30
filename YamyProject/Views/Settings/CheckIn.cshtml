@@ -1,0 +1,230 @@
+﻿
+@{
+    ViewData["Title"] = "CheckIn";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<div class="col-md-6 col-12">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="card-title">My Attendance</h4>
+        </div>
+        <div class="card-content">
+            <div class="card-body">
+                <div class="row">
+
+                    <!-- Live Clock -->
+                    <div class="col-12 text-center mb-3">
+                        <h2 id="liveClock" class="text-primary fw-bold"></h2>
+                        <p id="liveDate" class="text-muted"></p>
+                    </div>
+
+                    <!-- Location Display -->
+                    <div class="col-md-4"><label>Location</label></div>
+                    <div class="col-md-8 form-group">
+                        <input type="text" id="locationDisplay" class="form-control" readonly
+                               placeholder="Capturing your location...">
+                        <input type="hidden" id="latitude">
+                        <input type="hidden" id="longitude">
+                        <input type="hidden" id="locationAddress">
+                    </div>
+
+                    <!-- Check-In Info (shown after check-in) -->
+                    <div class="col-md-4" id="ciTimeLabel" style="display:none;"><label>Check-In Time</label></div>
+                    <div class="col-md-8 form-group" id="ciTimeDisplay" style="display:none;">
+                        <input type="text" id="checkInTimeDisplay" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-4" id="ciAddrLabel" style="display:none;"><label>Check-In Address</label></div>
+                    <div class="col-md-8 form-group" id="ciAddrDisplay" style="display:none;">
+                        <textarea id="checkInAddressDisplay" class="form-control" rows="2" readonly></textarea>
+                    </div>
+
+                    <!-- Check-Out Info (shown after check-out) -->
+                    <div class="col-md-4" id="coTimeLabel" style="display:none;"><label>Check-Out Time</label></div>
+                    <div class="col-md-8 form-group" id="coTimeDisplay" style="display:none;">
+                        <input type="text" id="checkOutTimeDisplay" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-4" id="coAddrLabel" style="display:none;"><label>Check-Out Address</label></div>
+                    <div class="col-md-8 form-group" id="coAddrDisplay" style="display:none;">
+                        <textarea id="checkOutAddressDisplay" class="form-control" rows="2" readonly></textarea>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="col-sm-12 d-flex justify-content-end mt-2">
+                        <button id="btnCheckIn" class="btn btn-success me-1 mb-1"
+                                onclick="submitAttendance('IN')">
+                            ✅ Check In
+                        </button>
+                        <button id="btnCheckOut" class="btn btn-danger me-1 mb-1"
+                                onclick="submitAttendance('OUT')" style="display:none;">
+                            🚪 Check Out
+                        </button>
+                        <button type="button" class="btn btn-light-secondary me-1 mb-1"
+                                onclick="window.location.href='/Home/Index'">
+                            Close
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+
+    <script>
+
+        // ⏰ Live Clock
+        function updateClock() {
+            var now = new Date();
+            $("#liveClock").text(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+            $("#liveDate").text(now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 📍 Capture Location + Reverse Geocode on Page Load
+        $(document).ready(function () {
+
+            if (navigator.geolocation) {
+                $("#locationDisplay").val("Detecting location...");
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        var lat = position.coords.latitude;
+                        var lng = position.coords.longitude;
+
+                        $("#latitude").val(lat);
+                        $("#longitude").val(lng);
+                        $("#locationDisplay").val("Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5));
+
+                        // 🔄 Reverse Geocode — get full address (Free, No API Key)
+                        $.ajax({
+                            url: "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lng,
+                            type: "GET",
+                            headers: { "Accept-Language": "en" },
+                            success: function (data) {
+                                var address = data.display_name || "Address not found";
+                                $("#locationDisplay").val(address);
+                                $("#locationAddress").val(address);
+                            },
+                            error: function () {
+                                // fallback to coordinates if geocode fails
+                                $("#locationAddress").val("Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5));
+                            }
+                        });
+                    },
+                    function (error) {
+                        var msg = "Location access denied.";
+                        if (error.code === error.POSITION_UNAVAILABLE) msg = "Location unavailable.";
+                        if (error.code === error.TIMEOUT) msg = "Location request timed out.";
+                        $("#locationDisplay").val(msg);
+                        toastr.warning("Please allow location access to check in.");
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                $("#locationDisplay").val("Geolocation not supported.");
+                toastr.error("Geolocation is not supported on this device.");
+            }
+
+            // 🔄 Load today's attendance status
+            $.ajax({
+                url: '@Url.Action("GetTodayStatus", "Settings")',
+                type: "GET",
+                success: function (res) {
+                    if (res.status && res.hasCheckedIn) {
+                        showCheckInInfo(res.checkInTime, res.checkInAddress);
+
+                        if (res.hasCheckedOut) {
+                            showCheckOutInfo(res.checkOutTime, res.checkOutAddress);
+                            $("#btnCheckIn").hide();
+                            $("#btnCheckOut").hide();
+                            toastr.info("Attendance completed for today.");
+                        } else {
+                            $("#btnCheckIn").hide();
+                            $("#btnCheckOut").show();
+                        }
+                    }
+                },
+                error: function () {
+                    toastr.error("Failed to load attendance status.");
+                }
+            });
+        });
+
+        // ✅ Submit Check-In or Check-Out
+        function submitAttendance(type) {
+            var lat     = $("#latitude").val();
+            var lng     = $("#longitude").val();
+            var address = $("#locationAddress").val();
+
+            if (!lat || !lng) {
+                toastr.error("Location not captured. Please allow location access and try again.");
+                return;
+            }
+
+            // Disable button to prevent double click
+            $("#btnCheckIn, #btnCheckOut").prop("disabled", true);
+
+            var payload = {
+                Latitude: parseFloat(lat),
+                Longitude: parseFloat(lng),
+                Type: type,
+                LocationAddress: address
+            };
+
+            $.ajax({
+                url: '@Url.Action("CheckIn", "Settings")',
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.status) {
+                        toastr.success(res.message);
+
+                        if (res.type === "IN") {
+                            showCheckInInfo(res.time, address);
+                            $("#btnCheckIn").hide();
+                            $("#btnCheckOut").show().prop("disabled", false);
+                        } else {
+                            showCheckOutInfo(res.time, address);
+                            $("#btnCheckOut").hide();
+                        }
+                    } else {
+                        toastr.error(res.message);
+                        $("#btnCheckIn, #btnCheckOut").prop("disabled", false);
+                    }
+                },
+                error: function (xhr) {
+                    var err = JSON.parse(xhr.responseText);
+                    toastr.error(err.message || "Something went wrong.");
+                    $("#btnCheckIn, #btnCheckOut").prop("disabled", false);
+                }
+            });
+        }
+
+        // 🖥️ Show Check-In fields
+        function showCheckInInfo(time, address) {
+            $("#checkInTimeDisplay").val(time);
+            $("#checkInAddressDisplay").val(address || "");
+            $("#ciTimeLabel, #ciTimeDisplay").show();
+            if (address) $("#ciAddrLabel, #ciAddrDisplay").show();
+        }
+
+        // 🖥️ Show Check-Out fields
+        function showCheckOutInfo(time, address) {
+            $("#checkOutTimeDisplay").val(time);
+            $("#checkOutAddressDisplay").val(address || "");
+            $("#coTimeLabel, #coTimeDisplay").show();
+            if (address) $("#coAddrLabel, #coAddrDisplay").show();
+        }
+
+    </script>
+}

@@ -802,6 +802,67 @@ namespace YamyResturant.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetOrderCustomers()
+        {
+            try
+            {
+                using var conn = await OpenConnectionAsync();
+
+                if (conn == null)
+                {
+                    return Json(new
+                    {
+                        status = false,
+                        message = "Session expired"
+                    });
+                }
+
+                string query = @"
+        SELECT
+            id,
+            code,
+            name,
+            mobile
+        FROM tbl_customer
+        WHERE active = 0
+        ORDER BY name";
+
+                List<object> data = new();
+
+                using var cmd =
+                    new MySqlCommand(query, conn);
+
+                using var reader =
+                    await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    data.Add(new
+                    {
+                        id = reader["id"],
+                        code = reader["code"]?.ToString(),
+                        name = reader["name"]?.ToString(),
+                        mobile = reader["mobile"]?.ToString()
+                    });
+                }
+
+                return Json(new
+                {
+                    status = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
+
         #endregion
     }
 }

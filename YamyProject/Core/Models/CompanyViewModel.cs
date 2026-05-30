@@ -258,7 +258,13 @@ namespace YamyProject.Core.Models
         public decimal Qty { get; set; }
         public int UserId { get; set; }         
     }
-
+    public class LabourCheckInRequest
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public string Type { get; set; }            // "IN" or "OUT"
+        public string LocationAddress { get; set; } // full readable address
+    }
     //public class ItemRequest
     //{
     //    public int Id { get; set; }

@@ -46,18 +46,60 @@
                                 id="tableId">
                         </select>
                     </div>
-
                     <!-- CUSTOMER -->
-                    <div class="mb-3">
+                    <div class="card mb-3">
 
-                        <label>Customer Name</label>
+                        <div class="card-body">
 
-                        <input type="text"
-                               class="form-control"
-                               id="customerName">
+                            <!-- SELECT CUSTOMER -->
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Select Customer
+                                </label>
+
+                                <select class="form-select"
+                                        id="customerId">
+
+                                    <option value="">
+                                        Walk-In Customer
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                            <!-- CUSTOMER NAME -->
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Customer Name
+                                </label>
+
+                                <input type="text"
+                                       class="form-control"
+                                       id="customerName"
+                                       placeholder="Enter customer name">
+
+                            </div>
+
+                            <!-- MOBILE -->
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Mobile Number
+                                </label>
+
+                                <input type="text"
+                                       class="form-control"
+                                       id="customerMobile"
+                                       placeholder="Enter mobile number">
+
+                            </div>
+
+                        </div>
 
                     </div>
-
                     <!-- CART -->
                     <table class="table table-bordered">
 
@@ -115,11 +157,10 @@
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
     <script>
 
+        let cart = [];
 
-        // LOAD TABLES
         function loadTables() {
-
-            $.get('/Home/GetAvailableTables', function (res) {
+            $.get('@Url.Action("GetAvailableTables", "Home")', function (res) {
 
                 let html =
                     `<option value="">Select Table</option>`;
@@ -136,10 +177,10 @@
             });
         }
 
+        function loadMenuItems() {
 
-            function loadMenuItems() {
-
-            $.get('/Home/GetOrderMenuItems', function (res) {
+            
+            $.get('@Url.Action("GetOrderMenuItems", "Home")', function (res) {
 
                 let html = "";
 
@@ -153,14 +194,16 @@
 
                     <div class="col-md-3 mb-4">
 
-                        <div class="card shadow-sm border-0 h-100 menuItem"
+                        <div class="card shadow-sm border-0 h-100 menuItem menu-card"
+                             data-id="${item.id}"
+                             data-name="${item.name}"
+                             data-price="${item.price}"
                              style="
                                 cursor:pointer;
                                 border-radius:12px;
                                 overflow:hidden;
                                 transition:0.3s;
-                             "
-                             onclick='addToCart(${JSON.stringify(item)})'>
+                             ">
 
                             <img src="${imageUrl}"
                                  style="
@@ -190,8 +233,20 @@
             });
         }
 
+        $(document).on("click", ".menu-card", function () {
 
-        // ADD CART
+            let item = {
+
+                id: $(this).data("id"),
+
+                name: $(this).data("name"),
+
+                price: parseFloat($(this).data("price"))
+            };
+
+            addToCart(item);
+        });
+
         function addToCart(item) {
 
             let existing =
@@ -209,9 +264,13 @@
                 cart.push({
 
                     menuItemId: item.id,
+
                     itemName: item.name,
+
                     price: parseFloat(item.price),
+
                     qty: 1,
+
                     amount: parseFloat(item.price)
                 });
             }
@@ -219,13 +278,22 @@
             renderCart();
         }
 
-
-        // RENDER CART
         function renderCart() {
 
             let html = "";
 
             let total = 0;
+
+            if (cart.length == 0) {
+
+                html = `
+                <tr>
+                    <td colspan="3"
+                        class="text-center text-muted">
+                        No items added
+                    </td>
+                </tr>`;
+            }
 
             $.each(cart, function (i, item) {
 
@@ -234,31 +302,43 @@
                 html += `
                 <tr>
 
-                    <td>${item.itemName}</td>
-
                     <td>
+                        ${item.itemName}
+                    </td>
+
+                    <td width="100">
+
                         <input type="number"
                                value="${item.qty}"
                                min="1"
-                               onchange="updateQty(${i}, this.value)"
-                               class="form-control">
+                               class="form-control form-control-sm"
+                               onchange="updateQty(${i}, this.value)">
                     </td>
 
-                    <td>${item.amount.toFixed(2)}</td>
+                    <td>
+
+                        AED ${item.amount.toFixed(2)}
+
+                    </td>
 
                 </tr>`;
             });
 
             $("#cartBody").html(html);
 
-            $("#grandTotal").text(total.toFixed(2));
+            $("#grandTotal").text(
+                total.toFixed(2)
+            );
         }
 
-
-        // UPDATE QTY
         function updateQty(index, qty) {
 
             qty = parseFloat(qty);
+
+            if (qty <= 0 || isNaN(qty)) {
+
+                qty = 1;
+            }
 
             cart[index].qty = qty;
 
@@ -268,70 +348,259 @@
             renderCart();
         }
 
+        $("#saveOrderBtn").click(async function () {
 
-        // SAVE ORDER
-        $("#saveOrderBtn").click(function () {
+            try {
 
-            if (cart.length == 0) {
+                if ($("#tableId").val() == "") {
 
-                toastr.error("Cart is empty");
-                return;
+                    toastr.error("Please select table");
+
+                    return;
+                }
+
+                if (cart.length == 0) {
+
+                    toastr.error("Cart is empty");
+
+                    return;
+                }
+
+                // CREATE CUSTOMER
+                let customerId =
+                    await createCustomerIfNeeded();
+
+                let model = {
+
+                    tableId:
+                        parseInt($("#tableId").val()),
+
+                    customerId:
+                        customerId,
+
+                    customerName:
+                        $("#customerName").val(),
+
+                    customerMobile:
+                        $("#customerMobile").val(),
+
+                    totalAmount:
+                        parseFloat($("#grandTotal").text()),
+
+                    discountAmount: 0,
+
+                    taxAmount: 0,
+
+                    grandTotal:
+                        parseFloat($("#grandTotal").text()),
+
+                    items: cart
+                };
+
+                $.ajax({
+                   url:  '@Url.Action("SaveOrder", "Home")',
+
+                    type: 'POST',
+
+                    contentType: 'application/json',
+
+                    data: JSON.stringify(model),
+
+                    success: function (res) {
+
+                        if (res.status) {
+
+                            toastr.success(res.message);
+
+                            // RESET
+                            cart = [];
+
+                            renderCart();
+
+                            $("#customerId").val("");
+
+                            $("#customerName").val("");
+
+                            $("#customerMobile").val("");
+
+                            $("#tableId").val("");
+                        }
+                        else {
+
+                            toastr.error(res.message);
+                        }
+                    },
+
+                    error: function () {
+
+                        toastr.error("Order save failed");
+                    }
+                });
+
             }
+            catch (e) {
 
-            let model = {
+                toastr.error("Unexpected error");
+            }
+        });
 
-                tableId: $("#tableId").val(),
+        function loadCustomers() {
 
-                customerName:
-                    $("#customerName").val(),
+            return $.ajax({
+                url:  '@Url.Action("GetOrderCustomers", "Home")',
 
-                totalAmount:
-                    parseFloat($("#grandTotal").text()),
-
-                discountAmount: 0,
-
-                taxAmount: 0,
-
-                grandTotal:
-                    parseFloat($("#grandTotal").text()),
-
-                items: cart
-            };
-
-            $.ajax({
-
-                url: '/Home/SaveOrder',
-
-                type: 'POST',
-
-                contentType: 'application/json',
-
-                data: JSON.stringify(model),
+                type: 'GET',
 
                 success: function (res) {
 
-                    if (res.status) {
+                    if (!res.status) {
 
-                        toastr.success(res.message);
-
-                        cart = [];
-
-                        renderCart();
-                    }
-                    else {
                         toastr.error(res.message);
+
+                        return;
                     }
+
+                    let html = `
+                    <option value="">
+                        Walk-In Customer
+                    </option>`;
+
+                    $.each(res.data, function (i, item) {
+
+                        html += `
+                        <option
+                            value="${item.id}"
+                            data-name="${item.name || ''}"
+                            data-mobile="${item.mobile || ''}">
+
+                            ${item.name || ''}
+                            ${item.mobile ? '(' + item.mobile + ')' : ''}
+
+                        </option>`;
+                    });
+
+                    $("#customerId").html(html);
+                },
+
+                error: function () {
+
+                    toastr.error("Failed to load customers");
                 }
             });
+        }
+
+        $("#customerId").change(function () {
+
+            let selected =
+                $(this).find(":selected");
+
+            $("#customerName").val(
+                selected.data("name") || ""
+            );
+
+            $("#customerMobile").val(
+                selected.data("mobile") || ""
+            );
         });
 
+        async function createCustomerIfNeeded() {
 
-        // INIT
+            let customerId = $("#customerId").val();
+
+            // Existing customer selected
+            if (customerId && customerId !== "") {
+
+                return parseInt(customerId);
+            }
+
+            let customerName =
+                $("#customerName").val().trim();
+
+            let mobile =
+                $("#customerMobile").val().trim();
+
+            // Walk-in customer only
+            if (customerName === "") {
+
+                return 0;
+            }
+
+            let customerModel = {
+
+                Id: 0,
+
+                Name: customerName,
+
+                Mobile: mobile,
+
+                CategoryId: 1, // MUST EXIST
+
+                CountryId: 1, // MUST EXIST
+
+                Active: true
+            };
+
+            try {
+
+                let response = await $.ajax({
+                      url:  '@Url.Action("SaveCustomer", "Customer")',
+
+                    type: 'POST',
+
+                    contentType: 'application/json',
+
+                    data: JSON.stringify(customerModel)
+                });
+
+                console.log(response);
+
+                if (response.status) {
+
+                    toastr.success("Customer added");
+
+                    await loadCustomers();
+
+                    // auto select customer
+                    if (response.customerId) {
+
+                        $("#customerId")
+                            .val(response.customerId);
+
+                        return response.customerId;
+                    }
+
+                    return 0;
+                }
+                else {
+
+                    toastr.error(response.message);
+
+                    return 0;
+                }
+            }
+            catch (xhr) {
+
+                console.log(xhr);
+
+                toastr.error(
+                    xhr.responseJSON?.message ||
+                    xhr.responseText ||
+                    "Customer save failed"
+                );
+
+                return 0;
+            }
+        }
+
         $(document).ready(function () {
+
+            loadCustomers();
 
             loadTables();
 
             loadMenuItems();
+
+            renderCart();
         });
 
    </script>

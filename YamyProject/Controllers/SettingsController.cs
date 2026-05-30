@@ -238,6 +238,209 @@
 
         #endregion
 
+        #region Labour Check-In / Check-Out
+
+        public IActionResult CheckIn()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CheckIn([FromBody] LabourCheckInRequest model)
+        {
+            try
+            {
+                // 1️⃣ Validate model
+                if (model == null)
+                    return BadRequest(new { status = false, message = "Invalid request" });
+
+                if (model.Latitude == 0 && model.Longitude == 0)
+                    return BadRequest(new { status = false, message = "Location not captured. Please allow location access." });
+
+                if (string.IsNullOrEmpty(model.Type) || (model.Type != "IN" && model.Type != "OUT"))
+                    return BadRequest(new { status = false, message = "Invalid attendance type." });
+
+                // 2️⃣ Get Labour ID from Session
+                int labourId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (labourId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // 3️⃣ Get Database from Session
+                var database = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(database))
+                    return BadRequest(new { status = false, message = "No database selected. Please login first." });
+
+                // 4️⃣ Build connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = database
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                if (model.Type == "IN")
+                {
+                    // 5️⃣ Prevent duplicate Check-In today
+                    var checkExistingQuery = @"
+                    SELECT COUNT(*) FROM tbl_labour_checkin 
+                    WHERE LabourId = @labourId 
+                    AND DATE(CheckInTime) = CURDATE()";
+
+                    using (var checkCmd = new MySqlCommand(checkExistingQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@labourId", labourId);
+                        var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync());
+                        if (exists > 0)
+                            return BadRequest(new { status = false, message = "Already checked in today." });
+                    }
+
+                    // 6️⃣ Insert Check-In
+                    var insertQuery = @"
+                    INSERT INTO tbl_labour_checkin 
+                        (LabourId, CheckInTime, Latitude, Longitude, CheckInAddress)
+                    VALUES 
+                        (@labourId, @time, @lat, @lng, @address)";
+
+                    using (var insertCmd = new MySqlCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@labourId", labourId);
+                        insertCmd.Parameters.AddWithValue("@time", DateTime.Now);
+                        insertCmd.Parameters.AddWithValue("@lat", model.Latitude);
+                        insertCmd.Parameters.AddWithValue("@lng", model.Longitude);
+                        insertCmd.Parameters.AddWithValue("@address", model.LocationAddress ?? "");
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = "Check-In successful!",
+                        time = DateTime.Now.ToString("hh:mm tt"),
+                        date = DateTime.Now.ToString("dd MMM yyyy"),
+                        type = "IN"
+                    });
+                }
+                else // OUT
+                {
+                    // 7️⃣ Must have checked in today first
+                    int recordId = 0;
+                    var getRecordQuery = @"
+                    SELECT Id FROM tbl_labour_checkin 
+                    WHERE LabourId = @labourId 
+                    AND DATE(CheckInTime) = CURDATE()
+                    AND CheckOutTime IS NULL";
+
+                    using (var getCmd = new MySqlCommand(getRecordQuery, conn))
+                    {
+                        getCmd.Parameters.AddWithValue("@labourId", labourId);
+                        var result = await getCmd.ExecuteScalarAsync();
+                        if (result == null)
+                            return BadRequest(new { status = false, message = "No active check-in found for today." });
+
+                        recordId = Convert.ToInt32(result);
+                    }
+
+                    // 8️⃣ Update Check-Out
+                    var updateQuery = @"
+                    UPDATE tbl_labour_checkin 
+                    SET CheckOutTime      = @time,
+                        CheckOutLatitude  = @lat,
+                        CheckOutLongitude = @lng,
+                        CheckOutAddress   = @address
+                    WHERE Id = @id";
+
+                    using (var updateCmd = new MySqlCommand(updateQuery, conn))
+                    {
+                        updateCmd.Parameters.AddWithValue("@time", DateTime.Now);
+                        updateCmd.Parameters.AddWithValue("@lat", model.Latitude);
+                        updateCmd.Parameters.AddWithValue("@lng", model.Longitude);
+                        updateCmd.Parameters.AddWithValue("@address", model.LocationAddress ?? "");
+                        updateCmd.Parameters.AddWithValue("@id", recordId);
+                        await updateCmd.ExecuteNonQueryAsync();
+                    }
+
+                    return Ok(new
+                    {
+                        status = true,
+                        message = "Check-Out successful!",
+                        time = DateTime.Now.ToString("hh:mm tt"),
+                        date = DateTime.Now.ToString("dd MMM yyyy"),
+                        type = "OUT"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        // 🔄 Get today's status
+        [HttpGet]
+        public async Task<IActionResult> GetTodayStatus()
+        {
+            try
+            {
+                // 1️⃣ Get Labour ID from Session
+                int labourId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (labourId <= 0)
+                    return Unauthorized(new { status = false, message = "User not logged in" });
+
+                // 2️⃣ Get Database from Session
+                var database = HttpContext.Session.GetString("DatabaseName");
+                if (string.IsNullOrEmpty(database))
+                    return BadRequest(new { status = false, message = "No database selected. Please login first." });
+
+                // 3️⃣ Build connection
+                var connStrBuilder = new MySqlConnectionStringBuilder(_config.GetConnectionString("DefaultConnection"))
+                {
+                    Database = database
+                };
+
+                using var conn = new MySqlConnection(connStrBuilder.ConnectionString);
+                await conn.OpenAsync();
+
+                // 4️⃣ Get today's record
+                var query = @"
+                SELECT CheckInTime, CheckInAddress, CheckOutTime, CheckOutAddress
+                FROM tbl_labour_checkin 
+                WHERE LabourId = @labourId 
+                AND DATE(CheckInTime) = CURDATE()";
+
+                using var cmd = new MySqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@labourId", labourId);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var checkIn = reader["CheckInTime"].ToString();
+                    var checkInAddr = reader["CheckInAddress"].ToString();
+                    var checkOut = reader["CheckOutTime"] == DBNull.Value ? null : reader["CheckOutTime"].ToString();
+                    var checkOutAddr = reader["CheckOutAddress"] == DBNull.Value ? null : reader["CheckOutAddress"].ToString();
+
+                    return Ok(new
+                    {
+                        status = true,
+                        hasCheckedIn = true,
+                        hasCheckedOut = checkOut != null,
+                        checkInTime = Convert.ToDateTime(checkIn).ToString("hh:mm tt"),
+                        checkInAddress = checkInAddr,
+                        checkOutTime = checkOut != null ? Convert.ToDateTime(checkOut).ToString("hh:mm tt") : null,
+                        checkOutAddress = checkOutAddr
+                    });
+                }
+
+                return Ok(new { status = true, hasCheckedIn = false, hasCheckedOut = false });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
+        }
+
+        #endregion
+
 
     }
 
